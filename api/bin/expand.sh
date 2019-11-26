@@ -15,14 +15,14 @@ function expand {
     for tar in $(find -name "*.tar*"); do
         echo $tar
         #tar is too verbose
-        tar -xf $tar -C $(dirname $tar)
+        tar -I pigz -xf $tar -C $(dirname $tar)
         rm $tar
     done
 
     for tar in $(find -name "*.tgz"); do
         echo $tar
         #tar is too verbose
-        tar -xf $tar -C $(dirname $tar)
+        tar -I pigz -xf $tar -C $(dirname $tar)
         rm $tar
     done
 
