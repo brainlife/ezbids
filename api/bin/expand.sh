@@ -48,7 +48,13 @@ function expand {
         rm $zip
     done
 
-    #TODO - 7z, .xz .bz2
+    for rar in $(find -name "*.rar"); do
+        echo $rar
+        unrar x $rar
+        rm $rar
+    done
+
+    #TODO .xz?
 }
 
 #keep expanding until there is nothing else to expand
