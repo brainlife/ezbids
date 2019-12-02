@@ -12,6 +12,15 @@ echo "expanding zip/gz/tar in $root"
 
 #expand various things that we can expand
 function expand {
+
+    #pigz can't handle xz.. so fall back to use native tar uncompressor
+    for tar in $(find -name "*.tar.xz"); do
+        echo $tar
+        #tar is too verbose
+        tar -xf $tar -C $(dirname $tar)
+        rm $tar
+    done
+
     for tar in $(find -name "*.tar*"); do
         echo $tar
         #tar is too verbose
