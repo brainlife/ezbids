@@ -87,9 +87,7 @@ router.post('/upload/:session_id/:file_idx', upload.single('file'), (req, res, n
         let destdir = path.dirname(dest_path);
         //console.log(src_path, abs_dest_path, abs_dest_basepath);
         //move the file over to workdir
-        mkdirp(destdir, err => {
-            if (err)
-                return next(err);
+        mkdirp(destdir).then(err => {
             fs.rename(src_path, dest_path, err => {
                 if (err)
                     return next(err);
