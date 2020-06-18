@@ -1,6 +1,6 @@
 #!/bin/bash
 
-module load pigz
+#module load pigz
 
 set -e
 set -x
@@ -27,6 +27,6 @@ echo processing $root
 
 (cd $root && find . -type f \( -name "*.json" -o -name "*.nii.gz" \) > list)
 
-./analyzer/run.sh $root 
+./analyzer/run.sh $root
 
 echo "done preprocessing"

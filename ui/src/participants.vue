@@ -1,19 +1,21 @@
 <template>
 <div>
+    <p>You can store metadata/phenotypical data for each subject/participants on this datasets within your BIDS dataset.</p>
+    <p>This information allows you to perform group analysis with your data, for example.</p>
     <el-form>
         <el-row :gutter="20">
             <el-col :span="12">
                 <h4>participants.json</h4>
                 <el-input type="textarea"
                     placeholder="participants.json"
-                    :autosize="{ minRows: 20, maxRows: 25}"
+                    rows="22"
                     v-model="participants" @blur="updateParticipants"/>
             </el-col>
             <el-col :span="12">
                 <h4>participants.tsv (column)</h4>
                 <el-input type="textarea"
                     placeholder="participants.tsv"
-                    :autosize="{ minRows: 20, maxRows: 25}"
+                    rows="22"
                     v-model="participantsColumn" @blur="updateParticipantsColumn"/>
             </el-col>
         </el-row>
@@ -31,9 +33,14 @@
 
 export default {
     //store,
+    watch: {
+        '$root.participants'() {
+            this.participants = JSON.stringify(this.$root.participants, null, 4);
+            this.participantsColumn = JSON.stringify(this.$root.participantsColumn, null, 4);
+        }
+    },
+
     created() {
-        this.participants = JSON.stringify(this.$root.participants, null, 4);
-        this.participantsColumn = JSON.stringify(this.$root.participantsColumn, null, 4);
     },
 
     methods: {

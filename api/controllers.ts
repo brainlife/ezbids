@@ -47,7 +47,7 @@ router.get('/session/:session_id', (req, res, next) => {
     });
 });
 
-router.get('/session/processlog/:session_id', (req, res, next) => {
+router.get('/session/:session_id/log', (req, res, next) => {
     models.Session.findById(req.params.session_id).select('-files').then(session=>{
         res.setHeader("content-type", "text/plain");
         fs.createReadStream(config.workdir+"/"+session._id+"/preprocess.log").pipe(res);
@@ -56,7 +56,7 @@ router.get('/session/processlog/:session_id', (req, res, next) => {
     });
 });
 
-router.get('/session/processerr/:session_id', (req, res, next) => {
+router.get('/session/:session_id/error', (req, res, next) => {
     models.Session.findById(req.params.session_id).select('-files').then(session=>{
         res.setHeader("content-type", "text/plain");
         fs.createReadStream(config.workdir+"/"+session._id+"/preprocess.err").pipe(res);
@@ -65,10 +65,19 @@ router.get('/session/processerr/:session_id', (req, res, next) => {
     });
 });
 
-router.get('/session/list/:session_id', (req, res, next) => {
+router.get('/session/:session_id/list', (req, res, next) => {
     models.Session.findById(req.params.session_id).select('-files').then(session=>{
         res.setHeader("content-type", "text/plain");
         fs.createReadStream(config.workdir+"/"+session._id+"/list").pipe(res);
+    }).catch(err=>{
+        next(err);
+    });
+});
+
+router.get('/session/:session_id/ezbids', (req, res, next) => {
+    models.Session.findById(req.params.session_id).select('-files').then(session=>{
+        res.setHeader("content-type", "application/json");
+        fs.createReadStream(config.workdir+"/"+session._id+"/ezbids.json").pipe(res);
     }).catch(err=>{
         next(err);
     });

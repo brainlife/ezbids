@@ -1,0 +1,92 @@
+<template>
+<div>
+    <div v-if="$root.session">
+        <!--<small>{{this.$root.session}}</small>-->
+        <div v-if="$root.session.status == 'uploaded'">
+            <p>Waiting to be analyzed...</p>
+        </div>
+        <div v-if="$root.session.status == 'preprocessing'">
+            <p>Analyzing...</p>
+            <p><small>{{$root.session.status_msg}}</small></p>
+        </div>
+        <div v-if="$root.session.status == 'analyzed'">
+            <p>Analysis complete! Please proceed to the next tab.</p>
+        </div>
+        <div v-if="$root.session.status == 'failed'">
+            <p>Analysis has failed.. Please check the log and/or contact ezBIDS team.</p>
+            <p>{{$root.session.status_msg}}</p>
+        </div>
+
+        <el-collapse v-model="activeLogs" @change="logChange">
+            <el-collapse-item title="Log" name="out">
+                <pre class="text">{{out}}</pre>
+            </el-collapse-item>
+            <el-collapse-item title="Error Log" name="err">
+                <pre class="text">{{err}}</pre>
+            </el-collapse-item>
+            <el-collapse-item title="Objects" name="list" v-if="$root.session.status == 'analyzed'">
+                <pre class="text">{{list}}</pre>
+            </el-collapse-item>
+        </el-collapse>
+    </div>
+</div>
+</template>
+
+<script>
+
+//import store from './store'
+
+export default {
+    //store,
+    components: {
+    },
+    data() {
+        return {
+            err: "",
+            out: "",
+            list: "",
+            activeLogs: [],
+        }
+    },
+    created() {
+    },
+
+    methods: {
+        /*
+        increment() {
+            this.$store.commit('increment')
+            console.log(this.$store.state.count);
+        }
+        */
+        logChange() {
+            if(this.activeLogs.includes("out")) {
+                if(!this.out) fetch(this.$root.apihost+'/session/'+this.$root.session._id+'/log').then(res=>res.text()).then(data=>{
+                        this.out = data;
+                });
+            } else this.out = "";
+
+            if(this.activeLogs.includes("err")) {
+                if(!this.err) fetch(this.$root.apihost+'/session/'+this.$root.session._id+'/error').then(res=>res.text()).then(data=>{
+                        this.err= data;
+                });
+            } else this.err = "";
+
+            if(this.activeLogs.includes("list")) {
+                if(!this.list) fetch(this.$root.apihost+'/session/'+this.$root.session._id+'/list').then(res=>res.text()).then(data=>{
+                        this.list = data;
+                });
+            } else this.list = "";
+        },
+    },
+}
+</script>
+
+<style scoped>
+pre.text {
+background-color: #f0f0f0;
+border-radius: 10px;
+height: 450px;
+padding: 10px;
+overflow: auto;
+}
+</style>

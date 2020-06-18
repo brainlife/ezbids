@@ -1,40 +1,72 @@
 <template>
 <div>
-    <p>
-    Welcome to the ezBIDS. You can convert your DICOM images into BIDS structure by following the easy steps.
-    </p>
-    <p>
-    Please drag / drop the directory containing your DICOM images below.
-    </p>
-
-    <div v-if="mode == 'accept'" class="drop-area" :class="{dragging}" @drop="dropit" @dragleave="dragging = false" @dragover="dragover">
-        <h2>Drag & Drop a DICOM folder to convert to BIDS</h2>
-        or <input type="file" webkitdirectory mozdirectory msdirectory odirectory directory multiple @change="selectit"/>
+    <div v-if="!$root.session">
+        <p>
+        Welcome to the ezBIDS. This App will guide you through the process of converting your DICOM images into a BIDS dataset.
+        </p>
+        <div class="drop-area" :class="{dragging}" 
+            @drop="dropit" 
+            @dragleave="dragging = false" 
+            @dragover="dragover">
+            <b>Drag & Drop a DICOM folder here</b>
+            <br>
+            <br>
+            or <input type="file"
+                    webkitdirectory 
+                    mozdirectory 
+                    msdirectory 
+                    odirectory 
+                    directory 
+                    multiple 
+                    @change="selectit"/>
+        </div>
     </div>
-    <div v-if="mode != 'accept'">
-        <p v-if="mode == 'listing'" class="drop-text"><i class="fa fa-cog fa-spin"></i> Listing files {{files.length}}...</p>
-        <div v-if="mode == 'upload'">
-            <h3>Uploading..</h3>
-            <p v-for="idx in uploading" :key="idx">
-                <!--{{files[idx].loaded}} / {{files[idx].size}}-->
-                 {{loadedPercentage(idx)}}%
-                <!--{{files[idx].name}}-->
-                {{files[idx].path}} idx:{{idx}} retry:{{files[idx].retry}}
-            </p>
 
-            total size: {{total_size}}
-            files: {{files.length}}
-            uploaded: {{uploaded.length}}
+    <div v-if="$root.session">
+        <!--
+        <p v-if="listing" class="drop-text"><i class="fa fa-cog fa-spin"></i> Listing files {{files.length}}...</p>
+        -->
+        <div v-if="$root.session.status == 'created'">
+            <h3>Uploading ...</h3>
+            <el-progress :text-inside="true" :stroke-width="24" :percentage="parseFloat(((uploaded.length/files.length)*100).toFixed(1))" status="success"></el-progress>
+
+            <div class="stats">
+                <p>
+                    <small>Total size {{(total_size/(1024*1024))|formatNumber}} MB</small>
+                    <small> | {{files.length}} Files </small>
+                </p>
+                <ul>
+                    <li v-for="idx in uploading" :key="idx">
+                        <small>{{idx}}.</small>
+                        <!--{{files[idx].loaded}} / {{files[idx].size}}-->
+                        <!--{{files[idx].name}}-->
+                        {{files[idx].path}} ({{loadedPercentage(idx)}}%)
+                        retry:{{files[idx].retry}}
+                    </li>
+                </ul>
+            </div>
             <!--
             <div class="file" v-for="(file, idx) in files" :key="idx">
                 {{file}}
             </div>
             -->
         </div>
-        <p v-if="mode == 'uploaded'" class="drop-text">Uploaded!!</p>
-    </div>
-    <div v-if="mode == 'failed'">
-        Sorry.. something went wrong while uploading files. Please contact the developer. (session id: {{session_id}})
+        <div v-else>
+            <!--
+            <p v-if="$root.session.status == 'uploaded'">
+                Successfully uploaded! We are currently analyzing your data. 
+                You can skip ahead and edit the description tab while we analyze your data.
+            </p>
+            <p v-if="$root.session.status == 'preprocessing'">
+                Successfully uploaded! We are currently analyzing your data. 
+                You can skip ahead and edit the description tab while we analyze your data.
+            </p>
+            <p v-if="$root.session.status == 'analyzed'">
+                Successfully uploaded and analyzed! Please edit the description tab.
+            </p>
+            -->
+            <processStatus/>
+        </div>
     </div>
 </div>
 </template>
@@ -45,24 +77,34 @@
 //import store from './store'
 import axios from 'axios';
 
+import processStatus from '@/components/processStatus';
+
 export default {
     //store,
     components: {
+        processStatus,
     },
     data() {
         return {
             dragging: false,
-            mode: 'accept',
             total_size: null,
+            //listing: false,
             files: [], //files to be uploaded (html5 file object)
 
-            session_id: null, //session id to upload files to
+            reload_t: null,
+
             uploading: [], //index of files that are currently being uploaded
             uploaded: [], //index of files that are successfully uploaded
+            doneUploading: false,
         }
     },
+    mounted() {
+        console.log("upload mounted..");
+    },
     created() {
-        //console.log("upload created..");
+        console.log("upload created..");
+    },
+    destroyed() {
     },
     methods: {
         //HTML5 drop event doesn't work unless dragover is handled
@@ -79,7 +121,7 @@ export default {
         },
 
         selectit(e) {
-            this.mode = 'listing';
+            //this.listing = true;
             this.files = e.target.files;
             for(let file of e.target.files) {
                 file.path = file.webkitRelativePath;
@@ -89,7 +131,7 @@ export default {
 
         //Unlike file input(directory) selecter, I have to do some convoluted thing to get all the files that user drops...
         async listDropFiles(items) {
-            this.mode = 'listing';
+            //this.listing = true;
             this.files = [];
             
             // Get all the entries (files or sub-directories) in a directory 
@@ -149,7 +191,10 @@ export default {
         },
 
         async upload() {
-            this.mode = "upload";
+            this.$root.analyzed = false;
+            this.$root.validated = false;
+            clearTimeout(this.reload_t);
+            this.doneUploading = false;
 
             //calculate total file size
             this.total_size = 0;
@@ -178,8 +223,7 @@ export default {
                 },
                 body: JSON.stringify(session_body),
             });
-            const ret = await res.json();
-            this.session_id = ret._id;
+            this.$root.session = await res.json();
 
             //reset some extra information for each file
             for(let i = 0;i < this.files.length;++i) {
@@ -217,14 +261,14 @@ export default {
             this.uploading.push(idx);
 
             if(file.retry == 3) {
-                this.mode = "failed";
+                this.$root.uploadFailed = true;
                 return;
             }
             
             try {
                 let data = new FormData();
                 data.append("file", file);
-                await axios.post(this.$root.apihost+'/upload/'+this.session_id+'/'+idx, data, {
+                await axios.post(this.$root.apihost+'/upload/'+this.$root.session._id+'/'+idx, data, {
                     onUploadProgress: evt=>{
                         //this.$forceUpdate(); //I don't think we need it?
                         file.loaded = evt.loaded;
@@ -249,25 +293,88 @@ export default {
         },
 
         async done_uploading() {
-            console.log("done uploading");
+            //we have multiple files uploading concurrently, so the last files will could make this call back 
+            if(this.doneUploading) return; 
+            this.doneUploading = true;
             
-            await fetch(this.$root.apihost+'/session/uploaded/'+this.session_id, {
+            //finalize the session
+            await fetch(this.$root.apihost+'/session/uploaded/'+this.$root.session._id, {
                 method: "PATCH",
                 headers: {'Content-Type': 'application/json'},
             });            
             
-            this.$root.session = this.session_id;
-            this.$router.push('/preprocess#'+this.session_id);
+            console.log("done uploading --------- start polling");
+            this.pollSession();
+        },
+
+        async pollSession() {
+            console.log("polling..", this.$root.session.status);
+            const res = await fetch(this.$root.apihost+'/session/'+this.$root.session._id, {
+                method: "GET",
+                headers: { 'Content-Type': 'application/json' },
+            });
+            this.$root.session = await res.json();
+
+            switch(this.$root.session.status) {
+            case "created":
+            case "uploaded":
+            case "preprocessing":
+                this.reload_t = setTimeout(()=>{
+                    console.log("will reload");
+                    this.pollSession();
+                }, 1000);
+                break;
+
+            case "analyzed":
+                if(!this.$root.analyzed) {
+                    await this.$root.loadData(this.$root.apihost+'/session/'+this.$root.session._id+'/ezbids');
+                    this.$root.analyzed = true;
+                    /*
+                    this.$notify({
+                        title: 'Failed to load ezbids.json',
+                        message: err.toString(),
+                    });
+                    */
+                }
+                break;
+
+            case "failed":
+                break;
+            }
         },
         
         loadedPercentage(file_id) {
             let file = this.files[file_id];
             return ((file.loaded / file.size)*100).toFixed(1);
         }
-
     },
 }
 </script>
-
 <style scoped>
+.drop-area {
+    background-color: #eee;
+    color: #999;
+    padding: 25px;
+    padding-top: 100px;
+    border-radius: 5px;
+    height: 300px;
+    box-sizing: border-box;
+    text-align: center;
+    font-size: 125%;
+}
+.drop-area.dragging {
+    background-color: #9ef;
+    color: white;
+}
+.stats {
+padding: 15px;
+}
+.stats ul {
+list-style: none;
+margin: 0;
+padding: 0;
+}
+.stats ul li {
+font-family: monospace;
+}
 </style>

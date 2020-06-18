@@ -1,45 +1,44 @@
 <template>
 <div id="app">
-    <!--
-    <ezBidsEditor :conf="conf"/>
-    -->
     <el-container>
         <el-header height="110px">
             <h1>ezBIDS</h1>
-            <themenu/>
+            <themenu v-model="page"/>
         </el-header>
         <el-main>
-            <router-view/>
+            <upload v-show="page == 'upload'"/>
+            <description v-show="page == 'description'"/>
+            <participants v-show="page == 'participants'"/>
+            <objects v-show="page == 'objects'"/>
         </el-main>
     </el-container>
 </div>
 </template>
 
 <script>
-//import EzBidsEditor from './components/EzBidsEditor.vue'
 import themenu from './components/menu.vue'
 
-import store from './store'
+import upload from '@/upload'
+import description from '@/description'
+import participants from '@/participants'
+import objects from '@/objects'
 
 export default {
-    store,
+    //store,
     components: {
-        //EzBidsEditor
         themenu,
+        upload,
+        description,
+        participants,
+        objects,
     },
     data() {
         return {
-            /*
-            site: "unknown site",
-            datasetDescription: {},
-            readme: "Enter README.md",
-            participants: { "sub1": {}, "sub2": {} },
-            participantsColumn: { "columnA": {}, "columnB": {} },
-            */
+            page: "upload",
         }
     },
     created() {
-        //this.$root.loadData("ezbids_reference.json");
+        console.log("App");
     },
 }
 </script>
@@ -50,42 +49,25 @@ body, html, textarea {
     color: #666;
 }
 .el-header {
-position: fixed;
-left: 0;
-right: 0;
-top: 0;
-z-index: 3000;
-background-color: white;
-height: 100px;
+    position: fixed;
+    left: 0;
+    right: 0;
+    top: 0;
+    z-index: 3000;
+    background-color: white;
+    height: 100px;
 }
 .el-main {
-margin-top: 100px;
+    margin-top: 100px;
 }
-/*
-.el-header, .el-footer {
-    background-color: #B3C0D1;
-    color: #333;
-    text-align: center;
-    line-height: 60px;
-}
-.el-main {
-    background-color: #E9EEF3;
-    color: #333;
-    text-align: center;
-    line-height: 160px;
-}
-body > .el-container {
-    margin-bottom: 40px;
-}
-*/
 h1 {
-margin-bottom: 0;
+    margin-bottom: 0;
 }
 
 .el-table td.vtop {
-vertical-align: top;
+    vertical-align: top;
 }
 .sub-title {
-opacity: 0.7;
+    opacity: 0.7;
 }
 </style>
