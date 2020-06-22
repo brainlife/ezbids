@@ -2,12 +2,13 @@
 <div>
     <div v-if="!$root.session">
         <p>
-        Welcome to the ezBIDS. This App will guide you through the process of converting your DICOM images into a BIDS dataset.
+        Welcome to the <b><span style="letter-spacing: -2px; opacity: 0.5">ez</span>BIDS</b>. This App will guide you through the process of converting your DICOM images into a BIDS dataset.
         </p>
         <div class="drop-area" :class="{dragging}" 
             @drop="dropit" 
             @dragleave="dragging = false" 
             @dragover="dragover">
+            <center class="drop-area-backdrop"><b><span style="letter-spacing: -4vh;">ez</span>BIDS</b></center>
             <b>Drag & Drop a DICOM folder here</b>
             <br>
             <br>
@@ -352,7 +353,7 @@ export default {
 </script>
 <style scoped>
 .drop-area {
-    background-color: #eee;
+    background-color: #0002;
     color: #999;
     padding: 25px;
     padding-top: 100px;
@@ -361,10 +362,27 @@ export default {
     box-sizing: border-box;
     text-align: center;
     font-size: 125%;
+    position: relative;
+    overflow: hidden;
 }
 .drop-area.dragging {
     background-color: #9ef;
     color: white;
+}
+.drop-area-backdrop {
+    position: absolute; 
+    font-size: 30vh;
+    opacity: 0.1;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: -1;
+    vertical-align: middle;
+    line-height: 300px;
+    filter: blur(0.3vh);
+/*
+    text-shadow: 1vh 1vh 0.5vh #0009;
+*/
 }
 .stats {
 padding: 15px;

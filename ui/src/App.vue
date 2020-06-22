@@ -2,7 +2,7 @@
 <div id="app">
     <el-container>
         <el-header height="110px">
-            <h1>ezBIDS</h1>
+            <h1><span style="letter-spacing: -3px; opacity: 0.6;">ez</span>BIDS</h1>
             <themenu v-model="page"/>
         </el-header>
         <el-main>
@@ -10,6 +10,7 @@
             <description v-show="page == 'description'"/>
             <participants v-show="page == 'participants'"/>
             <objects v-show="page == 'objects'"/>
+            <finalize v-show="page == 'finalize'"/>
         </el-main>
     </el-container>
 </div>
@@ -22,6 +23,7 @@ import upload from '@/upload'
 import description from '@/description'
 import participants from '@/participants'
 import objects from '@/objects'
+import finalize from '@/finalize'
 
 export default {
     //store,
@@ -31,6 +33,7 @@ export default {
         description,
         participants,
         objects,
+        finalize,
     },
     data() {
         return {
@@ -62,6 +65,7 @@ body, html, textarea {
 }
 h1 {
     margin-bottom: 0;
+    opacity: 0.8;
 }
 
 .el-table td.vtop {

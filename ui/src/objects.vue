@@ -6,11 +6,10 @@
             <span v-if="sub != ''" class="hierarchy" style="opacity: 0.8;"><i class="el-icon-user-solid"/> <small>sub</small> {{sub}} <small>({{o_sub.objects.length}})</small></span>
             <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}">
                 <span v-if="ses != ''" class="hierarchy" style="opacity: 0.8;"><i class="el-icon-time"/> <small>ses</small> {{ses}} <!--<small>({{o_ses.objects.length}})</small>--></span>
-                <div v-for="(o_run, run) in o_ses.runs" :key="run" @click="select(o_run.objects, sub, ses, run)" 
-                    class="hierarchy clickable" :class="{'selected': selected === o_run.objects}">
-                    <span v-if="run != ''" style="opacity: 0.8;"><small>run</small> {{run}} <!--({{o_run.objects.length}})--></span>
-                    <div class="left-border">
-                        <div v-for="(o, idx) in o_run.objects" :key="idx" style="padding-left: 6px; padding: 2px;">
+                <div v-for="(o_run, run) in o_ses.runs" :key="run" class="hierarchy">
+                    <span v-if="run != ''" style="opacity: 0.8; padding-left: 8px;"><small>run</small> {{run}} <!--({{o_run.objects.length}})--></span>
+                    <div class="left-border clickable" :class="{'selected': selected === o_run.objects}" @click="select(o_run.objects, sub, ses, run)">
+                        <div v-for="(o, idx) in o_run.objects" :key="idx" style="padding: 2px;">
                             <datatype :o="o"/>
                             <el-badge v-if="o.validationErrors.length > 0" type="danger" 
                                 :value="o.validationErrors.length" 
@@ -47,7 +46,7 @@
 
                 <el-form label-width="100px">
                     <div style="float: right;">
-                        <el-checkbox v-model="o.include" title="Include this object in the BIDS output">Include</el-checkbox>
+                        <el-checkbox v-model="o.include" title="Include this object in the BIDS output" @change="validateAndCheck(o)">Include</el-checkbox>
                     </div>
                     <el-form-item label="Datatype" style="clear: both">
                         <el-select v-model="o.type" placeholder="Modality" size="small" style="width: 100%">
@@ -61,7 +60,7 @@
 
                     <!-- datatype specific fields-->
                     <el-form-item v-if="o.type.startsWith('func/')" label="Task Name">
-                        <el-input v-model="o.hierarchy.task" size="small" @change="validate(o)" required/>
+                        <el-input v-model="o.hierarchy.task" size="small" @change="validateAndCheck(o)" required/>
                     </el-form-item>
 
                     <el-form-item v-for="(item, idx) in o.items" :key="idx" :label="item.id">
@@ -132,18 +131,23 @@ export default {
             selected_run: "",
         }
     },
+
     watch: {
         '$root.objects'(v, ov) {
             if(ov.length == 0) {
                 this.analyzeH();
+                console.log("validing all");
                 this.$root.objects.forEach(o=>{
                     this.validate(o);
                 });
+                this.$root.validated = this.isAllValid();
             }
         }
     },
+
     created() {
     },
+
     methods: {
         select(objects, sub, ses, run) {
             this.selected = objects;
@@ -194,15 +198,33 @@ export default {
             });
         },
 
+        validateAndCheck(o) { 
+            this.validate(o);
+            this.$root.validated = this.isAllValid(); 
+        },
+
+        isAllValid() {
+            console.log("checking valid");
+            for(let o of this.$root.objects) {
+                if(!o.include) continue;
+                if(o.validationErrors.length > 0) {
+                    console.log("no good");
+                    return false;
+                }
+            }
+            console.log("all good");
+            return true;
+        },
+
         validate(o) {
             Vue.set(o, 'validationErrors', []);
-            
             switch(o.type) {
             case "func/bold":
                 if(!o.hierarchy.task) o.validationErrors.push("Task Name is required for func/bold");
             }
         },
     },
+
     computed: {
 
     },
@@ -217,14 +239,15 @@ margin-bottom: 5px;
 .hierarchy {
 padding: 3px;
 display: block;
+line-height: 100%;
 }
-.hierarchy.clickable {
+.clickable {
 transition: background-color 0.3s;
 }
-.hierarchy.selected {
+.selected {
 background-color: #d9ecff;
 }
-.hierarchy.clickable:hover {
+.clickable:hover {
 background-color: #ddd;
 cursor: pointer;
 }
@@ -232,6 +255,7 @@ cursor: pointer;
 margin-left: 8.5px; 
 padding-left: 4px; 
 border-left: 2px solid #3331;
+padding-top: 4px;
 }
 .exclude {
 opacity: 0.5;
@@ -242,8 +266,8 @@ padding: 5px;
 border-top: 1px solid #0001;
 }
 .object.object-exclude {
-opacity: 0.7;
-background-color: #eee;
+opacity: 0.6;
+background-color: #f9f9f9;
 }
 .sub-title {
 font-size: 85%;

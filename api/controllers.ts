@@ -83,8 +83,25 @@ router.get('/session/:session_id/ezbids', (req, res, next) => {
     });
 });
 
+router.patch('/session/:session_id/finalize', (req, res, next)=>{
+    models.Session.findById(req.params.session_id).then(session=>{
+        if(!session) return next("no such session");
+        console.log("streaming");
+        req.pipe(fs.createWriteStream(config.workdir+"/"+session._id+"/finalized.json"));
+        req.on('end', ()=>{
+            session.status = "finalized";
+            session.save().then(()=>{
+                res.send("ok"); 
+            });
+        });
+    }).catch(err=>{
+        console.error(err);
+        next(err);
+    });
+});
+
 router.post('/upload/:session_id/:file_idx', upload.single('file'), (req, res, next)=>{
-    console.debug(req.file);
+    //console.debug(req.file);
     /* req.file
     { fieldname: 'file',
       originalname: 'variety-copied-wallpaper-d7b0306b3be73a3227d1ae869f08f7aa.jpg',

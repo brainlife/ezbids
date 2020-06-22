@@ -63,14 +63,13 @@
 
 <script>
 
-//import store from './store'
-//import { mapState } from 'vuex'
-
 export default {
     computed: {
+
         dd() {
             return this.$root.datasetDescription;
         },
+
         readme: {
             get() {
                 return this.$root.readme;
@@ -83,11 +82,14 @@ export default {
 
     components: {
     },
+
     data() {
         return {}
     },
+
     created() {
     },
+
     methods: {
     },
 }

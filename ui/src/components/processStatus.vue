@@ -16,6 +16,15 @@
             <p>Analysis has failed.. Please check the log and/or contact ezBIDS team.</p>
             <p>{{$root.session.status_msg}}</p>
         </div>
+        <div v-if="$root.session.status == 'finalized'">
+            <p>Waiting to be converted to BIDS...</p>
+        </div>
+        <div v-if="$root.session.status == 'bidsing'">
+            <p>Being Converted to BIDS...</p>
+        </div>
+        <div v-if="$root.session.status == 'finished'">
+            <p>All done!</p>
+        </div>
 
         <el-collapse v-model="activeLogs" @change="logChange">
             <el-collapse-item title="Log" name="out">

@@ -66,15 +66,17 @@ new Vue({
                 "DatasetDOI": "10.0.2.3/dfjj.10"
             },
             readme: "", 
-            objects: [],
             participants: {},
             participantsColumn: {},
+            objects: [],
 
             uploadFailed: false,
             session: null, //created when upload begins
-                //status... created / uploaded / preprocessing / analyzed / failed
+                //status... created / uploaded / preprocessing / analyzed / failed / finalized / bidsing / finished
             analyzed: false,
             validated: false,
+            finalized: false,
+            finished: false,
         }
     },
     mounted() {
@@ -86,8 +88,21 @@ new Vue({
         }
         */
     },
+    computed: {
+        /*
+        validated() {
+            console.log("testing validation");
+            if(this.objects.length == 0) return false; //empty!
+            for(let object in this.objects) {
+                if(!object.validationErrors) return false; //not validated yet?
+                if(object.validationErrors.length > 0) return false;
+            }
+            console.log("objects are valid");
+            return true; //all good
+        }
+        */
+    },
     methods: {
-
         loadData(url) {
             return fetch(url).then(res=>res.json()).then(conf=>{
                 this.site = conf.site;

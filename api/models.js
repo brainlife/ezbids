@@ -33,8 +33,8 @@ var sessionSchema = mongoose.Schema({
     status: String,
     //created
     //uploaded (waiting to be preprocessed)
-    //preprocessing (aka.. analyze)
-    //analyzed 
+    //preprocessing
+    //validating (waiting to be validated by the user)
     //failed
     status_msg: String,
     files: [{
