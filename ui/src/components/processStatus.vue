@@ -11,6 +11,9 @@
         </div>
         <div v-if="$root.session.status == 'analyzed'">
             <p>Analysis complete! Please proceed to the next tab.</p>
+            <p>
+                <el-button type="primary" @click="$root.page = 'description'" size="small">Next</el-button>
+            </p>
         </div>
         <div v-if="$root.session.status == 'failed'">
             <p>Analysis has failed.. Please check the log and/or contact ezBIDS team.</p>

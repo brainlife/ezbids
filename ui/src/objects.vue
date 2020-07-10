@@ -87,6 +87,7 @@ import kveditor from '@/components/kveditor'
 import datatype from '@/components/datatype'
 
 export default {
+    //props: [ 'objects' ], 
     //store,
     components: {
         kveditor,
@@ -134,6 +135,7 @@ export default {
 
     watch: {
         '$root.objects'(v, ov) {
+            if(v.length == 0) return; //prevent infinite loop in case objects is empty
             if(ov.length == 0) {
                 this.analyzeH();
                 console.log("validing all");

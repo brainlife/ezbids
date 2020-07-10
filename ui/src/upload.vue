@@ -24,9 +24,6 @@
     </div>
 
     <div v-if="$root.session">
-        <!--
-        <p v-if="listing" class="drop-text"><i class="fa fa-cog fa-spin"></i> Listing files {{files.length}}...</p>
-        -->
         <div v-if="$root.session.status == 'created'">
             <h3>Uploading ...</h3>
             <el-progress :text-inside="true" :stroke-width="24" :percentage="parseFloat(((uploaded.length/files.length)*100).toFixed(1))" status="success"></el-progress>
@@ -46,28 +43,8 @@
                     </li>
                 </ul>
             </div>
-            <!--
-            <div class="file" v-for="(file, idx) in files" :key="idx">
-                {{file}}
-            </div>
-            -->
         </div>
-        <div v-else>
-            <!--
-            <p v-if="$root.session.status == 'uploaded'">
-                Successfully uploaded! We are currently analyzing your data. 
-                You can skip ahead and edit the description tab while we analyze your data.
-            </p>
-            <p v-if="$root.session.status == 'preprocessing'">
-                Successfully uploaded! We are currently analyzing your data. 
-                You can skip ahead and edit the description tab while we analyze your data.
-            </p>
-            <p v-if="$root.session.status == 'analyzed'">
-                Successfully uploaded and analyzed! Please edit the description tab.
-            </p>
-            -->
-            <processStatus/>
-        </div>
+        <processStatus v-else/>
     </div>
 </div>
 </template>
@@ -377,8 +354,7 @@ export default {
     left: 0;
     right: 0;
     z-index: -1;
-    vertical-align: middle;
-    line-height: 300px;
+    padding: 30px 0;
     filter: blur(0.3vh);
 /*
     text-shadow: 1vh 1vh 0.5vh #0009;

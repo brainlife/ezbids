@@ -36,11 +36,15 @@ new Vue({
     },
     //router,
     data() {
+
+        //
+        //$root scope............................................
+        //
         return {
             apihost: "https://dev1.soichi.us/api/easybids",
 
             //data from dan's script
-            site: "", 
+            //site: "", 
             datasetDescription: {
                 "Name": "The mother of all experiments",
                 "BIDSVersion": "1.4.0",
@@ -68,12 +72,19 @@ new Vue({
             readme: "", 
             participants: {},
             participantsColumn: {},
+            
+            subjects: [],
+            sessions: [],
+            series: [],
             objects: [],
+
+            page: "upload",
 
             uploadFailed: false,
             session: null, //created when upload begins
-                //status... created / uploaded / preprocessing / analyzed / failed / finalized / bidsing / finished
+            //status... created / uploaded / preprocessing / analyzed / failed / finalized / bidsing / finished
             analyzed: false,
+            //loaded: false, //loaded ezBIDS from analyzer
             validated: false,
             finalized: false,
             finished: false,
@@ -104,13 +115,19 @@ new Vue({
     },
     methods: {
         loadData(url) {
+            console.log("loadData", url);
             return fetch(url).then(res=>res.json()).then(conf=>{
-                this.site = conf.site;
-                //this.datasetDescription = conf.datasetDescription;
-                //this.readme = conf.readme;
+                //this.site = conf.site;
+                 
+                this.subjects = conf.subjects;
+                this.sessions = conf.sessions;
+                this.series = conf.series;
                 this.objects = conf.objects;
+
                 this.participants = conf.participants;
                 this.participantsColumn = conf.participantsColumn;
+
+                //this.loaded = true;
             });
         }
     },

@@ -3,14 +3,15 @@
     <el-container>
         <el-header height="110px">
             <h1><span style="letter-spacing: -3px; opacity: 0.6;">ez</span>BIDS</h1>
-            <themenu v-model="page"/>
+            <themenu v-model="$root.page"/>
         </el-header>
         <el-main>
-            <upload v-show="page == 'upload'"/>
-            <description v-show="page == 'description'"/>
-            <participants v-show="page == 'participants'"/>
-            <objects v-show="page == 'objects'"/>
-            <finalize v-show="page == 'finalize'"/>
+            <upload v-show="$root.page == 'upload'"/>
+            <description v-show="$root.page == 'description'"/>
+            <subjects v-show="$root.page == 'subjects'"/>
+            <participants v-show="$root.page == 'participants'"/>
+            <objects v-show="$root.page == 'objects'"/>
+            <finalize v-show="$root.page == 'finalize'"/>
         </el-main>
     </el-container>
 </div>
@@ -21,6 +22,7 @@ import themenu from './components/menu.vue'
 
 import upload from '@/upload'
 import description from '@/description'
+import subjects from '@/subjects'
 import participants from '@/participants'
 import objects from '@/objects'
 import finalize from '@/finalize'
@@ -31,13 +33,13 @@ export default {
         themenu,
         upload,
         description,
+        subjects,
         participants,
         objects,
         finalize,
     },
     data() {
         return {
-            page: "upload",
         }
     },
     created() {
