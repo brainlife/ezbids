@@ -95,6 +95,7 @@ export default {
     },
     data() {
         return {
+            //deprecated by $root.datatypes
             types: [
                 {label: 'Anatomical', 
                     options: [

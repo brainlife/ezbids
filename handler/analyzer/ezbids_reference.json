@@ -8,6 +8,21 @@
        {"AcquisitionDate": "2019-04-09", "ses": null},
        {"AcquisitionDate": "2019-04-10", "ses": null}
    ],
+   "participantsColumn": {
+    "sex": {
+      "LongName": "gender",
+      "Description": "gender",
+      "Levels": {
+        "M": "male",
+        "F": "female"
+      }
+    },
+    "age": {
+      "LongName": "age",
+      "Units": "years"
+    }
+  },
+
    "series": [
       {
          "include": "true",

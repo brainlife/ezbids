@@ -9,7 +9,7 @@
         </el-button>
         <el-dropdown-menu slot="dropdown">
             <el-dropdown-item command="pid">Use PatientID</el-dropdown-item>
-            <el-dropdown-item command="num">Numerical</el-dropdown-item>
+            <el-dropdown-item command="num">Numerical (1,2,3..)</el-dropdown-item>
         </el-dropdown-menu>
     </el-dropdown>
     <h4>Patient/Subject Mappings</h4>
@@ -24,34 +24,6 @@
             <template slot-scope="scope">
                 <el-input v-model="scope.row.sub" size="small">
                     <template slot="prepend">sub-</template>
-                </el-input>
-            </template>
-        </el-table-column>
-    </el-table>
-
-    <!--series ID-->
-    <el-dropdown @command="resetSessions" style="float: right;" size="small">
-        <el-button type="primary">
-            Reset Mapping <i class="el-icon-arrow-down el-icon--right"></i>
-        </el-button>
-        <el-dropdown-menu slot="dropdown">
-            <el-dropdown-item command="empty">Leave them empty</el-dropdown-item>
-            <el-dropdown-item command="date">Use AcquisitionDates</el-dropdown-item>
-            <el-dropdown-item command="num">Numerical</el-dropdown-item>
-        </el-dropdown-menu>
-    </el-dropdown>
-    <h4>AcquisitionDate/Session Mappings</h4>
-    <el-table :data="$root.sessions" style="width: 100%" size="mini">
-        <el-table-column label="DICOM AcquisitionDate">
-            <template slot-scope="scope">
-                <i class="el-icon-right" style="float: right"/>
-                {{scope.row.AcquisitionDate}}
-            </template>
-        </el-table-column>
-        <el-table-column label="BIDS Session ID">
-            <template slot-scope="scope">
-                <el-input v-model="scope.row.ses" placeholder="no session" size="small">
-                    <template slot="prepend">ses-</template>
                 </el-input>
             </template>
         </el-table-column>
@@ -76,13 +48,6 @@ export default {
             }
         },
 
-        '$root.sessions'(v, ov) {
-            console.log("session updated.. initializing keys");
-            if(v.length == 0) return; //prevent infinite loop
-            if(ov.length == 0) {
-                this.resetSessions('empty');
-            }
-        },
     },
 
     created() {
@@ -105,28 +70,6 @@ export default {
                 break;
             }        
         },
-
-        resetSessions(command) {
-            let num = 1;
-            switch(command) {
-            case "empty":
-                this.$root.sessions.forEach(session=>{
-                    session.ses = "";
-                });
-                break;
-            case "date":
-                this.$root.sessions.forEach(session=>{
-                    session.ses = session.AcquisitionDate;
-                });
-                break;
-            case "num":
-                this.$root.sessions.forEach(session=>{
-                    session.ses = num.toString();
-                    num++;
-                });
-                break;
-            }        
-        }
     },
 }
 </script>

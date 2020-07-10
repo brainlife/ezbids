@@ -19,6 +19,8 @@ import 'element-ui/lib/theme-chalk/index.css';
 import locale from 'element-ui/lib/locale/lang/en'
 Vue.use(ElementUI, { locale } );
 
+import jsyaml from 'js-yaml';
+
 import Vuex from 'vuex'
 Vue.use(Vuex)
 
@@ -65,12 +67,12 @@ new Vue({
                 ],
                 "ReferencesAndLinks": [
                     "https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
-                    "Alzheimer A., & Kraepelin, E. (2015). Neural correlates of presenile dementia in humans. Journal of Neuroscientific Data, 2, 234001. http://doi.org/1920.8/jndata.2015.7"
+                    "http://doi.org/1920.8/jndata.2015.7"
                 ],
                 "DatasetDOI": "10.0.2.3/dfjj.10"
             },
             readme: "", 
-            participants: {},
+            //participants: {},
             participantsColumn: {},
             
             subjects: [],
@@ -79,6 +81,8 @@ new Vue({
             objects: [],
 
             page: "upload",
+
+            datatypes: [], //datatype catalog from bids-specification
 
             uploadFailed: false,
             session: null, //created when upload begins
@@ -98,6 +102,191 @@ new Vue({
             //TODO reload session ID
         }
         */
+
+        //dwi
+        //https://github.com/tsalo/bids-specification/blob/ref/json-entity/src/schema/datatypes/dwi.yaml
+        let _dwi = jsyaml.load(`
+- suffixes:
+    - dwi
+  extensions:
+    - .nii.gz
+    - .nii
+    - .json
+    - .bvec
+    - .bval
+  entities:
+    sub: required
+    ses: optional
+    acq: optional
+    dir: optional
+    run: optional
+- suffixes:
+    - sbref
+  extensions:
+    - .nii.gz
+    - .nii
+    - .json
+  entities:
+    sub: required
+    ses: optional
+    acq: optional
+    dir: optional
+    run: optional
+`);
+        let dwi = {label: "Diffusion", options: []}
+        _dwi[0].suffixes.forEach(suffix=>{
+            dwi.options.push({value: "dwi/"+suffix, label: suffix});
+        });
+        this.datatypes.push(dwi);
+        
+        //anat
+        //https://github.com/tsalo/bids-specification/blob/ref/json-entity/src/schema/datatypes/anat.yaml
+        let _anat = jsyaml.load(`
+# First group
+- suffixes:
+    - T1w
+    - T2w
+    - T1rho
+    - T1map
+    - T2map
+    - T2star
+    - FLAIR
+    - FLASH
+    - PD
+    - PDmap
+    - PDT2
+    - inplaneT1
+    - inplaneT2
+    - angio
+  extensions:
+    - .nii.gz
+    - .nii
+    - .json
+  entities:
+    sub: required
+    ses: optional
+    run: optional
+    acq: optional
+    ce: optional
+    rec: optional
+# Second group
+- suffixes:
+    - defacemask
+  extensions:
+    - .nii.gz
+    - .nii
+    - .json
+  entities:
+    sub: required
+    ses: optional
+    run: optional
+    acq: optional
+    ce: optional
+    rec: optional
+    mod: optional
+`);
+        let anat = {label: "Anatomical", options: []}
+        _anat[0].suffixes.forEach(suffix=>{
+            anat.options.push({value: "anat/"+suffix, label: suffix});
+        });
+        this.datatypes.push(anat);
+
+        //https://github.com/tsalo/bids-specification/blob/ref/json-entity/src/schema/datatypes/func.yaml
+        let _func = jsyaml.load(`
+- suffixes:
+    - bold
+    - cbv
+    - phase
+    - sbref
+  extensions:
+    - .nii.gz
+    - .nii
+    - .json
+  entities:
+    sub: required
+    ses: optional
+    task: required
+    acq: optional
+    ce: optional
+    rec: optional
+    dir: optional
+    run: optional
+    echo: optional
+- suffixes:
+    - events
+  extensions:
+    - .tsv
+    - .json
+  entities:
+    sub: required
+    ses: optional
+    task: required
+    acq: optional
+    ce: optional
+    rec: optional
+    dir: optional
+    run: optional
+    echo: optional
+- suffixes:
+    - physio
+    - stim
+  extensions:
+    - .tsv.gz
+    - .json
+  entities:
+    sub: required
+    ses: optional
+    task: required
+    acq: optional
+    rec: optional
+    run: optional
+    recording: optional
+    proc: optional
+`);
+        let func = {label: "Functional", options: []}
+        _func[0].suffixes.forEach(suffix=>{
+            func.options.push({value: "func/"+suffix, label: suffix});
+        });
+        this.datatypes.push(func);
+
+        //https://github.com/tsalo/bids-specification/blob/ref/json-entity/src/schema/datatypes/fmap.yaml
+        let _fmap = jsyaml.load(`
+- suffixes:
+    - phasediff
+    - phase1
+    - phase2
+    - magnitude1
+    - magnitude2
+    - magnitude
+    - fieldmap
+  extensions:
+    - .nii.gz
+    - .nii
+    - .json
+  entities:
+    sub: required
+    ses: optional
+    acq: optional
+    run: optional
+- suffixes:
+    - epi
+  extensions:
+    - .nii.gz
+    - .nii
+    - .json
+  entities:
+    sub: required
+    ses: optional
+    acq: optional
+    ce: optional
+    dir: required
+    run: optional
+`);
+        let fmap = {label: "Field Map", options: []}
+        _fmap[0].suffixes.forEach(suffix=>{
+            fmap.options.push({value: "fmap/"+suffix, label: suffix});
+        });
+        this.datatypes.push(fmap);
     },
     computed: {
         /*
@@ -124,10 +313,22 @@ new Vue({
                 this.series = conf.series;
                 this.objects = conf.objects;
 
-                this.participants = conf.participants;
-                this.participantsColumn = conf.participantsColumn;
+                this.participantsColumn = conf.participantsColumn||{};
 
-                //this.loaded = true;
+                //massage some data - waiting for analyzer to get updated
+                this.series.forEach(series=>{
+                    let snum = series.items[0].sidecar.SeriesNumber;
+                    series.id = snum;
+                    series.include = (series.include == "true");
+                    Vue.set(series, 'type', series.data_type+"/"+series.subdata_type);
+                });
+
+                this.subjects.forEach(subject=>{
+                    Vue.set(subject, 'phenotype', {});
+                });
+
+                this.series.sort((a,b)=>a.id - b.id);
+                
             });
         }
     },
