@@ -46,7 +46,7 @@ new Vue({
         //$root scope............................................
         //
         return {
-            apihost: "https://dev1.soichi.us/api/easybids",
+            apihost: (process.env.NODE_ENV == "development") ? "https://dev1.soichi.us/api/easybids" : "/api/ezbids",
 
             //data from dan's script
             //site: "", 
