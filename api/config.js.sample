@@ -11,5 +11,6 @@ exports.multer = {
 exports.workdir = "/mnt/datalad/easybids/workdir",
 
 exports.express = {
+    host: "localhost",
     port: 12507,
 }
