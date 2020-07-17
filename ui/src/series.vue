@@ -10,16 +10,12 @@
         <el-table-column label="Series Description (id)" width="250">
             <template slot-scope="scope">
                 <i class="el-icon-right" style="float: right"/>
-                {{scope.row.description}} <small>{{scope.row.id}}</small>
+                {{scope.row.SeriesDescription}}
+                <el-tag type="info" size="mini"><small>{{scope.row.SeriesNumber}}</small></el-tag>
             </template>
         </el-table-column>
         <el-table-column label="BIDS Datatype" width="150">
             <template slot-scope="scope">
-                <!--
-                <el-input v-model="scope.row.ses" placeholder="no session" size="small">
-                    <template slot="prepend">ses-</template>
-                </el-input>
-                -->
                 <el-select v-model="scope.row.type" placeholder="Modality" size="small" style="width: 100%">
                     <el-option-group v-for="type in $root.datatypes" :key="type.label" :label="type.label">
                         <el-option v-for="subtype in type.options" :key="subtype.value" :value="subtype.value">
@@ -29,7 +25,7 @@
                 </el-select>
             </template>
         </el-table-column>
-        <el-table-column label="Series Specific Entities">
+        <el-table-column label="Entities">
             <template slot-scope="scope">
                 <div v-if="scope.row.type.startsWith('func/')">
                     <el-input v-model="scope.row.labels.task" size="small" required>

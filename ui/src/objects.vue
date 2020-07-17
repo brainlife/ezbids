@@ -1,8 +1,9 @@
 <template>
 <div class="objects">
-    <div class="side">
+    <el-row :gutter="10">
+    <el-col :span="8">
         <h4>BIDS Structure</h4>
-        <div v-for="(o_sub, sub) in subs" :key="sub" style="font-size: 90%;">
+        <div v-for="(o_sub, sub) in $root.subs" :key="sub" style="font-size: 90%;">
             <span v-if="sub != ''" class="hierarchy" style="opacity: 0.8;"><i class="el-icon-user-solid"/> <small>sub</small> {{sub}} <small>({{o_sub.objects.length}})</small></span>
             <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}">
                 <span v-if="ses != ''" class="hierarchy" style="opacity: 0.8;"><i class="el-icon-time"/> <small>ses</small> {{ses}} <!--<small>({{o_ses.objects.length}})</small>--></span>
@@ -19,27 +20,37 @@
                 </div>
             </div>
         </div>
-    </div>
-    <div class="main">
+    </el-col>
+    <el-col :span="16">
         <p v-if="!selected"><small>Please select data objects on the left menu.</small></p>
         <div v-if="selected">
             <div>
-                <el-row :gutter="10">
-                    <el-col :span="4">
-                        <div class="sub-title">Subject</div>
-                        <el-input v-model="selected_sub" @change="changeSelectedH" size="small"/>
-                    </el-col>
-                    <el-col :span="4">
-                        <div class="sub-title">Session</div>
-                        <el-input v-model="selected_ses" @change="changeSelectedH" size="small"/>
-                    </el-col>
-                    <el-col :span="4">
-                        <div class="sub-title">Run</div>
-                        <el-input v-model="selected_run" @change="changeSelectedH" size="small"/>
-                    </el-col>
-                </el-row>
+                <el-form label-width="100px">
+                    <el-form-item label="Hierarchy">
+                        <el-row :gutter="10">
+                            <el-col :span="8">
+                                <!--
+                                <div class="sub-title">Subject</div>
+                                -->
+                                <el-input v-model="selected_sub" @change="changeSelectedH" size="small">
+                                    <template slot="prepend">Subject</template>
+                                </el-input>
+                            </el-col>
+                            <el-col :span="8">
+                                <el-input v-model="selected_ses" @change="changeSelectedH" size="small">
+                                    <template slot="prepend">Session</template>
+                                </el-input>
+                            </el-col>
+                            <el-col :span="6">
+                                <el-input v-model="selected_run" @change="changeSelectedH" size="small">
+                                    <template slot="prepend">Run</template>
+                                </el-input>
+                            </el-col>
+                        </el-row>
+                    </el-form-item>
+                </el-form>
             </div>
-            <div v-for="(o, idx) in selected" :key="idx" class="object" :class="{'object-exclude': !o.include}">
+            <div v-for="(o, idx) in selected" :key="idx" class="object">
                 <div style="margin-bottom: 10px;">
                     <el-alert type="error" v-for="(error, idx) in o.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
                 </div>
@@ -48,40 +59,48 @@
                     <div style="float: right;">
                         <el-checkbox v-model="o.include" title="Include this object in the BIDS output" @change="validateAndCheck(o)">Include</el-checkbox>
                     </div>
-                    <el-form-item label="Datatype" style="clear: both">
-                        <el-select v-model="o.type" placeholder="Modality" size="small" style="width: 100%">
-                            <el-option-group v-for="type in types" :key="type.label" :label="type.label">
-                                <el-option v-for="subtype in type.options" :key="subtype.value" :value="subtype.value">
-                                    {{type.label}} / {{subtype.label}}
-                                </el-option>
-                            </el-option-group>
-                        </el-select>
-                    </el-form-item>
+                    <br clear="both">
+                    <div :class="{'object-exclude': !o.include}">
+                        <el-form-item label="Series" style="clear: both">
+                            {{o.SeriesDescription}}
+                            <el-tag type="info" size="mini"><small>{{o.SeriesNumber}}</small></el-tag>
+                        </el-form-item>
+                        <el-form-item label="Datatype" style="clear: both">
+                            <el-select v-model="o.type" placeholder="Modality" size="small" style="width: 100%">
+                                <el-option-group v-for="type in $root.datatypes" :key="type.label" :label="type.label">
+                                    <el-option v-for="subtype in type.options" :key="subtype.value" :value="subtype.value">
+                                        {{type.label}} / {{subtype.label}}
+                                    </el-option>
+                                </el-option-group>
+                            </el-select>
+                        </el-form-item>
 
-                    <!-- datatype specific fields-->
-                    <el-form-item v-if="o.type.startsWith('func/')" label="Task Name">
-                        <el-input v-model="o.hierarchy.task" size="small" @change="validateAndCheck(o)" required/>
-                    </el-form-item>
+                        <!-- datatype specific fields-->
+                        <el-form-item v-if="o.type.startsWith('func/')" label="Task Name">
+                            <el-input v-model="o.labels.task" size="small" @change="validateAndCheck(o)" required/>
+                        </el-form-item>
 
-                    <el-form-item v-for="(item, idx) in o.items" :key="idx" :label="item.id">
-                        <el-select v-model="item.path" placeholder="Source path" size="small" style="width: 100%">
-                            <el-option v-for="(path, idx) in o.paths" :key="idx" :label="path" :value="path"/>
-                        </el-select>
-                        <div v-if="item.sidecar" style="background-color: #eee; padding: 10px;">
-                            <b style="opacity: 0.5;">Sidecar</b>
-                            <kveditor :kv="item.sidecar"/>
-                        </div>
-                     </el-form-item>
+                        <el-form-item v-for="(item, idx) in o.items" :key="idx" :label="item.id">
+                            <el-select v-model="item.path" placeholder="Source path" size="small" style="width: 100%">
+                                <el-option v-for="(path, idx) in o.paths" :key="idx" :label="path" :value="path"/>
+                            </el-select>
+                            <div v-if="item.sidecar" style="box-shadow: 1px 1px 3px #0002; border-radius: 5px; padding: 10px; background-color: #fcfcfc;">
+                                <b style="opacity: 0.5;">Sidecar</b>
+                                <kveditor :kv="item.sidecar"/>
+                            </div>
+                         </el-form-item>
+                    </div>
                  </el-form>
             </div>
         </div><!--selected != null-->
-    </div>
+    </el-col>
+    </el-row>
 </div>
 </template>
 
 <script>
 
-import Vue from 'vue'
+//import Vue from 'vue'
 
 import kveditor from '@/components/kveditor'
 import datatype from '@/components/datatype'
@@ -96,6 +115,7 @@ export default {
     data() {
         return {
             //deprecated by $root.datatypes
+            /*
             types: [
                 {label: 'Anatomical', 
                     options: [
@@ -124,9 +144,9 @@ export default {
                     ]
                 },
             ],
+            */
 
             //organize objects by hierarchy
-            subs: {},
             selected: null,
             selected_sub: "",
             selected_ses: "",
@@ -134,22 +154,24 @@ export default {
         }
     },
 
+    /*
     watch: {
-        '$root.objects'(v, ov) {
-            if(v.length == 0) return; //prevent infinite loop in case objects is empty
-            if(ov.length == 0) {
-                this.analyzeH();
-                console.log("validing all");
-                this.$root.objects.forEach(o=>{
-                    this.validate(o);
-                });
-                this.$root.validated = this.isAllValid();
-            }
-        }
+        '$root.objects': {
+            deep: true,
+            handler(v, ov) {
+                if(v.length == 0) return; //prevent infinite loop in case objects is empty
+                if(ov.length == 0) { 
+                    this.analyzeH();
+                    console.log("validing all");
+                    this.$root.objects.forEach(o=>{
+                        this.$root.validateObject(o);
+                    });
+                    this.$root.validated = this.isAllValid();
+                }
+            },
+        },
     },
-
-    created() {
-    },
+    */
 
     methods: {
         select(objects, sub, ses, run) {
@@ -165,44 +187,14 @@ export default {
                 o.hierarchy.session = this.selected_ses;
                 o.hierarchy.run = this.selected_run;
             }); 
-            this.analyzeH();
+            this.$root.organizeObjects();
             
             //find the selected objects again
-            this.selected = this.subs[this.selected_sub].sess[this.selected_ses].runs[this.selected_run].objects;
-        },
-
-        analyzeH() {
-            this.subs = {}; 
-            this.sess = {};
-            this.runs = {};
-            this.$root.objects.forEach(o=>{
-                let sub = o.hierarchy.subject||"";
-                let ses = o.hierarchy.session||"";
-                let run = o.hierarchy.run||"";
-
-                if(!this.subs[sub]) this.subs[sub] = { sess: {}, objects: []}; 
-                this.subs[sub].objects.push(o);
-
-                if(!this.subs[sub].sess[ses]) this.subs[sub].sess[ses] = { runs: {}, objects: [] };
-                this.subs[sub].sess[ses].objects.push(o);
-
-                if(!this.subs[sub].sess[ses].runs[run]) this.subs[sub].sess[ses].runs[run] = { objects: [] };
-                this.subs[sub].sess[ses].runs[run].objects.push(o);
-            });
-
-            this.$root.objects.sort((a,b)=>{
-                if(a.hierarchy.subject > b.hierarchy.subject) return 1;
-                if(a.hierarchy.subject < b.hierarchy.subject) return -1;
-                if(a.hierarchy.session > b.hierarchy.session) return 1;
-                if(a.hierarchy.session < b.hierarchy.session) return -1;
-                if(a.hierarchy.run > b.hierarchy.run) return 1;
-                if(a.hierarchy.run < b.hierarchy.run) return -1;
-                return 0;
-            });
+            this.selected = this.$root.subs[this.selected_sub].sess[this.selected_ses].runs[this.selected_run].objects;
         },
 
         validateAndCheck(o) { 
-            this.validate(o);
+            this.$root.validateObject(o);
             this.$root.validated = this.isAllValid(); 
         },
 
@@ -219,13 +211,6 @@ export default {
             return true;
         },
 
-        validate(o) {
-            Vue.set(o, 'validationErrors', []);
-            switch(o.type) {
-            case "func/bold":
-                if(!o.hierarchy.task) o.validationErrors.push("Task Name is required for func/bold");
-            }
-        },
     },
 
     computed: {
@@ -268,9 +253,8 @@ margin: 5px 0;
 padding: 5px;
 border-top: 1px solid #0001;
 }
-.object.object-exclude {
-opacity: 0.6;
-background-color: #f9f9f9;
+.object-exclude {
+opacity: 0.5;
 }
 .sub-title {
 font-size: 85%;
@@ -278,17 +262,6 @@ margin-bottom: 5px;
 }
 .el-form-item {
 margin-bottom: 0;
-}
-.side {
-    position: fixed;
-    top: 110px;
-    left: 10px;
-    width: 250px;
-    bottom: 0;
-    overflow: auto;
-}
-.main {
-    margin-left: 240px;
 }
 </style>
 

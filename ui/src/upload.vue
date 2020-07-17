@@ -307,12 +307,6 @@ export default {
                 if(!this.$root.analyzed) {
                     await this.$root.loadData(this.$root.apihost+'/session/'+this.$root.session._id+'/ezbids');
                     this.$root.analyzed = true;
-                    /*
-                    this.$notify({
-                        title: 'Failed to load ezbids.json',
-                        message: err.toString(),
-                    });
-                    */
                 }
                 break;
 

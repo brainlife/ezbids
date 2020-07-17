@@ -1,356 +1,117 @@
 {
    "subjects": [
-       {"PatientID": "9915@thwjames_DAN_STD", "sub": null},
-       {"PatientID": "9916@thwjames_DAN_STD", "sub": null},
-       {"PatientID": "9917@thwjames_DAN_STD", "sub": null}
+      {
+         "PatientID": "DAN_STD_1000",
+         "sub": "null"
+      }
    ],
    "sessions": [
-       {"AcquisitionDate": "2019-04-09", "ses": null},
-       {"AcquisitionDate": "2019-04-10", "ses": null}
+      {
+         "AcquisitionDate": "2019-04-09",
+         "ses": ""
+      }
    ],
    "participantsColumn": {
-    "sex": {
-      "LongName": "gender",
-      "Description": "gender",
-      "Levels": {
-        "M": "male",
-        "F": "female"
+      "sex": {
+         "LongName": "gender",
+         "Description": "generic gender field",
+         "Levels": {
+            "M": "male",
+            "F": "female"
+         }
+      },
+      "age": {
+         "LongName": "age",
+         "Units": "years"
       }
-    },
-    "age": {
-      "LongName": "age",
-      "Units": "years"
-    }
-  },
-
+   },
    "series": [
       {
-         "include": "true",
-         "description": "bold_task_mb4_870vols_SBRef",
-         "data_type": "func",
-         "subdata_type": "sbref",
+         "include": false,
+         "SeriesDescription": "localizer",
+         "SeriesNumber": 1,
+         "labels": {},
+         "type": ""
+      },
+      {
+         "include": true,
+         "SeriesDescription": "T1w_MPRANGE_0.8mm",
+         "SeriesNumber": 2,
+         "labels": {
+            "acq": "",
+            "ce": ""
+         },
+         "type": "anat/T1w"
+      },
+      {
+         "include": true,
+         "SeriesDescription": "fmap_SE_PA",
+         "SeriesNumber": 4,
+         "labels": {
+            "run": "",
+            "dir": "PA",
+            "acq": "",
+            "ce": ""
+         },
+         "type": "fmap/"
+      },
+      {
+         "include": true,
+         "SeriesDescription": "fmap_SE_AP",
+         "SeriesNumber": 5,
+         "labels": {
+            "run": "",
+            "dir": "AP",
+            "acq": "",
+            "ce": ""
+         },
+         "type": "fmap/"
+      },
+      {
+         "include": true,
+         "SeriesDescription": "bold_task_mb4_870vols_SBRef",
+         "SeriesNumber": 6,
          "labels": {
             "run": "",
             "task": "",
             "acq": "",
             "ce": ""
          },
-         "items": [
-            {
-               "path": "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-10.json",
-               "sidecar": {
-                  "Modality": "MR",
-                  "MagneticFieldStrength": 3,
-                  "ImagingFrequency": 123.261,
-                  "Manufacturer": "Siemens",
-                  "ManufacturersModelName": "Prisma_fit",
-                  "InstitutionName": "Indiana_University_Psychology_Department",
-                  "InstitutionAddress": "East_10th_Street_1101_Bloomington_IN_US_47405",
-                  "DeviceSerialNumber": "67093",
-                  "StationName": "MRC35062",
-                  "SeriesInstanceUID": "1.3.12.2.1107.5.2.43.67093.20190409105035199157136.0.0.0",
-                  "StudyInstanceUID": "1.3.12.2.1107.5.2.43.67093.30000019040914244112900000001",
-                  "StudyID": "1",
-                  "PatientName": "DAN_STD_1000",
-                  "PatientID": "9915@thwjames_DAN_STD",
-                  "PatientBirthDate": "1992-01-01",
-                  "PatientSex": "M",
-                  "PatientWeight": 81.6466,
-                  "BodyPartExamined": "BRAIN",
-                  "PatientPosition": "HFS",
-                  "ProcedureStepDescription": "Tom_James_64_Channel",
-                  "SoftwareVersions": "syngo_MR_E11",
-                  "MRAcquisitionType": "2D",
-                  "SeriesDescription": "bold_task_mb4_870vols_SBRef",
-                  "ProtocolName": "bold_task_mb4_870vols",
-                  "ScanningSequence": "EP",
-                  "SequenceVariant": "SK_SS",
-                  "ScanOptions": "PFP_FS",
-                  "SequenceName": "epfid2d1_72",
-                  "ImageType": [
-                     "ORIGINAL",
-                     "PRIMARY",
-                     "M",
-                     "ND",
-                     "MOSAIC"
-                  ],
-                  "SeriesNumber": 10,
-                  "AcquisitionTime": "10:51:8.640000",
-                  "AcquisitionDateTime": "2019-04-09T10:51:8.640000",
-                  "AcquisitionNumber": 1,
-                  "ImageComments": "Single-band_reference",
-                  "SliceThickness": 3,
-                  "SpacingBetweenSlices": 3,
-                  "SAR": 0.0742365,
-                  "EchoTime": 0.03,
-                  "RepetitionTime": 0.42,
-                  "FlipAngle": 50,
-                  "PartialFourier": 0.875,
-                  "BaseResolution": 72,
-                  "ShimSetting": [
-                     2051,
-                     -5903,
-                     -1871,
-                     410,
-                     -35,
-                     -139,
-                     -103,
-                     75
-                  ],
-                  "TxRefAmp": 242.594,
-                  "PhaseResolution": 1,
-                  "ReceiveCoilName": "HeadNeck_64",
-                  "ReceiveCoilActiveElements": "HC1-7;NC1,2",
-                  "PulseSequenceDetails": "%CustomerSeq%_cmrr_mbep2d_bold",
-                  "WipMemBlock": "7c54336b-36be-4ea5-8987-57e41c4e487a||Sequence: R016 ve11b/master r/b698769; Nov 21 2017 11:07:30 by eja",
-                  "ConsistencyInfo": "N4_VE11B_LATEST_20150530",
-                  "PercentPhaseFOV": 100,
-                  "PercentSampling": 100,
-                  "EchoTrainLength": 63,
-                  "PhaseEncodingSteps": 63,
-                  "AcquisitionMatrixPE": 72,
-                  "ReconMatrixPE": 72,
-                  "BandwidthPerPixelPhaseEncode": 23.946,
-                  "EffectiveEchoSpacing": 0.000580009,
-                  "DerivedVendorReportedEchoSpacing": 0.000580009,
-                  "TotalReadoutTime": 0.0411806,
-                  "PixelBandwidth": 2315,
-                  "PhaseEncodingDirection": "j-",
-                  "SliceTiming": [
-                     0,
-                     0.0675,
-                     0.135,
-                     0.2,
-                     0.2675,
-                     0.335,
-                     0.4,
-                     0.4675,
-                     0.535,
-                     0.6,
-                     0.6675,
-                     0.735,
-                     0.8,
-                     0.8675,
-                     0.9325,
-                     1,
-                     1.0675,
-                     1.1325,
-                     1.2,
-                     1.2675,
-                     1.3325,
-                     1.4,
-                     1.4675,
-                     1.5325,
-                     1.6,
-                     1.6675,
-                     1.7325,
-                     1.8,
-                     1.8675,
-                     1.9325,
-                     2,
-                     2.0675,
-                     2.1325,
-                     2.2,
-                     2.2675,
-                     2.3325,
-                     2.4,
-                     2.4675,
-                     2.5325,
-                     2.6,
-                     2.6675,
-                     2.7325,
-                     2.8,
-                     2.8675,
-                     2.9325,
-                     3,
-                     3.0675,
-                     3.1325
-                  ],
-                  "ImageOrientationPatientDICOM": [
-                     1,
-                     0,
-                     0,
-                     0,
-                     0.975535,
-                     -0.219846
-                  ],
-                  "InPlanePhaseEncodingDirectionDICOM": "COL",
-                  "ConversionSoftware": "dcm2niix",
-                  "ConversionSoftwareVersion": "v1.0.20200427",
-                  "TaskName": "rest"
-               },
-               "paths": [
-                  "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-10.nii.gz"
-               ]
-            }
-         ]
+         "type": "func/sbref"
       },
       {
-         "include": "false",
-         "description": "bold_task_mb4_870vols",
-         "data_type": "",
-         "subdata_type": "",
+         "include": false,
+         "SeriesDescription": "bold_task_mb4_870vols",
+         "SeriesNumber": 7,
          "labels": {},
-         "items": [
-            {
-               "path": "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-11.json",
-               "sidecar": {
-                  "Modality": "MR",
-                  "MagneticFieldStrength": 3,
-                  "ImagingFrequency": 123.261,
-                  "Manufacturer": "Siemens",
-                  "ManufacturersModelName": "Prisma_fit",
-                  "InstitutionName": "Indiana_University_Psychology_Department",
-                  "InstitutionAddress": "East_10th_Street_1101_Bloomington_IN_US_47405",
-                  "DeviceSerialNumber": "67093",
-                  "StationName": "MRC35062",
-                  "SeriesInstanceUID": "1.3.12.2.1107.5.2.43.67093.20190409105035301457137.0.0.0",
-                  "StudyInstanceUID": "1.3.12.2.1107.5.2.43.67093.30000019040914244112900000001",
-                  "StudyID": "1",
-                  "PatientName": "DAN_STD_1000",
-                  "PatientID": "9915@thwjames_DAN_STD",
-                  "PatientBirthDate": "1992-01-01",
-                  "PatientSex": "M",
-                  "PatientWeight": 81.6466,
-                  "BodyPartExamined": "BRAIN",
-                  "PatientPosition": "HFS",
-                  "ProcedureStepDescription": "Tom_James_64_Channel",
-                  "SoftwareVersions": "syngo_MR_E11",
-                  "MRAcquisitionType": "2D",
-                  "SeriesDescription": "bold_task_mb4_870vols",
-                  "ProtocolName": "bold_task_mb4_870vols",
-                  "ScanningSequence": "EP",
-                  "SequenceVariant": "SK_SS",
-                  "ScanOptions": "PFP_FS",
-                  "SequenceName": "epfid2d1_72",
-                  "ImageType": [
-                     "ORIGINAL",
-                     "PRIMARY",
-                     "M",
-                     "MB",
-                     "ND",
-                     "MOSAIC"
-                  ],
-                  "SeriesNumber": 11,
-                  "AcquisitionTime": "10:51:15.360000",
-                  "AcquisitionDateTime": "2019-04-09T10:51:15.360000",
-                  "AcquisitionNumber": 1,
-                  "ImageComments": "Unaliased_MB8_PE3_LB",
-                  "SliceThickness": 3,
-                  "SpacingBetweenSlices": 3,
-                  "SAR": 0.0742365,
-                  "EchoTime": 0.03,
-                  "RepetitionTime": 0.42,
-                  "FlipAngle": 50,
-                  "PartialFourier": 0.875,
-                  "BaseResolution": 72,
-                  "ShimSetting": [
-                     2051,
-                     -5903,
-                     -1871,
-                     410,
-                     -35,
-                     -139,
-                     -103,
-                     75
-                  ],
-                  "TxRefAmp": 242.594,
-                  "PhaseResolution": 1,
-                  "ReceiveCoilName": "HeadNeck_64",
-                  "ReceiveCoilActiveElements": "HC1-7;NC1,2",
-                  "PulseSequenceDetails": "%CustomerSeq%_cmrr_mbep2d_bold",
-                  "WipMemBlock": "7c54336b-36be-4ea5-8987-57e41c4e487a||Sequence: R016 ve11b/master r/b698769; Nov 21 2017 11:07:30 by eja",
-                  "ConsistencyInfo": "N4_VE11B_LATEST_20150530",
-                  "MultibandAccelerationFactor": 8,
-                  "PercentPhaseFOV": 100,
-                  "PercentSampling": 100,
-                  "EchoTrainLength": 63,
-                  "PhaseEncodingSteps": 63,
-                  "AcquisitionMatrixPE": 72,
-                  "ReconMatrixPE": 72,
-                  "BandwidthPerPixelPhaseEncode": 23.946,
-                  "EffectiveEchoSpacing": 0.000580009,
-                  "DerivedVendorReportedEchoSpacing": 0.000580009,
-                  "TotalReadoutTime": 0.0411806,
-                  "PixelBandwidth": 2315,
-                  "PhaseEncodingDirection": "j-",
-                  "SliceTiming": [
-                     0,
-                     0.2,
-                     0.0675,
-                     0.335,
-                     0.135,
-                     0.2675,
-                     0,
-                     0.2,
-                     0.0675,
-                     0.335,
-                     0.135,
-                     0.2675,
-                     0,
-                     0.2,
-                     0.0675,
-                     0.335,
-                     0.135,
-                     0.2675,
-                     0,
-                     0.2,
-                     0.0675,
-                     0.335,
-                     0.135,
-                     0.2675,
-                     0,
-                     0.2,
-                     0.0675,
-                     0.335,
-                     0.135,
-                     0.2675,
-                     0,
-                     0.2,
-                     0.0675,
-                     0.335,
-                     0.135,
-                     0.2675,
-                     0,
-                     0.2,
-                     0.0675,
-                     0.335,
-                     0.135,
-                     0.2675,
-                     0,
-                     0.2,
-                     0.0675,
-                     0.335,
-                     0.135,
-                     0.2675
-                  ],
-                  "ImageOrientationPatientDICOM": [
-                     1,
-                     0,
-                     0,
-                     0,
-                     0.975535,
-                     -0.219846
-                  ],
-                  "InPlanePhaseEncodingDirectionDICOM": "COL",
-                  "ConversionSoftware": "dcm2niix",
-                  "ConversionSoftwareVersion": "v1.0.20200427"
-               },
-               "paths": [
-                  "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-11.nii.gz"
-               ]
-            }
-         ]
+         "type": ""
       },
       {
-         "include": "false",
-         "description": "localizer",
-         "data_type": "",
-         "subdata_type": "",
+         "include": true,
+         "SeriesDescription": "T2w_SPACE_0.8mm",
+         "SeriesNumber": 22,
+         "labels": {
+            "acq": "",
+            "ce": ""
+         },
+         "type": "anat/T2w"
+      }
+   ],
+   "objects": [
+      {
+         "include": false,
+         "SeriesDescription": "localizer",
+         "SeriesNumber": 1,
+         "PatientID": "DAN_STD_1000",
+         "AcquisitionDate": "2019-04-09",
+         "hierarchy": {
+            "session": ""
+         },
          "labels": {},
+         "type": "",
          "items": [
             {
-               "path": "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-1_i00001.json",
+               "path": "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-1_i00003.json",
                "sidecar": {
                   "Modality": "MR",
                   "MagneticFieldStrength": 3,
@@ -386,8 +147,8 @@
                      "ND"
                   ],
                   "SeriesNumber": 1,
-                  "AcquisitionTime": "10:25:7.705000",
-                  "AcquisitionDateTime": "2019-04-09T10:25:7.705000",
+                  "AcquisitionTime": "10:25:13.465000",
+                  "AcquisitionDateTime": "2019-04-09T10:25:13.465000",
                   "AcquisitionNumber": 1,
                   "SliceThickness": 8,
                   "SpacingBetweenSlices": 9.6,
@@ -421,34 +182,53 @@
                   "PixelBandwidth": 180,
                   "PhaseEncodingDirection": "i",
                   "ImageOrientationPatientDICOM": [
-                     0,
                      1,
+                     4.897e-12,
                      0,
-                     0,
-                     0,
-                     -1
+                     -4.897e-12,
+                     1,
+                     0
                   ],
                   "InPlanePhaseEncodingDirectionDICOM": "ROW",
                   "ConversionSoftware": "dcm2niix",
                   "ConversionSoftwareVersion": "v1.0.20200427"
                },
                "paths": [
-                  "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-1_i00001.nii.gz",
-                  "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-1_i00002.nii.gz",
-                  "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-1_i00003.nii.gz"
+                  "/media/data/ezbids/siemens/DAN_STD_1000_dicoms/pid-9915@thwjames_DAN_STD_time-20190409102441_sn-1_i00001.nii.gz",
+                  "/media/data/ezbids/siemens/DAN_STD_1000_dicoms/pid-9915@thwjames_DAN_STD_time-20190409102441_sn-1_i00003.nii.gz",
+                  "/media/data/ezbids/siemens/DAN_STD_1000_dicoms/pid-9915@thwjames_DAN_STD_time-20190409102441_sn-1_i00002.nii.gz"
                ]
             }
+         ],
+         "analysisResults": {
+            "VolumeCount": 1,
+            "messages": [
+               ""
+            ],
+            "errors": "Acquisition appears to be a localizer; will not be converted to BIDS",
+            "qc": "",
+            "filesize": 38481
+         },
+         "paths": [
+            "/media/data/ezbids/siemens/DAN_STD_1000_dicoms/pid-9915@thwjames_DAN_STD_time-20190409102441_sn-1_i00001.nii.gz",
+            "/media/data/ezbids/siemens/DAN_STD_1000_dicoms/pid-9915@thwjames_DAN_STD_time-20190409102441_sn-1_i00003.nii.gz",
+            "/media/data/ezbids/siemens/DAN_STD_1000_dicoms/pid-9915@thwjames_DAN_STD_time-20190409102441_sn-1_i00002.nii.gz"
          ]
       },
       {
-         "include": "true",
-         "description": "T1w_MPRANGE_0.8mm",
-         "data_type": "anat",
-         "subdata_type": "T1w",
+         "include": true,
+         "SeriesDescription": "T1w_MPRANGE_0.8mm",
+         "SeriesNumber": 2,
+         "PatientID": "DAN_STD_1000",
+         "AcquisitionDate": "2019-04-09",
+         "hierarchy": {
+            "session": ""
+         },
          "labels": {
             "acq": "",
             "ce": ""
          },
+         "type": "anat/T1w",
          "items": [
             {
                "path": "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-2.json",
@@ -536,125 +316,39 @@
                   "ConversionSoftwareVersion": "v1.0.20200427"
                },
                "paths": [
-                  "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-2.nii.gz"
+                  "/media/data/ezbids/siemens/DAN_STD_1000_dicoms/pid-9915@thwjames_DAN_STD_time-20190409102441_sn-2.nii.gz"
                ]
             }
-         ]
-      },
-      {
-         "include": "true",
-         "description": "T2w_SPACE_0.8mm",
-         "data_type": "anat",
-         "subdata_type": "T2w",
-         "labels": {
-            "acq": "",
-            "ce": ""
+         ],
+         "analysisResults": {
+            "VolumeCount": 1,
+            "messages": [
+               ""
+            ],
+            "errors": "N/A",
+            "qc": "",
+            "filesize": 23921242
          },
-         "items": [
-            {
-               "path": "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-22.json",
-               "sidecar": {
-                  "Modality": "MR",
-                  "MagneticFieldStrength": 3,
-                  "ImagingFrequency": 123.261,
-                  "Manufacturer": "Siemens",
-                  "ManufacturersModelName": "Prisma_fit",
-                  "InstitutionName": "Indiana_University_Psychology_Department",
-                  "InstitutionAddress": "East_10th_Street_1101_Bloomington_IN_US_47405",
-                  "DeviceSerialNumber": "67093",
-                  "StationName": "MRC35062",
-                  "SeriesInstanceUID": "1.3.12.2.1107.5.2.43.67093.2019040911380880247220384.0.0.0",
-                  "StudyInstanceUID": "1.3.12.2.1107.5.2.43.67093.30000019040914244112900000001",
-                  "StudyID": "1",
-                  "PatientName": "DAN_STD_1000",
-                  "PatientID": "9915@thwjames_DAN_STD",
-                  "PatientBirthDate": "1992-01-01",
-                  "PatientSex": "M",
-                  "PatientWeight": 81.6466,
-                  "BodyPartExamined": "BRAIN",
-                  "PatientPosition": "HFS",
-                  "ProcedureStepDescription": "Tom_James_64_Channel",
-                  "SoftwareVersions": "syngo_MR_E11",
-                  "MRAcquisitionType": "3D",
-                  "SeriesDescription": "T2w_SPACE_0.8mm",
-                  "ProtocolName": "T2w_SPACE_0.8mm",
-                  "ScanningSequence": "SE",
-                  "SequenceVariant": "SK_SP",
-                  "ScanOptions": "PFP",
-                  "SequenceName": "_spcR_314ns",
-                  "ImageType": [
-                     "ORIGINAL",
-                     "PRIMARY",
-                     "M",
-                     "ND",
-                     "NORM"
-                  ],
-                  "SeriesNumber": 22,
-                  "AcquisitionTime": "11:32:6.487500",
-                  "AcquisitionDateTime": "2019-04-09T11:32:6.487500",
-                  "AcquisitionNumber": 1,
-                  "SliceThickness": 0.8,
-                  "SAR": 0.104035,
-                  "EchoTime": 0.564,
-                  "RepetitionTime": 3.2,
-                  "FlipAngle": 120,
-                  "PartialFourier": 1,
-                  "BaseResolution": 320,
-                  "ShimSetting": [
-                     2058,
-                     -5932,
-                     -2098,
-                     67,
-                     -26,
-                     -24,
-                     -9,
-                     21
-                  ],
-                  "TxRefAmp": 242.594,
-                  "PhaseResolution": 1,
-                  "ReceiveCoilName": "HeadNeck_64",
-                  "ReceiveCoilActiveElements": "HC1-7;NC1,2",
-                  "PulseSequenceDetails": "%SiemensSeq%_tse_vfl",
-                  "RefLinesPE": 32,
-                  "ConsistencyInfo": "N4_VE11B_LATEST_20150530",
-                  "PercentPhaseFOV": 93.75,
-                  "PercentSampling": 100,
-                  "EchoTrainLength": 303,
-                  "PhaseEncodingSteps": 289,
-                  "AcquisitionMatrixPE": 300,
-                  "ReconMatrixPE": 300,
-                  "ParallelReductionFactorInPlane": 2,
-                  "PixelBandwidth": 745,
-                  "PhaseEncodingDirection": "i",
-                  "ImageOrientationPatientDICOM": [
-                     0,
-                     1,
-                     0,
-                     0,
-                     0,
-                     -1
-                  ],
-                  "InPlanePhaseEncodingDirectionDICOM": "ROW",
-                  "ConversionSoftware": "dcm2niix",
-                  "ConversionSoftwareVersion": "v1.0.20200427"
-               },
-               "paths": [
-                  "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-22.nii.gz"
-               ]
-            }
+         "paths": [
+            "/media/data/ezbids/siemens/DAN_STD_1000_dicoms/pid-9915@thwjames_DAN_STD_time-20190409102441_sn-2.nii.gz"
          ]
       },
       {
-         "include": "true",
-         "description": "fmap_SE_PA",
-         "data_type": "fmap",
-         "subdata_type": "",
+         "include": true,
+         "SeriesDescription": "fmap_SE_PA",
+         "SeriesNumber": 4,
+         "PatientID": "DAN_STD_1000",
+         "AcquisitionDate": "2019-04-09",
+         "hierarchy": {
+            "session": ""
+         },
          "labels": {
             "run": "",
             "dir": "PA",
             "acq": "",
             "ce": ""
          },
+         "type": "fmap/",
          "items": [
             {
                "path": "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-4.json",
@@ -798,22 +492,39 @@
                   "ConversionSoftwareVersion": "v1.0.20200427"
                },
                "paths": [
-                  "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-4.nii.gz"
+                  "/media/data/ezbids/siemens/DAN_STD_1000_dicoms/pid-9915@thwjames_DAN_STD_time-20190409102441_sn-4.nii.gz"
                ]
             }
+         ],
+         "analysisResults": {
+            "VolumeCount": 3,
+            "messages": [
+               ""
+            ],
+            "errors": "N/A",
+            "qc": "",
+            "filesize": 1017285
+         },
+         "paths": [
+            "/media/data/ezbids/siemens/DAN_STD_1000_dicoms/pid-9915@thwjames_DAN_STD_time-20190409102441_sn-4.nii.gz"
          ]
       },
       {
-         "include": "true",
-         "description": "fmap_SE_AP",
-         "data_type": "fmap",
-         "subdata_type": "",
+         "include": true,
+         "SeriesDescription": "fmap_SE_AP",
+         "SeriesNumber": 5,
+         "PatientID": "DAN_STD_1000",
+         "AcquisitionDate": "2019-04-09",
+         "hierarchy": {
+            "session": ""
+         },
          "labels": {
             "run": "",
             "dir": "AP",
             "acq": "",
             "ce": ""
          },
+         "type": "fmap/",
          "items": [
             {
                "path": "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-5.json",
@@ -957,11 +668,494 @@
                   "ConversionSoftwareVersion": "v1.0.20200427"
                },
                "paths": [
-                  "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-5.nii.gz"
+                  "/media/data/ezbids/siemens/DAN_STD_1000_dicoms/pid-9915@thwjames_DAN_STD_time-20190409102441_sn-5.nii.gz"
                ]
             }
+         ],
+         "analysisResults": {
+            "VolumeCount": 3,
+            "messages": [
+               ""
+            ],
+            "errors": "N/A",
+            "qc": "",
+            "filesize": 1030745
+         },
+         "paths": [
+            "/media/data/ezbids/siemens/DAN_STD_1000_dicoms/pid-9915@thwjames_DAN_STD_time-20190409102441_sn-5.nii.gz"
+         ]
+      },
+      {
+         "include": true,
+         "SeriesDescription": "bold_task_mb4_870vols_SBRef",
+         "SeriesNumber": 6,
+         "PatientID": "DAN_STD_1000",
+         "AcquisitionDate": "2019-04-09",
+         "hierarchy": {
+            "session": ""
+         },
+         "labels": {
+            "run": "",
+            "task": "",
+            "acq": "",
+            "ce": ""
+         },
+         "type": "func/sbref",
+         "items": [
+            {
+               "path": "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-6.json",
+               "sidecar": {
+                  "Modality": "MR",
+                  "MagneticFieldStrength": 3,
+                  "ImagingFrequency": 123.261,
+                  "Manufacturer": "Siemens",
+                  "ManufacturersModelName": "Prisma_fit",
+                  "InstitutionName": "Indiana_University_Psychology_Department",
+                  "InstitutionAddress": "East_10th_Street_1101_Bloomington_IN_US_47405",
+                  "DeviceSerialNumber": "67093",
+                  "StationName": "MRC35062",
+                  "SeriesInstanceUID": "1.3.12.2.1107.5.2.43.67093.2019040910354320373702794.0.0.0",
+                  "StudyInstanceUID": "1.3.12.2.1107.5.2.43.67093.30000019040914244112900000001",
+                  "StudyID": "1",
+                  "PatientName": "DAN_STD_1000",
+                  "PatientID": "9915@thwjames_DAN_STD",
+                  "PatientBirthDate": "1992-01-01",
+                  "PatientSex": "M",
+                  "PatientWeight": 81.6466,
+                  "BodyPartExamined": "BRAIN",
+                  "PatientPosition": "HFS",
+                  "ProcedureStepDescription": "Tom_James_64_Channel",
+                  "SoftwareVersions": "syngo_MR_E11",
+                  "MRAcquisitionType": "2D",
+                  "SeriesDescription": "bold_task_mb4_870vols_SBRef",
+                  "ProtocolName": "bold_task_mb4_870vols",
+                  "ScanningSequence": "EP",
+                  "SequenceVariant": "SK_SS",
+                  "ScanOptions": "PFP_FS",
+                  "SequenceName": "epfid2d1_72",
+                  "ImageType": [
+                     "ORIGINAL",
+                     "PRIMARY",
+                     "M",
+                     "ND",
+                     "MOSAIC"
+                  ],
+                  "SeriesNumber": 6,
+                  "AcquisitionTime": "10:37:21.545000",
+                  "AcquisitionDateTime": "2019-04-09T10:37:21.545000",
+                  "AcquisitionNumber": 1,
+                  "ImageComments": "Single-band_reference",
+                  "SliceThickness": 3,
+                  "SpacingBetweenSlices": 3,
+                  "SAR": 0.0742365,
+                  "EchoTime": 0.03,
+                  "RepetitionTime": 0.42,
+                  "FlipAngle": 50,
+                  "PartialFourier": 0.875,
+                  "BaseResolution": 72,
+                  "ShimSetting": [
+                     2051,
+                     -5903,
+                     -1871,
+                     410,
+                     -35,
+                     -139,
+                     -103,
+                     75
+                  ],
+                  "TxRefAmp": 242.594,
+                  "PhaseResolution": 1,
+                  "ReceiveCoilName": "HeadNeck_64",
+                  "ReceiveCoilActiveElements": "HC1-7;NC1,2",
+                  "PulseSequenceDetails": "%CustomerSeq%_cmrr_mbep2d_bold",
+                  "WipMemBlock": "53be328a-8f7a-4891-ac60-a1093811ec48||Sequence: R016 ve11b/master r/b698769; Nov 21 2017 11:07:30 by eja",
+                  "ConsistencyInfo": "N4_VE11B_LATEST_20150530",
+                  "PercentPhaseFOV": 100,
+                  "PercentSampling": 100,
+                  "EchoTrainLength": 63,
+                  "PhaseEncodingSteps": 63,
+                  "AcquisitionMatrixPE": 72,
+                  "ReconMatrixPE": 72,
+                  "BandwidthPerPixelPhaseEncode": 23.946,
+                  "EffectiveEchoSpacing": 0.000580009,
+                  "DerivedVendorReportedEchoSpacing": 0.000580009,
+                  "TotalReadoutTime": 0.0411806,
+                  "PixelBandwidth": 2315,
+                  "PhaseEncodingDirection": "j-",
+                  "SliceTiming": [
+                     0,
+                     0.065,
+                     0.1325,
+                     0.2,
+                     0.265,
+                     0.3325,
+                     0.4,
+                     0.465,
+                     0.5325,
+                     0.6,
+                     0.665,
+                     0.7325,
+                     0.8,
+                     0.865,
+                     0.9325,
+                     1,
+                     1.065,
+                     1.1325,
+                     1.2,
+                     1.265,
+                     1.3325,
+                     1.4,
+                     1.465,
+                     1.5325,
+                     1.6,
+                     1.665,
+                     1.7325,
+                     1.8,
+                     1.865,
+                     1.9325,
+                     2,
+                     2.065,
+                     2.1325,
+                     2.2,
+                     2.265,
+                     2.3325,
+                     2.4,
+                     2.465,
+                     2.5325,
+                     2.6,
+                     2.665,
+                     2.7325,
+                     2.8,
+                     2.865,
+                     2.9325,
+                     3,
+                     3.065,
+                     3.1325
+                  ],
+                  "ImageOrientationPatientDICOM": [
+                     1,
+                     0,
+                     0,
+                     0,
+                     0.975535,
+                     -0.219846
+                  ],
+                  "InPlanePhaseEncodingDirectionDICOM": "COL",
+                  "ConversionSoftware": "dcm2niix",
+                  "ConversionSoftwareVersion": "v1.0.20200427",
+                  "TaskName": "rest"
+               },
+               "paths": [
+                  "/media/data/ezbids/siemens/DAN_STD_1000_dicoms/pid-9915@thwjames_DAN_STD_time-20190409102441_sn-6.nii.gz"
+               ]
+            }
+         ],
+         "analysisResults": {
+            "VolumeCount": 1,
+            "messages": [
+               ""
+            ],
+            "errors": "N/A",
+            "qc": "",
+            "filesize": 424462
+         },
+         "paths": [
+            "/media/data/ezbids/siemens/DAN_STD_1000_dicoms/pid-9915@thwjames_DAN_STD_time-20190409102441_sn-6.nii.gz"
+         ]
+      },
+      {
+         "include": false,
+         "SeriesDescription": "bold_task_mb4_870vols",
+         "SeriesNumber": 7,
+         "PatientID": "DAN_STD_1000",
+         "AcquisitionDate": "2019-04-09",
+         "hierarchy": {
+            "session": ""
+         },
+         "labels": {},
+         "type": "",
+         "items": [
+            {
+               "path": "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-7.json",
+               "sidecar": {
+                  "Modality": "MR",
+                  "MagneticFieldStrength": 3,
+                  "ImagingFrequency": 123.261,
+                  "Manufacturer": "Siemens",
+                  "ManufacturersModelName": "Prisma_fit",
+                  "InstitutionName": "Indiana_University_Psychology_Department",
+                  "InstitutionAddress": "East_10th_Street_1101_Bloomington_IN_US_47405",
+                  "DeviceSerialNumber": "67093",
+                  "StationName": "MRC35062",
+                  "SeriesInstanceUID": "1.3.12.2.1107.5.2.43.67093.2019040910354320950002795.0.0.0",
+                  "StudyInstanceUID": "1.3.12.2.1107.5.2.43.67093.30000019040914244112900000001",
+                  "StudyID": "1",
+                  "PatientName": "DAN_STD_1000",
+                  "PatientID": "9915@thwjames_DAN_STD",
+                  "PatientBirthDate": "1992-01-01",
+                  "PatientSex": "M",
+                  "PatientWeight": 81.6466,
+                  "BodyPartExamined": "BRAIN",
+                  "PatientPosition": "HFS",
+                  "ProcedureStepDescription": "Tom_James_64_Channel",
+                  "SoftwareVersions": "syngo_MR_E11",
+                  "MRAcquisitionType": "2D",
+                  "SeriesDescription": "bold_task_mb4_870vols",
+                  "ProtocolName": "bold_task_mb4_870vols",
+                  "ScanningSequence": "EP",
+                  "SequenceVariant": "SK_SS",
+                  "ScanOptions": "PFP_FS",
+                  "SequenceName": "epfid2d1_72",
+                  "ImageType": [
+                     "ORIGINAL",
+                     "PRIMARY",
+                     "M",
+                     "MB",
+                     "ND",
+                     "MOSAIC"
+                  ],
+                  "SeriesNumber": 7,
+                  "AcquisitionTime": "10:37:28.265000",
+                  "AcquisitionDateTime": "2019-04-09T10:37:28.265000",
+                  "AcquisitionNumber": 1,
+                  "ImageComments": "Unaliased_MB8_PE3_LB",
+                  "SliceThickness": 3,
+                  "SpacingBetweenSlices": 3,
+                  "SAR": 0.0742365,
+                  "EchoTime": 0.03,
+                  "RepetitionTime": 0.42,
+                  "FlipAngle": 50,
+                  "PartialFourier": 0.875,
+                  "BaseResolution": 72,
+                  "ShimSetting": [
+                     2051,
+                     -5903,
+                     -1871,
+                     410,
+                     -35,
+                     -139,
+                     -103,
+                     75
+                  ],
+                  "TxRefAmp": 242.594,
+                  "PhaseResolution": 1,
+                  "ReceiveCoilName": "HeadNeck_64",
+                  "ReceiveCoilActiveElements": "HC1-7;NC1,2",
+                  "PulseSequenceDetails": "%CustomerSeq%_cmrr_mbep2d_bold",
+                  "WipMemBlock": "53be328a-8f7a-4891-ac60-a1093811ec48||Sequence: R016 ve11b/master r/b698769; Nov 21 2017 11:07:30 by eja",
+                  "ConsistencyInfo": "N4_VE11B_LATEST_20150530",
+                  "MultibandAccelerationFactor": 8,
+                  "PercentPhaseFOV": 100,
+                  "PercentSampling": 100,
+                  "EchoTrainLength": 63,
+                  "PhaseEncodingSteps": 63,
+                  "AcquisitionMatrixPE": 72,
+                  "ReconMatrixPE": 72,
+                  "BandwidthPerPixelPhaseEncode": 23.946,
+                  "EffectiveEchoSpacing": 0.000580009,
+                  "DerivedVendorReportedEchoSpacing": 0.000580009,
+                  "TotalReadoutTime": 0.0411806,
+                  "PixelBandwidth": 2315,
+                  "PhaseEncodingDirection": "j-",
+                  "SliceTiming": [
+                     0,
+                     0.2,
+                     0.065,
+                     0.3325,
+                     0.1325,
+                     0.265,
+                     0,
+                     0.2,
+                     0.065,
+                     0.3325,
+                     0.1325,
+                     0.265,
+                     0,
+                     0.2,
+                     0.065,
+                     0.3325,
+                     0.1325,
+                     0.265,
+                     0,
+                     0.2,
+                     0.065,
+                     0.3325,
+                     0.1325,
+                     0.265,
+                     0,
+                     0.2,
+                     0.065,
+                     0.3325,
+                     0.1325,
+                     0.265,
+                     0,
+                     0.2,
+                     0.065,
+                     0.3325,
+                     0.1325,
+                     0.265,
+                     0,
+                     0.2,
+                     0.065,
+                     0.3325,
+                     0.1325,
+                     0.265,
+                     0,
+                     0.2,
+                     0.065,
+                     0.3325,
+                     0.1325,
+                     0.265
+                  ],
+                  "ImageOrientationPatientDICOM": [
+                     1,
+                     0,
+                     0,
+                     0,
+                     0.975535,
+                     -0.219846
+                  ],
+                  "InPlanePhaseEncodingDirectionDICOM": "COL",
+                  "ConversionSoftware": "dcm2niix",
+                  "ConversionSoftwareVersion": "v1.0.20200427"
+               },
+               "paths": [
+                  "/media/data/ezbids/siemens/DAN_STD_1000_dicoms/pid-9915@thwjames_DAN_STD_time-20190409102441_sn-7.nii.gz"
+               ]
+            }
+         ],
+         "analysisResults": {
+            "VolumeCount": 870,
+            "messages": [
+               ""
+            ],
+            "errors": "Cannot determine acquisition type",
+            "qc": "",
+            "filesize": 348265479
+         },
+         "paths": [
+            "/media/data/ezbids/siemens/DAN_STD_1000_dicoms/pid-9915@thwjames_DAN_STD_time-20190409102441_sn-7.nii.gz"
+         ]
+      },
+      {
+         "include": true,
+         "SeriesDescription": "T2w_SPACE_0.8mm",
+         "SeriesNumber": 22,
+         "PatientID": "DAN_STD_1000",
+         "AcquisitionDate": "2019-04-09",
+         "hierarchy": {
+            "session": ""
+         },
+         "labels": {
+            "acq": "",
+            "ce": ""
+         },
+         "type": "anat/T2w",
+         "items": [
+            {
+               "path": "pid-9915@thwjames_DAN_STD_time-20190409102441_sn-22.json",
+               "sidecar": {
+                  "Modality": "MR",
+                  "MagneticFieldStrength": 3,
+                  "ImagingFrequency": 123.261,
+                  "Manufacturer": "Siemens",
+                  "ManufacturersModelName": "Prisma_fit",
+                  "InstitutionName": "Indiana_University_Psychology_Department",
+                  "InstitutionAddress": "East_10th_Street_1101_Bloomington_IN_US_47405",
+                  "DeviceSerialNumber": "67093",
+                  "StationName": "MRC35062",
+                  "SeriesInstanceUID": "1.3.12.2.1107.5.2.43.67093.2019040911380880247220384.0.0.0",
+                  "StudyInstanceUID": "1.3.12.2.1107.5.2.43.67093.30000019040914244112900000001",
+                  "StudyID": "1",
+                  "PatientName": "DAN_STD_1000",
+                  "PatientID": "9915@thwjames_DAN_STD",
+                  "PatientBirthDate": "1992-01-01",
+                  "PatientSex": "M",
+                  "PatientWeight": 81.6466,
+                  "BodyPartExamined": "BRAIN",
+                  "PatientPosition": "HFS",
+                  "ProcedureStepDescription": "Tom_James_64_Channel",
+                  "SoftwareVersions": "syngo_MR_E11",
+                  "MRAcquisitionType": "3D",
+                  "SeriesDescription": "T2w_SPACE_0.8mm",
+                  "ProtocolName": "T2w_SPACE_0.8mm",
+                  "ScanningSequence": "SE",
+                  "SequenceVariant": "SK_SP",
+                  "ScanOptions": "PFP",
+                  "SequenceName": "_spcR_314ns",
+                  "ImageType": [
+                     "ORIGINAL",
+                     "PRIMARY",
+                     "M",
+                     "ND",
+                     "NORM"
+                  ],
+                  "SeriesNumber": 22,
+                  "AcquisitionTime": "11:32:6.487500",
+                  "AcquisitionDateTime": "2019-04-09T11:32:6.487500",
+                  "AcquisitionNumber": 1,
+                  "SliceThickness": 0.8,
+                  "SAR": 0.104035,
+                  "EchoTime": 0.564,
+                  "RepetitionTime": 3.2,
+                  "FlipAngle": 120,
+                  "PartialFourier": 1,
+                  "BaseResolution": 320,
+                  "ShimSetting": [
+                     2058,
+                     -5932,
+                     -2098,
+                     67,
+                     -26,
+                     -24,
+                     -9,
+                     21
+                  ],
+                  "TxRefAmp": 242.594,
+                  "PhaseResolution": 1,
+                  "ReceiveCoilName": "HeadNeck_64",
+                  "ReceiveCoilActiveElements": "HC1-7;NC1,2",
+                  "PulseSequenceDetails": "%SiemensSeq%_tse_vfl",
+                  "RefLinesPE": 32,
+                  "ConsistencyInfo": "N4_VE11B_LATEST_20150530",
+                  "PercentPhaseFOV": 93.75,
+                  "PercentSampling": 100,
+                  "EchoTrainLength": 303,
+                  "PhaseEncodingSteps": 289,
+                  "AcquisitionMatrixPE": 300,
+                  "ReconMatrixPE": 300,
+                  "ParallelReductionFactorInPlane": 2,
+                  "PixelBandwidth": 745,
+                  "PhaseEncodingDirection": "i",
+                  "ImageOrientationPatientDICOM": [
+                     0,
+                     1,
+                     0,
+                     0,
+                     0,
+                     -1
+                  ],
+                  "InPlanePhaseEncodingDirectionDICOM": "ROW",
+                  "ConversionSoftware": "dcm2niix",
+                  "ConversionSoftwareVersion": "v1.0.20200427"
+               },
+               "paths": [
+                  "/media/data/ezbids/siemens/DAN_STD_1000_dicoms/pid-9915@thwjames_DAN_STD_time-20190409102441_sn-22.nii.gz"
+               ]
+            }
+         ],
+         "analysisResults": {
+            "VolumeCount": 1,
+            "messages": [
+               ""
+            ],
+            "errors": "N/A",
+            "qc": "",
+            "filesize": 18114987
+         },
+         "paths": [
+            "/media/data/ezbids/siemens/DAN_STD_1000_dicoms/pid-9915@thwjames_DAN_STD_time-20190409102441_sn-22.nii.gz"
          ]
       }
-   ],
-   "objects": []
+   ]
 }

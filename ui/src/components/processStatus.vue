@@ -12,7 +12,7 @@
         <div v-if="$root.session.status == 'analyzed'">
             <p>Analysis complete! Please proceed to the next tab.</p>
             <p>
-                <el-button type="primary" @click="$root.page = 'description'" size="small">Next</el-button>
+                <!--<el-button type="primary" @click="$root.page = 'description'" size="small">Next</el-button>-->
             </p>
         </div>
         <div v-if="$root.session.status == 'failed'">
@@ -28,6 +28,10 @@
         <div v-if="$root.session.status == 'finished'">
             <p>All done!</p>
         </div>
+
+        <p>
+            <el-button type="secondary" @click="$root.reset()" size="small">Re-upload</el-button>
+        </p>
 
         <el-collapse v-model="activeLogs" @change="logChange">
             <el-collapse-item title="Log" name="out">

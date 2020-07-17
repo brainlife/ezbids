@@ -11,30 +11,32 @@
         v-model="participantsColumn"/>
     -->
     <div v-for="(column, key) in $root.participantsColumn" :key="key" class="columnEditor">
-        <el-row :gutter="10">
-        <el-col :span="3">
-            {{key}}
-        </el-col>
-        <el-col :span="19">
-            <el-input placeholder="LongName" v-model="column.LongName" size="mini">
-                <template slot="prepend">Long Name</template>
-            </el-input>
-            <el-input placeholder="Units" v-model="column.Units" size="mini">
-                <template slot="prepend">Units</template>
-            </el-input>
-            <el-input type="textarea" placeholder="Description" v-model="column.Description" size="mini"/>
-            <small>TODO.. levels</small>
-        </el-col>
-        <el-col :span="2">
-            <el-button type="danger" icon="el-icon-delete" @click="remove(key)" size="mini"/>
-        </el-col>
-        </el-row>
+        <el-button type="danger" style="float: right;" icon="el-icon-delete" @click="remove(key)" size="mini"/>
+        <b>{{key}}</b>
+        <br>
+        <br clear="both">
+
+        <el-form label-width="100px" size="mini">
+            <el-form-item label="Long Name">
+                <el-input placeholder="LongName" v-model="column.LongName" size="mini"/>
+            </el-form-item>
+            <el-form-item label="Units">
+                <el-input placeholder="Units" v-model="column.Units" size="mini"/>
+            </el-form-item>
+            <el-form-item label="Description">
+                <el-input type="textarea" placeholder="Description" v-model="column.Description" size="mini"/>
+            </el-form-item>
+            <el-form-item label="Options">
+                <small>TODO.. (levels)</small>
+            </el-form-item>
+        </el-form>
     </div>
-    <p class="columnEditor">
+    <p class="columnEditor" style="width: 200px;">
         <el-input placeholder="Add New Column" v-model="newcolumn" size="mini">
-            <el-button @click="addNewColumn" slot="append">Add</el-button>
+            <el-button @click="addNewColumn" type="primary" slot="append">Add</el-button>
         </el-input>
     </p>
+    <br clear="both">
 
     <h4>phenotype.tsv</h4>
     <p>Enter phenotypical data associated with each participants.</p>
@@ -146,9 +148,14 @@ export default {
 
 <style scoped>
 .columnEditor {
-background-color: #eee;
+background-color: #f9f9f9;
 margin-bottom: 10px;
 padding: 15px;
 border-radius: 5px;
+width: 300px;
+float: left;
+margin-right: 10px;
+margin-bottom: 10px;
+margin-top: 0;
 }
 </style>

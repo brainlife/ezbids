@@ -1,7 +1,7 @@
 <template>
 <div class="datatype" :class="{exclude: !o.include}" style="display: inline-block;">
     <span :style="{'background-color': color}" class="bull">&nbsp;</span> {{o.type}}
-    <el-tag v-for="(v,k) in specialHierarchy" :key="k" size="mini" type="info"><small>{{k}}</small> <b>{{v.toUpperCase()}}</b></el-tag>
+    <el-tag v-for="(v,k) in o.labels" :key="k" size="mini" type="info"><small>{{k}}</small> <b>{{v.toUpperCase()}}</b></el-tag>
 </div>
 </template>
 
@@ -20,6 +20,7 @@ export default {
             const numhash = Math.abs(hash+12)%360;
             return "hsl("+(numhash%360)+", 50%, 55%)"; 
         },
+        /*
         specialHierarchy() {
             const kv = {};
             let ignore = ["subject", "session", "run"];
@@ -29,6 +30,7 @@ export default {
             }
             return kv;
         }
+        */
     },
 }
 

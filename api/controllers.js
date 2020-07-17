@@ -66,7 +66,8 @@ router.get('/session/:session_id/list', (req, res, next) => {
 router.get('/session/:session_id/ezbids', (req, res, next) => {
     models.Session.findById(req.params.session_id).select('-files').then(session => {
         res.setHeader("content-type", "application/json");
-        fs.createReadStream(config.workdir + "/" + session._id + "/ezbids.json").pipe(res);
+        console.debug("loading ezbids.json from", config.workdir, session._id);
+        fs.createReadStream(config.workdir + "/" + session._id + "/ezBIDS.json").pipe(res);
     }).catch(err => {
         next(err);
     });

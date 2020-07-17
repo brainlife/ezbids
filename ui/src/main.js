@@ -19,6 +19,8 @@ import 'element-ui/lib/theme-chalk/index.css';
 import locale from 'element-ui/lib/locale/lang/en'
 Vue.use(ElementUI, { locale } );
 
+//import testdata from '/home/hayashis/syncthing/git/ezbids/handler/analyzer/ezbids_reference.json';
+
 import jsyaml from 'js-yaml';
 
 import Vuex from 'vuex'
@@ -36,6 +38,7 @@ new Vue({
     render(createElement) {
         return createElement('App');
     },
+    
     //router,
     data() {
 
@@ -78,7 +81,9 @@ new Vue({
             subjects: [],
             sessions: [],
             series: [],
+
             objects: [],
+            subs: {}, //objects organized into subs/ses/run for objects page
 
             page: "upload",
 
@@ -94,7 +99,52 @@ new Vue({
             finished: false,
         }
     },
-    mounted() {
+
+    watch: {
+        page(v) {
+            //apply mappings
+            if(v == "objects") {
+                this.objects.forEach(object=>{
+
+                    //apply subject mapping
+                    let subject = this.subjects.find(s=>s.PatientID == object.PatientID);
+                    if(!subject) {
+                        console.log("unknown PatientID in object", object.PatientID);
+                    } else {
+                        object.hierarchy.subject = subject.sub; //TODO - hierarchy.subject to sub?
+                    }
+                    
+                    //apply session mapping
+                    let session = this.sessions.find(s=>s.AcquisitionDate == object.AcquisitionDate);
+                    if(!session) {
+                        console.log("unknown AcquisitionDate in object", object.AcquisitionDate);
+                    } else {
+                        object.hierarchy.session = session.ses; //TODO - hierarchy.subject to sub?
+                    }
+
+                    //apply series info
+                    let series = this.series.find(s=>s.SeriesNumber == object.SeriesNumber);
+                    if(!series) {
+                        console.log("unknown seriesnumber in object", object.SeriesNumber);
+                    } else {
+                        object.SeriesDescription = series.SeriesDescription;
+
+                        //apply series info
+                        object.type = series.type;
+                        object.include = series.include;
+
+                        //apply entities
+                        Object.assign(object.labels, series.labels);
+                    }
+
+                    this.validateObject(object);
+                });
+                this.organizeObjects();
+            }
+        },
+    },
+
+    async mounted() {
         console.log("mounted main");
         /*
         if(this.$route.hash != "") { 
@@ -134,8 +184,10 @@ new Vue({
     run: optional
 `);
         let dwi = {label: "Diffusion", options: []}
-        _dwi[0].suffixes.forEach(suffix=>{
-            dwi.options.push({value: "dwi/"+suffix, label: suffix});
+        _dwi.forEach(group=>{
+            group.suffixes.forEach(suffix=>{
+                dwi.options.push({value: "dwi/"+suffix, label: suffix});
+            });
         });
         this.datatypes.push(dwi);
         
@@ -186,8 +238,10 @@ new Vue({
     mod: optional
 `);
         let anat = {label: "Anatomical", options: []}
-        _anat[0].suffixes.forEach(suffix=>{
-            anat.options.push({value: "anat/"+suffix, label: suffix});
+        _anat.forEach(group=>{
+            group.suffixes.forEach(suffix=>{
+                anat.options.push({value: "anat/"+suffix, label: suffix});
+            });
         });
         this.datatypes.push(anat);
 
@@ -244,8 +298,10 @@ new Vue({
     proc: optional
 `);
         let func = {label: "Functional", options: []}
-        _func[0].suffixes.forEach(suffix=>{
-            func.options.push({value: "func/"+suffix, label: suffix});
+        _func.forEach(group=>{
+            group.suffixes.forEach(suffix=>{
+                func.options.push({value: "func/"+suffix, label: suffix});
+            });
         });
         this.datatypes.push(func);
 
@@ -283,11 +339,24 @@ new Vue({
     run: optional
 `);
         let fmap = {label: "Field Map", options: []}
-        _fmap[0].suffixes.forEach(suffix=>{
-            fmap.options.push({value: "fmap/"+suffix, label: suffix});
+        _fmap.forEach(group=>{
+            group.suffixes.forEach(suffix=>{
+                fmap.options.push({value: "fmap/"+suffix, label: suffix});
+            });
         });
         this.datatypes.push(fmap);
+
+        ///////////////////////////////////////////////////////////////////////////////////////////
+        //
+        //
+        //load debug data
+        //await this.loadData('ezbids_reference.json');
+        //this.analyzed = true;
+        //
+        //
+        ///////////////////////////////////////////////////////////////////////////////////////////
     },
+
     computed: {
         /*
         validated() {
@@ -302,7 +371,92 @@ new Vue({
         }
         */
     },
+
     methods: {
+        reset() {
+            /*
+            this.datasetDescription = {
+                "Name": "The mother of all experiments",
+                "BIDSVersion": "1.4.0",
+                "DatasetType": "raw",
+                "License": "CC0",
+                "Authors": [
+                    "Paul Broca",
+                    "Carl Wernicke"
+                ],
+                "Acknowledgements": "Special thanks to Korbinian Brodmann for help in formatting this dataset in BIDS. We thank Alan Lloyd Hodgkin and Andrew Huxley for helpful comments and discussions about the experiment and manuscript; Hermann Ludwig Helmholtz for administrative support; and Claudius Galenus for providing data for the medial-to-lateral index analysis.",
+                "HowToAcknowledge": "Please cite this paper: https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
+                "Funding": [
+                    "National Institute of Neuroscience Grant F378236MFH1",
+                    "National Institute of Neuroscience Grant 5RMZ0023106"
+                ],
+                "EthicsApprovals": [
+                    "Army Human Research Protections Office (Protocol ARL-20098-10051, ARL 12-040, and ARL 12-041)"
+                ],
+                "ReferencesAndLinks": [
+                    "https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
+                    "http://doi.org/1920.8/jndata.2015.7"
+                ],
+                "DatasetDOI": "10.0.2.3/dfjj.10"
+            };
+
+            this.readme = "";
+            this.participantsColumn = {};
+            
+            this.subjects = [];
+            this.sessions = [];
+            this.series = [];
+
+            this.objects = [];
+            this.subs = {};
+
+            this.page = "upload";
+            this.uploadFailed = false;
+            this.session = null;
+            this.analyzed = false;
+            this.validated = false;
+            this.finalized = false;
+            this.finished = false;
+            */
+            location.reload();
+        },
+
+        validateObject(o) {
+            Vue.set(o, 'validationErrors', []);
+            switch(o.type) {
+            case "func/bold":
+                if(!o.hierarchy.task) o.validationErrors.push("Task Name is required for func/bold");
+            }
+        },
+
+        organizeObjects() {
+            this.subs = {}; 
+
+            this.$root.objects.forEach(o=>{
+                let sub = o.hierarchy.subject||"";
+                let ses = o.hierarchy.session||"";
+                let run = o.hierarchy.run||"";
+
+                if(!this.subs[sub]) this.subs[sub] = { sess: {}, objects: []}; 
+                this.subs[sub].objects.push(o);
+
+                if(!this.subs[sub].sess[ses]) this.subs[sub].sess[ses] = { runs: {}, objects: [] };
+                this.subs[sub].sess[ses].objects.push(o);
+
+                if(!this.subs[sub].sess[ses].runs[run]) this.subs[sub].sess[ses].runs[run] = { objects: [] };
+                this.subs[sub].sess[ses].runs[run].objects.push(o);
+            });
+
+            this.$root.objects.sort((a,b)=>{
+                if(a.hierarchy.subject > b.hierarchy.subject) return 1;
+                if(a.hierarchy.subject < b.hierarchy.subject) return -1;
+                if(a.hierarchy.session > b.hierarchy.session) return 1;
+                if(a.hierarchy.session < b.hierarchy.session) return -1;
+                if(a.hierarchy.run > b.hierarchy.run) return 1;
+                if(a.hierarchy.run < b.hierarchy.run) return -1;
+                return 0;
+            });
+        },
         loadData(url) {
             console.log("loadData", url);
             return fetch(url).then(res=>res.json()).then(conf=>{
@@ -317,10 +471,10 @@ new Vue({
 
                 //massage some data - waiting for analyzer to get updated
                 this.series.forEach(series=>{
-                    let snum = series.items[0].sidecar.SeriesNumber;
-                    series.id = snum;
+                    //let snum = series.items[0].sidecar.SeriesNumber;
+                    //series.id = snum;
                     series.include = (series.include == "true");
-                    Vue.set(series, 'type', series.data_type+"/"+series.subdata_type);
+                    //Vue.set(series, 'type', series.data_type+"/"+series.subdata_type);
                 });
 
                 this.subjects.forEach(subject=>{
@@ -328,7 +482,9 @@ new Vue({
                 });
 
                 this.series.sort((a,b)=>a.id - b.id);
-                
+            }).catch(err=>{
+                console.error("failed to load", url);
+                console.error(err);
             });
         }
     },

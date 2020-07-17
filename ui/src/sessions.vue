@@ -1,6 +1,6 @@
 <template>
 <div>
-    <p>Please decide how you'd like to map DICOM PatientID to BIDS Subject IDs. You can download the mapping table once you are done mapping.</p>
+    <p>Please decide how you'd like to map DICOM PatientID to BIDS Subject IDs. You can download the mapping table later.</p>
     <br>
 
     <!--series ID-->

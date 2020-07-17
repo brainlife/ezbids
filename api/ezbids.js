@@ -11,20 +11,22 @@ const config = require("./config");
 //init express
 const app = express();
 //app.options('*', cors()) // include before other routes
-var whitelist = ['http://localhost:3000', 'http://localhost:8080', 'https://dev1.soichi.us'];
+/*
+var whitelist = ['http://localhost:3000', 'http://localhost:8080', 'http://localhost:8081', 'https://dev1.soichi.us']
 var corsOptionsDelegate = function (req, callback) {
-    var corsOptions;
-    if (whitelist.indexOf(req.header('Origin')) !== -1) {
-        corsOptions = { origin: true }; // reflect (enable) the requested origin in the CORS response
-    }
-    else {
-        corsOptions = { origin: false }; // disable CORS for this request
-    }
-    console.dir(req.header('Origin'));
-    console.dir(corsOptions);
-    callback(null, corsOptions); // callback expects two parameters: error and options
-};
+  var corsOptions;
+  if (whitelist.indexOf(req.header('Origin')) !== -1) {
+    corsOptions = { origin: true } // reflect (enable) the requested origin in the CORS response
+  } else {
+    corsOptions = { origin: false } // disable CORS for this request
+  }
+  console.dir(req.header('Origin'));
+  console.dir(corsOptions);
+  callback(null, corsOptions) // callback expects two parameters: error and options
+}
 app.use(cors(corsOptionsDelegate));
+*/
+app.use(cors());
 app.use(compression());
 app.use(nocache());
 /*

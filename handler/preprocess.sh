@@ -23,7 +23,7 @@ echo processing $root
 #        (cd $root && time dcm2niix -z o -f 'time-%t-sn-%s' -v 1 $dir)
 #done
 
-./find_dicomdir.py $root | parallel --wd $root -j 4 dcm2niix -v 1 -z o -f 'time-%t-sn-%s' {}
+./find_dicomdir.py $root | parallel --wd $root -j 4 dcm2niix -v 1 -ba n -z o -f 'time-%t-sn-%s' {}
 
 (cd $root && find . -type f \( -name "*.json" -o -name "*.nii.gz" \) > list)
 
