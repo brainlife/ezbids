@@ -86,7 +86,8 @@
                             </el-select>
                             <div v-if="item.sidecar" style="box-shadow: 1px 1px 3px #0002; border-radius: 5px; padding: 10px; background-color: #fcfcfc;">
                                 <b style="opacity: 0.5;">Sidecar</b>
-                                <kveditor :kv="item.sidecar"/>
+                                <!--<kveditor :kv="item.sidecar"/>-->
+                                <kveditor :item="item" @change="validateAndCheck(o)"/>
                             </div>
                          </el-form-item>
                     </div>

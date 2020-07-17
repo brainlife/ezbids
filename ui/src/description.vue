@@ -7,6 +7,9 @@
         <el-form-item label="Dataset Name">
             <el-input v-model="dd.Name" required></el-input>
         </el-form-item>
+        <el-form-item label="DatasetType">
+            <el-input v-model="dd.DatasetType" required disabled></el-input>
+        </el-form-item>
         <el-form-item label="BIDSVersion">
             <el-input v-model="dd.BIDSVersion" required disabled></el-input>
         </el-form-item>

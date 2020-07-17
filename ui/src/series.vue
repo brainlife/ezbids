@@ -1,6 +1,6 @@
 <template>
 <div>
-    <p>Please decide how to map Acquisition Date to BIDS series ID. You can leave it blank if your study does not consists of multiple sessions.</p>
+    <p>Please update how we are going to map your SeriesDescription to BIDS datatype.</p>
     <el-table :data="$root.series" style="width: 100%" size="mini" class="series-table">
         <el-table-column label="Include" width="100">
             <template slot-scope="scope">

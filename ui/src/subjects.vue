@@ -1,6 +1,6 @@
 <template>
 <div>
-    <p>Please decide how you'd like to map DICOM PatientID to BIDS Subject IDs. You can download the mapping table later.</p>
+    <p>Decide how you want to map DICOM PatientID to BIDS Subject ID. You can download the mapping table later.</p>
     <br>
 
     <el-dropdown @command="resetSubjects" style="float: right;" size="small">

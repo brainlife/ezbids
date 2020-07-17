@@ -42,6 +42,9 @@
             </el-collapse-item>
             <el-collapse-item title="Objects" name="list" v-if="$root.session.status == 'analyzed'">
                 <pre class="text">{{list}}</pre>
+                <div v-if="config.debug">
+                    <pre>{{this.$root.objects}}</pre>
+                </div>
             </el-collapse-item>
         </el-collapse>
     </div>
@@ -51,6 +54,7 @@
 <script>
 
 //import store from './store'
+import Vue from 'vue'
 
 export default {
     //store,
@@ -62,6 +66,7 @@ export default {
             out: "",
             list: "",
             activeLogs: [],
+            config: Vue.config,
         }
     },
     created() {

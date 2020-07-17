@@ -26,6 +26,10 @@ import jsyaml from 'js-yaml';
 import Vuex from 'vuex'
 Vue.use(Vuex)
 
+if(process.env.NODE_ENV == "development") {
+    Vue.config.debug = true;
+}
+
 Vue.config.productionTip = false
 
 import App from './App.vue'
@@ -51,28 +55,28 @@ new Vue({
             //data from dan's script
             //site: "", 
             datasetDescription: {
-                "Name": "The mother of all experiments",
+                "Name": "",
                 "BIDSVersion": "1.4.0",
                 "DatasetType": "raw",
                 "License": "CC0",
                 "Authors": [
-                    "Paul Broca",
-                    "Carl Wernicke"
+                    "Soichi Hayashi",
+                    "Dan Levitas"
                 ],
-                "Acknowledgements": "Special thanks to Korbinian Brodmann for help in formatting this dataset in BIDS. We thank Alan Lloyd Hodgkin and Andrew Huxley for helpful comments and discussions about the experiment and manuscript; Hermann Ludwig Helmholtz for administrative support; and Claudius Galenus for providing data for the medial-to-lateral index analysis.",
-                "HowToAcknowledge": "Please cite this paper: https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
+                "Acknowledgements": "", //"Special thanks to Korbinian Brodmann for help in formatting this dataset in BIDS. We thank Alan Lloyd Hodgkin and Andrew Huxley for helpful comments and discussions about the experiment and manuscript; Hermann Ludwig Helmholtz for administrative support; and Claudius Galenus for providing data for the medial-to-lateral index analysis.",
+                "HowToAcknowledge": "", //"Please cite this paper: https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
                 "Funding": [
-                    "National Institute of Neuroscience Grant F378236MFH1",
-                    "National Institute of Neuroscience Grant 5RMZ0023106"
+                    //"National Institute of Neuroscience Grant F378236MFH1",
+                    //"National Institute of Neuroscience Grant 5RMZ0023106"
                 ],
                 "EthicsApprovals": [
-                    "Army Human Research Protections Office (Protocol ARL-20098-10051, ARL 12-040, and ARL 12-041)"
+                    //"Army Human Research Protections Office (Protocol ARL-20098-10051, ARL 12-040, and ARL 12-041)"
                 ],
                 "ReferencesAndLinks": [
-                    "https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
-                    "http://doi.org/1920.8/jndata.2015.7"
+                    //"https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
+                    //"http://doi.org/1920.8/jndata.2015.7"
                 ],
-                "DatasetDOI": "10.0.2.3/dfjj.10"
+                "DatasetDOI": "", //"10.0.2.3/dfjj.10"
             },
             readme: "", 
             //participants: {},
@@ -427,6 +431,15 @@ new Vue({
             case "func/bold":
                 if(!o.hierarchy.task) o.validationErrors.push("Task Name is required for func/bold");
             }
+
+            //try parsing items
+            o.items.forEach(item=>{
+                try {
+                    o.sidecar = JSON.parse(item.sidecar_json);
+                } catch (err) {
+                    o.validationErrors.push(err);
+                }
+            });
         },
 
         organizeObjects() {
@@ -479,6 +492,11 @@ new Vue({
 
                 this.subjects.forEach(subject=>{
                     Vue.set(subject, 'phenotype', {});
+                });
+                this.objects.forEach(object=>{
+                    object.items.forEach(item=>{
+                        Vue.set(item, 'sidecar_json', JSON.stringify(item.sidecar, null, 4));
+                    });
                 });
 
                 this.series.sort((a,b)=>a.id - b.id);

@@ -1,7 +1,6 @@
 <template>
 <div>
     <p>You can optionally store metadata/phenotypical data for each subject/participants on this datasets within your BIDS dataset.</p>
-    <p>This information allows you to perform group analysis with your data, for example.</p>
     <h4>Phenotype Columns</h4>
     <p>Define phenotypical keys stored for this study (optional).</p>
     <!--
