@@ -25,3 +25,5 @@ testdata
 barn
 nohup.out
 tsc.log
+
+api/config.json
