@@ -482,14 +482,6 @@ new Vue({
 
                 this.participantsColumn = conf.participantsColumn||{};
 
-                //massage some data - waiting for analyzer to get updated
-                this.series.forEach(series=>{
-                    //let snum = series.items[0].sidecar.SeriesNumber;
-                    //series.id = snum;
-                    series.include = (series.include == "true");
-                    //Vue.set(series, 'type', series.data_type+"/"+series.subdata_type);
-                });
-
                 this.subjects.forEach(subject=>{
                     Vue.set(subject, 'phenotype', {});
                 });
