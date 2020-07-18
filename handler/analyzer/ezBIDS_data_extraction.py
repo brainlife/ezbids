@@ -17,12 +17,12 @@ warnings.filterwarnings("ignore")
 
 #data_dir = '/media/data/ezbids/philips/spade'
 #data_dir = '/media/data/ezbids/ge/p28'
-#data_dir = '/media/data/ezbids/ge/20180918GE'
+data_dir = '/media/data/ezbids/ge/20180918GE'
 #data_dir = '/media/data/ezbids/philips/Tong_339037.3'
 #data_dir = '/media/data/ezbids/siemens/DAN_STD/DAN_STD_1000_dicoms'
 #data_dir = '/media/data/ezbids/siemens/soichi'
 
-data_dir = sys.argv[1]
+#data_dir = sys.argv[1]
 
 
 def extractor(data_dir):
@@ -98,7 +98,16 @@ def extractor(data_dir):
             volume_count = nib.load('{}/{}'.format(data_dir,json_list[j][:-4] + 'nii.gz')).shape[3]
         except:
             volume_count = 1
-                    
+            
+        paths = nifti_paths_for_json + ['{}/{}'.format(data_dir,json_list[j])]
+        
+        names = []
+        for p in range(len(paths)):
+            if paths[p].split('.')[-1] == 'gz':
+                names.append('nii.gz')
+            else:
+                names.append(paths[p].split('.')[-1])
+            
         
         mapping_dic = {'StudyID': json_data['StudyID'], 
                'PatientID': subjID, 
@@ -125,9 +134,10 @@ def extractor(data_dir):
                "VolumeCount": volume_count,
                'error': 'N/A',
                'qc': '',
-               'path': json_list[j],
-               'paths': nifti_paths_for_json,
-               'sidecar':json_data 
+               'path': nifti_paths_for_json,
+               'paths': paths,
+               'names': names,
+               'sidecar':json_data
                }
         data_list.append(mapping_dic)
         
@@ -327,8 +337,8 @@ def extractor(data_dir):
                        "items": [
                                {
                                    "path": data_list_unique_SD[i]['path'],
-                                   "sidecar": data_list_unique_SD[i]['sidecar'],
-                                   'paths': data_list_unique_SD[i]['paths']
+                                   "names": data_list_unique_SD[i]['names'],
+                                   "sidecar": data_list_unique_SD[i]['sidecar']
                                 }
                             ],
                        "analysisResults": {
