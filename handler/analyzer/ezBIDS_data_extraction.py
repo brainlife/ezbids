@@ -12,8 +12,12 @@ import pandas as pd
 import numpy as np
 from nilearn.image import load_img, index_img
 from nilearn.plotting import plot_img
+import matplotlib
+
 
 warnings.filterwarnings("ignore")
+#Force matplotlib to not use any Xwindows backend.
+matplotlib.use('Agg')
 
 #data_dir = '/media/data/ezbids/philips/spade'
 #data_dir = '/media/data/ezbids/ge/p28'
