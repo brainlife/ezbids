@@ -7,7 +7,7 @@ Created on Fri Jun 26 08:37:56 2020
 """
 
 
-import os, sys, json, warnings
+import os, sys, re, json, warnings
 import pandas as pd
 import numpy as np
 from nilearn.image import load_img, index_img
@@ -15,10 +15,12 @@ from nilearn.plotting import plot_img
 
 warnings.filterwarnings("ignore")
 
-
 #data_dir = '/media/data/ezbids/philips/spade'
 #data_dir = '/media/data/ezbids/ge/p28'
-#data_dir = '/media/data/ezbids/siemens/DAN_STD_1000_dicoms'
+#data_dir = '/media/data/ezbids/ge/20180918GE'
+#data_dir = '/media/data/ezbids/philips/Tong_339037.3'
+#data_dir = '/media/data/ezbids/siemens/DAN_STD/DAN_STD_1000_dicoms'
+#data_dir = '/media/data/ezbids/siemens/soichi'
 
 data_dir = sys.argv[1]
 
@@ -29,26 +31,30 @@ def extractor(data_dir):
     dir_list = pd.read_csv('{}/list'.format(data_dir), header=None)
     dir_list.columns = ['path']
     sn_list = []
+    new_sn_list = []
     for d in range(len(dir_list)):
         try:
-            sn = int(dir_list.path[d].split('sn-')[1].split('.')[0])
+            sn = dir_list.path[d].split('sn-')[1].split('.')[0]
+            sn_list.append(sn)
         except:
-            sn = int(dir_list.path[d].split('sn-')[-1].split('_')[0])
+            sn = dir_list.path[d].split('sn-')[-1].split('_')[0]
+            sn_list.append(sn)
             
-        if sn < 10:
-            new_sn = '0' + str(sn)
+        if int(re.match(r"([0-9]+)",sn).group()) < 10:
+            new_sn = '0' + sn
         else:
-            new_sn = str(sn)
+            new_sn = sn
             
-        sn_list.append(new_sn)
+        new_sn_list.append(new_sn)
         
     dir_list['sn'] = pd.Series(sn_list, index=dir_list.index)
-    dir_list.sort_values(by='sn', inplace=True, ignore_index=True)
+    dir_list['new_sn'] = pd.Series(new_sn_list, index=dir_list.index)
+    dir_list.sort_values(by='new_sn', inplace=True, ignore_index=True)
     
     #Get nifti and json file lists
     json_list = [x.split('./')[-1] for x in dir_list['path'] if '.json' in x and 'ezbids' not in x]
     nifti_list = [x.split('./')[-1] for x in dir_list['path'] if '.nii.gz' in x or '.bval' in x or '.bvec' in x]    
-    
+    SNs_list = [dir_list['sn'][x] for x in range(len(dir_list['sn'])) if '.json' in dir_list['path'][x]]
     
     participantsColumn = {"sex": {"LongName": "gender", "Description": "generic gender field", "Levels": {"M": "male", "F": "female"}},
                           "age": {"LongName": "age", "Units": "years"}}
@@ -58,6 +64,8 @@ def extractor(data_dir):
     for j in range(len(json_list)):
         json_data = open('{}/{}'.format(data_dir, json_list[j]))
         json_data = json.load(json_data, strict=False)
+        
+        SN = SNs_list[j]
         
         try:
             phase_encoding_direction = json_data['PhaseEncodingDirection']
@@ -75,7 +83,8 @@ def extractor(data_dir):
             PED = ''
             
         # nifti_paths_for_json = [x for x in nifti_list if '{}-sn-{}'.format(json_list[j].split('-sn-')[0], str(json_data['SeriesNumber'])) in x]
-        nifti_paths_for_json = ['{}/{}'.format(data_dir,x) for x in nifti_list if '{}sn-{}.'.format(json_list[j].split('sn-')[0], str(json_data['SeriesNumber'])) in x or '{}sn-{}_'.format(json_list[j].split('sn-')[0], str(json_data['SeriesNumber'])) in x]
+        # nifti_paths_for_json = ['{}/{}'.format(data_dir,x) for x in nifti_list if '{}sn-{}.'.format(json_list[j].split('sn-')[0], str(json_data['SeriesNumber'])) in x or '{}sn-{}_'.format(json_list[j].split('sn-')[0], str(json_data['SeriesNumber'])) in x]
+        nifti_paths_for_json = ['{}/{}'.format(data_dir,x) for x in nifti_list if 'sn-{}.'.format(SN) in x or 'sn-{}_'.format(SN) in x]
         filesize = os.stat(nifti_paths_for_json[0]).st_size
         
         
@@ -141,12 +150,12 @@ def extractor(data_dir):
             series_number_list.append(SD['SeriesNumber'])
     
 
-    print('')
-    print(series_description_list)
-    print('')
+    # print('')
+    # print(series_number_list)
+    # print('')
     
     sbref_run = 1
-    func_run = 1  
+    func_run = 1
     dwi_run = 1
     participants_list = []
     series_list = []
@@ -246,7 +255,7 @@ def extractor(data_dir):
             labels['task'] = data_list_unique_SD[i]['TaskName']
             labels['acq'] = ''
             labels['ce'] = ''
-        elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func']):
+        elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func','FMRI','fMRI','fmri','EPI']):
             data_list_unique_SD[i]['DataType'] = 'func'
             data_list_unique_SD[i]['ModalityLabel'] = 'bold'
             data_list_unique_SD[i]['TaskName'] = ''
