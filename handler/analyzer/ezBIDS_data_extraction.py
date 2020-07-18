@@ -137,8 +137,6 @@ def extractor(data_dir):
                'dwi_run': '',
                'dir': PED,
                'TaskName': '',
-               'acq': '',
-               'ce': '',
                "include": True,
                'filesize': filesize,
                "VolumeCount": volume_count,
@@ -169,7 +167,6 @@ def extractor(data_dir):
             series_description_list.append(SD['SeriesDescription'])
             series_number_list.append(SD['SeriesNumber'])
     
-    
     sbref_run = 1
     func_run = 1
     dwi_run = 1
@@ -177,7 +174,6 @@ def extractor(data_dir):
     series_list = []
     objects_list = []
     
-        
     
     #if any(x in descriptions[d] for x in ['T1w','tfl3d','mprage','tfl_1084B']):
     #Let's try to auto-populate some of the BIDS fields
@@ -224,8 +220,6 @@ def extractor(data_dir):
             if 'NORM' in data_list_unique_SD[i]['ImageType']:
                 data_list_unique_SD[i]['DataType'] = 'anat'
                 data_list_unique_SD[i]['ModalityLabel'] = 'T1w'
-                labels['acq'] = ''
-                labels['ce'] = ''
             else:
               data_list_unique_SD[i]['include'] = False  
               data_list_unique_SD[i]['error'] = 'Acquisition is a poor resolution T1w; recommended not be converted to BIDS'
@@ -234,15 +228,11 @@ def extractor(data_dir):
         elif any(x in SD for x in ['T2W','T2w','t2w']):
             data_list_unique_SD[i]['DataType'] = 'anat'
             data_list_unique_SD[i]['ModalityLabel'] = 'T2w'
-            labels['acq'] = ''
-            labels['ce'] = ''
             
         #Check for FLAIR anatomical
         elif any(x in SD for x in ['FLAIR','Flair','flair','t2_space_da-fl']):
             data_list_unique_SD[i]['DataType'] = 'anat'
             data_list_unique_SD[i]['ModalityLabel'] = 'FLAIR'
-            labels['acq'] = ''
-            labels['ce'] = ''
             
         #Check for single-band reference (SBRef)
         elif any(x in SD for x in ['SBRef','sbref']):
@@ -256,8 +246,6 @@ def extractor(data_dir):
             data_list_unique_SD[i]['sidecar']['TaskName'] = 'rest'
             labels['run'] = str(data_list_unique_SD[i]['func_run'])
             labels['task'] = data_list_unique_SD[i]['TaskName']
-            labels['acq'] = ''
-            labels['ce'] = ''
             
         #Check for functional
         elif any(x in SD for x in ['REST','Rest','rest','RS']):
@@ -269,8 +257,7 @@ def extractor(data_dir):
             data_list_unique_SD[i]['sidecar']['TaskName'] = 'rest'
             labels['run'] = str(data_list_unique_SD[i]['func_run'])
             labels['task'] = data_list_unique_SD[i]['TaskName']
-            labels['acq'] = ''
-            labels['ce'] = ''
+
         elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func','FMRI','fMRI','fmri','EPI']):
             data_list_unique_SD[i]['DataType'] = 'func'
             data_list_unique_SD[i]['ModalityLabel'] = 'bold'
@@ -280,8 +267,6 @@ def extractor(data_dir):
             data_list_unique_SD[i]['sidecar']['TaskName'] = ''
             labels['run'] = str(data_list_unique_SD[i]['func_run'])
             labels['task'] = data_list_unique_SD[i]['TaskName']
-            labels['acq'] = ''
-            labels['ce'] = ''
         
         #Check for DWI
         elif any(x in SD for x in ['DWI','dwi','DTI','dti']):
@@ -291,8 +276,6 @@ def extractor(data_dir):
             dwi_run += 1
             labels['run'] = str(data_list_unique_SD[i]['dwi_run'])
             labels['dir'] = data_list_unique_SD[i]['dir']
-            labels['acq'] = ''
-            labels['ce'] = ''
         
         #Check for field maps
         elif any(x in SD for x in ['fmap','FieldMap','field_mapping']):
@@ -300,8 +283,6 @@ def extractor(data_dir):
             data_list_unique_SD[i]['ModalityLabel'] = 'epi'
             labels['run'] = str(data_list_unique_SD[i]['dwi_run'])
             labels['dir'] = data_list_unique_SD[i]['dir']
-            labels['acq'] = ''
-            labels['ce'] = ''
         
         #Can't determine acquisition type. Assume it's not BIDS
         else:
