@@ -109,14 +109,15 @@ def extractor(data_dir):
         paths_relative = nifti_paths_for_json_relative + ['{}/{}'.format(relative_root_level,json_list[j])]
         paths = nifti_paths_for_json_absolute + ['{}/{}'.format(data_dir,json_list[j])]
         
-        name = []
-        for p in range(len(paths)):
-            if paths[p].split('.')[-1] == 'gz':
-                name.append('nii.gz')
-            elif paths[p].split('.')[-1] == 'json':
-                pass
-            else:
-                name.append(paths[p].split('.')[-1])
+        # for p in range(len(paths)):
+        #     if paths[p].split('.')[-1] == 'gz':
+        #         name = 'nii.gz'
+        #     elif paths[p].split('.')[-1] == 'json':
+        #         name = ''
+        #     elif
+        #         name = paths[p].split('.')[-1]
+        
+        name = 'nii.gz'
             
         
         mapping_dic = {'StudyID': json_data['StudyID'], 
