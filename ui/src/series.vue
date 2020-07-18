@@ -7,7 +7,7 @@
                 <el-checkbox v-model="scope.row.include" title="Include this series in the BIDS output"/>
             </template>
         </el-table-column>
-        <el-table-column label="Series Description (id)" width="250">
+        <el-table-column label="Series Description (id)" width="300">
             <template slot-scope="scope">
                 <i class="el-icon-right" style="float: right"/>
                 {{scope.row.SeriesDescription}}

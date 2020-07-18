@@ -1,7 +1,7 @@
 <template>
 <div class="datatype" :class="{exclude: !o.include}" style="display: inline-block;">
     <span :style="{'background-color': color}" class="bull">&nbsp;</span> {{o.type}}
-    <el-tag v-for="(v,k) in o.labels" :key="k" size="mini" type="info"><small>{{k}}</small> <b>{{v.toUpperCase()}}</b></el-tag>
+    <el-tag v-for="(v,k) in o.labels" :key="k" size="mini" type="info"><small>{{k}}</small> <b>{{v}}</b></el-tag>
 </div>
 </template>
 

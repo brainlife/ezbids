@@ -337,7 +337,7 @@ export default {
     overflow: hidden;
 }
 .drop-area.dragging {
-    background-color: #9ef;
+    background-color: #999;
     color: white;
 }
 .drop-area-backdrop {

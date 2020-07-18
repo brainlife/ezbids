@@ -1,6 +1,8 @@
 <template>
 <div>
     <div v-if="$root.session">
+        <el-button type="secondary" @click="$root.reset()" size="small" style="float: right;">Re-upload</el-button>
+
         <!--<small>{{this.$root.session}}</small>-->
         <div v-if="$root.session.status == 'uploaded'">
             <p>Waiting to be analyzed...</p>
@@ -29,9 +31,6 @@
             <p>All done!</p>
         </div>
 
-        <p>
-            <el-button type="secondary" @click="$root.reset()" size="small">Re-upload</el-button>
-        </p>
 
         <el-collapse v-model="activeLogs" @change="logChange">
             <el-collapse-item title="Log" name="out">
@@ -42,7 +41,12 @@
             </el-collapse-item>
             <el-collapse-item title="Objects" name="list" v-if="$root.session.status == 'analyzed'">
                 <pre class="text">{{list}}</pre>
-                <div v-if="config.debug">
+
+                <!--<div v-if="config.debug">-->
+                <div>
+                    <h3>Series</h3>
+                    <pre>{{this.$root.series}}</pre>
+                    <h3>Objects</h3>
                     <pre>{{this.$root.objects}}</pre>
                 </div>
             </el-collapse-item>

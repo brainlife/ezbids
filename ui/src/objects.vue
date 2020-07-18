@@ -80,16 +80,17 @@
                             <el-input v-model="o.labels.task" size="small" @change="validateAndCheck(o)" required/>
                         </el-form-item>
 
-                        <el-form-item v-for="(item, idx) in o.items" :key="idx" :label="item.id">
-                            <el-select v-model="item.path" placeholder="Source path" size="small" style="width: 100%">
-                                <el-option v-for="(path, idx) in o.paths" :key="idx" :label="path" :value="path"/>
-                            </el-select>
-                            <div v-if="item.sidecar" style="box-shadow: 1px 1px 3px #0002; border-radius: 5px; padding: 10px; background-color: #fcfcfc;">
-                                <b style="opacity: 0.5;">Sidecar</b>
+                        <div v-for="(item, idx) in o.items" :key="idx">
+                            <el-form-item :label="item.name||'noname'">
+                                <el-select v-model="item.path" placeholder="Source path" size="small" style="width: 100%">
+                                    <el-option v-for="(path, idx) in o.paths" :key="idx" :label="path" :value="path"/>
+                                </el-select>
+                            </el-form-item>
+                            <el-form-item v-if="item.sidecar" label="Sidecar">
                                 <!--<kveditor :kv="item.sidecar"/>-->
                                 <kveditor :item="item" @change="validateAndCheck(o)"/>
-                            </div>
-                         </el-form-item>
+                            </el-form-item>
+                        </div>
                     </div>
                  </el-form>
             </div>
