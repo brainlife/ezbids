@@ -105,12 +105,14 @@ def extractor(data_dir):
             
         paths = nifti_paths_for_json + ['{}/{}'.format(data_dir,json_list[j])]
         
-        names = []
+        name = []
         for p in range(len(paths)):
             if paths[p].split('.')[-1] == 'gz':
-                names.append('nii.gz')
+                name.append('nii.gz')
+            elif paths[p].split('.')[-1] == 'json':
+                pass
             else:
-                names.append(paths[p].split('.')[-1])
+                name.append(paths[p].split('.')[-1])
             
         
         mapping_dic = {'StudyID': json_data['StudyID'], 
@@ -140,7 +142,7 @@ def extractor(data_dir):
                'qc': '',
                'path': nifti_paths_for_json,
                'paths': paths,
-               'names': names,
+               'name': name,
                'sidecar':json_data
                }
         data_list.append(mapping_dic)
@@ -341,7 +343,7 @@ def extractor(data_dir):
                        "items": [
                                {
                                    "path": data_list_unique_SD[i]['path'],
-                                   "names": data_list_unique_SD[i]['names'],
+                                   "name": data_list_unique_SD[i]['name'],
                                    "sidecar": data_list_unique_SD[i]['sidecar']
                                 }
                             ],
