@@ -55,6 +55,8 @@ def extractor(data_dir):
     dir_list['new_sn'] = pd.Series(new_sn_list, index=dir_list.index)
     dir_list.sort_values(by='new_sn', inplace=True, ignore_index=True)
     
+    relative_root_level = data_dir.split('/')[-1]
+    
     #Get nifti and json file lists
     json_list = [x.split('./')[-1] for x in dir_list['path'] if '.json' in x and 'ezbids' not in x]
     nifti_list = [x.split('./')[-1] for x in dir_list['path'] if '.nii.gz' in x or '.bval' in x or '.bvec' in x]    
@@ -88,8 +90,9 @@ def extractor(data_dir):
             
         # nifti_paths_for_json = [x for x in nifti_list if '{}-sn-{}'.format(json_list[j].split('-sn-')[0], str(json_data['SeriesNumber'])) in x]
         # nifti_paths_for_json = ['{}/{}'.format(data_dir,x) for x in nifti_list if '{}sn-{}.'.format(json_list[j].split('sn-')[0], str(json_data['SeriesNumber'])) in x or '{}sn-{}_'.format(json_list[j].split('sn-')[0], str(json_data['SeriesNumber'])) in x]
-        nifti_paths_for_json = ['{}/{}'.format(data_dir,x) for x in nifti_list if 'sn-{}.'.format(SN) in x or 'sn-{}_'.format(SN) in x]
-        filesize = os.stat(nifti_paths_for_json[0]).st_size
+        nifti_paths_for_json_relative = ['{}/{}'.format(relative_root_level,x) for x in nifti_list if 'sn-{}.'.format(SN) in x or 'sn-{}_'.format(SN) in x]
+        nifti_paths_for_json_absolute = ['{}/{}'.format(data_dir,x) for x in nifti_list if 'sn-{}.'.format(SN) in x or 'sn-{}_'.format(SN) in x]
+        filesize = os.stat(nifti_paths_for_json_absolute[0]).st_size
         
         
         try:
@@ -103,7 +106,8 @@ def extractor(data_dir):
         except:
             volume_count = 1
             
-        paths = nifti_paths_for_json + ['{}/{}'.format(data_dir,json_list[j])]
+        paths_relative = nifti_paths_for_json_relative + ['{}/{}'.format(relative_root_level,json_list[j])]
+        paths = nifti_paths_for_json_absolute + ['{}/{}'.format(data_dir,json_list[j])]
         
         name = []
         for p in range(len(paths)):
@@ -140,8 +144,8 @@ def extractor(data_dir):
                "VolumeCount": volume_count,
                'error': 'N/A',
                'qc': '',
-               'path': nifti_paths_for_json,
-               'paths': paths,
+               'path': nifti_paths_for_json_absolute,
+               'paths': paths_relative,
                'name': name,
                'sidecar':json_data
                }
@@ -165,10 +169,6 @@ def extractor(data_dir):
             series_description_list.append(SD['SeriesDescription'])
             series_number_list.append(SD['SeriesNumber'])
     
-
-    # print('')
-    # print(series_number_list)
-    # print('')
     
     sbref_run = 1
     func_run = 1
@@ -183,15 +183,15 @@ def extractor(data_dir):
     #Let's try to auto-populate some of the BIDS fields
     for i in range(len(data_list_unique_SD)):
         
-        if not os.path.isfile('{}.png'.format(data_list_unique_SD[i]['paths'][0][:-7])):
-            img = load_img(data_list_unique_SD[i]['paths'][0])
+        if not os.path.isfile('{}.png'.format(data_list_unique_SD[i]['path'][0][:-7])):
+            img = load_img(data_list_unique_SD[i]['path'][0])
             if img.ndim == 4:
                 ref_img = index_img(img, -1)
             else:
                 ref_img = img
             plot_img(ref_img, colorbar=False, display_mode='x', cut_coords=1, 
                      draw_cross=False, annotate=False, threshold=None, 
-                     output_file='{}.png'.format(data_list_unique_SD[i]['paths'][0][:-7]))
+                     output_file='{}.png'.format(data_list_unique_SD[i]['path'][0][:-7]))
             
             # if not os.path.isfile('{}/{}_screenshot.png'.format(data_dir, data_list_unique_SD[i]['paths'][0].split('/')[-1].split('.nii.gz')[0])): 
             #     os.system('fsleyes render --scene ortho --hidey --hidez --hideCursor \
