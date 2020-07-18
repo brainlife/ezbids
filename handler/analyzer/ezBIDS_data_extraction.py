@@ -17,12 +17,12 @@ warnings.filterwarnings("ignore")
 
 #data_dir = '/media/data/ezbids/philips/spade'
 #data_dir = '/media/data/ezbids/ge/p28'
-data_dir = '/media/data/ezbids/ge/20180918GE'
+#data_dir = '/media/data/ezbids/ge/20180918GE'
 #data_dir = '/media/data/ezbids/philips/Tong_339037.3'
 #data_dir = '/media/data/ezbids/siemens/DAN_STD/DAN_STD_1000_dicoms'
 #data_dir = '/media/data/ezbids/siemens/soichi'
 
-#data_dir = sys.argv[1]
+data_dir = sys.argv[1]
 
 
 def extractor(data_dir):
@@ -245,10 +245,10 @@ def extractor(data_dir):
             if any(x in SD for x in ['REST','Rest','rest','RS']):
                 data_list_unique_SD[i]['TaskName'] = 'rest'
                 data_list_unique_SD[i]['sidecar']['TaskName'] = 'rest' 
-            data_list_unique_SD[i]['func_run'] = func_run
+            data_list_unique_SD[i]['func_run'] = str(func_run)
             sbref_run +=1
             data_list_unique_SD[i]['sidecar']['TaskName'] = 'rest'
-            labels['run'] = data_list_unique_SD[i]['func_run']
+            labels['run'] = str(data_list_unique_SD[i]['func_run'])
             labels['task'] = data_list_unique_SD[i]['TaskName']
             labels['acq'] = ''
             labels['ce'] = ''
@@ -258,10 +258,10 @@ def extractor(data_dir):
             data_list_unique_SD[i]['DataType'] = 'func'
             data_list_unique_SD[i]['ModalityLabel'] = 'bold'
             data_list_unique_SD[i]['TaskName'] = 'rest'
-            data_list_unique_SD[i]['func_run'] = func_run
+            data_list_unique_SD[i]['func_run'] = str(func_run)
             func_run +=1
             data_list_unique_SD[i]['sidecar']['TaskName'] = 'rest'
-            labels['run'] = data_list_unique_SD[i]['func_run']
+            labels['run'] = str(data_list_unique_SD[i]['func_run'])
             labels['task'] = data_list_unique_SD[i]['TaskName']
             labels['acq'] = ''
             labels['ce'] = ''
@@ -269,10 +269,10 @@ def extractor(data_dir):
             data_list_unique_SD[i]['DataType'] = 'func'
             data_list_unique_SD[i]['ModalityLabel'] = 'bold'
             data_list_unique_SD[i]['TaskName'] = ''
-            data_list_unique_SD[i]['func_run'] = func_run
+            data_list_unique_SD[i]['func_run'] = str(func_run)
             func_run +=1
             data_list_unique_SD[i]['sidecar']['TaskName'] = ''
-            labels['run'] = data_list_unique_SD[i]['func_run']
+            labels['run'] = str(data_list_unique_SD[i]['func_run'])
             labels['task'] = data_list_unique_SD[i]['TaskName']
             labels['acq'] = ''
             labels['ce'] = ''
@@ -281,9 +281,9 @@ def extractor(data_dir):
         elif any(x in SD for x in ['DWI','dwi','DTI','dti']):
             data_list_unique_SD[i]['DataType'] = 'dwi'
             data_list_unique_SD[i]['ModalityLabel'] = 'dwi'
-            data_list_unique_SD[i]['dwi_run'] = dwi_run
+            data_list_unique_SD[i]['dwi_run'] = str(dwi_run)
             dwi_run += 1
-            labels['run'] = data_list_unique_SD[i]['dwi_run']
+            labels['run'] = str(data_list_unique_SD[i]['dwi_run'])
             labels['dir'] = data_list_unique_SD[i]['dir']
             labels['acq'] = ''
             labels['ce'] = ''
@@ -292,7 +292,7 @@ def extractor(data_dir):
         elif any(x in SD for x in ['fmap','FieldMap','field_mapping']):
             data_list_unique_SD[i]['DataType'] = 'fmap'
             data_list_unique_SD[i]['ModalityLabel'] = 'epi'
-            labels['run'] = data_list_unique_SD[i]['dwi_run']
+            labels['run'] = str(data_list_unique_SD[i]['dwi_run'])
             labels['dir'] = data_list_unique_SD[i]['dir']
             labels['acq'] = ''
             labels['ce'] = ''
@@ -303,9 +303,9 @@ def extractor(data_dir):
             data_list_unique_SD[i]['error'] = 'Cannot determine acquisition type'
         
         if data_list_unique_SD[i]['ModalityLabel'] == 'dwi':
-            run = data_list_unique_SD[i]['dwi_run']
+            run =str( data_list_unique_SD[i]['dwi_run'])
         elif data_list_unique_SD[i]['ModalityLabel'] == 'bold':
-            run = data_list_unique_SD[i]['func_run']
+            run = str(data_list_unique_SD[i]['func_run'])
         else:
             run = ''
             
