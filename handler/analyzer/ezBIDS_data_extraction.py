@@ -68,7 +68,7 @@ def extractor(data_dir):
     #Parse through json data for pertinent information
     data_list = []
     for j in range(len(json_list)):
-        json_data = open('{}/{}'.format(data_dir, json_list[j]))
+        json_data = open('{}/{}'.format(data_dir.replace(relative_root_level,''), json_list[j]))
         json_data = json.load(json_data, strict=False)
         
         SN = SNs_list[j]
@@ -91,7 +91,7 @@ def extractor(data_dir):
         # nifti_paths_for_json = [x for x in nifti_list if '{}-sn-{}'.format(json_list[j].split('-sn-')[0], str(json_data['SeriesNumber'])) in x]
         # nifti_paths_for_json = ['{}/{}'.format(data_dir,x) for x in nifti_list if '{}sn-{}.'.format(json_list[j].split('sn-')[0], str(json_data['SeriesNumber'])) in x or '{}sn-{}_'.format(json_list[j].split('sn-')[0], str(json_data['SeriesNumber'])) in x]
         nifti_paths_for_json_relative = ['{}/{}'.format(relative_root_level,x) for x in nifti_list if 'sn-{}.'.format(SN) in x or 'sn-{}_'.format(SN) in x]
-        nifti_paths_for_json_absolute = ['{}/{}'.format(data_dir,x) for x in nifti_list if 'sn-{}.'.format(SN) in x or 'sn-{}_'.format(SN) in x]
+        nifti_paths_for_json_absolute = ['{}/{}'.format(data_dir.replace(relative_root_level, ''),x) for x in nifti_list if 'sn-{}.'.format(SN) in x or 'sn-{}_'.format(SN) in x]
         filesize = os.stat(nifti_paths_for_json_absolute[0]).st_size
         
         
