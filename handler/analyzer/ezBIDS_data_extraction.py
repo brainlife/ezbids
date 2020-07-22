@@ -68,7 +68,7 @@ def extractor(data_dir):
     #Parse through json data for pertinent information
     data_list = []
     for j in range(len(json_list)):
-        json_data = open('{}/{}'.format(data_dir.replace(relative_root_level,''), json_list[j]))
+        json_data = open('{}/{}'.format(data_dir.replace(relative_root_level,'')[:-1], json_list[j]))
         json_data = json.load(json_data, strict=False)
         
         SN = SNs_list[j]
