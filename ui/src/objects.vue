@@ -31,12 +31,10 @@
                 <el-alert type="error" v-for="(error, idx) in so.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
             </div>
 
-            <div style="float: right;">
-                <el-checkbox v-model="so.include" title="Include this object in the BIDS output" @change="validateAndCheck(so)">Include</el-checkbox>
-            </div>
-            <br clear="both"/>
-
             <el-form label-width="100px">
+                <el-form-item label="Include">
+                    <el-checkbox v-model="so.include" title="Include this object in the BIDS output" @change="validateAndCheck(so)">Include this object in BIDS output</el-checkbox>
+                </el-form-item>
 
                 <el-form-item label="Hierarchy">
                     <el-row :gutter="10">
@@ -93,6 +91,9 @@
                         </el-form-item>
                     </div>
                 </div>
+                <el-form-item v-if="so.pngPath" label="Thumbnail">
+                    <img :src="$root.apihost+'/download/'+$root.session._id+'/'+so.pngPath"/>
+                </el-form-item>
             </el-form>
             <pre v-if="config.debug">{{so}}</pre>
         </div><!--selected != null-->
