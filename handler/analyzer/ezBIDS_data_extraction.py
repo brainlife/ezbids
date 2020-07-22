@@ -19,7 +19,6 @@ warnings.filterwarnings("ignore")
 #Force matplotlib to not use any Xwindows backend.
 matplotlib.use('Agg')
 
-#data_dir = '/media/data/ezbids/ge/20180918GE_UI'
 data_dir = sys.argv[1]
 os.chdir(data_dir)
 
@@ -32,7 +31,6 @@ def extractor():
     sn_list = []
     new_sn_list = []
     for d in range(len(dir_list)):
-        # dir_list['path'][d] = dir_list['path'][d].split('./')[-1]
         
         try:
             sn = dir_list['path'][d].split('sn-')[1].split('.')[0]
