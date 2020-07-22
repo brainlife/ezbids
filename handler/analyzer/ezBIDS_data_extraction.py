@@ -19,7 +19,9 @@ warnings.filterwarnings("ignore")
 #Force matplotlib to not use any Xwindows backend.
 matplotlib.use('Agg')
 
-os.chdir(sys.argv[1])
+
+data_dir = sys.argv[1]
+os.chdir(data_dir)
 
 
 def extractor():
@@ -188,13 +190,6 @@ def extractor():
             plot_img(ref_img, colorbar=False, display_mode='x', cut_coords=1, 
                      draw_cross=False, annotate=False, threshold=None, 
                      output_file='{}.png'.format(data_list_unique_SD[i]['path'][0][:-7]))
-            
-            # if not os.path.isfile('{}/{}_screenshot.png'.format(data_dir, data_list_unique_SD[i]['paths'][0].split('/')[-1].split('.nii.gz')[0])): 
-            #     os.system('fsleyes render --scene ortho --hidey --hidez --hideCursor \
-            #             --outfile {}/{}_screenshot.png {}/{}'.format(data_dir, 
-            #             [x.split('.nii.gz')[0] for x in data_list_unique_SD[i]['paths'] if 'nii.gz' in x][0], 
-            #             data_dir, 
-            #             [x for x in data_list_unique_SD[i]['paths'] if '.nii.gz' in x][0]))
             
 
         participants_info = {data_list_unique_SD[i]['PatientID']:
