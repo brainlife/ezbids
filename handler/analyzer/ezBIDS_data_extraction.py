@@ -31,12 +31,16 @@ data_dir = sys.argv[1]
 
 def extractor(data_dir):
     
+    relative_root_level = data_dir.split('/')[-1]
+    
     #Organize the nifti/json files by their series number    
     dir_list = pd.read_csv('{}/list'.format(data_dir), header=None)
     dir_list.columns = ['path']
     sn_list = []
     new_sn_list = []
     for d in range(len(dir_list)):
+        dir_list['path'][d] = relative_root_level + '/' + dir_list['path'][d].split('./')[-1]
+        
         try:
             sn = dir_list.path[d].split('sn-')[1].split('.')[0]
             sn_list.append(sn)
@@ -55,12 +59,12 @@ def extractor(data_dir):
     dir_list['new_sn'] = pd.Series(new_sn_list, index=dir_list.index)
     dir_list.sort_values(by='new_sn', inplace=True, ignore_index=True)
     
-    relative_root_level = data_dir.split('/')[-1]
     
     #Get nifti and json file lists
-    json_list = [x.split('./')[-1] for x in dir_list['path'] if '.json' in x and 'ezbids' not in x]
+    json_list = [x for x in dir_list['path'] if '.json' in x and 'ezbids' not in x]
     nifti_list = [x.split('./')[-1] for x in dir_list['path'] if '.nii.gz' in x or '.bval' in x or '.bvec' in x]    
     SNs_list = [dir_list['sn'][x] for x in range(len(dir_list['sn'])) if '.json' in dir_list['path'][x]]
+    print(json_list)
     
     participantsColumn = {"sex": {"LongName": "gender", "Description": "generic gender field", "Levels": {"M": "male", "F": "female"}},
                           "age": {"LongName": "age", "Units": "years"}}
@@ -68,7 +72,8 @@ def extractor(data_dir):
     #Parse through json data for pertinent information
     data_list = []
     for j in range(len(json_list)):
-        json_data = open('{}/{}'.format(data_dir.replace(relative_root_level,'')[:-1], json_list[j]))
+        #json_data = open('{}/{}'.format(data_dir.replace(relative_root_level,'')[:-1], json_list[j]))
+        json_data = open(json_list[j])
         json_data = json.load(json_data, strict=False)
         
         SN = SNs_list[j]
