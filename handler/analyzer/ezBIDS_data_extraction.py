@@ -19,33 +19,27 @@ warnings.filterwarnings("ignore")
 #Force matplotlib to not use any Xwindows backend.
 matplotlib.use('Agg')
 
-#data_dir = '/media/data/ezbids/philips/spade'
-#data_dir = '/media/data/ezbids/ge/p28'
-#data_dir = '/media/data/ezbids/ge/20180918GE'
-#data_dir = '/media/data/ezbids/philips/Tong_339037.3'
-#data_dir = '/media/data/ezbids/siemens/DAN_STD/DAN_STD_1000_dicoms'
-#data_dir = '/media/data/ezbids/siemens/soichi'
-
-data_dir = sys.argv[1]
+os.chdir(sys.argv[1])
 
 
-def extractor(data_dir):
+def extractor():
     
     relative_root_level = data_dir.split('/')[-1]
     
     #Organize the nifti/json files by their series number    
-    dir_list = pd.read_csv('{}/list'.format(data_dir), header=None)
+    dir_list = pd.read_csv('list', header=None)
     dir_list.columns = ['path']
     sn_list = []
     new_sn_list = []
     for d in range(len(dir_list)):
-        dir_list['path'][d] = relative_root_level + '/' + dir_list['path'][d].split('./')[-1]
+        # dir_list['path'][d] = relative_root_level + '/' + dir_list['path'][d].split('./')[-1]
+        dir_list['path'][d] = dir_list['path'][d].split('./')[-1]
         
         try:
-            sn = dir_list.path[d].split('sn-')[1].split('.')[0]
+            sn = dir_list['path'][d].split('sn-')[1].split('.')[0]
             sn_list.append(sn)
         except:
-            sn = dir_list.path[d].split('sn-')[-1].split('_')[0]
+            sn = dir_list['path'][d].split('sn-')[-1].split('_')[0]
             sn_list.append(sn)
             
         if int(re.match(r"([0-9]+)",sn).group()) < 10:
@@ -58,13 +52,12 @@ def extractor(data_dir):
     dir_list['sn'] = pd.Series(sn_list, index=dir_list.index)
     dir_list['new_sn'] = pd.Series(new_sn_list, index=dir_list.index)
     dir_list.sort_values(by='new_sn', inplace=True, ignore_index=True)
-    
+        
     
     #Get nifti and json file lists
     json_list = [x for x in dir_list['path'] if '.json' in x and 'ezbids' not in x]
     nifti_list = [x.split('./')[-1] for x in dir_list['path'] if '.nii.gz' in x or '.bval' in x or '.bvec' in x]    
     SNs_list = [dir_list['sn'][x] for x in range(len(dir_list['sn'])) if '.json' in dir_list['path'][x]]
-    print(json_list)
     
     participantsColumn = {"sex": {"LongName": "gender", "Description": "generic gender field", "Levels": {"M": "male", "F": "female"}},
                           "age": {"LongName": "age", "Units": "years"}}
@@ -95,8 +88,9 @@ def extractor(data_dir):
             
         # nifti_paths_for_json = [x for x in nifti_list if '{}-sn-{}'.format(json_list[j].split('-sn-')[0], str(json_data['SeriesNumber'])) in x]
         # nifti_paths_for_json = ['{}/{}'.format(data_dir,x) for x in nifti_list if '{}sn-{}.'.format(json_list[j].split('sn-')[0], str(json_data['SeriesNumber'])) in x or '{}sn-{}_'.format(json_list[j].split('sn-')[0], str(json_data['SeriesNumber'])) in x]
-        nifti_paths_for_json_relative = ['{}/{}'.format(relative_root_level,x) for x in nifti_list if 'sn-{}.'.format(SN) in x or 'sn-{}_'.format(SN) in x]
-        nifti_paths_for_json_absolute = ['{}/{}'.format(data_dir.replace(relative_root_level, ''),x) for x in nifti_list if 'sn-{}.'.format(SN) in x or 'sn-{}_'.format(SN) in x]
+        nifti_paths_for_json_relative = ['{}/{}'.format(relative_root_level, x) for x in nifti_list if 'sn-{}.'.format(SN) in x or 'sn-{}_'.format(SN) in x]
+        nifti_paths_for_json_absolute = ['{}/{}'.format(os.getcwd(), x) for x in nifti_list if 'sn-{}.'.format(SN) in x or 'sn-{}_'.format(SN) in x]
+        
         filesize = os.stat(nifti_paths_for_json_absolute[0]).st_size
         
         
@@ -107,12 +101,12 @@ def extractor(data_dir):
             
             
         try:
-            volume_count = nib.load('{}/{}'.format(data_dir,json_list[j][:-4] + 'nii.gz')).shape[3]
+            volume_count = nib.load(json_list[j][:-4] + 'nii.gz').shape[3]
         except:
             volume_count = 1
             
         paths_relative = nifti_paths_for_json_relative + ['{}/{}'.format(relative_root_level,json_list[j])]
-        paths = nifti_paths_for_json_absolute + ['{}/{}'.format(data_dir,json_list[j])]
+        paths = nifti_paths_for_json_absolute + [json_list[j]]
         
         # for p in range(len(paths)):
         #     if paths[p].split('.')[-1] == 'gz':
@@ -355,14 +349,14 @@ def extractor(data_dir):
                   "objects": objects_list
                   }
 
-        ezBIDS_file_name = '{}/ezBIDS.json'.format(data_dir)
+        ezBIDS_file_name = 'ezBIDS.json'
         with open(ezBIDS_file_name, 'w') as fp: 
             json.dump(ezBIDS, fp, indent=3) 
             
     
     return dir_list, json_list, data_list, data_list_unique_SD
 
-dir_list, json_list, data_list, data_list_unique_SD = extractor(data_dir)
+dir_list, json_list, data_list, data_list_unique_SD = extractor()
     
     
     
