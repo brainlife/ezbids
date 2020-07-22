@@ -133,7 +133,7 @@ def extractor():
                "VolumeCount": volume_count,
                'error': 'N/A',
                'qc': '',
-               'path': nifti_paths_for_json,
+               'path': nifti_paths_for_json[0],
                'paths': paths,
                'pngPath': '',
                'name': name,
@@ -171,15 +171,15 @@ def extractor():
     #Let's try to auto-populate some of the BIDS fields
     for i in range(len(data_list_unique_SD)):
         
-        if not os.path.isfile('{}.png'.format(data_list_unique_SD[i]['path'][0][:-7])):
-            img = load_img(data_list_unique_SD[i]['path'][0])
+        if not os.path.isfile('{}.png'.format(data_list_unique_SD[i]['path'][:-7])):
+            img = load_img(data_list_unique_SD[i]['path'])
             if img.ndim == 4:
                 ref_img = index_img(img, -1)
             else:
                 ref_img = img
             plot_img(ref_img, colorbar=False, display_mode='ortho', 
                       draw_cross=False, annotate=False, threshold=None, 
-                      output_file='{}.png'.format(data_list_unique_SD[i]['path'][0][:-7]))
+                      output_file='{}.png'.format(data_list_unique_SD[i]['path'][:-7]))
                 
             
 
@@ -302,7 +302,7 @@ def extractor():
                        "SeriesNumber": data_list_unique_SD[i]['SeriesNumber'],
                        "PatientID": data_list_unique_SD[i]['PatientID'],
                        "AcquisitionDate": data_list_unique_SD[i]['AcquisitionDate'],
-                       "pngPath": '{}.png'.format(data_list_unique_SD[i]['path'][0][:-7]),
+                       "pngPath": '{}.png'.format(data_list_unique_SD[i]['path'][:-7]),
                        "hierarchy": {
                            "session": data_list_unique_SD[i]['SessionID']
                         },
