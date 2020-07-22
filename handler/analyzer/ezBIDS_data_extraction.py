@@ -19,14 +19,12 @@ warnings.filterwarnings("ignore")
 #Force matplotlib to not use any Xwindows backend.
 matplotlib.use('Agg')
 
-
+#data_dir = '/media/data/ezbids/ge/20180918GE_UI'
 data_dir = sys.argv[1]
 os.chdir(data_dir)
 
 
 def extractor():
-    
-    relative_root_level = data_dir.split('/')[-1]
     
     #Organize the nifti/json files by their series number    
     dir_list = pd.read_csv('list', header=None)
@@ -34,8 +32,7 @@ def extractor():
     sn_list = []
     new_sn_list = []
     for d in range(len(dir_list)):
-        # dir_list['path'][d] = relative_root_level + '/' + dir_list['path'][d].split('./')[-1]
-        dir_list['path'][d] = dir_list['path'][d].split('./')[-1]
+        # dir_list['path'][d] = dir_list['path'][d].split('./')[-1]
         
         try:
             sn = dir_list['path'][d].split('sn-')[1].split('.')[0]
@@ -58,7 +55,7 @@ def extractor():
     
     #Get nifti and json file lists
     json_list = [x for x in dir_list['path'] if '.json' in x and 'ezbids' not in x]
-    nifti_list = [x.split('./')[-1] for x in dir_list['path'] if '.nii.gz' in x or '.bval' in x or '.bvec' in x]    
+    nifti_list = [x for x in dir_list['path'] if '.nii.gz' in x or '.bval' in x or '.bvec' in x]    
     SNs_list = [dir_list['sn'][x] for x in range(len(dir_list['sn'])) if '.json' in dir_list['path'][x]]
     
     participantsColumn = {"sex": {"LongName": "gender", "Description": "generic gender field", "Levels": {"M": "male", "F": "female"}},
@@ -67,7 +64,6 @@ def extractor():
     #Parse through json data for pertinent information
     data_list = []
     for j in range(len(json_list)):
-        #json_data = open('{}/{}'.format(data_dir.replace(relative_root_level,'')[:-1], json_list[j]))
         json_data = open(json_list[j])
         json_data = json.load(json_data, strict=False)
         
@@ -88,12 +84,8 @@ def extractor():
         except:
             PED = ''
             
-        # nifti_paths_for_json = [x for x in nifti_list if '{}-sn-{}'.format(json_list[j].split('-sn-')[0], str(json_data['SeriesNumber'])) in x]
-        # nifti_paths_for_json = ['{}/{}'.format(data_dir,x) for x in nifti_list if '{}sn-{}.'.format(json_list[j].split('sn-')[0], str(json_data['SeriesNumber'])) in x or '{}sn-{}_'.format(json_list[j].split('sn-')[0], str(json_data['SeriesNumber'])) in x]
-        nifti_paths_for_json_relative = ['{}/{}'.format(relative_root_level, x) for x in nifti_list if 'sn-{}.'.format(SN) in x or 'sn-{}_'.format(SN) in x]
-        nifti_paths_for_json_absolute = ['{}/{}'.format(os.getcwd(), x) for x in nifti_list if 'sn-{}.'.format(SN) in x or 'sn-{}_'.format(SN) in x]
-        
-        filesize = os.stat(nifti_paths_for_json_absolute[0]).st_size
+        nifti_paths_for_json = [x for x in nifti_list if 'sn-{}.'.format(SN) in x or 'sn-{}_'.format(SN) in x]
+        filesize = os.stat(nifti_paths_for_json[0]).st_size
         
         
         try:
@@ -107,8 +99,7 @@ def extractor():
         except:
             volume_count = 1
             
-        paths_relative = nifti_paths_for_json_relative + ['{}/{}'.format(relative_root_level,json_list[j])]
-        paths = nifti_paths_for_json_absolute + [json_list[j]]
+        paths = nifti_paths_for_json + [json_list[j]]
         
         # for p in range(len(paths)):
         #     if paths[p].split('.')[-1] == 'gz':
@@ -144,8 +135,9 @@ def extractor():
                "VolumeCount": volume_count,
                'error': 'N/A',
                'qc': '',
-               'path': nifti_paths_for_json_absolute,
-               'paths': paths_relative,
+               'path': nifti_paths_for_json,
+               'paths': paths,
+               'pngPath': '',
                'name': name,
                'sidecar':json_data
                }
@@ -187,9 +179,10 @@ def extractor():
                 ref_img = index_img(img, -1)
             else:
                 ref_img = img
-            plot_img(ref_img, colorbar=False, display_mode='x', cut_coords=1, 
-                     draw_cross=False, annotate=False, threshold=None, 
-                     output_file='{}.png'.format(data_list_unique_SD[i]['path'][0][:-7]))
+            plot_img(ref_img, colorbar=False, display_mode='ortho', 
+                      draw_cross=False, annotate=False, threshold=None, 
+                      output_file='{}.png'.format(data_list_unique_SD[i]['path'][0][:-7]))
+                
             
 
         participants_info = {data_list_unique_SD[i]['PatientID']:
@@ -311,6 +304,7 @@ def extractor():
                        "SeriesNumber": data_list_unique_SD[i]['SeriesNumber'],
                        "PatientID": data_list_unique_SD[i]['PatientID'],
                        "AcquisitionDate": data_list_unique_SD[i]['AcquisitionDate'],
+                       "pngPath": '{}.png'.format(data_list_unique_SD[i]['path'][0][:-7]),
                        "hierarchy": {
                            "session": data_list_unique_SD[i]['SessionID']
                         },
