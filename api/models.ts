@@ -45,9 +45,9 @@ var sessionSchema = mongoose.Schema({
 
     //failed
 
-
     status_msg: String,
 
+    /*
     files: [{
         idx: Number,
         name: String,
@@ -55,6 +55,7 @@ var sessionSchema = mongoose.Schema({
         path: String,      
         _upload: Object, //set when the file is uploaded.. just to store some extra information from multer
     }],
+    */
 
     //workdir: String, //directory containing uploaded file structure
 

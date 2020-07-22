@@ -94,10 +94,19 @@ new Vue({
             datatypes: [], //datatype catalog from bids-specification
 
             uploadFailed: false,
+
             session: null, //created when upload begins
-            //status... created / uploaded / preprocessing / analyzed / failed / finalized / bidsing / finished
+            //session.status... 
+            //      created
+            //      uploaded
+            //      preprocessing
+            //      analyzed
+            //      failed
+            //      finalized
+            //      bidsing
+            //      finished
+
             analyzed: false,
-            //loaded: false, //loaded ezBIDS from analyzer
             validated: false,
             finalized: false,
             finished: false,

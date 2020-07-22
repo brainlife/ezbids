@@ -28,6 +28,7 @@ var corsOptionsDelegate = function (req, callback) {
 }
 app.use(cors(corsOptionsDelegate));
 */
+//app.use(express.json({ limit: 10*1000000 })); //file list from session might be quite large..
 app.use(cors());
 app.use(compression());
 app.use(nocache());

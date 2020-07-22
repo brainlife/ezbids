@@ -37,13 +37,6 @@ var sessionSchema = mongoose.Schema({
     //validating (waiting to be validated by the user)
     //failed
     status_msg: String,
-    files: [{
-            idx: Number,
-            name: String,
-            size: Number,
-            path: String,
-            _upload: Object,
-        }],
 });
 exports.Session = mongoose.model("Session", sessionSchema);
 //# sourceMappingURL=models.js.map

@@ -89,7 +89,7 @@ router.patch('/session/:session_id/finalize', (req, res, next) => {
         next(err);
     });
 });
-router.post('/upload/:session_id/:file_idx', upload.single('file'), (req, res, next) => {
+router.post('/upload/:session_id', upload.single('file'), (req, res, next) => {
     //console.debug(req.file);
     /* req.file
     { fieldname: 'file',
@@ -101,12 +101,13 @@ router.post('/upload/:session_id/:file_idx', upload.single('file'), (req, res, n
       path: '/tmp/ae91ece10c00b5007f96c934e09169c9',
       size: 5951638 }
     */
-    models.Session.find({ _id: req.params.session_id, }, { files: { $elemMatch: { idx: parseInt(req.params.file_idx) } } }).then(sessions => {
+    models.Session.find({ _id: req.params.session_id, }).then(sessions => {
         if (sessions.length == 0)
             return next("no such session");
         let session = sessions[0];
         let src_path = req.file.path;
-        let dirty_path = config.workdir + "/" + req.params.session_id + "/" + session.files[0].path;
+        //let dirty_path = config.workdir+"/"+req.params.session_id+"/"+session.files[0].path;
+        let dirty_path = config.workdir + "/" + req.params.session_id + "/" + req.body.path;
         let dest_path = path.resolve(dirty_path);
         if (!dest_path.startsWith(config.workdir))
             return next("invalid path");
@@ -117,13 +118,18 @@ router.post('/upload/:session_id/:file_idx', upload.single('file'), (req, res, n
             fs.rename(src_path, dest_path, err => {
                 if (err)
                     return next(err);
+                /*
                 //update session with some extra info
-                models.Session.update({ _id: req.params.session_id, "files.idx": req.params.file_idx }, { $set: {
+                models.Session.update({ _id: req.params.session_id, "files.idx": req.params.file_idx},
+                    {$set: {
                         "files.$._upload": req.file,
                         "files.$._workpath": dest_path,
-                    } }).then(err => {
+                    }}
+                ).then(err=>{
                     res.send("ok");
                 });
+                */
+                res.send("ok");
             });
         });
     }).catch(err => {

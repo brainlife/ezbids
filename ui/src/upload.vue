@@ -26,7 +26,10 @@
     <div v-if="$root.session">
         <div v-if="$root.session.status == 'created'">
             <h3>Uploading ...</h3>
-            <el-progress :text-inside="true" :stroke-width="24" :percentage="parseFloat(((uploaded.length/files.length)*100).toFixed(1))" status="success"></el-progress>
+            <el-progress status="success" 
+                :text-inside="true" 
+                :stroke-width="24" 
+                :percentage="parseFloat(((uploaded.length/files.length)*100).toFixed(1))"/>
 
             <div class="stats">
                 <p>
@@ -36,10 +39,8 @@
                 <ul>
                     <li v-for="idx in uploading" :key="idx">
                         <small>{{idx}}.</small>
-                        <!--{{files[idx].loaded}} / {{files[idx].size}}-->
-                        <!--{{files[idx].name}}-->
                         {{files[idx].path}} ({{loadedPercentage(idx)}}%)
-                        retry:{{files[idx].retry}}
+                        <span v-if="files[idx].retry > 0">retry:{{files[idx].retry}}</span>
                     </li>
                 </ul>
             </div>
@@ -66,7 +67,6 @@ export default {
         return {
             dragging: false,
             total_size: null,
-            //listing: false,
             files: [], //files to be uploaded (html5 file object)
 
             reload_t: null,
@@ -99,7 +99,6 @@ export default {
         },
 
         selectit(e) {
-            //this.listing = true;
             this.files = e.target.files;
             for(let file of e.target.files) {
                 file.path = file.webkitRelativePath;
@@ -109,7 +108,6 @@ export default {
 
         //Unlike file input(directory) selecter, I have to do some convoluted thing to get all the files that user drops...
         async listDropFiles(items) {
-            //this.listing = true;
             this.files = [];
             
             // Get all the entries (files or sub-directories) in a directory 
@@ -157,10 +155,8 @@ export default {
             while (queue.length > 0) {
                 let entry = queue.shift();
                 if (entry.isFile) {
-                    //console.dir(entry);
                     let file = await getFile(entry);
                     file.path = entry.fullPath.substring(1); //remove / prefix
-                    //file.that = entry.fullPath;
                     this.files.push(file);
                 } else if (entry.isDirectory) {
                     queue.push(...await readAllDirectoryEntries(entry.createReader()));
@@ -182,6 +178,7 @@ export default {
             }
 
             //construct session request body
+            /*
             let session_body = {files: []};
             for(let i = 0;i < this.files.length;++i) {
                 let file = this.files[i];
@@ -192,6 +189,7 @@ export default {
                     path: file.path,
                 });
             }
+            */
 
             //create new session
             const res = await fetch(this.$root.apihost+'/session', {
@@ -199,7 +197,7 @@ export default {
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(session_body),
+                //body: JSON.stringify(session_body),
             });
             this.$root.session = await res.json();
 
@@ -230,12 +228,7 @@ export default {
                 idx = i;
                 break;
             }
-            if(!file) {
-                //console.log("no more files to upload");
-                //console.log(this.uploaded);
-                //console.log(this.files);
-                return;
-            }
+            if(!file) return; //no more file
             this.uploading.push(idx);
 
             if(file.retry == 3) {
@@ -246,7 +239,8 @@ export default {
             try {
                 let data = new FormData();
                 data.append("file", file);
-                await axios.post(this.$root.apihost+'/upload/'+this.$root.session._id+'/'+idx, data, {
+                data.append("path", this.files[idx].path);
+                await axios.post(this.$root.apihost+'/upload/'+this.$root.session._id/*+'/'+idx*/, data, {
                     onUploadProgress: evt=>{
                         //this.$forceUpdate(); //I don't think we need it?
                         file.loaded = evt.loaded;
@@ -292,6 +286,7 @@ export default {
                 headers: { 'Content-Type': 'application/json' },
             });
             this.$root.session = await res.json();
+            //console.dir(this.$root.session);
 
             switch(this.$root.session.status) {
             case "created":

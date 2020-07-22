@@ -8,8 +8,15 @@
             <p>Waiting to be analyzed...</p>
         </div>
         <div v-if="$root.session.status == 'preprocessing'">
-            <p>Analyzing...</p>
-            <p><small>{{$root.session.status_msg}}</small></p>
+            <p v-if="$root.session.dicomDone && $root.session.dicomDone < $root.session.dicomCount">
+                Converting dicoms to nifti ...
+                <el-progress status="success" 
+                    :text-inside="true" 
+                    :stroke-width="24" 
+                    :percentage="($root.session.dicomDone / $root.session.dicomCount)*100"/>
+            </p>
+            <p v-else>Analyzing...</p>
+            <p><small><i>{{$root.session.status_msg}}</i></small></p>
         </div>
         <div v-if="$root.session.status == 'analyzed'">
             <p>Analysis complete! Please proceed to the next tab.</p>
@@ -41,7 +48,6 @@
             </el-collapse-item>
             <el-collapse-item title="Objects" name="list" v-if="$root.session.status == 'analyzed'">
                 <pre class="text">{{list}}</pre>
-
                 <!--<div v-if="config.debug">-->
                 <div>
                     <h3>Series</h3>
@@ -77,12 +83,6 @@ export default {
     },
 
     methods: {
-        /*
-        increment() {
-            this.$store.commit('increment')
-            console.log(this.$store.state.count);
-        }
-        */
         logChange() {
             if(this.activeLogs.includes("out")) {
                 if(!this.out) fetch(this.$root.apihost+'/session/'+this.$root.session._id+'/log').then(res=>res.text()).then(data=>{

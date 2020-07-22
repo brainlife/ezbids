@@ -5,10 +5,10 @@ exports.mongoose_debug = true;
 
 //multer incoming upload directory
 exports.multer = {
-    dest: "/mnt/datalad/easybids/upload",
+    dest: "/mnt/scratch/ezbids/upload",
 }
 //directory to copy uploaded files (it needs to be on the same filesystem as multer incoming dir)
-exports.workdir = "/mnt/datalad/easybids/workdir",
+exports.workdir = "/mnt/scratch/ezbids/workdir",
 
 exports.express = {
     host: "localhost",
