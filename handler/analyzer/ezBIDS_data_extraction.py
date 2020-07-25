@@ -8,18 +8,20 @@ Created on Fri Jun 26 08:37:56 2020
 
 
 import os, sys, re, json, warnings
+
+import matplotlib
+matplotlib.use('Agg') #had to be loaded before pyplot
+
 import pandas as pd
 import numpy as np
 import nibabel as nib
 from io import StringIO
 from nilearn.image import load_img, index_img
 from nilearn.plotting import plot_img
-import matplotlib
 
 
 warnings.filterwarnings("ignore")
 #Force matplotlib to not use any Xwindows backend.
-matplotlib.use('Agg')
 
 #data_dir = '/media/data/ezbids/siemens/20190520.Dan_STD_1025.9986@thwjames_DanSTD'
 #data_dir = '/media/data/ezbids/ge/20180918GE'

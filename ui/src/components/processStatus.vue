@@ -50,6 +50,8 @@
                 <pre class="text">{{list}}</pre>
                 <!--<div v-if="config.debug">-->
                 <div>
+                    <h3>Subjects</h3>
+                    <pre>{{this.$root.subjects}}</pre>
                     <h3>Series</h3>
                     <pre>{{this.$root.series}}</pre>
                     <h3>Objects</h3>

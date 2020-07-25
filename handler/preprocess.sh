@@ -41,6 +41,7 @@ cat $root/dcm2niix.list | parallel --wd $root -j 4 d2n {}
 #find products
 (cd $root && find . -type f \( -name "*.json" -o -name "*.nii.gz" \) > list)
 
+echo "running analyzer"
 time ./analyzer/run.sh $root
 
 echo "done preprocessing"

@@ -86,10 +86,24 @@ h1 {
     font-size: 20pt;
 }
 
-.el-table td.vtop {
+.el-table.table-align-top td {
     vertical-align: top;
 }
 .sub-title {
     opacity: 0.7;
 }
+.help-block {
+    line-height: 1.5;
+    opacity: 0.8;
+    font-size: 95%;
+    margin-top: 0;
+}
+.el-table .cell {
+word-break: normal;
+}
+/*
+.el-form-item__label {
+line-height: 1.5;
+}
+*/
 </style>

@@ -62,10 +62,10 @@ function handle_uploaded_session(session) {
             const logout = fs.openSync(workdir + "/preprocess.log", "w");
             const errout = fs.openSync(workdir + "/preprocess.err", "w");
             p.stdout.on('data', data => {
-                //console.log(data.toString("utf8"));
                 fs.writeSync(logout, data);
                 //let the monitor save out the last output
                 session.status_msg = data.toString("utf8").trim().split("\n").pop(); 
+                console.log(data.toString("utf8"));
             });
             p.stderr.on('data', data => {
                 fs.writeSync(errout, data);
@@ -153,4 +153,5 @@ function handle_finalized_session(session) {
         });
     });
 }
-//# sourceMappingURL=handler.js.map
+
+

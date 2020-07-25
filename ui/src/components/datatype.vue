@@ -1,7 +1,7 @@
 <template>
 <div class="datatype" :class="{exclude: !o.include}" style="display: inline-block;">
     <span :style="{'background-color': color}" class="bull">&nbsp;</span> {{o.type}}
-    <el-tag v-for="(v,k) in o.labels" :key="k" size="mini" type="info"><small>{{k}}</small> <b>{{v}}</b></el-tag>
+    <el-tag v-for="(v,k) in entities" :key="k" size="mini" type="info"><small>{{k}}-</small><b>{{v}}</b></el-tag>
 </div>
 </template>
 
@@ -14,23 +14,25 @@ export default {
             something: "whatever", 
         }
     },
+    method: {
+    },
     computed: {
+        entities() {
+            let ents = {};
+            for(let key in this.o.entities) {
+                if(key == "sub") continue; 
+                if(key == "ses") continue; 
+                if(this.o.entities[key] == "") continue;
+                ents[key] = this.o.entities[key];
+            }
+            return ents;
+        },
+
         color() {
             const hash = this.o.type.split("").reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0);return a&a},0); 
             const numhash = Math.abs(hash+12)%360;
             return "hsl("+(numhash%360)+", 50%, 55%)"; 
         },
-        /*
-        specialHierarchy() {
-            const kv = {};
-            let ignore = ["subject", "session", "run"];
-            for(let k in this.o.hierarchy) {
-                if(ignore.includes(k)) continue;
-                kv[k] = this.o.hierarchy[k]; 
-            }
-            return kv;
-        }
-        */
     },
 }
 

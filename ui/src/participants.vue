@@ -1,7 +1,8 @@
 <template>
 <div>
+    <h4>Participants Info</h4>
     <p>You can optionally store metadata/phenotypical data for each subject/participants on this datasets within your BIDS dataset.</p>
-    <h4>Phenotype Columns</h4>
+    <h5>Phenotype Columns</h5>
     <p>Define phenotypical keys stored for this study (optional).</p>
     <!--
     <el-input type="textarea"
@@ -37,7 +38,7 @@
     </p>
     <br clear="both">
 
-    <h4>phenotype.tsv</h4>
+    <h5>phenotype.tsv</h5>
     <p>Enter phenotypical data associated with each participants.</p>
     <el-table :data="$root.subjects" style="width: 100%" size="mini">
         <el-table-column label="Subject" width="200">

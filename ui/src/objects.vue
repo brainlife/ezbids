@@ -1,71 +1,51 @@
 <template>
 <div class="objects">
-    <el-row :gutter="10">
-    <el-col :span="8">
-        <h4>BIDS Structure</h4>
+    <p>Please make sure all subject/session/series mappings are correctly applied to your data.</p>
+    <div class="bids-structure">
+        <h5>BIDS Structure</h5>
         <div v-for="(o_sub, sub) in $root.subs" :key="sub" style="font-size: 90%;">
             <span v-if="sub != ''" class="hierarchy" style="opacity: 0.8;"><i class="el-icon-user-solid"/> <small>sub</small> {{sub}} <small>({{o_sub.objects.length}})</small></span>
-            <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}">
-                <span v-if="ses != ''" class="hierarchy" style="opacity: 0.8;"><i class="el-icon-time"/> <small>ses</small> {{ses}} <!--<small>({{o_ses.objects.length}})</small>--></span>
-                <div v-for="(o_run, run) in o_ses.runs" :key="run" class="hierarchy">
-                    <span v-if="run != ''" style="opacity: 0.8; padding-left: 8px;"><small>run</small> {{run}} <!--({{o_run.objects.length}})--></span>
-                    <!--
-                    <div class="left-border clickable" :class="{'selected': selected === o_run.objects}" @click="select(o_run.objects, sub, ses, run)">
-                    -->
-                    <div class="left-border">
-                        <div v-for="(o, idx) in o_run.objects" :key="idx" style="padding: 2px;" class="clickable" :class="{'selected': so === o}" @click="so = o">
-                            <datatype :o="o"/>
-                            <el-badge v-if="o.validationErrors.length > 0" type="danger" 
-                                :value="o.validationErrors.length" 
-                                style="margin-left: 5px;"/>
-                        </div>
+            <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}" class="left-border">
+                <span v-if="ses != ''" class="hierarchy" style="opacity: 0.8;"><i class="el-icon-time"/> <small>ses</small> {{ses}}</span>
+                <div v-for="(o_run, run) in o_ses.runs" :key="run">
+                    <div v-for="(o, idx) in o_run.objects" :key="idx" style="padding: 2px;" class="clickable" :class="{'selected': so === o}" @click="so = o">
+                        <el-tag type="info" size="mini"><small>{{o.SeriesNumber}}</small></el-tag>
+                        &nbsp;
+                        <datatype :o="o"/>
+                        <el-badge v-if="o.validationErrors.length > 0" type="danger" 
+                            :value="o.validationErrors.length" 
+                            style="margin-left: 5px;"/>
                     </div>
                 </div>
             </div>
         </div>
-    </el-col>
-    <el-col :span="16">
-        <p v-if="!so"><small>Please select data object to view/edit on the left.</small></p>
-        <div v-if="so" class="object">
+    </div>
+    <div class="object">
+        <p v-if="!so">
+            <br>
+            <br>
+            <br>
+            <br>
+            <br>
+            <br>
+            <i class="el-icon-back"/> <small>Please select an object to view/edit in the BIDS Structure list</small>
+        </p>
+        <div v-if="so">
             <div style="margin-bottom: 10px;">
                 <el-alert type="error" v-for="(error, idx) in so.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
             </div>
 
             <el-form label-width="100px">
                 <el-form-item label="Include">
-                    <el-checkbox v-model="so.include" title="Include this object in the BIDS output" @change="validateAndCheck(so)">Include this object in BIDS output</el-checkbox>
+                    <el-checkbox v-model="so.include" title="Include this object in the BIDS output" @change="update(so)">Include this object in BIDS output</el-checkbox>
                 </el-form-item>
 
-                <el-form-item label="Hierarchy">
-                    <el-row :gutter="10">
-                        <el-col :span="8">
-                            <!--
-                            <div class="sub-title">Subject</div>
-                            -->
-                            <el-input v-model="so.hierarchy.subject" @change="changeSelectedH" size="small">
-                                <template slot="prepend">Subject</template>
-                            </el-input>
-                        </el-col>
-                        <el-col :span="8">
-                            <el-input v-model="so.hierarchy.session" @change="changeSelectedH" size="small">
-                                <template slot="prepend">Session</template>
-                            </el-input>
-                        </el-col>
-                        <el-col :span="6">
-                            <el-input v-model="so.labels.run" @change="changeSelectedH" size="small">
-                                <template slot="prepend">Run</template>
-                            </el-input>
-                        </el-col>
-                    </el-row>
-                </el-form-item>
-
-                <br clear="both">
                 <div :class="{'object-exclude': !so.include}">
-                    <el-form-item label="Series" style="clear: both">
+                    <el-form-item label="Series">
                         {{so.SeriesDescription}}
                         <el-tag type="info" size="mini"><small>{{so.SeriesNumber}}</small></el-tag>
                     </el-form-item>
-                    <el-form-item label="Datatype" style="clear: both">
+                    <el-form-item label="Datatype">
                         <el-select v-model="so.type" placeholder="Modality" size="small" style="width: 100%">
                             <el-option-group v-for="type in $root.datatypes" :key="type.label" :label="type.label">
                                 <el-option v-for="subtype in type.options" :key="subtype.value" :value="subtype.value">
@@ -75,30 +55,42 @@
                         </el-select>
                     </el-form-item>
 
-                    <!-- datatype specific fields-->
-                    <el-form-item v-if="so.type.startsWith('func/')" label="Task Name">
-                        <el-input v-model="so.labels.task" size="small" @change="validateAndCheck(so)" required/>
-                    </el-form-item>
+                    <div style="width: 350px;">
+                        <el-form-item v-for="(v, entity) in getEntities(so.type)" :key="entity" 
+                            :label="entity+'-'+(v=='required'?' *':'')">
+                            <el-popover width="300" trigger="focus" placement="right-start"
+                                :title="$root.bids_entities[entity].name" 
+                                :content="$root.bids_entities[entity].description">
+                                <el-input slot="reference" v-model="so.entities[entity]" size="small" @blur="update(so)"/>
+                            </el-popover>
+                            <!--<el-input v-model="so.entities.sub" size="small"/>-->
+                        </el-form-item>
+                    </div>
 
-                    <div v-for="(item, idx) in so.items" :key="idx">
+                    <div v-for="(item, idx) in so.items" :key="idx" class="border-top">
                         <el-form-item :label="item.name||'noname'">
                             <el-select v-model="item.path" placeholder="Source path" size="small" style="width: 100%">
                                 <el-option v-for="(path, idx) in so.paths" :key="idx" :label="path" :value="path"/>
                             </el-select>
                         </el-form-item>
                         <el-form-item v-if="item.sidecar" label="Sidecar">
-                            <kveditor :item="item" @change="validateAndCheck(so)"/>
+                            <el-input type="textarea" rows="10" v-model="item.sidecar_json" @blur="update(so)"/>
+                        </el-form-item>
+                        <el-form-item v-if="item.headers" label="Nifti Headers (readonly)">
+                            <pre class="headers">{{item.headers}}</pre>
                         </el-form-item>
                     </div>
+
                 </div>
-                <el-form-item v-if="so.pngPath" label="Thumbnail">
-                    <img :src="$root.apihost+'/download/'+$root.session._id+'/'+so.pngPath"/>
-                </el-form-item>
+                <div style="margin-top: 5px; padding: 5px; background-color: #eee;">
+                    <el-form-item v-if="so.pngPath" label="Thumbnail">
+                        <img :src="$root.apihost+'/download/'+$root.session._id+'/'+so.pngPath"/>
+                    </el-form-item>
+                </div>
             </el-form>
             <pre v-if="config.debug">{{so}}</pre>
         </div><!--selected != null-->
-    </el-col>
-    </el-row>
+    </div><!--object-->
 </div>
 </template>
 
@@ -106,55 +98,39 @@
 
 import Vue from 'vue'
 
-import kveditor from '@/components/kveditor'
 import datatype from '@/components/datatype'
 
 export default {
-    //props: [ 'objects' ], 
-    //store,
     components: {
-        kveditor,
         datatype,
     },
     data() {
         return {
-            //selected: null,
-            //selected_sub: "",
-            //selected_ses: "",
-            //selected_run: "",
+            //showHelpAcq: false,
             so: null, //selected object
             config: Vue.config,
         }
     },
+    
+    mounted() {
+        //this.so = this.$root.objects[0];
+    },
 
     methods: {
-        /*
-        select(objects, sub, ses, run) {
-            this.selected = objects;
-            this.selected_sub = sub;
-            this.selected_ses = ses;
-            this.selected_run = run;
-        },
-        */
-
-        /*
-        changeSelectedH() {
-            this.selected.forEach(o=>{
-                o.hierarchy.subject = this.selected_sub;
-                o.hierarchy.session = this.selected_ses;
-                o.hierarchy.run = this.selected_run;
-            }); 
-            this.$root.organizeObjects();
-            
-            //find the selected objects again
-            this.selected = this.$root.subs[this.selected_sub].sess[this.selected_ses].runs[this.selected_run].objects;
-        },
-        */
-        changeSelectedH() {
-            this.$root.organizeObjects();
+        //same code in series / methods
+        getEntities(type) {
+            const modality = type.split("/")[0];
+            const suffix = type.split("/")[1];
+            let entities = {};
+            this.$root.bids_datatypes[modality].forEach(b=>{
+                if(b.suffixes.includes(suffix)) Object.assign(entities, b.entities);
+            });
+            return entities;
         },
 
-        validateAndCheck(o) { 
+        update(o) {
+            console.log("reorg/validate");
+            this.$root.organizeObjects();
             this.$root.validateObject(o);
             this.$root.validated = this.isAllValid(); 
         },
@@ -175,12 +151,21 @@ export default {
     },
 
     computed: {
-
     },
 }
 </script>
 
 <style scoped>
+.objects {
+position: relative;
+}
+.bids-structure {
+position: absolute;
+width: 275px;
+}
+.object {
+margin-left: 280px;
+}
 .item {
 padding-bottom: 5px;
 margin-bottom: 5px;
@@ -209,10 +194,6 @@ padding-top: 4px;
 .exclude {
 opacity: 0.5;
 }
-.object {
-margin: 5px 0;
-padding: 5px;
-}
 .object-exclude {
 opacity: 0.5;
 }
@@ -222,6 +203,22 @@ margin-bottom: 5px;
 }
 .el-form-item {
 margin-bottom: 0;
+}
+.border-top {
+border-top: 1px solid #d9d9d9; 
+padding-top: 2px; 
+margin-top: 2px;
+}
+pre.headers {
+height: 200px;
+overflow: auto;
+line-height: 1.5;
+border-radius: 5px;
+padding: 5px 15px;
+font-family: Avenir, Helvetica, Arial, sans-serif;
+font-size: inherit;
+background-color: #eee;
+color: #999;
 }
 </style>
 
