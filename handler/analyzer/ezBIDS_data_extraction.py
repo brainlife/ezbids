@@ -23,6 +23,7 @@ matplotlib.use('Agg')
 
 #data_dir = '/media/data/ezbids/siemens/20190520.Dan_STD_1025.9986@thwjames_DanSTD'
 #data_dir = '/media/data/ezbids/ge/20180918GE'
+#data_dir = '/media/data/ezbids/siemens/DAN_STD'
 data_dir = sys.argv[1]
 os.chdir(data_dir)
 
@@ -128,8 +129,10 @@ for j in range(len(json_list)):
            'RepetitionTime': json_data['RepetitionTime'],
            'DataType': '',
            'ModalityLabel': '',
+           'sbref_run': '',
            'func_run': '',
            'dwi_run': '',
+           'fmap_run': '',
            'dir': PED,
            'TaskName': 'rest',
            "include": True,
@@ -144,7 +147,8 @@ for j in range(len(json_list)):
            'nifti_name': nifti_name,
            'json_name': json_name,
            'headers': '',
-           'sidecar':json_data
+           'sidecar':json_data,
+           'second_check': ''
            }
     data_list.append(mapping_dic)
     
@@ -178,10 +182,13 @@ objects_list = []
 #Let's try to auto-populate some of the BIDS fields
 for i in range(len(data_list_unique_SD)):
     
-    s = StringIO()
-    sys.stdout = s
-    print(nib.load(data_list_unique_SD[i]['nifti_path']).header)
-    data_list_unique_SD[i]['headers'] = s.getvalue().splitlines()[1:]
+    
+    # s = StringIO()
+    # sys.stdout = s
+    # print(nib.load(data_list_unique_SD[i]['nifti_path']).header)
+    # data_list_unique_SD[i]['headers'] = s.getvalue().splitlines()[1:]
+    
+    data_list_unique_SD[i]['headers'] = ''
     
     if not os.path.isfile('{}.png'.format(data_list_unique_SD[i]['nifti_path'][:-7])):
         img = load_img(data_list_unique_SD[i]['nifti_path'])
@@ -206,24 +213,64 @@ for i in range(len(data_list_unique_SD)):
     
     SD = data_list_unique_SD[i]['SeriesDescription']
     
-    labels = {}
+    #Populate some labels fields (primarily based on ReproIn convention)
+    entities = {}
+    if 'sub-' in SD:
+        entities['sub'] = SD.split('sub-')[-1].split('_')[0]
+    else:
+        entities['sub'] = data_list_unique_SD[i]['PatientID']
+    
+    if '_ses-' in SD:
+        entities['ses'] = SD.split('_ses-')[-1].split('_')[0]
+    else:
+        entities['ses'] = data_list_unique_SD[i]['SessionID']
+        
+    if '_run-' in SD:
+        entities['run'] = SD.split('_run-')[-1].split('_')[0]
+    else:
+        entities['run'] = ''
+    
+    if '_acq-' in SD:
+        entities['acq'] = SD.split('_acq-')[-1].split('_')[0]
+    else:
+        entities['acq'] = ''
+        
+    if '_ce-' in SD:
+        entities['ce'] = SD.split('_ce-')[-1].split('_')[0]
+    else:
+        entities['ce'] = ''
+        
+    
+    try:
+        SequenceName = data_list_unique_SD[i]['sidecar']['SequenceName']
+    except:
+        SequenceName = ''
+        
+    try:
+        EchoTime = int(data_list_unique_SD[i]['sidecar']['EchoTime'])*1000
+    except:
+        EchoTime = 0
+    
+    fmap_intendedFor = []
     
     #Check for localizer(s)
     if any(x in SD for x in ['Localizer','localizer','Scout','scout']):
         data_list_unique_SD[i]['include'] = False
         data_list_unique_SD[i]['error'] = 'Acquisition appears to be a localizer; will not be converted to BIDS'
+        data_list_unique_SD[i]['second_check'] = 'no'
     
     #Check for T1w anatomical
-    elif any(x in SD for x in ['T1W','T1w','t1w','tfl3d','mprage','MPRAGE']):
+    elif any(x in SD for x in ['T1W','T1w','t1w','tfl3d','mprage','MPRAGE']) or 'tfl3d1_16ns' in SequenceName or (EchoTime <=10 and EchoTime > 0):
         if 'NORM' in data_list_unique_SD[i]['ImageType']:
             data_list_unique_SD[i]['DataType'] = 'anat'
             data_list_unique_SD[i]['ModalityLabel'] = 'T1w'
         else:
           data_list_unique_SD[i]['include'] = False  
           data_list_unique_SD[i]['error'] = 'Acquisition is a poor resolution T1w; recommended not be converted to BIDS'
-    
+          data_list_unique_SD[i]['second_check'] = 'no'
+          
     #Check for T2w anatomical
-    elif any(x in SD for x in ['T2W','T2w','t2w']):
+    elif any(x in SD for x in ['T2W','T2w','t2w']) or (EchoTime > 100):
         data_list_unique_SD[i]['DataType'] = 'anat'
         data_list_unique_SD[i]['ModalityLabel'] = 'T2w'
         
@@ -236,51 +283,59 @@ for i in range(len(data_list_unique_SD)):
     elif any(x in SD for x in ['SBRef','sbref']):
         data_list_unique_SD[i]['DataType'] = 'func'
         data_list_unique_SD[i]['ModalityLabel'] = 'sbref'
-        data_list_unique_SD[i]['func_run'] = str(func_run)
+        if entities['run'] == '':
+            if sbref_run < 10:
+                entities['run'] = '0' + str(sbref_run)
+            else:
+                entities['run'] = str(sbref_run)
         sbref_run +=1
-        labels['run'] = str(data_list_unique_SD[i]['func_run'])
-        if len(data_list_unique_SD[i]['SeriesDescription'].split('_task-')) > 1:
-            data_list_unique_SD[i]['TaskName'] = data_list_unique_SD[i]['SeriesDescription'].split('_task-')[-1].split('_')[0]
-            data_list_unique_SD[i]['sidecar']['TaskName'] = data_list_unique_SD[i]['SeriesDescription'].split('_task-')[-1].split('_')[0]
-            labels['task'] = data_list_unique_SD[i]['SeriesDescription'].split('_task-')[-1].split('_')[0]
+        if '_task-' in SD:
+            data_list_unique_SD[i]['TaskName'] = SD.split('_task-')[-1].split('_')[0]
+            data_list_unique_SD[i]['sidecar']['TaskName'] = SD.split('_task-')[-1].split('_')[0]
+            entities['task'] = SD.split('_task-')[-1].split('_')[0]
         else:
-            labels['task'] = 'rest'
+            entities['task'] = 'rest'
             
-        
     #Check for functional
-    elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func','FMRI','fMRI','fmri','EPI']):
+    elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func','FMRI','fMRI','fmri','EPI']) and ('SBRef' not in SD or 'sbref' not in SD):
         data_list_unique_SD[i]['DataType'] = 'func'
         data_list_unique_SD[i]['ModalityLabel'] = 'bold'
-        data_list_unique_SD[i]['func_run'] = str(func_run)
+        if entities['run'] == '':
+            if func_run < 10:
+                entities['run'] = '0' + str(func_run)
+            else:
+                entities['run'] = str(func_run)
         func_run +=1
-        labels['run'] = str(data_list_unique_SD[i]['func_run'])
-        if len(data_list_unique_SD[i]['SeriesDescription'].split('_task-')) > 1:
-            data_list_unique_SD[i]['TaskName'] = data_list_unique_SD[i]['SeriesDescription'].split('_task-')[-1].split('_')[0]
-            data_list_unique_SD[i]['sidecar']['TaskName'] = data_list_unique_SD[i]['SeriesDescription'].split('_task-')[-1].split('_')[0]
-            labels['task'] = data_list_unique_SD[i]['SeriesDescription'].split('_task-')[-1].split('_')[0]
+        if '_task-' in SD:
+            data_list_unique_SD[i]['TaskName'] = SD.split('_task-')[-1].split('_')[0]
+            data_list_unique_SD[i]['sidecar']['TaskName'] = SD.split('_task-')[-1].split('_')[0]
+            entities['task'] = SD.split('_task-')[-1].split('_')[0]
         else:
-            labels['task'] = 'rest'
+            entities['task'] = 'rest'
     
     #Check for DWI
-    elif any(x in SD for x in ['DWI','dwi','DTI','dti']):
+    elif any(x in SD for x in ['DWI','dwi','DTI','dti']) or 'ep_b' in SequenceName:
         data_list_unique_SD[i]['DataType'] = 'dwi'
         data_list_unique_SD[i]['ModalityLabel'] = 'dwi'
         data_list_unique_SD[i]['dwi_run'] = str(dwi_run)
+        entities['run'] = str(data_list_unique_SD[i]['dwi_run'])
         dwi_run += 1
-        labels['run'] = str(data_list_unique_SD[i]['dwi_run'])
-        labels['dir'] = data_list_unique_SD[i]['dir']
+        entities['dir'] = data_list_unique_SD[i]['dir']
     
     #Check for field maps
-    elif any(x in SD for x in ['fmap','FieldMap','field_mapping']):
+    elif any(x in SD for x in ['fmap','FieldMap','field_mapping']) or 'epse2d' in SequenceName:
         data_list_unique_SD[i]['DataType'] = 'fmap'
         data_list_unique_SD[i]['ModalityLabel'] = 'epi'
-        labels['run'] = str(data_list_unique_SD[i]['dwi_run'])
-        labels['dir'] = data_list_unique_SD[i]['dir']
+        entities['run'] = str(data_list_unique_SD[i]['dwi_run'])
+        entities['dir'] = data_list_unique_SD[i]['dir']
     
     #Can't determine acquisition type. Assume it's not BIDS
     else:
         data_list_unique_SD[i]['include'] = False
         data_list_unique_SD[i]['error'] = 'Cannot determine acquisition type'
+        data_list_unique_SD[i]['second_check'] = 'yes'
+        
+        
     
     if data_list_unique_SD[i]['ModalityLabel'] == 'dwi':
         run =str( data_list_unique_SD[i]['dwi_run'])
@@ -293,12 +348,11 @@ for i in range(len(data_list_unique_SD)):
         br_type = ''
     else:
         br_type = data_list_unique_SD[i]['DataType'] + '/' + data_list_unique_SD[i]['ModalityLabel']
-    
         
     series_info = {"include": data_list_unique_SD[i]['include'],
                    "SeriesDescription": SD,
                    "SeriesNumber": data_list_unique_SD[i]['SeriesNumber'],
-                   "labels": labels,
+                   "entities": entities,
                    "type": br_type
                    }
     series_list.append(series_info)
@@ -310,10 +364,7 @@ for i in range(len(data_list_unique_SD)):
                    "PatientID": data_list_unique_SD[i]['PatientID'],
                    "AcquisitionDate": data_list_unique_SD[i]['AcquisitionDate'],
                    "pngPath": '{}.png'.format(data_list_unique_SD[i]['nifti_path'][:-7]),
-                   "hierarchy": {
-                       "session": data_list_unique_SD[i]['SessionID']
-                    },
-                   "labels": labels,
+                   "entities": entities,
                    "type": br_type,
                    "items": [
                            {
