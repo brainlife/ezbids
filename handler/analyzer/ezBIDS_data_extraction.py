@@ -183,12 +183,12 @@ objects_list = []
 for i in range(len(data_list_unique_SD)):
     
     
-    # s = StringIO()
-    # sys.stdout = s
-    # print(nib.load(data_list_unique_SD[i]['nifti_path']).header)
-    # data_list_unique_SD[i]['headers'] = s.getvalue().splitlines()[1:]
+    s = StringIO()
+    sys.stdout = s
+    print(nib.load(data_list_unique_SD[i]['nifti_path']).header)
+    data_list_unique_SD[i]['headers'] = s.getvalue().splitlines()[1:]
     
-    data_list_unique_SD[i]['headers'] = ''
+    #data_list_unique_SD[i]['headers'] = ''
     
     if not os.path.isfile('{}.png'.format(data_list_unique_SD[i]['nifti_path'][:-7])):
         img = load_img(data_list_unique_SD[i]['nifti_path'])
