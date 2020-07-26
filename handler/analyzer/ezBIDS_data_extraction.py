@@ -155,7 +155,7 @@ for j in range(len(json_list)):
     
     subjectIDs = list(set([x['PatientID'] for x in data_list]))
     for s in range(len(subjectIDs)):
-        subjectIDs[s] = {'PatientID': subjectIDs[s], 'sub': None}
+        subjectIDs[s] = {'PatientID': subjectIDs[s], 'sub': None, 'phenotype': {} }
         
     acquisition_dates = list(set([x['AcquisitionDate'] for x in data_list]))
     for a in range(len(acquisition_dates)):
