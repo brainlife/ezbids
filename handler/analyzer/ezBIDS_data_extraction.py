@@ -6,11 +6,11 @@ Created on Fri Jun 26 08:37:56 2020
 @author: dlevitas
 """
 
-
 import os, sys, re, json, warnings
 
 import matplotlib
-matplotlib.use('Agg') #had to be loaded before pyplot
+matplotlib.use('Agg')
+
 
 import pandas as pd
 import numpy as np
@@ -21,7 +21,6 @@ from nilearn.plotting import plot_img
 
 
 warnings.filterwarnings("ignore")
-#Force matplotlib to not use any Xwindows backend.
 
 #data_dir = '/media/data/ezbids/siemens/20190520.Dan_STD_1025.9986@thwjames_DanSTD'
 #data_dir = '/media/data/ezbids/ge/20180918GE'
@@ -156,7 +155,7 @@ for j in range(len(json_list)):
     
     subjectIDs = list(set([x['PatientID'] for x in data_list]))
     for s in range(len(subjectIDs)):
-        subjectIDs[s] = {'PatientID': subjectIDs[s], 'sub': 'null'}
+        subjectIDs[s] = {'PatientID': subjectIDs[s], 'sub': None}
         
     acquisition_dates = list(set([x['AcquisitionDate'] for x in data_list]))
     for a in range(len(acquisition_dates)):
