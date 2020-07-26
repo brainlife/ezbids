@@ -91,6 +91,11 @@ for j in range(len(json_list)):
     nifti_paths_for_json = [x for x in nifti_list if 'sn-{}.'.format(SN) in x or 'sn-{}_'.format(SN) in x]
     filesize = os.stat(nifti_paths_for_json[0]).st_size
     
+    try:
+        studyID = json_data['StudyID']
+    except:
+        studyID = ''
+    
     
     try:
         subjID = json_data['PatientName']
@@ -116,7 +121,7 @@ for j in range(len(json_list)):
     nifti_name, json_name = ['nii.gz', 'json']
         
     
-    mapping_dic = {'StudyID': json_data['StudyID'], 
+    mapping_dic = {'StudyID': studyID, 
            'PatientID': subjID, 
            'SessionID': '',
            'SeriesNumber': json_data['SeriesNumber'],
