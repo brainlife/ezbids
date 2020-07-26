@@ -11,17 +11,18 @@ if [ -z $1 ]; then
 fi
 root=$1
 
+echo "removing .nii.gz"
+find $root -name "*.nii.gz" -exec rm -rf {} \;
+
+echo "removing .json"
+find $root -name "*.json" -exec rm -rf {} \;
+
+echo "removing .nii"
+find $root -name "*.nii" -exec rm -rf {} \;
+
 time ./expand.sh $root
-#ls $root
 
 echo processing $root
-#(cd $root && find . -print > raw.list)
-
-#find leaf directories
-#for dir in $(python find_dicomdir.py $root);
-#do
-#        (cd $root && time dcm2niix -z o -f 'time-%t-sn-%s' -v 1 $dir)
-#done
 
 echo "finding dicom directories"
 ./find_dicomdir.py $root > $root/dcm2niix.list
