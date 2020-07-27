@@ -29,7 +29,12 @@ function run_preprocess() {
         status: "uploaded",
     }).then((sessions) => __awaiter(this, void 0, void 0, function* () {
         for (let session of sessions) {
-            yield handle_uploaded_session(session);
+            try {
+                yield handle_uploaded_session(session);
+            }
+            catch (err) {
+                console.error(err);
+            }
         }
         //console.log("done.. taking a break")
         setTimeout(run_preprocess, 1000);
@@ -43,7 +48,12 @@ function run_bids() {
         status: "finalized",
     }).then((sessions) => __awaiter(this, void 0, void 0, function* () {
         for (let session of sessions) {
-            yield handle_finalized_session(session);
+            try {
+                yield handle_finalized_session(session);
+            }
+            catch (err) {
+                console.error(err);
+            }
         }
         //console.log("done.. taking a break")
         setTimeout(run_bids, 1000);

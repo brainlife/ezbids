@@ -110,29 +110,17 @@ router.get('/download/:session_id/*', (req, res, next) => {
 router.post('/upload/:session_id', upload.single('file'), (req, res, next) => {
     models.Session.findById(req.params.session_id).then(session => {
         let src_path = req.file.path;
-        //let dirty_path = config.workdir+"/"+req.params.session_id+"/"+session.files[0].path;
         let dirty_path = config.workdir + "/" + req.params.session_id + "/" + req.body.path;
         let dest_path = path.resolve(dirty_path);
         if (!dest_path.startsWith(config.workdir))
             return next("invalid path");
         let destdir = path.dirname(dest_path);
-        //console.log(src_path, abs_dest_path, abs_dest_basepath);
         //move the file over to workdir
+        console.debug("mkdirp", destdir);
         mkdirp(destdir).then(err => {
             fs.rename(src_path, dest_path, err => {
                 if (err)
                     return next(err);
-                /*
-                //update session with some extra info
-                models.Session.update({ _id: req.params.session_id, "files.idx": req.params.file_idx},
-                    {$set: {
-                        "files.$._upload": req.file,
-                        "files.$._workpath": dest_path,
-                    }}
-                ).then(err=>{
-                    res.send("ok");
-                });
-                */
                 res.send("ok");
             });
         });
@@ -143,7 +131,6 @@ router.post('/upload/:session_id', upload.single('file'), (req, res, next) => {
 });
 //done uploading.
 router.patch('/session/uploaded/:session_id', (req, res, next) => {
-    //let workdir = config.workdir+"/"+req.params.session_id;
     models.Session.findByIdAndUpdate(req.params.session_id, { status: "uploaded", upload_finish_date: new Date() }).then(session => {
         if (!session)
             return next("no such session");

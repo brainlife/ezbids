@@ -21,7 +21,11 @@ function run_preprocess() {
         status: "uploaded",
     }).then(async sessions=>{
         for(let session of sessions) {
-            await handle_uploaded_session(session);
+            try {
+                await handle_uploaded_session(session);
+            } catch(err) {
+                console.error(err);
+            }
         }
         //console.log("done.. taking a break")
         setTimeout(run_preprocess, 1000);
@@ -36,7 +40,11 @@ function run_bids() {
         status: "finalized",
     }).then(async sessions=>{
         for(let session of sessions) {
-            await handle_finalized_session(session);
+            try {
+                await handle_finalized_session(session);
+            } catch (err) {
+                console.error(err);
+            }
         }
         //console.log("done.. taking a break")
         setTimeout(run_bids, 1000);
@@ -51,7 +59,6 @@ function handle_uploaded_session(session) {
         session.save().then(()=>{
             let monitor;
             let lastout;
-
             let workdir = config.workdir+"/"+session._id;
             const p = spawn('./preprocess.sh', [workdir], {cwd: __dirname});
             const logout = fs.openSync(workdir+"/preprocess.log", "w");
