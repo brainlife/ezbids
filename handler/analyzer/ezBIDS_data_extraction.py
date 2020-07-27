@@ -25,8 +25,10 @@ warnings.filterwarnings("ignore")
 #data_dir = '/media/data/ezbids/siemens/20190520.Dan_STD_1025.9986@thwjames_DanSTD'
 #data_dir = '/media/data/ezbids/ge/20180918GE'
 #data_dir = '/media/data/ezbids/siemens/DAN_STD'
-data_dir = '/media/data/ezbids/dicoms/umass-philips'
-#data_dir = sys.argv[1]
+#data_dir = '/media/data/ezbids/dicoms/umass-philips'
+#data_dir = '/media/data/ezbids/dicoms/rosetta/philips/philips_1_5T_intera'
+#data_dir = '/media/data/ezbids/dicoms/rosetta/General_electric/GE-SignaHD-Excite'
+data_dir = sys.argv[1]
 os.chdir(data_dir)
 
 
@@ -189,7 +191,6 @@ objects_list = []
 #Let's try to auto-populate some of the BIDS fields
 for i in range(len(data_list_unique_SD)):
     
-    
     s = StringIO()
     sys.stdout = s
     print(nib.load(data_list_unique_SD[i]['nifti_path']).header)
@@ -197,8 +198,10 @@ for i in range(len(data_list_unique_SD)):
     
     #data_list_unique_SD[i]['headers'] = ''
     
+    img = load_img(data_list_unique_SD[i]['nifti_path'])
+    
     if not os.path.isfile('{}.png'.format(data_list_unique_SD[i]['nifti_path'][:-7])):
-        img = load_img(data_list_unique_SD[i]['nifti_path'])
+        # img = load_img(data_list_unique_SD[i]['nifti_path'])
         if img.ndim == 4:
             ref_img = index_img(img, -1)
         else:
@@ -208,7 +211,6 @@ for i in range(len(data_list_unique_SD)):
                   output_file='{}.png'.format(data_list_unique_SD[i]['nifti_path'][:-7]))
             
         
-
     participants_info = {data_list_unique_SD[i]['PatientID']:
                          {"session": '',
                           "age": '',
@@ -307,7 +309,7 @@ for i in range(len(data_list_unique_SD)):
             entities['task'] = 'rest'
             
     #Check for functional
-    elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func','FMRI','fMRI','fmri','EPI']) and ('SBRef' not in SD or 'sbref' not in SD):
+    elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func','FMRI','fMRI','fmri','EPI']) and ('SBRef' not in SD or 'sbref' not in SD) or img.ndim == 4:
         data_list_unique_SD[i]['DataType'] = 'func'
         data_list_unique_SD[i]['ModalityLabel'] = 'bold'
         if entities['run'] == '':
