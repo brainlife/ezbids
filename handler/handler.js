@@ -61,24 +61,24 @@ function handle_uploaded_session(session) {
             const p = spawn('./preprocess.sh', [workdir], { cwd: __dirname });
             const logout = fs.openSync(workdir + "/preprocess.log", "w");
             const errout = fs.openSync(workdir + "/preprocess.err", "w");
+            let lasterr = "";
             p.stdout.on('data', data => {
                 fs.writeSync(logout, data);
-                //let the monitor save out the last output
-                session.status_msg = data.toString("utf8").trim().split("\n").pop(); 
                 console.log(data.toString("utf8"));
+                session.status_msg = data.toString("utf8").trim().split("\n").pop();
             });
             p.stderr.on('data', data => {
+                console.log(data.toString("utf8"));
+                lasterr = data.toString("utf8");
                 fs.writeSync(errout, data);
-                console.error(data.toString("utf8"));
             });
             p.on('close', code => {
                 clearInterval(monitor);
-              
                 //check status
                 console.debug("preprocess.sh finished: " + code);
                 if (code != 0) {
                     session.status = "failed";
-                    session.status_msg = "failed to run preprocess.sh";
+                    session.status_msg = "failed\n" + lasterr;
                 }
                 else {
                     session.status = "analyzed";
@@ -92,27 +92,25 @@ function handle_uploaded_session(session) {
                     reject();
                 });
             });
-
             //monitor progress
-            monitor = setInterval(()=>{
+            monitor = setInterval(() => {
                 //load dcm2niix.list/done 
                 let list = null;
-                if(fs.existsSync(workdir+"/dcm2niix.list")) {
-                    list = fs.readFileSync(workdir+"/dcm2niix.list", "utf8").split("\n");
+                if (fs.existsSync(workdir + "/dcm2niix.list")) {
+                    list = fs.readFileSync(workdir + "/dcm2niix.list", "utf8").split("\n");
                     session.dicomCount = list.length;
                 }
                 let done = null;
-                if(fs.existsSync(workdir+"/dcm2niix.done")) {
-                    done = fs.readFileSync(workdir+"/dcm2niix.done", "utf8").split("\n");
+                if (fs.existsSync(workdir + "/dcm2niix.done")) {
+                    done = fs.readFileSync(workdir + "/dcm2niix.done", "utf8").split("\n");
                     session.dicomDone = done.length;
                 }
-                if(list || done) session.save();
-
-            }, 5*1000);
+                if (list || done)
+                    session.save();
+            }, 5 * 1000);
         });
     });
 }
-
 function handle_finalized_session(session) {
     console.log("handling uploaded session " + session._id);
     return new Promise((resolve, reject) => {
@@ -153,5 +151,4 @@ function handle_finalized_session(session) {
         });
     });
 }
-
-
+//# sourceMappingURL=handler.js.map

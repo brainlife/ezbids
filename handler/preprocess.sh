@@ -41,6 +41,14 @@ cat $root/dcm2niix.list | parallel --wd $root -j 4 d2n {}
 
 #find products
 (cd $root && find . -type f \( -name "*.json" -o -name "*.nii.gz" \) > list)
+cat $root/list
+
+if [ -s $root/list ]; then
+    echo "list is not empty.. proceeding"
+else
+    echo "couldn't find any dicom files. aborting"
+    exit 1
+fi
 
 echo "running analyzer"
 time ./analyzer/run.sh $root
