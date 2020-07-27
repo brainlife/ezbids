@@ -38,15 +38,13 @@ export default {
         }
     },
     watch: {
-        /*
         '$root.subjects'(v, ov) {
-            console.log("subjects updated.. initializing keys");
+            console.log("subjects updated (data loaded).. initializing keys");
             if(v.length == 0) return; //prevent infinite loop
             if(ov.length == 0) {
                 this.resetSubjects('pid');
             }
         },
-        */
     },
 
     created() {

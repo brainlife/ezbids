@@ -41,17 +41,15 @@ export default {
         }
     },
 
-    /*
     watch: {
         '$root.sessions'(v, ov) {
-            console.log("session updated.. initializing keys");
+            console.log("session updated (analyzer finished?).. initializing keys");
             if(v.length == 0) return; //prevent infinite loop
             if(ov.length == 0) {
                 this.resetSessions('empty');
             }
         },
     },
-    */
 
     created() {
     },

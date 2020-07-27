@@ -154,6 +154,8 @@ new Vue({
                         */
 
                         //apply entities
+                        console.log("applying entities from series");
+                        console.dir(series);
                         Object.assign(object.entities, series.entities);
                     }
 
@@ -660,6 +662,11 @@ split:
                     }
                 });
                 */
+                this.series.forEach(series=>{
+                    delete series.entities.sub;
+                    delete series.entities.ses;
+                    delete series.entities.run;
+                });
 
                 this.subjects.forEach(subject=>{
                     Vue.set(subject, 'phenotype', {});
