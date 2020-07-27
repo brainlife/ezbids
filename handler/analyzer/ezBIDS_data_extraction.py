@@ -221,6 +221,7 @@ for i in range(len(data_list_unique_SD)):
     
     
     SD = data_list_unique_SD[i]['SeriesDescription']
+    TR = data_list_unique_SD[i]['RepetitionTime']
     
     #Populate some labels fields (primarily based on ReproIn convention)
     entities = {}
@@ -309,7 +310,7 @@ for i in range(len(data_list_unique_SD)):
             entities['task'] = 'rest'
             
     #Check for functional
-    elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func','FMRI','fMRI','fmri','EPI']) and ('SBRef' not in SD or 'sbref' not in SD) or img.ndim == 4:
+    elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func','FMRI','fMRI','fmri','EPI']) and ('SBRef' not in SD or 'sbref' not in SD) or (img.ndim == 4 and TR < 5) :
         data_list_unique_SD[i]['DataType'] = 'func'
         data_list_unique_SD[i]['ModalityLabel'] = 'bold'
         if entities['run'] == '':
@@ -329,9 +330,12 @@ for i in range(len(data_list_unique_SD)):
     elif any(x in SD for x in ['DWI','dwi','DTI','dti']) or 'ep_b' in SequenceName:
         data_list_unique_SD[i]['DataType'] = 'dwi'
         data_list_unique_SD[i]['ModalityLabel'] = 'dwi'
-        data_list_unique_SD[i]['dwi_run'] = str(dwi_run)
-        entities['run'] = str(data_list_unique_SD[i]['dwi_run'])
-        dwi_run += 1
+        if entities['run'] == '':
+            if dwi_run < 10:
+                entities['run'] = '0' + str(dwi_run)
+            else:
+                entities['run'] = str(dwi_run)
+        dwi_run +=1
         entities['dir'] = data_list_unique_SD[i]['dir']
     
     #Check for field maps
