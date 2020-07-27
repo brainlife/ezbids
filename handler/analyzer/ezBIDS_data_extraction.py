@@ -25,7 +25,8 @@ warnings.filterwarnings("ignore")
 #data_dir = '/media/data/ezbids/siemens/20190520.Dan_STD_1025.9986@thwjames_DanSTD'
 #data_dir = '/media/data/ezbids/ge/20180918GE'
 #data_dir = '/media/data/ezbids/siemens/DAN_STD'
-data_dir = sys.argv[1]
+data_dir = '/media/data/ezbids/dicoms/umass-philips'
+#data_dir = sys.argv[1]
 os.chdir(data_dir)
 
 
@@ -146,7 +147,7 @@ for j in range(len(json_list)):
            "VolumeCount": volume_count,
            'error': 'N/A',
            'qc': '',
-           'nifti_path': nifti_paths_for_json[0],
+           'nifti_path': [x for x in nifti_paths_for_json if '.nii.gz' in x][0],
            'json_path': json_list[j],
            'paths': paths,
            'pngPath': '',
@@ -267,13 +268,16 @@ for i in range(len(data_list_unique_SD)):
     
     #Check for T1w anatomical
     elif any(x in SD for x in ['T1W','T1w','t1w','tfl3d','mprage','MPRAGE']) or 'tfl3d1_16ns' in SequenceName or (EchoTime <=10 and EchoTime > 0):
-        if 'NORM' in data_list_unique_SD[i]['ImageType']:
+        if 'NORM' in data_list_unique_SD[i]['ImageType'] and 'tfl3d1_16ns' in SequenceName:
             data_list_unique_SD[i]['DataType'] = 'anat'
             data_list_unique_SD[i]['ModalityLabel'] = 'T1w'
+        elif 'NORM' not in data_list_unique_SD[i]['ImageType'] and 'tfl3d1_16ns' in SequenceName:
+            data_list_unique_SD[i]['include'] = False  
+            data_list_unique_SD[i]['error'] = 'Acquisition is a poor resolution T1w; recommended not be converted to BIDS'
+            data_list_unique_SD[i]['second_check'] = 'no'
         else:
-          data_list_unique_SD[i]['include'] = False  
-          data_list_unique_SD[i]['error'] = 'Acquisition is a poor resolution T1w; recommended not be converted to BIDS'
-          data_list_unique_SD[i]['second_check'] = 'no'
+            data_list_unique_SD[i]['DataType'] = 'anat'
+            data_list_unique_SD[i]['ModalityLabel'] = 'T1w'
           
     #Check for T2w anatomical
     elif any(x in SD for x in ['T2W','T2w','t2w']) or (EchoTime > 100):
