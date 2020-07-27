@@ -39,7 +39,7 @@
         </div>
 
 
-        <el-collapse v-model="activeLogs" @change="logChange">
+        <el-collapse v-if="$root.session.status != 'uploaded'"  v-model="activeLogs" @change="logChange">
             <el-collapse-item title="Log" name="out">
                 <pre class="text">{{out}}</pre>
             </el-collapse-item>
