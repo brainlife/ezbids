@@ -134,6 +134,11 @@ for j in range(len(json_list)):
     else:
         sub = PatientBirthDate
         
+    if 'EchoNumber' in json_data:
+        EchoNumber = json_data['EchoNumber']
+    else:
+        EchoNumber = None
+        
         
     #Find how many volumes are in sidecar's corresponding nifti file
     try:
@@ -163,6 +168,7 @@ for j in range(len(json_list)):
                    'ImageType': json_data['ImageType'],
                    'SeriesNumber': json_data['SeriesNumber'],
                    'RepetitionTime': json_data['RepetitionTime'],
+                   'EchoNumber': EchoNumber,
                    'DataType': '',
                    'ModalityLabel': '',
                    'sbref_run': '',
@@ -213,6 +219,7 @@ for SD in data_list:
 sbref_run = 1
 func_run = 1
 dwi_run = 1
+fmap_run = 1
 participants_list = []
 series_list = []
 objects_list = []
@@ -239,17 +246,7 @@ for i in range(len(data_list_unique_SD)):
             ref_img = img
         plot_img(ref_img, colorbar=False, display_mode='ortho', 
                   draw_cross=False, annotate=False, threshold=None, 
-                  output_file='{}.png'.format(data_list_unique_SD[i]['nifti_path'][:-7]))
-            
-        
-    participants_info = {data_list_unique_SD[i]['PatientID']:
-                         {"session": '',
-                          "age": '',
-                          "sex": data_list_unique_SD[i]['PatientSex']
-                          }
-                         }
-    participants_list.append(participants_info)
-    
+                  output_file='{}.png'.format(data_list_unique_SD[i]['nifti_path'][:-7]))    
     
     SD = data_list_unique_SD[i]['SeriesDescription']
     TR = data_list_unique_SD[i]['RepetitionTime']
@@ -259,7 +256,7 @@ for i in range(len(data_list_unique_SD)):
     if 'sub-' in SD:
         entities['sub'] = SD.split('sub-')[-1].split('_')[0]
     else:
-        entities['sub'] = data_list_unique_SD[i]['PatientID']
+        entities['sub'] = data_list_unique_SD[i]['sub']
     
     if '_ses-' in SD:
         entities['ses'] = SD.split('_ses-')[-1].split('_')[0]
@@ -373,12 +370,21 @@ for i in range(len(data_list_unique_SD)):
         entities['dir'] = data_list_unique_SD[i]['dir']
     
     #Check for field maps
-    elif any(x in SD for x in ['fmap','FieldMap','field_mapping']) or 'epse2d' in SequenceName:
-        data_list_unique_SD[i]['DataType'] = 'fmap'
-        data_list_unique_SD[i]['ModalityLabel'] = 'epi'
-        entities['run'] = str(data_list_unique_SD[i]['dwi_run'])
-        entities['dir'] = data_list_unique_SD[i]['dir']
-    
+    elif any(x in SD for x in ['fmap','FieldMap','field_mapping']) or 'epse2d' in SequenceName or 'fm2d2r' in SequenceName:
+        if img.ndim == 4: #SE fmaps
+            data_list_unique_SD[i]['DataType'] = 'fmap'
+            data_list_unique_SD[i]['ModalityLabel'] = 'epi'
+            entities['run'] = str(data_list_unique_SD[i]['fmap_run'])
+            entities['dir'] = data_list_unique_SD[i]['dir']
+        else: #magnitude/phasediff fmaps
+            data_list_unique_SD[i]['DataType'] = 'fmap'
+            if data_list_unique_SD[i]['EchoNumber'] == 1:
+                data_list_unique_SD[i]['ModalityLabel'] = 'magnitude1'
+            else:
+                data_list_unique_SD[i]['ModalityLabel'] = 'phasediff'
+            entities['run'] = str(data_list_unique_SD[i]['fmap_run'])
+            
+            
     #Can't determine acquisition type. Assume it's not BIDS
     else:
         data_list_unique_SD[i]['include'] = False
@@ -392,6 +398,7 @@ for i in range(len(data_list_unique_SD)):
             if TR > 3: #Probably DWI
                 data_list_unique_SD[i]['DataType'] = 'dwi'
                 data_list_unique_SD[i]['ModalityLabel'] = 'dwi'
+                data_list_unique_SD[i]['error'] = 'N/A'
                 if entities['run'] == '':
                     if dwi_run < 10:
                         entities['run'] = '0' + str(dwi_run)
@@ -405,6 +412,7 @@ for i in range(len(data_list_unique_SD)):
                 else:
                     data_list_unique_SD[i]['DataType'] = 'func'
                     data_list_unique_SD[i]['ModalityLabel'] = 'bold'
+                    data_list_unique_SD[i]['error'] = 'N/A'
                     if entities['run'] == '':
                         if func_run < 10:
                             entities['run'] = '0' + str(func_run)
@@ -414,22 +422,34 @@ for i in range(len(data_list_unique_SD)):
                     entities['task'] = 'rest'
                     
         elif img.ndim == 3: #sbref, T1w, T2w, FLAIR, magnitude/phasediff fmap are 3D
+            if 'EchoNumber' in data_list_unique_SD[i]: #Probably magnitude/phasediff
+                data_list_unique_SD[i]['DataType'] = 'fmap'
+                if data_list_unique_SD[i]['EchoNumber'] == 1:
+                    data_list_unique_SD[i]['ModalityLabel'] = 'magnitude1'
+                else:
+                    data_list_unique_SD[i]['ModalityLabel'] = 'phasediff'
+                data_list_unique_SD[i]['error'] = 'N/A'
+                entities['run'] = str(data_list_unique_SD[i]['fmap_run'])
+                
             if (EchoTime <= 10 and EchoTime > 0): #Probably T1w
                 data_list_unique_SD[i]['DataType'] = 'anat'
                 data_list_unique_SD[i]['ModalityLabel'] = 'T1w'
+                data_list_unique_SD[i]['error'] = 'N/A'
             
             elif data_list_unique_SD[i]['sidecar']['InversionTime'] > 0: #Probably FLAIR
                 data_list_unique_SD[i]['DataType'] = 'anat'
                 data_list_unique_SD[i]['ModalityLabel'] = 'FLAIR'
+                data_list_unique_SD[i]['error'] = 'N/A'
                 
             elif EchoTime > 100: #Probably T2w
                 data_list_unique_SD[i]['DataType'] = 'anat'
                 data_list_unique_SD[i]['ModalityLabel'] = 'T2w'
+                data_list_unique_SD[i]['error'] = 'N/A'
             
-            elif (EchoTime > 10 and EchoTime < 100):
-
+            elif (EchoTime > 10 and EchoTime < 100): #Probably sbref
                 data_list_unique_SD[i]['DataType'] = 'func'
                 data_list_unique_SD[i]['ModalityLabel'] = 'sbref'
+                data_list_unique_SD[i]['error'] = 'N/A'
                 if entities['run'] == '':
                     if sbref_run < 10:
                         entities['run'] = '0' + str(sbref_run)
@@ -468,7 +488,7 @@ for i in range(len(data_list_unique_SD)):
     objects_info = {"include": data_list_unique_SD[i]['include'],
                    "SeriesDescription": SD,
                    "SeriesNumber": data_list_unique_SD[i]['SeriesNumber'],
-                   "PatientID": data_list_unique_SD[i]['PatientID'],
+                   "PatientID": sub,
                    "AcquisitionDate": data_list_unique_SD[i]['AcquisitionDate'],
                    "pngPath": '{}.png'.format(data_list_unique_SD[i]['nifti_path'][:-7]),
                    "entities": entities,
