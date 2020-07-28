@@ -111,11 +111,29 @@ for j in range(len(json_list)):
         studyID = ''
     
     #Find subjID from sidecar (some sidecars have neither PatientName nor PatientID)
-    try:
-        subjID = json_data['PatientName']
-    except:
-        #subjID = json_data['PatientID']
-        subjID = ''
+    if 'PatientName' in json_data:
+        PatientName = json_data['PatientName']
+    else:
+        PatientName = None
+        
+    if 'PatientID' in json_data:
+        PatientID = json_data['PatientID']
+    else:
+        PatientID = None
+        
+    #Find PatientBirthDate
+    if 'PatientBirthDate' in json_data:
+        PatientBirthDate = json_data['PatientBirthDate'].replace('-','')
+    else:
+        PatientBirthDate = None
+        
+    if PatientName:
+        sub = PatientName
+    elif PatientID:
+        sub = PatientID
+    else:
+        sub = PatientBirthDate
+        
         
     #Find how many volumes are in sidecar's corresponding nifti file
     try:
@@ -130,50 +148,56 @@ for j in range(len(json_list)):
     nifti_name, json_name = ['nii.gz', 'json']
         
     
-    mapping_dic = {'StudyID': studyID, 
-           'PatientID': subjID, 
-           'SessionID': '',
-           'SeriesNumber': json_data['SeriesNumber'],
-           'PatientSex': json_data['PatientSex'],
-           'AcquisitionDate': json_data['AcquisitionDateTime'].split('T')[0],
-           'AcquisitionTime': json_data['AcquisitionDateTime'].split('T')[-1],
-           'SeriesDescription': json_data['SeriesDescription'],
-           'ProtocolName': json_data['ProtocolName'], 
-           'ImageType': json_data['ImageType'],
-           'SeriesNumber': json_data['SeriesNumber'],
-           'RepetitionTime': json_data['RepetitionTime'],
-           'DataType': '',
-           'ModalityLabel': '',
-           'sbref_run': '',
-           'func_run': '',
-           'dwi_run': '',
-           'fmap_run': '',
-           'dir': PED,
-           'TaskName': 'rest',
-           "include": True,
-           'filesize': filesize,
-           "VolumeCount": volume_count,
-           'error': 'N/A',
-           'qc': '',
-           'nifti_path': [x for x in nifti_paths_for_json if '.nii.gz' in x][0],
-           'json_path': json_list[j],
-           'paths': paths,
-           'pngPath': '',
-           'nifti_name': nifti_name,
-           'json_name': json_name,
-           'headers': '',
-           'sidecar':json_data,
-           'second_check': ''
-           }
+    mapping_dic = {'StudyID': studyID,
+                   'PatientName': PatientName,
+                   'PatientID': PatientID,
+                   'PatientBirthDate': PatientBirthDate,
+                   'sub': sub,
+                   'SessionID': '',
+                   'SeriesNumber': json_data['SeriesNumber'],
+                   'PatientSex': json_data['PatientSex'],
+                   'AcquisitionDate': json_data['AcquisitionDateTime'].split('T')[0],
+                   'AcquisitionTime': json_data['AcquisitionDateTime'].split('T')[-1],
+                   'SeriesDescription': json_data['SeriesDescription'],
+                   'ProtocolName': json_data['ProtocolName'], 
+                   'ImageType': json_data['ImageType'],
+                   'SeriesNumber': json_data['SeriesNumber'],
+                   'RepetitionTime': json_data['RepetitionTime'],
+                   'DataType': '',
+                   'ModalityLabel': '',
+                   'sbref_run': '',
+                   'func_run': '',
+                   'dwi_run': '',
+                   'fmap_run': '',
+                   'dir': PED,
+                   'TaskName': 'rest',
+                   "include": True,
+                   'filesize': filesize,
+                   "VolumeCount": volume_count,
+                   'error': 'N/A',
+                   'qc': '',
+                   'nifti_path': [x for x in nifti_paths_for_json if '.nii.gz' in x][0],
+                   'json_path': json_list[j],
+                   'paths': paths,
+                   'pngPath': '',
+                   'nifti_name': nifti_name,
+                   'json_name': json_name,
+                   'headers': '',
+                   'sidecar':json_data,
+                   'second_check': ''
+                   }
     data_list.append(mapping_dic)
     
-    subjectIDs = list(set([x['PatientID'] for x in data_list]))
+    subjectIDs = [x['sub'] for x in data_list]
+    
     for s in range(len(subjectIDs)):
-        subjectIDs[s] = {'PatientID': subjectIDs[s], 'sub': None, 'phenotype': {} }
+        subjectIDs[s] = {'PatientID': data_list[s]['PatientID'], 'PatientName': data_list[s]['PatientName'],
+                         'PatientBirthDate': data_list[s]['PatientBirthDate'], 'sub': subjectIDs[s], 
+                         'phenotype': {} }
         
-    acquisition_dates = list(set([x['AcquisitionDate'] for x in data_list]))
+    acquisition_dates = [x['AcquisitionDate'] for x in data_list]
     for a in range(len(acquisition_dates)):
-        acquisition_dates[s] = {'AcquisitionDate': acquisition_dates[s], 'ses': ''}
+        acquisition_dates[a] = {'AcquisitionDate': acquisition_dates[a], 'ses': ''}
     
 #Only keep dictionary with unique SeriesDescription values
 data_list_unique_SD = []
@@ -271,7 +295,7 @@ for i in range(len(data_list_unique_SD)):
     
     fmap_intendedFor = []
     
-    
+    #Do a first pass of acqusitions based on specific terms in the SeriesDescriptions
     #Check for localizer(s)
     if any(x in SD for x in ['Localizer','localizer','SCOUT','Scout','scout']):
         data_list_unique_SD[i]['include'] = False
@@ -279,7 +303,8 @@ for i in range(len(data_list_unique_SD)):
         data_list_unique_SD[i]['second_check'] = 'no'
     
     #Check for T1w anatomical
-    elif any(x in SD for x in ['T1W','T1w','t1w','tfl3d','mprage','MPRAGE']) or 'tfl3d1_16ns' in SequenceName or (EchoTime <= 10 and EchoTime > 0):
+    #elif any(x in SD for x in ['T1W','T1w','t1w','tfl3d','mprage','MPRAGE']) or 'tfl3d1_16ns' in SequenceName or (EchoTime <= 10 and EchoTime > 0):
+    elif any(x in SD for x in ['T1W','T1w','t1w','tfl3d','mprage','MPRAGE']) or 'tfl3d1_16ns' in SequenceName:
         if 'NORM' in data_list_unique_SD[i]['ImageType'] and 'tfl3d1_16ns' in SequenceName:
             data_list_unique_SD[i]['DataType'] = 'anat'
             data_list_unique_SD[i]['ModalityLabel'] = 'T1w'
@@ -292,7 +317,7 @@ for i in range(len(data_list_unique_SD)):
             data_list_unique_SD[i]['ModalityLabel'] = 'T1w'
           
     #Check for T2w anatomical
-    elif any(x in SD for x in ['T2W','T2w','t2w']) or (EchoTime > 100):
+    elif any(x in SD for x in ['T2W','T2w','t2w']):
         data_list_unique_SD[i]['DataType'] = 'anat'
         data_list_unique_SD[i]['ModalityLabel'] = 'T2w'
         
@@ -319,7 +344,7 @@ for i in range(len(data_list_unique_SD)):
             entities['task'] = 'rest'
             
     #Check for functional
-    elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func','FMRI','fMRI','fmri','EPI']) and ('SBRef' not in SD or 'sbref' not in SD) or (img.ndim == 4 and TR < 5) :
+    elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func','FMRI','fMRI','fmri','EPI']) and ('SBRef' not in SD or 'sbref' not in SD):
         data_list_unique_SD[i]['DataType'] = 'func'
         data_list_unique_SD[i]['ModalityLabel'] = 'bold'
         if entities['run'] == '':
@@ -360,7 +385,64 @@ for i in range(len(data_list_unique_SD)):
         data_list_unique_SD[i]['error'] = 'Cannot determine acquisition type'
         data_list_unique_SD[i]['second_check'] = 'yes'
         
-        
+    
+    #Do a second pass, but using values from other fields, such as TR, TE, TI, etc
+    if data_list_unique_SD[i]['second_check'] == 'yes':
+        if img.ndim == 4: #DWI, functional, functional phase, and SE fmap are 4D
+            if TR > 3: #Probably DWI
+                data_list_unique_SD[i]['DataType'] = 'dwi'
+                data_list_unique_SD[i]['ModalityLabel'] = 'dwi'
+                if entities['run'] == '':
+                    if dwi_run < 10:
+                        entities['run'] = '0' + str(dwi_run)
+                    else:
+                        entities['run'] = str(dwi_run)
+                dwi_run +=1
+                entities['dir'] = data_list_unique_SD[i]['dir']
+            else: #Probably functional
+                if data_list_unique_SD[i]['VolumeCount'] < 20: #Functional runs with less than 20 volumes probably aren't good
+                    data_list_unique_SD[i]['error'] = 'Functional contains very few volumes; not complete?'
+                else:
+                    data_list_unique_SD[i]['DataType'] = 'func'
+                    data_list_unique_SD[i]['ModalityLabel'] = 'bold'
+                    if entities['run'] == '':
+                        if func_run < 10:
+                            entities['run'] = '0' + str(func_run)
+                        else:
+                            entities['run'] = str(func_run)
+                    func_run +=1
+                    entities['task'] = 'rest'
+                    
+        elif img.ndim == 3: #sbref, T1w, T2w, FLAIR, magnitude/phasediff fmap are 3D
+            if (EchoTime <= 10 and EchoTime > 0): #Probably T1w
+                data_list_unique_SD[i]['DataType'] = 'anat'
+                data_list_unique_SD[i]['ModalityLabel'] = 'T1w'
+            
+            elif data_list_unique_SD[i]['sidecar']['InversionTime'] > 0: #Probably FLAIR
+                data_list_unique_SD[i]['DataType'] = 'anat'
+                data_list_unique_SD[i]['ModalityLabel'] = 'FLAIR'
+                
+            elif EchoTime > 100: #Probably T2w
+                data_list_unique_SD[i]['DataType'] = 'anat'
+                data_list_unique_SD[i]['ModalityLabel'] = 'T2w'
+            
+            elif (EchoTime > 10 and EchoTime < 100):
+
+                data_list_unique_SD[i]['DataType'] = 'func'
+                data_list_unique_SD[i]['ModalityLabel'] = 'sbref'
+                if entities['run'] == '':
+                    if sbref_run < 10:
+                        entities['run'] = '0' + str(sbref_run)
+                    else:
+                        entities['run'] = str(sbref_run)
+                sbref_run +=1
+                entities['task'] = 'rest'
+            else:
+                pass
+                
+                
+            
+ 
     
     if data_list_unique_SD[i]['ModalityLabel'] == 'dwi':
         run =str( data_list_unique_SD[i]['dwi_run'])
