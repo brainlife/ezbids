@@ -28,8 +28,8 @@ warnings.filterwarnings("ignore")
 #data_dir = '/media/data/ezbids/dicoms/umass-philips'
 #data_dir = '/media/data/ezbids/dicoms/rosetta/philips/philips_1_5T_intera'
 #data_dir = '/media/data/ezbids/dicoms/rosetta/General_electric/GE-SignaHD-Excite'
-data_dir = '/media/data/ezbids/dicoms/Avesani'
-#data_dir = sys.argv[1]
+#data_dir = '/media/data/ezbids/dicoms/Avesani'
+data_dir = sys.argv[1]
 os.chdir(data_dir)
 
 #def extractor():
