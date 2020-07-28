@@ -28,13 +28,13 @@ warnings.filterwarnings("ignore")
 #data_dir = '/media/data/ezbids/dicoms/umass-philips'
 #data_dir = '/media/data/ezbids/dicoms/rosetta/philips/philips_1_5T_intera'
 #data_dir = '/media/data/ezbids/dicoms/rosetta/General_electric/GE-SignaHD-Excite'
-data_dir = sys.argv[1]
+data_dir = '/media/data/ezbids/dicoms/Avesani'
+#data_dir = sys.argv[1]
 os.chdir(data_dir)
-
 
 #def extractor():
     
-#Organize the nifti/json files by their series number    
+#Load list generated from UI, and organize the nifti/json files by their series number    
 dir_list = pd.read_csv('list', header=None)
 dir_list.columns = ['path']
 sn_list = []
@@ -60,22 +60,29 @@ dir_list['new_sn'] = pd.Series(new_sn_list, index=dir_list.index)
 dir_list.sort_values(by='new_sn', inplace=True, ignore_index=True)
     
 
-#Get nifti and json file lists
+#Get nifti, json (i.e. sidecar), and SeriesNumber (SN) file lists
 json_list = [x for x in dir_list['path'] if '.json' in x and 'ezbids' not in x]
 nifti_list = [x for x in dir_list['path'] if '.nii.gz' in x or '.bval' in x or '.bvec' in x]    
 SNs_list = [dir_list['sn'][x] for x in range(len(dir_list['sn'])) if '.json' in dir_list['path'][x]]
 
+#participantsColumn portion of ezBIDS.json
 participantsColumn = {"sex": {"LongName": "gender", "Description": "generic gender field", "Levels": {"M": "male", "F": "female"}},
                       "age": {"LongName": "age", "Units": "years"}}
 
-#Parse through json data for pertinent information
+#Create list for later
 data_list = []
+
+#Parse through nifti and sidecar data for pertinent information
 for j in range(len(json_list)):
+    #Load sidecar data
     json_data = open(json_list[j])
     json_data = json.load(json_data, strict=False)
     
+    #Select SeriesNumbers
     SN = SNs_list[j]
     
+    #Specify direction based on PhaseEncodingDirection (PED)
+    #May not be as straight forward, see: https://github.com/rordenlab/dcm2niix/issues/412
     try:
         phase_encoding_direction = json_data['PhaseEncodingDirection']
         if phase_encoding_direction == 'j-':
@@ -91,36 +98,35 @@ for j in range(len(json_list)):
     except:
         PED = ''
         
+    #Nifti (and bval/bvec) file(s) associated with specific sidecar
     nifti_paths_for_json = [x for x in nifti_list if 'sn-{}.'.format(SN) in x or 'sn-{}_'.format(SN) in x]
+    
+    #Nifti file size
     filesize = os.stat(nifti_paths_for_json[0]).st_size
     
+    #Find StudyID from sidecar
     try:
         studyID = json_data['StudyID']
     except:
         studyID = ''
     
-    
+    #Find subjID from sidecar (some sidecars have neither PatientName nor PatientID)
     try:
         subjID = json_data['PatientName']
     except:
-        subjID = json_data['PatientID']
+        #subjID = json_data['PatientID']
+        subjID = ''
         
-        
+    #Find how many volumes are in sidecar's corresponding nifti file
     try:
         volume_count = nib.load(json_list[j][:-4] + 'nii.gz').shape[3]
     except:
         volume_count = 1
         
+    #Relative paths of sidecar and nifti per SeriesNumber
     paths = nifti_paths_for_json + [json_list[j]]
     
-    # for p in range(len(paths)):
-    #     if paths[p].split('.')[-1] == 'gz':
-    #         name = 'nii.gz'
-    #     elif paths[p].split('.')[-1] == 'json':
-    #         name = ''
-    #     elif
-    #         name = paths[p].split('.')[-1]
-    
+    #File extensions for nifti and sidecar
     nifti_name, json_name = ['nii.gz', 'json']
         
     
@@ -169,7 +175,7 @@ for j in range(len(json_list)):
     for a in range(len(acquisition_dates)):
         acquisition_dates[s] = {'AcquisitionDate': acquisition_dates[s], 'ses': ''}
     
-#Only keep dictionary with unique SeriesDescription key values
+#Only keep dictionary with unique SeriesDescription values
 data_list_unique_SD = []
 series_description_list = []
 series_number_list = []
@@ -179,6 +185,7 @@ for SD in data_list:
         series_description_list.append(SD['SeriesDescription'])
         series_number_list.append(SD['SeriesNumber'])
 
+#Set up variables for determining features needed for BIDS conversion
 sbref_run = 1
 func_run = 1
 dwi_run = 1
@@ -196,7 +203,7 @@ for i in range(len(data_list_unique_SD)):
     print(nib.load(data_list_unique_SD[i]['nifti_path']).header)
     data_list_unique_SD[i]['headers'] = s.getvalue().splitlines()[1:]
     
-    #data_list_unique_SD[i]['headers'] = ''
+    # data_list_unique_SD[i]['headers'] = ''
     
     img = load_img(data_list_unique_SD[i]['nifti_path'])
     
@@ -257,20 +264,22 @@ for i in range(len(data_list_unique_SD)):
         SequenceName = ''
         
     try:
-        EchoTime = int(data_list_unique_SD[i]['sidecar']['EchoTime'])*1000
+        EchoTime = data_list_unique_SD[i]['sidecar']['EchoTime']*1000
     except:
         EchoTime = 0
     
+    
     fmap_intendedFor = []
     
+    
     #Check for localizer(s)
-    if any(x in SD for x in ['Localizer','localizer','Scout','scout']):
+    if any(x in SD for x in ['Localizer','localizer','SCOUT','Scout','scout']):
         data_list_unique_SD[i]['include'] = False
         data_list_unique_SD[i]['error'] = 'Acquisition appears to be a localizer; will not be converted to BIDS'
         data_list_unique_SD[i]['second_check'] = 'no'
     
     #Check for T1w anatomical
-    elif any(x in SD for x in ['T1W','T1w','t1w','tfl3d','mprage','MPRAGE']) or 'tfl3d1_16ns' in SequenceName or (EchoTime <=10 and EchoTime > 0):
+    elif any(x in SD for x in ['T1W','T1w','t1w','tfl3d','mprage','MPRAGE']) or 'tfl3d1_16ns' in SequenceName or (EchoTime <= 10 and EchoTime > 0):
         if 'NORM' in data_list_unique_SD[i]['ImageType'] and 'tfl3d1_16ns' in SequenceName:
             data_list_unique_SD[i]['DataType'] = 'anat'
             data_list_unique_SD[i]['ModalityLabel'] = 'T1w'
