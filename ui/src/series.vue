@@ -26,7 +26,7 @@
                         </el-select>
                     </el-form-item>
                     <div v-if="scope.row.type" style="width: 350px">
-                        <el-form-item v-for="(v, entity) in getEntities(scope.row.type)" :key="entity" :label="entity+'-'+(v=='required'?' *':'')">
+                        <el-form-item v-for="(v, entity) in getSomeEntities(scope.row.type)" :key="entity" :label="entity+'-'+(v=='required'?' *':'')">
                             <el-popover width="300" trigger="focus" placement="right-start"
                                 :title="$root.bids_entities[entity].name" 
                                 :content="$root.bids_entities[entity].description">
@@ -67,14 +67,8 @@ export default {
     },
 
     methods: {
-        //same code in objects / methods
-        getEntities(type) {
-            const modality = type.split("/")[0];
-            const suffix = type.split("/")[1];
-            let entities = {};
-            this.$root.bids_datatypes[modality].forEach(b=>{
-                if(b.suffixes.includes(suffix)) Object.assign(entities, b.entities);
-            });
+        getSomeEntities(type) {
+            let entities = this.$root.getEntities(type);
 
             //we don't want user set sub/ses through series
             delete entities.sub;

@@ -11,11 +11,15 @@
             <el-dropdown-item command="num">Numerical (1,2,3..)</el-dropdown-item>
         </el-dropdown-menu>
     </el-dropdown>
-    <el-table :data="$root.subjects" style="width: 100%" size="mini">
-        <el-table-column label="DICOM PatientID" width="300px">
+    <el-table :data="$root.subjects" style="width: 100%" size="mini" class="table-align-top">
+        <el-table-column label="DICOM Patient" width="300px">
             <template slot-scope="scope">
                 <i class="el-icon-right" style="float: right; font-size: 150%; font-weight: bold;"/>
-                {{scope.row.PatientID}}
+                <div>
+                    <b>PatientID</b> {{scope.row.PatientID}}<br>
+                    <b>PatientName</b> {{scope.row.PatientName}}<br>
+                    <b>PatientBirthDate</b> {{scope.row.PatientBirthDate}}<br>
+                </div>
             </template>
         </el-table-column>
         <el-table-column label="BIDS Subject ID">
@@ -63,7 +67,7 @@ export default {
                 break;
             case "pid":
                 this.$root.subjects.forEach(subject=>{
-                    subject.sub = subject.PatientID;
+                    subject.sub = subject.PatientID.replace(/[^0-9a-zA-Z]/g, '');
                 });
                 break;
             }        

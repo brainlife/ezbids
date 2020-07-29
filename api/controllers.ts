@@ -47,6 +47,7 @@ router.get('/session/:session_id', (req, res, next) => {
     });
 });
 
+/*
 //deprecated by /download/:session_id/*
 router.get('/session/:session_id/log', (req, res, next) => {
     models.Session.findById(req.params.session_id).then(session=>{
@@ -87,6 +88,7 @@ router.get('/session/:session_id/ezbids', (req, res, next) => {
         next(err);
     });
 });
+*/
 
 router.patch('/session/:session_id/finalize', (req, res, next)=>{
     models.Session.findById(req.params.session_id).then(session=>{

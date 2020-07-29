@@ -2,14 +2,15 @@
 <div>
     <div v-if="!$root.session">
         <p>
-        Welcome to the <b><span style="letter-spacing: -2px; opacity: 0.5">ez</span>BIDS</b>. This App will guide you through the process of converting your DICOM images into a BIDS dataset.
+        Welcome to the <b><span style="letter-spacing: -2px; opacity: 0.5">ez</span>BIDS</b> - an online DICOM to BIDS conversion / organizing tool. 
         </p>
+
         <div class="drop-area" :class="{dragging}" 
             @drop="dropit" 
             @dragleave="dragging = false" 
             @dragover="dragover">
             <center class="drop-area-backdrop"><b><span style="letter-spacing: -4vh;">ez</span>BIDS</b></center>
-            <b>Drag & Drop a DICOM folder here</b>
+            <b>Drag & Drop a DICOM folder here to start</b>
             <br>
             <br>
             or <input type="file"
@@ -24,6 +25,7 @@
     </div>
 
     <div v-if="$root.session">
+
         <div v-if="$root.session.status == 'created'">
             <h3>Uploading ...</h3>
             <el-progress status="success" 
@@ -45,7 +47,10 @@
                 </ul>
             </div>
         </div>
-        <processStatus v-else/>
+        <div v-else>
+            <el-button type="secondary" @click="$root.reset()" size="small" style="float: right;">Re-upload</el-button>
+            <processStatus/>
+        </div>
     </div>
 </div>
 </template>
@@ -276,38 +281,7 @@ export default {
             });            
             
             console.log("done uploading --------- start polling");
-            this.pollSession();
-        },
-
-        async pollSession() {
-            console.log("polling..", this.$root.session.status);
-            const res = await fetch(this.$root.apihost+'/session/'+this.$root.session._id, {
-                method: "GET",
-                headers: { 'Content-Type': 'application/json' },
-            });
-            this.$root.session = await res.json();
-            //console.dir(this.$root.session);
-
-            switch(this.$root.session.status) {
-            case "created":
-            case "uploaded":
-            case "preprocessing":
-                this.reload_t = setTimeout(()=>{
-                    console.log("will reload");
-                    this.pollSession();
-                }, 1000);
-                break;
-
-            case "analyzed":
-                if(!this.$root.analyzed) {
-                    await this.$root.loadData(this.$root.apihost+'/session/'+this.$root.session._id+'/ezbids');
-                    this.$root.analyzed = true;
-                }
-                break;
-
-            case "failed":
-                break;
-            }
+            this.$root.pollSession();
         },
         
         loadedPercentage(file_id) {
