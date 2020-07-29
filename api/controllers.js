@@ -39,43 +39,48 @@ router.get('/session/:session_id', (req, res, next) => {
         next(err);
     });
 });
+/*
 //deprecated by /download/:session_id/*
 router.get('/session/:session_id/log', (req, res, next) => {
-    models.Session.findById(req.params.session_id).then(session => {
+    models.Session.findById(req.params.session_id).then(session=>{
         res.setHeader("content-type", "text/plain");
-        fs.createReadStream(config.workdir + "/" + session._id + "/preprocess.log").pipe(res);
-    }).catch(err => {
+        fs.createReadStream(config.workdir+"/"+session._id+"/preprocess.log").pipe(res);
+    }).catch(err=>{
         next(err);
     });
 });
+
 //deprecated by /download/:session_id/*
 router.get('/session/:session_id/error', (req, res, next) => {
-    models.Session.findById(req.params.session_id).then(session => {
+    models.Session.findById(req.params.session_id).then(session=>{
         res.setHeader("content-type", "text/plain");
-        fs.createReadStream(config.workdir + "/" + session._id + "/preprocess.err").pipe(res);
-    }).catch(err => {
+        fs.createReadStream(config.workdir+"/"+session._id+"/preprocess.err").pipe(res);
+    }).catch(err=>{
         next(err);
     });
 });
+
 //deprecated by /download/:session_id/*
 router.get('/session/:session_id/list', (req, res, next) => {
-    models.Session.findById(req.params.session_id).then(session => {
+    models.Session.findById(req.params.session_id).then(session=>{
         res.setHeader("content-type", "text/plain");
-        fs.createReadStream(config.workdir + "/" + session._id + "/list").pipe(res);
-    }).catch(err => {
+        fs.createReadStream(config.workdir+"/"+session._id+"/list").pipe(res);
+    }).catch(err=>{
         next(err);
     });
 });
+
 //deprecated by /download/:session_id/*
 router.get('/session/:session_id/ezbids', (req, res, next) => {
-    models.Session.findById(req.params.session_id).then(session => {
+    models.Session.findById(req.params.session_id).then(session=>{
         res.setHeader("content-type", "application/json");
         console.debug("loading ezbids.json from", config.workdir, session._id);
-        fs.createReadStream(config.workdir + "/" + session._id + "/ezBIDS.json").pipe(res);
-    }).catch(err => {
+        fs.createReadStream(config.workdir+"/"+session._id+"/ezBIDS.json").pipe(res);
+    }).catch(err=>{
         next(err);
     });
 });
+*/
 router.patch('/session/:session_id/finalize', (req, res, next) => {
     models.Session.findById(req.params.session_id).then(session => {
         if (!session)

@@ -1,6 +1,7 @@
 <template>
 <div class="objects">
     <p>Please make sure all subject/session/series mappings are correctly applied to your data.</p>
+    <p>By default, entity specified in the <b>Series</b> page will be used as defaults for all objects. On this page you can override those entities.</p>
     <div class="bids-structure">
         <h5>BIDS Structure</h5>
         <div v-for="(o_sub, sub) in $root.subs" :key="sub" style="font-size: 90%;">
@@ -27,7 +28,6 @@
             <br>
             <br>
             <br>
-            <br>
             <i class="el-icon-back"/> <small>Please select an object to view/edit in the BIDS Structure list</small>
         </p>
         <div v-if="so">
@@ -46,7 +46,7 @@
                         <el-tag type="info" size="mini"><small>{{so.SeriesNumber}}</small></el-tag>
                     </el-form-item>
                     <el-form-item label="Datatype">
-                        <el-select v-model="so.type" placeholder="Modality" size="small" style="width: 100%">
+                        <el-select v-model="so.type" placeholder="Modality" size="small" style="width: 100%" @change="update(so)">
                             <el-option-group v-for="type in $root.datatypes" :key="type.label" :label="type.label">
                                 <el-option v-for="subtype in type.options" :key="subtype.value" :value="subtype.value">
                                     {{type.label}} / {{subtype.label}}
@@ -56,14 +56,13 @@
                     </el-form-item>
 
                     <div style="width: 350px;">
-                        <el-form-item v-for="(v, entity) in getEntities(so.type)" :key="entity" 
+                        <el-form-item v-for="(v, entity) in $root.getEntities(so.type)" :key="entity" 
                             :label="entity+'-'+(v=='required'?' *':'')">
                             <el-popover width="300" trigger="focus" placement="right-start"
                                 :title="$root.bids_entities[entity].name" 
                                 :content="$root.bids_entities[entity].description">
-                                <el-input slot="reference" v-model="so.entities[entity]" size="small" @blur="update(so)"/>
+                                <el-input slot="reference" v-model="so.entities[entity]" size="small" @blur="update(so)" :placeholder="$root.findSeries(so.SeriesDescription).entities[entity]"/>
                             </el-popover>
-                            <!--<el-input v-model="so.entities.sub" size="small"/>-->
                         </el-form-item>
                     </div>
 
@@ -117,37 +116,13 @@ export default {
     },
 
     methods: {
-        //same code in series / methods
-        getEntities(type) {
-            const modality = type.split("/")[0];
-            const suffix = type.split("/")[1];
-            let entities = {};
-            this.$root.bids_datatypes[modality].forEach(b=>{
-                if(b.suffixes.includes(suffix)) Object.assign(entities, b.entities);
-            });
-            return entities;
-        },
 
         update(o) {
             console.log("reorg/validate");
             this.$root.organizeObjects();
             this.$root.validateObject(o);
-            this.$root.validated = this.isAllValid(); 
+            this.$root.validated = this.$root.isAllValid(); 
         },
-
-        isAllValid() {
-            console.log("checking valid");
-            for(let o of this.$root.objects) {
-                if(!o.include) continue;
-                if(o.validationErrors.length > 0) {
-                    console.log("no good");
-                    return false;
-                }
-            }
-            console.log("all good");
-            return true;
-        },
-
     },
 
     computed: {

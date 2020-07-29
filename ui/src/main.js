@@ -102,8 +102,8 @@ new Vue({
             analyzed: false,
             validated: false,
             finalized: false,
-            finished: false,
-
+            //finalized: false,
+            //finished: false,
         }
     },
 
@@ -114,15 +114,16 @@ new Vue({
                 this.objects.forEach(object=>{
 
                     //apply subject mapping
-                    let subject = this.subjects.find(s=>s.PatientID == object.PatientID);
+                    let subject = this.findSubject(object);
                     if(!subject) {
-                        console.log("unknown PatientID in object", object.PatientID);
+                        console.log("unknown PatientID in object", object);
                     } else {
+                        console.log("applying", subject);
                         object.entities.sub = subject.sub; 
                     }
                     
                     //apply session mapping
-                    let session = this.sessions.find(s=>s.AcquisitionDate == object.AcquisitionDate);
+                    let session = this.findSession(object.AcquisitionDate);
                     if(!session) {
                         console.log("unknown AcquisitionDate in object", object.AcquisitionDate);
                     } else {
@@ -130,37 +131,19 @@ new Vue({
                     }
 
                     //apply series info
-                    let series = this.series.find(s=>s.SeriesNumber == object.SeriesNumber);
+                    let series = this.findSeries(object.SeriesDescription);
                     if(!series) {
-                        console.log("unknown seriesnumber in object", object.SeriesNumber);
+                        console.log("unknown seriesnumber in object", object.SeriesDescription);
                     } else {
-                        object.SeriesDescription = series.SeriesDescription;
-
-                        //apply series info
-                        object.type = series.type;
                         object.include = series.include;
-
-                        /*
-                        //initialize entities (otherwise UI will glitch)
-                        const modality = object.type.split("/")[0];
-                        const suffix = object.type.split("/")[1];
-                        this.$root.bids_datatypes[modality].forEach(b=>{
-                            if(b.suffixes.includes(suffix)) {
-                                console.log("setting entities");
-                                console.dir(b.entities);
-                                for(let key in b.entities) Vue.set(object.entities, key, "");
-                            }
-                        });
-                        */
-
-                        //apply entities
-                        console.log("applying entities from series");
-                        console.dir(series);
-                        Object.assign(object.entities, series.entities);
+                        object.SeriesDescription = series.SeriesDescription;
+                        object.type = series.type;
                     }
 
                     this.validateObject(object);
                 });
+
+                this.validated = this.isAllValid(); 
                 this.organizeObjects();
             }
         },
@@ -168,12 +151,6 @@ new Vue({
 
     async mounted() {
         console.log("mounted main");
-        /*
-        if(this.$route.hash != "") { 
-            let session_id = this.$route.hash.substring(1);
-            //TODO reload session ID
-        }
-        */
 
         //dwi
         //https://github.com/tsalo/bids-specification/blob/ref/json-entity/src/schema/datatypes/dwi.yaml
@@ -577,12 +554,57 @@ split:
             */
             location.reload();
         },
+        
+        //TODO - I should rename this to getDatatypeEntities()
+        //same code in series / methods
+        getEntities(type) {
+            const modality = type.split("/")[0];
+            const suffix = type.split("/")[1];
+            let datatype = this.bids_datatypes[modality];
+            if(!datatype) return {};
+
+            let entities = {};
+            datatype.forEach(b=>{
+                if(b.suffixes.includes(suffix)) Object.assign(entities, b.entities);
+            });
+            return entities;
+        },
+
+        findSubject(o) {
+            let subject = this.subjects.find(s=>{
+                if(o.PatientID && s.PatientID == o.PatientID) return true;
+                if(o.PatientName && s.PatientName == o.PatientName) return true;
+                if(o.PatientBirthDate && s.PatientBirthDate == o.PatientBirthDate) return true;
+                return false;
+            });
+            return subject;
+        },
+
+        findSession(acquisitionDate) {
+            let session = this.sessions.find(s=>s.AcquisitionDate == acquisitionDate);
+            return session;
+        },
+
+        findSeries(seriesDescription) {
+            let series = this.series.find(s=>s.SeriesDescription == seriesDescription);
+            return series;
+        },
 
         validateObject(o) {
             Vue.set(o, 'validationErrors', []);
+
+            if(!o.type) {
+                o.validationErrors.push("Please select a datatype");
+                return;
+            }
+
+            //make sure all required entities are set
+            let series = this.findSeries(o.SeriesDescription);
+            let entities_requirement = this.getEntities(o.type);
+
             switch(o.type) {
             case "func/bold":
-                if(!o.entities.task) o.validationErrors.push("Task Name is required for func/bold");
+                if(entities_requirement['task'] && !o.entities.task && !series.entities.task) o.validationErrors.push("Task Name is required for func/bold but not set in series nor overridden.");
             }
 
             //try parsing items
@@ -597,11 +619,24 @@ split:
             });
         },
 
+        isAllValid() {
+            console.log("checking valid");
+            for(let o of this.objects) {
+                if(!o.include) continue;
+                if(o.validationErrors.length > 0) {
+                    console.log("no good");
+                    return false;
+                }
+            }
+            console.log("all good");
+            return true;
+        },
+
         organizeObjects() {
             console.log("reorging");
             this.subs = {}; 
 
-            this.$root.objects.forEach(o=>{
+            this.objects.forEach(o=>{
                 let sub = o.entities.sub||"";
                 let ses = o.entities.ses||"";
                 let run = o.entities.run||"";
@@ -616,7 +651,7 @@ split:
                 this.subs[sub].sess[ses].runs[run].objects.push(o);
             });
 
-            this.$root.objects.sort((a,b)=>{
+            this.objects.sort((a,b)=>{
                 if(a.entities.sub > b.entities.sub) return 1;
                 if(a.entities.sub < b.entities.sub) return -1;
                 if(a.entities.ses > b.entities.ses) return 1;
@@ -690,7 +725,40 @@ split:
                 console.error("failed to load", url);
                 console.error(err);
             });
-        }
+        },
+
+        async pollSession() {
+            console.log("polling..", this.session.status);
+            const res = await fetch(this.apihost+'/session/'+this.session._id, {
+                method: "GET",
+                headers: { 'Content-Type': 'application/json' },
+            });
+            this.session = await res.json();
+
+            switch(this.session.status) {
+            case "created":
+            case "uploaded":
+            case "preprocessing":
+            case "finalized":
+            case "bidsing":
+                this.reload_t = setTimeout(()=>{
+                    console.log("will reload");
+                    this.pollSession();
+                }, 1000);
+                break;
+
+            case "analyzed":
+                if(!this.analyzed) {
+                    await this.loadData(this.apihost+'/download/'+this.session._id+'/ezBIDS.json');
+                    this.analyzed = true;
+                }
+                break;
+
+            case "finished":
+            case "failed":
+                break;
+            }
+        },
     },
 })
 
