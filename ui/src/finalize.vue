@@ -7,13 +7,6 @@
     </div>
     <processStatus v-else/>
 
-    <!--
-    <br>
-    <br>
-    <br>
-    <br>
-    <el-button @click="finalize" type="primary" size="small">debug</el-button>
-    -->
 </div>
 </template>
 
@@ -67,4 +60,4 @@ export default {
 </script>
 
 <style scoped>
-E/style>
+</style>

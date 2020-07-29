@@ -396,6 +396,7 @@ for i in range(len(data_list_unique_SD)):
     if data_list_unique_SD[i]['second_check'] == 'yes':
         if img.ndim == 4: #DWI, functional, functional phase, and SE fmap are 4D
             if TR > 3: #Probably DWI
+                data_list_unique_SD[i]['include'] = True
                 data_list_unique_SD[i]['DataType'] = 'dwi'
                 data_list_unique_SD[i]['ModalityLabel'] = 'dwi'
                 data_list_unique_SD[i]['error'] = 'N/A'
@@ -410,6 +411,7 @@ for i in range(len(data_list_unique_SD)):
                 if data_list_unique_SD[i]['VolumeCount'] < 20: #Functional runs with less than 20 volumes probably aren't good
                     data_list_unique_SD[i]['error'] = 'Functional contains very few volumes; not complete?'
                 else:
+                    data_list_unique_SD[i]['include'] = True
                     data_list_unique_SD[i]['DataType'] = 'func'
                     data_list_unique_SD[i]['ModalityLabel'] = 'bold'
                     data_list_unique_SD[i]['error'] = 'N/A'
@@ -423,6 +425,7 @@ for i in range(len(data_list_unique_SD)):
                     
         elif img.ndim == 3: #sbref, T1w, T2w, FLAIR, magnitude/phasediff fmap are 3D
             if 'EchoNumber' in data_list_unique_SD[i]: #Probably magnitude/phasediff
+                data_list_unique_SD[i]['include'] = True
                 data_list_unique_SD[i]['DataType'] = 'fmap'
                 if data_list_unique_SD[i]['EchoNumber'] == 1:
                     data_list_unique_SD[i]['ModalityLabel'] = 'magnitude1'
@@ -432,21 +435,25 @@ for i in range(len(data_list_unique_SD)):
                 entities['run'] = str(data_list_unique_SD[i]['fmap_run'])
                 
             if (EchoTime <= 10 and EchoTime > 0): #Probably T1w
+                data_list_unique_SD[i]['include'] = True
                 data_list_unique_SD[i]['DataType'] = 'anat'
                 data_list_unique_SD[i]['ModalityLabel'] = 'T1w'
                 data_list_unique_SD[i]['error'] = 'N/A'
             
             elif data_list_unique_SD[i]['sidecar']['InversionTime'] > 0: #Probably FLAIR
+                data_list_unique_SD[i]['include'] = True
                 data_list_unique_SD[i]['DataType'] = 'anat'
                 data_list_unique_SD[i]['ModalityLabel'] = 'FLAIR'
                 data_list_unique_SD[i]['error'] = 'N/A'
                 
             elif EchoTime > 100: #Probably T2w
+                data_list_unique_SD[i]['include'] = True
                 data_list_unique_SD[i]['DataType'] = 'anat'
                 data_list_unique_SD[i]['ModalityLabel'] = 'T2w'
                 data_list_unique_SD[i]['error'] = 'N/A'
             
             elif (EchoTime > 10 and EchoTime < 100): #Probably sbref
+                data_list_unique_SD[i]['include'] = True
                 data_list_unique_SD[i]['DataType'] = 'func'
                 data_list_unique_SD[i]['ModalityLabel'] = 'sbref'
                 data_list_unique_SD[i]['error'] = 'N/A'
