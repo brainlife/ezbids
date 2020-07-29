@@ -9,7 +9,6 @@ if(!root) throw "please specify root directory";
 
 const json = fs.readFileSync(root+"/finalized.json");
 const info = JSON.parse(json);
-console.log(info);
 
 mkdirp.sync(root+"/bids");
 fs.writeFileSync(root+"/bids/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));

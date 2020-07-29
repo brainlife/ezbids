@@ -8,7 +8,6 @@ if (!root)
     throw "please specify root directory";
 const json = fs.readFileSync(root + "/finalized.json");
 const info = JSON.parse(json);
-console.log(info);
 mkdirp.sync(root + "/bids");
 fs.writeFileSync(root + "/bids/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
 fs.writeFileSync(root + "/bids/README.md", info.readme);
@@ -59,11 +58,7 @@ async.forEach(info.objects, (o, next_o) => {
     let series = info.series.find(s => s.SeriesDescription == o.SeriesDescription);
     //construct basename
     let tokens = [];
-<<<<<<< HEAD
-    for (let k in series.entities) {
-=======
     for (let k in o.entities) {
->>>>>>> 746bebf88534eff1d100ca3d6c7ef71248e4ad7e
         let sv = series.entities[k];
         let ov = o.entities[k];
         if (!sv && !ov)
