@@ -113,6 +113,7 @@ new Vue({
                 console.log("apply object mappings");
                 this.objects.forEach(object=>{
 
+                    /*
                     //apply subject mapping
                     let subject = this.findSubject(object);
                     if(!subject) {
@@ -121,6 +122,7 @@ new Vue({
                         console.log("applying", subject);
                         object.entities.sub = subject.sub; 
                     }
+                    */
                     
                     //apply session mapping
                     let session = this.findSession(object.AcquisitionDate);
@@ -637,7 +639,11 @@ split:
             this.subs = {}; 
 
             this.objects.forEach(o=>{
-                let sub = o.entities.sub||"";
+                let subject = this.findSubject(o);
+                if(!subject) console.error("couldn't find subject mapping for", o);
+                let sub = subject.sub;
+                if(o.entities.sub) sub = o.entities.sub; //apply override
+
                 let ses = o.entities.ses||"";
                 let run = o.entities.run||"";
 
@@ -652,8 +658,15 @@ split:
             });
 
             this.objects.sort((a,b)=>{
-                if(a.entities.sub > b.entities.sub) return 1;
-                if(a.entities.sub < b.entities.sub) return -1;
+                let aSubject = this.findSubject(a);
+                let bSubject = this.findSubject(b);
+                let asub = aSubject.sub;
+                let bsub = bSubject.sub;
+                if(a.entities.sub) asub = a.entities.sub;
+                if(b.entities.sub) bsub = b.entities.sub;
+                if(asub > bsub) return 1;
+                if(asub < bsub) return -1;
+
                 if(a.entities.ses > b.entities.ses) return 1;
                 if(a.entities.ses < b.entities.ses) return -1;
                 if(a.entities.run > b.entities.run) return 1;
