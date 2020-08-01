@@ -22,7 +22,6 @@ from nilearn.plotting import plot_img
 
 warnings.filterwarnings("ignore")
 
-
 data_dir = sys.argv[1]
 os.chdir(data_dir)
 
@@ -71,6 +70,7 @@ for j in range(len(json_list)):
     #Load sidecar data
     json_data = open(json_list[j])
     json_data = json.load(json_data, strict=False)
+    print(json_list[j])
     
     #Select SeriesNumbers
     SN = SNs_list[j]
@@ -128,6 +128,12 @@ for j in range(len(json_list)):
     else:
         sub = PatientBirthDate
         
+    try: 
+        PatientSex = json_data['PatientSex']
+    except:
+        PatientSex =None
+    
+        
     if 'EchoNumber' in json_data:
         EchoNumber = json_data['EchoNumber']
     else:
@@ -154,7 +160,7 @@ for j in range(len(json_list)):
                    'sub': sub,
                    'SessionID': '',
                    'SeriesNumber': json_data['SeriesNumber'],
-                   'PatientSex': json_data['PatientSex'],
+                   'PatientSex': PatientSex,
                    'AcquisitionDate': json_data['AcquisitionDateTime'].split('T')[0],
                    'AcquisitionTime': json_data['AcquisitionDateTime'].split('T')[-1],
                    'SeriesDescription': json_data['SeriesDescription'],
@@ -188,14 +194,14 @@ for j in range(len(json_list)):
                    }
     data_list.append(mapping_dic)
     
-    subjectIDs = [x['sub'] for x in data_list]
+    subjectIDs = list(set([x['sub'] for x in data_list]))
     
     for s in range(len(subjectIDs)):
         subjectIDs[s] = {'PatientID': data_list[s]['PatientID'], 'PatientName': data_list[s]['PatientName'],
                          'PatientBirthDate': data_list[s]['PatientBirthDate'], 'sub': subjectIDs[s], 
                          'phenotype': {} }
         
-    acquisition_dates = [x['AcquisitionDate'] for x in data_list]
+    acquisition_dates = list(set([x['AcquisitionDate'] for x in data_list]))
     for a in range(len(acquisition_dates)):
         acquisition_dates[a] = {'AcquisitionDate': acquisition_dates[a], 'ses': ''}
     
