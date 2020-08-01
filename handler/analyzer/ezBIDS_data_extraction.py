@@ -22,13 +22,7 @@ from nilearn.plotting import plot_img
 
 warnings.filterwarnings("ignore")
 
-#data_dir = '/media/data/ezbids/siemens/20190520.Dan_STD_1025.9986@thwjames_DanSTD'
-#data_dir = '/media/data/ezbids/ge/20180918GE'
-#data_dir = '/media/data/ezbids/siemens/DAN_STD'
-#data_dir = '/media/data/ezbids/dicoms/umass-philips'
-#data_dir = '/media/data/ezbids/dicoms/rosetta/philips/philips_1_5T_intera'
-#data_dir = '/media/data/ezbids/dicoms/rosetta/General_electric/GE-SignaHD-Excite'
-#data_dir = '/media/data/ezbids/dicoms/Avesani'
+
 data_dir = sys.argv[1]
 os.chdir(data_dir)
 
