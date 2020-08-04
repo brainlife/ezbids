@@ -495,7 +495,7 @@ for i in range(len(data_list_unique_SD)):
     objects_info = {"include": data_list_unique_SD[i]['include'],
                    "SeriesDescription": SD,
                    "SeriesNumber": data_list_unique_SD[i]['SeriesNumber'],
-                   "PatientID": sub,
+                   "PatientID": data_list_unique_SD[i]['PatientID'],
                    "AcquisitionDate": data_list_unique_SD[i]['AcquisitionDate'],
                    "pngPath": '{}.png'.format(data_list_unique_SD[i]['nifti_path'][:-7]),
                    "entities": entities,
