@@ -19,7 +19,6 @@ from io import StringIO
 from nilearn.image import load_img, index_img
 from nilearn.plotting import plot_img
 
-
 warnings.filterwarnings("ignore")
 
 data_dir = sys.argv[1]
@@ -30,10 +29,12 @@ os.chdir(data_dir)
 #Load list generated from UI, and organize the nifti/json files by their series number    
 dir_list = pd.read_csv('list', header=None)
 dir_list.columns = ['path']
+#Remove Philips proprietary files in dir_list if they exist
+dir_list = dir_list[~dir_list.path.str.contains('PARREC|Parrec|parrec')].reset_index(drop=True)
 sn_list = []
 new_sn_list = []
 for d in range(len(dir_list)):
-    
+        
     try:
         sn = dir_list['path'][d].split('sn-')[1].split('.')[0]
         sn_list.append(sn)
@@ -70,7 +71,6 @@ for j in range(len(json_list)):
     #Load sidecar data
     json_data = open(json_list[j])
     json_data = json.load(json_data, strict=False)
-    print(json_list[j])
     
     #Select SeriesNumbers
     SN = SNs_list[j]
@@ -120,25 +120,34 @@ for j in range(len(json_list)):
         PatientBirthDate = json_data['PatientBirthDate'].replace('-','')
     else:
         PatientBirthDate = None
-        
+    
+    #Find PatientName
     if PatientName:
         sub = PatientName
     elif PatientID:
         sub = PatientID
     else:
         sub = PatientBirthDate
-        
+    
+    #Find PatientSex
     try: 
         PatientSex = json_data['PatientSex']
     except:
-        PatientSex =None
+        PatientSex = None
     
-        
+    #Find Acquisition Date & Time
+    if 'AcquisitionDateTime' in json_data:
+        AcquisitionDate = json_data['AcquisitionDateTime'].split('T')[0]
+        AcquisitionTime = json_data['AcquisitionDateTime'].split('T')[-1]
+    else:
+        AcquisitionDate = None
+        AcquisitionTime = None
+    
+    #Find EchoNumber
     if 'EchoNumber' in json_data:
         EchoNumber = json_data['EchoNumber']
     else:
         EchoNumber = None
-        
         
     #Find how many volumes are in sidecar's corresponding nifti file
     try:
@@ -161,8 +170,8 @@ for j in range(len(json_list)):
                    'SessionID': '',
                    'SeriesNumber': json_data['SeriesNumber'],
                    'PatientSex': PatientSex,
-                   'AcquisitionDate': json_data['AcquisitionDateTime'].split('T')[0],
-                   'AcquisitionTime': json_data['AcquisitionDateTime'].split('T')[-1],
+                   'AcquisitionDate': AcquisitionDate,
+                   'AcquisitionTime': AcquisitionTime,
                    'SeriesDescription': json_data['SeriesDescription'],
                    'ProtocolName': json_data['ProtocolName'], 
                    'ImageType': json_data['ImageType'],
