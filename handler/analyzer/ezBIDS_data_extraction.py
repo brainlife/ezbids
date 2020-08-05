@@ -149,6 +149,12 @@ for j in range(len(json_list)):
     else:
         EchoNumber = None
         
+    #Find InversionTime
+    if 'InversionTime' in json_data:
+        InversionTime = json_data['InversionTime']
+    else:
+        InversionTime = None
+        
     #Find how many volumes are in sidecar's corresponding nifti file
     try:
         volume_count = nib.load(json_list[j][:-4] + 'nii.gz').shape[3]
@@ -178,6 +184,7 @@ for j in range(len(json_list)):
                    'SeriesNumber': json_data['SeriesNumber'],
                    'RepetitionTime': json_data['RepetitionTime'],
                    'EchoNumber': EchoNumber,
+                   'InversionTime': InversionTime,
                    'DataType': '',
                    'ModalityLabel': '',
                    'sbref_run': '',
@@ -248,7 +255,6 @@ for i in range(len(data_list_unique_SD)):
     img = load_img(data_list_unique_SD[i]['nifti_path'])
     
     if not os.path.isfile('{}.png'.format(data_list_unique_SD[i]['nifti_path'][:-7])):
-        # img = load_img(data_list_unique_SD[i]['nifti_path'])
         if img.ndim == 4:
             ref_img = index_img(img, -1)
         else:
@@ -263,9 +269,9 @@ for i in range(len(data_list_unique_SD)):
     #Populate some labels fields (primarily based on ReproIn convention)
     entities = {}
     if 'sub-' in SD:
-        entities['sub'] = SD.split('sub-')[-1].split('_')[0]
+        data_list_unique_SD[i]['sub'] = SD.split('sub-')[-1].split('_')[0]
     else:
-        entities['sub'] = data_list_unique_SD[i]['sub']
+        entities['sub'] = None
     
     if '_ses-' in SD:
         entities['ses'] = SD.split('_ses-')[-1].split('_')[0]
@@ -449,7 +455,7 @@ for i in range(len(data_list_unique_SD)):
                 data_list_unique_SD[i]['ModalityLabel'] = 'T1w'
                 data_list_unique_SD[i]['error'] = 'N/A'
             
-            elif data_list_unique_SD[i]['sidecar']['InversionTime'] > 0: #Probably FLAIR
+            elif data_list_unique_SD[i]['InversionTime'] is not None and data_list_unique_SD[i]['InversionTime'] > 0: #Probably FLAIR
                 data_list_unique_SD[i]['include'] = True
                 data_list_unique_SD[i]['DataType'] = 'anat'
                 data_list_unique_SD[i]['ModalityLabel'] = 'FLAIR'
