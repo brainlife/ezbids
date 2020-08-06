@@ -7,9 +7,8 @@ The output can be downloaded back to the user's computer, or sent to other repos
 OpenNeuro, or brainlife.io
 
 ### Authors
-- [Franco Pestilli](pestilli@utexas.edu)
-
-### Contributors
+- [Soichi Hayashi](soichih@gmail.com)
+- [Levitas, Daniel](dlevitas@iu.edu)
 - [Franco Pestilli](pestilli@utexas.edu)
 
 ### Funding Acknowledgement
