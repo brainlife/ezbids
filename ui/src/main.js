@@ -110,9 +110,13 @@ new Vue({
     watch: {
         page(v) {
             if(v == "objects") {
-                console.log("apply series mapping for each object");
+                this.organizeObjects();
+
                 //TODO - we need to ask user if they want to override any changes they might have made already on objects
                 this.objects.forEach(object=>{
+
+                    //apply series info (I wish we can apply this information at finalize stage, but that means we have to create separate include/type field
+                    //for object level that *overrides* series mapping.. a bit tricky?)
                     let series = this.findSeries(object);
                     if(!series) {
                         console.log("unknown seriesnumber in object", object.SeriesDescription);
@@ -121,11 +125,32 @@ new Vue({
                         object.type = series.type;
                     }
 
+                    //for each object in a given session
+                    for(let sub in this.subs) {
+                        for(let ses in this.subs[sub].sess) {
+                            const objects = this.subs[sub].sess[ses].objects;
+                            objects.forEach(o=>{
+                                
+                                //look for series.IntendedFor and find those series within sub/ses group (sibling objects)
+                                o.IntendedFor = {}; 
+                                const series = this.findSeries(o);
+                                if(series.IntendedFor) {
+                                    series.IntendedFor.forEach(sidx=>{
+                                        const s = this.series[sidx];
+                                        this.objects.filter(so=>this.findSeries(so) == s).forEach(so=>{
+                                            let oidx = this.objects.indexOf(so);
+                                            o.IntendedFor[oidx.toString()] = true;
+                                        });
+                                    });
+                                }
+                            });
+                        }
+                    }
+
                     this.validateObject(object);
                 });
 
                 this.validated = this.isAllValid(); 
-                this.organizeObjects();
             }
         },
     },
@@ -641,16 +666,16 @@ split:
                 let ses = session.ses;
                 if(o.entities.ses) ses = o.entities.ses; //apply override
 
-                let run = o.entities.run||"";
+                //let run = o.entities.run||"";
 
                 if(!this.subs[sub]) this.subs[sub] = { sess: {}, objects: []}; 
                 this.subs[sub].objects.push(o);
 
-                if(!this.subs[sub].sess[ses]) this.subs[sub].sess[ses] = { runs: {}, objects: [] };
+                if(!this.subs[sub].sess[ses]) this.subs[sub].sess[ses] = { /*runs: {},*/ objects: [] };
                 this.subs[sub].sess[ses].objects.push(o);
 
-                if(!this.subs[sub].sess[ses].runs[run]) this.subs[sub].sess[ses].runs[run] = { objects: [] };
-                this.subs[sub].sess[ses].runs[run].objects.push(o);
+                //if(!this.subs[sub].sess[ses].runs[run]) this.subs[sub].sess[ses].runs[run] = { objects: [] };
+                //this.subs[sub].sess[ses].runs[run].objects.push(o);
             });
 
             this.objects.sort((a,b)=>{

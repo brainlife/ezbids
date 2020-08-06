@@ -5,18 +5,20 @@
     <div class="bids-structure">
         <h5>BIDS Structure</h5>
         <div v-for="(o_sub, sub) in $root.subs" :key="sub" style="font-size: 90%;">
-            <span v-if="sub != ''" class="hierarchy" style="opacity: 0.8;"><i class="el-icon-user-solid"/> <small>sub</small> {{sub}} <small>({{o_sub.objects.length}})</small></span>
+            <span v-if="sub != ''" class="hierarchy" style="opacity: 0.8;">
+                <i class="el-icon-user-solid"/> 
+                <small>sub</small> {{sub}} 
+                <small>({{o_sub.objects.length}})</small>
+            </span>
             <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}" class="left-border">
                 <span v-if="ses != ''" class="hierarchy" style="opacity: 0.8;"><i class="el-icon-time"/> <small>ses</small> {{ses}}</span>
-                <div v-for="(o_run, run) in o_ses.runs" :key="run">
-                    <div v-for="(o, idx) in o_run.objects" :key="idx" style="padding: 2px;" class="clickable" :class="{'selected': so === o}" @click="so = o">
-                        <el-tag type="info" size="mini"><small>{{o.SeriesNumber}}</small></el-tag>
-                        &nbsp;
-                        <datatype :o="o"/>
-                        <el-badge v-if="o.validationErrors.length > 0" type="danger" 
-                            :value="o.validationErrors.length" 
-                            style="margin-left: 5px;"/>
-                    </div>
+                <div v-for="(o, idx) in o_ses.objects" :key="idx" style="padding: 2px;" class="clickable" :class="{'selected': so === o}" @click="select(o, o_ses)">
+                    <el-tag type="info" size="mini"><small>{{o.SeriesNumber}}</small></el-tag>
+                    &nbsp;
+                    <datatype :o="o"/>
+                    <el-badge v-if="o.validationErrors.length > 0" type="danger" 
+                        :value="o.validationErrors.length" 
+                        style="margin-left: 5px;"/>
                 </div>
             </div>
         </div>
@@ -78,6 +80,30 @@
                         <el-form-item v-if="item.headers" label="Nifti Headers (readonly)">
                             <pre class="headers">{{item.headers}}</pre>
                         </el-form-item>
+                        <br>
+                    </div>
+
+                    <div v-if="so.type.startsWith('fmap/')" class="border-top">
+                        <el-form-item label="IntendedFor">
+                            <p v-for="(o, idx) in sess.objects.filter(o=>o!=so)" :key="idx" style="margin: 0;">
+                                <el-checkbox :checked="so.IntendedFor[idx]" @change="updateIntendedFor($event, idx)">
+                                    <el-tag type="info" size="mini"><small>{{o.SeriesNumber}}</small></el-tag>
+                                    {{o.SeriesDescription}}
+                                    &nbsp;
+                                    <datatype :o="o"/>
+                                </el-checkbox>
+                            </p>
+                            <!--
+                            <el-select v-model="so.IntendedFor" multiple placeholder="Select Object" style="width: 100%">
+                                <el-option
+                                v-for="(o, idx) in $root.objects"
+                                :key="idx"
+                                :label="s.SeriesDescription"
+                                :value="idx">
+                                </el-option>
+                            </el-select>
+                            -->
+                        </el-form-item>
                     </div>
 
                 </div>
@@ -105,8 +131,8 @@ export default {
     },
     data() {
         return {
-            //showHelpAcq: false,
             so: null, //selected object
+            sses: [], //selected session
             config: Vue.config,
         }
     },
@@ -115,11 +141,20 @@ export default {
     },
 
     methods: {
+        select(o, sess) {
+            this.sess = sess;
+            this.so = o;
+        },
+
         update(o) {
-            console.log("reorg/validate");
             this.$root.organizeObjects();
             this.$root.validateObject(o);
             this.$root.validated = this.$root.isAllValid(); 
+        },
+
+        updateIntendedFor(checked, idx) {
+            this.so.IntendedFor[idx] = checked;
+            this.$forceUpdate();
         },
 
         getDefault(o, entity) {

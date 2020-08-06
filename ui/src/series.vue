@@ -1,21 +1,19 @@
 <template>
 <div>
     <h4>Series / Datatype Mappings</h4>
-    <p>Please update how you'd like to map each dicom series to BIDS datatype.</p>
+    <p>Please update how you'd like to map each dicom SeriesDescription to BIDS datatype/entities.</p>
     <el-table :data="$root.series" style="width: 100%" size="mini" class="table-align-top">
-        <el-table-column label="sn/Series Description" width="300px">
+        <el-table-column label="Series Description" width="300px">
             <template slot-scope="scope">
                 <i class="el-icon-right" style="float: right; font-size: 150%; font-weight: bold;"/>
-                <el-tag type="info" size="mini"><small>{{scope.row.SeriesNumber}}</small></el-tag>
+                <!--<el-tag type="info" size="mini"><small>{{scope.row.SeriesNumber}}</small></el-tag>-->
                 {{scope.row.SeriesDescription}}
+                <el-checkbox v-model="scope.row.include">Include in the BIDS output</el-checkbox>
             </template>
         </el-table-column>
         <el-table-column label="BIDS Datatype">
             <template slot-scope="scope">
                 <el-form label-width="100px">
-                    <el-form-item label="">
-                        <el-checkbox v-model="scope.row.include">Include this series in the BIDS output</el-checkbox>
-                    </el-form-item>
                     <el-form-item label="Datatype">
                         <el-select v-model="scope.row.type" placeholder="Please select" size="small" style="width: 100%">
                             <el-option-group v-for="type in $root.datatypes" :key="type.label" :label="type.label">
@@ -25,21 +23,25 @@
                             </el-option-group>
                         </el-select>
                     </el-form-item>
-                    <div v-if="scope.row.type" style="width: 350px">
-                        <el-form-item v-for="(v, entity) in getSomeEntities(scope.row.type)" :key="entity" :label="entity+'-'+(v=='required'?' *':'')">
+                    <div v-if="scope.row.type">
+                        <el-form-item v-for="(v, entity) in getSomeEntities(scope.row.type)" :key="entity" :label="entity+'-'+(v=='required'?' *':'')" style="width: 350px">
                             <el-popover width="300" trigger="focus" placement="right-start"
                                 :title="$root.bids_entities[entity].name" 
                                 :content="$root.bids_entities[entity].description">
                                 <el-input slot="reference" v-model="scope.row.entities[entity]" size="small" :required="v == 'required'"/>
-                                <!--
-                                <p class="help-block">
-                                    <b @click="toggleInfo(entity)" class="clickable">{{$root.bids_entities[entity].name}}</b> 
-                                    <slide-up-down :active="showInfo[entity]">{{$root.bids_entities[entity].description}}</slide-up-down>
-                                </p>
-                                -->
                             </el-popover>
                         </el-form-item>
                     </div>
+                    <div v-if="scope.row.type && scope.row.type.startsWith('fmap/')">
+                        <el-form-item label="IntendedFor">
+                            <el-select v-model="scope.row.IntendedFor" multiple placeholder="Select Series" style="width: 100%">
+                                <el-option
+                                v-for="(s, idx) in $root.series" :key="idx"
+                                :label="s.SeriesDescription" :value="idx">
+                                </el-option>
+                            </el-select>
+                        </el-form-item>
+                    </div> 
                 </el-form>
             </template>
         </el-table-column>

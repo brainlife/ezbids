@@ -50,36 +50,15 @@ console.log("outputting objects");
 async.forEach(info.objects, (o, next_o)=>{
     if(!o.include) return next_o();
 
-    /*
-    //TODO - alert same code in ui/main.js
-    const subject = info.subjects.find(s=>{
-        if(o.PatientName) {
-            if(s.PatientName == o.PatientName) return true;
-            return false;
-        }
-        if(o.PatientID) {
-            if(s.PatientID == o.PatientID) return true;
-            return false;
-        }
-        if(o.PatientBirthDate) {
-            if(s.PatientBirthDate == o.PatientBirthDate) return true;
-            return false;
-        }
-        return false;
-    });
-    if(!o.entities.sub) o.entities.sub = subject.sub;
-
-    const session = info.sessions.find(s=>s.AcquisitionDate == o.AcquisitionDate);
-    if(!o.entities.ses) o.entities.ses = session.ses;
-
-    const series = info.series.find(s=>s.SeriesDescription == o.SeriesDescription);
-    */
+    let typeTokens = o.type.split("/");
+    let modality = typeTokens[0]; //func, dwi, anat, etc..
+    let suffix = typeTokens[1];
 
     //setup directory
     let path = "bids";
     path += "/sub-"+o.entities.sub;
     if(o.entities.ses) path += "/ses-"+o.entities.ses;
-    path += "/"+o.type.split("/")[0]; //func, dwi, anat, etc..
+    path += "/"+modality; 
     mkdirp.sync(root+"/"+path);
 
     //construct basename
@@ -96,9 +75,9 @@ async.forEach(info.objects, (o, next_o)=>{
         }
 
         let fullpath = root+"/"+path+"/"+name+"_"+filename;
-        console.log(item.name, fullpath);
+        //console.log(item.name, fullpath);
         if(item.name == "json") {
-            //we create sidecar from sidecar object
+            //we create sidecar from sidecar object (edited by the user)
             fs.writeFileSync(fullpath, JSON.stringify(item.sidecar));
         } else{
             //assume to be normal files
@@ -108,49 +87,117 @@ async.forEach(info.objects, (o, next_o)=>{
             } catch (err) {
                 //console.log("link doesn't exist yet");
             }
-            fs.symlinkSync(goback+item.path, fullpath);
-        }
 
-        /*
-        if(jsonname && item.sidecar) {
-            console.log(name+"_"+jsonname);
-            fs.writeFileSync(root+"/"+path+"/"+name+"_"+jsonname, JSON.stringify(item.sidecar, null, 4));
+            //I need to use hardlink so that when archiver tries to create .zip in download API
+            //the files will be found. As far as I know, archiver module can't de-reference 
+            //symlinks
+            //fs.symlinkSync(goback+item.path, fullpath);
+            fs.linkSync(root+"/"+item.path, fullpath);
         }
-        */
     }
 
-    //console.log(path, name, o.type);
+    switch(modality) {
+    case "anat":
+        /*
+        - suffixes:
+            - T1w
+            - T2w
+            - T1rho
+            - T1map
+            - T2map
+            - T2star
+            - FLAIR
+            - FLASH
+            - PD
+            - PDmap
+            - PDT2
+            - inplaneT1
+            - inplaneT2
+            - angio
+        */
+        o.items.forEach(item=>{
+            switch(item.name) {
+            case "nii.gz":
+                handleItem(item, suffix+".nii.gz");
+                break;
+            case "json":
+                handleItem(item, suffix+".json");
+                break;
+            default:
+                console.error("unknown anat item name", item.name);
+            }
+        });
+        break;
+    case "func":
+        /*
+        - suffixes:
+            - bold
+            - cbv
+            - phase
+            - sbref
 
-    switch(o.type) {
-    case "anat/T1w":
+        */
         o.items.forEach(item=>{
             switch(item.name) {
             case "nii.gz":
-                handleItem(item, "T1w.nii.gz");
+                handleItem(item, suffix+".nii.gz");
                 break;
             case "json":
-                handleItem(item, "T1w.json");
+                handleItem(item, suffix+".json");
                 break;
             default:
-                console.error("unknown item name", item.name);
+                console.error("unknown func item name", item.name);
             }
         });
         break;
-    case "func/bold":
+    case "fmap": 
+        /*
+        - suffixes:
+            - phasediff
+            - phase1
+            - phase2
+            - magnitude1
+            - magnitude2
+            - magnitude
+            - fieldmap
+        */
         o.items.forEach(item=>{
             switch(item.name) {
             case "nii.gz":
-                handleItem(item, "bold.nii.gz");
+                handleItem(item, suffix+".nii.gz");
                 break;
             case "json":
-                handleItem(item, "bold.json");
+                //handle IntendedFor
+                if(o.IntendedFor) {
+                    item.sidecar.IntendedFor = [];
+                    for(let idx in o.IntendedFor) {
+                        const io = info.objects[parseInt(idx)];
+                        const iomodality = io.type.split("/")[0];
+                        const suffix = io.type.split("/")[1];
+                        //const ioitem = io.items.find(_o=>_o.name == "nii.gz");
+
+                        //construct a path relative to the subject
+                        let path = "";
+                        if(io.entities.ses) path += "ses-"+io.entities.ses="/";
+                        path += iomodality+"/";
+                        let tokens = [];
+                        for(let k in io.entities) {
+                            if(io.entities[k]) tokens.push(k+"-"+io.entities[k]); 
+                        }
+                        path += tokens.join("_");
+                        path += "_"+suffix+".nii.gz";  //TODO - not sure if this is robust enough..
+                        item.sidecar.IntendedFor.push(path);
+                    }
+                }
+
+                handleItem(item, suffix+".json");
                 break;
             default:
-                console.error("unknown item name", item.name);
+                console.error("unknown fmap item name", item.name);
             }
         });
         break;
-    case "dwi/dwi":
+    case "dwi":
         o.items.forEach(item=>{
             switch(item.name) {
             case "nii.gz":
@@ -166,13 +213,14 @@ async.forEach(info.objects, (o, next_o)=>{
                 handleItem(item, "dwi.json");
                 break;
             default:
-                console.error("unknown item name", item.name);
+                console.error("unknown dwi item name", item.name);
             }
         });
         break;
     default:
         console.error("unknown datatype:"+o.type);
     }
+
     next_o();
 });
 

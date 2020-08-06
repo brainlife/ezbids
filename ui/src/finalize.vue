@@ -1,11 +1,13 @@
 <template>
 <div>
+    <div style="float: right;">
+        <el-button @click="finalize" size="small">Re-Finalize</el-button>
+    </div>
     <div v-if="$root.validated && $root.session.status == 'finished'">
         <p>All done!</p>
         <el-button @click="download" type="primary" size="small">Download</el-button>
         <el-button @click="sendBrainlife" size="small">Upload Data to <b>brainlife.io</b></el-button>
         <el-button @click="sendOpenneuro" size="small">Upload Data to <b>OpenNeuro</b></el-button>
-        <el-button @click="finalize" size="small">Re-Finalize</el-button>
     </div>
     <div v-else-if="$root.validated && $root.session.status == 'analyzed'">
         <p>Your data is ready to be converted to BIDS.</p>
@@ -13,7 +15,6 @@
         <el-button @click="finalize" type="primary" size="small">Finalize</el-button>
     </div>
     <processStatus v-else/>
-
 </div>
 </template>
 
@@ -85,11 +86,11 @@ export default {
         },
 
         sendBrainlife() {
-            alert("ezbids://"+this.$root.session._id);
+            alert("TODO.. invoke API call with fetch URL like.. ezbids://"+this.$root.session._id);
         },
 
         sendOpenneuro() {
-            alert("ezbids://"+this.$root.session._id);
+            alert("TODO.. invoke API call with fetch URL like.. ezbids://"+this.$root.session._id);
         },
     },
 }
