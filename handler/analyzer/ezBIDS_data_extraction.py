@@ -220,16 +220,22 @@ for j in range(len(json_list)):
     acquisition_dates = list(set([x['AcquisitionDate'] for x in data_list]))
     for a in range(len(acquisition_dates)):
         acquisition_dates[a] = {'AcquisitionDate': acquisition_dates[a], 'ses': ''}
-    
-#Only keep dictionary with unique SeriesDescription values
-data_list_unique_SD = []
+
+all_dataset_acquistions = [data_list[x]['SeriesDescription'] for x in range(len(data_list))]
+
+#Create series level and object level dictionaries based on unique SeriesDescription and/or SeriesNumber
+data_list_unique_objects = []
+data_list_unique_series = []
 series_description_list = []
 series_number_list = []
 for SD in data_list:
-    if SD['SeriesDescription'] not in series_description_list or SD['SeriesNumber'] not in series_number_list:
-        data_list_unique_SD.append(SD)
-        series_description_list.append(SD['SeriesDescription'])
-        series_number_list.append(SD['SeriesNumber'])
+    if SD['SeriesDescription'] not in series_description_list:
+        data_list_unique_series.append(SD)
+        if SD['SeriesNumber'] not in series_number_list:
+            data_list_unique_objects.append(SD)
+    series_description_list.append(SD['SeriesDescription'])
+    series_number_list.append(SD['SeriesNumber'])
+
 
 #Set up variables for determining features needed for BIDS conversion
 sbref_run = 1
@@ -243,40 +249,40 @@ objects_list = []
 
 #if any(x in descriptions[d] for x in ['T1w','tfl3d','mprage','tfl_1084B']):
 #Let's try to auto-populate some of the BIDS fields
-for i in range(len(data_list_unique_SD)):
+for i in range(len(data_list_unique_objects)):
     
     s = StringIO()
     sys.stdout = s
-    print(nib.load(data_list_unique_SD[i]['nifti_path']).header)
-    data_list_unique_SD[i]['headers'] = s.getvalue().splitlines()[1:]
+    print(nib.load(data_list_unique_objects[i]['nifti_path']).header)
+    data_list_unique_objects[i]['headers'] = s.getvalue().splitlines()[1:]
     
-    # data_list_unique_SD[i]['headers'] = ''
+    # data_list_unique_objects[i]['headers'] = ''
     
-    img = load_img(data_list_unique_SD[i]['nifti_path'])
+    img = load_img(data_list_unique_objects[i]['nifti_path'])
     
-    if not os.path.isfile('{}.png'.format(data_list_unique_SD[i]['nifti_path'][:-7])):
+    if not os.path.isfile('{}.png'.format(data_list_unique_objects[i]['nifti_path'][:-7])):
         if img.ndim == 4:
             ref_img = index_img(img, -1)
         else:
             ref_img = img
         plot_img(ref_img, colorbar=False, display_mode='ortho', 
                   draw_cross=False, annotate=False, threshold=None, 
-                  output_file='{}.png'.format(data_list_unique_SD[i]['nifti_path'][:-7]))    
+                  output_file='{}.png'.format(data_list_unique_objects[i]['nifti_path'][:-7]))    
     
-    SD = data_list_unique_SD[i]['SeriesDescription']
-    TR = data_list_unique_SD[i]['RepetitionTime']
+    SD = data_list_unique_objects[i]['SeriesDescription']
+    TR = data_list_unique_objects[i]['RepetitionTime']
     
     #Populate some labels fields (primarily based on ReproIn convention)
     entities = {}
     if 'sub-' in SD:
-        data_list_unique_SD[i]['sub'] = SD.split('sub-')[-1].split('_')[0]
+        data_list_unique_objects[i]['sub'] = SD.split('sub-')[-1].split('_')[0]
     else:
         entities['sub'] = None
     
     if '_ses-' in SD:
         entities['ses'] = SD.split('_ses-')[-1].split('_')[0]
     else:
-        entities['ses'] = data_list_unique_SD[i]['SessionID']
+        entities['ses'] = data_list_unique_objects[i]['SessionID']
         
     if '_run-' in SD:
         entities['run'] = SD.split('_run-')[-1].split('_')[0]
@@ -295,12 +301,12 @@ for i in range(len(data_list_unique_SD)):
         
     
     try:
-        SequenceName = data_list_unique_SD[i]['sidecar']['SequenceName']
+        SequenceName = data_list_unique_objects[i]['sidecar']['SequenceName']
     except:
         SequenceName = ''
         
     try:
-        EchoTime = data_list_unique_SD[i]['sidecar']['EchoTime']*1000
+        EchoTime = data_list_unique_objects[i]['sidecar']['EchoTime']*1000
     except:
         EchoTime = 0
     
@@ -310,38 +316,38 @@ for i in range(len(data_list_unique_SD)):
     #Do a first pass of acqusitions based on specific terms in the SeriesDescriptions
     #Check for localizer(s)
     if any(x in SD for x in ['Localizer','localizer','SCOUT','Scout','scout']):
-        data_list_unique_SD[i]['include'] = False
-        data_list_unique_SD[i]['error'] = 'Acquisition appears to be a localizer; will not be converted to BIDS'
-        data_list_unique_SD[i]['second_check'] = 'no'
+        data_list_unique_objects[i]['include'] = False
+        data_list_unique_objects[i]['error'] = 'Acquisition appears to be a localizer; will not be converted to BIDS'
+        data_list_unique_objects[i]['second_check'] = 'no'
     
     #Check for T1w anatomical
     #elif any(x in SD for x in ['T1W','T1w','t1w','tfl3d','mprage','MPRAGE']) or 'tfl3d1_16ns' in SequenceName or (EchoTime <= 10 and EchoTime > 0):
     elif any(x in SD for x in ['T1W','T1w','t1w','tfl3d','mprage','MPRAGE']) or 'tfl3d1_16ns' in SequenceName:
-        if 'NORM' in data_list_unique_SD[i]['ImageType'] and 'tfl3d1_16ns' in SequenceName:
-            data_list_unique_SD[i]['DataType'] = 'anat'
-            data_list_unique_SD[i]['ModalityLabel'] = 'T1w'
-        elif 'NORM' not in data_list_unique_SD[i]['ImageType'] and 'tfl3d1_16ns' in SequenceName:
-            data_list_unique_SD[i]['include'] = False  
-            data_list_unique_SD[i]['error'] = 'Acquisition is a poor resolution T1w; recommended not be converted to BIDS'
-            data_list_unique_SD[i]['second_check'] = 'no'
+        if 'NORM' in data_list_unique_objects[i]['ImageType'] and 'tfl3d1_16ns' in SequenceName:
+            data_list_unique_objects[i]['DataType'] = 'anat'
+            data_list_unique_objects[i]['ModalityLabel'] = 'T1w'
+        elif 'NORM' not in data_list_unique_objects[i]['ImageType'] and 'tfl3d1_16ns' in SequenceName:
+            data_list_unique_objects[i]['include'] = False  
+            data_list_unique_objects[i]['error'] = 'Acquisition is a poor resolution T1w; recommended not be converted to BIDS'
+            data_list_unique_objects[i]['second_check'] = 'no'
         else:
-            data_list_unique_SD[i]['DataType'] = 'anat'
-            data_list_unique_SD[i]['ModalityLabel'] = 'T1w'
+            data_list_unique_objects[i]['DataType'] = 'anat'
+            data_list_unique_objects[i]['ModalityLabel'] = 'T1w'
           
     #Check for T2w anatomical
     elif any(x in SD for x in ['T2W','T2w','t2w']):
-        data_list_unique_SD[i]['DataType'] = 'anat'
-        data_list_unique_SD[i]['ModalityLabel'] = 'T2w'
+        data_list_unique_objects[i]['DataType'] = 'anat'
+        data_list_unique_objects[i]['ModalityLabel'] = 'T2w'
         
     #Check for FLAIR anatomical
     elif any(x in SD for x in ['FLAIR','Flair','flair','t2_space_da-fl']):
-        data_list_unique_SD[i]['DataType'] = 'anat'
-        data_list_unique_SD[i]['ModalityLabel'] = 'FLAIR'
+        data_list_unique_objects[i]['DataType'] = 'anat'
+        data_list_unique_objects[i]['ModalityLabel'] = 'FLAIR'
         
     #Check for single-band reference (SBRef)
     elif any(x in SD for x in ['SBRef','sbref']):
-        data_list_unique_SD[i]['DataType'] = 'func'
-        data_list_unique_SD[i]['ModalityLabel'] = 'sbref'
+        data_list_unique_objects[i]['DataType'] = 'func'
+        data_list_unique_objects[i]['ModalityLabel'] = 'sbref'
         if entities['run'] == '':
             if sbref_run < 10:
                 entities['run'] = '0' + str(sbref_run)
@@ -349,16 +355,16 @@ for i in range(len(data_list_unique_SD)):
                 entities['run'] = str(sbref_run)
         sbref_run +=1
         if '_task-' in SD:
-            data_list_unique_SD[i]['TaskName'] = SD.split('_task-')[-1].split('_')[0]
-            data_list_unique_SD[i]['sidecar']['TaskName'] = SD.split('_task-')[-1].split('_')[0]
+            data_list_unique_objects[i]['TaskName'] = SD.split('_task-')[-1].split('_')[0]
+            data_list_unique_objects[i]['sidecar']['TaskName'] = SD.split('_task-')[-1].split('_')[0]
             entities['task'] = SD.split('_task-')[-1].split('_')[0]
         else:
             entities['task'] = 'rest'
             
     #Check for functional
     elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func','FMRI','fMRI','fmri','EPI']) and ('SBRef' not in SD or 'sbref' not in SD):
-        data_list_unique_SD[i]['DataType'] = 'func'
-        data_list_unique_SD[i]['ModalityLabel'] = 'bold'
+        data_list_unique_objects[i]['DataType'] = 'func'
+        data_list_unique_objects[i]['ModalityLabel'] = 'bold'
         if entities['run'] == '':
             if func_run < 10:
                 entities['run'] = '0' + str(func_run)
@@ -366,70 +372,70 @@ for i in range(len(data_list_unique_SD)):
                 entities['run'] = str(func_run)
         func_run +=1
         if '_task-' in SD:
-            data_list_unique_SD[i]['TaskName'] = SD.split('_task-')[-1].split('_')[0]
-            data_list_unique_SD[i]['sidecar']['TaskName'] = SD.split('_task-')[-1].split('_')[0]
+            data_list_unique_objects[i]['TaskName'] = SD.split('_task-')[-1].split('_')[0]
+            data_list_unique_objects[i]['sidecar']['TaskName'] = SD.split('_task-')[-1].split('_')[0]
             entities['task'] = SD.split('_task-')[-1].split('_')[0]
         else:
             entities['task'] = 'rest'
     
     #Check for DWI
     elif any(x in SD for x in ['DWI','dwi','DTI','dti']) or 'ep_b' in SequenceName:
-        data_list_unique_SD[i]['DataType'] = 'dwi'
-        data_list_unique_SD[i]['ModalityLabel'] = 'dwi'
+        data_list_unique_objects[i]['DataType'] = 'dwi'
+        data_list_unique_objects[i]['ModalityLabel'] = 'dwi'
         if entities['run'] == '':
             if dwi_run < 10:
                 entities['run'] = '0' + str(dwi_run)
             else:
                 entities['run'] = str(dwi_run)
         dwi_run +=1
-        entities['dir'] = data_list_unique_SD[i]['dir']
+        entities['dir'] = data_list_unique_objects[i]['dir']
     
     #Check for field maps
     elif any(x in SD for x in ['fmap','FieldMap','field_mapping']) or 'epse2d' in SequenceName or 'fm2d2r' in SequenceName:
         if img.ndim == 4: #SE fmaps
-            data_list_unique_SD[i]['DataType'] = 'fmap'
-            data_list_unique_SD[i]['ModalityLabel'] = 'epi'
-            entities['run'] = str(data_list_unique_SD[i]['fmap_run'])
-            entities['dir'] = data_list_unique_SD[i]['dir']
+            data_list_unique_objects[i]['DataType'] = 'fmap'
+            data_list_unique_objects[i]['ModalityLabel'] = 'epi'
+            entities['run'] = str(data_list_unique_objects[i]['fmap_run'])
+            entities['dir'] = data_list_unique_objects[i]['dir']
         else: #magnitude/phasediff fmaps
-            data_list_unique_SD[i]['DataType'] = 'fmap'
-            if data_list_unique_SD[i]['EchoNumber'] == 1:
-                data_list_unique_SD[i]['ModalityLabel'] = 'magnitude1'
+            data_list_unique_objects[i]['DataType'] = 'fmap'
+            if data_list_unique_objects[i]['EchoNumber'] == 1:
+                data_list_unique_objects[i]['ModalityLabel'] = 'magnitude1'
             else:
-                data_list_unique_SD[i]['ModalityLabel'] = 'phasediff'
-            entities['run'] = str(data_list_unique_SD[i]['fmap_run'])
+                data_list_unique_objects[i]['ModalityLabel'] = 'phasediff'
+            entities['run'] = str(data_list_unique_objects[i]['fmap_run'])
             
             
     #Can't determine acquisition type. Assume it's not BIDS
     else:
-        data_list_unique_SD[i]['include'] = False
-        data_list_unique_SD[i]['error'] = 'Cannot determine acquisition type'
-        data_list_unique_SD[i]['second_check'] = 'yes'
+        data_list_unique_objects[i]['include'] = False
+        data_list_unique_objects[i]['error'] = 'Cannot determine acquisition type'
+        data_list_unique_objects[i]['second_check'] = 'yes'
         
     
     #Do a second pass, but using values from other fields, such as TR, TE, TI, etc
-    if data_list_unique_SD[i]['second_check'] == 'yes':
+    if data_list_unique_objects[i]['second_check'] == 'yes':
         if img.ndim == 4: #DWI, functional, functional phase, and SE fmap are 4D
             if TR > 3: #Probably DWI
-                data_list_unique_SD[i]['include'] = True
-                data_list_unique_SD[i]['DataType'] = 'dwi'
-                data_list_unique_SD[i]['ModalityLabel'] = 'dwi'
-                data_list_unique_SD[i]['error'] = 'N/A'
+                data_list_unique_objects[i]['include'] = True
+                data_list_unique_objects[i]['DataType'] = 'dwi'
+                data_list_unique_objects[i]['ModalityLabel'] = 'dwi'
+                data_list_unique_objects[i]['error'] = 'N/A'
                 if entities['run'] == '':
                     if dwi_run < 10:
                         entities['run'] = '0' + str(dwi_run)
                     else:
                         entities['run'] = str(dwi_run)
                 dwi_run +=1
-                entities['dir'] = data_list_unique_SD[i]['dir']
+                entities['dir'] = data_list_unique_objects[i]['dir']
             else: #Probably functional
-                if data_list_unique_SD[i]['VolumeCount'] < 20: #Functional runs with less than 20 volumes probably aren't good
-                    data_list_unique_SD[i]['error'] = 'Functional contains very few volumes; not complete?'
+                if data_list_unique_objects[i]['VolumeCount'] < 20: #Functional runs with less than 20 volumes probably aren't good
+                    data_list_unique_objects[i]['error'] = 'Functional contains very few volumes; not complete?'
                 else:
-                    data_list_unique_SD[i]['include'] = True
-                    data_list_unique_SD[i]['DataType'] = 'func'
-                    data_list_unique_SD[i]['ModalityLabel'] = 'bold'
-                    data_list_unique_SD[i]['error'] = 'N/A'
+                    data_list_unique_objects[i]['include'] = True
+                    data_list_unique_objects[i]['DataType'] = 'func'
+                    data_list_unique_objects[i]['ModalityLabel'] = 'bold'
+                    data_list_unique_objects[i]['error'] = 'N/A'
                     if entities['run'] == '':
                         if func_run < 10:
                             entities['run'] = '0' + str(func_run)
@@ -439,39 +445,39 @@ for i in range(len(data_list_unique_SD)):
                     entities['task'] = 'rest'
                     
         elif img.ndim == 3: #sbref, T1w, T2w, FLAIR, magnitude/phasediff fmap are 3D
-            if 'EchoNumber' in data_list_unique_SD[i]: #Probably magnitude/phasediff
-                data_list_unique_SD[i]['include'] = True
-                data_list_unique_SD[i]['DataType'] = 'fmap'
-                if data_list_unique_SD[i]['EchoNumber'] == 1:
-                    data_list_unique_SD[i]['ModalityLabel'] = 'magnitude1'
+            if 'EchoNumber' in data_list_unique_objects[i]: #Probably magnitude/phasediff
+                data_list_unique_objects[i]['include'] = True
+                data_list_unique_objects[i]['DataType'] = 'fmap'
+                if data_list_unique_objects[i]['EchoNumber'] == 1:
+                    data_list_unique_objects[i]['ModalityLabel'] = 'magnitude1'
                 else:
-                    data_list_unique_SD[i]['ModalityLabel'] = 'phasediff'
-                data_list_unique_SD[i]['error'] = 'N/A'
-                entities['run'] = str(data_list_unique_SD[i]['fmap_run'])
+                    data_list_unique_objects[i]['ModalityLabel'] = 'phasediff'
+                data_list_unique_objects[i]['error'] = 'N/A'
+                entities['run'] = str(data_list_unique_objects[i]['fmap_run'])
                 
             if (EchoTime <= 10 and EchoTime > 0): #Probably T1w
-                data_list_unique_SD[i]['include'] = True
-                data_list_unique_SD[i]['DataType'] = 'anat'
-                data_list_unique_SD[i]['ModalityLabel'] = 'T1w'
-                data_list_unique_SD[i]['error'] = 'N/A'
+                data_list_unique_objects[i]['include'] = True
+                data_list_unique_objects[i]['DataType'] = 'anat'
+                data_list_unique_objects[i]['ModalityLabel'] = 'T1w'
+                data_list_unique_objects[i]['error'] = 'N/A'
             
-            elif data_list_unique_SD[i]['InversionTime'] is not None and data_list_unique_SD[i]['InversionTime'] > 0: #Probably FLAIR
-                data_list_unique_SD[i]['include'] = True
-                data_list_unique_SD[i]['DataType'] = 'anat'
-                data_list_unique_SD[i]['ModalityLabel'] = 'FLAIR'
-                data_list_unique_SD[i]['error'] = 'N/A'
+            elif data_list_unique_objects[i]['InversionTime'] is not None and data_list_unique_objects[i]['InversionTime'] > 0: #Probably FLAIR
+                data_list_unique_objects[i]['include'] = True
+                data_list_unique_objects[i]['DataType'] = 'anat'
+                data_list_unique_objects[i]['ModalityLabel'] = 'FLAIR'
+                data_list_unique_objects[i]['error'] = 'N/A'
                 
             elif EchoTime > 100: #Probably T2w
-                data_list_unique_SD[i]['include'] = True
-                data_list_unique_SD[i]['DataType'] = 'anat'
-                data_list_unique_SD[i]['ModalityLabel'] = 'T2w'
-                data_list_unique_SD[i]['error'] = 'N/A'
+                data_list_unique_objects[i]['include'] = True
+                data_list_unique_objects[i]['DataType'] = 'anat'
+                data_list_unique_objects[i]['ModalityLabel'] = 'T2w'
+                data_list_unique_objects[i]['error'] = 'N/A'
             
             elif (EchoTime > 10 and EchoTime < 100): #Probably sbref
-                data_list_unique_SD[i]['include'] = True
-                data_list_unique_SD[i]['DataType'] = 'func'
-                data_list_unique_SD[i]['ModalityLabel'] = 'sbref'
-                data_list_unique_SD[i]['error'] = 'N/A'
+                data_list_unique_objects[i]['include'] = True
+                data_list_unique_objects[i]['DataType'] = 'func'
+                data_list_unique_objects[i]['ModalityLabel'] = 'sbref'
+                data_list_unique_objects[i]['error'] = 'N/A'
                 if entities['run'] == '':
                     if sbref_run < 10:
                         entities['run'] = '0' + str(sbref_run)
@@ -481,64 +487,62 @@ for i in range(len(data_list_unique_SD)):
                 entities['task'] = 'rest'
             else:
                 pass
-                
-                
-            
- 
+
     
-    if data_list_unique_SD[i]['ModalityLabel'] == 'dwi':
-        run =str( data_list_unique_SD[i]['dwi_run'])
-    elif data_list_unique_SD[i]['ModalityLabel'] == 'bold':
-        run = str(data_list_unique_SD[i]['func_run'])
+    if data_list_unique_objects[i]['ModalityLabel'] == 'dwi':
+        run =str( data_list_unique_objects[i]['dwi_run'])
+    elif data_list_unique_objects[i]['ModalityLabel'] == 'bold':
+        run = str(data_list_unique_objects[i]['func_run'])
     else:
         run = ''
         
-    if data_list_unique_SD[i]['DataType'] == '' and data_list_unique_SD[i]['ModalityLabel'] == '':
+    if data_list_unique_objects[i]['DataType'] == '' and data_list_unique_objects[i]['ModalityLabel'] == '':
         br_type = ''
     else:
-        br_type = data_list_unique_SD[i]['DataType'] + '/' + data_list_unique_SD[i]['ModalityLabel']
+        br_type = data_list_unique_objects[i]['DataType'] + '/' + data_list_unique_objects[i]['ModalityLabel']
         
-    series_info = {"include": data_list_unique_SD[i]['include'],
+    series_info = {"include": data_list_unique_objects[i]['include'],
                    "SeriesDescription": SD,
-                   "SeriesNumber": data_list_unique_SD[i]['SeriesNumber'],
+                   "SeriesNumber": data_list_unique_objects[i]['SeriesNumber'],
                    "entities": entities,
-                   "type": br_type
+                   "type": br_type,
+                   "unique_TRs": unique_TR_list
                    }
     series_list.append(series_info)
     
     
-    objects_info = {"include": data_list_unique_SD[i]['include'],
+    objects_info = {"include": data_list_unique_objects[i]['include'],
                    "SeriesDescription": SD,
-                   "SeriesNumber": data_list_unique_SD[i]['SeriesNumber'],
-                   "PatientName": data_list_unique_SD[i]['PatientName'],
-                   "PatientID": data_list_unique_SD[i]['PatientID'],
-                   "PatientBirthDate": data_list_unique_SD[i]['PatientBirthDate'],
-                   "AcquisitionDate": data_list_unique_SD[i]['AcquisitionDate'],
-                   "pngPath": '{}.png'.format(data_list_unique_SD[i]['nifti_path'][:-7]),
+                   "SeriesNumber": data_list_unique_objects[i]['SeriesNumber'],
+                   "PatientName": data_list_unique_objects[i]['PatientName'],
+                   "PatientID": data_list_unique_objects[i]['PatientID'],
+                   "PatientBirthDate": data_list_unique_objects[i]['PatientBirthDate'],
+                   "AcquisitionDate": data_list_unique_objects[i]['AcquisitionDate'],
+                   "pngPath": '{}.png'.format(data_list_unique_objects[i]['nifti_path'][:-7]),
                    "entities": entities,
                    "type": br_type,
                    "items": [
                            {
-                               "path": data_list_unique_SD[i]['nifti_path'],
-                               "name": data_list_unique_SD[i]['nifti_name'],
-                               "headers": data_list_unique_SD[i]['headers']
+                               "path": data_list_unique_objects[i]['nifti_path'],
+                               "name": data_list_unique_objects[i]['nifti_name'],
+                               "headers": data_list_unique_objects[i]['headers']
                             },
                            {
-                               "path": data_list_unique_SD[i]['json_path'],
-                               "name": data_list_unique_SD[i]['json_name'],
-                               "sidecar": data_list_unique_SD[i]['sidecar']
+                               "path": data_list_unique_objects[i]['json_path'],
+                               "name": data_list_unique_objects[i]['json_name'],
+                               "sidecar": data_list_unique_objects[i]['sidecar']
                             }
                         ],
                    "analysisResults": {
-                       "VolumeCount": data_list_unique_SD[i]['VolumeCount'],
+                       "VolumeCount": data_list_unique_objects[i]['VolumeCount'],
                        "messages": [
                            ""
                         ],
-                       "errors": data_list_unique_SD[i]['error'],
-                       "qc": data_list_unique_SD[i]['qc'],
-                       "filesize": data_list_unique_SD[i]['filesize']
+                       "errors": data_list_unique_objects[i]['error'],
+                       "qc": data_list_unique_objects[i]['qc'],
+                       "filesize": data_list_unique_objects[i]['filesize']
                     },
-                   "paths": data_list_unique_SD[i]['paths']
+                   "paths": data_list_unique_objects[i]['paths']
                   }
     objects_list.append(objects_info)
 
@@ -555,9 +559,9 @@ for i in range(len(data_list_unique_SD)):
         json.dump(ezBIDS, fp, indent=3) 
             
     
-    #return dir_list, json_list, data_list, data_list_unique_SD
+    #return dir_list, json_list, data_list, data_list_unique_objects
 
-#dir_list, json_list, data_list, data_list_unique_SD = extractor()
+#dir_list, json_list, data_list, data_list_unique_objects = extractor()
     
     
     
