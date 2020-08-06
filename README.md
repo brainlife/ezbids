@@ -8,7 +8,7 @@ OpenNeuro, or brainlife.io
 
 ### Authors
 - [Soichi Hayashi](soichih@gmail.com)
-- [Levitas, Daniel](dlevitas@iu.edu)
+- [Daniel Levitas](dlevitas@iu.edu)
 - [Franco Pestilli](pestilli@utexas.edu)
 
 ### Funding Acknowledgement
