@@ -182,20 +182,6 @@ export default {
                 this.total_size += file.size;
             }
 
-            //construct session request body
-            /*
-            let session_body = {files: []};
-            for(let i = 0;i < this.files.length;++i) {
-                let file = this.files[i];
-                session_body.files.push({
-                    idx: i,
-                    name: file.name,
-                    size: file.size,
-                    path: file.path,
-                });
-            }
-            */
-
             //create new session
             const res = await fetch(this.$root.apihost+'/session', {
                 method: "POST",
@@ -205,6 +191,7 @@ export default {
                 //body: JSON.stringify(session_body),
             });
             this.$root.session = await res.json();
+            location.hash = this.$root.session._id;
 
             //reset some extra information for each file
             for(let i = 0;i < this.files.length;++i) {

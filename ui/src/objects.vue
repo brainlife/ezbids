@@ -61,7 +61,7 @@
                             <el-popover width="300" trigger="focus" placement="right-start"
                                 :title="$root.bids_entities[entity].name" 
                                 :content="$root.bids_entities[entity].description">
-                                <el-input slot="reference" v-model="so.entities[entity]" size="small" @blur="update(so)" :placeholder="$root.findSeries(so.SeriesDescription).entities[entity]"/>
+                                <el-input slot="reference" v-model="so.entities[entity]" size="small" @blur="update(so)" :placeholder="getDefault(so, entity)"/>
                             </el-popover>
                         </el-form-item>
                     </div>
@@ -112,16 +112,28 @@ export default {
     },
     
     mounted() {
-        //this.so = this.$root.objects[0];
     },
 
     methods: {
-
         update(o) {
             console.log("reorg/validate");
             this.$root.organizeObjects();
             this.$root.validateObject(o);
             this.$root.validated = this.$root.isAllValid(); 
+        },
+
+        getDefault(o, entity) {
+            if(entity == "sub") {
+                const subject = this.$root.findSubject(o);
+                return subject.sub;
+            } else if(entity == "ses") {
+                const session = this.$root.findSession(o);
+                return session.ses;
+            } else {
+                //rest should come from series
+                const series = this.$root.findSeries(o);
+                return series.entities[entity];
+            }
         },
     },
 

@@ -9,6 +9,8 @@ if [ -z $1 ]; then
 fi
 root=$1
 
+rm -rf $root/bids
+
 echo "converting output to bids"
 ./convert.js $root
 

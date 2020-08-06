@@ -110,35 +110,14 @@ new Vue({
     watch: {
         page(v) {
             if(v == "objects") {
-                console.log("apply object mappings");
+                console.log("apply series mapping for each object");
+                //TODO - we need to ask user if they want to override any changes they might have made already on objects
                 this.objects.forEach(object=>{
-
-                    /*
-                    //apply subject mapping
-                    let subject = this.findSubject(object);
-                    if(!subject) {
-                        console.log("unknown PatientID in object", object);
-                    } else {
-                        console.log("applying", subject);
-                        object.entities.sub = subject.sub; 
-                    }
-                    */
-                    
-                    //apply session mapping
-                    let session = this.findSession(object.AcquisitionDate);
-                    if(!session) {
-                        console.log("unknown AcquisitionDate in object", object.AcquisitionDate);
-                    } else {
-                        object.entities.ses = session.ses; 
-                    }
-
-                    //apply series info
-                    let series = this.findSeries(object.SeriesDescription);
+                    let series = this.findSeries(object);
                     if(!series) {
                         console.log("unknown seriesnumber in object", object.SeriesDescription);
                     } else {
                         object.include = series.include;
-                        object.SeriesDescription = series.SeriesDescription;
                         object.type = series.type;
                     }
 
@@ -153,6 +132,15 @@ new Vue({
 
     async mounted() {
         console.log("mounted main");
+
+        if(location.hash) {
+            console.log("reloading session");
+            this.session = {
+                _id: location.hash.substring(1),
+            }
+            this.pollSession();
+            console.dir(this.session);
+        }
 
         //dwi
         //https://github.com/tsalo/bids-specification/blob/ref/json-entity/src/schema/datatypes/dwi.yaml
@@ -545,6 +533,7 @@ split:
             this.finalized = false;
             this.finished = false;
             */
+            location.hash = "";
             location.reload();
         },
         
@@ -565,21 +554,33 @@ split:
 
         findSubject(o) {
             let subject = this.subjects.find(s=>{
-                if(o.PatientID && s.PatientID == o.PatientID) return true;
-                if(o.PatientName && s.PatientName == o.PatientName) return true;
-                if(o.PatientBirthDate && s.PatientBirthDate == o.PatientBirthDate) return true;
+                if(o.PatientName) {
+                    if(s.PatientName == o.PatientName) return true;
+                    return false;
+                }
+                if(o.PatientID) {
+                    if(s.PatientID == o.PatientID) return true;
+                    return false;
+                }
+                if(o.PatientBirthDate) {
+                    if(s.PatientBirthDate == o.PatientBirthDate) return true;
+                    return false;
+                }
                 return false;
             });
             return subject;
         },
 
-        findSession(acquisitionDate) {
-            let session = this.sessions.find(s=>s.AcquisitionDate == acquisitionDate);
+        findSession(o) {
+            let session = this.sessions.find(s=>s.AcquisitionDate == o.AcquisitionDate);
             return session;
         },
 
-        findSeries(seriesDescription) {
-            let series = this.series.find(s=>s.SeriesDescription == seriesDescription);
+        findSeries(o) {
+            let series = this.series.find(s=>{
+                if(s.SeriesDescription == o.SeriesDescription/* && s.SeriesNumber == o.SeriesNumber*/) return true;
+                return false;
+            });
             return series;
         },
 
@@ -592,7 +593,7 @@ split:
             }
 
             //make sure all required entities are set
-            let series = this.findSeries(o.SeriesDescription);
+            let series = this.findSeries(o);
             let entities_requirement = this.getEntities(o.type);
 
             switch(o.type) {
@@ -635,7 +636,11 @@ split:
                 let sub = subject.sub;
                 if(o.entities.sub) sub = o.entities.sub; //apply override
 
-                let ses = o.entities.ses||"";
+                let session = this.findSession(o);
+                if(!session) console.error("couldn't find session mapping for", o);
+                let ses = session.ses;
+                if(o.entities.ses) ses = o.entities.ses; //apply override
+
                 let run = o.entities.run||"";
 
                 if(!this.subs[sub]) this.subs[sub] = { sess: {}, objects: []}; 

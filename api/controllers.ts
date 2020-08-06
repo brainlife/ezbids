@@ -4,6 +4,7 @@ import multer  = require('multer');
 import path = require('path');
 import fs = require('fs');
 import mkdirp = require('mkdirp');
+import archiver = require('archiver');
 
 import config = require('./config');
 import models = require('./models');
@@ -19,20 +20,15 @@ var storage = multer.diskStorage({
       cb(null, path.join(__dirname,'/uploads'))
     },
     filename: function (req, file, cb) {
-      console.log("file",file);
       let fileExtension = file.originalname.split('.')[1]
       cb(null, file.fieldname + '-' + Date.now()+'.'+fileExtension)
     }
 })
 
 router.post('/session', (req, res, next)=>{
-    //console.log("new session");
-    //console.dir(req.body);
-    //res.json({id: "123"}); //TODO - should be some random ID
     req.body.status = "created";
     let session = new models.Session(req.body);
     session.save().then(_session=>{ //mongoose contains err on the 1st argument of resolve!? odd.
-        console.log("created session");
         res.json(_session);
     }).catch(err=>{
         next(err);
@@ -93,7 +89,6 @@ router.get('/session/:session_id/ezbids', (req, res, next) => {
 router.patch('/session/:session_id/finalize', (req, res, next)=>{
     models.Session.findById(req.params.session_id).then(session=>{
         if(!session) return next("no such session");
-        console.log("streaming");
         req.pipe(fs.createWriteStream(config.workdir+"/"+session._id+"/finalized.json"));
         req.on('end', ()=>{
             session.status = "finalized";
@@ -116,11 +111,24 @@ router.get('/download/:session_id/*', (req, res, next)=>{
         let fullpath = path.resolve(basepath+"/"+req.params[0]);
         if(!fullpath.startsWith(basepath)) return next("invalid path");
         //res.setHeader("content-type", "application/json"); //TODO - set to correct mime?
-        fs.createReadStream(fullpath).pipe(res);
+
+        //TODO - if requested path is a file, thenstream
+        let stats = fs.lstatSync(fullpath);
+        if(stats.isFile()) fs.createReadStream(fullpath).pipe(res);
+        else if(stats.isDirectory()) {
+            const archive = archiver('zip', {
+                zlib: { level: 9 }
+            });
+            archive.directory(fullpath, 'bids');
+            archive.finalize();
+            archive.pipe(res);
+        } else next("unknown file");
+
+        //TODO - if it's directory, then send an archive down
+
     }).catch(err=>{
         next(err);
     });
-
 });
 
 router.post('/upload/:session_id', upload.single('file'), (req:any, res, next)=>{
@@ -133,7 +141,6 @@ router.post('/upload/:session_id', upload.single('file'), (req:any, res, next)=>
         let destdir = path.dirname(dest_path);
 
         //move the file over to workdir
-        console.debug("mkdirp", destdir);
         mkdirp(destdir).then(err=>{
             fs.rename(src_path, dest_path, err=>{
                 if(err) return next(err);
@@ -151,7 +158,6 @@ router.post('/upload/:session_id', upload.single('file'), (req:any, res, next)=>
 router.patch('/session/uploaded/:session_id', (req, res, next)=>{
     models.Session.findByIdAndUpdate(req.params.session_id, {status: "uploaded", upload_finish_date: new Date()}).then(session=>{
         if(!session) return next("no such session");
-        console.log("done");
         res.send("ok");
     }).catch(err=>{
         console.error(err);

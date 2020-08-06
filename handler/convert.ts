@@ -50,23 +50,42 @@ console.log("outputting objects");
 async.forEach(info.objects, (o, next_o)=>{
     if(!o.include) return next_o();
 
+    /*
+    //TODO - alert same code in ui/main.js
+    const subject = info.subjects.find(s=>{
+        if(o.PatientName) {
+            if(s.PatientName == o.PatientName) return true;
+            return false;
+        }
+        if(o.PatientID) {
+            if(s.PatientID == o.PatientID) return true;
+            return false;
+        }
+        if(o.PatientBirthDate) {
+            if(s.PatientBirthDate == o.PatientBirthDate) return true;
+            return false;
+        }
+        return false;
+    });
+    if(!o.entities.sub) o.entities.sub = subject.sub;
+
+    const session = info.sessions.find(s=>s.AcquisitionDate == o.AcquisitionDate);
+    if(!o.entities.ses) o.entities.ses = session.ses;
+
+    const series = info.series.find(s=>s.SeriesDescription == o.SeriesDescription);
+    */
+
     //setup directory
     let path = "bids";
-    if(o.entities.sub) path += "/sub-"+o.entities.sub;
+    path += "/sub-"+o.entities.sub;
     if(o.entities.ses) path += "/ses-"+o.entities.ses;
     path += "/"+o.type.split("/")[0]; //func, dwi, anat, etc..
     mkdirp.sync(root+"/"+path);
 
-    //load series
-    let series = info.series.find(s=>s.SeriesDescription == o.SeriesDescription);
-
     //construct basename
     let tokens = [];
     for(let k in o.entities) {
-        let sv = series.entities[k];
-        let ov = o.entities[k];
-        if(!sv && !ov) continue;
-        tokens.push(k+"-"+(ov||sv)); //object entity takes precedence
+        if(o.entities[k]) tokens.push(k+"-"+o.entities[k]); 
     }
     const name = tokens.join("_");
 
