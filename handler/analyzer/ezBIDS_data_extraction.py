@@ -231,8 +231,8 @@ series_number_list = []
 for SD in data_list:
     if SD['SeriesDescription'] not in series_description_list:
         data_list_unique_series.append(SD)
-        if SD['SeriesNumber'] not in series_number_list:
-            data_list_unique_objects.append(SD)
+    if SD['SeriesDescription'] not in series_description_list or SD['SeriesNumber'] not in series_number_list:
+        data_list_unique_objects.append(SD)
     series_description_list.append(SD['SeriesDescription'])
     series_number_list.append(SD['SeriesNumber'])
 
@@ -249,6 +249,54 @@ objects_list = []
 
 #if any(x in descriptions[d] for x in ['T1w','tfl3d','mprage','tfl_1084B']):
 #Let's try to auto-populate some of the BIDS fields
+
+#GO through unique series 
+for i in range(len(data_list_unique_series)):
+    unique_TR_list = list(set([data_list_unique_objects[x]['RepetitionTime'] for x in range(len(data_list_unique_objects)) if data_list_unique_series[i]['SeriesDescription'] in data_list_unique_objects[x]['SeriesDescription']]))
+
+    #Populate some labels fields (primarily based on ReproIn convention)
+    entities = {}
+    if 'sub-' in SD:
+        data_list_unique_objects[i]['sub'] = SD.split('sub-')[-1].split('_')[0]
+    else:
+        entities['sub'] = None
+    
+    if '_ses-' in SD:
+        entities['ses'] = SD.split('_ses-')[-1].split('_')[0]
+    else:
+        entities['ses'] = data_list_unique_objects[i]['SessionID']
+        
+    if '_run-' in SD:
+        entities['run'] = SD.split('_run-')[-1].split('_')[0]
+    else:
+        entities['run'] = ''
+    
+    if '_acq-' in SD:
+        entities['acq'] = SD.split('_acq-')[-1].split('_')[0]
+    else:
+        entities['acq'] = ''
+        
+    if '_ce-' in SD:
+        entities['ce'] = SD.split('_ce-')[-1].split('_')[0]
+    else:
+        entities['ce'] = ''
+        
+        
+    if data_list_unique_objects[i]['DataType'] == '' and data_list_unique_objects[i]['ModalityLabel'] == '':
+        br_type = ''
+    else:
+        br_type = data_list_unique_objects[i]['DataType'] + '/' + data_list_unique_objects[i]['ModalityLabel']
+        
+
+    series_info = {"SeriesDescription": data_list_unique_series[i]['SeriesDescription'],
+                   "SeriesNumber": data_list_unique_series[i]['SeriesNumber'],
+                   "entities": entities,
+                   "type": br_type,
+                   "unique_TRs": unique_TR_list
+                   }
+    series_list.append(series_info)
+
+
 for i in range(len(data_list_unique_objects)):
     
     s = StringIO()
@@ -309,10 +357,7 @@ for i in range(len(data_list_unique_objects)):
         EchoTime = data_list_unique_objects[i]['sidecar']['EchoTime']*1000
     except:
         EchoTime = 0
-    
-    
-    fmap_intendedFor = []
-    
+        
     #Do a first pass of acqusitions based on specific terms in the SeriesDescriptions
     #Check for localizer(s)
     if any(x in SD for x in ['Localizer','localizer','SCOUT','Scout','scout']):
@@ -501,16 +546,87 @@ for i in range(len(data_list_unique_objects)):
     else:
         br_type = data_list_unique_objects[i]['DataType'] + '/' + data_list_unique_objects[i]['ModalityLabel']
         
-    series_info = {"include": data_list_unique_objects[i]['include'],
-                   "SeriesDescription": SD,
-                   "SeriesNumber": data_list_unique_objects[i]['SeriesNumber'],
-                   "entities": entities,
-                   "type": br_type,
-                   "unique_TRs": unique_TR_list
-                   }
-    series_list.append(series_info)
+
+#Deal with field maps
+descriptions = [data_list_unique_objects[x]['SeriesDescription'] for x in range(len(data_list_unique_objects))]
+modality_labels = [data_list_unique_objects[x]['ModalityLabel'] for x in range(len(data_list_unique_objects))]
+phase_encoding_directions = [data_list_unique_objects[x]['dir'] for x in range(len(data_list_unique_objects))]
+section_indices = [x for x, value in enumerate(descriptions) if any(x in value for x in ['Localizer','localizer','SCOUT','Scout','scout'])]
+for i in range(len(data_list_unique_objects)):
     
+    if len(section_indices) == 0:
+        section_indices = [0]
+    if 0 not in section_indices:
+        section_indices.insert(0,0)
+        
+    for j in range(len(section_indices)):
+        section_start = section_indices[j]
+                
+        try:
+            section_end = section_indices[j+1]
+        except:
+            section_end = len(descriptions)
     
+        section = descriptions[section_start:section_end]
+        
+        #SE EPI fmaps
+        if 'epi' in modality_labels[section_start:section_end]:
+            #Remove duplicate SE fmaps. Only the last two in each section will be kept
+            fmap_se_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'epi']
+            if len(fmap_se_indices) == 1:
+                data_list_unique_objects[i]['include'] = False
+                data_list_unique_objects[i]['error'] = 'Only one spin echo field map found; need pair'
+                
+            if len(fmap_se_indices) > 2:
+                for fm in fmap_se_indices[:-2]:
+                    data_list_unique_objects[fm]['include'] = False
+                    data_list_unique_objects[fm]['error'] = 'Multiple spin echo pairs detected in section; only saving last pair'
+                
+            #Remove SE fmaps where phase encoding directions aren't opposite
+            if len(fmap_se_indices) > 1:
+                if list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[0] == list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[1]:
+                    for fm in fmap_se_indices[-2:]:
+                        data_list_unique_objects[fm]['include'] = False
+                        data_list_unique_objects[fm]['error'] = 'Spin echo fmap pair does not have opposite phase encoding directions'
+                        
+                # if list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[0] != list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[1].split('-')[0] or list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[0].split('-')[0] != list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[1].split('-')[0]:
+                #     for fm in fmap_se_indices[-2:]:
+                #         data_list_unique_objects[fm]['include'] = False
+                #         data_list_unique_objects[fm]['error'] = 'Spin echo fmap pair does not have opposite phase encoding directions'
+                             
+            include = [data_list_unique_objects[x]['include'] for x in range(len(data_list_unique_objects))]
+            fmap_se_indices_final = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'epi' and include[section_indices[j]+x] != False]
+            # #Specify the phase encoding direction in the custom_labels list
+            # for f in fmap_se_indices_final:
+            #     if phase_encoding_directions[f] == 'j':
+            #         custom_labels[f] = 'dir-PA'
+            #     elif phase_encoding_directions[f] == 'j-':
+            #         custom_labels[f] = 'dir-AP'
+            #     elif phase_encoding_directions[f] == 'i':
+            #         custom_labels[f] = 'dir-LR'
+            #     elif phase_encoding_directions[f] == 'i-':
+            #         custom_labels[f] = 'dir-RL'
+                        
+            bold_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'bold' and include[section_indices[j]+x] != False]
+                    
+            try:
+                if fmap_se_indices_final:
+                    if not len(bold_indices) and len(fmap_se_indices):
+                        for fm in fmap_se_indices:
+                            include[fm] = False
+                    
+                    fmap_intended_for = [section_indices[j] + x for x in range(len(section)) if modality_labels[section_start:section_end][x] == 'bold' and include[section_indices[j] + x] != False and include[fmap_se_indices_final[-1]] != False]
+                    # bad_series = len([k for k in include[0:bold_indices[0]] if k == False])
+                    # fmap_intended_for = [x - bad_series for x in fmap_intended_for]
+            except:
+                pass
+    
+    if data_list_unique_objects[i]['ModalityLabel'] == 'epi':
+        IntendedFor = fmap_intended_for
+    else:
+        IntendedFor = None
+            
+        
     objects_info = {"include": data_list_unique_objects[i]['include'],
                    "SeriesDescription": SD,
                    "SeriesNumber": data_list_unique_objects[i]['SeriesNumber'],
@@ -519,6 +635,7 @@ for i in range(len(data_list_unique_objects)):
                    "PatientBirthDate": data_list_unique_objects[i]['PatientBirthDate'],
                    "AcquisitionDate": data_list_unique_objects[i]['AcquisitionDate'],
                    "pngPath": '{}.png'.format(data_list_unique_objects[i]['nifti_path'][:-7]),
+                   "IntendedFor": IntendedFor,
                    "entities": entities,
                    "type": br_type,
                    "items": [
