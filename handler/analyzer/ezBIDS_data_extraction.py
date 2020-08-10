@@ -296,7 +296,7 @@ for i in range(len(data_list_unique_series)):
                    }
     series_list.append(series_info)
 
-
+entities_list = []
 for i in range(len(data_list_unique_objects)):
     
     s = StringIO()
@@ -541,11 +541,7 @@ for i in range(len(data_list_unique_objects)):
     else:
         run = ''
         
-    if data_list_unique_objects[i]['DataType'] == '' and data_list_unique_objects[i]['ModalityLabel'] == '':
-        br_type = ''
-    else:
-        br_type = data_list_unique_objects[i]['DataType'] + '/' + data_list_unique_objects[i]['ModalityLabel']
-        
+    entities_list.append(entities)
 
 #Deal with field maps
 descriptions = [data_list_unique_objects[x]['SeriesDescription'] for x in range(len(data_list_unique_objects))]
@@ -553,6 +549,12 @@ modality_labels = [data_list_unique_objects[x]['ModalityLabel'] for x in range(l
 phase_encoding_directions = [data_list_unique_objects[x]['dir'] for x in range(len(data_list_unique_objects))]
 section_indices = [x for x, value in enumerate(descriptions) if any(x in value for x in ['Localizer','localizer','SCOUT','Scout','scout'])]
 for i in range(len(data_list_unique_objects)):
+    
+    if data_list_unique_objects[i]['DataType'] == '' and data_list_unique_objects[i]['ModalityLabel'] == '':
+        br_type = ''
+    else:
+        br_type = data_list_unique_objects[i]['DataType'] + '/' + data_list_unique_objects[i]['ModalityLabel']
+        
     
     if len(section_indices) == 0:
         section_indices = [0]
@@ -628,7 +630,7 @@ for i in range(len(data_list_unique_objects)):
             
         
     objects_info = {"include": data_list_unique_objects[i]['include'],
-                   "SeriesDescription": SD,
+                   "SeriesDescription": data_list_unique_objects[i]['SeriesDescription'],
                    "SeriesNumber": data_list_unique_objects[i]['SeriesNumber'],
                    "PatientName": data_list_unique_objects[i]['PatientName'],
                    "PatientID": data_list_unique_objects[i]['PatientID'],
@@ -636,7 +638,7 @@ for i in range(len(data_list_unique_objects)):
                    "AcquisitionDate": data_list_unique_objects[i]['AcquisitionDate'],
                    "pngPath": '{}.png'.format(data_list_unique_objects[i]['nifti_path'][:-7]),
                    "IntendedFor": IntendedFor,
-                   "entities": entities,
+                   "entities": entities_list[i],
                    "type": br_type,
                    "items": [
                            {
