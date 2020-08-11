@@ -111,47 +111,7 @@ new Vue({
         page(v) {
             if(v == "objects") {
                 this.organizeObjects();
-
-                //TODO - we need to ask user if they want to override any changes they might have made already on objects
-                this.objects.forEach(object=>{
-
-                    //apply series info (I wish we can apply this information at finalize stage, but that means we have to create separate include/type field
-                    //for object level that *overrides* series mapping.. a bit tricky?)
-                    let series = this.findSeries(object);
-                    if(!series) {
-                        console.log("unknown seriesnumber in object", object.SeriesDescription);
-                    } else {
-                        //object.include = series.include;
-                        object.type = series.type;
-                    }
-
-                    /*
-                    //for each object in a given session
-                    for(let sub in this.subs) {
-                        for(let ses in this.subs[sub].sess) {
-                            const objects = this.subs[sub].sess[ses].objects;
-                            objects.forEach(o=>{
-                                
-                                //look for series.IntendedFor and find those series within sub/ses group (sibling objects)
-                                o.IntendedFor = {}; 
-                                const series = this.findSeries(o);
-                                if(series.IntendedFor) {
-                                    series.IntendedFor.forEach(sidx=>{
-                                        const s = this.series[sidx];
-                                        this.objects.filter(so=>this.findSeries(so) == s).forEach(so=>{
-                                            let oidx = this.objects.indexOf(so);
-                                            o.IntendedFor[oidx.toString()] = true;
-                                        });
-                                    });
-                                }
-                            });
-                        }
-                    }
-                    */
-
-                    this.validateObject(object);
-                });
-
+                this.objects.forEach(this.validateObject);
                 this.validated = this.isAllValid(); 
             }
         },
@@ -500,18 +460,6 @@ split:
     },
 
     computed: {
-        /*
-        validated() {
-            console.log("testing validation");
-            if(this.objects.length == 0) return false; //empty!
-            for(let object in this.objects) {
-                if(!object.validationErrors) return false; //not validated yet?
-                if(object.validationErrors.length > 0) return false;
-            }
-            console.log("objects are valid");
-            return true; //all good
-        }
-        */
     },
 
     methods: {
@@ -563,7 +511,13 @@ split:
             location.hash = "";
             location.reload();
         },
-        
+
+        getType(o) {
+            if(o.type) return o.type;
+            const series = this.findSeries(o);
+            return series.type;
+        },
+  
         //TODO - I should rename this to getDatatypeEntities()
         //same code in series / methods
         getEntities(type) {
@@ -614,18 +568,28 @@ split:
         validateObject(o) {
             Vue.set(o, 'validationErrors', []);
 
+            /*
+            //could come from series.type
             if(!o.type) {
                 o.validationErrors.push("Please select a datatype");
                 return;
             }
+            */
 
             //make sure all required entities are set
             let series = this.findSeries(o);
             let entities_requirement = this.getEntities(o.type);
 
-            switch(o.type) {
-            case "func/bold":
-                if(entities_requirement['task'] && !o.entities.task && !series.entities.task) o.validationErrors.push("Task Name is required for func/bold but not set in series nor overridden.");
+            if(o.type.startsWith("func/")) {
+                if(entities_requirement['task'] && !o.entities.task && !series.entities.task) {
+                    o.validationErrors.push("Task Name is required for func/bold but not set in series nor overridden.");
+                }
+            }
+            if(o.type.startsWith("fmap/")) {
+                if(!o.IntendedFor) o.IntendedFor = []; //TODO can't think of a better place to do this
+                if(o.IntendedFor.length == 0) {
+                    o.validationErrors.push("fmap should have IntendedFor set to at least 1 object");
+                }
             }
 
             //try parsing items
@@ -641,20 +605,16 @@ split:
         },
 
         isAllValid() {
-            console.log("checking valid");
             for(let o of this.objects) {
                 if(!o.include) continue;
                 if(o.validationErrors.length > 0) {
-                    console.log("no good");
                     return false;
                 }
             }
-            console.log("all good");
             return true;
         },
 
         organizeObjects() {
-            console.log("reorging");
             this.subs = {}; 
 
             this.objects.forEach((o, idx)=>{
@@ -671,7 +631,7 @@ split:
 
                 //let run = o.entities.run||"";
 
-                if(!this.subs[sub]) this.subs[sub] = { sess: {}, objects: []}; 
+                if(!this.subs[sub]) this.subs[sub] = {sess: {}, objects: []}; 
                 this.subs[sub].objects.push(o);
 
                 if(!this.subs[sub].sess[ses]) this.subs[sub].sess[ses] = { /*runs: {},*/ objects: [] };
@@ -700,7 +660,7 @@ split:
         },
 
         loadData(url) {
-            console.log("loadData", url);
+            //console.log("loadData", url);
             return fetch(url).then(res=>res.json()).then(conf=>{
                 //this.site = conf.site;
                  

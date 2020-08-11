@@ -7,6 +7,7 @@
             Reset Mapping <i class="el-icon-arrow-down el-icon--right"></i>
         </el-button>
         <el-dropdown-menu slot="dropdown">
+            <el-dropdown-item command="pname">Use PatientName</el-dropdown-item>
             <el-dropdown-item command="pid">Use PatientID</el-dropdown-item>
             <el-dropdown-item command="num">Numerical (1,2,3..)</el-dropdown-item>
         </el-dropdown-menu>
@@ -46,7 +47,7 @@ export default {
             console.log("subjects updated (data loaded).. initializing keys");
             if(v.length == 0) return; //prevent infinite loop
             if(ov.length == 0) {
-                this.resetSubjects('pid');
+                this.resetSubjects('pname');
             }
         },
     },
@@ -68,6 +69,11 @@ export default {
             case "pid":
                 this.$root.subjects.forEach(subject=>{
                     subject.sub = subject.PatientID.replace(/[^0-9a-zA-Z]/g, '');
+                });
+                break;
+            case "pname":
+                this.$root.subjects.forEach(subject=>{
+                    subject.sub = subject.PatientName.replace(/[^0-9a-zA-Z]/g, '');
                 });
                 break;
             }        

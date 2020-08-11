@@ -20,7 +20,9 @@
             <template slot-scope="scope">
                 <el-form label-width="100px">
                     <el-form-item label="Datatype">
-                        <el-select v-model="scope.row.type" placeholder="Please select" size="small" style="width: 100%">
+                        <el-select v-model="scope.row.type" reqiured
+                            placeholder="unknown" 
+                            size="small" style="width: 100%">
                             <el-option-group v-for="type in $root.datatypes" :key="type.label" :label="type.label">
                                 <el-option v-for="subtype in type.options" :key="subtype.value" :value="subtype.value">
                                     {{type.label}} / {{subtype.label}}

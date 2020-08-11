@@ -1,6 +1,6 @@
 <template>
 <div class="datatype" :class="{exclude: !o.include}" style="display: inline-block;">
-    <span :style="{'background-color': color}" class="bull">&nbsp;</span> {{o.type}}
+    <span :style="{'background-color': color}" class="bull">&nbsp;</span> {{$root.getType(o)||'unknown'}}
     <el-tag v-for="(v,k) in entities" :key="k" size="mini" type="info"><small>{{k}}-</small><b>{{v}}</b></el-tag>
 </div>
 </template>

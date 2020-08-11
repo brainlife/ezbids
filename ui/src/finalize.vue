@@ -5,9 +5,14 @@
     </div>
     <div v-if="$root.validated && $root.session.status == 'finished'">
         <p>All done!</p>
-        <el-button @click="download" type="primary" size="small">Download</el-button>
+        <el-button @click="download" type="primary" size="small">Download BIDS</el-button>
         <el-button @click="sendBrainlife" size="small">Upload Data to <b>brainlife.io</b></el-button>
         <el-button @click="sendOpenneuro" size="small">Upload Data to <b>OpenNeuro</b></el-button>
+        <p class="mappings">
+            <a href="" @click.prevent="downloadSubjectMapping()">Subject Mapping</a>
+            &nbsp;
+            <a href="" @click.prevent="downloadSessionMapping()">Session Mapping</a>
+        </p>
     </div>
     <div v-else-if="$root.validated && $root.session.status == 'analyzed'">
         <p>Your data is ready to be converted to BIDS.</p>
@@ -54,6 +59,7 @@ export default {
                 }
 
                 const series = this.$root.findSeries(o);
+                if(!o.type) o.type = series.type;
                 for(let k in o.entities) {
                     if(!o.entities[k] && series.entities[k]) {
                         o.entities[k] = series.entities[k];
@@ -85,6 +91,23 @@ export default {
             document.location = this.$root.apihost+'/download/'+this.$root.session._id+'/bids';
         },
 
+        downloadSubjectMapping() {
+            this.downloadMapping(JSON.stringify(this.$root.subjects, null, 2), "subject_mappings.json");
+        },
+
+        downloadSessionMapping() {
+            this.downloadMapping(JSON.stringify(this.$root.sessions, null, 2), "session_mappings.json");
+        },
+
+        downloadMapping(data, name) {
+            const blob = new Blob([data], { type: 'application/json' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = name;
+            link.click()
+            URL.revokeObjectURL(link.href)
+        },
+
         sendBrainlife() {
             alert("TODO.. invoke API call with fetch URL like.. ezbids://"+this.$root.session._id);
         },
@@ -97,4 +120,12 @@ export default {
 </script>
 
 <style scoped>
+.mappings {
+    background-color: #eee;
+    padding: 10px;
+    font-size: 85%;
+}
+.mappings a {
+    color: #409EFF;
+}
 </style>

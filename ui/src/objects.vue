@@ -23,18 +23,18 @@
             </div>
         </div>
     </div>
+    <p v-if="!so" style="margin-left: 300px">
+        <br>
+        <br>
+        <br>
+        <br>
+        <br>
+        <i class="el-icon-back"/> <small>Please select an object to view/edit in the BIDS Structure list</small>
+    </p>
     <div class="object">
-        <p v-if="!so">
-            <br>
-            <br>
-            <br>
-            <br>
-            <br>
-            <i class="el-icon-back"/> <small>Please select an object to view/edit in the BIDS Structure list</small>
-        </p>
         <div v-if="so">
             <div style="margin-bottom: 10px;">
-                <el-alert type="error" v-for="(error, idx) in so.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
+                <el-alert  show-icon :closable="false" type="error" v-for="(error, idx) in so.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
             </div>
 
             <el-form label-width="100px">
@@ -48,7 +48,7 @@
                         <el-tag type="info" size="mini"><small>{{so.SeriesNumber}}</small></el-tag>
                     </el-form-item>
                     <el-form-item label="Datatype">
-                        <el-select v-model="so.type" placeholder="Modality" size="small" style="width: 100%" @change="update(so)">
+                        <el-select v-model="so.type" clearable :placeholder="$root.getType(so) || 'Please select datatype'" size="small" style="width: 100%" @change="update(so)">
                             <el-option-group v-for="type in $root.datatypes" :key="type.label" :label="type.label">
                                 <el-option v-for="subtype in type.options" :key="subtype.value" :value="subtype.value">
                                     {{type.label}} / {{subtype.label}}
@@ -58,7 +58,7 @@
                     </el-form-item>
 
                     <div style="width: 350px;">
-                        <el-form-item v-for="(v, entity) in $root.getEntities(so.type)" :key="entity" 
+                        <el-form-item v-for="(v, entity) in $root.getEntities($root.getType(so))" :key="entity" 
                             :label="entity+'-'+(v=='required'?' *':'')">
                             <el-popover width="300" trigger="focus" placement="right-start"
                                 :title="$root.bids_entities[entity].name" 
@@ -83,7 +83,7 @@
                         <br>
                     </div>
 
-                    <div v-if="so.type.startsWith('fmap/')" class="border-top">
+                    <div v-if="$root.getType(so).startsWith('fmap/')" class="border-top">
                         <el-form-item label="IntendedFor">
                             <!--
                             <p v-for="(o, idx) in sess.objects.filter(o=>o!=so)" :key="idx" style="margin: 0;">
@@ -110,7 +110,9 @@
                     </el-form-item>
                 </div>
             </el-form>
+            <!--
             <pre v-if="config.debug">{{so}}</pre>
+            -->
         </div><!--selected != null-->
     </div><!--object-->
 </div>
@@ -155,7 +157,7 @@ export default {
             this.$forceUpdate();
         },
         */
-    
+
         getDefault(o, entity) {
             if(entity == "sub") {
                 const subject = this.$root.findSubject(o);
@@ -182,10 +184,13 @@ position: relative;
 }
 .bids-structure {
 position: absolute;
-width: 275px;
+width: 300px;
 }
 .object {
-margin-left: 280px;
+margin-left: 300px;
+box-shadow: -4px -2px 4px #0001;
+z-index: 1;
+position: relative;
 }
 .item {
 padding-bottom: 5px;
