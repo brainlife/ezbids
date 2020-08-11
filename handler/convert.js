@@ -72,7 +72,7 @@ async.forEach(info.objects, (o, next_o) => {
         //console.log(item.name, fullpath);
         if (item.name == "json") {
             //we create sidecar from sidecar object (edited by the user)
-            fs.writeFileSync(fullpath, JSON.stringify(item.sidecar));
+            fs.writeFileSync(fullpath, JSON.stringify(item.sidecar, null, 4));
         }
         else {
             //assume to be normal files
@@ -172,8 +172,7 @@ async.forEach(info.objects, (o, next_o) => {
                                 //construct a path relative to the subject
                                 let path = "";
                                 if (io.entities.ses)
-                                    path += "ses-" + io.entities.ses;
-                                "/";
+                                    path += "ses-" + io.entities.ses + "/";
                                 path += iomodality + "/";
                                 let tokens = [];
                                 for (let k in io.entities) {
