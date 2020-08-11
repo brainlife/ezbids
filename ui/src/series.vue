@@ -5,10 +5,15 @@
     <el-table :data="$root.series" style="width: 100%" size="mini" class="table-align-top">
         <el-table-column label="Series Description" width="300px">
             <template slot-scope="scope">
-                <i class="el-icon-right" style="float: right; font-size: 150%; font-weight: bold;"/>
                 <!--<el-tag type="info" size="mini"><small>{{scope.row.SeriesNumber}}</small></el-tag>-->
-                {{scope.row.SeriesDescription}}
-                <el-checkbox v-model="scope.row.include">Include in the BIDS output</el-checkbox>
+                <p style="margin-top: 10px;">
+                    <i class="el-icon-right" style="float: right; font-size: 150%; font-weight: bold;"/>
+                    {{scope.row.SeriesDescription}}
+                </p>
+                <!-- <el-checkbox v-model="scope.row.include">Include in the BIDS output</el-checkbox> -->
+                <p> 
+                    unique TRs:{{scope.row.unique_TRs}}
+                </p>
             </template>
         </el-table-column>
         <el-table-column label="BIDS Datatype">
@@ -32,6 +37,7 @@
                             </el-popover>
                         </el-form-item>
                     </div>
+                    <!--
                     <div v-if="scope.row.type && scope.row.type.startsWith('fmap/')">
                         <el-form-item label="IntendedFor">
                             <el-select v-model="scope.row.IntendedFor" multiple placeholder="Select Series" style="width: 100%">
@@ -42,6 +48,7 @@
                             </el-select>
                         </el-form-item>
                     </div> 
+                    -->
                 </el-form>
             </template>
         </el-table-column>

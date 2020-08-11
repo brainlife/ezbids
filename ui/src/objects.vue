@@ -85,6 +85,7 @@
 
                     <div v-if="so.type.startsWith('fmap/')" class="border-top">
                         <el-form-item label="IntendedFor">
+                            <!--
                             <p v-for="(o, idx) in sess.objects.filter(o=>o!=so)" :key="idx" style="margin: 0;">
                                 <el-checkbox :checked="so.IntendedFor[idx]" @change="updateIntendedFor($event, idx)">
                                     <el-tag type="info" size="mini"><small>{{o.SeriesNumber}}</small></el-tag>
@@ -93,16 +94,12 @@
                                     <datatype :o="o"/>
                                 </el-checkbox>
                             </p>
-                            <!--
+                            -->
                             <el-select v-model="so.IntendedFor" multiple placeholder="Select Object" style="width: 100%">
-                                <el-option
-                                v-for="(o, idx) in $root.objects"
-                                :key="idx"
-                                :label="s.SeriesDescription"
-                                :value="idx">
+                                <el-option v-for="o in this.sess.objects" :key="o.idx"
+                                    :label="o.SeriesNumber+' '+o.SeriesDescription" :value="o.idx">
                                 </el-option>
                             </el-select>
-                            -->
                         </el-form-item>
                     </div>
 
@@ -152,11 +149,13 @@ export default {
             this.$root.validated = this.$root.isAllValid(); 
         },
 
+        /*
         updateIntendedFor(checked, idx) {
             this.so.IntendedFor[idx] = checked;
             this.$forceUpdate();
         },
-
+        */
+    
         getDefault(o, entity) {
             if(entity == "sub") {
                 const subject = this.$root.findSubject(o);

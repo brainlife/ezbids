@@ -121,10 +121,11 @@ new Vue({
                     if(!series) {
                         console.log("unknown seriesnumber in object", object.SeriesDescription);
                     } else {
-                        object.include = series.include;
+                        //object.include = series.include;
                         object.type = series.type;
                     }
 
+                    /*
                     //for each object in a given session
                     for(let sub in this.subs) {
                         for(let ses in this.subs[sub].sess) {
@@ -146,6 +147,7 @@ new Vue({
                             });
                         }
                     }
+                    */
 
                     this.validateObject(object);
                 });
@@ -655,7 +657,8 @@ split:
             console.log("reorging");
             this.subs = {}; 
 
-            this.objects.forEach(o=>{
+            this.objects.forEach((o, idx)=>{
+                o.idx = idx; //reindex
                 let subject = this.findSubject(o);
                 if(!subject) console.error("couldn't find subject mapping for", o);
                 let sub = subject.sub;
