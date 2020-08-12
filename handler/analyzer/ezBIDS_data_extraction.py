@@ -304,7 +304,6 @@ for i in range(len(data_list_unique_objects)):
     print(nib.load(data_list_unique_objects[i]['nifti_path']).header)
     data_list_unique_objects[i]['headers'] = s.getvalue().splitlines()[1:]
     
-    data_list_unique_objects[i]['headers'] = ''
     
     img = load_img(data_list_unique_objects[i]['nifti_path'])
     
