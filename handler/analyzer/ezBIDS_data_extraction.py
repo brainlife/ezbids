@@ -304,7 +304,7 @@ for i in range(len(data_list_unique_objects)):
     print(nib.load(data_list_unique_objects[i]['nifti_path']).header)
     data_list_unique_objects[i]['headers'] = s.getvalue().splitlines()[1:]
     
-    # data_list_unique_objects[i]['headers'] = ''
+    data_list_unique_objects[i]['headers'] = ''
     
     img = load_img(data_list_unique_objects[i]['nifti_path'])
     
@@ -548,6 +548,11 @@ descriptions = [data_list_unique_objects[x]['SeriesDescription'] for x in range(
 modality_labels = [data_list_unique_objects[x]['ModalityLabel'] for x in range(len(data_list_unique_objects))]
 phase_encoding_directions = [data_list_unique_objects[x]['dir'] for x in range(len(data_list_unique_objects))]
 section_indices = [x for x, value in enumerate(descriptions) if any(x in value for x in ['Localizer','localizer','SCOUT','Scout','scout'])]
+include = [data_list_unique_objects[x]['include'] for x in range(len(data_list_unique_objects))]
+errors = [data_list_unique_objects[x]['error'] for x in range(len(data_list_unique_objects))]
+fmap_intended_for_list = []
+fmap_counter = 0
+fmap_intended_for_index = 0
 for i in range(len(data_list_unique_objects)):
     
     if data_list_unique_objects[i]['DataType'] == '' and data_list_unique_objects[i]['ModalityLabel'] == '':
@@ -576,38 +581,27 @@ for i in range(len(data_list_unique_objects)):
             #Remove duplicate SE fmaps. Only the last two in each section will be kept
             fmap_se_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'epi']
             if len(fmap_se_indices) == 1:
-                data_list_unique_objects[i]['include'] = False
-                data_list_unique_objects[i]['error'] = 'Only one spin echo field map found; need pair'
+                include[i] = False
+                errors[i] = 'Only one spin echo field map found; need pair'
                 
             if len(fmap_se_indices) > 2:
                 for fm in fmap_se_indices[:-2]:
-                    data_list_unique_objects[fm]['include'] = False
-                    data_list_unique_objects[fm]['error'] = 'Multiple spin echo pairs detected in section; only saving last pair'
+                    include[fm] = False
+                    errors[fm] = 'Multiple spin echo pairs detected in section; only saving last pair'
                 
             #Remove SE fmaps where phase encoding directions aren't opposite
             if len(fmap_se_indices) > 1:
                 if list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[0] == list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[1]:
                     for fm in fmap_se_indices[-2:]:
-                        data_list_unique_objects[fm]['include'] = False
-                        data_list_unique_objects[fm]['error'] = 'Spin echo fmap pair does not have opposite phase encoding directions'
+                        include[fm] = False
+                        errors[fm] = 'Spin echo fmap pair does not have opposite phase encoding directions'
                         
                 # if list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[0] != list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[1].split('-')[0] or list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[0].split('-')[0] != list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[1].split('-')[0]:
                 #     for fm in fmap_se_indices[-2:]:
                 #         data_list_unique_objects[fm]['include'] = False
                 #         data_list_unique_objects[fm]['error'] = 'Spin echo fmap pair does not have opposite phase encoding directions'
                              
-            include = [data_list_unique_objects[x]['include'] for x in range(len(data_list_unique_objects))]
             fmap_se_indices_final = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'epi' and include[section_indices[j]+x] != False]
-            # #Specify the phase encoding direction in the custom_labels list
-            # for f in fmap_se_indices_final:
-            #     if phase_encoding_directions[f] == 'j':
-            #         custom_labels[f] = 'dir-PA'
-            #     elif phase_encoding_directions[f] == 'j-':
-            #         custom_labels[f] = 'dir-AP'
-            #     elif phase_encoding_directions[f] == 'i':
-            #         custom_labels[f] = 'dir-LR'
-            #     elif phase_encoding_directions[f] == 'i-':
-            #         custom_labels[f] = 'dir-RL'
                         
             bold_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'bold' and include[section_indices[j]+x] != False]
                     
@@ -618,17 +612,50 @@ for i in range(len(data_list_unique_objects)):
                             include[fm] = False
                     
                     fmap_intended_for = [section_indices[j] + x for x in range(len(section)) if modality_labels[section_start:section_end][x] == 'bold' and include[section_indices[j] + x] != False and include[fmap_se_indices_final[-1]] != False]
-                    # bad_series = len([k for k in include[0:bold_indices[0]] if k == False])
-                    # fmap_intended_for = [x - bad_series for x in fmap_intended_for]
+                    fmap_intended_for_list.append(fmap_intended_for)
             except:
                 pass
+        
+        
+        #Magnitude/Phasediff fmaps
+        if 'magnitude1' in modality_labels[section_start:section_end]:
+            #Remove duplicate magnitude/phasediff fmaps. Only the last two in each section will be kept
+            fmap_mag_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'magnitude1' or value == 'phasediff']
+            if len(fmap_mag_indices) == 1:
+                include[fmap_mag_indices[0]] = False
+                errors[fmap_mag_indices[0]] = 'Need pair for magnitude/phasediff field maps'
+            if len(fmap_mag_indices) > 2:
+                for fm in fmap_mag_indices[:-2]:
+                    include[fm] = False
+                    errors[fm] = 'More than two magnitude/phasediff field maps found in section. Only taking most recent pair'
+                    
+                                    
+        #Determine which functional data the field maps will be applied to
+        fmap_mag_indices_final = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'magnitude1' or value == 'phasediff' and include[section_indices[j]+x] != False]        
+        bold_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'bold' and include[section_indices[j]+x] != False]
+        
+        try:
+            if fmap_mag_indices_final:
+                if not len(bold_indices) and len(fmap_mag_indices_final):
+                    for fm in fmap_mag_indices_final:
+                        include[fm] = False
+                        errors[fm] = 'No functional data in section found for magnitude/phasediff to act on. Will not convert to BIDS'
+                
+                fmap_intended_for = [section_indices[j] + x for x in range(len(section)) if modality_labels[section_start:section_end][x] == 'bold' and include[section_indices[j] + x] != False and include[fmap_mag_indices_final[-1]] != False]
+                fmap_intended_for_list.append(fmap_intended_for)
+        except:
+            pass
+        
     
-    if data_list_unique_objects[i]['ModalityLabel'] == 'epi':
-        IntendedFor = fmap_intended_for
+    if data_list_unique_objects[i]['ModalityLabel'] in ['epi', 'magnitude1','phasediff']:
+        IntendedFor = fmap_intended_for_list[fmap_intended_for_index]
+        fmap_counter += 1
+        if fmap_counter > 1:
+            fmap_intended_for_index += 1
+            fmap_counter = 0
     else:
         IntendedFor = None
             
-        
     objects_info = {"include": data_list_unique_objects[i]['include'],
                    "SeriesDescription": data_list_unique_objects[i]['SeriesDescription'],
                    "SeriesNumber": data_list_unique_objects[i]['SeriesNumber'],
