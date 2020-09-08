@@ -296,8 +296,8 @@ for i in range(len(data_list_unique_series)):
         #Localizers or other non-BIDS compatible acquisitions
         if any(x in SD for x in ['Localizer','localizer','SCOUT','Scout','scout']) or series_img.get_shape()[-1] == 1:
             data_list_unique_series[i]['include'] = False
-            data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizr or other non-compatible BIDS acquisition'
-            data_list_unique_series[i]['qc'] = 'Acquisition appears to be a localizr or other non-compatible BIDS acquisition'
+            data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
+            data_list_unique_series[i]['qc'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
 
         #T1w
         elif any(x in SD for x in ['T1W','T1w','t1w','tfl3d','mprage','MPRAGE']) or 'tfl3d1_16ns' in SequenceName:
@@ -372,19 +372,21 @@ series_test =[[data_list_unique_series[x]['sub'], data_list_unique_series[x]['Se
 objects_test = [[data_list_unique_objects[x]['all_subs'], data_list_unique_objects[x]['SeriesDescription'], data_list_unique_objects[x]['SeriesNumber']] for x in range(len(data_list_unique_objects))]  
     
 #OBJECTS LEVEL
-sbref_run = 1
-bold_run = 1
-dwi_run = 1
-fmap_se_run = 1
-fmap_magphase_run = 1
 objects_list = []
-objects_entities_list = []
 subjects = [subjectIDs_info[x]['sub'] for x in range(len(subjectIDs_info))]
 series_SeriesDescription_list = [series_list[x]['SeriesDescription'] for x in range(len(series_list))]
 data_list_index = -1
 
 for s in range(len(subjects)):
     sub_protocol = [x for x in data_list if x['sub'] == subjects[s]]
+
+    sbref_run = 1
+    bold_run = 1
+    dwi_run = 1
+    fmap_se_run = 1
+    fmap_magphase_run = 1
+    objects_entities_list = []
+    
     
     for p in range(len(sub_protocol)):
         data_list_index += 1
@@ -401,15 +403,16 @@ for s in range(len(subjects)):
                 ref_img = index_img(img, -1)
             else:
                 ref_img = img
+            
             plot_img(ref_img, colorbar=False, display_mode='ortho', 
                       draw_cross=False, annotate=False, threshold=None, 
                       output_file='{}.png'.format(sub_protocol[p]['nifti_path'][:-7]))  
-        
         
         index = series_SeriesDescription_list.index(sub_protocol[p]['SeriesDescription'])
         objects_entities = {'sub': subjects[s], 'ses': '', 'run': '', 'acq': '', 'ce': ''}
         
         #Port Series level information down to the object level
+        sub_protocol[p]['include'] = data_list_unique_series[index]['include']
         sub_protocol[p]['DataType'] = data_list_unique_series[index]['DataType']
         sub_protocol[p]['ModalityLabel'] = data_list_unique_series[index]['ModalityLabel']
         sub_protocol[p]['br_type'] = data_list_unique_series[index]['br_type']
@@ -427,7 +430,7 @@ for s in range(len(subjects)):
         #     sub_protocol[p]['ce'] = series_list[index]['entities']['ce']
             
         
-        #Determine other important BIDS information (i.e. run, dir, etc) for specific acquisitions
+        #Determine other important BIDS information (i.e. run, dir, etc) for specific acquisitions        
         #T1w
         if sub_protocol[p]['br_type'] == 'anat/T1w':
             #non-normalized T1w images that have poor CNR, so best to not have in BIDS if there's an actual good T1w available
@@ -484,7 +487,11 @@ for s in range(len(subjects)):
             objects_entities['run'] = sub_protocol[p]['dwi_run']
             objects_entities['dir'] = sub_protocol[p]['dir']
             dwi_run +=1
-                        
+            
+        objects_entities_list.append(objects_entities)
+        
+            
+                                
             
     #Deal with field maps (i.e. set up IntendedFor field)
     descriptions = [sub_protocol[x]['SeriesDescription'] for x in range(len(sub_protocol))]
@@ -605,9 +612,9 @@ for s in range(len(subjects)):
                 fmap_counter = 0
         else:
             IntendedFor = None
+            
         
         data_list[data_list_index] = sub_protocol[i]
-        
         objects_info = {"include": sub_protocol[i]['include'],
                     "SeriesDescription": sub_protocol[i]['SeriesDescription'],
                     "SeriesNumber": sub_protocol[i]['SeriesNumber'],
@@ -617,7 +624,7 @@ for s in range(len(subjects)):
                     "AcquisitionDate": sub_protocol[i]['AcquisitionDate'],
                     "pngPath": '{}.png'.format(sub_protocol[i]['nifti_path'][:-7]),
                     "IntendedFor": IntendedFor,
-                    "entities": objects_entities,
+                    "entities": objects_entities_list[i],
                     "type": sub_protocol[i]['br_type'],
                     "items": [
                             {
