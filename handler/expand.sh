@@ -71,6 +71,7 @@ while true; do
     expand | tee expand.log
     if [ ! -s expand.log ]; then
         echo "expand log empty ..done"
+        rm expand.log
         break
     else
         echo "keep going"

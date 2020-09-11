@@ -208,7 +208,7 @@ export default {
             if(this.uploaded.length == this.files.length) {
                 return this.done_uploading();
             }
-            if(this.uploading.length > 3) return; //don't upload more than 3 files concurrently
+            if(this.uploading.length >= 6) return; //don't upload more than 4 files concurrently
         
             //find next file to upload
             let file;
