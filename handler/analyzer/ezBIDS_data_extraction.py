@@ -6,12 +6,6 @@ Created on Fri Jun 26 08:37:56 2020
 """
 
 import os, sys, re, json, warnings
-
-import matplotlib
-import matplotlib.pyplot as plt
-matplotlib.use('Agg')
-
-
 import pandas as pd
 import numpy as np
 import nibabel as nib
@@ -137,6 +131,12 @@ for j in range(len(json_list)):
         InversionTime = json_data['InversionTime']
     else:
         InversionTime = None
+    
+    #Find MultibandAccerationFactor
+    if 'MultibandAccelerationFactor' in json_data:
+        MultibandAccelerationFactor = json_data['MultibandAccelerationFactor']
+    else:
+        MultibandAccelerationFactor = -999
         
     #Find how many volumes are in sidecar's corresponding nifti file
     try:
@@ -168,6 +168,7 @@ for j in range(len(json_list)):
                    'EchoNumber': EchoNumber,
                    'EchoTime': EchoTime,
                    'InversionTime': InversionTime,
+                   'MultibandAccelerationFactor': MultibandAccelerationFactor,
                    'DataType': '',
                    'ModalityLabel': '',
                    'sbref_run': '',
@@ -193,7 +194,7 @@ for j in range(len(json_list)):
                    'nifti_name': nifti_name,
                    'json_name': json_name,
                    'headers': '',
-                   'protocol_index': 1,
+                   'protocol_index': 0,
                    'sidecar':json_data
                    }
     data_list.append(mapping_dic)
@@ -205,14 +206,13 @@ acquisition_dates = list({x['sub']:{'AcquisitionDate':x['AcquisitionDate'], 'ses
 #Create series level and object level dictionaries based on unique SeriesDescription and/or SeriesNumber
 # data_list_unique_objects = []
 data_list_unique_series = []
-# SD_SN_tuple_list = []
+series_tuples = []
 
-for data in data_list:
-    # if not len([x[0] for x in SD_SN_tuple_list if data['SeriesDescription'] == x[0]]):
-    if data['SeriesDescription'] not in [x['SeriesDescription'] for x in data_list_unique_series]:
+for data in data_list:        
+    if (data['SeriesDescription'], data['EchoTime'], data['ImageType'], data['MultibandAccelerationFactor']) not in series_tuples: 
         data_list_unique_series.append(data)
-    # if (data['SeriesDescription'], data['SeriesNumber']) not in SD_SN_tuple_list:
-    #     data_list_unique_objects.append(data)
+    
+    series_tuples.append((data['SeriesDescription'], data['EchoTime'], data['ImageType'], data['MultibandAccelerationFactor']))
 
 
 #SERIES LEVEL
@@ -318,7 +318,10 @@ for i in range(len(data_list_unique_series)):
             if data_list_unique_series[i]['EchoNumber'] == 1:
                 data_list_unique_series[i]['ModalityLabel'] = 'magnitude1'
             else:
-                data_list_unique_series[i]['ModalityLabel'] = 'phasediff'
+                if 'PHASE' in data_list_unique_series[i]['ImageType']:
+                    data_list_unique_series[i]['ModalityLabel'] = 'phasediff'
+                else:
+                    data_list_unique_series[i]['ModalityLabel'] = 'magnitude2'
             
         #Do another pass if the SeriesDescription information isn't insightful
         else:
@@ -355,7 +358,6 @@ for i in range(len(data_list_unique_series)):
                     "entities": series_entities,
                     "type": data_list_unique_series[i]['br_type'],
                     "unique_TRs": [],
-                    'unique_TRs_plot': '',
                     "png_objects_indices": []
                     }
     series_list.append(series_info)
@@ -490,8 +492,6 @@ for s in range(len(subjects)):
             
         objects_entities_list.append(objects_entities)
         
-            
-                                
             
     #Deal with field maps (i.e. set up IntendedFor field)
     descriptions = [sub_protocol[x]['SeriesDescription'] for x in range(len(sub_protocol))]
@@ -678,21 +678,8 @@ for s in range(len(subjects)):
 
 for s in range(len(series_list)):
     series_list[s]['png_objects_indices'] = [x for x in range(len(objects_list)) if objects_list[x]['SeriesDescription'] == series_list[s]['SeriesDescription']]
-    series_list[s]['unique_TRs'] = [objects_list[x]['items'][1]['sidecar']['RepetitionTime'] for x in range(len(objects_list)) if objects_list[x]['SeriesDescription'] == series_list[s]['SeriesDescription']]
-    #Make histogram plots of unique TRs list for each series item
-    # bins = len(list(set(series_list[s]['unique_TRs'])))
-    arr = plt.hist(series_list[s]['unique_TRs'], alpha=0.5, color='blue')
-    # for i in range(bins):
-    #     plt.text(arr[1][i], arr[0][i], arr[0][i])
-
-    plt.title('Unique TR values of {}'.format(series_list[s]['SeriesDescription']))
-    plt.xlabel('TR (sec)')
-    plt.ylabel('Frequency')
-    plt.tight_layout()
-    plt.savefig('{}.png'.format(series_list[s]['SeriesDescription']))
-    plt.cla()
-    series_list[s]['unique_TRs_plot'] = './{}.png'.format(series_list[s]['SeriesDescription'])
-    
+    series_list[s]['unique_TRs'] = [objects_list[x]['items'][1]['sidecar']['RepetitionTime'] for x in range(len(objects_list)) if objects_list[x]['SeriesDescription'] == series_list[s]['SeriesDescription']] 
+        
 ezBIDS = {"subjects": subjectIDs_info,
           "sessions": acquisition_dates,
           "participantsColumn": participantsColumn,
