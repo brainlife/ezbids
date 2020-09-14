@@ -171,6 +171,7 @@ for j in range(len(json_list)):
                    'MultibandAccelerationFactor': MultibandAccelerationFactor,
                    'DataType': '',
                    'ModalityLabel': '',
+                   'series_id': 0,
                    'sbref_run': '',
                    'bold_run': '',
                    'dwi_run': '',
@@ -208,11 +209,16 @@ acquisition_dates = list({x['sub']:{'AcquisitionDate':x['AcquisitionDate'], 'ses
 data_list_unique_series = []
 series_tuples = []
 
-for data in data_list:        
-    if (data['SeriesDescription'], data['EchoTime'], data['ImageType'], data['MultibandAccelerationFactor']) not in series_tuples: 
-        data_list_unique_series.append(data)
-    
-    series_tuples.append((data['SeriesDescription'], data['EchoTime'], data['ImageType'], data['MultibandAccelerationFactor']))
+series_id = -1      
+for x in range(len(data_list)):  
+    if (data_list[x]['SeriesDescription'], data_list[x]['EchoTime'], data_list[x]['ImageType'], data_list[x]['MultibandAccelerationFactor']) not in series_tuples: 
+        series_id += 1
+        data_list[x]['series_id'] = series_id
+        data_list_unique_series.append(data_list[x])
+    else:
+        data_list[x]['series_id'] = series_id
+            
+    series_tuples.append((data_list[x]['SeriesDescription'], data_list[x]['EchoTime'], data_list[x]['ImageType'], data_list[x]['MultibandAccelerationFactor']))
 
 
 #SERIES LEVEL
@@ -272,17 +278,29 @@ for i in range(len(data_list_unique_series)):
         elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func','FMRI','fMRI','fmri','EPI']) and ('SBRef' not in SD or 'sbref' not in SD):
             data_list_unique_series[i]['DataType'] = 'func'
             data_list_unique_series[i]['ModalityLabel'] = 'bold'
-                
+                        
         #Spin echo (SE) field maps
         elif any(x in SD for x in ['fmap','FieldMap','fieldmap','SE']) or 'epse2d' in SequenceName or 'fm2d2r' in SequenceName:
             data_list_unique_series[i]['DataType'] = 'fmap'
             data_list_unique_series[i]['ModalityLabel'] = 'epi'
             
-        #Can't determine acquisition type. Assume it's not BIDS unless user specifies so
+        #Can't determine acquisition type
         else:
-            data_list_unique_series[i]['include'] = False
-            data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine if this acquisition should be converted to BIDS'
-            data_list_unique_series[i]['qc'] = 'Acquisition cannot be resolved. Please determine if this acquisition should be converted to BIDS'
+            #Multiband factor would indicate functional bold
+            if data_list_unique_series[i]['MultibandAccelerationFactor'] > 0:
+                data_list_unique_series[i]['DataType'] = 'func'
+                data_list_unique_series[i]['ModalityLabel'] = 'bold'
+                
+            #Blanket statement that acquisitions with a TR of 3 sec or less are functional bold
+            elif data_list_unique_series[i]['RepetitionTime'] <= 3:
+                data_list_unique_series[i]['DataType'] = 'func'
+                data_list_unique_series[i]['ModalityLabel'] = 'bold'
+                
+            #Assume not BIDS unless user specifies so
+            else: 
+                data_list_unique_series[i]['include'] = False
+                data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine if this acquisition should be converted to BIDS'
+                data_list_unique_series[i]['qc'] = 'Acquisition cannot be resolved. Please determine if this acquisition should be converted to BIDS'
     
             
     elif series_img.ndim == 3: #localizers, sbref, T1w, T2w, FLAIR, magnitude/phasediff fmap are 3D
@@ -355,6 +373,7 @@ for i in range(len(data_list_unique_series)):
 
     series_info = {"SeriesDescription": data_list_unique_series[i]['SeriesDescription'],
                     "SeriesNumber": data_list_unique_series[i]['SeriesNumber'],
+                    'series_id': data_list_unique_series[i]['series_id'],
                     "entities": series_entities,
                     "type": data_list_unique_series[i]['br_type'],
                     "unique_TRs": [],
@@ -363,13 +382,10 @@ for i in range(len(data_list_unique_series)):
     series_list.append(series_info)
 
     
-# series_test =[[data_list_unique_series[x]['sub'], data_list_unique_series[x]['SeriesDescription'], data_list_unique_series[x]['nifti_path']] for x in range(len(data_list_unique_series))]   
-# objects_test = [[data_list_unique_objects[x]['all_subs'], data_list_unique_objects[x]['SeriesDescription'], data_list_unique_objects[x]['SeriesNumber']] for x in range(len(data_list_unique_objects))]  
-    
 #OBJECTS LEVEL
 objects_list = []
 subjects = [subjectIDs_info[x]['sub'] for x in range(len(subjectIDs_info))]
-series_SeriesDescription_list = [series_list[x]['SeriesDescription'] for x in range(len(series_list))]
+series_seriesID_list = [series_list[x]['series_id'] for x in range(len(series_list))]
 data_list_index = -1
 for s in range(len(subjects)):
     
@@ -393,7 +409,6 @@ for s in range(len(subjects)):
         print(nib.load(sub_protocol[p]['nifti_path']).header)
         sub_protocol[p]['headers'] = st.getvalue().splitlines()[1:]
         
-        # img = load_img(data_list_unique_objects[i]['nifti_path'])
         img = load_img(sub_protocol[p]['nifti_path'])
     
         if not os.path.isfile('{}.png'.format(sub_protocol[p]['nifti_path'][:-7])):
@@ -406,7 +421,7 @@ for s in range(len(subjects)):
                       draw_cross=False, annotate=False, threshold=None, 
                       output_file='{}.png'.format(sub_protocol[p]['nifti_path'][:-7]))  
         
-        index = series_SeriesDescription_list.index(sub_protocol[p]['SeriesDescription'])
+        index = series_seriesID_list.index(sub_protocol[p]['series_id'])
         objects_entities = {'sub': subjects[s], 'ses': '', 'run': '', 'acq': '', 'ce': ''}
         
         #Port Series level information down to the object level
@@ -446,7 +461,7 @@ for s in range(len(subjects)):
             #Instances where functional bold acquisitions have less than 20 volumes (probably a restart or some failuire occurred)
             if sub_protocol[p]['VolumeCount'] < 20:
                 sub_protocol[p]['include'] = False
-                sub_protocol[p]['error'] = 'Functional run only contains {] volumes; ezBIDS minimum threshold is 20. Will not set for BIDS conversion unless specified so'.format(sub_protocol[p]['VolumeCount'])
+                sub_protocol[p]['error'] = 'Functional run only contains {} volumes; ezBIDS minimum threshold is 20. Will not set for BIDS conversion unless specified so'.format(sub_protocol[p]['VolumeCount'])
                 sub_protocol[p]['qc'] = sub_protocol[p]['error']                   
             else:
                 if bold_run < 10:
@@ -498,6 +513,7 @@ for s in range(len(subjects)):
     modality_labels = [sub_protocol[x]['ModalityLabel'] for x in range(len(sub_protocol))]
     phase_encoding_directions = [sub_protocol[x]['dir'] for x in range(len(sub_protocol))]
     section_indices = [x for x, value in enumerate(descriptions) if any(x in value for x in ['Localizer','localizer','SCOUT','Scout','scout'])]
+    section_indices = [section_indices[x] for x in range(len(section_indices)) if section_indices[x] == 0 or section_indices[x] - section_indices[x-1] > 1]
     include = [sub_protocol[x]['include'] for x in range(len(sub_protocol))]
     errors = [sub_protocol[x]['error'] for x in range(len(sub_protocol))]
     fmap_intended_for_list = []
@@ -528,8 +544,7 @@ for s in range(len(subjects)):
             objects_entities_list[flair]['run'] = '0' + str(flair_run)
             flair_run += 1
             
-        
-    
+
     
     for i in range(len(sub_protocol)):
         
@@ -598,7 +613,7 @@ for s in range(len(subjects)):
             
             
             #Magnitude/Phasediff fmaps
-            if 'magnitude1' in modality_labels[section_start:section_end]:
+            if ('magnitude1' or 'magnitude2') in modality_labels[section_start:section_end]:
                 #Remove duplicate magnitude/phasediff fmaps. Only the last two in each section will be kept
                 fmap_magphase_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'magnitude1' or value == 'phasediff']
                 if len(fmap_magphase_indices) == 1:
@@ -632,7 +647,7 @@ for s in range(len(subjects)):
                 pass
             
         
-        if sub_protocol[i]['ModalityLabel'] in ['epi', 'magnitude1','phasediff']:
+        if sub_protocol[i]['ModalityLabel'] in ['epi','magnitude1','magnitude2','phasediff']:
             IntendedFor = fmap_intended_for_list[fmap_intended_for_index]
             fmap_counter += 1
             if fmap_counter > 1:
