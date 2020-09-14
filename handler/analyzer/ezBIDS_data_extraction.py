@@ -23,10 +23,6 @@ from operator import itemgetter
 warnings.filterwarnings("ignore")
 
 data_dir = sys.argv[1]
-#data_dir = '/media/data/ezbids/siemens/DAN_STD'
-#data_dir = '/media/data/ezbids/dicoms/Folco/DECGR'
-#data_dir = '/media/data/ezbids/dicoms/Stark/NeuralStroke'
-
 os.chdir(data_dir)
 
 #def extractor():
@@ -74,7 +70,7 @@ for j in range(len(json_list)):
         PED = ''
         
     #Nifti (and bval/bvec) file(s) associated with specific sidecar
-    nifti_paths_for_json = [x for x in nifti_list if json_list[j][:-5] in x]
+    nifti_paths_for_json = [x for x in nifti_list if json_list[j][:-4] in x]
     
     #Nifti file size
     filesize = os.stat(nifti_paths_for_json[0]).st_size
@@ -152,15 +148,13 @@ for j in range(len(json_list)):
     paths = nifti_paths_for_json + [json_list[j]]
     
     #File extensions for nifti and sidecar
-    nifti_name, json_name = ['nii.gz', 'json']
-            
+    nifti_name, json_name = ['nii.gz', 'json']            
     
     mapping_dic = {'StudyID': studyID,
                    'PatientName': PatientName,
                    'PatientID': PatientID,
                    'PatientBirthDate': PatientBirthDate,
                    'sub': sub,
-                   'all_subs': [],
                    'SessionID': '',
                    'SeriesNumber': json_data['SeriesNumber'],
                    'PatientSex': PatientSex,
@@ -199,8 +193,8 @@ for j in range(len(json_list)):
                    'nifti_name': nifti_name,
                    'json_name': json_name,
                    'headers': '',
-                   'sidecar':json_data,
-                   'second_check': ''
+                   'protocol_index': 1,
+                   'sidecar':json_data
                    }
     data_list.append(mapping_dic)
     
@@ -209,18 +203,17 @@ subjectIDs_info = list({x['sub']:{'sub':x['sub'], 'PatientID':x['PatientID'], 'P
 acquisition_dates = list({x['sub']:{'AcquisitionDate':x['AcquisitionDate'], 'ses': ''} for x in data_list}.values())
 
 #Create series level and object level dictionaries based on unique SeriesDescription and/or SeriesNumber
-data_list_unique_objects = []
+# data_list_unique_objects = []
 data_list_unique_series = []
-SD_SN_tuple_list = []
+# SD_SN_tuple_list = []
 
 for data in data_list:
-    
-    if not len([x[0] for x in SD_SN_tuple_list if data['SeriesDescription'] == x[0]]):
+    # if not len([x[0] for x in SD_SN_tuple_list if data['SeriesDescription'] == x[0]]):
+    if data['SeriesDescription'] not in [x['SeriesDescription'] for x in data_list_unique_series]:
         data_list_unique_series.append(data)
-    if (data['SeriesDescription'], data['SeriesNumber']) not in SD_SN_tuple_list:
-        data['all_subs'] = sorted(list(set([data_list[x]['sub'] for x in range(len(data_list)) if data_list[x]['SeriesDescription'] == data['SeriesDescription'] and data_list[x]['SeriesNumber'] == data['SeriesNumber']])))
-        data_list_unique_objects.append(data)
-    SD_SN_tuple_list.append((data['SeriesDescription'], data['SeriesNumber']))
+    # if (data['SeriesDescription'], data['SeriesNumber']) not in SD_SN_tuple_list:
+    #     data_list_unique_objects.append(data)
+
 
 #SERIES LEVEL
 series_list = []
@@ -294,7 +287,7 @@ for i in range(len(data_list_unique_series)):
             
     elif series_img.ndim == 3: #localizers, sbref, T1w, T2w, FLAIR, magnitude/phasediff fmap are 3D
         #Localizers or other non-BIDS compatible acquisitions
-        if any(x in SD for x in ['Localizer','localizer','SCOUT','Scout','scout']) or series_img.get_shape()[-1] == 1:
+        if any(x in SD for x in ['Localizer','localizer','SCOUT','Scout','scout']) or series_img.shape[-1] == 1:
             data_list_unique_series[i]['include'] = False
             data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
             data_list_unique_series[i]['qc'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
@@ -368,18 +361,17 @@ for i in range(len(data_list_unique_series)):
     series_list.append(series_info)
 
     
-series_test =[[data_list_unique_series[x]['sub'], data_list_unique_series[x]['SeriesDescription'], data_list_unique_series[x]['nifti_path']] for x in range(len(data_list_unique_series))]   
-objects_test = [[data_list_unique_objects[x]['all_subs'], data_list_unique_objects[x]['SeriesDescription'], data_list_unique_objects[x]['SeriesNumber']] for x in range(len(data_list_unique_objects))]  
+# series_test =[[data_list_unique_series[x]['sub'], data_list_unique_series[x]['SeriesDescription'], data_list_unique_series[x]['nifti_path']] for x in range(len(data_list_unique_series))]   
+# objects_test = [[data_list_unique_objects[x]['all_subs'], data_list_unique_objects[x]['SeriesDescription'], data_list_unique_objects[x]['SeriesNumber']] for x in range(len(data_list_unique_objects))]  
     
 #OBJECTS LEVEL
 objects_list = []
 subjects = [subjectIDs_info[x]['sub'] for x in range(len(subjectIDs_info))]
 series_SeriesDescription_list = [series_list[x]['SeriesDescription'] for x in range(len(series_list))]
 data_list_index = -1
-
 for s in range(len(subjects)):
+    
     sub_protocol = [x for x in data_list if x['sub'] == subjects[s]]
-
     sbref_run = 1
     bold_run = 1
     dwi_run = 1
@@ -387,16 +379,20 @@ for s in range(len(subjects)):
     fmap_magphase_run = 1
     objects_entities_list = []
     
-    
     for p in range(len(sub_protocol)):
+        if p == 0:
+            protocol_index = 0
+            
+        sub_protocol[p]['protocol_index'] = protocol_index
         data_list_index += 1
-        
+        protocol_index += 1
         s = StringIO()
         sys.stdout = s
         print(nib.load(sub_protocol[p]['nifti_path']).header)
         sub_protocol[p]['headers'] = s.getvalue().splitlines()[1:]
         
-        img = load_img(data_list_unique_objects[i]['nifti_path'])
+        # img = load_img(data_list_unique_objects[i]['nifti_path'])
+        img = load_img(sub_protocol[p]['nifti_path'])
     
         if not os.path.isfile('{}.png'.format(sub_protocol[p]['nifti_path'][:-7])):
             if img.ndim == 4:
@@ -438,6 +434,10 @@ for s in range(len(subjects)):
                 sub_protocol[p]['include'] = False  
                 sub_protocol[p]['error'] = 'Acquisition is a poor resolution T1w (non-normalized); Please check to see if this T1w acquisition should be converted to BIDS'
                 sub_protocol[p]['qc'] = sub_protocol[p]['error']
+            else:
+                sub_protocol[p]['include'] = True 
+                sub_protocol[p]['error'] = ''
+                sub_protocol[p]['qc'] = ''
         
         #BOLD
         elif sub_protocol[p]['br_type'] == 'func/bold':
@@ -503,6 +503,34 @@ for s in range(len(subjects)):
     fmap_intended_for_list = []
     fmap_counter = 0
     fmap_intended_for_index = 0
+    
+    #Add run number to anatomicals that have multiple acquisitions
+    t1w_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T1w']
+    t2w_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T2w']
+    flair_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/FLAIR']
+
+    
+    if len(t1w_index) > 1:
+        t1w_run = 1
+        for t1w in t1w_index:
+            objects_entities_list[t1w]['run'] = '0' + str(t1w_run)
+            t1w_run += 1
+    
+    if len(t2w_index) > 1:        
+        t2w_run = 1
+        for t2w in t2w_index:
+            objects_entities_list[t2w]['run'] = '0' + str(t2w_run)
+            t2w_run += 1
+            
+    if len(flair_index) > 1:        
+        flair_run = 1
+        for flair in flair_index:
+            objects_entities_list[flair]['run'] = '0' + str(flair_run)
+            flair_run += 1
+            
+        
+    
+    
     for i in range(len(sub_protocol)):
         
         if len(section_indices) == 0:
@@ -613,7 +641,6 @@ for s in range(len(subjects)):
         else:
             IntendedFor = None
             
-        
         data_list[data_list_index] = sub_protocol[i]
         objects_info = {"include": sub_protocol[i]['include'],
                     "SeriesDescription": sub_protocol[i]['SeriesDescription'],
