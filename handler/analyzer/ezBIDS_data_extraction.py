@@ -386,10 +386,10 @@ for s in range(len(subjects)):
         sub_protocol[p]['protocol_index'] = protocol_index
         data_list_index += 1
         protocol_index += 1
-        s = StringIO()
-        sys.stdout = s
+        st = StringIO()
+        sys.stdout = st
         print(nib.load(sub_protocol[p]['nifti_path']).header)
-        sub_protocol[p]['headers'] = s.getvalue().splitlines()[1:]
+        sub_protocol[p]['headers'] = st.getvalue().splitlines()[1:]
         
         # img = load_img(data_list_unique_objects[i]['nifti_path'])
         img = load_img(sub_protocol[p]['nifti_path'])
