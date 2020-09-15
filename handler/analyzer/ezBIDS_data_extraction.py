@@ -209,16 +209,17 @@ acquisition_dates = list({x['sub']:{'AcquisitionDate':x['AcquisitionDate'], 'ses
 data_list_unique_series = []
 series_tuples = []
 
-series_id = -1      
+series_id = 0      
 for x in range(len(data_list)):  
-    if (data_list[x]['SeriesDescription'], data_list[x]['EchoTime'], data_list[x]['ImageType'], data_list[x]['MultibandAccelerationFactor']) not in series_tuples: 
-        series_id += 1
+    tup = (data_list[x]['SeriesDescription'], data_list[x]['EchoTime'], data_list[x]['ImageType'], data_list[x]['MultibandAccelerationFactor'], series_id)
+    if tup[:-1] not in [y[:-1] for y in series_tuples]: 
         data_list[x]['series_id'] = series_id
+        series_id += 1
         data_list_unique_series.append(data_list[x])
     else:
-        data_list[x]['series_id'] = series_id
+        data_list[x]['series_id'] = series_tuples[[y[:-1] for y in series_tuples].index(tup[:-1])][-1]
             
-    series_tuples.append((data_list[x]['SeriesDescription'], data_list[x]['EchoTime'], data_list[x]['ImageType'], data_list[x]['MultibandAccelerationFactor']))
+    series_tuples.append(tup)
 
 
 #SERIES LEVEL
@@ -273,6 +274,7 @@ for i in range(len(data_list_unique_series)):
         if any(x in SD for x in ['DWI','dwi','DTI','dti']) or 'ep_b' in SequenceName:
             data_list_unique_series[i]['DataType'] = 'dwi'
             data_list_unique_series[i]['ModalityLabel'] = 'dwi'
+            series_entities['dir'] = data_list_unique_series[i]['dir']
             
         #Functional
         elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func','FMRI','fMRI','fmri','EPI']) and ('SBRef' not in SD or 'sbref' not in SD):
@@ -283,6 +285,7 @@ for i in range(len(data_list_unique_series)):
         elif any(x in SD for x in ['fmap','FieldMap','fieldmap','SE']) or 'epse2d' in SequenceName or 'fm2d2r' in SequenceName:
             data_list_unique_series[i]['DataType'] = 'fmap'
             data_list_unique_series[i]['ModalityLabel'] = 'epi'
+            series_entities['dir'] = data_list_unique_series[i]['dir']
             
         #Can't determine acquisition type
         else:
@@ -474,7 +477,8 @@ for s in range(len(subjects)):
         #single band reference (sbref)
         elif sub_protocol[p]['br_type'] == 'func/sbref':
             if p+1 < len(sub_protocol):
-                index_next = series_SeriesDescription_list.index(sub_protocol[p+1]['SeriesDescription'])
+                # index_next = series_SeriesDescription_list.index(sub_protocol[p+1]['SeriesDescription'])
+                index_next = series_seriesID_list.index(sub_protocol[p+1]['series_id'])
                 sub_protocol[p+1]['br_type'] = data_list_unique_series[index_next]['br_type']
                 
             #Rare instances where sbref is not followed by functional bold
@@ -482,6 +486,7 @@ for s in range(len(subjects)):
                 sub_protocol[p]['include'] = False
                 sub_protocol[p]['error'] = 'Single band reference (sbref) acquisition is not immediately followed by a functional bold acquisition. Will not set for BIDS conversion'
                 sub_protocol[p]['qc'] = sub_protocol[p]['error']
+                
             #Set include to False if functional bold after it has less than 20 volumes, which will cause it to not be converted to BIDS
             elif nib.load(sub_protocol[p+1]['nifti_path']).shape[3] < 20:
                 sub_protocol[p]['include'] = False
