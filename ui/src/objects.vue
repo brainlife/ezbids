@@ -13,7 +13,7 @@
             <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}" class="left-border">
                 <span v-if="ses != ''" class="hierarchy" style="opacity: 0.8;"><i class="el-icon-time"/> <small>ses</small> {{ses}}</span>
                 <div v-for="(o, idx) in o_ses.objects" :key="idx" style="padding: 2px;" class="clickable" :class="{'selected': so === o}" @click="select(o, o_ses)">
-                    <el-tag type="info" size="mini"><small>{{o.SeriesNumber}}</small></el-tag>
+                    <el-tag type="info" size="mini"><small>{{o.series_id}}</small></el-tag>
                     &nbsp;
                     <datatype :o="o"/>
                     <el-badge v-if="o.validationErrors.length > 0" type="danger" 
@@ -44,8 +44,11 @@
 
                 <div :class="{'object-exclude': !so.include}">
                     <el-form-item label="Series">
-                        {{so.SeriesDescription}}
+                        <el-tag type="info" size="mini"><small>{{so.series_id}}</small></el-tag>
+                        {{$root.findSeries(so).SeriesDescription}}
+                        <!--
                         <el-tag type="info" size="mini"><small>{{so.SeriesNumber}}</small></el-tag>
+                        -->
                     </el-form-item>
                     <el-form-item label="Datatype">
                         <el-select v-model="so.type" clearable :placeholder="$root.getType(so) || 'Please select datatype'" size="small" style="width: 100%" @change="update(so)">
@@ -85,19 +88,9 @@
 
                     <div v-if="$root.getType(so).startsWith('fmap/')" class="border-top">
                         <el-form-item label="IntendedFor">
-                            <!--
-                            <p v-for="(o, idx) in sess.objects.filter(o=>o!=so)" :key="idx" style="margin: 0;">
-                                <el-checkbox :checked="so.IntendedFor[idx]" @change="updateIntendedFor($event, idx)">
-                                    <el-tag type="info" size="mini"><small>{{o.SeriesNumber}}</small></el-tag>
-                                    {{o.SeriesDescription}}
-                                    &nbsp;
-                                    <datatype :o="o"/>
-                                </el-checkbox>
-                            </p>
-                            -->
                             <el-select v-model="so.IntendedFor" multiple placeholder="Select Object" style="width: 100%">
                                 <el-option v-for="o in this.sess.objects" :key="o.idx"
-                                    :label="o.SeriesNumber+' '+o.SeriesDescription" :value="o.idx">
+                                    :label="o.series_id" :value="o.idx">
                                 </el-option>
                             </el-select>
                         </el-form-item>
@@ -110,9 +103,6 @@
                     </el-form-item>
                 </div>
             </el-form>
-            <!--
-            <pre v-if="config.debug">{{so}}</pre>
-            -->
         </div><!--selected != null-->
     </div><!--object-->
 </div>
@@ -150,13 +140,6 @@ export default {
             this.$root.validateObject(o);
             this.$root.validated = this.$root.isAllValid(); 
         },
-
-        /*
-        updateIntendedFor(checked, idx) {
-            this.so.IntendedFor[idx] = checked;
-            this.$forceUpdate();
-        },
-        */
 
         getDefault(o, entity) {
             if(entity == "sub") {

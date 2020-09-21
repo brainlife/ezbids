@@ -2,6 +2,7 @@
 
 set -x
 
-./analyzer/ezBIDS_data_extraction.py $1
+echo "running with profiler"
+python3 -m cProfile ./analyzer/ezBIDS_data_extraction.py $1
 
 

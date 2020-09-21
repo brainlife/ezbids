@@ -3,6 +3,11 @@
     <h4>Series / Datatype Mappings</h4>
     <p>Please update how you'd like to map each dicom SeriesDescription to BIDS datatype/entities.</p>
     <el-table :data="$root.series" style="width: 100%" size="mini" class="table-align-top">
+        <el-table-column label="id" width="50px">
+            <template slot-scope="scope">
+                <p style="margin-top: 10px">{{scope.row.series_id}}</p>
+            </template>
+        </el-table-column>
         <el-table-column label="Series Description" width="300px">
             <template slot-scope="scope">
                 <!--<el-tag type="info" size="mini"><small>{{scope.row.SeriesNumber}}</small></el-tag>-->

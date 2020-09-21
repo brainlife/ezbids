@@ -118,15 +118,12 @@ new Vue({
     },
 
     async mounted() {
-        console.log("mounted main");
-
         if(location.hash) {
             console.log("reloading session");
             this.session = {
                 _id: location.hash.substring(1),
             }
             this.pollSession();
-            console.dir(this.session);
         }
 
         //dwi
@@ -464,50 +461,6 @@ split:
 
     methods: {
         reset() {
-            /*
-            this.datasetDescription = {
-                "Name": "The mother of all experiments",
-                "BIDSVersion": "1.4.0",
-                "DatasetType": "raw",
-                "License": "CC0",
-                "Authors": [
-                    "Paul Broca",
-                    "Carl Wernicke"
-                ],
-                "Acknowledgements": "Special thanks to Korbinian Brodmann for help in formatting this dataset in BIDS. We thank Alan Lloyd Hodgkin and Andrew Huxley for helpful comments and discussions about the experiment and manuscript; Hermann Ludwig Helmholtz for administrative support; and Claudius Galenus for providing data for the medial-to-lateral index analysis.",
-                "HowToAcknowledge": "Please cite this paper: https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
-                "Funding": [
-                    "National Institute of Neuroscience Grant F378236MFH1",
-                    "National Institute of Neuroscience Grant 5RMZ0023106"
-                ],
-                "EthicsApprovals": [
-                    "Army Human Research Protections Office (Protocol ARL-20098-10051, ARL 12-040, and ARL 12-041)"
-                ],
-                "ReferencesAndLinks": [
-                    "https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
-                    "http://doi.org/1920.8/jndata.2015.7"
-                ],
-                "DatasetDOI": "10.0.2.3/dfjj.10"
-            };
-
-            this.readme = "";
-            this.participantsColumn = {};
-            
-            this.subjects = [];
-            this.sessions = [];
-            this.series = [];
-
-            this.objects = [];
-            this.subs = {};
-
-            this.page = "upload";
-            this.uploadFailed = false;
-            this.session = null;
-            this.analyzed = false;
-            this.validated = false;
-            this.finalized = false;
-            this.finished = false;
-            */
             location.hash = "";
             location.reload();
         },
@@ -558,10 +511,7 @@ split:
         },
 
         findSeries(o) {
-            let series = this.series.find(s=>{
-                if(s.SeriesDescription == o.SeriesDescription/* && s.SeriesNumber == o.SeriesNumber*/) return true;
-                return false;
-            });
+            let series = this.series.find(s=>s.series_id == o.series_id);
             return series;
         },
 
@@ -725,13 +675,11 @@ split:
         },
 
         async pollSession() {
-            console.log("polling..", this.session.status);
             const res = await fetch(this.apihost+'/session/'+this.session._id, {
                 method: "GET",
                 headers: { 'Content-Type': 'application/json' },
             });
             this.session = await res.json();
-
             switch(this.session.status) {
             case "created":
             case "uploaded":
@@ -744,6 +692,7 @@ split:
                 }, 1000);
                 break;
 
+            case "finished":
             case "analyzed":
                 if(!this.analyzed) {
                     await this.loadData(this.apihost+'/download/'+this.session._id+'/ezBIDS.json');
@@ -751,7 +700,6 @@ split:
                 }
                 break;
 
-            case "finished":
             case "failed":
                 break;
             }

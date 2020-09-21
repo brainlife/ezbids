@@ -10,17 +10,20 @@
             @dragleave="dragging = false" 
             @dragover="dragover">
             <center class="drop-area-backdrop"><b><span style="letter-spacing: -4vh;">ez</span>BIDS</b></center>
-            <b>Drag & Drop a DICOM folder here to start</b>
-            <br>
-            <br>
-            or <input type="file"
-                    webkitdirectory 
-                    mozdirectory 
-                    msdirectory 
-                    odirectory 
-                    directory 
-                    multiple 
-                    @change="selectit"/>
+            <center>
+                <b>Drag & Drop a DICOM folder here to start</b>
+                <br>
+                <br>
+                or
+                <input type="file"
+                        webkitdirectory 
+                        mozdirectory 
+                        msdirectory 
+                        odirectory 
+                        directory 
+                        multiple 
+                        @change="selectit"/>
+            </center>
         </div>
     </div>
 

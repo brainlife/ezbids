@@ -1,18 +1,22 @@
 <template>
 <div>
     <div style="float: right;">
-        <el-button @click="finalize" size="small">Re-Finalize</el-button>
+        <el-button @click="finalize" size="mini">Re-Finalize</el-button>
     </div>
     <div v-if="$root.validated && $root.session.status == 'finished'">
         <p>All done!</p>
         <el-button @click="download" type="primary" size="small">Download BIDS</el-button>
         <el-button @click="sendBrainlife" size="small">Upload Data to <b>brainlife.io</b></el-button>
         <el-button @click="sendOpenneuro" size="small">Upload Data to <b>OpenNeuro</b></el-button>
-        <p class="mappings">
-            <a href="" @click.prevent="downloadSubjectMapping()">Subject Mapping</a>
-            &nbsp;
-            <a href="" @click.prevent="downloadSessionMapping()">Session Mapping</a>
-        </p>
+        <div class="mappings">
+            <p @click="downloadSubjectMapping">
+                <i class="el-icon-download"></i> PatientName to Subject Mapping
+            </p>
+            <p @click="downloadSessionMapping">
+                <i class="el-icon-download"></i> AcquisitionDate to Session Mapping
+            </p>
+            <small>* Patient to Subject mapping may contain sensitive PHI data. Please make sure to store in a secure location.</small>
+        </div>
     </div>
     <div v-else-if="$root.validated && $root.session.status == 'analyzed'">
         <p>Your data is ready to be converted to BIDS.</p>
@@ -122,10 +126,15 @@ export default {
 <style scoped>
 .mappings {
     background-color: #eee;
+    margin-top: 10px;
     padding: 10px;
     font-size: 85%;
 }
-.mappings a {
+.mappings p {
+    cursor: pointer;
     color: #409EFF;
+}
+.mappings p:hover {
+    text-decoration: underline;
 }
 </style>
