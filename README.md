@@ -1,4 +1,4 @@
-### ezBIDS
+# ezBIDS
 Cloud-based graphical user interface for automated DICOM to BIDS data ingestion
 
 ### About
