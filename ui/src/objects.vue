@@ -34,8 +34,19 @@
     <div class="object">
         <div v-if="so">
             <div style="margin-bottom: 10px;">
-                <el-alert  show-icon :closable="false" type="error" v-for="(error, idx) in so.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
+                <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in so.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
+                <el-alert show-icon :closable="false" type="warning" v-if="so.analysisResults.errors" :title="so.analysisResults.errors"/>
+                </el-alert>
             </div>
+        
+            <!--
+                "analysisResults": {
+                  "VolumeCount": 5,
+                  "errors": "Functional run only contains 5 volumes; ezBIDS minimum threshold is 30. Will not set for BIDS conversion unless specified so",
+                  "qc": "Functional run only contains 5 volumes; ezBIDS minimum threshold is 30. Will not set for BIDS conversion unless specified so",
+                  "filesize": 637883
+                },
+            -->
 
             <el-form label-width="100px">
                 <el-form-item label="Include">

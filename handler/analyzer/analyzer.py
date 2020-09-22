@@ -501,7 +501,7 @@ for s in range(len(subjects)):
             #Instances where functional bold acquisitions have less than 30 volumes (probably a restart/failure occurred, or some kind of non-BIDS test)
             if sub_protocol[p]['VolumeCount'] < 30:
                 sub_protocol[p]['include'] = False
-                sub_protocol[p]['error'] = 'Functional run only contains {} volumes; ezBIDS minimum threshold is 30. Will not set for BIDS conversion unless specified so'.format(sub_protocol[p]['VolumeCount'])
+                sub_protocol[p]['error'] = 'Functional run only contains {} volumes; ezBIDS minimum threshold is 30. Will not include for BIDS conversion unless specified so'.format(sub_protocol[p]['VolumeCount'])
                 sub_protocol[p]['qc'] = sub_protocol[p]['error']                   
             else:
                 if bold_run < 10:
@@ -521,7 +521,7 @@ for s in range(len(subjects)):
             #Rare instances where sbref is not followed by functional bold
             if sub_protocol[p+1]['br_type'] not in ['func/bold', 'func/multiecho']:
                 sub_protocol[p]['include'] = False
-                sub_protocol[p]['error'] = 'Single band reference (sbref) acquisition is not immediately followed by a functional bold acquisition that is being converted to BIDS. Will not set for BIDS conversion'
+                sub_protocol[p]['error'] = 'Single band reference (sbref) acquisition is not immediately followed by a functional bold acquisition that is being converted to BIDS. Will not include for BIDS conversion'
                 sub_protocol[p]['qc'] = sub_protocol[p]['error']
                 
             #Set include to False if functional bold after it has less than 20 volumes, which will cause it to not be converted to BIDS
@@ -617,7 +617,7 @@ for s in range(len(subjects)):
                     if sub_protocol[i]['fmap_dwi_check'] == 0:
                         include[i] = False
                         sub_protocol[i]['include'] = include[i]
-                        errors[i] = 'Only one spin echo field map found; need pair. Will not set for BIDS conversion'
+                        errors[i] = 'Only one spin echo field map found; need pair. Will not include for BIDS conversion'
                         sub_protocol[i]['error'] = errors[i]
                         sub_protocol[fm]['qc'] = errors[i]
                     else:
@@ -658,7 +658,7 @@ for s in range(len(subjects)):
                             for fm in fmap_se_indices:
                                 include[fm] = False
                                 sub_protocol[fm]['include'] = include[fm]
-                                errors[fm] = 'Spin echo pair detected in section, but no functional data in section to be applied to. Will not set for BIDS conversion'
+                                errors[fm] = 'Spin echo pair detected in section, but no functional data in section to be applied to. Will not include for BIDS conversion'
                                 sub_protocol[fm]['error'] = errors[fm]
                                 sub_protocol[fm]['qc'] = errors[fm]
                         
@@ -679,7 +679,7 @@ for s in range(len(subjects)):
                 if len(fmap_magphase_indices) == 1:
                     include[fmap_magphase_indices[0]] = False
                     sub_protocol[fmap_magphase_indices[0]]['include'] = include[fmap_magphase_indices[0]]
-                    errors[fmap_magphase_indices[0]] = 'Need pair for magnitude/phasediff field maps. Will not set for BIDS conversion'
+                    errors[fmap_magphase_indices[0]] = 'Need pair for magnitude/phasediff field maps. Will not include for BIDS conversion'
                     sub_protocol[fmap_magphase_indices[0]]['error'] = errors[fmap_magphase_indices[0]]
                 if len(fmap_magphase_indices) > 2:
                     for fm in fmap_magphase_indices[:-2]:
@@ -699,7 +699,7 @@ for s in range(len(subjects)):
                         for fm in fmap_magphase_indices_final:
                             include[fm] = False
                             sub_protocol[fm]['include'] = include[fm]
-                            errors[fm] = 'No functional data in section found for magnitude/phasediff to act on. Will not convert to BIDS'
+                            errors[fm] = 'No functional data in section found for magnitude/phasediff to act on. Will not include in BIDS'
                             sub_protocol[fm]['error'] = errors[fm]
                             sub_protocol[fm]['qc'] = errors[fm]
                     
