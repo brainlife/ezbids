@@ -1,6 +1,6 @@
-**ezBIDS: Cloud-based graphical user interface for automated DICOM to BIDS data ingestion**
+### ezBIDS: Cloud-based graphical user interface for automated DICOM to BIDS data ingestion
 
-**About**
+### About
 This is the developmental repo for an automated BIDS converter web service that allows users to upload a directory containing 
 DICOM files, and analyze the directory structure and sidecars generated from dcm2niix in order to *guess* 
 as much information about the data structure as possible. Users will then be asked to verify / modify
@@ -23,7 +23,7 @@ Due to the plethora of scanner acquisition types, not all are currently supporte
 9). fmap/phasediff
 10). dwi/dwi
 
-**Usage**
+### Usage
 To access the web service, please visit https://brainlife.io/ezbids
 
 
