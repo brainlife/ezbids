@@ -24,12 +24,6 @@ print('########################################')
 print('')
 
 #def extractor():
-
-def show_slices(slices):
-    fig, axes = plt.subplots(1, len(slices))
-    for i, slice in enumerate(slices):
-        axes[i].imshow(slice.T, cmap="gray", origin="lower")
-    plt.imsave()
     
 #Load list generated from UI, and organize the nifti/json files by their series number    
 dir_list = pd.read_csv('list', header=None)
