@@ -15,7 +15,8 @@ from math import floor
 
 warnings.filterwarnings("ignore")
 
-data_dir = sys.argv[1]
+# data_dir = sys.argv[1]
+data_dir = '/media/data/ezbids/dicoms/Avesani'
 os.chdir(data_dir)
 
 print('########################################')
