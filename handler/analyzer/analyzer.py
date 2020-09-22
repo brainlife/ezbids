@@ -197,8 +197,7 @@ for j in range(len(json_list)):
                    "include": True,
                    'filesize': filesize,
                    "VolumeCount": volume_count,
-                   'error': 'N/A',
-                   'qc': '',
+                   'error': None,
                    'br_type': '',
                    'nifti_path': [x for x in nifti_paths_for_json if '.nii.gz' in x][0],
                    'json_path': json_list[j],
@@ -329,7 +328,6 @@ for i in range(len(data_list_unique_series)):
             else: 
                 data_list_unique_series[i]['include'] = False
                 data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine if this acquisition should be converted to BIDS'
-                data_list_unique_series[i]['qc'] = 'Acquisition cannot be resolved. Please determine if this acquisition should be converted to BIDS'
     
             
     else: #localizers, sbref, T1w, T2w, FLAIR, magnitude/phasediff fmap are 3D
@@ -337,7 +335,6 @@ for i in range(len(data_list_unique_series)):
         if any(x in SD for x in ['LOCALIZER','Localizer','localizer','SCOUT','Scout','scout']):
             data_list_unique_series[i]['include'] = False
             data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
-            data_list_unique_series[i]['qc'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
 
         #T1w
         elif any(x in SD for x in ['T1W','T1w','t1w','tfl3d','tfl','mprage','MPRAGE']) or 'tfl3d1_16ns' in SequenceName:
@@ -396,7 +393,6 @@ for i in range(len(data_list_unique_series)):
             else:
                 data_list_unique_series[i]['include'] = False
                 data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine if this acquisition should be converted to BIDS'
-                data_list_unique_series[i]['qc'] = 'Acquisition cannot be resolved. Please determine if this acquisition should be converted to BIDS'
     
     if data_list_unique_series[i]['DataType'] == '' and data_list_unique_series[i]['ModalityLabel'] == '':
         data_list_unique_series[i]['br_type'] = 'N/A'
@@ -470,7 +466,6 @@ for s in range(len(subjects)):
         sub_protocol[p]['ModalityLabel'] = data_list_unique_series[index]['ModalityLabel']
         sub_protocol[p]['br_type'] = data_list_unique_series[index]['br_type']
         sub_protocol[p]['error'] = data_list_unique_series[index]['error']
-        sub_protocol[p]['qc'] = data_list_unique_series[index]['qc']
         sub_protocol[p]['sub'] = subjects[s]
         
         # if series_list[index]['entities']['run']:
@@ -490,19 +485,16 @@ for s in range(len(subjects)):
             if 'NORM' not in sub_protocol[p]['ImageType'] and sub_protocol[p]['br_type'] == 'anat/T1w':
                 sub_protocol[p]['include'] = False  
                 sub_protocol[p]['error'] = 'Acquisition is a poor resolution T1w (non-normalized); Please check to see if this T1w acquisition should be converted to BIDS'
-                sub_protocol[p]['qc'] = sub_protocol[p]['error']
             else:
                 sub_protocol[p]['include'] = True 
                 sub_protocol[p]['error'] = ''
-                sub_protocol[p]['qc'] = ''
         
         #BOLD
         elif sub_protocol[p]['br_type'] == 'func/bold' or sub_protocol[p]['br_type'] == 'func/multiecho':
             #Instances where functional bold acquisitions have less than 30 volumes (probably a restart/failure occurred, or some kind of non-BIDS test)
             if sub_protocol[p]['VolumeCount'] < 30:
                 sub_protocol[p]['include'] = False
-                sub_protocol[p]['error'] = 'Functional run only contains {} volumes; ezBIDS minimum threshold is 30. Will not include for BIDS conversion unless specified so'.format(sub_protocol[p]['VolumeCount'])
-                sub_protocol[p]['qc'] = sub_protocol[p]['error']                   
+                sub_protocol[p]['error'] = 'Functional run only contains {} volumes; ezBIDS minimum threshold is 30. Will not set for BIDS conversion unless specified so'.format(sub_protocol[p]['VolumeCount'])
             else:
                 if bold_run < 10:
                     sub_protocol[p]['bold_run'] = '0' + str(bold_run)
@@ -521,14 +513,12 @@ for s in range(len(subjects)):
             #Rare instances where sbref is not followed by functional bold
             if sub_protocol[p+1]['br_type'] not in ['func/bold', 'func/multiecho']:
                 sub_protocol[p]['include'] = False
-                sub_protocol[p]['error'] = 'Single band reference (sbref) acquisition is not immediately followed by a functional bold acquisition that is being converted to BIDS. Will not include for BIDS conversion'
-                sub_protocol[p]['qc'] = sub_protocol[p]['error']
+                sub_protocol[p]['error'] = 'Single band reference (sbref) acquisition is not immediately followed by a functional bold acquisition that is being converted to BIDS. Will not set for BIDS conversion'
                 
             #Set include to False if functional bold after it has less than 20 volumes, which will cause it to not be converted to BIDS
             elif nib.load(sub_protocol[p+1]['nifti_path']).shape[3] < 20:
                 sub_protocol[p]['include'] = False
                 sub_protocol[p]['error'] = 'Functional bold acquisition following this sbref contains less than 20 volumes, causing it to not be converted to BIDS. Thus this sbref that precedes the functional bold will not set for BIDS conversion'
-                sub_protocol[p]['qc'] = sub_protocol[p]['error']
             else:    
                 if sbref_run < 10:
                     sub_protocol[p]['sbref_run'] = '0' + str(sbref_run)
@@ -617,9 +607,8 @@ for s in range(len(subjects)):
                     if sub_protocol[i]['fmap_dwi_check'] == 0:
                         include[i] = False
                         sub_protocol[i]['include'] = include[i]
-                        errors[i] = 'Only one spin echo field map found; need pair. Will not include for BIDS conversion'
+                        errors[i] = ['Only one spin echo field map found; need pair. Will not set for BIDS conversion']
                         sub_protocol[i]['error'] = errors[i]
-                        sub_protocol[fm]['qc'] = errors[i]
                     else:
                         include[i] = True
                         sub_protocol[i]['include'] = include[i]
@@ -629,9 +618,8 @@ for s in range(len(subjects)):
                     for fm in fmap_se_indices[:-2]:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = 'Multiple spin echo pairs detected in section; only selecting last pair for BIDS conversion'
+                        errors[fm] = ['Multiple spin echo pairs detected in section; only selecting last pair for BIDS conversion']
                         sub_protocol[fm]['error'] = errors[fm]
-                        sub_protocol[fm]['qc'] = errors[fm]
                         
                 #Remove SE fmaps where phase encoding directions aren't opposite
                 if len(fmap_se_indices) > 1:
@@ -639,9 +627,8 @@ for s in range(len(subjects)):
                         for fm in fmap_se_indices[-2:]:
                             include[fm] = False
                             sub_protocol[fm]['include'] = include[fm]
-                            errors[fm] = 'Spin echo fmap pair does not have opposite phase encoding directions. Will no set for BIDS conversion'
+                            errors[fm] = ['Spin echo fmap pair does not have opposite phase encoding directions. Will no set for BIDS conversion']
                             sub_protocol[fm]['error'] = errors[fm]
-                            sub_protocol[fm]['qc'] = errors[fm]
                     else:
                         pass
                                  
@@ -658,9 +645,8 @@ for s in range(len(subjects)):
                             for fm in fmap_se_indices:
                                 include[fm] = False
                                 sub_protocol[fm]['include'] = include[fm]
-                                errors[fm] = 'Spin echo pair detected in section, but no functional data in section to be applied to. Will not include for BIDS conversion'
+                                errors[fm] = ['Spin echo pair detected in section, but no functional data in section to be applied to. Will not set for BIDS conversion']
                                 sub_protocol[fm]['error'] = errors[fm]
-                                sub_protocol[fm]['qc'] = errors[fm]
                         
                         if sub_protocol[i]['fmap_dwi_check'] == 0:
                             fmap_intended_for = [section_indices[j] + x for x in range(len(section)) if modality_labels[section_start:section_end][x] == 'bold' and include[section_indices[j] + x] != False and include[fmap_se_indices_final[-1]] != False]
@@ -679,15 +665,14 @@ for s in range(len(subjects)):
                 if len(fmap_magphase_indices) == 1:
                     include[fmap_magphase_indices[0]] = False
                     sub_protocol[fmap_magphase_indices[0]]['include'] = include[fmap_magphase_indices[0]]
-                    errors[fmap_magphase_indices[0]] = 'Need pair for magnitude/phasediff field maps. Will not include for BIDS conversion'
+                    errors[fmap_magphase_indices[0]] = ['Need pair for magnitude/phasediff field maps. Will not set for BIDS conversion']
                     sub_protocol[fmap_magphase_indices[0]]['error'] = errors[fmap_magphase_indices[0]]
                 if len(fmap_magphase_indices) > 2:
                     for fm in fmap_magphase_indices[:-2]:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = 'More than two magnitude/phasediff field maps found in section. Only selecting most recent pair for BIDS conversion'
+                        errors[fm] = ['More than two magnitude/phasediff field maps found in section. Only selecting most recent pair for BIDS conversion']
                         sub_protocol[fm]['error'] = errors[fm]
-                        sub_protocol[fm]['qc'] = errors[fm]
                         
             #Determine which functional data the field maps will be applied to
             fmap_magphase_indices_final = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'magnitude1' or value == 'phasediff' and include[section_indices[j]+x] != False]        
@@ -699,9 +684,8 @@ for s in range(len(subjects)):
                         for fm in fmap_magphase_indices_final:
                             include[fm] = False
                             sub_protocol[fm]['include'] = include[fm]
-                            errors[fm] = 'No functional data in section found for magnitude/phasediff to act on. Will not include in BIDS'
+                            errors[fm] = ['No functional data in section found for magnitude/phasediff to act on. Will not convert to BIDS']
                             sub_protocol[fm]['error'] = errors[fm]
-                            sub_protocol[fm]['qc'] = errors[fm]
                     
                     fmap_intended_for = [section_indices[j] + x for x in range(len(section)) if modality_labels[section_start:section_end][x] == 'bold' and include[section_indices[j] + x] != False and include[fmap_magphase_indices_final[-1]] != False]
                     fmap_intended_for_list.append(fmap_intended_for)
@@ -729,6 +713,11 @@ for s in range(len(subjects)):
         if sub_protocol[i]['include'] == False:
             print('{} not recommended for BIDS conversion: {}'.format(sub_protocol[i]['SeriesDescription'], sub_protocol[i]['error']))
         
+        if not sub_protocol[i]['error']:
+            error = None
+        else:
+            error = [sub_protocol[i]['error']]
+        
         data_list[data_list_index] = sub_protocol[i]
         objects_info = {"include": sub_protocol[i]['include'],
                     "series_id": sub_protocol[i]['series_id'],
@@ -754,8 +743,7 @@ for s in range(len(subjects)):
                         ],
                     "analysisResults": {
                         "VolumeCount": sub_protocol[i]['VolumeCount'],
-                        "errors": sub_protocol[i]['error'],
-                        "qc": sub_protocol[i]['qc'],
+                        "errors": error,
                         "filesize": sub_protocol[i]['filesize']
                     },
                     "paths": sub_protocol[i]['paths']
