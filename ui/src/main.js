@@ -12,8 +12,8 @@ Vue.use(ElementUI, { locale } );
 
 import jsyaml from 'js-yaml';
 
-import Vuex from 'vuex'
-Vue.use(Vuex)
+//import Vuex from 'vuex'
+//Vue.use(Vuex)
 
 if(process.env.NODE_ENV == "development") {
     Vue.config.debug = true;

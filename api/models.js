@@ -9,6 +9,7 @@ function connect(cb) {
     console.debug("connecting to mongo");
     mongoose.connect(config.mongodb, {
         useNewUrlParser: true,
+        useUnifiedTopology: true,
     }, err => {
         if (err)
             return cb(err);

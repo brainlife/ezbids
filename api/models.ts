@@ -9,10 +9,7 @@ export function connect(cb) {
     console.debug("connecting to mongo");
     mongoose.connect(config.mongodb, {
         useNewUrlParser: true,
-        
-        //TODO - isn't auto_reconnect set by default?
-        //auto_reconnect: true, 
-        //reconnectTries: Number.MAX_VALUE
+        useUnifiedTopology: true,
     }, err=>{
         if(err) return cb(err);
         console.log("connected to mongo");
