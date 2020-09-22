@@ -416,7 +416,7 @@ print('')
 #OBJECTS LEVEL
 objects_list = []
 subjects = [subjectIDs_info[x]['sub'] for x in range(len(subjectIDs_info))]
-# series_seriesID_list = [series_list[x]['series_id'] for x in range(len(series_list))]
+series_seriesID_list = [series_list[x]['series_id'] for x in range(len(series_list))]
 data_list_index = -1
 for s in range(len(subjects)):
     
