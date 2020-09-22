@@ -199,6 +199,7 @@ for j in range(len(json_list)):
                    "VolumeCount": volume_count,
                    'error': None,
                    'br_type': '',
+                   'anat_deface': None,
                    'nifti_path': [x for x in nifti_paths_for_json if '.nii.gz' in x][0],
                    'json_path': json_list[j],
                    'paths': paths,
@@ -207,7 +208,6 @@ for j in range(len(json_list)):
                    'json_name': json_name,
                    'headers': '',
                    'protocol_index': 0,
-                   'fmap_dwi_check': 0,
                    'sidecar':json_data
                    }
     data_list.append(mapping_dic)
@@ -288,8 +288,8 @@ for i in range(len(data_list_unique_series)):
         #DWI
         if any(x in SD for x in ['DWI','dwi','DTI','dti']) or 'ep_b' in SequenceName:
             if data_list_unique_series[i]['VolumeCount'] < 10: #Probably field map meant for dwi acquisition instead. Based on number of volumes
-                data_list_unique_series[i]['DataType'] = 'fmap'
-                data_list_unique_series[i]['ModalityLabel'] = 'epi'
+                data_list_unique_series[i]['DataType'] = 'fmap_dwi'
+                data_list_unique_series[i]['ModalityLabel'] = 'epi_dwi'
                 data_list_unique_series[i]['fmap_dwi_check'] = 1
             else:
                 data_list_unique_series[i]['DataType'] = 'dwi'
@@ -344,16 +344,19 @@ for i in range(len(data_list_unique_series)):
                 series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
             else:
                 data_list_unique_series[i]['ModalityLabel'] = 'T1w'
+            data_list_unique_series[i]['anat_deface'] = True
         
         #FLAIR
         elif any(x in SD for x in ['FLAIR','Flair','flair','t2_space_da-fl']):
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'FLAIR'
+            data_list_unique_series[i]['anat_deface'] = True
             
         #T2w
         elif any(x in SD for x in ['T2W','T2w','t2w']):
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'T2w'
+            data_list_unique_series[i]['anat_deface'] = True
         
         #Single band reference (sbref)
         elif any(x in SD for x in ['SBRef','sbref']):
@@ -376,14 +379,17 @@ for i in range(len(data_list_unique_series)):
             if EchoTime < 10: #Probably T1w
                 data_list_unique_series[i]['DataType'] = 'anat'
                 data_list_unique_series[i]['ModalityLabel'] = 'T1w'
+                data_list_unique_series[i]['anat_deface'] = True
             
             elif data_list_unique_series[i]['InversionTime'] is not None and data_list_unique_series[i]['InversionTime'] > 0: #Probably FLAIR
                 data_list_unique_series[i]['DataType'] = 'anat'
                 data_list_unique_series[i]['ModalityLabel'] = 'FLAIR'
+                data_list_unique_series[i]['anat_deface'] = True
             
             elif EchoTime > 100: #Probably T2w
                 data_list_unique_series[i]['DataType'] = 'anat'
                 data_list_unique_series[i]['ModalityLabel'] = 'T2w'
+                data_list_unique_series[i]['anat_deface'] = True
             
             elif (EchoTime > 10 and EchoTime < 100): #Probably sbref
                 data_list_unique_series[i]['DataType'] = 'func'
@@ -538,9 +544,8 @@ for s in range(len(subjects)):
             dwi_run +=1
         
         #Spin echo fmaps
-        elif sub_protocol[p]['br_type'] == 'fmap/epi':
-            objects_entities['dir'] = sub_protocol[p]['dir']
-            
+        elif sub_protocol[p]['br_type'] in ['fmap/epi','fmap_dwi/epi_dwi']:
+            objects_entities['dir'] = sub_protocol[p]['dir']            
         
         objects_entities_list.append(objects_entities)
         
@@ -553,7 +558,6 @@ for s in range(len(subjects)):
     section_indices = [section_indices[x] for x in range(len(section_indices)) if section_indices[x] == 0 or section_indices[x] - section_indices[x-1] > 1]
     include = [sub_protocol[x]['include'] for x in range(len(sub_protocol))]
     errors = [sub_protocol[x]['error'] for x in range(len(sub_protocol))]
-    fmap_dwi_check = [sub_protocol[x]['fmap_dwi_check'] for x in range(len(sub_protocol))]
     fmap_intended_for_list = []
     fmap_counter = 0
     fmap_intended_for_index = 0
@@ -604,17 +608,13 @@ for s in range(len(subjects)):
                 #Remove duplicate SE fmaps. Only the last two in each section will be kept
                 fmap_se_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'epi']
                 if len(fmap_se_indices) == 1:
-                    if sub_protocol[i]['fmap_dwi_check'] == 0:
-                        include[i] = False
-                        sub_protocol[i]['include'] = include[i]
-                        errors[i] = ['Only one spin echo field map found; need pair. Will not set for BIDS conversion']
-                        sub_protocol[i]['error'] = errors[i]
-                    else:
-                        include[i] = True
-                        sub_protocol[i]['include'] = include[i]
+                    include[i] = False
+                    sub_protocol[i]['include'] = include[i]
+                    errors[i] = ['Only one spin echo field map found; need pair. Will not set for BIDS conversion']
+                    sub_protocol[i]['error'] = errors[i]
                         
                     
-                if len(fmap_se_indices) > 2 and sum(fmap_dwi_check) == 0:
+                if len(fmap_se_indices) > 2:
                     for fm in fmap_se_indices[:-2]:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
@@ -623,7 +623,7 @@ for s in range(len(subjects)):
                         
                 #Remove SE fmaps where phase encoding directions aren't opposite
                 if len(fmap_se_indices) > 1:
-                    if list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[0][::-1] != list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[1] and sum(fmap_dwi_check) == 0:
+                    if list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[0][::-1] != list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[1]:
                         for fm in fmap_se_indices[-2:]:
                             include[fm] = False
                             sub_protocol[fm]['include'] = include[fm]
@@ -633,12 +633,8 @@ for s in range(len(subjects)):
                         pass
                                  
                 fmap_se_indices_final = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'epi' and include[section_indices[j]+x] != False]
-                
-                if sub_protocol[i]['fmap_dwi_check'] == 0:
-                    applied_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'bold' and include[section_indices[j]+x] != False]
-                else:
-                    applied_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'dwi' and include[section_indices[j]+x] != False]
-                    
+                applied_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'bold' and include[section_indices[j]+x] != False]
+
                 try:
                     if fmap_se_indices_final:
                         if not len(applied_indices) and len(fmap_se_indices):
@@ -648,18 +644,14 @@ for s in range(len(subjects)):
                                 errors[fm] = ['Spin echo pair detected in section, but no functional data in section to be applied to. Will not set for BIDS conversion']
                                 sub_protocol[fm]['error'] = errors[fm]
                         
-                        if sub_protocol[i]['fmap_dwi_check'] == 0:
-                            fmap_intended_for = [section_indices[j] + x for x in range(len(section)) if modality_labels[section_start:section_end][x] == 'bold' and include[section_indices[j] + x] != False and include[fmap_se_indices_final[-1]] != False]
-                        else:
-                            fmap_intended_for = [section_indices[j] + x for x in range(len(section)) if modality_labels[section_start:section_end][x] == 'dwi' and include[section_indices[j] + x] != False and include[fmap_se_indices_final[-1]] != False]
-                            
+                        fmap_intended_for = [section_indices[j] + x for x in range(len(section)) if modality_labels[section_start:section_end][x] == 'bold' and include[section_indices[j] + x] != False and include[fmap_se_indices_final[-1]] != False]
                         fmap_intended_for_list.append(fmap_intended_for)
                 except:
                     pass
             
                         
             #Magnitude/Phasediff fmaps
-            if ('magnitude1' or 'magnitude2') in modality_labels[section_start:section_end]:
+            if any(x in ['magnitude1', 'magnitude2'] for x in modality_labels[section_start:section_end]):
                 #Remove duplicate magnitude/phasediff fmaps. Only the last two in each section will be kept
                 fmap_magphase_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'magnitude1' or value == 'phasediff']
                 if len(fmap_magphase_indices) == 1:
@@ -692,8 +684,36 @@ for s in range(len(subjects)):
             except:
                 pass
             
-        
-        # if sub_protocol[i]['ModalityLabel'] in ['epi','magnitude1','magnitude2','phasediff']:
+            
+            #SE Fieldmap for DWI (Relatively rare instance)
+            if 'epi_dwi' in modality_labels[section_start:section_end]:
+                fmap_se_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'epi_dwi']
+                if len(fmap_se_indices) > 1:
+                    for fm in fmap_se_indices[:-1]:
+                        include[fm] = False
+                        sub_protocol[fm]['include'] = include[fm]
+                        errors[fm] = ['Two dwi-specifgic field mapps detected in section; only selecting last one for BIDS conversion']
+                        sub_protocol[fm]['error'] = errors[fm]
+                
+                fmap_se_indices_final = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'epi_dwi' and include[section_indices[j]+x] != False]
+                applied_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'dwi' and include[section_indices[j]+x] != False]
+
+                try:
+                    if fmap_se_indices_final:
+                        if not len(applied_indices) and len(fmap_se_indices):
+                            for fm in fmap_se_indices:
+                                include[fm] = False
+                                sub_protocol[fm]['include'] = include[fm]
+                                errors[fm] = ['dwi-specific fieldmap detected in section, but no dwi data in section to be applied to. Will not set for BIDS conversion']
+                                sub_protocol[fm]['error'] = errors[fm]
+                        
+                        fmap_intended_for = [section_indices[j] + x for x in range(len(section)) if modality_labels[section_start:section_end][x] == 'dwi' and include[section_indices[j] + x] != False and include[fmap_se_indices_final[-1]] != False]
+                        fmap_intended_for_list.append(fmap_intended_for)
+                except:
+                    pass
+                
+
+        #Move fieldmap counter
         if len(fmap_intended_for_list) > 0:
             IntendedFor = fmap_intended_for_list[fmap_intended_for_index]
             fmap_counter += 1
@@ -703,6 +723,7 @@ for s in range(len(subjects)):
         else:
             IntendedFor = None
             
+        #If object-level entitites match series-level entities, make object-level entities blank
         check = [x['entities'] for x in series_list if x['series_id'] == sub_protocol[i]['series_id']] [0]
         try:
             if objects_entities_list[i]['dir'] == check['dir']:
@@ -710,6 +731,7 @@ for s in range(len(subjects)):
         except:
             pass
             
+        #Provide log output for acquisitions not deemed appropriate for BIDS conversion
         if sub_protocol[i]['include'] == False:
             print('{} not recommended for BIDS conversion: {}'.format(sub_protocol[i]['SeriesDescription'], sub_protocol[i]['error']))
         
@@ -717,7 +739,12 @@ for s in range(len(subjects)):
             error = None
         else:
             error = [sub_protocol[i]['error']]
+            
+        #Revert value to fit BIDS spec. Initial change was for internal purposes of handling field maps
+        if sub_protocol[i]['br_type'] == 'fmap_dwi/epi_dwi':
+            sub_protocol[i]['br_type'] = 'fmap/epi'
         
+        #Object-level info fort ezBIDS.json
         data_list[data_list_index] = sub_protocol[i]
         objects_info = {"include": sub_protocol[i]['include'],
                     "series_id": sub_protocol[i]['series_id'],
@@ -750,10 +777,14 @@ for s in range(len(subjects)):
                   }
         objects_list.append(objects_info)
 
+#Extract values to plot for users
 for s in range(len(series_list)):
     series_list[s]['png_objects_indices'] = [x for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']]
     series_list[s]['unique_TRs'] = [objects_list[x]['items'][1]['sidecar']['RepetitionTime'] for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']] 
-        
+    if series_list[s]['type'] == 'fmap_dwi/epi_dwi':
+        series_list[s]['type'] = 'fmap/epi'
+    
+#Push all info to ezBIDS.json
 ezBIDS = {"subjects": subjectIDs_info,
           "sessions": acquisition_dates,
           "participantsColumn": participantsColumn,
