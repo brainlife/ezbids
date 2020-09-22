@@ -1,10 +1,32 @@
-This is a developmental repo for a web service that allows users to upload a directory containing 
-DICOM files, and analyze the directory structure, sidecar generated from dcm2niix and *guess* 
-as much information about the data structure as possible, then ask the user to verify / modify
+=======================================================================================
+ezBIDS: Cloud-based graphical user interface for automated DICOM to BIDS data ingestion
+=======================================================================================
+
+This is the developmental repo for an automated BIDS converter web service that allows users to upload a directory containing 
+DICOM files, and analyze the directory structure and sidecars generated from dcm2niix in order to *guess* 
+as much information about the data structure as possible. Users will then be asked to verify / modify
 those assumption before generating the final BIDS structure.
+
+Unlike other automated DICOM to BIDS converters, ezbids eliminates the need for the command line and setup.
 
 The output can be downloaded back to the user's computer, or sent to other repositories such as
 OpenNeuro, or brainlife.io
+
+Due to the plethora of scanner acquisition types, not all are currently supported by ezbids. Priority has therefore been given to acquisition types that are the most common in the neuroimaging community. These include:
+1). anat/T1w (including multiecho)
+2). anat/T2w
+3). anat/FLAIR
+4). func/sbref
+5). func/bold (including multiecho)
+6). fmap/epi
+7). fmap/magnitude1
+8). fmap/magnitude2
+9). fmap/phasediff
+10). dwi/dwi
+
+
+To access the web service, please visit https://brainlife.io/ezbids
+
 
 ### Authors
 - [Soichi Hayashi](soichih@gmail.com)
