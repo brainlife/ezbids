@@ -36,7 +36,6 @@
             <div style="margin-bottom: 10px;">
                 <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in so.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
                 <el-alert show-icon :closable="false" type="warning" v-if="so.analysisResults.errors" :title="so.analysisResults.errors"/>
-                </el-alert>
             </div>
         
             <!--
@@ -108,10 +107,16 @@
                     </div>
 
                 </div>
-                <div style="margin-top: 5px; padding: 5px; background-color: #eee;">
-                    <el-form-item v-if="so.pngPath" label="Thumbnail">
-                        <img :src="$root.apihost+'/download/'+$root.session._id+'/'+so.pngPath"/>
+                <div style="margin-top: 5px; padding: 5px; background-color: #f0f0f0;">
+                    <el-form-item label="Volume Count">
+                        {{so.analysisResults.VolumeCount}}
                     </el-form-item>
+                    <el-form-item label="File Size">
+                        {{so.analysisResults.filesize|prettyBytes}}
+                    </el-form-item>
+                    <div v-if="so.pngPath">
+                        <img :src="$root.apihost+'/download/'+$root.session._id+'/'+so.pngPath"/>
+                    </div>
                 </div>
             </el-form>
         </div><!--selected != null-->

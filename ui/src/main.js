@@ -5,6 +5,33 @@ Vue.filter("formatNumber", value=>{
     return numeral(value).format("0,0"); // displaying other groupings/separators is possible, look at the docs
 });
 
+//https://gist.github.com/james2doyle/4aba55c22f084800c199
+Vue.filter('prettyBytes', function (num) {
+  // jacked from: https://github.com/sindresorhus/pretty-bytes
+  if (typeof num !== 'number' || isNaN(num)) {
+    throw new TypeError('Expected a number');
+  }
+
+  var exponent;
+  var unit;
+  var neg = num < 0;
+  var units = ['B', 'kB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB'];
+
+  if (neg) {
+    num = -num;
+  }
+
+  if (num < 1) {
+    return (neg ? '-' : '') + num + ' B';
+  }
+
+  exponent = Math.min(Math.floor(Math.log(num) / Math.log(1000)), units.length - 1);
+  num = (num / Math.pow(1000, exponent)).toFixed(2) * 1;
+  unit = units[exponent];
+
+  return (neg ? '-' : '') + num + ' ' + unit;
+});
+
 import ElementUI from 'element-ui';
 import 'element-ui/lib/theme-chalk/index.css';
 import locale from 'element-ui/lib/locale/lang/en'
