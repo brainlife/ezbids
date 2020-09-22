@@ -416,7 +416,7 @@ print('')
 #OBJECTS LEVEL
 objects_list = []
 subjects = [subjectIDs_info[x]['sub'] for x in range(len(subjectIDs_info))]
-series_seriesID_list = [series_list[x]['series_id'] for x in range(len(series_list))]
+# series_seriesID_list = [series_list[x]['series_id'] for x in range(len(series_list))]
 data_list_index = -1
 for s in range(len(subjects)):
     
@@ -480,14 +480,27 @@ for s in range(len(subjects)):
         
         #Determine other important BIDS information (i.e. run, dir, etc) for specific acquisitions        
         #T1w
-        if sub_protocol[p]['br_type'] == 'anat/T1w' or sub_protocol[p]['br_type'] == 'anat/multiecho':
+        if sub_protocol[p]['br_type'] in ['anat/T1w', 'anat/multiecho']:
             #non-normalized T1w images that have poor CNR, so best to not have in BIDS if there's an actual good T1w available
-            if 'NORM' not in sub_protocol[p]['ImageType'] and sub_protocol[p]['br_type'] == 'anat/T1w':
-                sub_protocol[p]['include'] = False  
-                sub_protocol[p]['error'] = 'Acquisition is a poor resolution T1w (non-normalized); Please check to see if this T1w acquisition should be converted to BIDS'
-            else:
-                sub_protocol[p]['include'] = True 
-                sub_protocol[p]['error'] = ''
+            if 'NORM' not in sub_protocol[p]['ImageType']:
+                # index_next = series_seriesID_list.index(sub_protocol[p+1]['series_id'])
+                # sub_protocol[p+1]['br_type'] = data_list_unique_series[index_next]['br_type']
+                
+                if p+1 == len(sub_protocol):
+                    sub_protocol[p]['include'] = True 
+                    sub_protocol[p]['error'] = None
+                elif sub_protocol[p]['br_type'] == 'anat/multiecho' and sub_protocol[p+1]['br_type'] == 'anat/multiecho':
+                    sub_protocol[p]['include'] = True 
+                    sub_protocol[p]['error'] = None
+                elif sub_protocol[p+1]['br_type'] == 'anat/T1w' and 'NORM' not in sub_protocol[p+1]['ImageType']:
+                    sub_protocol[p]['include'] = True 
+                    sub_protocol[p]['error'] = None
+                elif sub_protocol[p+1]['br_type'] not in ['anat/T1w', 'anat/multiecho']:
+                    sub_protocol[p]['include'] = True 
+                    sub_protocol[p]['error'] = None
+                else:
+                    sub_protocol[p]['include'] = False  
+                    sub_protocol[p]['error'] = 'Acquisition is a poor resolution T1w (non-normalized); Please check to see if this T1w acquisition should be converted to BIDS'
         
         #BOLD
         elif sub_protocol[p]['br_type'] == 'func/bold' or sub_protocol[p]['br_type'] == 'func/multiecho':
@@ -505,10 +518,9 @@ for s in range(len(subjects)):
         
         #single band reference (sbref)
         elif sub_protocol[p]['br_type'] == 'func/sbref':
-            if p+1 < len(sub_protocol):
-                # index_next = series_SeriesDescription_list.index(sub_protocol[p+1]['SeriesDescription'])
-                index_next = series_seriesID_list.index(sub_protocol[p+1]['series_id'])
-                sub_protocol[p+1]['br_type'] = data_list_unique_series[index_next]['br_type']
+            # if p+1 < len(sub_protocol):
+            #     index_next = series_seriesID_list.index(sub_protocol[p+1]['series_id'])
+            #     sub_protocol[p+1]['br_type'] = data_list_unique_series[index_next]['br_type']
                 
             #Rare instances where sbref is not followed by functional bold
             if sub_protocol[p+1]['br_type'] not in ['func/bold', 'func/multiecho']:
@@ -604,7 +616,7 @@ for s in range(len(subjects)):
                 if len(fmap_se_indices) == 1:
                     include[i] = False
                     sub_protocol[i]['include'] = include[i]
-                    errors[i] = ['Only one spin echo field map found; need pair. Will not set for BIDS conversion']
+                    errors[i] = 'Only one spin echo field map found; need pair. Will not set for BIDS conversion'
                     sub_protocol[i]['error'] = errors[i]
                         
                     
@@ -612,7 +624,7 @@ for s in range(len(subjects)):
                     for fm in fmap_se_indices[:-2]:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = ['Multiple spin echo pairs detected in section; only selecting last pair for BIDS conversion']
+                        errors[fm] = 'Multiple spin echo pairs detected in section; only selecting last pair for BIDS conversion'
                         sub_protocol[fm]['error'] = errors[fm]
                         
                 #Remove SE fmaps where phase encoding directions aren't opposite
@@ -621,7 +633,7 @@ for s in range(len(subjects)):
                         for fm in fmap_se_indices[-2:]:
                             include[fm] = False
                             sub_protocol[fm]['include'] = include[fm]
-                            errors[fm] = ['Spin echo fmap pair does not have opposite phase encoding directions. Will no set for BIDS conversion']
+                            errors[fm] = 'Spin echo fmap pair does not have opposite phase encoding directions. Will no set for BIDS conversion'
                             sub_protocol[fm]['error'] = errors[fm]
                     else:
                         pass
@@ -635,7 +647,7 @@ for s in range(len(subjects)):
                             for fm in fmap_se_indices:
                                 include[fm] = False
                                 sub_protocol[fm]['include'] = include[fm]
-                                errors[fm] = ['Spin echo pair detected in section, but no functional data in section to be applied to. Will not set for BIDS conversion']
+                                errors[fm] = 'Spin echo pair detected in section, but no functional data in section to be applied to. Will not set for BIDS conversion'
                                 sub_protocol[fm]['error'] = errors[fm]
                         
                         fmap_intended_for = [section_indices[j] + x for x in range(len(section)) if modality_labels[section_start:section_end][x] == 'bold' and include[section_indices[j] + x] != False and include[fmap_se_indices_final[-1]] != False]
@@ -651,13 +663,13 @@ for s in range(len(subjects)):
                 if len(fmap_magphase_indices) == 1:
                     include[fmap_magphase_indices[0]] = False
                     sub_protocol[fmap_magphase_indices[0]]['include'] = include[fmap_magphase_indices[0]]
-                    errors[fmap_magphase_indices[0]] = ['Need pair for magnitude/phasediff field maps. Will not set for BIDS conversion']
+                    errors[fmap_magphase_indices[0]] = 'Need pair for magnitude/phasediff field maps. Will not set for BIDS conversion'
                     sub_protocol[fmap_magphase_indices[0]]['error'] = errors[fmap_magphase_indices[0]]
                 if len(fmap_magphase_indices) > 2:
                     for fm in fmap_magphase_indices[:-2]:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = ['More than two magnitude/phasediff field maps found in section. Only selecting most recent pair for BIDS conversion']
+                        errors[fm] = 'More than two magnitude/phasediff field maps found in section. Only selecting most recent pair for BIDS conversion'
                         sub_protocol[fm]['error'] = errors[fm]
                         
             #Determine which functional data the field maps will be applied to
@@ -670,7 +682,7 @@ for s in range(len(subjects)):
                         for fm in fmap_magphase_indices_final:
                             include[fm] = False
                             sub_protocol[fm]['include'] = include[fm]
-                            errors[fm] = ['No functional data in section found for magnitude/phasediff to act on. Will not convert to BIDS']
+                            errors[fm] = 'No functional data in section found for magnitude/phasediff to act on. Will not convert to BIDS'
                             sub_protocol[fm]['error'] = errors[fm]
                     
                     fmap_intended_for = [section_indices[j] + x for x in range(len(section)) if modality_labels[section_start:section_end][x] == 'bold' and include[section_indices[j] + x] != False and include[fmap_magphase_indices_final[-1]] != False]
@@ -686,7 +698,7 @@ for s in range(len(subjects)):
                     for fm in fmap_se_indices[:-1]:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = ['Two dwi-specifgic field mapps detected in section; only selecting last one for BIDS conversion']
+                        errors[fm] = 'Two dwi-specifgic field mapps detected in section; only selecting last one for BIDS conversion'
                         sub_protocol[fm]['error'] = errors[fm]
                 
                 fmap_se_indices_final = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'epi_dwi' and include[section_indices[j]+x] != False]
@@ -698,7 +710,7 @@ for s in range(len(subjects)):
                             for fm in fmap_se_indices:
                                 include[fm] = False
                                 sub_protocol[fm]['include'] = include[fm]
-                                errors[fm] = ['dwi-specific fieldmap detected in section, but no dwi data in section to be applied to. Will not set for BIDS conversion']
+                                errors[fm] = 'dwi-specific fieldmap detected in section, but no dwi data in section to be applied to. Will not set for BIDS conversion'
                                 sub_protocol[fm]['error'] = errors[fm]
                         
                         fmap_intended_for = [section_indices[j] + x for x in range(len(section)) if modality_labels[section_start:section_end][x] == 'dwi' and include[section_indices[j] + x] != False and include[fmap_se_indices_final[-1]] != False]
