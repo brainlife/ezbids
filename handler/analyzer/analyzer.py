@@ -4,26 +4,32 @@ Created on Fri Jun 26 08:37:56 2020
 
 @author: dlevitas
 """
-
-import os, sys, re, json, warnings
+from __future__ import division
+import os, sys, json, warnings
 import pandas as pd
 import numpy as np
 import nibabel as nib
-from io import StringIO
-from nilearn.image import load_img, index_img
-from nilearn.plotting import plot_img
+import matplotlib.pyplot as plt
 from operator import itemgetter
+from math import floor
 
 warnings.filterwarnings("ignore")
 
 data_dir = sys.argv[1]
 os.chdir(data_dir)
 
-print('')
+print('########################################')
 print('Beginning conversion process of dataset')
+print('########################################')
 print('')
 
 #def extractor():
+
+def show_slices(slices):
+    fig, axes = plt.subplots(1, len(slices))
+    for i, slice in enumerate(slices):
+        axes[i].imshow(slice.T, cmap="gray", origin="lower")
+    plt.imsave()
     
 #Load list generated from UI, and organize the nifti/json files by their series number    
 dir_list = pd.read_csv('list', header=None)
@@ -44,7 +50,7 @@ data_list = []
 
 #Parse through nifti and sidecar data for pertinent information
 print('Determining unique acquisitions in dataset')
-print('')
+print('------------------------------------------')
 for j in range(len(json_list)):
     json_data = open(json_list[j])
     json_data = json.load(json_data, strict=False)
@@ -202,6 +208,7 @@ for j in range(len(json_list)):
                    'json_name': json_name,
                    'headers': '',
                    'protocol_index': 0,
+                   'fmap_dwi_check': 0,
                    'sidecar':json_data
                    }
     data_list.append(mapping_dic)
@@ -232,13 +239,15 @@ for x in range(len(data_list)):
 series_list = []
 #Determine DataType and ModalityLabel of series list acquisitions
 for i in range(len(data_list_unique_series)):
-    series_img = load_img(data_list_unique_series[i]['nifti_path'])
     
     series_entities = {}
     SD = data_list_unique_series[i]['SeriesDescription']
-    SequenceName = data_list_unique_series[i]['sidecar']['SequenceName']
     EchoTime = data_list_unique_series[i]['EchoTime']
     TR = data_list_unique_series[i]['RepetitionTime']
+    try:
+        SequenceName = data_list_unique_series[i]['sidecar']['SequenceName']
+    except:
+        SequenceName = data_list_unique_series[i]['sidecar']['ScanningSequence']
     
     
     #Populate some labels fields (based on ReproIn convention)
@@ -276,15 +285,17 @@ for i in range(len(data_list_unique_series)):
     
     
     #First use values from fields such as TR, TE, TI, etc to determine DataType and/or ModalityLabel
-    if series_img.ndim == 4: #DWI, functional, functional phase, and SE fmap are 4D
+    if data_list_unique_series[i]['VolumeCount'] > 1: #DWI, functional, functional phase, and SE fmap are 4D
         #DWI
         if any(x in SD for x in ['DWI','dwi','DTI','dti']) or 'ep_b' in SequenceName:
             if data_list_unique_series[i]['VolumeCount'] < 10: #Probably field map meant for dwi acquisition instead. Based on number of volumes
                 data_list_unique_series[i]['DataType'] = 'fmap'
                 data_list_unique_series[i]['ModalityLabel'] = 'epi'
+                data_list_unique_series[i]['fmap_dwi_check'] = 1
             else:
                 data_list_unique_series[i]['DataType'] = 'dwi'
                 data_list_unique_series[i]['ModalityLabel'] = 'dwi'
+                
             series_entities['dir'] = data_list_unique_series[i]['dir']
             
         #Functional
@@ -321,9 +332,9 @@ for i in range(len(data_list_unique_series)):
                 data_list_unique_series[i]['qc'] = 'Acquisition cannot be resolved. Please determine if this acquisition should be converted to BIDS'
     
             
-    elif series_img.ndim == 3: #localizers, sbref, T1w, T2w, FLAIR, magnitude/phasediff fmap are 3D
+    else: #localizers, sbref, T1w, T2w, FLAIR, magnitude/phasediff fmap are 3D
         #Localizers or other non-BIDS compatible acquisitions
-        if any(x in SD for x in ['Localizer','localizer','SCOUT','Scout','scout']) or series_img.shape[-1] == 1:
+        if any(x in SD for x in ['LOCALIZER','Localizer','localizer','SCOUT','Scout','scout']):
             data_list_unique_series[i]['include'] = False
             data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
             data_list_unique_series[i]['qc'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
@@ -402,7 +413,10 @@ for i in range(len(data_list_unique_series)):
                     "png_objects_indices": []
                     }
     series_list.append(series_info)
-
+    print('Unique data acquisition file {}, Series Description {}, was determined to be {}'.format(data_list_unique_series[i]['nifti_path'][2:], data_list_unique_series[i]['SeriesDescription'], data_list_unique_series[i]['br_type']))
+    
+print('')
+print('')
 #OBJECTS LEVEL
 objects_list = []
 subjects = [subjectIDs_info[x]['sub'] for x in range(len(subjectIDs_info))]
@@ -410,7 +424,8 @@ series_seriesID_list = [series_list[x]['series_id'] for x in range(len(series_li
 data_list_index = -1
 for s in range(len(subjects)):
     
-    print('Beginning conversion process for subject {} acquisitions'.format(subjects[s]))
+    print('Beginning conversion process for subject {} individual acquisitions'.format(subjects[s]))
+    print('-------------------------------------------------------------------')
     print('')
     
     sub_protocol = [x for x in data_list if x['sub'] == subjects[s]]
@@ -428,25 +443,23 @@ for s in range(len(subjects)):
         sub_protocol[p]['protocol_index'] = protocol_index
         data_list_index += 1
         protocol_index += 1
-        st = StringIO()
-        sys.stdout = st
-        print(nib.load(sub_protocol[p]['nifti_path']).header)
-        sub_protocol[p]['headers'] = st.getvalue().splitlines()[1:]
-        
-        img = load_img(sub_protocol[p]['nifti_path'])
-    
-        if not os.path.isfile('{}.png'.format(sub_protocol[p]['nifti_path'][:-7])):
-            if img.ndim == 4:
-                ref_img = index_img(img, -1)
-            else:
-                ref_img = img
+        sub_protocol[p]['headers'] = str(nib.load(sub_protocol[p]['nifti_path']).header).splitlines()[1:]
+                
+        if sub_protocol[p]['VolumeCount'] > 1:
+            object_img_array = nib.load(sub_protocol[p]['nifti_path']).dataobj[..., 1]
+        else:
+            object_img_array =nib.load(sub_protocol[p]['nifti_path']).dataobj[:]
+                
+        if not os.path.isfile('{}.png'.format(sub_protocol[p]['nifti_path'][:-7])):            
             
-            try:
-                plot_img(ref_img, colorbar=False, display_mode='ortho', 
-                          draw_cross=False, annotate=False, threshold=None, 
-                          output_file='{}.png'.format(sub_protocol[p]['nifti_path'][:-7]))  
-            except:
-                pass
+            slice_x = object_img_array[floor(object_img_array.shape[0]/2), :, :]
+            slice_y = object_img_array[:, floor(object_img_array.shape[1]/2), :]
+            slice_z = object_img_array[:, :, floor(object_img_array.shape[2]/2)]
+            fig, axes = plt.subplots(1,3)
+            for i, slice in enumerate([slice_x, slice_y, slice_z]):
+                axes[i].imshow(slice.T, cmap="gray", origin="lower")
+                axes[i].axis('off')
+            plt.savefig('{}.png'.format(sub_protocol[p]['nifti_path'][:-7]))
             
         index = series_seriesID_list.index(sub_protocol[p]['series_id'])
         objects_entities = {'sub': subjects[s], 'ses': '', 'run': '', 'acq': '', 'ce': ''}
@@ -474,7 +487,7 @@ for s in range(len(subjects)):
         #T1w
         if sub_protocol[p]['br_type'] == 'anat/T1w' or sub_protocol[p]['br_type'] == 'anat/multiecho':
             #non-normalized T1w images that have poor CNR, so best to not have in BIDS if there's an actual good T1w available
-            if 'NORM' not in sub_protocol[p]['ImageType']:
+            if 'NORM' not in sub_protocol[p]['ImageType'] and sub_protocol[p]['br_type'] == 'anat/T1w':
                 sub_protocol[p]['include'] = False  
                 sub_protocol[p]['error'] = 'Acquisition is a poor resolution T1w (non-normalized); Please check to see if this T1w acquisition should be converted to BIDS'
                 sub_protocol[p]['qc'] = sub_protocol[p]['error']
@@ -485,10 +498,10 @@ for s in range(len(subjects)):
         
         #BOLD
         elif sub_protocol[p]['br_type'] == 'func/bold' or sub_protocol[p]['br_type'] == 'func/multiecho':
-            #Instances where functional bold acquisitions have less than 20 volumes (probably a restart or some failuire occurred)
-            if sub_protocol[p]['VolumeCount'] < 20:
+            #Instances where functional bold acquisitions have less than 30 volumes (probably a restart/failure occurred, or some kind of non-BIDS test)
+            if sub_protocol[p]['VolumeCount'] < 30:
                 sub_protocol[p]['include'] = False
-                sub_protocol[p]['error'] = 'Functional run only contains {} volumes; ezBIDS minimum threshold is 20. Will not set for BIDS conversion unless specified so'.format(sub_protocol[p]['VolumeCount'])
+                sub_protocol[p]['error'] = 'Functional run only contains {} volumes; ezBIDS minimum threshold is 30. Will not set for BIDS conversion unless specified so'.format(sub_protocol[p]['VolumeCount'])
                 sub_protocol[p]['qc'] = sub_protocol[p]['error']                   
             else:
                 if bold_run < 10:
@@ -506,9 +519,9 @@ for s in range(len(subjects)):
                 sub_protocol[p+1]['br_type'] = data_list_unique_series[index_next]['br_type']
                 
             #Rare instances where sbref is not followed by functional bold
-            if sub_protocol[p+1]['br_type'] in ['func/bold', 'func/multiecho']:
+            if sub_protocol[p+1]['br_type'] not in ['func/bold', 'func/multiecho']:
                 sub_protocol[p]['include'] = False
-                sub_protocol[p]['error'] = 'Single band reference (sbref) acquisition is not immediately followed by a functional bold acquisition. Will not set for BIDS conversion'
+                sub_protocol[p]['error'] = 'Single band reference (sbref) acquisition is not immediately followed by a functional bold acquisition that is being converted to BIDS. Will not set for BIDS conversion'
                 sub_protocol[p]['qc'] = sub_protocol[p]['error']
                 
             #Set include to False if functional bold after it has less than 20 volumes, which will cause it to not be converted to BIDS
@@ -550,6 +563,7 @@ for s in range(len(subjects)):
     section_indices = [section_indices[x] for x in range(len(section_indices)) if section_indices[x] == 0 or section_indices[x] - section_indices[x-1] > 1]
     include = [sub_protocol[x]['include'] for x in range(len(sub_protocol))]
     errors = [sub_protocol[x]['error'] for x in range(len(sub_protocol))]
+    fmap_dwi_check = [sub_protocol[x]['fmap_dwi_check'] for x in range(len(sub_protocol))]
     fmap_intended_for_list = []
     fmap_counter = 0
     fmap_intended_for_index = 0
@@ -596,49 +610,68 @@ for s in range(len(subjects)):
             section = descriptions[section_start:section_end]
             
             #SE EPI fmaps
-            if 'epi' in modality_labels[section_start:section_end]:
+            if 'epi' in modality_labels[section_start:section_end] and not any(x in descriptions for x in ['DWI','dwi','DTI','dti']):
                 #Remove duplicate SE fmaps. Only the last two in each section will be kept
                 fmap_se_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'epi']
                 if len(fmap_se_indices) == 1:
-                    include[i] = False
-                    sub_protocol[i]['include'] = include[i]
-                    errors[i] = 'Only one spin echo field map found; need pair. Will not set for BIDS conversion'
-                    sub_protocol[i]['error'] = errors[i]
+                    if sub_protocol[i]['fmap_dwi_check'] == 0:
+                        include[i] = False
+                        sub_protocol[i]['include'] = include[i]
+                        errors[i] = 'Only one spin echo field map found; need pair. Will not set for BIDS conversion'
+                        sub_protocol[i]['error'] = errors[i]
+                        sub_protocol[fm]['qc'] = errors[i]
+                    else:
+                        include[i] = True
+                        sub_protocol[i]['include'] = include[i]
+                        
                     
-                if len(fmap_se_indices) > 2:
+                if len(fmap_se_indices) > 2 and sum(fmap_dwi_check) == 0:
                     for fm in fmap_se_indices[:-2]:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
                         errors[fm] = 'Multiple spin echo pairs detected in section; only selecting last pair for BIDS conversion'
                         sub_protocol[fm]['error'] = errors[fm]
+                        sub_protocol[fm]['qc'] = errors[fm]
                         
                 #Remove SE fmaps where phase encoding directions aren't opposite
                 if len(fmap_se_indices) > 1:
-                    if list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[0][::-1] != list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[1]:
+                    if list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[0][::-1] != list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[1] and sum(fmap_dwi_check) == 0:
                         for fm in fmap_se_indices[-2:]:
                             include[fm] = False
                             sub_protocol[fm]['include'] = include[fm]
                             errors[fm] = 'Spin echo fmap pair does not have opposite phase encoding directions. Will no set for BIDS conversion'
                             sub_protocol[fm]['error'] = errors[fm]
+                            sub_protocol[fm]['qc'] = errors[fm]
+                    else:
+                        pass
                                  
                 fmap_se_indices_final = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'epi' and include[section_indices[j]+x] != False]
-                bold_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'bold' and include[section_indices[j]+x] != False]
-                        
+                
+                if sub_protocol[i]['fmap_dwi_check'] == 0:
+                    applied_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'bold' and include[section_indices[j]+x] != False]
+                else:
+                    applied_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'dwi' and include[section_indices[j]+x] != False]
+                    
                 try:
                     if fmap_se_indices_final:
-                        if not len(bold_indices) and len(fmap_se_indices):
+                        if not len(applied_indices) and len(fmap_se_indices):
                             for fm in fmap_se_indices:
                                 include[fm] = False
                                 sub_protocol[fm]['include'] = include[fm]
                                 errors[fm] = 'Spin echo pair detected in section, but no functional data in section to be applied to. Will not set for BIDS conversion'
                                 sub_protocol[fm]['error'] = errors[fm]
+                                sub_protocol[fm]['qc'] = errors[fm]
                         
-                        fmap_intended_for = [section_indices[j] + x for x in range(len(section)) if modality_labels[section_start:section_end][x] == 'bold' and include[section_indices[j] + x] != False and include[fmap_se_indices_final[-1]] != False]
+                        if sub_protocol[i]['fmap_dwi_check'] == 0:
+                            fmap_intended_for = [section_indices[j] + x for x in range(len(section)) if modality_labels[section_start:section_end][x] == 'bold' and include[section_indices[j] + x] != False and include[fmap_se_indices_final[-1]] != False]
+                        else:
+                            fmap_intended_for = [section_indices[j] + x for x in range(len(section)) if modality_labels[section_start:section_end][x] == 'dwi' and include[section_indices[j] + x] != False and include[fmap_se_indices_final[-1]] != False]
+                            
                         fmap_intended_for_list.append(fmap_intended_for)
                 except:
                     pass
             
-            
+                        
             #Magnitude/Phasediff fmaps
             if ('magnitude1' or 'magnitude2') in modality_labels[section_start:section_end]:
                 #Remove duplicate magnitude/phasediff fmaps. Only the last two in each section will be kept
@@ -654,6 +687,7 @@ for s in range(len(subjects)):
                         sub_protocol[fm]['include'] = include[fm]
                         errors[fm] = 'More than two magnitude/phasediff field maps found in section. Only selecting most recent pair for BIDS conversion'
                         sub_protocol[fm]['error'] = errors[fm]
+                        sub_protocol[fm]['qc'] = errors[fm]
                         
             #Determine which functional data the field maps will be applied to
             fmap_magphase_indices_final = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'magnitude1' or value == 'phasediff' and include[section_indices[j]+x] != False]        
@@ -667,6 +701,7 @@ for s in range(len(subjects)):
                             sub_protocol[fm]['include'] = include[fm]
                             errors[fm] = 'No functional data in section found for magnitude/phasediff to act on. Will not convert to BIDS'
                             sub_protocol[fm]['error'] = errors[fm]
+                            sub_protocol[fm]['qc'] = errors[fm]
                     
                     fmap_intended_for = [section_indices[j] + x for x in range(len(section)) if modality_labels[section_start:section_end][x] == 'bold' and include[section_indices[j] + x] != False and include[fmap_magphase_indices_final[-1]] != False]
                     fmap_intended_for_list.append(fmap_intended_for)
@@ -691,6 +726,9 @@ for s in range(len(subjects)):
         except:
             pass
             
+        if sub_protocol[i]['include'] == False:
+            print('{} not recommended for BIDS conversion: {}'.format(sub_protocol[i]['SeriesDescription'], sub_protocol[i]['error']))
+        
         data_list[data_list_index] = sub_protocol[i]
         objects_info = {"include": sub_protocol[i]['include'],
                     "series_id": sub_protocol[i]['series_id'],
@@ -738,7 +776,5 @@ ezBIDS = {"subjects": subjectIDs_info,
 ezBIDS_file_name = 'ezBIDS.json'
 with open(ezBIDS_file_name, 'w') as fp: 
     json.dump(ezBIDS, fp, indent=3) 
- 
-    
- 
+  
 
