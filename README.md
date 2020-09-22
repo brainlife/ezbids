@@ -1,4 +1,5 @@
-### ezBIDS: Cloud-based graphical user interface for automated DICOM to BIDS data ingestion
+### ezBIDS
+Cloud-based graphical user interface for automated DICOM to BIDS data ingestion
 
 ### About
 This is the developmental repo for an automated BIDS converter web service that allows users to upload a directory containing 
@@ -12,19 +13,19 @@ The output can be downloaded back to the user's computer, or sent to other repos
 OpenNeuro, or brainlife.io
 
 Due to the plethora of scanner acquisition types, not all are currently supported by ezbids. Priority has therefore been given to acquisition types that are the most common in the neuroimaging community. These include:
-1). anat/T1w (including multiecho)
-2). anat/T2w
-3). anat/FLAIR
-4). func/sbref
-5). func/bold (including multiecho)
-6). fmap/epi
-7). fmap/magnitude1
-8). fmap/magnitude2
-9). fmap/phasediff
-10). dwi/dwi
+* anat/T1w (including multiecho)
+* anat/T2w
+* anat/FLAIR
+* func/sbref
+* func/bold (including multiecho)
+* fmap/epi
+* fmap/magnitude1
+* fmap/magnitude2
+* fmap/phasediff
+* dwi/dwi
 
 ### Usage
-To access the web service, please visit https://brainlife.io/ezbids
+To access the ezBIDS web service, please visit https://brainlife.io/ezbids
 
 
 ### Authors
