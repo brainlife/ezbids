@@ -3,6 +3,6 @@
 set -x
 
 echo "running with profiler"
-python3 -m cProfile ./analyzer/ezBIDS_data_extraction.py $1
+python3 -m cProfile ./analyzer/analyzer.py $1
 
 
