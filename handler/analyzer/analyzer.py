@@ -405,7 +405,7 @@ for i in range(len(data_list_unique_series)):
                     'series_id': data_list_unique_series[i]['series_id'],
                     "entities": series_entities,
                     "type": data_list_unique_series[i]['br_type'],
-                    "unique_TRs": [],
+                    "repetitionTimes": [],
                     "png_objects_indices": []
                     }
     series_list.append(series_info)
@@ -749,6 +749,15 @@ for s in range(len(subjects)):
         #Revert value to fit BIDS spec. Initial change was for internal purposes of handling field maps
         if sub_protocol[i]['br_type'] == 'fmap_dwi/epi_dwi':
             sub_protocol[i]['br_type'] = 'fmap/epi'
+            
+        #Remove identifying information from sidecars
+        remove_fields = ['SeriesInstanceUID', 'StudyInstanceUID', 
+                         'ReferringPhysicianName', 'StudyID', 'PatientName', 
+                         'PatientID', 'AccessionNumber', 'PatientBirthDate', 
+                         'PatientSex', 'PatientWeight']
+        for remove in remove_fields:
+            if remove in sub_protocol[i]['sidecar']:
+                del sub_protocol[i]['sidecar'][remove]
         
         #Object-level info fort ezBIDS.json
         data_list[data_list_index] = sub_protocol[i]
@@ -786,7 +795,7 @@ for s in range(len(subjects)):
 #Extract values to plot for users
 for s in range(len(series_list)):
     series_list[s]['png_objects_indices'] = [x for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']]
-    series_list[s]['unique_TRs'] = [objects_list[x]['items'][1]['sidecar']['RepetitionTime'] for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']] 
+    series_list[s]['repetitionTimes'] = [objects_list[x]['items'][1]['sidecar']['RepetitionTime'] for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']] 
     if series_list[s]['type'] == 'fmap_dwi/epi_dwi':
         series_list[s]['type'] = 'fmap/epi'
     
