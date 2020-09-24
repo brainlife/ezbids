@@ -15,7 +15,8 @@ from math import floor
 
 warnings.filterwarnings("ignore")
 
-data_dir = sys.argv[1]
+# data_dir = sys.argv[1]
+data_dir = '/media/data/ezbids/dicoms/Purcell/SCZ_Risk/20190226.SCZ_Risk_11462.9845@whetrick_SCZ_Risk'
 os.chdir(data_dir)
 
 print('########################################')
@@ -388,7 +389,7 @@ for i in range(len(data_list_unique_series)):
                 data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine if this acquisition should be converted to BIDS'
     
     if data_list_unique_series[i]['DataType'] == '' and data_list_unique_series[i]['ModalityLabel'] == '':
-        data_list_unique_series[i]['br_type'] = 'N/A'
+        data_list_unique_series[i]['br_type'] = 'non-BIDS'
     else:
         data_list_unique_series[i]['br_type'] = data_list_unique_series[i]['DataType'] + '/' + data_list_unique_series[i]['ModalityLabel']
         
@@ -550,10 +551,11 @@ for s in range(len(subjects)):
         
             
     #Deal with field maps (i.e. set up IntendedFor field)
+    br_types = [sub_protocol[x]['br_type'] for x in range(len(sub_protocol))]
     descriptions = [sub_protocol[x]['SeriesDescription'] for x in range(len(sub_protocol))]
     modality_labels = [sub_protocol[x]['ModalityLabel'] for x in range(len(sub_protocol))]
     phase_encoding_directions = [sub_protocol[x]['dir'] for x in range(len(sub_protocol))]
-    section_indices = [x for x, value in enumerate(descriptions) if any(x in value for x in ['Localizer','localizer','SCOUT','Scout','scout'])]
+    section_indices = [x for x, value in enumerate(descriptions) if any(x in value for x in ['LOCALIZER','Localizer','localizer','SCOUT','Scout','scout'])]
     section_indices = [section_indices[x] for x in range(len(section_indices)) if section_indices[x] == 0 or section_indices[x] - section_indices[x-1] > 1]
     include = [sub_protocol[x]['include'] for x in range(len(sub_protocol))]
     errors = [sub_protocol[x]['error'] for x in range(len(sub_protocol))]
@@ -604,7 +606,7 @@ for s in range(len(subjects)):
             
             #SE EPI fmaps
             if 'epi' in modality_labels[section_start:section_end] and not any(x in descriptions for x in ['DWI','dwi','DTI','dti']):
-                #Remove duplicate SE fmaps. Only the last two in each section will be kept
+            #Remove duplicate SE fmaps. Only the last two in each section will be kept
                 fmap_se_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'epi']
                 if len(fmap_se_indices) == 1:
                     include[i] = False
@@ -720,6 +722,9 @@ for s in range(len(subjects)):
                 fmap_intended_for_index += 1
                 fmap_counter = 0
         else:
+            IntendedFor = None
+        
+        if not 'fmap' in sub_protocol[i]['br_type'] or sub_protocol[i]['include'] == False:
             IntendedFor = None
             
         #If object-level entitites match series-level entities, make object-level entities blank
