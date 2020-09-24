@@ -472,8 +472,14 @@ for s in range(len(subjects)):
             
         
         #Determine other important BIDS information (i.e. run, dir, etc) for specific acquisitions        
+        #Don't include anatomical acquisitions that are too small (<5MB)
+        if 'anat' in sub_protocol[p]['br_type']:
+            if sub_protocol[p]['filesize']/(1024*1024) < 5:
+                sub_protocol[p]['include'] = False
+                sub_protocol[p]['error'] = 'Acquisition filesize is only {}MB. The ezBIDS minimum threshold for anatomical acquisitions is 5MB'.format(sub_protocol[p]['filesize']/(1024*1024))
+        
         #T1w
-        if sub_protocol[p]['br_type'] in ['anat/T1w', 'anat/multiecho']:
+        if sub_protocol[p]['br_type'] in ['anat/T1w', 'anat/multiecho'] and sub_protocol[p]['include'] == True:
             #non-normalized T1w images that have poor CNR, so best to not have in BIDS if there's an actual good T1w available
             if 'NORM' not in sub_protocol[p]['ImageType']:
                 # index_next = series_seriesID_list.index(sub_protocol[p+1]['series_id'])
