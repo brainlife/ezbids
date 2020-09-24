@@ -193,7 +193,6 @@ for j in range(len(json_list)):
                    "VolumeCount": volume_count,
                    'error': None,
                    'br_type': '',
-                   'anat_deface': None,
                    'nifti_path': [x for x in nifti_paths_for_json if '.nii.gz' in x][0],
                    'json_path': json_list[j],
                    'paths': paths,
@@ -338,19 +337,16 @@ for i in range(len(data_list_unique_series)):
                 series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
             else:
                 data_list_unique_series[i]['ModalityLabel'] = 'T1w'
-            data_list_unique_series[i]['anat_deface'] = True
         
         #FLAIR
         elif any(x in SD for x in ['FLAIR','Flair','flair','t2_space_da-fl']):
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'FLAIR'
-            data_list_unique_series[i]['anat_deface'] = True
             
         #T2w
         elif any(x in SD for x in ['T2W','T2w','t2w']):
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'T2w'
-            data_list_unique_series[i]['anat_deface'] = True
         
         #Single band reference (sbref)
         elif any(x in SD for x in ['SBRef','sbref']):
@@ -373,17 +369,14 @@ for i in range(len(data_list_unique_series)):
             if EchoTime < 10: #Probably T1w
                 data_list_unique_series[i]['DataType'] = 'anat'
                 data_list_unique_series[i]['ModalityLabel'] = 'T1w'
-                data_list_unique_series[i]['anat_deface'] = True
             
             elif data_list_unique_series[i]['InversionTime'] is not None and data_list_unique_series[i]['InversionTime'] > 0: #Probably FLAIR
                 data_list_unique_series[i]['DataType'] = 'anat'
                 data_list_unique_series[i]['ModalityLabel'] = 'FLAIR'
-                data_list_unique_series[i]['anat_deface'] = True
             
             elif EchoTime > 100: #Probably T2w
                 data_list_unique_series[i]['DataType'] = 'anat'
                 data_list_unique_series[i]['ModalityLabel'] = 'T2w'
-                data_list_unique_series[i]['anat_deface'] = True
             
             elif (EchoTime > 10 and EchoTime < 100): #Probably sbref
                 data_list_unique_series[i]['DataType'] = 'func'
