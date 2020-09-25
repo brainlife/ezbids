@@ -12,7 +12,7 @@ const info = JSON.parse(json);
 
 mkdirp.sync(root+"/bids");
 fs.writeFileSync(root+"/bids/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
-fs.writeFileSync(root+"/bids/README.md", info.readme);
+fs.writeFileSync(root+"/bids/README", info.readme);
 fs.writeFileSync(root+"/bids/participants.json", JSON.stringify(info.participantsColumn, null, 4));
 
 //convert participants.json to tsv

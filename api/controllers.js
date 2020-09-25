@@ -101,6 +101,7 @@ router.get('/download/:session_id/*', (req, res, next) => {
         let fullpath = path.resolve(basepath + "/" + req.params[0]);
         if (!fullpath.startsWith(basepath))
             return next("invalid path");
+        res.setHeader('Content-disposition', 'attachment; filename=' + path.basename(fullpath));
         //res.setHeader("content-type", "application/json"); //TODO - set to correct mime?
         //TODO - if requested path is a file, thenstream
         let stats = fs.lstatSync(fullpath);
