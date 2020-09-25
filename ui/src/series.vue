@@ -3,9 +3,9 @@
     <h4>Series / Datatype Mappings</h4>
     <p>Please update how you'd like to map each dicom SeriesDescription to BIDS datatype/entities.</p>
     <el-table :data="$root.series" style="width: 100%" size="mini" class="table-align-top">
-        <el-table-column label="id" width="50px">
+        <el-table-column label="Series Number" width="150px">
             <template slot-scope="scope">
-                <p style="margin-top: 10px">{{scope.row.series_id}}</p>
+                <p style="margin-top: 10px">{{scope.row.SeriesNumber}}</p>
             </template>
         </el-table-column>
         <el-table-column label="Series Description" width="300px">
@@ -17,7 +17,11 @@
                 </p>
                 <!-- <el-checkbox v-model="scope.row.include">Include in the BIDS output</el-checkbox> -->
                 <p> 
-                    unique TRs:{{scope.row.repetitionTimes}}
+                    <el-tag type="info" size="mini"><small>EchoTime: {{scope.row.EchoTime}}</small></el-tag>&nbsp;
+                    <el-tag type="info" size="mini"><small>ImageType: {{scope.row.ImageType}}</small></el-tag>&nbsp;
+                    <el-tag type="info" size="mini"><small>MultibandAccelerationFactor: {{scope.row.MultibandAccelerationFactor}}</small></el-tag>&nbsp;
+                    <br>
+                    <small>RepetitionTime: {{scope.row.repetitionTimes}}</small>
                 </p>
             </template>
         </el-table-column>

@@ -14,7 +14,7 @@
                 <span v-if="ses != ''" class="hierarchy" style="opacity: 0.8;"><i class="el-icon-time"/> <small>ses</small> {{ses}}</span>
                 <div v-for="(o, idx) in o_ses.objects" :key="idx" style="padding: 2px;" class="clickable" :class="{'selected': so === o}" @click="select(o, o_ses)">
                     <!--<el-tag type="info" size="mini"><small>{{o.series_id}}</small></el-tag>-->
-                    <small>{{o.idx}}. </small>
+                    <el-tag type="info" size="mini">sn {{o.SeriesNumber}}</el-tag>
                     &nbsp;
                     <datatype :o="o"/>
                     <el-badge v-if="o.validationErrors.length > 0" type="danger" 
@@ -55,8 +55,9 @@
 
                 <div :class="{'object-exclude': !so.include}">
                     <el-form-item label="Series">
-                        <el-tag type="info" size="mini"><small>{{so.series_id}}</small></el-tag>
                         {{$root.findSeries(so).SeriesDescription}}
+                        <el-tag type="info" size="mini">sn {{so.SeriesNumber}}</el-tag>
+                        <!--<el-tag type="info" size="mini"><small>series_id {{so.series_id}}</small></el-tag>-->
                     </el-form-item>
                     <el-form-item label="Datatype">
                         <el-select v-model="so.type" clearable :placeholder="$root.getType(so) || 'Please select datatype'" size="small" style="width: 100%" @change="update(so)">
@@ -98,7 +99,7 @@
                         <el-form-item label="IntendedFor">
                             <el-select v-model="so.IntendedFor" multiple placeholder="Select Object" style="width: 100%">
                                 <el-option v-for="o in this.sess.objects" :key="o.idx"
-                                    :label="o.idx" :value="o.idx">
+                                    :label="intendedForLabel(o)" :value="o.idx">
                                 </el-option>
                             </el-select>
                         </el-form-item>
@@ -168,6 +169,13 @@ export default {
                 return series.entities[entity];
             }
         },
+
+        intendedForLabel(o) {
+            let l = "(sn"+o.SeriesNumber+") ";
+            l += o.type;
+            if(o.entities.run) l += " run-"+o.entities.run;
+            return l;
+        }
     },
 
     computed: {
