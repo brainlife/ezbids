@@ -611,6 +611,7 @@ split:
             for(let o2 of this.objects) {
                 if(o == o2) continue;
                 if(!o2.include) continue;
+                if(o.type != o2.type) continue;
                 let same = o2;
                 for(let k in o._entities) {
                     if(o._entities[k] != o2._entities[k]) {
