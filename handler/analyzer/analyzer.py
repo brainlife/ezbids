@@ -451,7 +451,7 @@ for s in range(len(subjects)):
             plt.savefig('{}.png'.format(sub_protocol[p]['nifti_path'][:-7]))
             
         index = series_seriesID_list.index(sub_protocol[p]['series_id'])
-        objects_entities = {'sub': subjects[s], 'ses': '', 'run': '', 'acq': '', 'ce': ''}
+        objects_entities = {'sub': '', 'ses': '', 'run': '', 'acq': '', 'ce': ''}
         
         #Port Series level information down to the object level
         sub_protocol[p]['include'] = data_list_unique_series[index]['include']
@@ -770,6 +770,7 @@ for s in range(len(subjects)):
                     "PatientID": sub_protocol[i]['PatientID'],
                     "PatientBirthDate": sub_protocol[i]['PatientBirthDate'],
                     "AcquisitionDate": sub_protocol[i]['AcquisitionDate'],
+                    'SeriesNumber': sub_protocol[i]['sidecar']['SeriesNumber'],
                     "pngPath": '{}.png'.format(sub_protocol[i]['nifti_path'][:-7]),
                     "IntendedFor": IntendedFor,
                     "entities": objects_entities_list[i],
