@@ -142,7 +142,7 @@ for j in range(len(json_list)):
     if 'MultibandAccelerationFactor' in json_data:
         MultibandAccelerationFactor = json_data['MultibandAccelerationFactor']
     else:
-        MultibandAccelerationFactor = -999
+        MultibandAccelerationFactor = 'N/A'
         
     #Find how many volumes are in sidecar's corresponding nifti file
     try:
@@ -293,6 +293,8 @@ for i in range(len(data_list_unique_series)):
         #Functional
         elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func','FMRI','fMRI','fmri','EPI']) and ('SBRef' not in SD or 'sbref' not in SD):
             data_list_unique_series[i]['DataType'] = 'func'
+            if any(x in SD for x in ['REST','Rest','rest']):
+                series_entities['task'] = 'rest'
             if data_list_unique_series[i]['EchoNumber']:
                 data_list_unique_series[i]['ModalityLabel'] = 'multiecho'
                 series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
@@ -305,10 +307,10 @@ for i in range(len(data_list_unique_series)):
             data_list_unique_series[i]['ModalityLabel'] = 'epi'
             series_entities['dir'] = data_list_unique_series[i]['dir']
             
-        #Can't determine acquisition type
+        #Can't initially determine acquisition type
         else:
             #Multiband factor would indicate functional bold
-            if data_list_unique_series[i]['MultibandAccelerationFactor'] > 0:
+            if data_list_unique_series[i]['MultibandAccelerationFactor'] != 'N/A':
                 data_list_unique_series[i]['DataType'] = 'func'
                 data_list_unique_series[i]['ModalityLabel'] = 'bold'
                 
@@ -352,6 +354,8 @@ for i in range(len(data_list_unique_series)):
         elif any(x in SD for x in ['SBRef','sbref']):
             data_list_unique_series[i]['DataType'] = 'func'
             data_list_unique_series[i]['ModalityLabel'] = 'sbref'
+            if any(x in SD for x in ['REST','Rest','rest']):
+                series_entities['task'] = 'rest'
         
         #Magnitude/Phasediff field maps
         elif 'EchoNumber' in data_list_unique_series[i]['sidecar']: #Probably magnitude/phasediff
@@ -427,6 +431,7 @@ for s in range(len(subjects)):
     fmap_se_run = 1
     fmap_magphase_run = 1
     objects_entities_list = []
+    series_func_list = []
     
     for p in range(len(sub_protocol)):
         if p == 0:
@@ -475,11 +480,11 @@ for s in range(len(subjects)):
             
         
         #Determine other important BIDS information (i.e. run, dir, etc) for specific acquisitions        
-        #Don't include anatomical acquisitions that are too small (<5MB)
+        #Don't include anatomical acquisitions that are too small (<1.2MB)
         if 'anat' in sub_protocol[p]['br_type']:
-            if sub_protocol[p]['filesize']/(1024*1024) < 5:
+            if sub_protocol[p]['filesize']/(1024*1024) < 1.2:
                 sub_protocol[p]['include'] = False
-                sub_protocol[p]['error'] = 'Acquisition filesize is only {}MB. The ezBIDS minimum threshold for anatomical acquisitions is 5MB. This object will not be included in the BIDS output'.format(sub_protocol[p]['filesize']/(1024*1024))
+                sub_protocol[p]['error'] = 'Acquisition filesize is only {}MB. The ezBIDS minimum threshold for anatomical acquisitions is 1.2MB. This object will not be included in the BIDS output'.format(sub_protocol[p]['filesize']/(1024*1024))
         
         #T1w
         if sub_protocol[p]['br_type'] in ['anat/T1w', 'anat/multiecho'] and sub_protocol[p]['include'] == True:
@@ -511,18 +516,28 @@ for s in range(len(subjects)):
                 sub_protocol[p]['include'] = False
                 sub_protocol[p]['error'] = 'Functional run only contains {} volumes; ezBIDS minimum threshold is 30. This object will not be included in the BIDS output'.format(sub_protocol[p]['VolumeCount'])
             else:
+                if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
+                    series_func_list.append([sub_protocol[p]['series_id'], 1])
+                    bold_run = 1
+                    sub_protocol[p]['bold_run'] = '01'
+                else:
+                    func_index = [x for x, y in enumerate(series_func_list) if y[0] == sub_protocol[p]['series_id']][0]
+                    series_func_list[func_index][1] += 1
+                    bold_run = series_func_list[func_index][1]
+                    
                 if bold_run < 10:
                     sub_protocol[p]['bold_run'] = '0' + str(bold_run)
                 else:
                     sub_protocol[p]['bold_run'] = str(bold_run)
+                    
                 objects_entities['run'] = sub_protocol[p]['bold_run']
-                bold_run +=1
+                    
         
         #single band reference (sbref)
         elif sub_protocol[p]['br_type'] == 'func/sbref':
-            # if p+1 < len(sub_protocol):
-            #     index_next = series_seriesID_list.index(sub_protocol[p+1]['series_id'])
-            #     sub_protocol[p+1]['br_type'] = data_list_unique_series[index_next]['br_type']
+            if p+1 < len(sub_protocol):
+                index_next = series_seriesID_list.index(sub_protocol[p+1]['series_id'])
+                sub_protocol[p+1]['br_type'] = data_list_unique_series[index_next]['br_type']
                 
             #Rare instances where sbref is not followed by functional bold
             if sub_protocol[p+1]['br_type'] not in ['func/bold', 'func/multiecho']:
@@ -534,12 +549,21 @@ for s in range(len(subjects)):
                 sub_protocol[p]['include'] = False
                 sub_protocol[p]['error'] = 'Functional bold acquisition following this sbref contains less than 30 volumes, causing it to not be converted to BIDS. Thus this sbref that precedes the functional bold will not be included in the BIDS output'
             else:    
+                if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
+                    series_func_list.append([sub_protocol[p]['series_id'], 1])
+                    sbref_run = 1
+                    sub_protocol[p]['sbref_run'] = '01'
+                else:
+                    func_index = [x for x, y in enumerate(series_func_list) if y[0] == sub_protocol[p]['series_id']][0]
+                    series_func_list[func_index][1] += 1
+                    sbref_run = series_func_list[func_index][1]
+                    
                 if sbref_run < 10:
                     sub_protocol[p]['sbref_run'] = '0' + str(sbref_run)
                 else:
                     sub_protocol[p]['sbref_run'] = str(sbref_run)
+                    
                 objects_entities['run'] = sub_protocol[p]['sbref_run']
-                sbref_run += 1
                 
         #DWI
         elif sub_protocol[p]['br_type'] == 'dwi/dwi':
