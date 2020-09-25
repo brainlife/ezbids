@@ -50,39 +50,15 @@ export default {
         finalize() {
             clearTimeout(this.reload_t);
 
-            //apply mappings
+            //apply mappings on copied object list
+            /*
             let objects = JSON.parse(JSON.stringify(this.$root.objects));
             objects.forEach(o=>{
-
-                const series = this.$root.findSeries(o);
-                if(!o.type) o.type = series.type;
-
-                //initialize with the proper object key ordering
-                const e = this.$root.getEntities(o.type);
-                for(let k in e) {
-                    e[k] = series.entities[k];
-                }
-
-                //apply overrides from the object
-                for(let k in o.entities) {
-                    if(o.entities[k]) e[k] = o.entities[k];
-                }
-
-                //if sub is not set, use subject mapping as default
-                if(!o.entities.sub) {
-                    const subject = this.$root.findSubject(o);
-                    e.sub = subject.sub;
-                } 
-
-                //if ses is not set, use session mapping as default
-                if(!o.entities.ses) {
-                    const session = this.$root.findSession(o);
-                    e.ses = session.ses;
-                }
-
-                o.entities = e;
+                //o.entities = this.$root.mapObject(o);
+                o.entities = o._entities;
             });
-
+            */
+            
             fetch(this.$root.apihost+'/session/'+this.$root.session._id+'/finalize', {
                 method: "PATCH", 
                 //headers: {'Content-Type': 'application/json'},
@@ -91,7 +67,7 @@ export default {
                     readme: this.$root.readme,
                     participants: this.$root.participants,
                     participantsColumn: this.$root.participantsColumn,
-                    objects,
+                    objects: this.$root.objects,
                 }),
             }).then(res=>res.text()).then(status=>{
                 if(status == "ok") {

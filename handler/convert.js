@@ -51,16 +51,16 @@ async.forEach(info.objects, (o, next_o) => {
     let suffix = typeTokens[1];
     //setup directory
     let path = "bids";
-    path += "/sub-" + o.entities.sub;
-    if (o.entities.ses)
-        path += "/ses-" + o.entities.ses;
+    path += "/sub-" + o._entities.sub;
+    if (o._entities.ses)
+        path += "/ses-" + o._entities.ses;
     path += "/" + modality;
     mkdirp.sync(root + "/" + path);
     //construct basename
     let tokens = [];
-    for (let k in o.entities) {
-        if (o.entities[k])
-            tokens.push(k + "-" + o.entities[k]);
+    for (let k in o._entities) {
+        if (o._entities[k])
+            tokens.push(k + "-" + o._entities[k]);
     }
     const name = tokens.join("_");
     function handleItem(item, filename) {
@@ -171,13 +171,13 @@ async.forEach(info.objects, (o, next_o) => {
                                 //const ioitem = io.items.find(_o=>_o.name == "nii.gz");
                                 //construct a path relative to the subject
                                 let path = "";
-                                if (io.entities.ses)
-                                    path += "ses-" + io.entities.ses + "/";
+                                if (io._entities.ses)
+                                    path += "ses-" + io._entities.ses + "/";
                                 path += iomodality + "/";
                                 let tokens = [];
-                                for (let k in io.entities) {
-                                    if (io.entities[k])
-                                        tokens.push(k + "-" + io.entities[k]);
+                                for (let k in io._entities) {
+                                    if (io._entities[k])
+                                        tokens.push(k + "-" + io._entities[k]);
                                 }
                                 path += tokens.join("_");
                                 path += "_" + suffix + ".nii.gz"; //TODO - not sure if this is robust enough..

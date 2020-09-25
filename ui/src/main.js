@@ -138,6 +138,7 @@ new Vue({
         page(v) {
             if(v == "objects") {
                 this.organizeObjects();
+                this.objects.forEach(this.mapObject);
                 this.objects.forEach(this.validateObject);
                 this.validated = this.isAllValid(); 
             }
@@ -542,8 +543,42 @@ split:
             return series;
         },
 
+        //apply all mappings and store them under _entities
+        mapObject(o) {
+            const series = this.$root.findSeries(o);
+            if(!o.type) o.type = series.type;
+
+            //initialize with the proper object key ordering
+            const e = this.$root.getEntities(o.type);
+            for(let k in e) {
+                e[k] = series.entities[k];
+            }
+
+            //apply overrides from the object
+            for(let k in o.entities) {
+                if(o.entities[k]) e[k] = o.entities[k];
+            }
+
+            //if sub is not set, use subject mapping as default
+            if(!o.entities.sub) {
+                const subject = this.$root.findSubject(o);
+                e.sub = subject.sub;
+            } 
+
+            //if ses is not set, use session mapping as default
+            if(!o.entities.ses) {
+                const session = this.$root.findSession(o);
+                e.ses = session.ses;
+            }
+
+            o._entities = e;
+        },
+
         validateObject(o) {
             Vue.set(o, 'validationErrors', []);
+
+            //if not included, don't need to validate
+            if(!o.include) return;
 
             //make sure all required entities are set
             let series = this.findSeries(o);
@@ -571,11 +606,29 @@ split:
                     }
                 }
             });
+
+            //make sure no 2 object are exactly alike
+            for(let o2 of this.objects) {
+                if(o == o2) continue;
+                if(!o2.include) continue;
+                let same = o2;
+                for(let k in o._entities) {
+                    if(o._entities[k] != o2._entities[k]) {
+                        same = null;
+                        break;
+                    }
+                }
+                if(same) {
+                    o.validationErrors.push("This object looks exactly like another object with sn:"+same.SeriesNumber);
+                    console.dir(same);
+                    break;
+                }
+            }
         },
 
         isAllValid() {
             for(let o of this.objects) {
-                if(!o.include) continue;
+                //if(!o.include) continue;
                 if(o.validationErrors.length > 0) {
                     return false;
                 }
@@ -598,16 +651,11 @@ split:
                 let ses = session.ses;
                 if(o.entities.ses) ses = o.entities.ses; //apply override
 
-                //let run = o.entities.run||"";
-
                 if(!this.subs[sub]) this.subs[sub] = {sess: {}, objects: []}; 
                 this.subs[sub].objects.push(o);
 
                 if(!this.subs[sub].sess[ses]) this.subs[sub].sess[ses] = { /*runs: {},*/ objects: [] };
                 this.subs[sub].sess[ses].objects.push(o);
-
-                //if(!this.subs[sub].sess[ses].runs[run]) this.subs[sub].sess[ses].runs[run] = { objects: [] };
-                //this.subs[sub].sess[ses].runs[run].objects.push(o);
             });
 
             this.objects.sort((a,b)=>{
@@ -629,10 +677,8 @@ split:
         },
 
         loadData(url) {
-            //console.log("loadData", url);
-            return fetch(url).then(res=>res.json()).then(conf=>{
-                //this.site = conf.site;
-                 
+
+            return fetch(url).then(res=>res.json()).then(conf=>{   
                 this.subjects = conf.subjects;
                 this.sessions = conf.sessions;
                 this.series = conf.series;
@@ -640,29 +686,6 @@ split:
 
                 this.participantsColumn = conf.participantsColumn||{};
 
-                //debug migration
-                /*
-                this.objects.forEach(object=>{
-                    object.entities = object.labels||{};
-                    delete object.labels;
-                    if(object.hierarchy) {
-                        if(object.hierarchy.subject) object.entities.sub = object.hierarchy.subject;
-                        if(object.hierarchy.session) object.entities.ses = object.hierarchy.session;
-                        if(object.hierarchy.run) object.entities.run = object.hierarchy.run;
-                        delete object.hierarchy;
-                    }
-                });
-                this.series.forEach(series=>{
-                    series.entities = series.labels||{};
-                    delete series.labels;
-                    if(s.hierarchy) {
-                        if(s.hierarchy.subject) s.entities.sub = s.hierarchy.subject;
-                        if(s.hierarchy.session) s.entities.ses = s.hierarchy.session;
-                        if(s.hierarchy.run) s.entities.run = s.hierarchy.run;
-                        delete s.hierarchy;
-                    }
-                });
-                */
                 this.series.forEach(series=>{
                     delete series.entities.sub;
                     delete series.entities.ses;

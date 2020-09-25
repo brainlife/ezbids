@@ -20,6 +20,7 @@ find $root -name "*.json" -exec rm -rf {} \;
 echo "removing .nii"
 find $root -name "*.nii" -exec rm -rf {} \;
 
+echo "running expand.sh"
 time ./expand.sh $root
 
 echo processing $root
@@ -40,7 +41,8 @@ export -f d2n
 cat $root/dcm2niix.list | parallel --wd $root -j 6 d2n {}
 
 #find products
-(cd $root && find . -type f \( -name "*.json" -o -name "*.nii.gz" \) > list)
+#(cd $root && find . -type f \( -name "*.json" -o -name "*.nii.gz" -o -name "*.bval" -o -name "*.bvec"\) > list)
+(cd $root && find . -type f -regex '.*\.\(gz\|bvec|json|bval\)' > list)
 cat $root/list
 
 if [ -s $root/list ]; then
