@@ -41,8 +41,8 @@ export -f d2n
 cat $root/dcm2niix.list | parallel --wd $root -j 6 d2n {}
 
 #find products
-#(cd $root && find . -type f \( -name "*.json" -o -name "*.nii.gz" -o -name "*.bval" -o -name "*.bvec"\) > list)
-(cd $root && find . -type f -regex '.*\.\(gz\|bvec|json|bval\)' > list)
+(cd $root && find . -type f \( -name "*.json" -o -name "*.nii.gz" -o -name "*.bval" -o -name "*.bvec" \) > list)
+#(cd $root && find . -type f -regex '.*\.\(gz\|bvec|json|bval\)' > list)
 cat $root/list
 
 if [ -s $root/list ]; then
