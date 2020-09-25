@@ -545,14 +545,6 @@ split:
         validateObject(o) {
             Vue.set(o, 'validationErrors', []);
 
-            /*
-            //could come from series.type
-            if(!o.type) {
-                o.validationErrors.push("Please select a datatype");
-                return;
-            }
-            */
-
             //make sure all required entities are set
             let series = this.findSeries(o);
             let entities_requirement = this.getEntities(o.type);

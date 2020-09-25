@@ -17,7 +17,7 @@
                 </p>
                 <!-- <el-checkbox v-model="scope.row.include">Include in the BIDS output</el-checkbox> -->
                 <p> 
-                    unique TRs:{{scope.row.unique_TRs}}
+                    unique TRs:{{scope.row.repetitionTimes}}
                 </p>
             </template>
         </el-table-column>

@@ -13,7 +13,8 @@
             <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}" class="left-border">
                 <span v-if="ses != ''" class="hierarchy" style="opacity: 0.8;"><i class="el-icon-time"/> <small>ses</small> {{ses}}</span>
                 <div v-for="(o, idx) in o_ses.objects" :key="idx" style="padding: 2px;" class="clickable" :class="{'selected': so === o}" @click="select(o, o_ses)">
-                    <el-tag type="info" size="mini"><small>{{o.series_id}}</small></el-tag>
+                    <!--<el-tag type="info" size="mini"><small>{{o.series_id}}</small></el-tag>-->
+                    <small>{{o.idx}}. </small>
                     &nbsp;
                     <datatype :o="o"/>
                     <el-badge v-if="o.validationErrors.length > 0" type="danger" 
@@ -35,7 +36,7 @@
         <div v-if="so">
             <div style="margin-bottom: 10px;">
                 <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in so.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
-                <el-alert show-icon :closable="false" type="warning" v-if="so.analysisResults.errors" :title="so.analysisResults.errors"/>
+                <el-alert show-icon :closable="false" type="warning" v-for="(error, idx) in so.analysisResults.errors" :key="idx" :title="error"/>
             </div>
         
             <!--
@@ -56,9 +57,6 @@
                     <el-form-item label="Series">
                         <el-tag type="info" size="mini"><small>{{so.series_id}}</small></el-tag>
                         {{$root.findSeries(so).SeriesDescription}}
-                        <!--
-                        <el-tag type="info" size="mini"><small>{{so.SeriesNumber}}</small></el-tag>
-                        -->
                     </el-form-item>
                     <el-form-item label="Datatype">
                         <el-select v-model="so.type" clearable :placeholder="$root.getType(so) || 'Please select datatype'" size="small" style="width: 100%" @change="update(so)">
@@ -100,7 +98,7 @@
                         <el-form-item label="IntendedFor">
                             <el-select v-model="so.IntendedFor" multiple placeholder="Select Object" style="width: 100%">
                                 <el-option v-for="o in this.sess.objects" :key="o.idx"
-                                    :label="o.series_id" :value="o.idx">
+                                    :label="o.idx" :value="o.idx">
                                 </el-option>
                             </el-select>
                         </el-form-item>

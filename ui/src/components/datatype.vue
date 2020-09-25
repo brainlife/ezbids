@@ -19,6 +19,13 @@ export default {
     computed: {
         entities() {
             let ents = {};
+
+            let series = this.$root.findSeries(this.o);
+            for(let key in series.entities) {
+                if(series.entities[key] == "") continue;
+                ents[key] = series.entities[key];
+            }
+            
             for(let key in this.o.entities) {
                 if(key == "sub") continue; 
                 if(key == "ses") continue; 
