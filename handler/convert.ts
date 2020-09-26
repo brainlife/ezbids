@@ -38,7 +38,7 @@ info.subjects.forEach(subject=>{
 });
 let tsvf = fs.openSync(root+"/bids/participants.tsv", "w");
 for(let rec of tsv) {
-    fs.writeSync(tsvf, rec.join(",")+"\n");
+    fs.writeSync(tsvf, rec.join("\t")+"\n");
 }
 fs.closeSync(tsvf);
 

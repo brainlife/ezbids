@@ -57,6 +57,7 @@
         <p style="border-top: 1px solid #0002"/>
         <el-form-item label="README(.md)">
             <el-input type="textarea" 
+                placeholder="BIDS README. Should not be empty"
                 :autosize="{ minRows: 20, maxRows: 25 }"
                 v-model="readme"/>
         </el-form-item>
