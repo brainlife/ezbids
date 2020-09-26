@@ -1,10 +1,9 @@
 <template>
 <div>
-    <!--
     <div style="float: right;">
         <el-button @click="finalize" size="mini">Re-Finalize</el-button>
     </div>
-    -->
+    
     <div v-if="$root.validated && $root.session.status == 'finished'">
         <p>All done!</p>
         <el-button @click="download" type="primary" size="small">Download BIDS</el-button>
@@ -52,23 +51,14 @@ export default {
         finalize() {
             clearTimeout(this.reload_t);
 
-            //apply mappings on copied object list
-            /*
-            let objects = JSON.parse(JSON.stringify(this.$root.objects));
-            objects.forEach(o=>{
-                //o.entities = this.$root.mapObject(o);
-                o.entities = o._entities;
-            });
-            */
-            
             fetch(this.$root.apihost+'/session/'+this.$root.session._id+'/finalize', {
                 method: "PATCH", 
                 //headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({
                     datasetDescription: this.$root.datasetDescription,
                     readme: this.$root.readme,
-                    participants: this.$root.participants,
                     participantsColumn: this.$root.participantsColumn,
+                    subjects: this.$root.subjects, //for phenotype
                     objects: this.$root.objects,
                 }),
             }).then(res=>res.text()).then(status=>{

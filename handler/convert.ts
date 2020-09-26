@@ -17,12 +17,9 @@ fs.writeFileSync(root+"/bids/participants.json", JSON.stringify(info.participant
 
 //convert participants.json to tsv
 console.log("outputting participants.json/tsv");
-let keys = [];
-for(let subject in info.participants) {
-    let rec = info.participants[subject];
-    for(let key in rec) {
-        if(!keys.includes(key)) keys.push(key);
-    }
+let keys = ["participant_id"];
+for(let key in info.participantsColumn) {
+    keys.push(key);
 }
 let tsv = [];
 let tsvheader = [];
@@ -30,15 +27,15 @@ for(let key of keys) {
     tsvheader.push(key);
 }
 tsv.push(tsvheader);
-for(let subject in info.participants) {
-    let rec = info.participants[subject];
+
+info.subjects.forEach(subject=>{
     let tsvrec = [];
-    for(let key of keys) {
-        tsvrec.push(rec[key]);
+    tsvrec.push(subject.sub);
+    for(let key in info.participantsColumn) {
+        tsvrec.push(subject.phenotype[key]);
     }
     tsv.push(tsvrec);
-}
-
+});
 let tsvf = fs.openSync(root+"/bids/participants.tsv", "w");
 for(let rec of tsv) {
     fs.writeSync(tsvf, rec.join(",")+"\n");

@@ -95,7 +95,6 @@ new Vue({
                 "DatasetDOI": "", //"10.0.2.3/dfjj.10"
             },
             readme: "", 
-            //participants: {},
             participantsColumn: {},
             
             subjects: [],
