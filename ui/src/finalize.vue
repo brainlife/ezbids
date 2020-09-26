@@ -1,8 +1,10 @@
 <template>
 <div>
+    <!--
     <div style="float: right;">
         <el-button @click="finalize" size="mini">Re-Finalize</el-button>
     </div>
+    -->
     <div v-if="$root.validated && $root.session.status == 'finished'">
         <p>All done!</p>
         <el-button @click="download" type="primary" size="small">Download BIDS</el-button>

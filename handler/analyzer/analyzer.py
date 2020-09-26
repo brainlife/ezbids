@@ -9,6 +9,8 @@ import os, sys, json, warnings
 import pandas as pd
 import numpy as np
 import nibabel as nib
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from operator import itemgetter
 from math import floor

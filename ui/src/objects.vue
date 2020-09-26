@@ -7,7 +7,7 @@
         <div v-for="(o_sub, sub) in $root.subs" :key="sub" style="font-size: 90%;">
             <span v-if="sub != ''" class="hierarchy" style="opacity: 0.8;">
                 <i class="el-icon-user-solid"/> 
-                <small>sub</small> {{sub}} 
+                <small>sub</small> {{sub}}
                 <small>({{o_sub.objects.length}})</small>
             </span>
             <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}" class="left-border">
@@ -152,10 +152,10 @@ export default {
         },
 
         update(o) {
-            this.$root.organizeObjects();
             this.$root.mapObject(o);
             this.$root.validateObject(o);
             this.$root.validated = this.$root.isAllValid(); 
+            this.$root.organizeObjects();
         },
 
         getDefault(o, entity) {

@@ -137,10 +137,10 @@ new Vue({
     watch: {
         page(v) {
             if(v == "objects") {
-                this.organizeObjects();
                 this.objects.forEach(this.mapObject);
                 this.objects.forEach(this.validateObject);
                 this.validated = this.isAllValid(); 
+                this.organizeObjects();
             }
         },
     },
@@ -642,6 +642,8 @@ split:
 
             this.objects.forEach((o, idx)=>{
                 o.idx = idx; //reindex
+
+                /*
                 let subject = this.findSubject(o);
                 if(!subject) console.error("couldn't find subject mapping for", o);
                 let sub = subject.sub;
@@ -651,6 +653,10 @@ split:
                 if(!session) console.error("couldn't find session mapping for", o);
                 let ses = session.ses;
                 if(o.entities.ses) ses = o.entities.ses; //apply override
+                */
+
+                let sub = o._entities.sub;
+                let ses = o._entities.ses;
 
                 if(!this.subs[sub]) this.subs[sub] = {sess: {}, objects: []}; 
                 this.subs[sub].objects.push(o);

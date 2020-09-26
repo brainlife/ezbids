@@ -85,6 +85,10 @@ h1 {
     opacity: 0.8;
     font-size: 20pt;
 }
+.el-main {
+    /*there is something wrong bids structure page where the el-main doesn't get expaned all the way to the bottom*/
+    overflow: inherit;
+}
 
 .el-table.table-align-top td {
     vertical-align: top;

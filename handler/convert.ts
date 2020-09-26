@@ -170,11 +170,12 @@ async.forEach(info.objects, (o, next_o)=>{
                 //handle IntendedFor
                 if(o.IntendedFor) {
                     item.sidecar.IntendedFor = [];
-                    for(let idx in o.IntendedFor) {
-                        const io = info.objects[parseInt(idx)];
+                    for(let idx of o.IntendedFor) {
+                        console.log("intended for", idx);
+                        const io = info.objects[idx];
+                        console.log("intended for", io.type);
                         const iomodality = io.type.split("/")[0];
                         const suffix = io.type.split("/")[1];
-                        //const ioitem = io.items.find(_o=>_o.name == "nii.gz");
 
                         //construct a path relative to the subject
                         let path = "";
