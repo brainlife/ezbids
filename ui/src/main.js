@@ -659,6 +659,8 @@ split:
                 this.subs[sub].sess[ses].objects.push(o);
             });
 
+            //object must not be sorted
+            /*
             this.objects.sort((a,b)=>{
                 let aSubject = this.findSubject(a);
                 let bSubject = this.findSubject(b);
@@ -675,6 +677,7 @@ split:
                 if(a.entities.run < b.entities.run) return -1;
                 return 0;
             });
+            */
         },
 
         loadData(url) {
