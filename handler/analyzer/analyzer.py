@@ -9,8 +9,6 @@ import os, sys, json, warnings
 import pandas as pd
 import numpy as np
 import nibabel as nib
-import matplotlib
-matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from operator import itemgetter
 from math import floor
@@ -154,10 +152,7 @@ for j in range(len(json_list)):
         
     #Relative paths of sidecar and nifti files (per SeriesNumber)
     paths = nifti_paths_for_json + [json_list[j]]
-    
-    #File extensions for nifti and sidecar
-    nifti_name, json_name = ['nii.gz', 'json']            
-    
+        
     mapping_dic = {'StudyID': studyID,
                    'PatientName': PatientName,
                    'PatientID': PatientID,
@@ -199,8 +194,6 @@ for j in range(len(json_list)):
                    'json_path': json_list[j],
                    'paths': paths,
                    'pngPath': '',
-                   'nifti_name': nifti_name,
-                   'json_name': json_name,
                    'headers': '',
                    'protocol_index': 0,
                    'sidecar':json_data
@@ -760,7 +753,7 @@ for s in range(len(subjects)):
         
         if not 'fmap' in sub_protocol[i]['br_type'] or sub_protocol[i]['include'] == False:
             IntendedFor = None
-            
+                    
         #If object-level entitites match series-level entities, make object-level entities blank
         check = [x['entities'] for x in series_list if x['series_id'] == sub_protocol[i]['series_id']] [0]
         try:
@@ -790,6 +783,20 @@ for s in range(len(subjects)):
         for remove in remove_fields:
             if remove in sub_protocol[i]['sidecar']:
                 del sub_protocol[i]['sidecar'][remove]
+                
+        #Make items list
+        items = []
+        for item in sorted(sub_protocol[i]['paths']):
+            if '.bval' in item:
+                items.append({'path':item, 'name':'bval'})
+            elif '.bvec' in item:
+                items.append({'path':item, 'name':'bvec'})
+            elif '.json' in item:
+                items.append({'path':item, 'name':'json', 'sidecar':sub_protocol[i]['sidecar']})
+            elif '.nii.gz' in item:
+                items.append({'path':item, 'name':'nii.gz', 'headers':sub_protocol[i]['headers']})
+
+                
         
         #Object-level info fort ezBIDS.json
         data_list[data_list_index] = sub_protocol[i]
@@ -804,18 +811,7 @@ for s in range(len(subjects)):
                     "IntendedFor": IntendedFor,
                     "entities": objects_entities_list[i],
                     "type": sub_protocol[i]['br_type'],
-                    "items": [
-                            {
-                                "path": sub_protocol[i]['nifti_path'],
-                                "name": sub_protocol[i]['nifti_name'],
-                                "headers": sub_protocol[i]['headers']
-                            },
-                            {
-                                "path": sub_protocol[i]['json_path'],
-                                "name": sub_protocol[i]['json_name'],
-                                "sidecar": sub_protocol[i]['sidecar']
-                            }
-                        ],
+                    "items": items,
                     "analysisResults": {
                         "VolumeCount": sub_protocol[i]['VolumeCount'],
                         "errors": error,
@@ -828,7 +824,9 @@ for s in range(len(subjects)):
 #Extract values to plot for users
 for s in range(len(series_list)):
     series_list[s]['png_objects_indices'] = [x for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']]
-    series_list[s]['repetitionTimes'] = [objects_list[x]['items'][1]['sidecar']['RepetitionTime'] for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']] 
+    # series_list[s]['repetitionTimes'] = [objects_list[x]['items'][1]['sidecar']['RepetitionTime'] for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']] 
+    series_list[s]['repetitionTimes'] = [[x for x in objects_list[x]['items'] if x['name'] == 'json'][0]['sidecar']['RepetitionTime'] for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']] 
+    
     if series_list[s]['type'] == 'fmap_dwi/epi_dwi':
         series_list[s]['type'] = 'fmap/epi'
     
