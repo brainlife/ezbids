@@ -70,7 +70,7 @@ for j in range(len(json_list)):
         PED = ''
         
     #Nifti (and bval/bvec) file(s) associated with specific sidecar
-    nifti_paths_for_json = [x for x in nifti_list if json_list[j][:-4] in x]
+    nifti_paths_for_json = [x for x in nifti_list if json_list[j][:-4] in x and '.nii.gz' in x]
     
     #Nifti file size
     filesize = os.stat(nifti_paths_for_json[0]).st_size
@@ -151,7 +151,7 @@ for j in range(len(json_list)):
         volume_count = 1
         
     #Relative paths of sidecar and nifti files (per SeriesNumber)
-    paths = nifti_paths_for_json + [json_list[j]]
+    paths = sorted(nifti_paths_for_json + [json_list[j]])
         
     mapping_dic = {'StudyID': studyID,
                    'PatientName': PatientName,
@@ -325,6 +325,7 @@ for i in range(len(data_list_unique_series)):
         if any(x in SD for x in ['LOCALIZER','Localizer','localizer','SCOUT','Scout','scout']):
             data_list_unique_series[i]['include'] = False
             data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
+            data_list_unique_series[i]['br_type'] = 'localizer (non-BIDS)'
 
         #T1w
         elif any(x in SD for x in ['T1W','T1w','t1w','tfl3d','tfl','mprage','MPRAGE']) or 'tfl3d1_16ns' in SequenceName:
@@ -387,7 +388,8 @@ for i in range(len(data_list_unique_series)):
                 data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine if this acquisition should be converted to BIDS'
     
     if data_list_unique_series[i]['DataType'] == '' and data_list_unique_series[i]['ModalityLabel'] == '':
-        data_list_unique_series[i]['br_type'] = 'non-BIDS'
+        if 'localizer' not in data_list_unique_series[i]['br_type']:
+            data_list_unique_series[i]['br_type'] = 'non-BIDS'
     else:
         data_list_unique_series[i]['br_type'] = data_list_unique_series[i]['DataType'] + '/' + data_list_unique_series[i]['ModalityLabel']
         
@@ -786,7 +788,7 @@ for s in range(len(subjects)):
                 
         #Make items list
         items = []
-        for item in sorted(sub_protocol[i]['paths']):
+        for item in sub_protocol[i]['paths']:
             if '.bval' in item:
                 items.append({'path':item, 'name':'bval'})
             elif '.bvec' in item:
@@ -797,7 +799,6 @@ for s in range(len(subjects)):
                 items.append({'path':item, 'name':'nii.gz', 'headers':sub_protocol[i]['headers']})
 
                 
-        
         #Object-level info fort ezBIDS.json
         data_list[data_list_index] = sub_protocol[i]
         objects_info = {"include": sub_protocol[i]['include'],
@@ -843,3 +844,32 @@ with open(ezBIDS_file_name, 'w') as fp:
     json.dump(ezBIDS, fp, indent=3) 
   
 
+# def fmap_intended_for(br_types):
+#     '''
+#     Determine IntendedFor fields for fmap acquisitions 
+    
+#     Parameters
+#     ----------
+#     br_types: DataType/ModalityLabel list; localizer acquisitions have "localizer" in name
+    
+#     '''
+    
+#     section_indices = [x for x,y in enumerate(br_types) if x == 0 or ('localizer' in y and 'localizer' not in br_types[x-1])]
+    
+#     spin_echo_indices = [x for x in br_types if 'epi' in x and 'dwi' not in x]
+#     mag_phasediff_indices = [x for x in br_types if 'magnitude' in x or 'phasediff' in x]
+#     spin_echo_dwi_indices = [x for x in br_types if 'epi_dwi' in x]
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
