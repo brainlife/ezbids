@@ -71,7 +71,8 @@ for j in range(len(json_list)):
         
     #Nifti (and bval/bvec) file(s) associated with specific sidecar
     nifti_paths_for_json = [x for x in nifti_list if json_list[j][:-4] in x]
-    
+    nifti_paths_for_json = [x for x in nifti_paths_for_json if '.json' not in x]
+        
     #Nifti file size
     filesize = os.stat(nifti_paths_for_json[0]).st_size
     
@@ -151,7 +152,7 @@ for j in range(len(json_list)):
         volume_count = 1
         
     #Relative paths of sidecar and nifti files (per SeriesNumber)
-    paths = nifti_paths_for_json + [json_list[j]]
+    paths = sorted(nifti_paths_for_json + [json_list[j]])
         
     mapping_dic = {'StudyID': studyID,
                    'PatientName': PatientName,
@@ -184,7 +185,7 @@ for j in range(len(json_list)):
                    'ce': '',
                    'run': '',
                    'dir': PED,
-                   'TaskName': 'rest',
+                   'TaskName': '',
                    "include": True,
                    'filesize': filesize,
                    "VolumeCount": volume_count,
@@ -325,6 +326,7 @@ for i in range(len(data_list_unique_series)):
         if any(x in SD for x in ['LOCALIZER','Localizer','localizer','SCOUT','Scout','scout']):
             data_list_unique_series[i]['include'] = False
             data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
+            data_list_unique_series[i]['br_type'] = 'localizer (non-BIDS)'
 
         #T1w
         elif any(x in SD for x in ['T1W','T1w','t1w','tfl3d','tfl','mprage','MPRAGE']) or 'tfl3d1_16ns' in SequenceName:
@@ -387,7 +389,8 @@ for i in range(len(data_list_unique_series)):
                 data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine if this acquisition should be converted to BIDS'
     
     if data_list_unique_series[i]['DataType'] == '' and data_list_unique_series[i]['ModalityLabel'] == '':
-        data_list_unique_series[i]['br_type'] = 'non-BIDS'
+        if 'localizer' not in data_list_unique_series[i]['br_type']:
+            data_list_unique_series[i]['br_type'] = 'non-BIDS'
     else:
         data_list_unique_series[i]['br_type'] = data_list_unique_series[i]['DataType'] + '/' + data_list_unique_series[i]['ModalityLabel']
         
@@ -427,6 +430,7 @@ for s in range(len(subjects)):
     fmap_magphase_run = 1
     objects_entities_list = []
     series_func_list = []
+    fmap_mag_echo_times = []
     
     for p in range(len(sub_protocol)):
         if p == 0:
@@ -463,6 +467,10 @@ for s in range(len(subjects)):
         sub_protocol[p]['br_type'] = data_list_unique_series[index]['br_type']
         sub_protocol[p]['error'] = data_list_unique_series[index]['error']
         sub_protocol[p]['sub'] = subjects[s]
+        try:
+            sub_protocol[p]['TaskName'] = series_list[index]['entities']['task']
+        except:
+            sub_protocol[p]['TaskName'] = ''
         
         # if series_list[index]['entities']['run']:
         #     sub_protocol[p]['run'] = series_list[index]['entities']['run']
@@ -528,7 +536,7 @@ for s in range(len(subjects)):
                 objects_entities['run'] = sub_protocol[p]['bold_run']
                     
         
-        #single band reference (sbref)
+        #single band reference (sbref)/media/data/ezbids/dicoms/OpenScience/20200122.OpenSciJan22.10462@thwjames_OpenScience
         elif sub_protocol[p]['br_type'] == 'func/sbref':
             if p+1 < len(sub_protocol):
                 index_next = series_seriesID_list.index(sub_protocol[p+1]['series_id'])
@@ -708,7 +716,9 @@ for s in range(len(subjects)):
                             sub_protocol[fm]['error'] = errors[fm]
                     
                     fmap_intended_for = [section_indices[j] + x for x in range(len(section)) if modality_labels[section_start:section_end][x] == 'bold' and include[section_indices[j] + x] != False and include[fmap_magphase_indices_final[-1]] != False]
-                    fmap_intended_for_list.append(fmap_intended_for)
+                    fmap_intended_for_list.append(fmap_intended_for)    
+                    
+                    
             except:
                 pass
             
@@ -784,9 +794,19 @@ for s in range(len(subjects)):
             if remove in sub_protocol[i]['sidecar']:
                 del sub_protocol[i]['sidecar'][remove]
                 
+        #Add TaskName  to sidecar (for func/bold and func/sbref)
+        if sub_protocol[i]['TaskName'] != '' and include[i] == True:
+            sub_protocol[i]['sidecar']['TaskName'] = sub_protocol[i]['TaskName']
+            
+        #Add EchoTime1 & EchoTime2 to sidecar (for fmap/phasediff)
+        if 'phasediff' in sub_protocol[i]['br_type'] and include[i] == True:
+            sub_protocol[i]['sidecar']['EchoTime1'] = sub_protocol[i-1]['sidecar']['EchoTime']
+            sub_protocol[i]['sidecar']['EchoTime2'] = sub_protocol[i-2]['sidecar']['EchoTime']
+
+                
         #Make items list
         items = []
-        for item in sorted(sub_protocol[i]['paths']):
+        for item in sub_protocol[i]['paths']:
             if '.bval' in item:
                 items.append({'path':item, 'name':'bval'})
             elif '.bvec' in item:
@@ -797,7 +817,6 @@ for s in range(len(subjects)):
                 items.append({'path':item, 'name':'nii.gz', 'headers':sub_protocol[i]['headers']})
 
                 
-        
         #Object-level info fort ezBIDS.json
         data_list[data_list_index] = sub_protocol[i]
         objects_info = {"include": sub_protocol[i]['include'],
@@ -843,3 +862,32 @@ with open(ezBIDS_file_name, 'w') as fp:
     json.dump(ezBIDS, fp, indent=3) 
   
 
+# def fmap_intended_for(br_types):
+#     '''
+#     Determine IntendedFor fields for fmap acquisitions 
+    
+#     Parameters
+#     ----------
+#     br_types: DataType/ModalityLabel list; localizer acquisitions have "localizer" in name
+    
+#     '''
+    
+#     section_indices = [x for x,y in enumerate(br_types) if x == 0 or ('localizer' in y and 'localizer' not in br_types[x-1])]
+    
+#     spin_echo_indices = [x for x in br_types if 'epi' in x and 'dwi' not in x]
+#     mag_phasediff_indices = [x for x in br_types if 'magnitude' in x or 'phasediff' in x]
+#     spin_echo_dwi_indices = [x for x in br_types if 'epi_dwi' in x]
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+
+    
