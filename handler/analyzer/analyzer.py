@@ -184,7 +184,7 @@ for j in range(len(json_list)):
                    'ce': '',
                    'run': '',
                    'dir': PED,
-                   'TaskName': 'rest',
+                   'TaskName': '',
                    "include": True,
                    'filesize': filesize,
                    "VolumeCount": volume_count,
@@ -429,6 +429,7 @@ for s in range(len(subjects)):
     fmap_magphase_run = 1
     objects_entities_list = []
     series_func_list = []
+    fmap_mag_echo_times = []
     
     for p in range(len(sub_protocol)):
         if p == 0:
@@ -465,6 +466,10 @@ for s in range(len(subjects)):
         sub_protocol[p]['br_type'] = data_list_unique_series[index]['br_type']
         sub_protocol[p]['error'] = data_list_unique_series[index]['error']
         sub_protocol[p]['sub'] = subjects[s]
+        try:
+            sub_protocol[p]['TaskName'] = series_list[index]['entities']['task']
+        except:
+            sub_protocol[p]['TaskName'] = ''
         
         # if series_list[index]['entities']['run']:
         #     sub_protocol[p]['run'] = series_list[index]['entities']['run']
@@ -530,7 +535,7 @@ for s in range(len(subjects)):
                 objects_entities['run'] = sub_protocol[p]['bold_run']
                     
         
-        #single band reference (sbref)
+        #single band reference (sbref)/media/data/ezbids/dicoms/OpenScience/20200122.OpenSciJan22.10462@thwjames_OpenScience
         elif sub_protocol[p]['br_type'] == 'func/sbref':
             if p+1 < len(sub_protocol):
                 index_next = series_seriesID_list.index(sub_protocol[p+1]['series_id'])
@@ -710,7 +715,9 @@ for s in range(len(subjects)):
                             sub_protocol[fm]['error'] = errors[fm]
                     
                     fmap_intended_for = [section_indices[j] + x for x in range(len(section)) if modality_labels[section_start:section_end][x] == 'bold' and include[section_indices[j] + x] != False and include[fmap_magphase_indices_final[-1]] != False]
-                    fmap_intended_for_list.append(fmap_intended_for)
+                    fmap_intended_for_list.append(fmap_intended_for)    
+                    
+                    
             except:
                 pass
             
@@ -785,6 +792,16 @@ for s in range(len(subjects)):
         for remove in remove_fields:
             if remove in sub_protocol[i]['sidecar']:
                 del sub_protocol[i]['sidecar'][remove]
+                
+        #Add TaskName  to sidecar (for func/bold and func/sbref)
+        if sub_protocol[i]['TaskName'] != '' and include[i] == True:
+            sub_protocol[i]['sidecar']['TaskName'] = sub_protocol[i]['TaskName']
+            
+        #Add EchoTime1 & EchoTime2 (for fmap/phasediff)
+        if 'phasediff' in sub_protocol[i]['br_type'] and include[i] == True:
+            sub_protocol[i]['sidecar']['EchoTime1'] = sub_protocol[i-2]['sidecar']['EchoTime']
+            sub_protocol[i]['sidecar']['EchoTime2'] = sub_protocol[i-1]['sidecar']['EchoTime']
+
                 
         #Make items list
         items = []
