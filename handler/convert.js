@@ -10,6 +10,12 @@ const json = fs.readFileSync(root + "/finalized.json");
 const info = JSON.parse(json);
 mkdirp.sync(root + "/bids");
 fs.writeFileSync(root + "/bids/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
+info.readme += `
+## ezbids
+
+This dataset was converted from DICOM to BIDS using ezbids (https://brainlife.io/ezbids)
+
+`;
 fs.writeFileSync(root + "/bids/README", info.readme);
 fs.writeFileSync(root + "/bids/participants.json", JSON.stringify(info.participantsColumn, null, 4));
 //convert participants.json to tsv
@@ -111,6 +117,8 @@ async.forEach(info.objects, (o, next_o) => {
                         handleItem(item, suffix + ".nii.gz");
                         break;
                     case "json":
+                        //bids requires TaskName set on sidecar
+                        item.sidecar.TaskName = o._entities.task;
                         handleItem(item, suffix + ".json");
                         break;
                     default:
