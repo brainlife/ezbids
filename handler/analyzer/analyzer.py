@@ -70,8 +70,9 @@ for j in range(len(json_list)):
         PED = ''
         
     #Nifti (and bval/bvec) file(s) associated with specific sidecar
-    nifti_paths_for_json = [x for x in nifti_list if json_list[j][:-4] in x and '.nii.gz' in x]
-    
+    nifti_paths_for_json = [x for x in nifti_list if json_list[j][:-4] in x]
+    nifti_paths_for_json = [x for x in nifti_paths_for_json if '.json' not in x]
+        
     #Nifti file size
     filesize = os.stat(nifti_paths_for_json[0]).st_size
     
@@ -797,10 +798,10 @@ for s in range(len(subjects)):
         if sub_protocol[i]['TaskName'] != '' and include[i] == True:
             sub_protocol[i]['sidecar']['TaskName'] = sub_protocol[i]['TaskName']
             
-        #Add EchoTime1 & EchoTime2 (for fmap/phasediff)
+        #Add EchoTime1 & EchoTime2 to sidecar (for fmap/phasediff)
         if 'phasediff' in sub_protocol[i]['br_type'] and include[i] == True:
-            sub_protocol[i]['sidecar']['EchoTime1'] = sub_protocol[i-2]['sidecar']['EchoTime']
-            sub_protocol[i]['sidecar']['EchoTime2'] = sub_protocol[i-1]['sidecar']['EchoTime']
+            sub_protocol[i]['sidecar']['EchoTime1'] = sub_protocol[i-1]['sidecar']['EchoTime']
+            sub_protocol[i]['sidecar']['EchoTime2'] = sub_protocol[i-2]['sidecar']['EchoTime']
 
                 
         #Make items list
