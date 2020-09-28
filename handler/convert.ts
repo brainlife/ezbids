@@ -129,8 +129,6 @@ async.forEach(info.objects, (o, next_o)=>{
                 break;
             case "json":
                 //bids requires TaskName set on sidecar
-                item.sidecar.TaskName = o._entities.task;
-
                 handleItem(item, suffix+".json");
                 break;
             default:
@@ -153,6 +151,7 @@ async.forEach(info.objects, (o, next_o)=>{
                 handleItem(item, suffix+".nii.gz");
                 break;
             case "json":
+                item.sidecar.TaskName = o._entities.task;
                 handleItem(item, suffix+".json");
                 break;
             default:
