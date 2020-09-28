@@ -430,7 +430,6 @@ for s in range(len(subjects)):
     fmap_magphase_run = 1
     objects_entities_list = []
     series_func_list = []
-    fmap_mag_echo_times = []
     
     for p in range(len(sub_protocol)):
         if p == 0:
@@ -794,14 +793,11 @@ for s in range(len(subjects)):
             if remove in sub_protocol[i]['sidecar']:
                 del sub_protocol[i]['sidecar'][remove]
                 
-        #Add TaskName  to sidecar (for func/bold and func/sbref)
-        if sub_protocol[i]['TaskName'] != '' and include[i] == True:
-            sub_protocol[i]['sidecar']['TaskName'] = sub_protocol[i]['TaskName']
             
-        #Add EchoTime1 & EchoTime2 to sidecar (for fmap/phasediff)
-        if 'phasediff' in sub_protocol[i]['br_type'] and include[i] == True:
-            sub_protocol[i]['sidecar']['EchoTime1'] = sub_protocol[i-1]['sidecar']['EchoTime']
-            sub_protocol[i]['sidecar']['EchoTime2'] = sub_protocol[i-2]['sidecar']['EchoTime']
+        # #Add EchoTime1 & EchoTime2 to sidecar (for fmap/phasediff)
+        # if 'phasediff' in sub_protocol[i]['br_type'] and include[i] == True:
+        #     sub_protocol[i]['sidecar']['EchoTime1'] = sub_protocol[i-1]['sidecar']['EchoTime']
+        #     sub_protocol[i]['sidecar']['EchoTime2'] = sub_protocol[i-2]['sidecar']['EchoTime']
 
                 
         #Make items list
