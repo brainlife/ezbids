@@ -18,6 +18,7 @@ Due to the plethora of scanner acquisition types, not all are currently supporte
 * anat/FLAIR
 * func/sbref
 * func/bold (including multiecho)
+* func/phase
 * fmap/epi
 * fmap/magnitude1
 * fmap/magnitude2
