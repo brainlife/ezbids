@@ -176,7 +176,8 @@ for j in range(len(json_list)):
                    'DataType': '',
                    'ModalityLabel': '',
                    'series_id': 0,
-                   'sbref_run': '',
+                   'func_sbref_run': '',
+                   'func_phase_run': '',
                    'bold_run': '',
                    'dwi_run': '',
                    'fmap_se_run': '',
@@ -294,6 +295,8 @@ for i in range(len(data_list_unique_series)):
             if data_list_unique_series[i]['EchoNumber']:
                 data_list_unique_series[i]['ModalityLabel'] = 'multiecho'
                 series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
+            elif 'MOSAIC' and 'PHASE' in data_list_unique_series[i]['ImageType']:
+                data_list_unique_series[i]['ModalityLabel'] = 'phase'
             else:
                 data_list_unique_series[i]['ModalityLabel'] = 'bold'
                         
@@ -347,7 +350,7 @@ for i in range(len(data_list_unique_series)):
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'T2w'
         
-        #Single band reference (sbref)
+        #Functional Single band reference (sbref)
         elif any(x in SD for x in ['SBRef','sbref']):
             data_list_unique_series[i]['DataType'] = 'func'
             data_list_unique_series[i]['ModalityLabel'] = 'sbref'
@@ -423,7 +426,8 @@ for s in range(len(subjects)):
     print('')
     
     sub_protocol = [x for x in data_list if x['sub'] == subjects[s]]
-    sbref_run = 1
+    func_sbref_run = 1
+    func_phase_run = 1
     bold_run = 1
     dwi_run = 1
     fmap_se_run = 1
@@ -511,7 +515,7 @@ for s in range(len(subjects)):
                     sub_protocol[p]['include'] = False  
                     sub_protocol[p]['error'] = 'Acquisition is a poor resolution T1w (non-normalized); Please check to see if this T1w acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'
         
-        #BOLD
+        #Functional BOLD
         elif sub_protocol[p]['br_type'] in ['func/bold','func/multiecho']:
             #Instances where functional bold acquisitions have less than 30 volumes (probably a restart/failure occurred, or some kind of non-BIDS test)
             if sub_protocol[p]['VolumeCount'] < 30:
@@ -533,9 +537,27 @@ for s in range(len(subjects)):
                     sub_protocol[p]['bold_run'] = str(bold_run)
                     
                 objects_entities['run'] = sub_protocol[p]['bold_run']
+                
+        #Functional phase
+        elif sub_protocol[p]['br_type'] == 'func/phase':
+            if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
+                series_func_list.append([sub_protocol[p]['series_id'], 1])
+                func_phase_run = 1
+                sub_protocol[p]['func_phase_run'] = '01'
+            else:
+                func_index = [x for x, y in enumerate(series_func_list) if y[0] == sub_protocol[p]['series_id']][0]
+                series_func_list[func_index][1] += 1
+                func_phase_run = series_func_list[func_index][1]
+                
+            if func_phase_run < 10:
+                sub_protocol[p]['func_phase_run'] = '0' + str(func_phase_run)
+            else:
+                sub_protocol[p]['func_phase_run'] = str(func_phase_run)
+                
+            objects_entities['run'] = sub_protocol[p]['func_phase_run']
                     
         
-        #single band reference (sbref)/media/data/ezbids/dicoms/OpenScience/20200122.OpenSciJan22.10462@thwjames_OpenScience
+        #Functional single band reference (sbref)
         elif sub_protocol[p]['br_type'] == 'func/sbref':
             if p+1 < len(sub_protocol):
                 index_next = series_seriesID_list.index(sub_protocol[p+1]['series_id'])
@@ -553,19 +575,19 @@ for s in range(len(subjects)):
             else:    
                 if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
                     series_func_list.append([sub_protocol[p]['series_id'], 1])
-                    sbref_run = 1
-                    sub_protocol[p]['sbref_run'] = '01'
+                    func_sbref_run = 1
+                    sub_protocol[p]['func_sbref_run'] = '01'
                 else:
                     func_index = [x for x, y in enumerate(series_func_list) if y[0] == sub_protocol[p]['series_id']][0]
                     series_func_list[func_index][1] += 1
-                    sbref_run = series_func_list[func_index][1]
+                    func_sbref_run = series_func_list[func_index][1]
                     
-                if sbref_run < 10:
-                    sub_protocol[p]['sbref_run'] = '0' + str(sbref_run)
+                if func_sbref_run < 10:
+                    sub_protocol[p]['func_sbref_run'] = '0' + str(func_sbref_run)
                 else:
-                    sub_protocol[p]['sbref_run'] = str(sbref_run)
+                    sub_protocol[p]['func_sbref_run'] = str(func_sbref_run)
                     
-                objects_entities['run'] = sub_protocol[p]['sbref_run']
+                objects_entities['run'] = sub_protocol[p]['func_sbref_run']
                 
         #DWI
         elif sub_protocol[p]['br_type'] == 'dwi/dwi':
@@ -854,7 +876,7 @@ with open(ezBIDS_file_name, 'w') as fp:
     json.dump(ezBIDS, fp, indent=3) 
   
 
-# def fmap_intended_for(br_types):
+# def fmap_intended_for(br_types include):
 #     '''
 #     Determine IntendedFor fields for fmap acquisitions 
     
@@ -862,18 +884,66 @@ with open(ezBIDS_file_name, 'w') as fp:
 #     ----------
 #     br_types: DataType/ModalityLabel list; localizer acquisitions have "localizer" in name
     
+#     include: list of True or False statements for each acquisition 
 #     '''
     
-#     section_indices = [x for x,y in enumerate(br_types) if x == 0 or ('localizer' in y and 'localizer' not in br_types[x-1])]
+#     section_indices = [x for x, y in enumerate(br_types) if x == 0 or ('localizer' in y and 'localizer' not in br_types[x-1])]
     
-#     spin_echo_indices = [x for x in br_types if 'epi' in x and 'dwi' not in x]
-#     mag_phasediff_indices = [x for x in br_types if 'magnitude' in x or 'phasediff' in x]
+#     spin_echo_indices = [x for x, y in enumerate(br_types) if 'epi' in y and 'dwi' not in y]
+#     mag_phasediff_indices = [x for x, y in enumerate(br_types) if 'magnitude' in y or 'phasediff' in y]
 #     spin_echo_dwi_indices = [x for x in br_types if 'epi_dwi' in x]
     
+#     bold_indices = [x for x, y in enumerate(br_types) if 'bold' in y and and include[x] == True ]
     
     
     
     
+    
+#     #SE EPI fmaps
+#             if 'epi' in modality_labels[section_start:section_end] and not any(x in descriptions for x in ['DWI','dwi','DTI','dti']):
+#             #Remove duplicate SE fmaps. Only the last two in each section will be kept
+#                 fmap_se_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'epi']
+#                 if len(fmap_se_indices) == 1:
+#                     include[i] = False
+#                     sub_protocol[i]['include'] = include[i]
+#                     errors[i] = 'Only one spin echo field map found; need pair. This object will not be included in the BIDS output'
+#                     sub_protocol[i]['error'] = errors[i]
+                        
+                    
+#                 if len(fmap_se_indices) > 2:
+#                     for fm in fmap_se_indices[:-2]:
+#                         include[fm] = False
+#                         sub_protocol[fm]['include'] = include[fm]
+#                         errors[fm] = 'Multiple spin echo pairs detected in section; only selecting last pair for BIDS conversion. The other pair objects will not be included in the BIDS output'
+#                         sub_protocol[fm]['error'] = errors[fm]
+                        
+#                 #Remove SE fmaps where phase encoding directions aren't opposite
+#                 if len(fmap_se_indices) > 1:
+#                     if list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[0][::-1] != list(np.array(phase_encoding_directions)[fmap_se_indices[-2:]])[1]:
+#                         for fm in fmap_se_indices[-2:]:
+#                             include[fm] = False
+#                             sub_protocol[fm]['include'] = include[fm]
+#                             errors[fm] = 'Spin echo fmap pair does not have opposite phase encoding directions. This object will not be included in the BIDS output'
+#                             sub_protocol[fm]['error'] = errors[fm]
+#                     else:
+#                         pass
+                                 
+#                 fmap_se_indices_final = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'epi' and include[section_indices[j]+x] != False]
+#                 applied_indices = [section_indices[j]+x for x, value in enumerate(modality_labels[section_start:section_end]) if value == 'bold' and include[section_indices[j]+x] != False]
+
+#                 try:
+#                     if fmap_se_indices_final:
+#                         if not len(applied_indices) and len(fmap_se_indices):
+#                             for fm in fmap_se_indices:
+#                                 include[fm] = False
+#                                 sub_protocol[fm]['include'] = include[fm]
+#                                 errors[fm] = 'Spin echo pair detected in section, but no functional data in section to be applied to. This pair objects will not be included in the BIDS output'
+#                                 sub_protocol[fm]['error'] = errors[fm]
+                        
+#                         fmap_intended_for = [section_indices[j] + x for x in range(len(section)) if modality_labels[section_start:section_end][x] == 'bold' and include[section_indices[j] + x] != False and include[fmap_se_indices_final[-1]] != False]
+#                         fmap_intended_for_list.append(fmap_intended_for)
+#                 except:
+#                     pass
     
     
     
