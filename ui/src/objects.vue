@@ -154,7 +154,8 @@ export default {
         update(o) {
             this.$root.mapObject(o);
             this.$root.validateObject(o);
-            this.$root.validated = this.$root.isAllValid(); 
+            this.$root.countErrors(); 
+
             this.$root.organizeObjects();
         },
 
@@ -173,7 +174,7 @@ export default {
         },
 
         intendedForLabel(o) {
-            let l = "(sn"+o.SeriesNumber+") ";
+            let l = "(sn "+o.SeriesNumber+") ";
             l += o.type;
             if(o.entities.run) l += " run-"+o.entities.run;
             return l;

@@ -174,7 +174,9 @@ export default {
 
         async upload() {
             this.$root.analyzed = false;
-            this.$root.validated = false;
+            this.$root.validatedSeries = false;
+            this.$root.validatedObject = false;
+            
             clearTimeout(this.reload_t);
             this.doneUploading = false;
 

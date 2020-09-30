@@ -125,8 +125,10 @@ new Vue({
             //      bidsing
             //      finished
 
+            objectErrors: 0,
+            seriesErrors: 0,
+
             analyzed: false,
-            validated: false,
             finalized: false,
             //finalized: false,
             //finished: false,
@@ -134,13 +136,13 @@ new Vue({
     },
 
     watch: {
-        page(v) {
-            if(v == "objects") {
-                this.objects.forEach(this.mapObject);
-                this.objects.forEach(this.validateObject);
-                this.validated = this.isAllValid(); 
-                this.organizeObjects();
-            }
+        page() {
+            console.log("validating..");
+            this.objects.forEach(this.mapObject);
+            this.objects.forEach(this.validateObject);
+            this.series.forEach(this.validateSeries);
+            this.countErrors(); 
+            this.organizeObjects();
         },
     },
 
@@ -626,14 +628,31 @@ split:
             }
         },
 
-        isAllValid() {
-            for(let o of this.objects) {
-                //if(!o.include) continue;
-                if(o.validationErrors.length > 0) {
-                    return false;
+        validateSeries(s) {
+            Vue.set(s, 'validationErrors', []);
+            let entities = this.getEntities(s.type);
+            for(let k in entities) {
+                if(entities[k] == "required") {
+                    if(s.entities[k] === "") {
+                        s.validationErrors.push("entity: "+k+" is required.");
+                    }
                 }
             }
-            return true;
+        },
+
+        countErrors() {
+
+            this.objectErrors = 0;
+            for(let o of this.objects) {
+                this.objectErrors += o.validationErrors.length;
+            }
+
+            this.seriesErrors = 0;
+            for(let o of this.series) {
+                this.seriesErrors += o.validationErrors.length;
+            }
+
+            //this.validated = true;
         },
 
         organizeObjects() {
