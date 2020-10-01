@@ -941,8 +941,6 @@ def build_objects_list(sub_protocol, objects_entities_list):
 ###################### Begin ######################
     
 data_dir = sys.argv[1]
-# data_dir = '/media/data/ezbids/dicoms/OpenScience/20200122.OpenSciJan22.10462@thwjames_OpenScience'
-# data_dir = '/media/data/ezbids/dicoms/Kennedy/Video/20200309.Video_C01150_02.10545@dpk_Video'
 os.chdir(data_dir)
 
 print('########################################')
