@@ -40,15 +40,6 @@
             <div style="margin-bottom: 10px;">
                 <el-alert show-icon :closable="false" type="warning" v-for="(error, idx) in so.analysisResults.errors" :key="idx" :title="error"/>
             </div>    
-            <!--
-                "analysisResults": {
-                  "VolumeCount": 5,
-                  "errors": "Functional run only contains 5 volumes; ezBIDS minimum threshold is 30. Will not set for BIDS conversion unless specified so",
-                  "qc": "Functional run only contains 5 volumes; ezBIDS minimum threshold is 30. Will not set for BIDS conversion unless specified so",
-                  "filesize": 637883
-                },
-            -->
-
             <el-form label-width="100px">
                 <el-form-item label="Include">
                     <el-checkbox v-model="so.include" title="Include this object in the BIDS output" @change="update(so)">Include this object in BIDS output</el-checkbox>
@@ -81,6 +72,18 @@
                         </el-form-item>
                     </div>
 
+                    <div v-if="$root.getType(so).startsWith('fmap/')" class="border-top">
+                        <br>
+                        <el-form-item label="IntendedFor">
+                            <el-select v-model="so.IntendedFor" multiple placeholder="Select Object" style="width: 100%">
+                                <el-option v-for="o in this.sess.objects" :key="o.idx"
+                                    :label="intendedForLabel(o)" :value="o.idx">
+                                </el-option>
+                            </el-select>
+                            <small>* IntendedFor information is used to specify which epi image this fieldmap is intended for. This is an important information required by BIDS specification.</small>
+                        </el-form-item>
+                    </div>
+
                     <div v-for="(item, idx) in so.items" :key="idx" class="border-top">
                         <el-form-item :label="item.name||'noname'">
                             <el-select v-model="item.path" placeholder="Source path" size="small" style="width: 100%">
@@ -94,16 +97,6 @@
                             <pre class="headers">{{item.headers}}</pre>
                         </el-form-item>
                         <br>
-                    </div>
-
-                    <div v-if="$root.getType(so).startsWith('fmap/')" class="border-top">
-                        <el-form-item label="IntendedFor">
-                            <el-select v-model="so.IntendedFor" multiple placeholder="Select Object" style="width: 100%">
-                                <el-option v-for="o in this.sess.objects" :key="o.idx"
-                                    :label="intendedForLabel(o)" :value="o.idx">
-                                </el-option>
-                            </el-select>
-                        </el-form-item>
                     </div>
 
                 </div>
@@ -176,7 +169,7 @@ export default {
         intendedForLabel(o) {
             let l = "(sn "+o.SeriesNumber+") ";
             l += o.type;
-            if(o.entities.run) l += " run-"+o.entities.run;
+            if(o._entities.run) l += " run-"+o._entities.run;
             return l;
         }
     },

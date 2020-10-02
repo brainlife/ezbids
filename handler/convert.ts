@@ -182,6 +182,10 @@ async.forEach(info.objects, (o, next_o)=>{
                     for(let idx of o.IntendedFor) {
                         console.log("intended for", idx);
                         const io = info.objects[idx];
+
+                        //if intended object is not included, skip it
+                        if(io.included) continue;
+
                         console.log("intended for", io.type);
                         const iomodality = io.type.split("/")[0];
                         const suffix = io.type.split("/")[1];
@@ -196,6 +200,7 @@ async.forEach(info.objects, (o, next_o)=>{
                         }
                         path += tokens.join("_");
                         path += "_"+suffix+".nii.gz";  //TODO - not sure if this is robust enough..
+
                         item.sidecar.IntendedFor.push(path);
                     }
                 }

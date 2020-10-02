@@ -70,7 +70,7 @@ export default {
             //we don't want user set sub/ses through series
             delete entities.sub;
             delete entities.ses;
-            delete entities.run;
+            //delete entities.run;
 
             return entities;
         },

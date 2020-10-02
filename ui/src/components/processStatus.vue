@@ -31,36 +31,40 @@
         <p>Being Converted to BIDS...</p>
     </div>
     <div v-if="$root.session.status == 'finished'">
-        <p>All done!</p>
+        <p>All done! Please proceed to the next tab.</p>
     </div>
 
-    <el-collapse v-if="$root.session.status != 'uploaded'"  v-model="activeLogs" @change="logChange">
-        <el-collapse-item title="Preprocess/Analyzer Log" name="out">
-            <pre class="text">{{out}}</pre>
-        </el-collapse-item>
-        <el-collapse-item title="Preprocess/Analyzer Error Log" name="err">
-            <pre class="text">{{err}}</pre>
-        </el-collapse-item>
-        <el-collapse-item title="BIDS Conversion Log" name="bidsOut" v-if="$root.finalized">
-            <pre class="text">{{bidsOut}}</pre>
-        </el-collapse-item>
-        <el-collapse-item title="BIDS Conversion Error Log" name="bidsErr" v-if="$root.finalized">
-            <pre class="text">{{bidsErr}}</pre>
-        </el-collapse-item>
-        <el-collapse-item title="Objects" name="list" v-if="$root.analyzed">
-            <pre class="text">{{list}}</pre>
-            <div>
-                <h3>Subjects</h3>
-                <pre>{{this.$root.subjects}}</pre>
-                <h3>Sessions</h3>
-                <pre>{{this.$root.sessions}}</pre>
-                <h3>Series</h3>
-                <pre>{{this.$root.series}}</pre>
-                <h3>Objects</h3>
-                <pre>{{this.$root.objects}}</pre>
-            </div>
-        </el-collapse-item>
-    </el-collapse>
+    <div v-if="$root.session.status != 'uploaded'">
+        <br>
+        <h4>Debugging</h4>
+        <el-collapse v-model="activeLogs" @change="logChange">
+            <el-collapse-item title="Preprocess/Analyzer Log" name="out">
+                <pre class="text">{{out}}</pre>
+            </el-collapse-item>
+            <el-collapse-item title="Preprocess/Analyzer Error Log" name="err">
+                <pre class="text">{{err}}</pre>
+            </el-collapse-item>
+            <el-collapse-item title="BIDS Conversion Log" name="bidsOut" v-if="$root.finalized">
+                <pre class="text">{{bidsOut}}</pre>
+            </el-collapse-item>
+            <el-collapse-item title="BIDS Conversion Error Log" name="bidsErr" v-if="$root.finalized">
+                <pre class="text">{{bidsErr}}</pre>
+            </el-collapse-item>
+            <el-collapse-item title="Objects" name="list" v-if="$root.analyzed">
+                <pre class="text">{{list}}</pre>
+                <div>
+                    <h3>Subjects</h3>
+                    <pre>{{this.$root.subjects}}</pre>
+                    <h3>Sessions</h3>
+                    <pre>{{this.$root.sessions}}</pre>
+                    <h3>Series</h3>
+                    <pre>{{this.$root.series}}</pre>
+                    <h3>Objects</h3>
+                    <pre>{{this.$root.objects}}</pre>
+                </div>
+            </el-collapse-item>
+        </el-collapse>
+    </div>
 </div>
 </template>
 
@@ -126,10 +130,10 @@ export default {
 
 <style scoped>
 pre.text {
-background-color: #f0f0f0;
-border-radius: 10px;
-height: 450px;
-padding: 10px;
-overflow: auto;
+    background-color: #f0f0f0;
+    border-radius: 10px;
+    height: 450px;
+    padding: 10px;
+    overflow: auto;
 }
 </style>

@@ -682,26 +682,6 @@ split:
                 if(!this.subs[sub].sess[ses]) this.subs[sub].sess[ses] = { /*runs: {},*/ objects: [] };
                 this.subs[sub].sess[ses].objects.push(o);
             });
-
-            //object must not be sorted
-            /*
-            this.objects.sort((a,b)=>{
-                let aSubject = this.findSubject(a);
-                let bSubject = this.findSubject(b);
-                let asub = aSubject.sub;
-                let bsub = bSubject.sub;
-                if(a.entities.sub) asub = a.entities.sub;
-                if(b.entities.sub) bsub = b.entities.sub;
-                if(asub > bsub) return 1;
-                if(asub < bsub) return -1;
-
-                if(a.entities.ses > b.entities.ses) return 1;
-                if(a.entities.ses < b.entities.ses) return -1;
-                if(a.entities.run > b.entities.run) return 1;
-                if(a.entities.run < b.entities.run) return -1;
-                return 0;
-            });
-            */
         },
 
         loadData(url) {
@@ -717,7 +697,7 @@ split:
                 this.series.forEach(series=>{
                     delete series.entities.sub;
                     delete series.entities.ses;
-                    delete series.entities.run;
+                    //delete series.entities.run;
                 });
 
                 this.subjects.forEach(subject=>{

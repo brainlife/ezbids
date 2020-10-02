@@ -4,7 +4,7 @@
         <el-button @click="finalize" size="mini">Re-Finalize</el-button>
     </div>
     
-    <div v-if="$root.validatedObject && $root.session.status == 'finished'">
+    <div v-if="$root.session.status == 'finished'">
         <p>All done!</p>
         <el-button @click="download" type="primary" size="small">Download BIDS</el-button>
         <el-button @click="sendBrainlife" size="small">Upload Data to <b>brainlife.io</b></el-button>
@@ -19,7 +19,7 @@
             <small>* Patient to Subject mapping may contain sensitive PHI data. Please make sure to store in a secure location.</small>
         </div>
     </div>
-    <div v-else-if="$root.validatedObject && $root.session.status == 'analyzed'">
+    <div v-else-if="$root.session.status == 'analyzed'">
         <p>Your data is ready to be converted to BIDS.</p>
         <p>Please click the finalize button below when you are ready to convert your data to BIDS.</p>
         <el-button @click="finalize" type="primary" size="small">Finalize</el-button>

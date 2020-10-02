@@ -1,7 +1,7 @@
 <template>
 <div>
     <h4>AcquisitionDate / Session Mappings</h4>
-    <p>Decide how want to map DICOM AcquisitionDate to BIDS Session IDs. You can leave it blank if it's single session. You can download the mapping table later.</p>
+    <p>Decide how want to map DICOM AcquisitionDate to BIDS Session IDs. You should leave it blank if it's single session. You can download the mapping table later.</p>
     <!--series ID-->
     <el-dropdown @command="resetSessions" style="float: right;" size="small">
         <el-button type="primary" size="small">
