@@ -9,6 +9,8 @@ import os, sys, json, warnings
 import pandas as pd
 import numpy as np
 import nibabel as nib
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 from operator import itemgetter
 from math import floor
@@ -548,10 +550,16 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
         sub_protocol[p]['br_type'] = data_list_unique_series[index]['br_type']
         sub_protocol[p]['error'] = data_list_unique_series[index]['error']
         sub_protocol[p]['sub'] = subjects[s]
-        try:
+            
+        if 'run' in series_list[index]['entities'] and series_list[index]['entities']['run']:
+            objects_entities['run'] = series_list[index]['entities']['run']
+        if 'task' in series_list[index]['entities'] and series_list[index]['entities']['task']:
+            objects_entities['task'] = series_list[index]['entities']['task']
             sub_protocol[p]['TaskName'] = series_list[index]['entities']['task']
-        except:
-            sub_protocol[p]['TaskName'] = ''   
+        if 'acq' in series_list[index]['entities'] and series_list[index]['entities']['acq']:
+            objects_entities['acq'] = series_list[index]['entities']['acq']
+        if 'ce' in series_list[index]['entities'] and series_list[index]['entities']['ce']:
+            objects_entities['ce'] = series_list[index]['entities']['ce']
         
         #Determine other important BIDS information (i.e. run, dir, etc) for specific acquisitions        
         #Don't include anatomical acquisitions that are too small (<1.2MB)
@@ -590,39 +598,45 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                 sub_protocol[p]['include'] = False
                 sub_protocol[p]['error'] = 'Functional run only contains {} volumes; ezBIDS minimum threshold is 30. This object will not be included in the BIDS output'.format(sub_protocol[p]['VolumeCount'])
             else:
-                if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
-                    series_func_list.append([sub_protocol[p]['series_id'], 1])
-                    bold_run = 1
-                    sub_protocol[p]['bold_run'] = '01'
+                if objects_entities['run'] == '':
+                    if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
+                        series_func_list.append([sub_protocol[p]['series_id'], 1])
+                        bold_run = 1
+                        sub_protocol[p]['bold_run'] = '01'
+                    else:
+                        func_index = [x for x, y in enumerate(series_func_list) if y[0] == sub_protocol[p]['series_id']][0]
+                        series_func_list[func_index][1] += 1
+                        bold_run = series_func_list[func_index][1]
+                        
+                    if bold_run < 10:
+                        sub_protocol[p]['bold_run'] = '0' + str(bold_run)
+                    else:
+                        sub_protocol[p]['bold_run'] = str(bold_run)
+                        
+                    objects_entities['run'] = sub_protocol[p]['bold_run']
                 else:
-                    func_index = [x for x, y in enumerate(series_func_list) if y[0] == sub_protocol[p]['series_id']][0]
-                    series_func_list[func_index][1] += 1
-                    bold_run = series_func_list[func_index][1]
-                    
-                if bold_run < 10:
-                    sub_protocol[p]['bold_run'] = '0' + str(bold_run)
-                else:
-                    sub_protocol[p]['bold_run'] = str(bold_run)
-                    
-                objects_entities['run'] = sub_protocol[p]['bold_run']
+                    sub_protocol[p]['bold_run'] = objects_entities['run']
                 
         #Functional phase
         elif sub_protocol[p]['br_type'] == 'func/phase':
-            if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
-                series_func_list.append([sub_protocol[p]['series_id'], 1])
-                func_phase_run = 1
-                sub_protocol[p]['func_phase_run'] = '01'
+            if objects_entities['run'] == '':
+                if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
+                    series_func_list.append([sub_protocol[p]['series_id'], 1])
+                    func_phase_run = 1
+                    sub_protocol[p]['func_phase_run'] = '01'
+                else:
+                    func_index = [x for x, y in enumerate(series_func_list) if y[0] == sub_protocol[p]['series_id']][0]
+                    series_func_list[func_index][1] += 1
+                    func_phase_run = series_func_list[func_index][1]
+                    
+                if func_phase_run < 10:
+                    sub_protocol[p]['func_phase_run'] = '0' + str(func_phase_run)
+                else:
+                    sub_protocol[p]['func_phase_run'] = str(func_phase_run)
+                    
+                objects_entities['run'] = sub_protocol[p]['func_phase_run']
             else:
-                func_index = [x for x, y in enumerate(series_func_list) if y[0] == sub_protocol[p]['series_id']][0]
-                series_func_list[func_index][1] += 1
-                func_phase_run = series_func_list[func_index][1]
-                
-            if func_phase_run < 10:
-                sub_protocol[p]['func_phase_run'] = '0' + str(func_phase_run)
-            else:
-                sub_protocol[p]['func_phase_run'] = str(func_phase_run)
-                
-            objects_entities['run'] = sub_protocol[p]['func_phase_run']
+                sub_protocol[p]['func_phase_run'] = objects_entities['run']
                     
         
         #Functional single band reference (sbref)
@@ -641,21 +655,24 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                 sub_protocol[p]['include'] = False
                 sub_protocol[p]['error'] = 'Functional bold acquisition following this sbref contains less than 30 volumes, causing it to not be converted to BIDS. Thus this sbref that precedes the functional bold will not be included in the BIDS output'
             else:    
-                if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
-                    series_func_list.append([sub_protocol[p]['series_id'], 1])
-                    func_sbref_run = 1
-                    sub_protocol[p]['func_sbref_run'] = '01'
+                if objects_entities['run'] == '':
+                    if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
+                        series_func_list.append([sub_protocol[p]['series_id'], 1])
+                        func_sbref_run = 1
+                        sub_protocol[p]['func_sbref_run'] = '01'
+                    else:
+                        func_index = [x for x, y in enumerate(series_func_list) if y[0] == sub_protocol[p]['series_id']][0]
+                        series_func_list[func_index][1] += 1
+                        func_sbref_run = series_func_list[func_index][1]
+                        
+                    if func_sbref_run < 10:
+                        sub_protocol[p]['func_sbref_run'] = '0' + str(func_sbref_run)
+                    else:
+                        sub_protocol[p]['func_sbref_run'] = str(func_sbref_run)
+                        
+                    objects_entities['run'] = sub_protocol[p]['func_sbref_run']
                 else:
-                    func_index = [x for x, y in enumerate(series_func_list) if y[0] == sub_protocol[p]['series_id']][0]
-                    series_func_list[func_index][1] += 1
-                    func_sbref_run = series_func_list[func_index][1]
-                    
-                if func_sbref_run < 10:
-                    sub_protocol[p]['func_sbref_run'] = '0' + str(func_sbref_run)
-                else:
-                    sub_protocol[p]['func_sbref_run'] = str(func_sbref_run)
-                    
-                objects_entities['run'] = sub_protocol[p]['func_sbref_run']
+                    sub_protocol[p]['func_sbref_run'] = objects_entities['run']
                 
         #DWI
         elif sub_protocol[p]['br_type'] == 'dwi/dwi':
@@ -669,41 +686,41 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
         
         #Spin echo fmaps
         elif sub_protocol[p]['br_type'] in ['fmap/epi','fmap/epi_dwi']:
-            objects_entities['dir'] = sub_protocol[p]['dir']            
-        
+            objects_entities['dir'] = sub_protocol[p]['dir']    
+                    
         objects_entities_list.append(objects_entities)
         
-        #Add run number to anatomicals that have multiple acquisitions
-        #Not ideal, but best solution for now
-        t1w_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T1w']
-        t2w_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T2w']
-        flair_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/FLAIR']
-        
-        if len(t1w_index) > 1:
-            t1w_run = 1
-            for t1w in t1w_index:
-                objects_entities_list[t1w]['run'] = '0' + str(t1w_run)
-                t1w_run += 1
-        
-        if len(t2w_index) > 1:        
-            t2w_run = 1
-            for t2w in t2w_index:
-                objects_entities_list[t2w]['run'] = '0' + str(t2w_run)
-                t2w_run += 1
-                
-        if len(flair_index) > 1:        
-            flair_run = 1
-            for flair in flair_index:
-                objects_entities_list[flair]['run'] = '0' + str(flair_run)
-                flair_run += 1
-                
-        #If object-level entitites match series-level entities, make object-level entities blank
-        check = [x['entities'] for x in series_list if x['series_id'] == sub_protocol[p]['series_id']][0]
-        try:
-            if objects_entities_list[p]['dir'] == check['dir']:
-                objects_entities_list[p]['dir'] == ''
-        except:
-            pass
+    #Add run number to anatomicals that have multiple acquisitions
+    #Not ideal to use run #'s for anatomical acquisitions, but best solution for now
+    t1w_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T1w']
+    t2w_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T2w']
+    flair_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/FLAIR']    
+    
+    if len(t1w_index) > 1:
+        t1w_run = 1
+        for t1w in t1w_index:
+            objects_entities_list[t1w]['run'] = '0' + str(t1w_run)
+            t1w_run += 1
+    
+    if len(t2w_index) > 1:        
+        t2w_run = 1
+        for t2w in t2w_index:
+            objects_entities_list[t2w]['run'] = '0' + str(t2w_run)
+            t2w_run += 1
+            
+    if len(flair_index) > 1:        
+        flair_run = 1
+        for flair in flair_index:
+            objects_entities_list[flair]['run'] = '0' + str(flair_run)
+            flair_run += 1
+            
+    # #If object-level entitites match series-level entities, make object-level entities blank
+    # check = [x['entities'] for x in series_list if x['series_id'] == sub_protocol[p]['series_id']][0]
+    # try:
+    #     if objects_entities_list[p]['dir'] == check['dir']:
+    #         objects_entities_list[p]['dir'] == ''
+    # except:
+    #     pass
                 
     return sub_protocol, objects_entities_list
     
@@ -862,7 +879,6 @@ def fmap_intended_for(sub_protocol):
                     for fm in fmap_se_dwi_indices:
                         sub_protocol[fm]['IntendedFor'] = dwi_indices
                         sub_protocol[fm]['br_type'] = 'fmap/epi'
-
     return sub_protocol    
 
 
