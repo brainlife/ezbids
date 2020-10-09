@@ -955,8 +955,7 @@ def build_objects_list(sub_protocol, objects_entities_list):
     
 ###################### Begin ######################
     
-# data_dir = sys.argv[1]
-data_dir = '/media/data/ezbids/dicoms/Ling_BU'
+data_dir = sys.argv[1]
 os.chdir(data_dir)
 
 print('########################################')
