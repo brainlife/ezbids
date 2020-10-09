@@ -261,8 +261,8 @@ def identify_series_info(data_list_unique_series):
         this information.
     '''
     
-    series_list = []
     #Determine DataType and ModalityLabel of series list acquisitions
+    series_list = []
     for i in range(len(data_list_unique_series)):
         
         series_entities = {}
@@ -308,8 +308,29 @@ def identify_series_info(data_list_unique_series):
         
         
         ### Determine DataTypes and ModalityLabels #######
-        #DWI, functional bold, functional phase, and SE fmap are 4D
-        if data_list_unique_series[i]['VolumeCount'] > 1:
+        #Spin echo (SE) and Magnitude/Phasediff field maps
+        if any(x in SD for x in ['FMAP','fmap','FIELDMAP','FieldMap','fieldmap','SE','gre_field_mapping'])  or 'epse2d' in SequenceName or 'fm2d2r' in SequenceName:
+            data_list_unique_series[i]['DataType'] = 'fmap'
+            #Magnitude/Phasediff field maps
+            if 'EchoNumber' in data_list_unique_series[i]['sidecar']:
+                if data_list_unique_series[i]['EchoNumber'] == 1:
+                    data_list_unique_series[i]['ModalityLabel'] = 'magnitude1'
+                    data_list_unique_series[i]['qc'] = 'acquisition is fmap/magnitude1 because data is 3D, and EchoNumber == 1 in json file'
+                elif data_list_unique_series[i]['EchoNumber'] == 2:
+                    if 'PHASE' in data_list_unique_series[i]['ImageType']:
+                        data_list_unique_series[i]['ModalityLabel'] = 'phasediff'
+                        data_list_unique_series[i]['qc'] = 'acquisition is fmap/phasediff because data is 3D, and PHASE is in ImageType in the json file'
+                    else:
+                        data_list_unique_series[i]['ModalityLabel'] = 'magnitude2'
+                        data_list_unique_series[i]['qc'] = 'acquisition is fmap/magnitude2 because data is 3D, and EchoNumber == 2 in json file'
+            #Spin echo field maps
+            else:
+                data_list_unique_series[i]['ModalityLabel'] = 'epi'
+                data_list_unique_series[i]['qc'] = 'acquisition is fmap/epi because fmap or something is in the name and the acquisition is 4D'
+                series_entities['dir'] = data_list_unique_series[i]['dir']
+            
+        #DWI, functional bold, & functional phase are 4D 
+        elif data_list_unique_series[i]['VolumeCount'] > 1:
             #DWI
             if any(x in SD for x in ['DWI','dwi','DTI','dti']) or 'ep_b' in SequenceName:
                 if data_list_unique_series[i]['VolumeCount'] < 10: #Probably field map meant for dwi acquisition instead. Based on number of volumes
@@ -320,7 +341,6 @@ def identify_series_info(data_list_unique_series):
                     data_list_unique_series[i]['DataType'] = 'dwi'
                     data_list_unique_series[i]['ModalityLabel'] = 'dwi'
                     data_list_unique_series[i]['qc'] = 'acquisition is dwi/dwi because dwi or dti is in the name'
-                    
                 series_entities['dir'] = data_list_unique_series[i]['dir']
                 
             #Functional bold and phase
@@ -339,14 +359,7 @@ def identify_series_info(data_list_unique_series):
                 else:
                     data_list_unique_series[i]['ModalityLabel'] = 'bold'
                     data_list_unique_series[i]['qc'] = 'acquisition is func/bold because bold, func or something is in the name'
-                            
-            #Spin echo (SE) field maps
-            elif any(x in SD for x in ['fmap','FieldMap','fieldmap','SE']) or 'epse2d' in SequenceName or 'fm2d2r' in SequenceName:
-                data_list_unique_series[i]['DataType'] = 'fmap'
-                data_list_unique_series[i]['ModalityLabel'] = 'epi'
-                data_list_unique_series[i]['qc'] = 'acquisition is fmap/epi because fmap or something is in the name and the acquisition is 4D'
-                series_entities['dir'] = data_list_unique_series[i]['dir']
-                
+
             #Can't initially determine DataType or ModalityLabel
             else:
                 #MultibandAccelerationFactor would indicate functional bold
@@ -367,7 +380,7 @@ def identify_series_info(data_list_unique_series):
                     data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine if this acquisition should be converted to BIDS'
                     data_list_unique_series[i]['qc'] = 'acquisition is unknown becasue there is no good identifying info'
                 
-        else: #localizers, functional sbref, T1w, T2w, FLAIR, magnitude/phasediff fmap are 3D
+        else: #localizers, functional sbref, T1w, T2w, FLAIR are 3D
             #Localizers or other non-BIDS compatible acquisitions
             if any(x in SD for x in ['LOCALIZER','Localizer','localizer','SCOUT','Scout','scout']):
                 data_list_unique_series[i]['include'] = False
@@ -408,21 +421,6 @@ def identify_series_info(data_list_unique_series):
                 if any(x in SD for x in ['REST','Rest','rest']):
                     series_entities['task'] = 'rest'
             
-            #Magnitude/Phasediff field maps
-            elif 'EchoNumber' in data_list_unique_series[i]['sidecar']:
-                data_list_unique_series[i]['DataType'] = 'fmap'
-                if data_list_unique_series[i]['EchoNumber'] == 1:
-                    data_list_unique_series[i]['ModalityLabel'] = 'magnitude1'
-                    data_list_unique_series[i]['qc'] = 'acquisition is fmap/magnitude1 because data is 3D, and EchoNumber == 1 in json file'
-                else:
-                    if 'PHASE' in data_list_unique_series[i]['ImageType']:
-                        data_list_unique_series[i]['ModalityLabel'] = 'phasediff'
-                        data_list_unique_series[i]['qc'] = 'acquisition is fmap/phasediff because data is 3D, and PHASE is in ImageType in the json file'
-
-                    else:
-                        data_list_unique_series[i]['ModalityLabel'] = 'magnitude2'
-                        data_list_unique_series[i]['qc'] = 'acquisition is fmap/magnitude2 because data is 3D, and EchoNumber == 2 in json file'
-                
             #Do another pass if the SeriesDescription information isn't insightful
             else:
                 if EchoTime < 10: #Probably T1w
@@ -468,6 +466,7 @@ def identify_series_info(data_list_unique_series):
                         'MultibandAccelerationFactor': data_list_unique_series[i]['MultibandAccelerationFactor'],
                         "entities": series_entities,
                         "type": data_list_unique_series[i]['br_type'],
+                        "qc": data_list_unique_series[i]['qc'],
                         "repetitionTimes": [],
                         "png_objects_indices": []
                         }
@@ -475,7 +474,7 @@ def identify_series_info(data_list_unique_series):
         print('Unique data acquisition file {}, Series Description {}, was determined to be {}'.format(data_list_unique_series[i]['nifti_path'], data_list_unique_series[i]['SeriesDescription'], data_list_unique_series[i]['br_type']))
         print('')
         print('')
-        
+
     return series_list
 
 
@@ -956,7 +955,8 @@ def build_objects_list(sub_protocol, objects_entities_list):
     
 ###################### Begin ######################
     
-data_dir = sys.argv[1]
+# data_dir = sys.argv[1]
+data_dir = '/media/data/ezbids/dicoms/Ling_BU'
 os.chdir(data_dir)
 
 print('########################################')
