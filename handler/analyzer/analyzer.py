@@ -368,11 +368,11 @@ def identify_series_info(data_list_unique_series):
                     data_list_unique_series[i]['ModalityLabel'] = 'bold'
                     data_list_unique_series[i]['qc'] = 'acquisition is func/bold because no good identifying info is in the name but there is a MultibandAccelerationFactor field in the json file'
                     
-                #Rough *assumption* that acquisitions with a TR of 3 sec or less are functional bold
-                elif data_list_unique_series[i]['RepetitionTime'] <= 3:
-                    data_list_unique_series[i]['DataType'] = 'func'
-                    data_list_unique_series[i]['ModalityLabel'] = 'bold'
-                    data_list_unique_series[i]['qc'] = 'acquisition is func/bold because no goof identifying info is in the name, no MultibandAccelerationFactor field in json file, but TR is => 3 seconds'
+                # #Rough *assumption* that acquisitions with a TR of 3 sec or less are functional bold
+                # elif data_list_unique_series[i]['RepetitionTime'] <= 3:
+                #     data_list_unique_series[i]['DataType'] = 'func'
+                #     data_list_unique_series[i]['ModalityLabel'] = 'bold'
+                #     data_list_unique_series[i]['qc'] = 'acquisition is func/bold because no good identifying info is in the name, no MultibandAccelerationFactor field in json file, but TR is => 3 seconds'
                     
                 #Assume not BIDS unless user specifies so
                 else: 
@@ -438,12 +438,6 @@ def identify_series_info(data_list_unique_series):
                     data_list_unique_series[i]['ModalityLabel'] = 'T2w'
                     data_list_unique_series[i]['qc'] = 'acquisition is anat/T2w because there is no good identifying info, data is 3D, and EchoTime > 100'
 
-                
-                elif (EchoTime > 10 and EchoTime < 100): #Probably functional sbref
-                    data_list_unique_series[i]['DataType'] = 'func'
-                    data_list_unique_series[i]['ModalityLabel'] = 'sbref'
-                    data_list_unique_series[i]['qc'] = 'acquisition is func/sbref because there is no good identifying info, data is 3D, and EchoTime is in range 10-100'
-                
                 #Can't determine acquisition type. Assume it's not BIDS unless user specifies so
                 else:
                     data_list_unique_series[i]['include'] = False
@@ -523,21 +517,29 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
         protocol_index += 1
         sub_protocol[p]['headers'] = str(nib.load(sub_protocol[p]['nifti_path']).header).splitlines()[1:]
                 
-        if sub_protocol[p]['VolumeCount'] > 1:
-            object_img_array = nib.load(sub_protocol[p]['nifti_path']).dataobj[..., 1]
+        
+        #Weird issue where data array is RGB instead on intger
+        object_img_array = nib.load(sub_protocol[p]['nifti_path']).dataobj
+        if object_img_array.dtype != '<i2':
+            sub_protocol[p]['include'] = False
+            sub_protocol[p]['error'] = 'The data array is for this acquisition is improper, likely suggesting some issue with the corresponding DICOMS'
+            sub_protocol[p]['qc'] = sub_protocol[p]['error']
         else:
-            object_img_array =nib.load(sub_protocol[p]['nifti_path']).dataobj[:]
+            if sub_protocol[p]['VolumeCount'] > 1:
+                object_img_array = nib.load(sub_protocol[p]['nifti_path']).dataobj[..., 1]
+            else:
+                object_img_array =nib.load(sub_protocol[p]['nifti_path']).dataobj[:]
+                    
+            if not os.path.isfile('{}.png'.format(sub_protocol[p]['nifti_path'][:-7])):            
                 
-        if not os.path.isfile('{}.png'.format(sub_protocol[p]['nifti_path'][:-7])):            
-            
-            slice_x = object_img_array[floor(object_img_array.shape[0]/2), :, :]
-            slice_y = object_img_array[:, floor(object_img_array.shape[1]/2), :]
-            slice_z = object_img_array[:, :, floor(object_img_array.shape[2]/2)]
-            fig, axes = plt.subplots(1,3)
-            for i, slice in enumerate([slice_x, slice_y, slice_z]):
-                axes[i].imshow(slice.T, cmap="gray", origin="lower")
-                axes[i].axis('off')
-            plt.savefig('{}.png'.format(sub_protocol[p]['nifti_path'][:-7]))
+                slice_x = object_img_array[floor(object_img_array.shape[0]/2), :, :]
+                slice_y = object_img_array[:, floor(object_img_array.shape[1]/2), :]
+                slice_z = object_img_array[:, :, floor(object_img_array.shape[2]/2)]
+                fig, axes = plt.subplots(1,3)
+                for i, slice in enumerate([slice_x, slice_y, slice_z]):
+                    axes[i].imshow(slice.T, cmap="gray", origin="lower")
+                    axes[i].axis('off')
+                plt.savefig('{}.png'.format(sub_protocol[p]['nifti_path'][:-7]))
             
         index = series_seriesID_list.index(sub_protocol[p]['series_id'])
         objects_entities = {'sub': '', 'ses': '', 'run': '', 'acq': '', 'ce': ''}
@@ -561,8 +563,8 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
             objects_entities['ce'] = series_list[index]['entities']['ce']
         
         #Determine other important BIDS information (i.e. run, dir, etc) for specific acquisitions        
-        #Don't include anatomical acquisitions that are too small (<1.2MB)
-        if 'anat' in sub_protocol[p]['br_type']:
+        #Don't include anatomical (non multiecho) acquisitions that are too small (<1.2MB)
+        if 'anat' in sub_protocol[p]['br_type'] and 'multiecho' not in sub_protocol[p]['br_type'] :
             if sub_protocol[p]['filesize']/(1024*1024) < 1.2:
                 sub_protocol[p]['include'] = False
                 sub_protocol[p]['error'] = 'Acquisition filesize is only {}MB. The ezBIDS minimum threshold for anatomical acquisitions is 1.2MB. This object will not be included in the BIDS output'.format(sub_protocol[p]['filesize']/(1024*1024))
