@@ -5,7 +5,7 @@ The cloud-based graphical user interface for automated DICOM to BIDS data ingest
 This is the developmental repo for an automated [BIDS](https://bids.neuroimaging.io/) converter web service that allows users to upload a directory containing 
 DICOM files, and analyze the directory structure and sidecars generated from dcm2niix in order to *guess* 
 as much information about the data structure as possible. Users will then be asked to verify/modify
-those assumption before generating the final BIDS structure.
+those assumptions before generating the final BIDS structure.
 
 Unlike other automated DICOM to BIDS converters, ezbids eliminates the need for the command line and setup.
 
