@@ -242,8 +242,17 @@ def select_unique_data(dir_list):
     for x,y in enumerate(acquisition_dates):
         y['ses'] = subj_ses[x][-1]
         
-    #Sort list of dictionaries by subject, SeriesNumber, and json_path
+    #Sort list of dictionaries by subject, AcquisitionDate, SeriesNumber, and json_path
     data_list = sorted(data_list, key=itemgetter('sub', 'AcquisitionDate', 'SeriesNumber', 'json_path'))
+    
+    #Add session info to data_list, if applicable
+    for i in range(len(acquisition_dates)):
+        for j in range(len(data_list)):
+            if data_list[j]['sub'] == acquisition_dates[i]['sub'] and data_list[j]['AcquisitionDate'] == acquisition_dates[i]['AcquisitionDate']:
+                data_list[j]['ses'] = acquisition_dates[i]['ses']
+        
+        
+    
     
     #Unique data is determined from four values: SeriesDescription, EchoTime, ImageType, MultibandAccelerationFactor
     data_list_unique_series = []
@@ -524,7 +533,6 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
     -------
     sub_protocol: list
         Same as above but with updated information
-    
     '''
     func_sbref_run = 1
     func_phase_run = 1
@@ -980,7 +988,7 @@ def build_objects_list(sub_protocol, objects_entities_list):
 
     return objects_list
     
-    
+
 ###################### Begin ######################
     
 data_dir = sys.argv[1]
@@ -1007,18 +1015,25 @@ participantsColumn = {"sex": {"LongName": "gender", "Description": "generic gend
 
 #Define a few variables that apply across the entire objects level
 objects_list = []
-subjects = [subjectIDs_info[x]['sub'] for x in range(len(subjectIDs_info))]
+subjects = [acquisition_dates[x]['sub'] for x in range(len(acquisition_dates))]
+sessions = [acquisition_dates[x]['ses'] for x in range(len(acquisition_dates))]
 series_seriesID_list = [series_list[x]['series_id'] for x in range(len(series_list))]
 
 #Loop through all unique subjectIDs
-for s in range(len(subjects)):
+for s in range(len(acquisition_dates)):
     
-    print('Beginning conversion process for subject {} individual acquisitions'.format(subjects[s]))
-    print('-------------------------------------------------------------------')
-    print('')
+    if acquisition_dates[s]['ses'] == '':
+        print('Beginning conversion process for subject {} protocol acquisitions'.format(acquisition_dates[s]['sub']))
+        print('-------------------------------------------------------------------')
+        print('')
     
-    #Get initial sub_protocol list from subsetting by subject
-    sub_protocol = [x for x in data_list if x['sub'] == subjects[s]]
+    else:
+        print('Beginning conversion process for subject {}, session {} protocol acquisitions'.format(acquisition_dates[s]['sub'], acquisition_dates[s]['ses']))
+        print('-------------------------------------------------------------------')
+        print('')
+    
+    #Get initial sub_protocol list from subsetting by subject/session
+    sub_protocol = [x for x in data_list if x['sub'] == acquisition_dates[s]['sub'] and x['ses'] == acquisition_dates[s]['ses']]
     
     #Update sub_protocol based on object-level checks
     sub_protocol, objects_entities_list = identify_objects_info(sub_protocol, series_list, series_seriesID_list)
