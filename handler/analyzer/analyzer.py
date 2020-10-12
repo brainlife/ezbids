@@ -42,7 +42,6 @@ def select_unique_data(dir_list):
     
     acquisition_dates: list    
         List of dictionaries containing the AcquisitionDate and ses # (if applicable)
-        
     '''
     
     #Load list generated from dcm2niix, and organize the nifti/json files by their SeriesNumber   
@@ -138,6 +137,13 @@ def select_unique_data(dir_list):
         else:
             AcquisitionDate = None
             AcquisitionTime = None
+            
+        #Find RepetitionTime
+        if 'RepetitionTime' in json_data:
+            RepetitionTime = json_data['RepetitionTime']
+        else:
+            RepetitionTime = 'N/A'
+            
         
         #Find EchoNumber
         if 'EchoNumber' in json_data:
@@ -178,7 +184,7 @@ def select_unique_data(dir_list):
                        'PatientID': PatientID,
                        'PatientBirthDate': PatientBirthDate,
                        'sub': sub,
-                       'SessionID': '',
+                       'ses': '',
                        'SeriesNumber': json_data['SeriesNumber'],
                        'PatientSex': PatientSex,
                        'AcquisitionDate': AcquisitionDate,
@@ -187,7 +193,7 @@ def select_unique_data(dir_list):
                        'ProtocolName': json_data['ProtocolName'], 
                        'ImageType': json_data['ImageType'],
                        'SeriesNumber': json_data['SeriesNumber'],
-                       'RepetitionTime': json_data['RepetitionTime'],
+                       'RepetitionTime': RepetitionTime,
                        'EchoNumber': EchoNumber,
                        'EchoTime': EchoTime,
                        'InversionTime': InversionTime,
@@ -214,12 +220,30 @@ def select_unique_data(dir_list):
                        }
         data_list.append(mapping_dic)
         
-    #Sort list of dictionaries by subject, SeriesNumber, and json_path
-    data_list = sorted(data_list, key=itemgetter('sub', 'SeriesNumber', 'json_path'))
-    
-    #Curate subjectID and acquisition date info to display on UI side
+    #Curate subjectID and acquisition date info to display in UI
     subjectIDs_info = list({x['sub']:{'sub':x['sub'], 'PatientID':x['PatientID'], 'PatientName':x['PatientName'], 'PatientBirthDate':x['PatientBirthDate']} for x in data_list}.values())
-    acquisition_dates = list({x['sub']:{'AcquisitionDate':x['AcquisitionDate'], 'ses': ''} for x in data_list}.values())
+    subjectIDs_info = sorted(subjectIDs_info, key = lambda i: i['sub'])
+    
+    acquisition_dates = list({x['AcquisitionDate']:{'sub':x['sub'], 'AcquisitionDate':x['AcquisitionDate'], 'ses': ''} for x in data_list}.values())
+    acquisition_dates = sorted(acquisition_dates, key = lambda i: i['AcquisitionDate'])
+    
+    #Insert ses info if applicable
+    subj_ses = [[x['sub'], x['AcquisitionDate'], x['ses']] for x in data_list]
+    subj_ses = sorted([list(x) for x in set(tuple(x) for x in subj_ses)], key = lambda i: i[1])
+    
+    for i in np.unique(np.array([x[0] for x in subj_ses])):
+        sub_indices = [x for x,y in enumerate(subj_ses) if y[0] == i]
+        if len(sub_indices) > 1:
+            for j, k in enumerate(sub_indices):
+                subj_ses[k][-1] = '0' + str(j+1)
+    
+    subj_ses = sorted([list(x) for x in set(tuple(x) for x in subj_ses)], key = lambda i: i[1])
+    
+    for x,y in enumerate(acquisition_dates):
+        y['ses'] = subj_ses[x][-1]
+        
+    #Sort list of dictionaries by subject, SeriesNumber, and json_path
+    data_list = sorted(data_list, key=itemgetter('sub', 'AcquisitionDate', 'SeriesNumber', 'json_path'))
     
     #Unique data is determined from four values: SeriesDescription, EchoTime, ImageType, MultibandAccelerationFactor
     data_list_unique_series = []
@@ -269,10 +293,12 @@ def identify_series_info(data_list_unique_series):
         SD = data_list_unique_series[i]['SeriesDescription']
         EchoTime = data_list_unique_series[i]['EchoTime']
         TR = data_list_unique_series[i]['RepetitionTime']
-        try:
+        if 'SequenceName' in data_list_unique_series[i]['sidecar']:
             SequenceName = data_list_unique_series[i]['sidecar']['SequenceName']
-        except:
+        elif 'ScanningSequence' in data_list_unique_series[i]['sidecar']:
             SequenceName = data_list_unique_series[i]['sidecar']['ScanningSequence']
+        else:
+            SequenceName = 'N/A'
         
         
         #Populate some labels fields (based on ReproIn convention)
@@ -309,7 +335,7 @@ def identify_series_info(data_list_unique_series):
         
         ### Determine DataTypes and ModalityLabels #######
         #Spin echo (SE) and Magnitude/Phasediff field maps
-        if any(x in SD for x in ['FMAP','fmap','FIELDMAP','FieldMap','fieldmap','SE','gre_field_mapping'])  or 'epse2d' in SequenceName or 'fm2d2r' in SequenceName:
+        if any(x in SD for x in ['FMAP','fmap','FIELDMAP','FieldMap','fieldmap','SE','gre_field_mapping']) or SequenceName in ['epse2d', 'fm2d2r']:
             data_list_unique_series[i]['DataType'] = 'fmap'
             #Magnitude/Phasediff field maps
             if 'EchoNumber' in data_list_unique_series[i]['sidecar']:
@@ -1006,7 +1032,10 @@ for s in range(len(subjects)):
 #Extract values to plot for users
 for s in range(len(series_list)):
     series_list[s]['png_objects_indices'] = [x for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']]
-    series_list[s]['repetitionTimes'] = [[x for x in objects_list[x]['items'] if x['name'] == 'json'][0]['sidecar']['RepetitionTime'] for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']] 
+    try:
+        series_list[s]['repetitionTimes'] = [[x for x in objects_list[x]['items'] if x['name'] == 'json'][0]['sidecar']['RepetitionTime'] for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']] 
+    except:
+        pass
     
     if series_list[s]['type'] == 'fmap/epi_dwi':
         series_list[s]['type'] = 'fmap/epi'
