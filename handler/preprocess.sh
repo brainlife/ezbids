@@ -34,7 +34,7 @@ true > $root/dcm2niix.done
 function d2n {
     path=$1
     echo "----------------------- $path ------------------------"
-    dcm2niix -v 1 -ba n -z o -f 'time-%t-sn-%s' $path
+    time dcm2niix -v 1 -ba n -z o -f 'time-%t-sn-%s' $path
     echo $1 >> dcm2niix.done
 }
 export -f d2n

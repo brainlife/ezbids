@@ -10,6 +10,7 @@ const config = require("./config");
 const models = require("./models");
 const upload = multer(config.multer);
 const router = express.Router();
+//TODO - what is this for?
 var storage = multer.diskStorage({
     destination: function (req, file, cb) {
         cb(null, path.join(__dirname, '/uploads'));

@@ -42,6 +42,7 @@ export default {
     },
 
     watch: {
+        /*
         '$root.sessions'(v, ov) {
             console.log("session updated (analyzer finished?).. initializing keys");
             if(v.length == 0) return; //prevent infinite loop
@@ -49,6 +50,7 @@ export default {
                 this.resetSessions('empty');
             }
         },
+        */
     },
 
     created() {

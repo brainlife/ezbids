@@ -661,18 +661,6 @@ split:
             this.objects.forEach((o, idx)=>{
                 o.idx = idx; //reindex
 
-                /*
-                let subject = this.findSubject(o);
-                if(!subject) console.error("couldn't find subject mapping for", o);
-                let sub = subject.sub;
-                if(o.entities.sub) sub = o.entities.sub; //apply override
-
-                let session = this.findSession(o);
-                if(!session) console.error("couldn't find session mapping for", o);
-                let ses = session.ses;
-                if(o.entities.ses) ses = o.entities.ses; //apply override
-                */
-
                 let sub = o._entities.sub;
                 let ses = o._entities.ses;
 
@@ -697,7 +685,6 @@ split:
                 this.series.forEach(series=>{
                     delete series.entities.sub;
                     delete series.entities.ses;
-                    //delete series.entities.run;
                 });
 
                 this.subjects.forEach(subject=>{

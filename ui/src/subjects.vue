@@ -43,6 +43,7 @@ export default {
         }
     },
     watch: {
+        /*
         '$root.subjects'(v, ov) {
             console.log("subjects updated (data loaded).. initializing keys");
             if(v.length == 0) return; //prevent infinite loop
@@ -50,6 +51,7 @@ export default {
                 this.resetSubjects('pname');
             }
         },
+        */
     },
 
     created() {

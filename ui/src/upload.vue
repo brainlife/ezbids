@@ -237,7 +237,7 @@ export default {
                 let data = new FormData();
                 data.append("file", file);
                 data.append("path", this.files[idx].path);
-                await axios.post(this.$root.apihost+'/upload/'+this.$root.session._id/*+'/'+idx*/, data, {
+                await axios.post(this.$root.apihost+'/upload/'+this.$root.session._id, data, {
                     onUploadProgress: evt=>{
                         //this.$forceUpdate(); //I don't think we need it?
                         file.loaded = evt.loaded;
