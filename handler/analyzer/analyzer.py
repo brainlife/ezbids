@@ -350,14 +350,14 @@ def identify_series_info(data_list_unique_series):
             if 'EchoNumber' in data_list_unique_series[i]['sidecar']:
                 if data_list_unique_series[i]['EchoNumber'] == 1:
                     data_list_unique_series[i]['ModalityLabel'] = 'magnitude1'
-                    data_list_unique_series[i]['qc'] = 'acquisition is fmap/magnitude1 because data is 3D, and EchoNumber == 1 in json file'
+                    data_list_unique_series[i]['qc'] = 'acquisition is fmap/magnitude1 because EchoNumber == 1 in json file'
                 elif data_list_unique_series[i]['EchoNumber'] == 2:
                     if 'PHASE' in data_list_unique_series[i]['ImageType']:
                         data_list_unique_series[i]['ModalityLabel'] = 'phasediff'
-                        data_list_unique_series[i]['qc'] = 'acquisition is fmap/phasediff because data is 3D, and PHASE is in ImageType in the json file'
+                        data_list_unique_series[i]['qc'] = 'acquisition is fmap/phasediff because PHASE is in ImageType in the json file'
                     else:
                         data_list_unique_series[i]['ModalityLabel'] = 'magnitude2'
-                        data_list_unique_series[i]['qc'] = 'acquisition is fmap/magnitude2 because data is 3D, and EchoNumber == 2 in json file'
+                        data_list_unique_series[i]['qc'] = 'acquisition is fmap/magnitude2 because EchoNumber == 2 in json file'
             #Spin echo field maps
             else:
                 data_list_unique_series[i]['ModalityLabel'] = 'epi'
@@ -366,19 +366,29 @@ def identify_series_info(data_list_unique_series):
             
         #DWI
         elif any(x in SD for x in ['DWI','dwi','DTI','dti']) or 'ep_b' in SequenceName:
-            if data_list_unique_series[i]['VolumeCount'] < 10: #Probably field map meant for dwi acquisition instead. Based on number of volumes
+            if 'B0_only' in SD: #Probably field map meant for dwi acquisition instead
                 data_list_unique_series[i]['DataType'] = 'fmap'
                 data_list_unique_series[i]['ModalityLabel'] = 'epi_dwi'
                 data_list_unique_series[i]['qc'] = 'acquisition is fmap/epi_dwi because it is in the name but volume count is under 10, so probably a field map meant for a dwi'
+                series_entities['dir'] = data_list_unique_series[i]['dir']
             else:
-                data_list_unique_series[i]['DataType'] = 'dwi'
-                data_list_unique_series[i]['ModalityLabel'] = 'dwi'
-                data_list_unique_series[i]['qc'] = 'acquisition is dwi/dwi because dwi or dti is in the name'
-            series_entities['dir'] = data_list_unique_series[i]['dir']
+                if any(x in SD for x in ['TRACE','Trace','trace','FA','fa','ADC','adc']):
+                    data_list_unique_series[i]['include'] = False
+                    data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
+                    data_list_unique_series[i]['qc'] = 'Acquisition is TRACE, FA, or ADCC because it is in the name'
+                else:
+                    data_list_unique_series[i]['DataType'] = 'dwi'
+                    data_list_unique_series[i]['ModalityLabel'] = 'dwi'
+                    data_list_unique_series[i]['qc'] = 'acquisition is dwi/dwi because dwi or dti is in the name'
+                    series_entities['dir'] = data_list_unique_series[i]['dir']
             
         #Arterial Spin Labeling (ASL)
         elif any(x in SD for x in ['ASL','Asl','asl']):
-            pass
+            data_list_unique_series[i]['include'] = False
+            data_list_unique_series[i]['DataType'] = 'asl'
+            data_list_unique_series[i]['ModalityLabel'] = 'asl'
+            data_list_unique_series[i]['error'] = 'Acqusition appears to be ASL, which is currently not supported by ezBIDS at this time, but will be in the future'
+            data_list_unique_series[i]['qc'] = 'acquisition is asl/asl because asl or something is in the name'
             
         #Functional bold and phase
         elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func','FMRI','fMRI','fmri','EPI']) and ('SBRef' not in SD or 'sbref' not in SD):
@@ -414,19 +424,17 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['ModalityLabel'] = 'FLAIR'
             data_list_unique_series[i]['qc'] = 'acquisition is anat/FLAIR because flair or something is in the name'
 
-            
         #T2w
         elif any(x in SD for x in ['T2W','T2w','t2w']):
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'T2w'
-            data_list_unique_series[i]['qc'] = 'acquisition is anat/T2w because t2w or something is in the name'
+            data_list_unique_series[i]['qc'] = 'Acquisition is anat/T2w because t2w or something is in the name'
 
-        
         #Functional single band reference (sbref)
         elif any(x in SD for x in ['SBRef','sbref']):
             data_list_unique_series[i]['DataType'] = 'func'
             data_list_unique_series[i]['ModalityLabel'] = 'sbref'
-            data_list_unique_series[i]['qc'] = 'acquisition is func/sbref because SBRef or sbref is in the name and the acquisition is 3D'
+            data_list_unique_series[i]['qc'] = 'Acquisition is func/sbref because SBRef or sbref is in the name'
             if any(x in SD for x in ['REST','Rest','rest']):
                 series_entities['task'] = 'rest'
                 
@@ -441,7 +449,7 @@ def identify_series_info(data_list_unique_series):
         else: 
             data_list_unique_series[i]['include'] = False
             data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine whether or not this acquisition should be converted to BIDS'
-            data_list_unique_series[i]['qc'] = 'acquisition is unknown becasue there is no good identifying info'
+            data_list_unique_series[i]['qc'] = 'Acquisition is unknown becasue there is no good identifying info'
         
         # #Can't initially determine DataType or ModalityLabel
         # else:
