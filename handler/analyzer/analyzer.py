@@ -1055,6 +1055,10 @@ for s in range(len(series_list)):
     
     if series_list[s]['type'] == 'fmap/epi_dwi':
         series_list[s]['type'] = 'fmap/epi'
+        
+# for a in acquisition_dates:
+#     del a['sub']
+
     
 #Push all info to ezBIDS.json
 ezBIDS = {"subjects": subjectIDs_info,
@@ -1068,7 +1072,6 @@ ezBIDS = {"subjects": subjectIDs_info,
 ezBIDS_file_name = 'ezBIDS.json'
 with open(ezBIDS_file_name, 'w') as fp: 
     json.dump(ezBIDS, fp, indent=3) 
-  
 
 
                 
