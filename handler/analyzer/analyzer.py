@@ -343,8 +343,8 @@ def identify_series_info(data_list_unique_series):
         
         
         ### Determine DataTypes and ModalityLabels #######
-        #Spin echo (SE) and Magnitude/Phasediff field maps
-        if any(x in SD for x in ['FMAP','fmap','FIELDMAP','FieldMap','fieldmap','SE','gre_field_mapping']) or SequenceName in ['epse2d', 'fm2d2r']:
+        # Magnitude/Phasediff and Spin echo (SE) field maps
+        if any(x in SD for x in ['FMAP','fmap','FIELDMAP','FieldMap','fieldmap','SE', 'Gre_Field_Mapping', 'gre_field_mapping', 'FIELD_MAPPING', 'Field_Mapping', 'field_mapping']) or SequenceName in ['epse2d', 'fm2d2r']:
             data_list_unique_series[i]['DataType'] = 'fmap'
             #Magnitude/Phasediff field maps
             if 'EchoNumber' in data_list_unique_series[i]['sidecar']:
@@ -364,121 +364,111 @@ def identify_series_info(data_list_unique_series):
                 data_list_unique_series[i]['qc'] = 'acquisition is fmap/epi because fmap or something is in the name and the acquisition is 4D'
                 series_entities['dir'] = data_list_unique_series[i]['dir']
             
-        #DWI, functional bold, & functional phase are 4D 
-        elif data_list_unique_series[i]['VolumeCount'] > 1:
-            #DWI
-            if any(x in SD for x in ['DWI','dwi','DTI','dti']) or 'ep_b' in SequenceName:
-                if data_list_unique_series[i]['VolumeCount'] < 10: #Probably field map meant for dwi acquisition instead. Based on number of volumes
-                    data_list_unique_series[i]['DataType'] = 'fmap'
-                    data_list_unique_series[i]['ModalityLabel'] = 'epi_dwi'
-                    data_list_unique_series[i]['qc'] = 'acquisition is fmap/epi_dwi because it is in the name but volume count is under 10, so probably a field map meant for a dwi'
-                else:
-                    data_list_unique_series[i]['DataType'] = 'dwi'
-                    data_list_unique_series[i]['ModalityLabel'] = 'dwi'
-                    data_list_unique_series[i]['qc'] = 'acquisition is dwi/dwi because dwi or dti is in the name'
-                series_entities['dir'] = data_list_unique_series[i]['dir']
-                
-            #Functional bold and phase
-            elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func','FMRI','fMRI','fmri','EPI']) and ('SBRef' not in SD or 'sbref' not in SD):
-                data_list_unique_series[i]['DataType'] = 'func'
-                if any(x in SD for x in ['REST','Rest','rest']):
-                    series_entities['task'] = 'rest'
-                if data_list_unique_series[i]['EchoNumber']:
-                    data_list_unique_series[i]['ModalityLabel'] = 'multiecho'
-                    data_list_unique_series[i]['qc'] = 'acquisition is func/multiecho because bold, func or something is in the name and EchoNumber is in the json file'
-                    
-                    series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
-                elif 'MOSAIC' and 'PHASE' in data_list_unique_series[i]['ImageType']:
-                    data_list_unique_series[i]['ModalityLabel'] = 'phase'
-                    data_list_unique_series[i]['qc'] = 'acquisition is func/phase because bold, func or something is in the name and MOSAIC and PHASE are in the ImageType json field'
-                else:
-                    data_list_unique_series[i]['ModalityLabel'] = 'bold'
-                    data_list_unique_series[i]['qc'] = 'acquisition is func/bold because bold, func or something is in the name'
-
-            #Can't initially determine DataType or ModalityLabel
+        #DWI
+        elif any(x in SD for x in ['DWI','dwi','DTI','dti']) or 'ep_b' in SequenceName:
+            if data_list_unique_series[i]['VolumeCount'] < 10: #Probably field map meant for dwi acquisition instead. Based on number of volumes
+                data_list_unique_series[i]['DataType'] = 'fmap'
+                data_list_unique_series[i]['ModalityLabel'] = 'epi_dwi'
+                data_list_unique_series[i]['qc'] = 'acquisition is fmap/epi_dwi because it is in the name but volume count is under 10, so probably a field map meant for a dwi'
             else:
-                #MultibandAccelerationFactor would indicate functional bold
-                if data_list_unique_series[i]['MultibandAccelerationFactor'] != 'N/A':
-                    data_list_unique_series[i]['DataType'] = 'func'
-                    data_list_unique_series[i]['ModalityLabel'] = 'bold'
-                    data_list_unique_series[i]['qc'] = 'acquisition is func/bold because no good identifying info is in the name but there is a MultibandAccelerationFactor field in the json file'
-                    
-                # #Rough *assumption* that acquisitions with a TR of 3 sec or less are functional bold
-                # elif data_list_unique_series[i]['RepetitionTime'] <= 3:
-                #     data_list_unique_series[i]['DataType'] = 'func'
-                #     data_list_unique_series[i]['ModalityLabel'] = 'bold'
-                #     data_list_unique_series[i]['qc'] = 'acquisition is func/bold because no good identifying info is in the name, no MultibandAccelerationFactor field in json file, but TR is => 3 seconds'
-                    
-                #Assume not BIDS unless user specifies so
-                else: 
-                    data_list_unique_series[i]['include'] = False
-                    data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine if this acquisition should be converted to BIDS'
-                    data_list_unique_series[i]['qc'] = 'acquisition is unknown becasue there is no good identifying info'
+                data_list_unique_series[i]['DataType'] = 'dwi'
+                data_list_unique_series[i]['ModalityLabel'] = 'dwi'
+                data_list_unique_series[i]['qc'] = 'acquisition is dwi/dwi because dwi or dti is in the name'
+            series_entities['dir'] = data_list_unique_series[i]['dir']
+            
+        #Arterial Spin Labeling (ASL)
+        elif any(x in SD for x in ['ASL','Asl','asl']):
+            pass
+            
+        #Functional bold and phase
+        elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func','FMRI','fMRI','fmri','EPI']) and ('SBRef' not in SD or 'sbref' not in SD):
+            data_list_unique_series[i]['DataType'] = 'func'
+            if any(x in SD for x in ['REST','Rest','rest']):
+                series_entities['task'] = 'rest'
+            if data_list_unique_series[i]['EchoNumber']:
+                data_list_unique_series[i]['ModalityLabel'] = 'multiecho'
+                data_list_unique_series[i]['qc'] = 'acquisition is func/multiecho because bold, func or something is in the name and EchoNumber is in the json file'
                 
-        else: #localizers, functional sbref, T1w, T2w, FLAIR are 3D
-            #Localizers or other non-BIDS compatible acquisitions
-            if any(x in SD for x in ['LOCALIZER','Localizer','localizer','SCOUT','Scout','scout']):
-                data_list_unique_series[i]['include'] = False
-                data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
-                data_list_unique_series[i]['qc'] = 'acquisition is localizer (non-BIDS) because localizer or scout is in the name'
-                data_list_unique_series[i]['br_type'] = 'localizer (non-BIDS)'
-    
-            #T1w
-            elif any(x in SD for x in ['T1W','T1w','t1w','tfl3d','tfl','mprage','MPRAGE']) or 'tfl3d1_16ns' in SequenceName:
-                data_list_unique_series[i]['DataType'] = 'anat'
-                if data_list_unique_series[i]['EchoNumber']:
-                    data_list_unique_series[i]['ModalityLabel'] = 'multiecho'
-                    data_list_unique_series[i]['qc'] = 'acquisition is anat/multiecho because anat, t1w, mprage or something is in the name and there is a EchoNumber field in the json file'
-                    series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
-                else:
-                    data_list_unique_series[i]['ModalityLabel'] = 'T1w'
-                    data_list_unique_series[i]['qc'] = 'acquisition is anat/T1w because anat, t1w, mprage or something is in the name'
-            
-            #FLAIR
-            elif any(x in SD for x in ['FLAIR','Flair','flair','t2_space_da-fl']):
-                data_list_unique_series[i]['DataType'] = 'anat'
-                data_list_unique_series[i]['ModalityLabel'] = 'FLAIR'
-                data_list_unique_series[i]['qc'] = 'acquisition is anat/FLAIR because flair or something is in the name'
-
-                
-            #T2w
-            elif any(x in SD for x in ['T2W','T2w','t2w']):
-                data_list_unique_series[i]['DataType'] = 'anat'
-                data_list_unique_series[i]['ModalityLabel'] = 'T2w'
-                data_list_unique_series[i]['qc'] = 'acquisition is anat/T2w because t2w or something is in the name'
-
-            
-            #Functional single band reference (sbref)
-            elif any(x in SD for x in ['SBRef','sbref']):
-                data_list_unique_series[i]['DataType'] = 'func'
-                data_list_unique_series[i]['ModalityLabel'] = 'sbref'
-                data_list_unique_series[i]['qc'] = 'acquisition is func/sbref because SBRef or sbref is in the name and the acquisition is 3D'
-                if any(x in SD for x in ['REST','Rest','rest']):
-                    series_entities['task'] = 'rest'
-            
-            #Do another pass if the SeriesDescription information isn't insightful
+                series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
+            elif 'MOSAIC' and 'PHASE' in data_list_unique_series[i]['ImageType']:
+                data_list_unique_series[i]['ModalityLabel'] = 'phase'
+                data_list_unique_series[i]['qc'] = 'acquisition is func/phase because bold, func or something is in the name and MOSAIC and PHASE are in the ImageType json field'
             else:
-                if EchoTime < 10: #Probably T1w
-                    data_list_unique_series[i]['DataType'] = 'anat'
-                    data_list_unique_series[i]['ModalityLabel'] = 'T1w'
-                    data_list_unique_series[i]['qc'] = 'acquisition is anat/T1w because there is no good identifying info, data is 3D, and EchoTime < 10'
-                
-                elif data_list_unique_series[i]['InversionTime'] is not None and data_list_unique_series[i]['InversionTime'] > 0: #Probably FLAIR
-                    data_list_unique_series[i]['DataType'] = 'anat'
-                    data_list_unique_series[i]['ModalityLabel'] = 'FLAIR'
-                    data_list_unique_series[i]['qc'] = 'acquisition is anat/FLAIR because there is no good identifying info, data is 3D, InversionTime field exists, and InversionTime > 0'
-                
-                elif EchoTime > 100: #Probably T2w
-                    data_list_unique_series[i]['DataType'] = 'anat'
-                    data_list_unique_series[i]['ModalityLabel'] = 'T2w'
-                    data_list_unique_series[i]['qc'] = 'acquisition is anat/T2w because there is no good identifying info, data is 3D, and EchoTime > 100'
+                data_list_unique_series[i]['ModalityLabel'] = 'bold'
+                data_list_unique_series[i]['qc'] = 'acquisition is func/bold because bold, func or something is in the name'
 
-                #Can't determine acquisition type. Assume it's not BIDS unless user specifies so
-                else:
-                    data_list_unique_series[i]['include'] = False
-                    data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine if this acquisition should be converted to BIDS'
-                    data_list_unique_series[i]['qc'] = 'acquisition is unknown because there is no good identifying info'
+        #T1w
+        elif any(x in SD for x in ['T1W','T1w','t1w','tfl3d','tfl','mprage','MPRAGE']) or 'tfl3d1_16ns' in SequenceName:
+            data_list_unique_series[i]['DataType'] = 'anat'
+            if data_list_unique_series[i]['EchoNumber']:
+                data_list_unique_series[i]['ModalityLabel'] = 'multiecho'
+                data_list_unique_series[i]['qc'] = 'acquisition is anat/multiecho because anat, t1w, mprage or something is in the name and there is a EchoNumber field in the json file'
+                series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
+            else:
+                data_list_unique_series[i]['ModalityLabel'] = 'T1w'
+                data_list_unique_series[i]['qc'] = 'acquisition is anat/T1w because anat, t1w, mprage or something is in the name'
         
+        #FLAIR
+        elif any(x in SD for x in ['FLAIR','Flair','flair','t2_space_da-fl']):
+            data_list_unique_series[i]['DataType'] = 'anat'
+            data_list_unique_series[i]['ModalityLabel'] = 'FLAIR'
+            data_list_unique_series[i]['qc'] = 'acquisition is anat/FLAIR because flair or something is in the name'
+
+            
+        #T2w
+        elif any(x in SD for x in ['T2W','T2w','t2w']):
+            data_list_unique_series[i]['DataType'] = 'anat'
+            data_list_unique_series[i]['ModalityLabel'] = 'T2w'
+            data_list_unique_series[i]['qc'] = 'acquisition is anat/T2w because t2w or something is in the name'
+
+        
+        #Functional single band reference (sbref)
+        elif any(x in SD for x in ['SBRef','sbref']):
+            data_list_unique_series[i]['DataType'] = 'func'
+            data_list_unique_series[i]['ModalityLabel'] = 'sbref'
+            data_list_unique_series[i]['qc'] = 'acquisition is func/sbref because SBRef or sbref is in the name and the acquisition is 3D'
+            if any(x in SD for x in ['REST','Rest','rest']):
+                series_entities['task'] = 'rest'
+                
+        #Localizers or other non-BIDS compatible acquisitions
+        elif any(x in SD for x in ['LOCALIZER','Localizer','localizer','SCOUT','Scout','scout']):
+            data_list_unique_series[i]['include'] = False
+            data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
+            data_list_unique_series[i]['qc'] = 'Acquisition is localizer (non-BIDS) because localizer or scout is in the name'
+            data_list_unique_series[i]['br_type'] = 'localizer (non-BIDS)'
+            
+        #Assume not BIDS unless user specifies so
+        else: 
+            data_list_unique_series[i]['include'] = False
+            data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine if this acquisition should be converted to BIDS'
+            data_list_unique_series[i]['qc'] = 'acquisition is unknown becasue there is no good identifying info'
+        
+        # #Can't initially determine DataType or ModalityLabel
+        # else:
+        #     #MultibandAccelerationFactor would indicate functional bold
+        #     if data_list_unique_series[i]['MultibandAccelerationFactor'] != 'N/A':
+        #         data_list_unique_series[i]['DataType'] = 'func'
+        #         data_list_unique_series[i]['ModalityLabel'] = 'bold'
+        #         data_list_unique_series[i]['qc'] = 'acquisition is func/bold because no good identifying info is in the name but there is a MultibandAccelerationFactor field in the json file'
+                
+        # #Do another pass if the SeriesDescription information isn't insightful
+        # else:
+        #     if EchoTime < 10: #Probably T1w
+        #         data_list_unique_series[i]['DataType'] = 'anat'
+        #         data_list_unique_series[i]['ModalityLabel'] = 'T1w'
+        #         data_list_unique_series[i]['qc'] = 'acquisition is anat/T1w because there is no good identifying info, data is 3D, and EchoTime < 10'
+            
+        #     elif data_list_unique_series[i]['InversionTime'] is not None and data_list_unique_series[i]['InversionTime'] > 0: #Probably FLAIR
+        #         data_list_unique_series[i]['DataType'] = 'anat'
+        #         data_list_unique_series[i]['ModalityLabel'] = 'FLAIR'
+        #         data_list_unique_series[i]['qc'] = 'acquisition is anat/FLAIR because there is no good identifying info, data is 3D, InversionTime field exists, and InversionTime > 0'
+            
+        #     elif EchoTime > 100: #Probably T2w
+        #         data_list_unique_series[i]['DataType'] = 'anat'
+        #         data_list_unique_series[i]['ModalityLabel'] = 'T2w'
+        #         data_list_unique_series[i]['qc'] = 'acquisition is anat/T2w because there is no good identifying info, data is 3D, and EchoTime > 100'
+
+               
         if data_list_unique_series[i]['DataType'] == '' and data_list_unique_series[i]['ModalityLabel'] == '':
             if 'localizer' not in data_list_unique_series[i]['br_type']:
                 data_list_unique_series[i]['br_type'] = 'non-BIDS'
@@ -979,7 +969,7 @@ def build_objects_list(sub_protocol, objects_entities_list):
                     "items": items,
                     "analysisResults": {
                         "VolumeCount": sub_protocol[i]['VolumeCount'],
-                        "errors": sub_protocol[i]['error'],
+                        "errors": [sub_protocol[i]['error']],
                         "filesize": sub_protocol[i]['filesize']
                     },
                     "paths": sub_protocol[i]['paths']
