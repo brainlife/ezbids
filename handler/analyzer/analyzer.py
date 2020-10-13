@@ -440,7 +440,7 @@ def identify_series_info(data_list_unique_series):
         #Assume not BIDS unless user specifies so
         else: 
             data_list_unique_series[i]['include'] = False
-            data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine if this acquisition should be converted to BIDS'
+            data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine whether or not this acquisition should be converted to BIDS'
             data_list_unique_series[i]['qc'] = 'acquisition is unknown becasue there is no good identifying info'
         
         # #Can't initially determine DataType or ModalityLabel
@@ -954,6 +954,9 @@ def build_objects_list(sub_protocol, objects_entities_list):
             elif '.nii.gz' in item:
                 items.append({'path':item, 'name':'nii.gz', 'headers':sub_protocol[i]['headers']})
 
+        if sub_protocol[i]['error']:
+            sub_protocol[i]['error'] = [sub_protocol[i]['error']]
+            
         #Objects-level info for ezBIDS.json
         objects_info = {"include": sub_protocol[i]['include'],
                     "series_id": sub_protocol[i]['series_id'],
@@ -969,7 +972,7 @@ def build_objects_list(sub_protocol, objects_entities_list):
                     "items": items,
                     "analysisResults": {
                         "VolumeCount": sub_protocol[i]['VolumeCount'],
-                        "errors": [sub_protocol[i]['error']],
+                        "errors": ,
                         "filesize": sub_protocol[i]['filesize']
                     },
                     "paths": sub_protocol[i]['paths']
