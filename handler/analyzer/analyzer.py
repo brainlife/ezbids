@@ -972,7 +972,7 @@ def build_objects_list(sub_protocol, objects_entities_list):
                     "items": items,
                     "analysisResults": {
                         "VolumeCount": sub_protocol[i]['VolumeCount'],
-                        "errors": ,
+                        "errors": sub_protocol[i]['error'],
                         "filesize": sub_protocol[i]['filesize']
                     },
                     "paths": sub_protocol[i]['paths']
