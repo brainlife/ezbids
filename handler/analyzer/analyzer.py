@@ -394,7 +394,7 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['qc'] = 'acquisition is asl/asl because asl or something is in the name'
             
         #Functional bold and phase
-        elif any(x in SD for x in ['bold','func','fmri','epi']) and 'sbref' not in SD:
+        elif any(x in SD for x in ['bold','func','fmri','epi','mri']) and 'sbref' not in SD:
             data_list_unique_series[i]['DataType'] = 'func'
             if 'rest' in SD or 'rsfmri' in SD:
                 series_entities['task'] = 'rest'
