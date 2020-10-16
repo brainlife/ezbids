@@ -396,12 +396,11 @@ def identify_series_info(data_list_unique_series):
         #Functional bold and phase
         elif any(x in SD for x in ['bold','func','fmri','epi']) and 'sbref' not in SD:
             data_list_unique_series[i]['DataType'] = 'func'
-            if 'rest' in SD:
+            if 'rest' in SD or 'rsfmri' in SD:
                 series_entities['task'] = 'rest'
             if data_list_unique_series[i]['EchoNumber']:
                 data_list_unique_series[i]['ModalityLabel'] = 'multiecho'
                 data_list_unique_series[i]['qc'] = 'acquisition is func/multiecho because bold, func or something is in the name and EchoNumber is in the json file'
-                
                 series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
             elif 'MOSAIC' and 'PHASE' in data_list_unique_series[i]['ImageType']:
                 data_list_unique_series[i]['ModalityLabel'] = 'phase'
@@ -438,7 +437,7 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['DataType'] = 'func'
             data_list_unique_series[i]['ModalityLabel'] = 'sbref'
             data_list_unique_series[i]['qc'] = 'Acquisition is func/sbref because SBRef or sbref is in the name'
-            if 'rest' in SD:
+            if 'rest' in SD or 'rsfmri' in SD:
                 series_entities['task'] = 'rest'
                 
         #Localizers or other non-BIDS compatible acquisitions
