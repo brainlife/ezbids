@@ -760,7 +760,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
     return sub_protocol, objects_entities_list
     
 
-def fmap_intended_for(sub_protocol):
+def fmap_intended_for(sub_protocol, total_objects_indices):
     '''
     Determine IntendedFor fields for fmap acquisitions 
     
@@ -782,7 +782,8 @@ def fmap_intended_for(sub_protocol):
     phase_encoding_directions = [sub_protocol[x]['dir'] for x in range(len(sub_protocol))]
     section_indices = [x for x, y in enumerate(br_types) if x == 0 or ('localizer' in y and 'localizer' not in br_types[x-1])]
     fmap_counter = 0
-    fmap_intended_for_index = 0    
+    fmap_intended_for_index = 0  
+    total_objects_indices = total_objects_indices
     
     for j,k in enumerate(section_indices):
         '''
@@ -797,12 +798,13 @@ def fmap_intended_for(sub_protocol):
             section_end = section_indices[j+1]
         except:
             section_end = len(br_types)
+            
         
         #Check for potential issues
         for x,y in enumerate(br_types[section_start:section_end]):
             if y == 'fmap/epi':
                 fmap_se_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi']
-                bold_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'func/bold' and include[k+x] == True]
+                bold_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'func/bold' and include[k+x] == True]
                 
                 #If no func/bold acquisitions in section then the fmap/epi in this section are pointless, therefore won't be converted to BIDS
                 if len(bold_indices) == 0:
@@ -853,7 +855,7 @@ def fmap_intended_for(sub_protocol):
             elif y in ['fmap/magnitude1','fmap/magnitude2','fmap/phasediff']:
                 #Remove duplicate magnitude/phasediff fmaps. Only the last three in each section will be kept
                 fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1', 'fmap/magnitude2', 'fmap/phasediff']]
-                bold_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'func/bold' and include[k+x] != False]
+                bold_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'func/bold' and include[k+x] != False]                
                 
                 #If no func/bold acquisitions in section then the magnitude/phasediff in this section are pointless, therefore won't be converted to BIDS
                 if len(bold_indices) == 0:
@@ -889,7 +891,7 @@ def fmap_intended_for(sub_protocol):
             #Spin-echo fmaps for DWI
             elif y == 'fmap/epi_dwi':
                 fmap_se_dwi_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi_dwi']
-                dwi_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'dwi/dwi' and include[k+x] == True]
+                dwi_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'dwi/dwi' and include[k+x] == True]
 
                 #If no dwi/dwi acquisitions in section then the fmap/epi_dwi in this section are pointless, therefore won't be converted to BIDS
                 if len(dwi_indices) == 0:
@@ -941,7 +943,7 @@ def build_objects_list(sub_protocol, objects_entities_list):
         
         #Provide log output for acquisitions not deemed appropriate for BIDS conversion
         if sub_protocol[i]['include'] == False:
-            print('{} not recommended for BIDS conversion: {}'.format(sub_protocol[i]['SeriesDescription'], sub_protocol[i]['error']))
+            print('* {} not recommended for BIDS conversion: {}'.format(sub_protocol[i]['SeriesDescription'], sub_protocol[i]['error']))
         
         #Remove identifying information from sidecars
         remove_fields = ['SeriesInstanceUID', 'StudyInstanceUID', 
@@ -966,6 +968,7 @@ def build_objects_list(sub_protocol, objects_entities_list):
 
         if sub_protocol[i]['error']:
             sub_protocol[i]['error'] = [sub_protocol[i]['error']]
+            
             
         #Objects-level info for ezBIDS.json
         objects_info = {"include": sub_protocol[i]['include'],
@@ -1018,6 +1021,7 @@ participantsColumn = {"sex": {"LongName": "gender", "Description": "generic gend
 
 #Define a few variables that apply across the entire objects level
 objects_list = []
+total_objects_indices = 0
 subjects = [acquisition_dates[x]['sub'] for x in range(len(acquisition_dates))]
 sessions = [acquisition_dates[x]['ses'] for x in range(len(acquisition_dates))]
 series_seriesID_list = [series_list[x]['series_id'] for x in range(len(series_list))]
@@ -1042,10 +1046,12 @@ for s in range(len(acquisition_dates)):
     sub_protocol, objects_entities_list = identify_objects_info(sub_protocol, series_list, series_seriesID_list)
     
     #update sub_protocol based on fmap IntendedFor checks
-    sub_protocol = fmap_intended_for(sub_protocol)
+    sub_protocol = fmap_intended_for(sub_protocol, total_objects_indices)
     
     #Build objects_list
     objects_list = build_objects_list(sub_protocol, objects_entities_list)
+    
+    total_objects_indices += len(sub_protocol)
     
 #Extract values to plot for users
 for s in range(len(series_list)):
