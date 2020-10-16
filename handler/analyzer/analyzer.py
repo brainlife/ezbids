@@ -342,9 +342,12 @@ def identify_series_info(data_list_unique_series):
             series_entities['ce'] = ''
         
         
+        #Make easier to find key characters/phrases in SD by removing certain characters and make everything lowercase
+        SD = SD.lower().replace('_', '').replace('-', '').replace(' ', '')
+        
         ### Determine DataTypes and ModalityLabels #######
         # Magnitude/Phasediff and Spin echo (SE) field maps
-        if any(x in SD for x in ['FMAP','fmap','FIELDMAP','FieldMap','fieldmap','SE', 'Gre_Field_Mapping', 'gre_field_mapping', 'FIELD_MAPPING', 'Field_Mapping', 'field_mapping']) or SequenceName in ['epse2d', 'fm2d2r']:
+        if any(x in SD for x in ['fmap', 'fieldmap']) or SequenceName in ['epse2d', 'fm2d2r']:
             data_list_unique_series[i]['DataType'] = 'fmap'
             #Magnitude/Phasediff field maps
             if 'EchoNumber' in data_list_unique_series[i]['sidecar']:
@@ -365,14 +368,14 @@ def identify_series_info(data_list_unique_series):
                 series_entities['dir'] = data_list_unique_series[i]['dir']
             
         #DWI
-        elif any(x in SD for x in ['DWI','dwi','DTI','dti']) or 'ep_b' in SequenceName:
-            if 'B0_only' in SD: #Probably field map meant for dwi acquisition instead
+        elif any(x in SD for x in ['dwi','dti']) or 'ep_b' in SequenceName:
+            if 'b0only' in SD: #Probably field map meant for dwi acquisition instead
                 data_list_unique_series[i]['DataType'] = 'fmap'
                 data_list_unique_series[i]['ModalityLabel'] = 'epi_dwi'
                 data_list_unique_series[i]['qc'] = 'acquisition is fmap/epi_dwi because it is in the name but volume count is under 10, so probably a field map meant for a dwi'
                 series_entities['dir'] = data_list_unique_series[i]['dir']
             else:
-                if any(x in SD for x in ['TRACE','Trace','trace','FA','fa','ADC','adc']):
+                if any(x in SD for x in ['trace','fa','adc']):
                     data_list_unique_series[i]['include'] = False
                     data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
                     data_list_unique_series[i]['qc'] = 'Acquisition is TRACE, FA, or ADCC because it is in the name'
@@ -383,7 +386,7 @@ def identify_series_info(data_list_unique_series):
                     series_entities['dir'] = data_list_unique_series[i]['dir']
             
         #Arterial Spin Labeling (ASL)
-        elif any(x in SD for x in ['ASL','Asl','asl']):
+        elif any(x in SD for x in ['asl']):
             data_list_unique_series[i]['include'] = False
             data_list_unique_series[i]['DataType'] = 'asl'
             data_list_unique_series[i]['ModalityLabel'] = 'asl'
@@ -391,9 +394,9 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['qc'] = 'acquisition is asl/asl because asl or something is in the name'
             
         #Functional bold and phase
-        elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func','FMRI','fMRI','fmri','EPI']) and ('SBRef' not in SD or 'sbref' not in SD):
+        elif any(x in SD for x in ['bold','func','fmri','epi']) and 'sbref' not in SD:
             data_list_unique_series[i]['DataType'] = 'func'
-            if any(x in SD for x in ['REST','Rest','rest']):
+            if 'rest' in SD:
                 series_entities['task'] = 'rest'
             if data_list_unique_series[i]['EchoNumber']:
                 data_list_unique_series[i]['ModalityLabel'] = 'multiecho'
@@ -408,7 +411,7 @@ def identify_series_info(data_list_unique_series):
                 data_list_unique_series[i]['qc'] = 'acquisition is func/bold because bold, func or something is in the name'
 
         #T1w
-        elif any(x in SD for x in ['T1W','T1w','t1w','tfl3d','tfl','mprage','MPRAGE']) or 'tfl3d1_16ns' in SequenceName:
+        elif any(x in SD for x in ['t1w','tfl3d','tfl','mprage']) or 'tfl3d1_16ns' in SequenceName:
             data_list_unique_series[i]['DataType'] = 'anat'
             if data_list_unique_series[i]['EchoNumber']:
                 data_list_unique_series[i]['ModalityLabel'] = 'multiecho'
@@ -419,27 +422,27 @@ def identify_series_info(data_list_unique_series):
                 data_list_unique_series[i]['qc'] = 'acquisition is anat/T1w because anat, t1w, mprage or something is in the name'
         
         #FLAIR
-        elif any(x in SD for x in ['FLAIR','Flair','flair','t2_space_da-fl']):
+        elif any(x in SD for x in ['flair','t2spacedafl']):
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'FLAIR'
             data_list_unique_series[i]['qc'] = 'acquisition is anat/FLAIR because flair or something is in the name'
 
         #T2w
-        elif any(x in SD for x in ['T2W','T2w','t2w']):
+        elif 't2w' in SD:
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'T2w'
             data_list_unique_series[i]['qc'] = 'Acquisition is anat/T2w because t2w or something is in the name'
 
         #Functional single band reference (sbref)
-        elif any(x in SD for x in ['SBRef','sbref']):
+        elif 'sbref' in SD:
             data_list_unique_series[i]['DataType'] = 'func'
             data_list_unique_series[i]['ModalityLabel'] = 'sbref'
             data_list_unique_series[i]['qc'] = 'Acquisition is func/sbref because SBRef or sbref is in the name'
-            if any(x in SD for x in ['REST','Rest','rest']):
+            if 'rest' in SD:
                 series_entities['task'] = 'rest'
                 
         #Localizers or other non-BIDS compatible acquisitions
-        elif any(x in SD for x in ['LOCALIZER','Localizer','localizer','SCOUT','Scout','scout']):
+        elif any(x in SD for x in ['localizer','scout']):
             data_list_unique_series[i]['include'] = False
             data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
             data_list_unique_series[i]['qc'] = 'Acquisition is localizer (non-BIDS) because localizer or scout is in the name'
