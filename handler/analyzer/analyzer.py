@@ -852,7 +852,7 @@ def fmap_intended_for(sub_protocol):
             #Magnitude/Phasediff fmaps
             elif y in ['fmap/magnitude1','fmap/magnitude2','fmap/phasediff']:
                 #Remove duplicate magnitude/phasediff fmaps. Only the last three in each section will be kept
-                fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1', 'fmap/magnitude2', 'phasediff']]
+                fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1', 'fmap/magnitude2', 'fmap/phasediff']]
                 bold_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'func/bold' and include[k+x] != False]
                 
                 #If no func/bold acquisitions in section then the magnitude/phasediff in this section are pointless, therefore won't be converted to BIDS
