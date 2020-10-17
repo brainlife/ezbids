@@ -97,8 +97,7 @@ def select_unique_data(dir_list):
         else:
             studyID = ''
         
-        #Find subjID from json 
-        #Some json files contain neither PatientName nor PatientID
+        #Find subjID from json (some files contain neither PatientName nor PatientID)
         if 'PatientName' in json_data:
             PatientName = json_data['PatientName']
         else:
@@ -115,7 +114,7 @@ def select_unique_data(dir_list):
         else:
             PatientBirthDate = None
         
-        #Find subjID to display to ezBIDS users
+        #Select subjID to display to ezBIDS users
         #Order of importance is: PatientName > PatientID > PatientBirthDate
         if PatientName:
             sub = PatientName
@@ -143,7 +142,6 @@ def select_unique_data(dir_list):
             RepetitionTime = json_data['RepetitionTime']
         else:
             RepetitionTime = 'N/A'
-            
         
         #Find EchoNumber
         if 'EchoNumber' in json_data:
@@ -251,9 +249,6 @@ def select_unique_data(dir_list):
             if data_list[j]['sub'] == acquisition_dates[i]['sub'] and data_list[j]['AcquisitionDate'] == acquisition_dates[i]['AcquisitionDate']:
                 data_list[j]['ses'] = acquisition_dates[i]['ses']
         
-        
-    
-    
     #Unique data is determined from four values: SeriesDescription, EchoTime, ImageType, MultibandAccelerationFactor
     data_list_unique_series = []
     series_tuples = []
@@ -272,7 +267,6 @@ def select_unique_data(dir_list):
         
     return data_list, data_list_unique_series, subjectIDs_info, acquisition_dates
     
-
 
 def identify_series_info(data_list_unique_series):
     '''
@@ -294,6 +288,7 @@ def identify_series_info(data_list_unique_series):
         this information.
     '''
     
+    
     #Determine DataType and ModalityLabel of series list acquisitions
     series_list = []
     for i in range(len(data_list_unique_series)):
@@ -308,7 +303,6 @@ def identify_series_info(data_list_unique_series):
             SequenceName = data_list_unique_series[i]['sidecar']['ScanningSequence']
         else:
             SequenceName = 'N/A'
-        
         
         #Populate some labels fields (based on ReproIn convention)
         if 'sub-' in SD:
@@ -340,9 +334,14 @@ def identify_series_info(data_list_unique_series):
             series_entities['ce'] = SD.split('_ce-')[-1].split('_')[0]
         else:
             series_entities['ce'] = ''
+            
+        if '_echo-' in SD:
+            series_entities['echo'] = SD.split('_echo-')[-1].split('_')[0]
+        else:
+            series_entities['echo'] = ''
         
         
-        #Make easier to find key characters/phrases in SD by removing certain characters and make everything lowercase
+        #Make easier to find key characters/phrases in SD by removing "-",  "_", " " characters and make everything lowercase
         SD = SD.lower().replace('_', '').replace('-', '').replace(' ', '')
         
         ### Determine DataTypes and ModalityLabels #######
@@ -394,31 +393,38 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['qc'] = 'acquisition is asl/asl because asl or something is in the name'
             
         #Functional bold and phase
-        elif any(x in SD for x in ['bold','func','fmri','epi','mri']) and 'sbref' not in SD:
+        elif any(x in SD for x in ['bold','func','fmri','epi','mri','task']) and 'sbref' not in SD:
             data_list_unique_series[i]['DataType'] = 'func'
             if 'rest' in SD or 'rsfmri' in SD:
                 series_entities['task'] = 'rest'
-            if data_list_unique_series[i]['EchoNumber']:
-                data_list_unique_series[i]['ModalityLabel'] = 'multiecho'
-                data_list_unique_series[i]['qc'] = 'acquisition is func/multiecho because bold, func or something is in the name and EchoNumber is in the json file'
-                series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
-            elif 'MOSAIC' and 'PHASE' in data_list_unique_series[i]['ImageType']:
+            if 'MOSAIC' and 'PHASE' in data_list_unique_series[i]['ImageType']:
                 data_list_unique_series[i]['ModalityLabel'] = 'phase'
                 data_list_unique_series[i]['qc'] = 'acquisition is func/phase because bold, func or something is in the name and MOSAIC and PHASE are in the ImageType json field'
             else:
                 data_list_unique_series[i]['ModalityLabel'] = 'bold'
-                data_list_unique_series[i]['qc'] = 'acquisition is func/bold because bold, func or something is in the name'
+                if data_list_unique_series[i]['EchoNumber']:
+                    series_entities['echo'] = '0' +  str(data_list_unique_series[i]['EchoNumber'])
+            if data_list_unique_series[i]['EchoNumber']:
+                series_entities['echo'] = '0' +  str(data_list_unique_series[i]['EchoNumber'])
+            data_list_unique_series[i]['qc'] = 'acquisition is func/bold because bold, func or something is in the name'
 
+        #Functional single band reference (sbref)
+        elif 'sbref' in SD:
+            data_list_unique_series[i]['DataType'] = 'func'
+            data_list_unique_series[i]['ModalityLabel'] = 'sbref'
+            if 'rest' in SD or 'rsfmri' in SD:
+                series_entities['task'] = 'rest'
+            if data_list_unique_series[i]['EchoNumber']:
+                series_entities['echo'] = '0' + str(data_list_unique_series[i]['EchoNumber'])
+            data_list_unique_series[i]['qc'] = 'Acquisition is func/sbref because SBRef or sbref is in the name'
+        
         #T1w
         elif any(x in SD for x in ['t1w','tfl3d','tfl','mprage']) or 'tfl3d1_16ns' in SequenceName:
             data_list_unique_series[i]['DataType'] = 'anat'
+            data_list_unique_series[i]['ModalityLabel'] = 'T1w'
             if data_list_unique_series[i]['EchoNumber']:
-                data_list_unique_series[i]['ModalityLabel'] = 'multiecho'
-                data_list_unique_series[i]['qc'] = 'acquisition is anat/multiecho because anat, t1w, mprage or something is in the name and there is a EchoNumber field in the json file'
-                series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
-            else:
-                data_list_unique_series[i]['ModalityLabel'] = 'T1w'
-                data_list_unique_series[i]['qc'] = 'acquisition is anat/T1w because anat, t1w, mprage or something is in the name'
+                series_entities['echo'] = '0' + str(data_list_unique_series[i]['EchoNumber'])
+            data_list_unique_series[i]['qc'] = 'acquisition is anat/T1w because anat, t1w, mprage or something is in the name'
         
         #FLAIR
         elif any(x in SD for x in ['flair','t2spacedafl']):
@@ -432,14 +438,6 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['ModalityLabel'] = 'T2w'
             data_list_unique_series[i]['qc'] = 'Acquisition is anat/T2w because t2w or something is in the name'
 
-        #Functional single band reference (sbref)
-        elif 'sbref' in SD:
-            data_list_unique_series[i]['DataType'] = 'func'
-            data_list_unique_series[i]['ModalityLabel'] = 'sbref'
-            data_list_unique_series[i]['qc'] = 'Acquisition is func/sbref because SBRef or sbref is in the name'
-            if 'rest' in SD or 'rsfmri' in SD:
-                series_entities['task'] = 'rest'
-                
         #Localizers or other non-BIDS compatible acquisitions
         elif any(x in SD for x in ['localizer','scout']):
             data_list_unique_series[i]['include'] = False
@@ -452,32 +450,6 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['include'] = False
             data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine whether or not this acquisition should be converted to BIDS'
             data_list_unique_series[i]['qc'] = 'Acquisition is unknown becasue there is no good identifying info'
-        
-        # #Can't initially determine DataType or ModalityLabel
-        # else:
-        #     #MultibandAccelerationFactor would indicate functional bold
-        #     if data_list_unique_series[i]['MultibandAccelerationFactor'] != 'N/A':
-        #         data_list_unique_series[i]['DataType'] = 'func'
-        #         data_list_unique_series[i]['ModalityLabel'] = 'bold'
-        #         data_list_unique_series[i]['qc'] = 'acquisition is func/bold because no good identifying info is in the name but there is a MultibandAccelerationFactor field in the json file'
-                
-        # #Do another pass if the SeriesDescription information isn't insightful
-        # else:
-        #     if EchoTime < 10: #Probably T1w
-        #         data_list_unique_series[i]['DataType'] = 'anat'
-        #         data_list_unique_series[i]['ModalityLabel'] = 'T1w'
-        #         data_list_unique_series[i]['qc'] = 'acquisition is anat/T1w because there is no good identifying info, data is 3D, and EchoTime < 10'
-            
-        #     elif data_list_unique_series[i]['InversionTime'] is not None and data_list_unique_series[i]['InversionTime'] > 0: #Probably FLAIR
-        #         data_list_unique_series[i]['DataType'] = 'anat'
-        #         data_list_unique_series[i]['ModalityLabel'] = 'FLAIR'
-        #         data_list_unique_series[i]['qc'] = 'acquisition is anat/FLAIR because there is no good identifying info, data is 3D, InversionTime field exists, and InversionTime > 0'
-            
-        #     elif EchoTime > 100: #Probably T2w
-        #         data_list_unique_series[i]['DataType'] = 'anat'
-        #         data_list_unique_series[i]['ModalityLabel'] = 'T2w'
-        #         data_list_unique_series[i]['qc'] = 'acquisition is anat/T2w because there is no good identifying info, data is 3D, and EchoTime > 100'
-
                
         if data_list_unique_series[i]['DataType'] == '' and data_list_unique_series[i]['ModalityLabel'] == '':
             if 'localizer' not in data_list_unique_series[i]['br_type']:
@@ -576,9 +548,9 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                 plt.savefig('{}.png'.format(sub_protocol[p]['nifti_path'][:-7]))
             
         index = series_seriesID_list.index(sub_protocol[p]['series_id'])
-        objects_entities = {'sub': '', 'ses': '', 'run': '', 'acq': '', 'ce': ''}
+        objects_entities = {'sub': '', 'ses': '', 'run': '', 'acq': '', 'ce': '', 'echo': ''}
         
-        #Port Series level information down to the object level
+        #Port series level information down to the object level
         sub_protocol[p]['include'] = data_list_unique_series[index]['include']
         sub_protocol[p]['DataType'] = data_list_unique_series[index]['DataType']
         sub_protocol[p]['ModalityLabel'] = data_list_unique_series[index]['ModalityLabel']
@@ -595,31 +567,29 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
             objects_entities['acq'] = series_list[index]['entities']['acq']
         if 'ce' in series_list[index]['entities'] and series_list[index]['entities']['ce']:
             objects_entities['ce'] = series_list[index]['entities']['ce']
+        if 'echo' in series_list[index]['entities'] and series_list[index]['entities']['echo']:
+            objects_entities['echo'] = series_list[index]['entities']['echo']
         
         #Determine other important BIDS information (i.e. run, dir, etc) for specific acquisitions        
-        #Don't include anatomical (non multiecho) acquisitions that are too small (<1.2MB)
-        if 'anat' in sub_protocol[p]['br_type'] and 'multiecho' not in sub_protocol[p]['br_type'] :
+        #Don't include anatomical acquisitions that are too small (<1.2MB)
+        if 'anat' in sub_protocol[p]['br_type']:
             if sub_protocol[p]['filesize']/(1024*1024) < 1.2:
                 sub_protocol[p]['include'] = False
                 sub_protocol[p]['error'] = 'Acquisition filesize is only {}MB. The ezBIDS minimum threshold for anatomical acquisitions is 1.2MB. This object will not be included in the BIDS output'.format(sub_protocol[p]['filesize']/(1024*1024))
         
         #T1w
-        if sub_protocol[p]['br_type'] in ['anat/T1w', 'anat/multiecho'] and sub_protocol[p]['include'] == True:
+        if sub_protocol[p]['br_type'] == 'anat/T1w' and sub_protocol[p]['include'] == True:
             #non-normalized T1w images that have poor CNR, so best to not have in BIDS if there's an actual good T1w available
             if 'NORM' not in sub_protocol[p]['ImageType']:
                 # index_next = series_seriesID_list.index(sub_protocol[p+1]['series_id'])
                 # sub_protocol[p+1]['br_type'] = data_list_unique_series[index_next]['br_type']
-                
                 if p+1 == len(sub_protocol):
-                    sub_protocol[p]['include'] = True 
-                    sub_protocol[p]['error'] = None
-                elif sub_protocol[p]['br_type'] == 'anat/multiecho' and sub_protocol[p+1]['br_type'] == 'anat/multiecho':
                     sub_protocol[p]['include'] = True 
                     sub_protocol[p]['error'] = None
                 elif sub_protocol[p+1]['br_type'] == 'anat/T1w' and 'NORM' not in sub_protocol[p+1]['ImageType']:
                     sub_protocol[p]['include'] = True 
                     sub_protocol[p]['error'] = None
-                elif sub_protocol[p+1]['br_type'] not in ['anat/T1w', 'anat/multiecho']:
+                elif sub_protocol[p+1]['br_type'] != 'anat/T1w':
                     sub_protocol[p]['include'] = True 
                     sub_protocol[p]['error'] = None
                 else:
@@ -627,7 +597,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                     sub_protocol[p]['error'] = 'Acquisition is a poor resolution T1w (non-normalized); Please check to see if this T1w acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'
         
         #Functional bold
-        elif sub_protocol[p]['br_type'] in ['func/bold','func/multiecho']:
+        elif sub_protocol[p]['br_type'] == 'func/bold':
             #Instances where functional bold acquisitions have less than 30 volumes (probably a restart/failure occurred, or some kind of non-BIDS test)
             if sub_protocol[p]['VolumeCount'] < 30:
                 sub_protocol[p]['include'] = False
@@ -681,7 +651,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                 sub_protocol[p+1]['br_type'] = data_list_unique_series[index_next]['br_type']
                 
             #Rare instances where sbref is not followed by functional bold
-            if sub_protocol[p+1]['br_type'] not in ['func/bold', 'func/multiecho']:
+            if sub_protocol[p+1]['br_type'] != 'func/bold':
                 sub_protocol[p]['include'] = False
                 sub_protocol[p]['error'] = 'Single band reference (sbref) acquisition is not immediately followed by a functional bold acquisition that is being converted to BIDS. This object will not be included in the BIDS output'
                 
@@ -799,7 +769,6 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
         except:
             section_end = len(br_types)
             
-        
         #Check for potential issues
         for x,y in enumerate(br_types[section_start:section_end]):
             if y == 'fmap/epi':
@@ -969,7 +938,6 @@ def build_objects_list(sub_protocol, objects_entities_list):
         if sub_protocol[i]['error']:
             sub_protocol[i]['error'] = [sub_protocol[i]['error']]
             
-            
         #Objects-level info for ezBIDS.json
         objects_info = {"include": sub_protocol[i]['include'],
                     "series_id": sub_protocol[i]['series_id'],
@@ -1018,7 +986,6 @@ series_list = identify_series_info(data_list_unique_series)
 participantsColumn = {"sex": {"LongName": "gender", "Description": "generic gender field", "Levels": {"M": "male", "F": "female"}},
                       "age": {"LongName": "age", "Units": "years"}}
     
-
 #Define a few variables that apply across the entire objects level
 objects_list = []
 total_objects_indices = 0
