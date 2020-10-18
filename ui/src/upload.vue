@@ -1,8 +1,8 @@
 <template>
-<div>
+<div v-if="$root.currentPage.id == 'upload'">
     <div v-if="!$root.session">
         <p>
-        Welcome to the <b><span style="letter-spacing: -2px; opacity: 0.5">ez</span>BIDS</b> - an online DICOM to BIDS conversion / organizing tool. 
+            Welcome to the <b><span style="letter-spacing: -2px; opacity: 0.5">ez</span>BIDS</b> - an online DICOM to BIDS conversion / organizing tool. 
         </p>
 
         <div class="drop-area" :class="{dragging}" 
@@ -50,9 +50,58 @@
                 </ul>
             </div>
         </div>
-        <div v-else>
-            <el-button type="secondary" @click="$root.reset()" size="small" style="float: right;">Re-upload</el-button>
-            <processStatus/>
+
+        <div v-if="$root.session.status == 'preprocessing'">
+            <p v-if="$root.session.dicomDone && $root.session.dicomDone < $root.session.dicomCount">
+                Converting dicoms to nifti ...
+                <el-progress status="success" 
+                    :text-inside="true" 
+                    :stroke-width="24" 
+                    :percentage="($root.session.dicomDone / $root.session.dicomCount)*100"/>
+            </p>
+            <p v-else>Analyzing...</p>
+            <p><small><i>{{$root.session.status_msg}}</i></small></p>
+        </div>
+
+        <div v-if="$root.session.status == 'failed'">
+            <p>ezBIDS failed.. Please check the log and/or contact ezBIDS team.</p>
+            <p>{{$root.session.status_msg}}</p>
+            <h4>Debugging</h4>
+            <el-collapse v-model="activeLogs" @change="logChange">
+                <el-collapse-item title="Preprocess/Analyzer Log" name="out">
+                    <pre class="text">{{out}}</pre>
+                </el-collapse-item>
+                <el-collapse-item title="Preprocess/Analyzer Error Log" name="err">
+                    <pre class="text">{{err}}</pre>
+                </el-collapse-item>
+                <el-collapse-item title="BIDS Conversion Log" name="bidsOut" v-if="$root.finalized">
+                    <pre class="text">{{bidsOut}}</pre>
+                </el-collapse-item>
+                <el-collapse-item title="BIDS Conversion Error Log" name="bidsErr" v-if="$root.finalized">
+                    <pre class="text">{{bidsErr}}</pre>
+                </el-collapse-item>
+                <el-collapse-item title="Objects" name="list" v-if="$root.analyzed">
+                    <pre class="text">{{list}}</pre>
+                    <div>
+                        <h3>Subjects</h3>
+                        <pre>{{this.$root.subjects}}</pre>
+                        <h3>Sessions</h3>
+                        <pre>{{this.$root.sessions}}</pre>
+                        <h3>Series</h3>
+                        <pre>{{this.$root.series}}</pre>
+                        <h3>Objects</h3>
+                        <pre>{{this.$root.objects}}</pre>
+                    </div>
+                </el-collapse-item>
+            </el-collapse>
+        </div>
+
+        <div v-if="$root.session.status == 'analyzed'">
+            <p>Analysis complete! Please proceed to the next tab.</p>
+            <div class="page-action">
+                <el-button type="primary" @click="next">Next</el-button>
+                <el-button type="secondary" @click="$root.reset()">Re-Upload</el-button>
+            </div>
         </div>
     </div>
 </div>
@@ -60,16 +109,11 @@
 
 <script>
 
-//import Vue from 'vue'
-//import store from './store'
 import axios from 'axios';
-
-import processStatus from '@/components/processStatus';
 
 export default {
     //store,
     components: {
-        processStatus,
     },
     data() {
         return {
@@ -279,7 +323,11 @@ export default {
         loadedPercentage(file_id) {
             let file = this.files[file_id];
             return ((file.loaded / file.size)*100).toFixed(1);
-        }
+        },
+         
+        next() {
+            this.$root.changePage("description");
+        },
     },
 }
 </script>

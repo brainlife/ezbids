@@ -104,7 +104,21 @@ new Vue({
             objects: [],
             subs: {}, //objects organized into subs/ses/run for objects page
 
-            page: "upload",
+            //page: "upload",
+            currentPage: null,
+
+            reload_t: null,
+
+            pages: [
+                {id: "upload", title: "Upload DICOM"},
+                {id: "description", title: "BIDS Description"},
+                {id: "subject", title: "Subject Mapping"},
+                {id: "session", title: "Session Mapping"},
+                {id: "series", title: "Series Mapping"},
+                {id: "participant", title: "Participants Info"},
+                {id: "object", title: "Finalize"},
+                {id: "finalize", title: "Download BIDS"},
+            ],
 
             //TODO - deprecated - use bids_datatypes (datatype selector should be componentized)
             datatypes: [], //datatype catalog from bids-specification (suffixes only)
@@ -125,25 +139,20 @@ new Vue({
             //      bidsing
             //      finished
 
-            objectErrors: 0,
+            /*
+            descErrors: 0,
+            subjectErrors: 0,
+            sessionErrors: 0,
             seriesErrors: 0,
+            participantErrors: 0,
+            objectErrors: 0,
+            */
 
             analyzed: false,
             finalized: false,
             //finalized: false,
             //finished: false,
         }
-    },
-
-    watch: {
-        page() {
-            console.log("validating..");
-            this.objects.forEach(this.mapObject);
-            this.objects.forEach(this.validateObject);
-            this.series.forEach(this.validateSeries);
-            this.countErrors(); 
-            this.organizeObjects();
-        },
     },
 
     async mounted() {
@@ -154,6 +163,11 @@ new Vue({
             }
             this.pollSession();
         }
+
+        this.currentPage = this.pages[0];
+        this.pages.forEach((p, idx)=>{
+            p.idx = idx;
+        });
 
         //dwi
         //https://github.com/tsalo/bids-specification/blob/ref/json-entity/src/schema/datatypes/dwi.yaml
@@ -485,8 +499,7 @@ split:
 
     },
 
-    computed: {
-    },
+    computed: { },
 
     methods: {
         reset() {
@@ -575,86 +588,6 @@ split:
             o._entities = e;
         },
 
-        validateObject(o) {
-            Vue.set(o, 'validationErrors', []);
-
-            //if not included, don't need to validate
-            if(!o.include) return;
-
-            //make sure all required entities are set
-            let series = this.findSeries(o);
-            let entities_requirement = this.getEntities(o.type);
-
-            if(o.type.startsWith("func/")) {
-                if(entities_requirement['task'] && !o.entities.task && !series.entities.task) {
-                    o.validationErrors.push("Task Name is required for func/bold but not set in series nor overridden.");
-                }
-            }
-            if(o.type.startsWith("fmap/")) {
-                if(!o.IntendedFor) o.IntendedFor = []; //TODO can't think of a better place to do this
-                if(o.IntendedFor.length == 0) {
-                    o.validationErrors.push("fmap should have IntendedFor set to at least 1 object");
-                }
-            }
-
-            //try parsing items
-            o.items.forEach(item=>{
-                if(item.sidecar) {
-                    try {
-                        item.sidecar = JSON.parse(item.sidecar_json);
-                    } catch (err) {
-                        o.validationErrors.push(err);
-                    }
-                }
-            });
-
-            //make sure no 2 object are exactly alike
-            for(let o2 of this.objects) {
-                if(o == o2) continue;
-                if(!o2.include) continue;
-                if(o.type != o2.type) continue;
-                let same = o2;
-                for(let k in o._entities) {
-                    if(o._entities[k] != o2._entities[k]) {
-                        same = null;
-                        break;
-                    }
-                }
-                if(same) {
-                    o.validationErrors.push("This object looks exactly like another object with sn:"+same.SeriesNumber);
-                    console.dir(same);
-                    break;
-                }
-            }
-        },
-
-        validateSeries(s) {
-            Vue.set(s, 'validationErrors', []);
-            let entities = this.getEntities(s.type);
-            for(let k in entities) {
-                if(entities[k] == "required") {
-                    if(s.entities[k] === "") {
-                        s.validationErrors.push("entity: "+k+" is required.");
-                    }
-                }
-            }
-        },
-
-        countErrors() {
-
-            this.objectErrors = 0;
-            for(let o of this.objects) {
-                this.objectErrors += o.validationErrors.length;
-            }
-
-            this.seriesErrors = 0;
-            for(let o of this.series) {
-                this.seriesErrors += o.validationErrors.length;
-            }
-
-            //this.validated = true;
-        },
-
         organizeObjects() {
             this.subs = {}; 
 
@@ -741,6 +674,34 @@ split:
                 break;
             }
         },
+
+        changePage(id) {
+            this.currentPage = this.pages.find(p=>p.id == id);
+        },
+
+        finalize() {
+            //clearTimeout(this.reload_t);
+
+            fetch(this.apihost+'/session/'+this.session._id+'/finalize', {
+                method: "PATCH", 
+                //headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    datasetDescription: this.datasetDescription,
+                    readme: this.readme,
+                    participantsColumn: this.participantsColumn,
+                    subjects: this.subjects, //for phenotype
+                    objects: this.objects,
+                }),
+            }).then(res=>res.text()).then(status=>{
+                if(status == "ok") {
+                    this.finalized = true;
+                    this.pollSession();
+                } else {
+                    this.$notify({ title: 'Failed', message: 'Failed to finalize:'+status});
+                }
+            }); 
+        },
+
     },
 })
 

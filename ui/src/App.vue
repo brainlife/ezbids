@@ -1,32 +1,32 @@
 <template>
-<div id="app">
-    <el-container>
-        <!--
-        <el-header height="110px">
-            <h1><span style="letter-spacing: -3px; opacity: 0.6;">ez</span>BIDS</h1>
-            <themenu v-model="$root.page"/>
-        </el-header>
-        -->
+<div id="app" style="height: 100%;">
+    <el-container style="height: 100%;">
         <el-aside width="200px">
-            <h1><span style="letter-spacing: -3px; opacity: 0.6;">ez</span>BIDS</h1>
-            <themenu v-model="$root.page"/>
+            <div style="position: fixed; top: 0;">
+                <h1><span style="letter-spacing: -3px; opacity: 0.6;">ez</span>BIDS</h1>
+                <div style="height: 300px; padding: 15px;" v-if="$root.currentPage">
+                    <el-steps direction="vertical" :active="$root.currentPage.idx">
+                        <el-step v-for="p in $root.pages" :key="p.idx" :title="p.title"></el-step>
+                    </el-steps>
+                </div>
+            </div>
         </el-aside>
-        <el-main>
-            <upload v-show="$root.page == 'upload'"/>
-            <description v-show="$root.page == 'description'"/>
-            <subjects v-show="$root.page == 'subjects'"/>
-            <sessions v-show="$root.page == 'sessions'"/>
-            <series v-show="$root.page == 'series'"/>
-            <participants v-show="$root.page == 'participants'"/>
-            <objects v-show="$root.page == 'objects'"/>
-            <finalize v-show="$root.page == 'finalize'"/>
+        <el-main v-if="$root.currentPage">
+            <upload/>
+            <description/>
+            <subjects/>
+            <sessions/>
+            <series/>
+            <participants/>
+            <objects/>
+            <finalize/>
         </el-main>
     </el-container>
 </div>
 </template>
 
 <script>
-import themenu from './components/menu.vue'
+//import themenu from './components/menu.vue'
 
 import upload from '@/upload'
 import description from '@/description'
@@ -40,7 +40,8 @@ import finalize from '@/finalize'
 export default {
     //store,
     components: {
-        themenu,
+        //themenu,
+
         upload,
         description,
         subjects,
@@ -54,6 +55,10 @@ export default {
         return {
         }
     },
+    computed: {
+    },
+    methods: {
+    },
     created() {
         console.log("App");
     },
@@ -62,23 +67,15 @@ export default {
 
 <style>
 body, html, textarea {
-    font-family: Avenir, Helvetica, Arial, sans-serif;
+    font-family: Arial, sans-serif;
     color: #666;
+    height: 100%;
+    padding: 0;
+    margin: 0;
 }
-/*
-.el-header {
-    position: fixed;
-    left: 0;
-    right: 0;
-    top: 0;
-    z-index: 3000;
-    background-color: white;
-    height: 100px;
+textarea {
+    font-family: Arial, sans-serif;
 }
-.el-main {
-    margin-top: 100px;
-}
-*/
 h1 {
     padding: 5px 20px;
     margin-bottom: 0;
@@ -105,9 +102,12 @@ h1 {
 .el-table .cell {
 word-break: normal;
 }
-/*
-.el-form-item__label {
-line-height: 1.5;
+.page-action {
+    position: fixed;
+    width: 100%;
+    background-color: #0004;
+    padding: 10px;
+    bottom: 0;
+    z-index: 1;
 }
-*/
 </style>

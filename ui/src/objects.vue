@@ -1,9 +1,7 @@
 <template>
-<div class="objects">
-    <p>Please make sure all subject/session/series mappings are correctly applied to your data.</p>
-    <p>By default, entity specified in the <b>Series</b> page will be used as defaults for all objects. On this page you can override those entities.</p>
+<div v-if="$root.currentPage.id == 'object'">
     <div class="bids-structure">
-        <h5>BIDS Structure</h5>
+        <h4>BIDS Structure</h4>
         <div v-for="(o_sub, sub) in $root.subs" :key="sub" style="font-size: 90%;">
             <span v-if="sub != ''" class="hierarchy" style="opacity: 0.8;">
                 <i class="el-icon-user-solid"/> 
@@ -12,7 +10,7 @@
             </span>
             <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}" class="left-border">
                 <span class="hierarchy" style="opacity: 0.8;"><i class="el-icon-time"/> <small v-if="ses">ses</small> {{ses}}</span>
-                <div v-for="(o, idx) in o_ses.objects" :key="idx" style="padding: 2px;" class="clickable" :class="{'selected': so === o}" @click="select(o, o_ses)">
+                <div v-for="o in o_ses.objects" :key="o.idx" style="padding: 2px;" class="clickable" :class="{'selected': so === o}" @click="select(o, o_ses)">
                     <!--<el-tag type="info" size="mini"><small>{{o.series_id}}</small></el-tag>-->
                     <el-tag type="info" size="mini">sn {{o.SeriesNumber}}</el-tag>
                     &nbsp;
@@ -23,15 +21,22 @@
                 </div>
             </div>
         </div>
+        <br>
+        <br>
+        <br>
+        <br>
     </div>
-    <p v-if="!so" style="margin-left: 300px">
+
+    <div v-if="!so" style="margin-left: 350px">
+        <p>Please make sure all subject/session/series mappings are correctly applied to your data.</p>
+        <p>By default, entities specified in the <b>Series</b> page will be used as defaults for all objects. On this page you can override those entities.</p>
         <br>
         <br>
         <br>
         <br>
         <br>
         <i class="el-icon-back"/> <small>Please select an object to view/edit in the BIDS Structure list</small>
-    </p>
+    </div>
     <div class="object">
         <div v-if="so">
             <div style="margin-bottom: 10px;">
@@ -114,6 +119,18 @@
             </el-form>
         </div><!--selected != null-->
     </div><!--object-->
+
+    <br>
+    <br>
+    <br>
+    <br>
+    <br>
+    <el-form>
+        <el-form-item class="page-action">
+            <el-button type="primary" @click="next">Next</el-button>
+            <el-button @click="back">Back</el-button>
+        </el-form-item>
+    </el-form>
 </div>
 </template>
 
@@ -134,10 +151,26 @@ export default {
             config: Vue.config,
         }
     },
-    
-    mounted() {
-    },
 
+    watch: {
+        '$root.currentPage'(v) {
+            if(v.id == 'object') {
+
+                //I have to map all objects at least once before I can validate any object
+                this.$root.objects.forEach(o=>{
+                    this.$root.mapObject(o);
+                });
+
+                //then I can validate
+                this.$root.objects.forEach(o=>{
+                    this.validate(o);
+                });
+
+                this.$root.organizeObjects();
+            }
+        },
+    },
+    
     methods: {
         select(o, sess) {
             this.sess = sess;
@@ -146,9 +179,10 @@ export default {
 
         update(o) {
             this.$root.mapObject(o);
-            this.$root.validateObject(o);
-            this.$root.countErrors(); 
-
+            //I need to validate the entire list.. so I can detect collision
+            this.$root.objects.forEach(_o=>{
+                this.validate(_o);
+            });
             this.$root.organizeObjects();
         },
 
@@ -171,24 +205,94 @@ export default {
             l += o.type;
             if(o._entities.run) l += " run-"+o._entities.run;
             return l;
-        }
+        },
+
+        validate(o) {
+            Vue.set(o, 'validationErrors', []);
+
+            //if not included, don't need to validate
+            if(!o.include) return;
+
+            //make sure all required entities are set
+            let series = this.$root.findSeries(o);
+            let entities_requirement = this.$root.getEntities(o.type);
+
+            if(o.type.startsWith("func/")) {
+                if(entities_requirement['task'] && !o.entities.task && !series.entities.task) {
+                    o.validationErrors.push("Task Name is required for func/bold but not set in series nor overridden.");
+                }
+            }
+            if(o.type.startsWith("fmap/")) {
+                if(!o.IntendedFor) o.IntendedFor = []; //TODO can't think of a better place to do this
+                if(o.IntendedFor.length == 0) {
+                    o.validationErrors.push("fmap should have IntendedFor set to at least 1 object");
+                }
+            }
+
+            //try parsing items
+            o.items.forEach(item=>{
+                if(item.sidecar) {
+                    try {
+                        item.sidecar = JSON.parse(item.sidecar_json);
+                    } catch (err) {
+                        o.validationErrors.push(err);
+                    }
+                }
+            });
+
+            //make sure no 2 objects are exactly alike
+            for(let o2 of this.$root.objects) {
+                if(o == o2) continue;
+                if(!o2.include) continue;
+                if(o.type != o2.type) continue;
+                let same = o2;
+                for(let k in o._entities) {
+                    if(o._entities[k] != o2._entities[k]) {
+                        same = null;
+                        break;
+                    }
+                }
+                if(same) {
+                    o.validationErrors.push("This object looks exactly like another object with sn:"+same.SeriesNumber);
+                    //console.dir(same);
+                    break;
+                }
+            }
+        },
+
+        next() {
+            let valid = true;
+            this.$root.objects.forEach(s=>{
+                if(s.validationErrors.length > 0) valid = false;
+            });
+            if(valid) {
+                this.$root.finalize();
+                this.$root.changePage("finalize");
+            } else {
+                alert('Please correct all issues');
+                return false;
+            }
+        },
+
+        back() {
+            this.$root.changePage("participant");
+        },
     },
 
-    computed: {
-    },
 }
 </script>
 
 <style scoped>
-.objects {
-position: relative;
-}
 .bids-structure {
-position: absolute;
-width: 300px;
+position: fixed;
+top: 0;
+bottom: 0;
+width: 350px;
+height: 100%;
+overflow: auto;
 }
 .object {
-margin-left: 300px;
+margin-left: 350px;
 box-shadow: -4px -2px 4px #0001;
 z-index: 1;
 position: relative;

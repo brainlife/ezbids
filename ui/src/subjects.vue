@@ -1,5 +1,5 @@
 <template>
-<div>
+<div v-if="$root.currentPage.id == 'subject'">
     <h4>Patient / Subject Mappings</h4>
     <p>Decide how you want to map DICOM PatientID to BIDS Subject ID. You can download the mapping table later.</p>
     <el-dropdown @command="resetSubjects" style="float: right;" size="small">
@@ -25,16 +25,26 @@
         </el-table-column>
         <el-table-column label="BIDS Subject ID">
             <template slot-scope="scope">
-                <el-input v-model="scope.row.sub" size="small">
+                <el-input v-model="scope.row.sub" size="small" @change="validate(scope.row)">
                     <template slot="prepend">sub-</template>
                 </el-input>
+                <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in scope.row.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
             </template>
         </el-table-column>
     </el-table>
+
+    <br>
+    <br>
+    <br>
+    <div class="page-action">
+        <el-button type="primary" @click="next">Next</el-button>
+        <el-button @click="back">Back</el-button>
+    </div>
 </div>
 </template>
 
 <script>
+import Vue from 'vue'
 
 export default {
     data() {
@@ -43,18 +53,11 @@ export default {
         }
     },
     watch: {
-        /*
-        '$root.subjects'(v, ov) {
-            console.log("subjects updated (data loaded).. initializing keys");
-            if(v.length == 0) return; //prevent infinite loop
-            if(ov.length == 0) {
-                this.resetSubjects('pname');
+        '$root.currentPage'(v) {
+            if(v.id == 'subject') {
+                this.$root.subjects.forEach(this.validate);
             }
         },
-        */
-    },
-
-    created() {
     },
 
     methods: {
@@ -79,6 +82,38 @@ export default {
                 });
                 break;
             }        
+
+            //this.$root.validate();
+            this.$root.subjects.forEach(this.validate);
+        },
+
+        validate(s) {
+            Vue.set(s, 'validationErrors', []);
+            s.sub = s.sub.trim();
+            if(s.sub.length == 0) {
+                s.validationErrors.push("subject is a required field");
+            }
+            let cleansub = s.sub.replace(/[^0-9a-zA-Z]/g, '');
+            if(s.sub != cleansub) {
+                s.validationErrors.push("subject contains non alphanumeric characters");
+            }
+        },
+
+        next() {
+            let valid = true;
+            this.$root.subjects.forEach(s=>{
+                if(s.validationErrors.length > 0) valid = false;
+            });
+            if(valid) {
+                this.$root.changePage("session");
+            } else {
+                alert('Please correct all issues');
+                return false;
+            }
+        },
+
+        back() {
+            this.$root.changePage("description");
         },
     },
 }

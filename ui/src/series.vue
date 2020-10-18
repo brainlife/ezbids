@@ -1,17 +1,15 @@
 <template>
-<div>
+<div v-if="$root.currentPage.id == 'series'">
     <h4>Series / Datatype Mappings</h4>
     <p>Please update how you'd like to map each dicom SeriesDescription to BIDS datatype/entities.</p>
     <el-table :data="$root.series" style="width: 100%" size="mini" class="table-align-top">
-        <el-table-column label="Series" width="500px">
+        <el-table-column label="Series" width="400px">
             <template slot-scope="scope">
-                <!--<el-tag type="info" size="mini"><small>{{scope.row.SeriesNumber}}</small></el-tag>-->
                 <p style="margin-top: 10px;">
                     <i class="el-icon-right" style="float: right; font-size: 150%; font-weight: bold;"/>
                     <el-tag type="info" size="mini">sn {{scope.row.SeriesNumber}}</el-tag>&nbsp;
                     {{scope.row.SeriesDescription}}
                 </p>
-                <!-- <el-checkbox v-model="scope.row.include">Include in the BIDS output</el-checkbox> -->
                 <p> 
                     <el-tag type="info" size="mini"><small>EchoTime: {{scope.row.EchoTime}}</small></el-tag><br>
                     <el-tag type="info" size="mini"><small>ImageType: {{scope.row.ImageType}}</small></el-tag><br>
@@ -41,7 +39,7 @@
                             <el-popover width="300" trigger="focus" placement="right-start"
                                 :title="$root.bids_entities[entity].name" 
                                 :content="$root.bids_entities[entity].description">
-                                <el-input slot="reference" v-model="scope.row.entities[entity]" size="small" :required="v == 'required'" @change="update(scope.row)"/>
+                                <el-input slot="reference" v-model="scope.row.entities[entity]" size="small" :required="v == 'required'" @change="validate(scope.row)"/>
                             </el-popover>
                         </el-form-item>
                     </div>
@@ -52,16 +50,33 @@
             </template>
         </el-table-column>
     </el-table>
+
+    <br>
+    <el-form>
+        <el-form-item class="page-action">
+            <el-button type="primary" @click="next">Next</el-button>
+            <el-button @click="back">Back</el-button>
+        </el-form-item>
+    </el-form>
+    <br>
 </div>
 </template>
 
 <script>
+import Vue from 'vue'
 
 export default {
     data() {
         return {
             showInfo: {},
         }
+    },
+    watch: {
+        '$root.currentPage'(v) {
+            if(v.id == 'series') {
+                this.$root.series.forEach(this.validate);
+            }
+        },
     },
     methods: {
         getSomeEntities(type) {
@@ -79,9 +94,33 @@ export default {
             this.$set(this.showInfo, entity, !this.showInfo[entity]);
         },
 
-        update(s) {
-            this.$root.validateSeries(s);
-            this.$root.countErrors();
+        validate(s) {
+            Vue.set(s, 'validationErrors', []);
+            let entities = this.$root.getEntities(s.type);
+            for(let k in entities) {
+                if(entities[k] == "required") {
+                    if(s.entities[k] === "") {
+                        s.validationErrors.push("entity: "+k+" is required.");
+                    }
+                }
+            }
+        },
+
+        next() {
+            let valid = true;
+            this.$root.series.forEach(s=>{
+                if(s.validationErrors.length > 0) valid = false;
+            });
+            if(valid) {
+                this.$root.changePage("participant");
+            } else {
+                alert('Please correct all issues');
+                return false;
+            }
+        },
+
+        back() {
+            this.$root.changePage("session");
         },
 
     },

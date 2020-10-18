@@ -1,5 +1,5 @@
 <template>
-<div>
+<div v-if="$root.currentPage.id == 'session'">
     <h4>AcquisitionDate / Session Mappings</h4>
     <p>Decide how want to map DICOM AcquisitionDate to BIDS Session IDs. You should leave it blank if it's single session. You can download the mapping table later.</p>
     <!--series ID-->
@@ -19,20 +19,30 @@
             <template slot-scope="scope">
                 <i class="el-icon-right" style="float: right; font-size: 150%; font-weight: bold;"/>
                 {{scope.row.AcquisitionDate}}
+                <small>{{scope.row.desc}}</small>
             </template>
         </el-table-column>
         <el-table-column label="BIDS Session ID">
             <template slot-scope="scope">
-                <el-input v-model="scope.row.ses" placeholder="no session" size="small">
+                <el-input v-model="scope.row.ses" placeholder="no session" size="small" @change="validate(scope.row)">
                     <template slot="prepend">ses-</template>
                 </el-input>
             </template>
         </el-table-column>
     </el-table>
+
+    <br>
+    <br>
+    <br>
+    <div class="page-action">
+        <el-button type="primary" @click="next">Next</el-button>
+        <el-button @click="back">Back</el-button>
+    </div>
 </div>
 </template>
 
 <script>
+import Vue from 'vue'
 
 export default {
     data() {
@@ -42,18 +52,11 @@ export default {
     },
 
     watch: {
-        /*
-        '$root.sessions'(v, ov) {
-            console.log("session updated (analyzer finished?).. initializing keys");
-            if(v.length == 0) return; //prevent infinite loop
-            if(ov.length == 0) {
-                this.resetSessions('empty');
+        '$root.currentPage'(v) {
+            if(v.id == 'session') {
+                this.$root.sessions.forEach(this.validate);
             }
         },
-        */
-    },
-
-    created() {
     },
 
     methods: {
@@ -86,7 +89,30 @@ export default {
                 });
                 break;
             }        
-        }
+            this.$root.sessions.forEach(this.validate);
+        },
+
+        validate(s) {
+            //TODO..
+            Vue.set(s, 'validationErrors', []);
+        },
+
+        next() {
+            let valid = true;
+            this.$root.sessions.forEach(s=>{
+                if(s.validationErrors.length > 0) valid = false;
+            });
+            if(valid) {
+                this.$root.changePage("series");
+            } else {
+                alert('Please correct all issues');
+            }
+        },
+
+        back() {
+            this.$root.changePage("subject");
+        },
+
     },
 }
 </script>
