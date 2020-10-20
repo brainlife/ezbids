@@ -5,7 +5,6 @@
     <el-table :data="$root.series" size="mini" class="table-align-top">
         <el-table-column label="Series" width="350px">
             <template slot-scope="scope">
-            {{scope.row.entities}}
                 <p style="margin-top: 10px;">
                     <i class="el-icon-right" style="float: right; font-size: 150%; font-weight: bold;"/>
                     <el-tag type="info" size="mini">sn {{scope.row.SeriesNumber}}</el-tag>&nbsp;
