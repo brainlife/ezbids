@@ -774,8 +774,8 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
             
         #Check for potential issues
         for x,y in enumerate(br_types[section_start:section_end]):
-            if y == 'fmap/epi' and 'max b-values' not in qcs[total_objects_indices+k+x]:
-                fmap_se_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' not in qcs[total_objects_indices+k+x]]
+            if y == 'fmap/epi' and 'max b-values' not in qcs[k+x]:
+                fmap_se_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' not in qcs[k+x]]
                 bold_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'func/bold' and include[k+x] == True]
                 
                 #If no func/bold acquisitions in section then the fmap/epi in this section are pointless, therefore won't be converted to BIDS
@@ -803,7 +803,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                         sub_protocol[fm]['error'] = errors[fm]
                         
                 #Re-determine the fmap/epi indices in light of the checks above
-                fmap_se_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and include[k+x] == True]
+                fmap_se_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and include[k+x] == True]
                 
                 #If fmap/epi pair don't have opposing phase encoding directions, won't be converted to BIDS
                 if len(fmap_se_indices) == 2:
@@ -816,7 +816,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                             sub_protocol[fm]['error'] = errors[fm]
                 
                 #Re-determine the fmap/epi indices again
-                fmap_se_indices = [total_objects_indices+k+x for x,y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and include[k+x] == True]
+                fmap_se_indices = [k+x for x,y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and include[k+x] == True]
 
                 if len(fmap_se_indices) == 2:
                     for fm in fmap_se_indices:
@@ -826,7 +826,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
             #Magnitude/Phasediff fmaps
             elif y in ['fmap/magnitude1','fmap/magnitude2','fmap/phasediff']:
                 #Remove duplicate magnitude/phasediff fmaps. Only the last three in each section will be kept
-                fmap_magphase_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1', 'fmap/magnitude2', 'fmap/phasediff']]
+                fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1', 'fmap/magnitude2', 'fmap/phasediff']]
                 bold_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'func/bold' and include[k+x] != False]                
                 
                 #If no func/bold acquisitions in section then the magnitude/phasediff in this section are pointless, therefore won't be converted to BIDS
@@ -854,15 +854,15 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                         sub_protocol[fm]['error'] = errors[fm]
                         
                 #Re-determine the magnitude/phasediff indices in light of the checks above
-                fmap_magphase_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1', 'fmap/magnitude2', 'fmap/phasediff'] and include[k+x] != False]        
+                fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1', 'fmap/magnitude2', 'fmap/phasediff'] and include[k+x] != False]        
                 
                 if len(fmap_magphase_indices) == 3:
                     for fm in fmap_magphase_indices:
                         sub_protocol[fm]['IntendedFor'] = bold_indices
                         
             #Spin-echo fmaps for DWI
-            elif y == 'fmap/epi' and 'max b-values' in qcs[total_objects_indices+k+x]:
-                fmap_se_dwi_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' in qcs[total_objects_indices+k+x]]
+            elif y == 'fmap/epi' and 'max b-values' in qcs[k+x]:
+                fmap_se_dwi_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' in qcs[k+x]]
                 dwi_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'dwi/dwi' and include[k+x] == True]
             
                 #If no dwi/dwi acquisitions in section then the fmap/epi_dwi in this section are pointless, therefore won't be converted to BIDS
@@ -882,7 +882,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                 #         sub_protocol[fm]['error'] = errors[fm]
                 
                 #Re-determine the fmap/epi_dwi indices in light of the checks above
-                fmap_se_dwi_indices = [total_objects_indices+k+x for x,y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' in qcs[total_objects_indices+k+x] and include[k+x] != False]
+                fmap_se_dwi_indices = [total_objects_indices+k+x for x,y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' in qcs[k+x] and include[k+x] != False]
                 if len(fmap_se_dwi_indices) == 1:
                     for fm in fmap_se_dwi_indices:
                         sub_protocol[fm]['IntendedFor'] = dwi_indices
@@ -950,7 +950,7 @@ def build_objects_list(sub_protocol, objects_entities_list):
                     "pngPath": '{}.png'.format(sub_protocol[i]['nifti_path'][:-7]),
                     "IntendedFor": sub_protocol[i]['IntendedFor'],
                     "entities": objects_entities_list[i],
-                    "type": sub_protocol[i]['br_type'],
+                    "type": data_list_unique_series[sub_protocol[i]['series_id']]['br_type'],
                     "items": items,
                     "analysisResults": {
                         "VolumeCount": sub_protocol[i]['VolumeCount'],
@@ -1001,7 +1001,7 @@ for s in range(len(acquisition_dates)):
         print('Beginning conversion process for subject {} protocol acquisitions'.format(acquisition_dates[s]['sub']))
         print('-------------------------------------------------------------------')
         print('')
-    
+     
     else:
         print('Beginning conversion process for subject {}, session {} protocol acquisitions'.format(acquisition_dates[s]['sub'], acquisition_dates[s]['ses']))
         print('-------------------------------------------------------------------')
