@@ -1,5 +1,5 @@
 <template>
-<div v-if="$root.currentPage.id == 'upload'">
+<div v-if="$root.currentPage.id == 'upload'" style="padding: 20px;">
     <div v-if="!$root.session">
         <p>
             Welcome to the <b><span style="letter-spacing: -2px; opacity: 0.5">ez</span>BIDS</b> - an online DICOM to BIDS conversion / organizing tool. 
@@ -59,7 +59,7 @@
                     :stroke-width="24" 
                     :percentage="($root.session.dicomDone / $root.session.dicomCount)*100"/>
             </p>
-            <p v-else>Analyzing...</p>
+            <h3 v-else>Analyzing...</h3>
             <p><small><i>{{$root.session.status_msg}}</i></small></p>
         </div>
 
@@ -96,12 +96,13 @@
             </el-collapse>
         </div>
 
-        <div v-if="$root.session.status == 'analyzed'">
+        <div v-if="['analyzed', 'finalized', 'finished'].includes($root.session.status)">
             <p>Analysis complete! Please proceed to the next tab.</p>
             <div class="page-action">
-                <el-button type="primary" @click="next">Next</el-button>
                 <el-button type="secondary" @click="$root.reset()">Re-Upload</el-button>
+                <el-button type="primary" @click="next" style="float: right;">Next</el-button>
             </div>
+            <!--<pre>{{this.$root.objects}}</pre>-->
         </div>
     </div>
 </div>

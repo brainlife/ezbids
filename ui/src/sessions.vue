@@ -1,5 +1,5 @@
 <template>
-<div v-if="$root.currentPage.id == 'session'">
+<div v-if="$root.currentPage.id == 'session'" style="padding: 20px">
     <h4>AcquisitionDate / Session Mappings</h4>
     <p>Decide how want to map DICOM AcquisitionDate to BIDS Session IDs. You should leave it blank if it's single session. You can download the mapping table later.</p>
     <!--series ID-->
@@ -35,8 +35,8 @@
     <br>
     <br>
     <div class="page-action">
-        <el-button type="primary" @click="next">Next</el-button>
         <el-button @click="back">Back</el-button>
+        <el-button type="primary" @click="next" style="float: right;">Next</el-button>
     </div>
 </div>
 </template>

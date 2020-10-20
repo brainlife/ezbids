@@ -1,5 +1,5 @@
 <template>
-<div v-if="$root.currentPage.id == 'finalize'">
+<div v-if="$root.currentPage.id == 'finalize'" style="padding: 20px;">
     <!--
     <div style="float: right;">
         <el-button @click="finalize" size="mini">Re-Finalize</el-button>
@@ -7,13 +7,16 @@
     -->
     <div v-if="$root.session && $root.session.status == 'finalized'">
         <p>Being Converted to BIDS...</p>
-        <pre>{{$root.session}}</pre>
+        <p><small><i>{{$root.session.status_msg}}</i></small></p>
     </div>
     <div v-if="$root.session && $root.session.status == 'finished'">
-        <el-button @click="download" type="primary" size="small">Download BIDS</el-button>
-        <el-button @click="sendBrainlife" size="small">Upload Data to <b>brainlife.io</b></el-button>
-        <el-button @click="sendOpenneuro" size="small">Upload Data to <b>OpenNeuro</b></el-button>
-        <div class="mappings">
+        <div class="download">
+            <br>
+            <h3>Congratulations!</h3>
+            <p>
+                <el-button @click="download" type="primary">Download BIDS</el-button>
+            </p>
+            <br>
             <p @click="downloadSubjectMapping">
                 <i class="el-icon-download"></i> PatientName to Subject Mapping
             </p>
@@ -22,6 +25,10 @@
             </p>
             <small>* Patient to Subject mapping may contain sensitive PHI data. Please make sure to store in a secure location.</small>
         </div>
+        <p>
+            <el-button @click="sendBrainlife" size="small">TODO.. Upload Data to <b>brainlife.io</b></el-button>
+            <el-button @click="sendOpenneuro" size="small">TODO.. Upload Data to <b>OpenNeuro</b></el-button>
+        </p>
     </div>
     <!---
     <div v-else-if="$root.session.status == 'analyzed'">
@@ -94,10 +101,10 @@ export default {
 </script>
 
 <style scoped>
-.mappings {
+.download {
+    border-radius: 10px;
     background-color: #eee;
-    margin-top: 10px;
-    padding: 10px;
+    padding: 20px;
     font-size: 85%;
 }
 .mappings p {

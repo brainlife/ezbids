@@ -1,5 +1,5 @@
 <template>
-<div v-if="$root.currentPage.id == 'description'">
+<div v-if="$root.currentPage.id == 'description'" style="padding: 20px;">
     <p>A BIDS dataset allows you to store "dataset description". Please populate as much information as much as possible.</p>
     <br>
     <el-form label-width="150px" ref="descForm" :model="dd" :rules="rules">
@@ -63,10 +63,13 @@
         </el-form-item>
 
         <div class="page-action">
-            <el-button type="primary" @click="next">Next</el-button>
             <el-button @click="back">Back</el-button>
+            <el-button type="primary" @click="next" style="float: right;">Next</el-button>
         </div>
     </el-form>
+    <br>
+    <br>
+    <br>
 </div>
 </template>
 

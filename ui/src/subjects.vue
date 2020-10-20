@@ -1,5 +1,5 @@
 <template>
-<div v-if="$root.currentPage.id == 'subject'">
+<div v-if="$root.currentPage.id == 'subject'" style="padding: 20px;">
     <h4>Patient / Subject Mappings</h4>
     <p>Decide how you want to map DICOM PatientID to BIDS Subject ID. You can download the mapping table later.</p>
     <el-dropdown @command="resetSubjects" style="float: right;" size="small">
@@ -37,8 +37,8 @@
     <br>
     <br>
     <div class="page-action">
-        <el-button type="primary" @click="next">Next</el-button>
         <el-button @click="back">Back</el-button>
+        <el-button type="primary" @click="next" style="float: right;">Next</el-button>
     </div>
 </div>
 </template>
@@ -83,7 +83,6 @@ export default {
                 break;
             }        
 
-            //this.$root.validate();
             this.$root.subjects.forEach(this.validate);
         },
 

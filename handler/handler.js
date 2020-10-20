@@ -75,7 +75,8 @@ function handle_uploaded_session(session) {
             p.stdout.on('data', data => {
                 fs.writeSync(logout, data);
                 console.log(data.toString("utf8"));
-                session.status_msg = data.toString("utf8").trim().split("\n").pop();
+                //session.status_msg = data.toString("utf8").trim().split("\n").pop();
+                session.status_msg = data.toString("utf8").trim(); //.split("\n").pop();
             });
             p.stderr.on('data', data => {
                 console.log(data.toString("utf8"));

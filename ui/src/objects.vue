@@ -1,7 +1,7 @@
 <template>
 <div v-if="$root.currentPage.id == 'object'">
     <div class="bids-structure">
-        <h4>BIDS Structure</h4>
+        <h4 style="padding-top: 20px;">BIDS Structure</h4>
         <div v-for="(o_sub, sub) in $root.subs" :key="sub" style="font-size: 90%;">
             <span v-if="sub != ''" class="hierarchy" style="opacity: 0.8;">
                 <i class="el-icon-user-solid"/> 
@@ -27,17 +27,14 @@
         <br>
     </div>
 
-    <div v-if="!so" style="margin-left: 350px">
+    <div v-if="!so" style="margin-left: 350px;">
         <p>Please make sure all subject/session/series mappings are correctly applied to your data.</p>
         <p>By default, entities specified in the <b>Series</b> page will be used as defaults for all objects. On this page you can override those entities.</p>
         <br>
         <br>
-        <br>
-        <br>
-        <br>
         <i class="el-icon-back"/> <small>Please select an object to view/edit in the BIDS Structure list</small>
     </div>
-    <div class="object">
+    <div class="object" ref="object-detail">
         <div v-if="so">
             <div style="margin-bottom: 10px;">
                 <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in so.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
@@ -113,7 +110,9 @@
                         {{so.analysisResults.filesize|prettyBytes}}
                     </el-form-item>
                     <div v-if="so.pngPath">
-                        <img :src="$root.apihost+'/download/'+$root.session._id+'/'+so.pngPath"/>
+                        <a :href="getURL(so.pngPath)">
+                            <img width="100%" :src="getURL(so.pngPath)"/>
+                        </a>
                     </div>
                 </div>
             </el-form>
@@ -127,8 +126,8 @@
     <br>
     <el-form>
         <el-form-item class="page-action">
-            <el-button type="primary" @click="next">Next</el-button>
             <el-button @click="back">Back</el-button>
+            <el-button type="primary" @click="next" style="float: right;">Next</el-button>
         </el-form-item>
     </el-form>
 </div>
@@ -155,17 +154,10 @@ export default {
     watch: {
         '$root.currentPage'(v) {
             if(v.id == 'object') {
-
                 //I have to map all objects at least once before I can validate any object
-                this.$root.objects.forEach(o=>{
-                    this.$root.mapObject(o);
-                });
-
-                //then I can validate
-                this.$root.objects.forEach(o=>{
-                    this.validate(o);
-                });
-
+                this.$root.objects.forEach(this.$root.mapObject);
+                //then validate
+                this.$root.objects.forEach(this.validate);
                 this.$root.organizeObjects();
             }
         },
@@ -175,6 +167,11 @@ export default {
         select(o, sess) {
             this.sess = sess;
             this.so = o;
+            window.scrollTo(0, 0);
+        },
+
+        getURL(path) {
+            return this.$root.apihost+"/download/"+this.$root.session._id+'/'+path;
         },
 
         update(o) {
@@ -287,12 +284,14 @@ export default {
 position: fixed;
 top: 0;
 bottom: 0;
-width: 350px;
+left: 210px;
+width: 340px;
 height: 100%;
 overflow: auto;
 }
 .object {
 margin-left: 350px;
+margin-right: 30px;
 box-shadow: -4px -2px 4px #0001;
 z-index: 1;
 position: relative;

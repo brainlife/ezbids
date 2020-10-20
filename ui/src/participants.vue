@@ -1,5 +1,5 @@
 <template>
-<div v-if="$root.currentPage.id == 'participant'">
+<div v-if="$root.currentPage.id == 'participant'" style="padding: 20px">
     <h4>Participants Info</h4>
     <p>You can optionally store metadata/phenotypical data for each subject/participants on this datasets within your BIDS dataset.</p>
     <h5>Phenotype Columns</h5>
@@ -35,27 +35,29 @@
 
     <h5>phenotype.tsv</h5>
     <p>Enter phenotypical data associated with each participants.</p>
-    <el-table :data="$root.subjects" style="width: 100%" size="mini">
-        <el-table-column label="participant_id" width="200">
-            <template slot-scope="scope">
-                {{scope.row.PatientID}}<br>
-                <small>{{scope.row.sub}}</small>
-            </template>
-        </el-table-column>
-        <el-table-column v-for="(column, key) in $root.participantsColumn" :key="key" :label="key">
-            <template slot-scope="scope">
-                <el-input v-model="scope.row.phenotype[key]" size="mini"/>
-            </template>
-        </el-table-column>
-    </el-table>
+    <div style="width: 100%">
+        <el-table :data="$root.subjects" size="mini">
+            <el-table-column label="participant_id" width="200">
+                <template slot-scope="scope">
+                    {{scope.row.PatientID}}<br>
+                    <small>{{scope.row.sub}}</small>
+                </template>
+            </el-table-column>
+            <el-table-column v-for="(column, key) in $root.participantsColumn" :key="key" :label="key">
+                <template slot-scope="scope">
+                    <el-input v-model="scope.row.phenotype[key]" size="mini"/>
+                </template>
+            </el-table-column>
+        </el-table>
+    </div>
 
     <br>
     <br>
     <br>
     <br>
     <div class="page-action">
-        <el-button type="primary" @click="next">Next</el-button>
         <el-button @click="back">Back</el-button>
+        <el-button type="primary" @click="next" style="float: right;">Next</el-button>
     </div>
     <br>
 </div>

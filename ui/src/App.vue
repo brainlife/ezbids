@@ -1,17 +1,15 @@
 <template>
 <div id="app" style="height: 100%;">
     <el-container style="height: 100%;">
-        <el-aside width="200px">
-            <div style="position: fixed; top: 0;">
-                <h1><span style="letter-spacing: -3px; opacity: 0.6;">ez</span>BIDS</h1>
-                <div style="height: 300px; padding: 15px;" v-if="$root.currentPage">
-                    <el-steps direction="vertical" :active="$root.currentPage.idx">
-                        <el-step v-for="p in $root.pages" :key="p.idx" :title="p.title"></el-step>
-                    </el-steps>
-                </div>
+        <div style="width: 200px; position: fixed; top: 0; left: 0; bottom: 0; background-color: #0001">
+            <h1><span style="letter-spacing: -3px; opacity: 0.6;">ez</span>BIDS</h1>
+            <div style="height: 300px; padding: 15px;" v-if="$root.currentPage">
+                <el-steps direction="vertical" :active="$root.currentPage.idx">
+                    <el-step v-for="p in $root.pages" :key="p.idx" :title="p.title"></el-step>
+                </el-steps>
             </div>
-        </el-aside>
-        <el-main v-if="$root.currentPage">
+        </div>
+        <div style="margin-left: 200px; width: calc(100% - 200px);" v-if="$root.currentPage">
             <upload/>
             <description/>
             <subjects/>
@@ -20,7 +18,7 @@
             <participants/>
             <objects/>
             <finalize/>
-        </el-main>
+        </div>
     </el-container>
 </div>
 </template>
@@ -82,6 +80,10 @@ h1 {
     opacity: 0.8;
     font-size: 20pt;
 }
+h2, h3, h4 {
+margin: 0;
+margin-bottom: 10px;
+}
 .el-main {
     /*there is something wrong bids structure page where the el-main doesn't get expaned all the way to the bottom*/
     overflow: inherit;
@@ -104,9 +106,11 @@ word-break: normal;
 }
 .page-action {
     position: fixed;
-    width: 100%;
-    background-color: #0004;
+    box-sizing: border-box;
+    background-color: #0002;
     padding: 10px;
+    right: 0;
+    left: 200px;
     bottom: 0;
     z-index: 1;
 }

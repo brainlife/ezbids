@@ -561,6 +561,7 @@ split:
         mapObject(o) {
             const series = this.$root.findSeries(o);
             if(!o.type) o.type = series.type;
+            console.log("using o.type:", series.type, o.type);
 
             //initialize with the proper object key ordering
             const e = this.$root.getEntities(o.type);

@@ -1,10 +1,11 @@
 <template>
-<div v-if="$root.currentPage.id == 'series'">
+<div v-if="$root.currentPage.id == 'series'" style="padding: 20px;">
     <h4>Series / Datatype Mappings</h4>
     <p>Please update how you'd like to map each dicom SeriesDescription to BIDS datatype/entities.</p>
-    <el-table :data="$root.series" style="width: 100%" size="mini" class="table-align-top">
-        <el-table-column label="Series" width="400px">
+    <el-table :data="$root.series" size="mini" class="table-align-top">
+        <el-table-column label="Series" width="350px">
             <template slot-scope="scope">
+            {{scope.row.entities}}
                 <p style="margin-top: 10px;">
                     <i class="el-icon-right" style="float: right; font-size: 150%; font-weight: bold;"/>
                     <el-tag type="info" size="mini">sn {{scope.row.SeriesNumber}}</el-tag>&nbsp;
@@ -25,7 +26,7 @@
                     <el-form-item label="Datatype">
                         <el-select v-model="scope.row.type" reqiured
                             placeholder="unknown" 
-                            size="small" style="width: 100%">
+                            size="small">
                             <el-option-group v-for="type in $root.datatypes" :key="type.label" :label="type.label">
                                 <el-option v-for="subtype in type.options" :key="subtype.value" :value="subtype.value">
                                     {{type.label}} / {{subtype.label}}
@@ -52,13 +53,14 @@
     </el-table>
 
     <br>
+    <br>
+    <br>
     <el-form>
         <el-form-item class="page-action">
-            <el-button type="primary" @click="next">Next</el-button>
             <el-button @click="back">Back</el-button>
+            <el-button type="primary" @click="next" style="float: right;">Next</el-button>
         </el-form-item>
     </el-form>
-    <br>
 </div>
 </template>
 
@@ -97,9 +99,11 @@ export default {
         validate(s) {
             Vue.set(s, 'validationErrors', []);
             let entities = this.$root.getEntities(s.type);
-            for(let k in entities) {
+            for(let k in this.getSomeEntities(s.type)) {
+                console.log(k);
                 if(entities[k] == "required") {
-                    if(s.entities[k] === "") {
+                    console.log(k, "required", s.entities[k]);
+                    if(!s.entities[k]) {
                         s.validationErrors.push("entity: "+k+" is required.");
                     }
                 }
