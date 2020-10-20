@@ -367,7 +367,7 @@ def identify_series_info(data_list_unique_series):
                 series_entities['dir'] = data_list_unique_series[i]['dir']
             
         #DWI
-        elif any(x in SD for x in ['dwi','dti']) or 'ep_b' in SequenceName:
+        elif any('.bvec' in x for x in data_list_unique_series[i]['paths']):
             if 'b0only' in SD: #Probably field map meant for dwi acquisition instead
                 data_list_unique_series[i]['DataType'] = 'fmap'
                 data_list_unique_series[i]['ModalityLabel'] = 'epi_dwi'
