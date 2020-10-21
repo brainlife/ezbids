@@ -52,15 +52,15 @@
         </div>
 
         <div v-if="$root.session.status == 'preprocessing'">
-            <p v-if="$root.session.dicomDone && $root.session.dicomDone < $root.session.dicomCount">
-                Converting dicoms to nifti ...
-                <el-progress status="success" 
+            <div v-if="$root.session.dicomDone !== undefined && $root.session.dicomDone < $root.session.dicomCount">
+                <h3>Converting dicoms to nifti ...</h3>
+                <el-progress
                     :text-inside="true" 
                     :stroke-width="24" 
                     :percentage="($root.session.dicomDone / $root.session.dicomCount)*100"/>
-            </p>
+            </div>
             <h3 v-else>Analyzing...</h3>
-            <p><small><i>{{$root.session.status_msg}}</i></small></p>
+            <pre>{{$root.session.status_msg}}</pre>
         </div>
 
         <div v-if="$root.session.status == 'failed'">
@@ -94,6 +94,9 @@
                     </div>
                 </el-collapse-item>
             </el-collapse>
+            <div class="page-action">
+                <el-button type="secondary" @click="$root.reset()">Re-Upload</el-button>
+            </div>
         </div>
 
         <div v-if="['analyzed', 'finalized', 'finished'].includes($root.session.status)">

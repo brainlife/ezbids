@@ -90,21 +90,31 @@ function handle_uploaded_session(session) {
                 if (code != 0) {
                     session.status = "failed";
                     session.status_msg = "failed\n" + lasterr;
+                    //update session and done.
+                    session.save().then(() => {
+                        resolve();
+                    });
                 }
                 else {
                     session.status = "analyzed";
                     session.status_msg = "successfully run preprocess.sh";
                     session.pre_finish_date = new Date();
+                    fs.readFile(workdir + "/ezBIDS.json", "utf8", (err, data) => {
+                        let ezbids = new models.ezBIDS({
+                            _session_id: session._id,
+                            original: JSON.parse(data),
+                        });
+                        ezbids.save().then(() => {
+                            session.save().then(() => {
+                                resolve();
+                            });
+                        });
+                    });
                 }
-                //update session and done.
-                session.save().then(() => {
-                    resolve();
-                }).catch(err => {
-                    reject();
-                });
             });
             //monitor progress
             monitor = setInterval(() => {
+                console.log("checking dcm2niix progress--------------------------");
                 //load dcm2niix.list/done 
                 let list = null;
                 if (fs.existsSync(workdir + "/dcm2niix.list")) {
@@ -118,7 +128,7 @@ function handle_uploaded_session(session) {
                 }
                 if (list || done)
                     session.save();
-            }, 5 * 1000);
+            }, 1000 * 5);
         });
     });
 }

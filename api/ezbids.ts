@@ -43,8 +43,15 @@ app.use(fileupload({
 app.disable('x-powered-by'); //for better security?
 
 //parse application/json
-app.use(bodyParser.urlencoded({ extended: false }));
-app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({
+    //parameterLimit: 100000,
+    limit: '50mb',
+    extended: true
+  }));
+app.use(bodyParser.json({
+    limit: '50mb',
+    type: "application/json",
+}));
 //app.use(expressWinston.logger(config.logger.winston));
 app.use('/', require('./controllers'));
 

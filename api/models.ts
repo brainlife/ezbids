@@ -2,7 +2,6 @@
 import mongoose = require("mongoose");
 import config  = require("./config");
 
-console.dir(mongoose);
 if(config.mongoose_debug) mongoose.set("debug", true);
 
 export function connect(cb) {
@@ -29,6 +28,8 @@ export function disconnect(cb) {
 var sessionSchema = mongoose.Schema({
 
     create_date: { type: Date, default: Date.now },
+    request_headers: mongoose.Schema.Types.Mixed,
+
     upload_finish_date: Date, //when all files are uploaded
 
     pre_begin_date: Date, //when preprocessing is started
@@ -42,6 +43,10 @@ var sessionSchema = mongoose.Schema({
     //finalized
     //finished
     //failed
+
+    //dcm2niix status
+    dicomCount: Number,
+    dicomDone: Number,
 
     status_msg: String,
 
@@ -60,4 +65,16 @@ var sessionSchema = mongoose.Schema({
     //removed: { type: Boolean, default: false },
 });
 export let Session = mongoose.model("Session", sessionSchema);
+
+var ezbidsSchema = mongoose.Schema({
+    _session_id: mongoose.Schema.Types.ObjectId, 
+
+    original: mongoose.Schema.Types.Mixed,
+    updated: mongoose.Schema.Types.Mixed,
+
+    create_date: { type: Date, default: Date.now },
+    update_date: { type: Date },
+});
+export let ezBIDS = mongoose.model("ezBIDS", ezbidsSchema);
+
 

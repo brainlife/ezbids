@@ -157,7 +157,7 @@ new Vue({
 
     async mounted() {
         if(location.hash) {
-            console.log("reloading session");
+            //console.log("reloading session");
             this.session = {
                 _id: location.hash.substring(1),
             }
@@ -512,6 +512,10 @@ split:
             const series = this.findSeries(o);
             return series.type;
         },
+
+        getURL(path) {
+            return this.apihost+"/download/"+this.session._id+'/'+path;
+        },
   
         //TODO - I should rename this to getDatatypeEntities()
         //same code in series / methods
@@ -561,7 +565,7 @@ split:
         mapObject(o) {
             const series = this.$root.findSeries(o);
             if(!o.type) o.type = series.type;
-            console.log("using o.type:", series.type, o.type);
+            //console.log("using o.type:", series.type, o.type);
 
             //initialize with the proper object key ordering
             const e = this.$root.getEntities(o.type);
@@ -619,13 +623,16 @@ split:
                 this.series.forEach(series=>{
                     delete series.entities.sub;
                     delete series.entities.ses;
+
+                    //we shouldn't have to do this soon
+                    if(series.png_objects_indices) Vue.set(series, 'object_indices', series.png_objects_indices);
                 });
 
-                /*
+                //this should be deprecated soon
                 this.subjects.forEach(subject=>{
-                    Vue.set(subject, 'phenotype', {});
+                    if(!subject.phenotype) Vue.set(subject, 'phenotype', {});
                 });
-                */
+
                 this.objects.forEach(object=>{
                     object.items.forEach(item=>{
                         if(item.sidecar) {
@@ -660,7 +667,7 @@ split:
             case "finalized":
             case "bidsing":
                 this.reload_t = setTimeout(()=>{
-                    console.log("will reload");
+                    //console.log("will reload");
                     this.pollSession();
                 }, 1000);
                 break;
@@ -686,8 +693,8 @@ split:
             //clearTimeout(this.reload_t);
 
             fetch(this.apihost+'/session/'+this.session._id+'/finalize', {
-                method: "PATCH", 
-                //headers: {'Content-Type': 'application/json'},
+                method: "POST", 
+                headers: {'Content-Type': 'application/json; charset=UTF-8'},
                 body: JSON.stringify({
                     datasetDescription: this.datasetDescription,
                     readme: this.readme,

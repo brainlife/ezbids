@@ -28,6 +28,7 @@ var storage = multer.diskStorage({
 
 router.post('/session', (req, res, next)=>{
     req.body.status = "created";
+    req.body.request_headers = req.headers;
     let session = new models.Session(req.body);
     session.save().then(_session=>{ //mongoose contains err on the 1st argument of resolve!? odd.
         res.json(_session);
@@ -87,9 +88,22 @@ router.get('/session/:session_id/ezbids', (req, res, next) => {
 });
 */
 
-router.patch('/session/:session_id/finalize', (req, res, next)=>{
+router.post('/session/:session_id/finalize', (req, res, next)=>{
     models.Session.findById(req.params.session_id).then(session=>{
         if(!session) return next("no such session");
+        fs.writeFile(config.workdir+"/"+session._id+"/finalized.json", JSON.stringify(req.body), err=>{
+            models.ezBIDS.findOneAndUpdate({_session_id: req.params.session_id}, {$set: {
+                updated: req.body, 
+                update_date: new Date(),
+            }}).then(err=>{
+                session.status = "finalized";
+                session.save().then(()=>{
+                    res.send("ok"); 
+                });
+            });
+        });
+        /*
+        //store finalized content disk
         req.pipe(fs.createWriteStream(config.workdir+"/"+session._id+"/finalized.json"));
         req.on('end', ()=>{
             session.status = "finalized";
@@ -97,9 +111,7 @@ router.patch('/session/:session_id/finalize', (req, res, next)=>{
                 res.send("ok"); 
             });
         });
-    }).catch(err=>{
-        console.error(err);
-        next(err);
+        */
     });
 });
 
@@ -111,8 +123,6 @@ router.get('/download/:session_id/*', (req, res, next)=>{
         //validate path so it will be inside the basepath
         let fullpath = path.resolve(basepath+"/"+req.params[0]);
         if(!fullpath.startsWith(basepath)) return next("invalid path");
-
-        //res.setHeader("content-type", "application/json"); //TODO - set to correct mime?
 
         //TODO - if requested path is a file, thenstream
         let stats = fs.lstatSync(fullpath);

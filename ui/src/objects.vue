@@ -110,8 +110,8 @@
                         {{so.analysisResults.filesize|prettyBytes}}
                     </el-form-item>
                     <div v-if="so.pngPath">
-                        <a :href="getURL(so.pngPath)">
-                            <img width="100%" :src="getURL(so.pngPath)"/>
+                        <a :href="$root.getURL(so.pngPath)">
+                            <img width="100%" :src="$root.getURL(so.pngPath)"/>
                         </a>
                     </div>
                 </div>
@@ -168,10 +168,6 @@ export default {
             this.sess = sess;
             this.so = o;
             window.scrollTo(0, 0);
-        },
-
-        getURL(path) {
-            return this.$root.apihost+"/download/"+this.$root.session._id+'/'+path;
         },
 
         update(o) {

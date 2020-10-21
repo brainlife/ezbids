@@ -17,6 +17,8 @@
                     <br>
                     <small>RepetitionTime: {{scope.row.repetitionTimes}}</small>
                 </p>
+                <small>There are {{scope.row.object_indices.length}} objects that matches this series number.</small>
+                
             </template>
         </el-table-column>
         <el-table-column label="BIDS Datatype">
@@ -47,6 +49,26 @@
                         <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in scope.row.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
                     </div>
                 </el-form>
+            
+                <p>
+                    <el-button type="text" @click="scope.row._show = true" v-if="!scope.row._show">
+                        <i class="el-icon-caret-right"/> Show Objects
+                        <el-tag :value="scope.row.object_indices.length" type="info" size="mini">{{scope.row.object_indices.length}}</el-tag>
+                    </el-button>
+                    <el-button type="text" @click="scope.row._show = false" v-if="scope.row._show">
+                        <i class="el-icon-caret-bottom"/> Hide Objects
+                        <el-tag :value="scope.row.object_indices.length" type="info" size="mini">{{scope.row.object_indices.length}}</el-tag>
+                    </el-button>
+                </p>
+                <div v-if="scope.row._show">
+                    <div v-for="object_idx in scope.row.object_indices" :key="object_idx">
+                        <small>{{$root.objects[object_idx].entities}}</small>
+                        <a :href="$root.getURL($root.objects[object_idx].pngPath)" v-if="$root.objects[object_idx].pngPath">
+                            <img width="100%" :src="$root.getURL($root.objects[object_idx].pngPath)"/>
+                        </a>
+                    </div>
+                </div>
+
             </template>
         </el-table-column>
     </el-table>
@@ -76,6 +98,9 @@ export default {
         '$root.currentPage'(v) {
             if(v.id == 'series') {
                 this.$root.series.forEach(this.validate);
+                this.$root.series.forEach(s=>{
+                    Vue.set(s, "_show", false);
+                });
             }
         },
     },
@@ -99,9 +124,7 @@ export default {
             Vue.set(s, 'validationErrors', []);
             let entities = this.$root.getEntities(s.type);
             for(let k in this.getSomeEntities(s.type)) {
-                console.log(k);
                 if(entities[k] == "required") {
-                    console.log(k, "required", s.entities[k]);
                     if(!s.entities[k]) {
                         s.validationErrors.push("entity: "+k+" is required.");
                     }
