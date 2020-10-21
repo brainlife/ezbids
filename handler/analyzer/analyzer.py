@@ -113,6 +113,12 @@ def select_unique_data(dir_list):
             PatientBirthDate = json_data['PatientBirthDate'].replace('-','')
         else:
             PatientBirthDate = None
+            
+        #Find PatientSex
+            if 'PatientSex' in json_data:
+                PatientSex = json_data['PatientSex']
+            else:
+                PatientSex = 'N/A'
         
         #Select subjID to display to ezBIDS users
         #Order of importance is: PatientName > PatientID > PatientBirthDate
@@ -181,6 +187,8 @@ def select_unique_data(dir_list):
                        'PatientName': PatientName,
                        'PatientID': PatientID,
                        'PatientBirthDate': PatientBirthDate,
+                       'PatientSex': PatientSex,
+                       'PatientAge': 'N/A',
                        'sub': sub,
                        'ses': '',
                        'SeriesNumber': json_data['SeriesNumber'],
@@ -219,7 +227,7 @@ def select_unique_data(dir_list):
         data_list.append(mapping_dic)
         
     #Curate subjectID and acquisition date info to display in UI
-    subjectIDs_info = list({x['sub']:{'sub':x['sub'], 'PatientID':x['PatientID'], 'PatientName':x['PatientName'], 'PatientBirthDate':x['PatientBirthDate']} for x in data_list}.values())
+    subjectIDs_info = list({x['sub']:{'sub':x['sub'], 'PatientID':x['PatientID'], 'PatientName':x['PatientName'], 'PatientBirthDate':x['PatientBirthDate'], 'phenotype':{'sex':x['PatientSex'], 'age':x['PatientAge']}} for x in data_list}.values())
     subjectIDs_info = sorted(subjectIDs_info, key = lambda i: i['sub'])
     
     acquisition_dates = list({x['AcquisitionDate']:{'sub':x['sub'], 'AcquisitionDate':x['AcquisitionDate'], 'ses': ''} for x in data_list}.values())
@@ -954,7 +962,6 @@ def build_objects_list(sub_protocol, objects_entities_list):
                     "pngPath": '{}.png'.format(sub_protocol[i]['nifti_path'][:-7]),
                     "IntendedFor": sub_protocol[i]['IntendedFor'],
                     "entities": objects_entities_list[i],
-                    "type": data_list_unique_series[sub_protocol[i]['series_id']]['br_type'],
                     "items": items,
                     "analysisResults": {
                         "VolumeCount": sub_protocol[i]['VolumeCount'],
