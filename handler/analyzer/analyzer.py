@@ -370,22 +370,22 @@ def identify_series_info(data_list_unique_series):
         elif any('.bvec' in x for x in data_list_unique_series[i]['paths']):
             #Some "dwi" acquisitions are actually fmap/epi; check for this
             bval = np.loadtxt([x for x in data_list_unique_series[i]['paths'] if 'bval' in x][0])
-            if max(bval) <= 50:
+            if np.max(bval) <= 50:
                 data_list_unique_series[i]['DataType'] = 'fmap'
                 data_list_unique_series[i]['ModalityLabel'] = 'epi'
                 data_list_unique_series[i]['qc'] = 'acquisition is fmap/epi meant for dwi because there are bval/bvec files, but the max b-values are <= 50'
                 series_entities['dir'] = data_list_unique_series[i]['dir']
             else:
-                if any(x in SD for x in ['trace','fa','adc']):
-                    data_list_unique_series[i]['include'] = False
-                    data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
-                    data_list_unique_series[i]['qc'] = 'Acquisition is TRACE, FA, or ADCC because it is in the name'
-                else:
-                    data_list_unique_series[i]['DataType'] = 'dwi'
-                    data_list_unique_series[i]['ModalityLabel'] = 'dwi'
-                    data_list_unique_series[i]['qc'] = 'acquisition is dwi/dwi because dwi or dti is in the name'
-                    series_entities['dir'] = data_list_unique_series[i]['dir']
-            
+                data_list_unique_series[i]['DataType'] = 'dwi'
+                data_list_unique_series[i]['ModalityLabel'] = 'dwi'
+                data_list_unique_series[i]['qc'] = 'acquisition is dwi/dwi because dwi or dti is in the name'
+                series_entities['dir'] = data_list_unique_series[i]['dir']
+        
+        elif any(x in SD for x in ['trace','fa','adc']) and 'dti' in SD or 'dwi' in SD:
+            data_list_unique_series[i]['include'] = False
+            data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
+            data_list_unique_series[i]['qc'] = 'Acquisition is TRACE, FA, or ADCC because it is in the name'
+        
         #Arterial Spin Labeling (ASL)
         elif any(x in SD for x in ['asl']):
             data_list_unique_series[i]['include'] = False
