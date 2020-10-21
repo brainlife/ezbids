@@ -230,7 +230,7 @@ def select_unique_data(dir_list):
     subjectIDs_info = list({x['sub']:{'sub':x['sub'], 'PatientID':x['PatientID'], 'PatientName':x['PatientName'], 'PatientBirthDate':x['PatientBirthDate'], 'phenotype':{'sex':x['PatientSex'], 'age':x['PatientAge']}} for x in data_list}.values())
     subjectIDs_info = sorted(subjectIDs_info, key = lambda i: i['sub'])
     
-    acquisition_dates = list({x['AcquisitionDate']:{'sub':x['sub'], 'AcquisitionDate':x['AcquisitionDate'], 'ses': ''} for x in data_list}.values())
+    acquisition_dates = list({x['sub']:{'sub':x['sub'], 'AcquisitionDate':x['AcquisitionDate'], 'ses': ''} for x in data_list}.values())
     acquisition_dates = sorted(acquisition_dates, key = lambda i: i['AcquisitionDate'])
     
     #Insert ses info if applicable
