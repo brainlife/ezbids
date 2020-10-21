@@ -621,9 +621,11 @@ split:
                     delete series.entities.ses;
                 });
 
+                /*
                 this.subjects.forEach(subject=>{
                     Vue.set(subject, 'phenotype', {});
                 });
+                */
                 this.objects.forEach(object=>{
                     object.items.forEach(item=>{
                         if(item.sidecar) {
