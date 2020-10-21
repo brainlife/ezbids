@@ -368,22 +368,28 @@ def identify_series_info(data_list_unique_series):
             
         #DWI
         elif any('.bvec' in x for x in data_list_unique_series[i]['paths']):
-            if 'b0only' in SD: #Probably field map meant for dwi acquisition instead
+            #Some "dwi" acquisitions are actually fmap/epi; check for this
+            bval = np.loadtxt([x for x in data_list_unique_series[i]['paths'] if 'bval' in x][0])
+            if np.max(bval) <= 50 and bval.size < 10:
                 data_list_unique_series[i]['DataType'] = 'fmap'
-                data_list_unique_series[i]['ModalityLabel'] = 'epi_dwi'
-                data_list_unique_series[i]['qc'] = 'acquisition is fmap/epi_dwi because it is in the name but volume count is under 10, so probably a field map meant for a dwi'
+                data_list_unique_series[i]['ModalityLabel'] = 'epi'
+                data_list_unique_series[i]['qc'] = 'acquisition is fmap/epi meant for dwi because there are bval/bvec files, but the max b-values are <= 50'
                 series_entities['dir'] = data_list_unique_series[i]['dir']
+            elif any(x in SD for x in ['trace','fa','adc']) and 'dti' in SD or 'dwi' in SD:
+                data_list_unique_series[i]['include'] = False
+                data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
+                data_list_unique_series[i]['qc'] = 'Acquisition is TRACE, FA, or ADCC because it is in the name'
             else:
-                if any(x in SD for x in ['trace','fa','adc']):
-                    data_list_unique_series[i]['include'] = False
-                    data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
-                    data_list_unique_series[i]['qc'] = 'Acquisition is TRACE, FA, or ADCC because it is in the name'
-                else:
-                    data_list_unique_series[i]['DataType'] = 'dwi'
-                    data_list_unique_series[i]['ModalityLabel'] = 'dwi'
-                    data_list_unique_series[i]['qc'] = 'acquisition is dwi/dwi because dwi or dti is in the name'
-                    series_entities['dir'] = data_list_unique_series[i]['dir']
-            
+                data_list_unique_series[i]['DataType'] = 'dwi'
+                data_list_unique_series[i]['ModalityLabel'] = 'dwi'
+                data_list_unique_series[i]['qc'] = 'acquisition is dwi/dwi because dwi or dti is in the name'
+                series_entities['dir'] = data_list_unique_series[i]['dir']
+        
+        elif any(x in SD for x in ['trace','fa','adc']) and 'dti' in SD or 'dwi' in SD:
+            data_list_unique_series[i]['include'] = False
+            data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
+            data_list_unique_series[i]['qc'] = 'Acquisition is TRACE, FA, or ADCC because it is in the name'
+        
         #Arterial Spin Labeling (ASL)
         elif any(x in SD for x in ['asl']):
             data_list_unique_series[i]['include'] = False
@@ -526,7 +532,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
         
         #Weird issue where data array is RGB instead on intger
         object_img_array = nib.load(sub_protocol[p]['nifti_path']).dataobj
-        if object_img_array.dtype != '<i2':
+        if object_img_array.dtype not in ['<i2', '<u2']:
             sub_protocol[p]['include'] = False
             sub_protocol[p]['error'] = 'The data array is for this acquisition is improper, likely suggesting some issue with the corresponding DICOMS'
             sub_protocol[p]['qc'] = sub_protocol[p]['error']
@@ -690,7 +696,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
             dwi_run +=1
         
         #Spin echo fmaps
-        elif sub_protocol[p]['br_type'] in ['fmap/epi','fmap/epi_dwi']:
+        elif sub_protocol[p]['br_type'] == 'fmap/epi':
             objects_entities['dir'] = sub_protocol[p]['dir']    
                     
         objects_entities_list.append(objects_entities)
@@ -749,6 +755,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
     br_types = [sub_protocol[x]['br_type'] for x in range(len(sub_protocol))]
     include = [sub_protocol[x]['include'] for x in range(len(sub_protocol))]
     errors = [sub_protocol[x]['error'] for x in range(len(sub_protocol))]
+    qcs = [sub_protocol[x]['qc'] for x in range(len(sub_protocol))]
     phase_encoding_directions = [sub_protocol[x]['dir'] for x in range(len(sub_protocol))]
     section_indices = [x for x, y in enumerate(br_types) if x == 0 or ('localizer' in y and 'localizer' not in br_types[x-1])]
     fmap_counter = 0
@@ -771,8 +778,8 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
             
         #Check for potential issues
         for x,y in enumerate(br_types[section_start:section_end]):
-            if y == 'fmap/epi':
-                fmap_se_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi']
+            if y == 'fmap/epi' and 'max b-values' not in qcs[k+x]:
+                fmap_se_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' not in qcs[k+x]]
                 bold_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'func/bold' and include[k+x] == True]
                 
                 #If no func/bold acquisitions in section then the fmap/epi in this section are pointless, therefore won't be converted to BIDS
@@ -818,7 +825,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                 if len(fmap_se_indices) == 2:
                     for fm in fmap_se_indices:
                         sub_protocol[fm]['IntendedFor'] = bold_indices
-            
+
     
             #Magnitude/Phasediff fmaps
             elif y in ['fmap/magnitude1','fmap/magnitude2','fmap/phasediff']:
@@ -858,10 +865,10 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                         sub_protocol[fm]['IntendedFor'] = bold_indices
                         
             #Spin-echo fmaps for DWI
-            elif y == 'fmap/epi_dwi':
-                fmap_se_dwi_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi_dwi']
+            elif y == 'fmap/epi' and 'max b-values' in qcs[k+x]:
+                fmap_se_dwi_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' in qcs[k+x]]
                 dwi_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'dwi/dwi' and include[k+x] == True]
-
+            
                 #If no dwi/dwi acquisitions in section then the fmap/epi_dwi in this section are pointless, therefore won't be converted to BIDS
                 if len(dwi_indices) == 0:
                     for fm in fmap_se_dwi_indices:
@@ -870,21 +877,19 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                         errors[fm] = 'No valid dwi/dwi objects found in section. This object will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                   
-                #If more than one fmap/epi_dwi acquisitions, only accept most recent one in section
-                if len(fmap_se_dwi_indices) > 1:
-                    for fm in fmap_se_dwi_indices[:-1]:
-                        include[fm] = False
-                        sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = 'More than one dwi-specific field maps detected in section; only selecting last one for BIDS conversion. Other object will not be included in the BIDS output'
-                        sub_protocol[fm]['error'] = errors[fm]
+                # #If more than one fmap/epi_dwi acquisitions, only accept most recent one in section
+                # if len(fmap_se_dwi_indices) > 1:
+                #     for fm in fmap_se_dwi_indices[:-1]:
+                #         include[fm] = False
+                #         sub_protocol[fm]['include'] = include[fm]
+                #         errors[fm] = 'More than one dwi-specific field maps detected in section; only selecting last one for BIDS conversion. Other object will not be included in the BIDS output'
+                #         sub_protocol[fm]['error'] = errors[fm]
                 
                 #Re-determine the fmap/epi_dwi indices in light of the checks above
-                fmap_se_dwi_indices = [k+x for x,y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi_dwi' and include[k+x] != False]
-
+                fmap_se_dwi_indices = [total_objects_indices+k+x for x,y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' in qcs[k+x] and include[k+x] != False]
                 if len(fmap_se_dwi_indices) == 1:
                     for fm in fmap_se_dwi_indices:
                         sub_protocol[fm]['IntendedFor'] = dwi_indices
-                        sub_protocol[fm]['br_type'] = 'fmap/epi'
     return sub_protocol    
 
 
@@ -949,7 +954,7 @@ def build_objects_list(sub_protocol, objects_entities_list):
                     "pngPath": '{}.png'.format(sub_protocol[i]['nifti_path'][:-7]),
                     "IntendedFor": sub_protocol[i]['IntendedFor'],
                     "entities": objects_entities_list[i],
-                    "type": sub_protocol[i]['br_type'],
+                    "type": data_list_unique_series[sub_protocol[i]['series_id']]['br_type'],
                     "items": items,
                     "analysisResults": {
                         "VolumeCount": sub_protocol[i]['VolumeCount'],
@@ -1000,7 +1005,7 @@ for s in range(len(acquisition_dates)):
         print('Beginning conversion process for subject {} protocol acquisitions'.format(acquisition_dates[s]['sub']))
         print('-------------------------------------------------------------------')
         print('')
-    
+     
     else:
         print('Beginning conversion process for subject {}, session {} protocol acquisitions'.format(acquisition_dates[s]['sub'], acquisition_dates[s]['ses']))
         print('-------------------------------------------------------------------')
@@ -1026,14 +1031,7 @@ for s in range(len(series_list)):
     try:
         series_list[s]['repetitionTimes'] = [[x for x in objects_list[x]['items'] if x['name'] == 'json'][0]['sidecar']['RepetitionTime'] for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']] 
     except:
-        pass
-    
-    if series_list[s]['type'] == 'fmap/epi_dwi':
-        series_list[s]['type'] = 'fmap/epi'
-        
-# for a in acquisition_dates:
-#     del a['sub']
-
+        pass        
     
 #Push all info to ezBIDS.json
 ezBIDS = {"subjects": subjectIDs_info,
