@@ -41,6 +41,8 @@ var sessionSchema = mongoose.Schema({
     //preprocessing
     //analyzed
     //finalized
+    //bidsing
+
     //finished
     //failed
 

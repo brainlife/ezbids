@@ -51,10 +51,10 @@
             </div>
         </div>
 
-        <div v-if="$root.session.status == 'preprocessing'">
+        <div v-if="['preprocessing', 'uploaded'].includes($root.session.status)">
             <div v-if="$root.session.dicomDone !== undefined && $root.session.dicomDone < $root.session.dicomCount">
                 <h3>Converting dicoms to nifti ...</h3>
-                <el-progress
+                <el-progress status="success"
                     :text-inside="true" 
                     :stroke-width="24" 
                     :percentage="($root.session.dicomDone / $root.session.dicomCount)*100"/>

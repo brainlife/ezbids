@@ -37,6 +37,7 @@ var sessionSchema = mongoose.Schema({
     //preprocessing
     //analyzed
     //finalized
+    //bidsing
     //finished
     //failed
     //dcm2niix status

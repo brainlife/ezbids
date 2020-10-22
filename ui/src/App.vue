@@ -1,7 +1,7 @@
 <template>
 <div id="app" style="height: 100%;">
     <el-container style="height: 100%;">
-        <div style="width: 200px; position: fixed; top: 0; left: 0; bottom: 0; background-color: #0001">
+        <div class="menu">
             <h1><span style="letter-spacing: -3px; opacity: 0.6;">ez</span>BIDS</h1>
             <div style="height: 300px; padding: 15px;" v-if="$root.currentPage">
                 <el-steps direction="vertical" :active="$root.currentPage.idx">
@@ -9,7 +9,7 @@
                 </el-steps>
             </div>
         </div>
-        <div style="margin-left: 200px; width: calc(100% - 200px);" v-if="$root.currentPage">
+        <div class="main-content" v-if="$root.currentPage">
             <upload/>
             <description/>
             <subjects/>
@@ -113,5 +113,18 @@ word-break: normal;
     left: 200px;
     bottom: 0;
     z-index: 1;
+}
+.menu {
+    width: 200px; 
+    position: fixed; 
+    top: 0; 
+    left: 0; 
+    bottom: 0; 
+    background-color: #0001;
+    box-shadow: inset -3px 0 5px #9991;
+}
+.main-content {
+    margin-left :200px;
+    width: calc(100% - 200px);
 }
 </style>
