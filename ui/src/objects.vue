@@ -42,7 +42,7 @@
             <div style="margin-bottom: 10px;">
                 <el-alert show-icon :closable="false" type="warning" v-for="(error, idx) in so.analysisResults.errors" :key="idx" :title="error"/>
             </div>    
-            <el-form label-width="100px">
+            <el-form label-width="150px">
                 <el-form-item label="Include">
                     <el-checkbox v-model="so.include" title="Include this object in the BIDS output" @change="update(so)">Include this object in BIDS output</el-checkbox>
                 </el-form-item>

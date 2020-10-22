@@ -686,6 +686,7 @@ split:
         },
 
         changePage(id) {
+            window.scrollTo(0, 0);
             this.currentPage = this.pages.find(p=>p.id == id);
         },
 
