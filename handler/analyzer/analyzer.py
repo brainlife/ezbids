@@ -230,7 +230,7 @@ def select_unique_data(dir_list):
     subjectIDs_info = list({x['sub']:{'sub':x['sub'], 'PatientID':x['PatientID'], 'PatientName':x['PatientName'], 'PatientBirthDate':x['PatientBirthDate'], 'phenotype':{'sex':x['PatientSex'], 'age':x['PatientAge']}} for x in data_list}.values())
     subjectIDs_info = sorted(subjectIDs_info, key = lambda i: i['sub'])
     
-    acquisition_dates = list({x['sub']:{'sub':x['sub'], 'AcquisitionDate':x['AcquisitionDate'], 'ses': ''} for x in data_list}.values())
+    acquisition_dates = list({(x['sub'], x['AcquisitionDate']):{'sub':x['sub'], 'AcquisitionDate':x['AcquisitionDate'], 'ses': ''} for x in data_list}.values())
     acquisition_dates = sorted(acquisition_dates, key = lambda i: i['AcquisitionDate'])
     
     #Insert ses info if applicable
@@ -483,7 +483,7 @@ def identify_series_info(data_list_unique_series):
                         "type": data_list_unique_series[i]['br_type'],
                         "qc": data_list_unique_series[i]['qc'],
                         "repetitionTimes": [],
-                        "png_objects_indices": []
+                        "object_indices": []
                         }
         series_list.append(series_info)
         print('Unique data acquisition file {}, Series Description {}, was determined to be {}'.format(data_list_unique_series[i]['nifti_path'], data_list_unique_series[i]['SeriesDescription'], data_list_unique_series[i]['br_type']))
@@ -559,7 +559,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                 for i, slice in enumerate([slice_x, slice_y, slice_z]):
                     axes[i].imshow(slice.T, cmap="gray", origin="lower")
                     axes[i].axis('off')
-                plt.savefig('{}.png'.format(sub_protocol[p]['nifti_path'][:-7]))
+                plt.savefig('{}.png'.format(sub_protocol[p]['nifti_path'][:-7]), bbox_inches='tight')
             
         index = series_seriesID_list.index(sub_protocol[p]['series_id'])
         objects_entities = {'sub': '', 'ses': '', 'run': '', 'acq': '', 'ce': '', 'echo': ''}
@@ -1034,7 +1034,7 @@ for s in range(len(acquisition_dates)):
     
 #Extract values to plot for users
 for s in range(len(series_list)):
-    series_list[s]['png_objects_indices'] = [x for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']]
+    series_list[s]['object_indices'] = [x for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']]
     try:
         series_list[s]['repetitionTimes'] = [[x for x in objects_list[x]['items'] if x['name'] == 'json'][0]['sidecar']['RepetitionTime'] for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']] 
     except:
