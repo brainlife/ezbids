@@ -5,7 +5,7 @@ Created on Fri Jun 26 08:37:56 2020
 @author: dlevitas
 """
 from __future__ import division
-import os, sys, json, warnings
+import os, sys, re, json, warnings
 import pandas as pd
 import numpy as np
 import nibabel as nib
@@ -129,6 +129,8 @@ def select_unique_data(dir_list):
         else:
             sub = PatientBirthDate
         
+        sub = re.sub('[^A-Za-z0-9]+', '', sub)
+        
         #Find PatientSex
         if 'PatientSex' in json_data: 
             PatientSex = json_data['PatientSex']
@@ -189,7 +191,7 @@ def select_unique_data(dir_list):
                        'PatientBirthDate': PatientBirthDate,
                        'PatientSex': PatientSex,
                        'PatientAge': 'N/A',
-                       'sub': sub.replace('_', '').replace('-', '').replace(' ', ''),
+                       'sub': sub,
                        'ses': '',
                        'SeriesNumber': json_data['SeriesNumber'],
                        'PatientSex': PatientSex,
@@ -350,7 +352,7 @@ def identify_series_info(data_list_unique_series):
         
         
         #Make easier to find key characters/phrases in SD by removing "-",  "_", " " characters and make everything lowercase
-        SD = SD.lower().replace('_', '').replace('-', '').replace(' ', '')
+        SD = re.sub('[^A-Za-z0-9]+', '', SD).lower()
         
         ### Determine DataTypes and ModalityLabels #######
         # Magnitude/Phasediff and Spin echo (SE) field maps
