@@ -189,7 +189,7 @@ def select_unique_data(dir_list):
                        'PatientBirthDate': PatientBirthDate,
                        'PatientSex': PatientSex,
                        'PatientAge': 'N/A',
-                       'sub': sub,
+                       'sub': sub.replace('_', '').replace('-', '').replace(' ', ''),
                        'ses': '',
                        'SeriesNumber': json_data['SeriesNumber'],
                        'PatientSex': PatientSex,
