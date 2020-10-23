@@ -115,10 +115,12 @@ def select_unique_data(dir_list):
             PatientBirthDate = None
             
         #Find PatientSex
-            if 'PatientSex' in json_data:
-                PatientSex = json_data['PatientSex']
-            else:
+        if 'PatientSex' in json_data:
+            PatientSex = json_data['PatientSex']
+            if PatientSex not in ['M','F']:
                 PatientSex = 'N/A'
+        else:
+            PatientSex = 'N/A'
         
         #Select subjID to display to ezBIDS users
         #Order of importance is: PatientName > PatientID > PatientBirthDate
@@ -128,14 +130,7 @@ def select_unique_data(dir_list):
             sub = PatientID
         else:
             sub = PatientBirthDate
-        
         sub = re.sub('[^A-Za-z0-9]+', '', sub)
-        
-        #Find PatientSex
-        if 'PatientSex' in json_data: 
-            PatientSex = json_data['PatientSex']
-        else:
-            PatientSex = None
         
         #Find Acquisition Date & Time
         if 'AcquisitionDateTime' in json_data:
@@ -194,7 +189,6 @@ def select_unique_data(dir_list):
                        'sub': sub,
                        'ses': '',
                        'SeriesNumber': json_data['SeriesNumber'],
-                       'PatientSex': PatientSex,
                        'AcquisitionDate': AcquisitionDate,
                        'AcquisitionTime': AcquisitionTime,
                        'SeriesDescription': json_data['SeriesDescription'],
