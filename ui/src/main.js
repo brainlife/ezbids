@@ -327,7 +327,7 @@ new Vue({
         });
         this.datatypes.push(func);
 
-        //https://github.com/tsalo/bids-specification/blob/ref/json-entity/src/schema/datatypes/fmap.yaml
+        //https://github.com/bids-standard/bids-specification/blob/master/src/schema/datatypes/fmap.yaml
         let _fmap = jsyaml.load(`
 - suffixes:
     - phasediff
@@ -520,6 +520,7 @@ split:
         //TODO - I should rename this to getDatatypeEntities()
         //same code in series / methods
         getEntities(type) {
+            if(!type) return {};
             const modality = type.split("/")[0];
             const suffix = type.split("/")[1];
             let datatype = this.bids_datatypes[modality];
@@ -564,11 +565,12 @@ split:
         //apply all mappings and store them under _entities
         mapObject(o) {
             const series = this.$root.findSeries(o);
-            if(!o.type) o.type = series.type;
-            //console.log("using o.type:", series.type, o.type);
+            o._type = series.type;
+            if(o.type) o._type = o.type; //object level override
+            console.log("mapping to", o._type);
 
             //initialize with the proper object key ordering
-            const e = this.$root.getEntities(o.type);
+            const e = this.getEntities(o._type);
             for(let k in e) {
                 e[k] = series.entities[k];
             }

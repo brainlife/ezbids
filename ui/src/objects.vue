@@ -195,7 +195,7 @@ export default {
 
         intendedForLabel(o) {
             let l = "(sn "+o.SeriesNumber+") ";
-            l += o.type;
+            l += o._type;
             if(o._entities.run) l += " run-"+o._entities.run;
             return l;
         },
@@ -208,14 +208,14 @@ export default {
 
             //make sure all required entities are set
             let series = this.$root.findSeries(o);
-            let entities_requirement = this.$root.getEntities(o.type);
+            let entities_requirement = this.$root.getEntities(o._type);
 
-            if(o.type.startsWith("func/")) {
+            if(o._type.startsWith("func/")) {
                 if(entities_requirement['task'] && !o.entities.task && !series.entities.task) {
                     o.validationErrors.push("Task Name is required for func/bold but not set in series nor overridden.");
                 }
             }
-            if(o.type.startsWith("fmap/")) {
+            if(o._type.startsWith("fmap/")) {
                 if(!o.IntendedFor) o.IntendedFor = []; //TODO can't think of a better place to do this
                 if(o.IntendedFor.length == 0) {
                     o.validationErrors.push("fmap should have IntendedFor set to at least 1 object");
@@ -237,7 +237,7 @@ export default {
             for(let o2 of this.$root.objects) {
                 if(o == o2) continue;
                 if(!o2.include) continue;
-                if(o.type != o2.type) continue;
+                if(o._type != o2.type) continue;
                 let same = o2;
                 for(let k in o._entities) {
                     if(o._entities[k] != o2._entities[k]) {

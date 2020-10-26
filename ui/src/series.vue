@@ -25,9 +25,8 @@
             <template slot-scope="scope">
                 <el-form label-width="100px">
                     <el-form-item label="Datatype">
-                        <el-select v-model="scope.row.type" reqiured
-                            placeholder="unknown" 
-                            size="small">
+                        <el-select v-model="scope.row.type" reqiured placeholder="Non-BIDS" size="small">
+                            <el-option value="">Non-BIDS (don't include)</el-option>
                             <el-option-group v-for="type in $root.datatypes" :key="type.label" :label="type.label">
                                 <el-option v-for="subtype in type.options" :key="subtype.value" :value="subtype.value">
                                     {{type.label}} / {{subtype.label}}

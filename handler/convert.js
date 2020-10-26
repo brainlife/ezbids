@@ -48,7 +48,7 @@ console.log("outputting objects");
 async.forEach(info.objects, (o, next_o) => {
     if (!o.include)
         return next_o();
-    let typeTokens = o.type.split("/");
+    let typeTokens = o._type.split("/");
     let modality = typeTokens[0]; //func, dwi, anat, etc..
     let suffix = typeTokens[1];
     //setup directory
@@ -174,9 +174,9 @@ async.forEach(info.objects, (o, next_o) => {
                                 //if intended object is not included, skip it
                                 if (io.included)
                                     continue;
-                                console.log("intended for", io.type);
-                                const iomodality = io.type.split("/")[0];
-                                const suffix = io.type.split("/")[1];
+                                console.log("intended for", io._type);
+                                const iomodality = io._type.split("/")[0];
+                                const suffix = io._type.split("/")[1];
                                 //construct a path relative to the subject
                                 let path = "";
                                 if (io._entities.ses)
@@ -220,7 +220,7 @@ async.forEach(info.objects, (o, next_o) => {
             });
             break;
         default:
-            console.error("unknown datatype:" + o.type);
+            console.error("unknown datatype:" + o._type);
     }
     next_o();
 });
