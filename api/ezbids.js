@@ -37,7 +37,7 @@ app.use(fileupload({
 */
 //app.disable('etag'); //to speed things up, but I really haven't noticed much difference
 app.disable('x-powered-by'); //for better security?
-app.use(express.limit('50G'));
+//app.use(express.limit('50G'));
 app.use(bodyParser.urlencoded({
     //parameterLimit: 100000,
     limit: '50gb',
