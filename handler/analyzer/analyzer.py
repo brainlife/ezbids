@@ -453,14 +453,15 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['include'] = False
             data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
             data_list_unique_series[i]['qc'] = 'Acquisition is localizer (non-BIDS) because localizer or scout is in the name'
-            data_list_unique_series[i]['br_type'] = None
+            data_list_unique_series[i]['br_type'] = 'exclude'
             
         #Assume not BIDS unless user specifies so
         else: 
             data_list_unique_series[i]['include'] = False
             data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine whether or not this acquisition should be converted to BIDS'
             data_list_unique_series[i]['qc'] = 'Acquisition is unknown becasue there is no good identifying info'
-               
+            data_list_unique_series[i]['br_type'] = 'exclude'
+            
         if data_list_unique_series[i]['include'] == True:
             data_list_unique_series[i]['br_type'] = data_list_unique_series[i]['DataType'] + '/' + data_list_unique_series[i]['ModalityLabel']
             
