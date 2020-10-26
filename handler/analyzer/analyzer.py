@@ -175,7 +175,7 @@ def select_unique_data(dir_list):
             volume_count = nib.load(json_list[j][:-4] + 'nii.gz').shape[3]
         except:
             volume_count = 1
-            
+           
         #Relative paths of json and nifti files (per SeriesNumber)
         paths = sorted(nifti_paths_for_json + [json_list[j]])
             
@@ -367,7 +367,7 @@ def identify_series_info(data_list_unique_series):
             #Spin echo field maps
             else:
                 data_list_unique_series[i]['ModalityLabel'] = 'epi'
-                data_list_unique_series[i]['qc'] = 'acquisition is fmap/epi because fmap or something is in the name and the acquisition is 4D'
+                data_list_unique_series[i]['qc'] = 'acquisition is fmap/epi because fmap is in the name and the acquisition is 4D'
                 series_entities['dir'] = data_list_unique_series[i]['dir']
             
         #DWI
@@ -453,7 +453,7 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['include'] = False
             data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
             data_list_unique_series[i]['qc'] = 'Acquisition is localizer (non-BIDS) because localizer or scout is in the name'
-            data_list_unique_series[i]['br_type'] = 'localizer (non-BIDS)'
+            data_list_unique_series[i]['br_type'] = None
             
         #Assume not BIDS unless user specifies so
         else: 
@@ -461,10 +461,7 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine whether or not this acquisition should be converted to BIDS'
             data_list_unique_series[i]['qc'] = 'Acquisition is unknown becasue there is no good identifying info'
                
-        if data_list_unique_series[i]['DataType'] == '' and data_list_unique_series[i]['ModalityLabel'] == '':
-            if 'localizer' not in data_list_unique_series[i]['br_type']:
-                data_list_unique_series[i]['br_type'] = 'non-BIDS'
-        else:
+        if data_list_unique_series[i]['include'] == True:
             data_list_unique_series[i]['br_type'] = data_list_unique_series[i]['DataType'] + '/' + data_list_unique_series[i]['ModalityLabel']
             
     
@@ -477,7 +474,7 @@ def identify_series_info(data_list_unique_series):
                         'MultibandAccelerationFactor': data_list_unique_series[i]['MultibandAccelerationFactor'],
                         "entities": series_entities,
                         "type": data_list_unique_series[i]['br_type'],
-                        "qc": data_list_unique_series[i]['qc'],
+                        "message": data_list_unique_series[i]['qc'],
                         "repetitionTimes": [],
                         "object_indices": []
                         }
