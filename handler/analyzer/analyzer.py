@@ -461,10 +461,7 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine whether or not this acquisition should be converted to BIDS'
             data_list_unique_series[i]['qc'] = 'Acquisition is unknown becasue there is no good identifying info'
                
-        if data_list_unique_series[i]['DataType'] == '' and data_list_unique_series[i]['ModalityLabel'] == '':
-            if 'localizer' not in data_list_unique_series[i]['br_type']:
-                data_list_unique_series[i]['br_type'] = None
-        else:
+        if data_list_unique_series[i]['include'] == True:
             data_list_unique_series[i]['br_type'] = data_list_unique_series[i]['DataType'] + '/' + data_list_unique_series[i]['ModalityLabel']
             
     
