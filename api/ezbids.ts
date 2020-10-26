@@ -28,7 +28,6 @@ var corsOptionsDelegate = function (req, callback) {
 }
 app.use(cors(corsOptionsDelegate));
 */
-//app.use(express.json({ limit: 10*1000000 })); //file list from session might be quite large..
 app.use(cors());
 app.use(compression());
 app.use(nocache());
@@ -42,10 +41,10 @@ app.use(fileupload({
 //app.disable('etag'); //to speed things up, but I really haven't noticed much difference
 app.disable('x-powered-by'); //for better security?
 
-//parse application/json
+app.use(express.limit('50G'));
 app.use(bodyParser.urlencoded({
     //parameterLimit: 100000,
-    limit: '50mb',
+    limit: '50gb',
     extended: true
   }));
 
@@ -54,7 +53,6 @@ app.use(bodyParser.json({
     type: "application/json",
 }));
 
-app.use(express.limit('50G'));
 
 //app.use(expressWinston.logger(config.logger.winston));
 app.use('/', require('./controllers'));
