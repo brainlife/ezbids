@@ -53,7 +53,8 @@ fs.closeSync(tsvf);
 //handle each objects
 console.log("outputting objects");
 async.forEach(info.objects, (o, next_o)=>{
-    if(!o.include) return next_o();
+    //if(!o.include) return next_o();
+    if(o._type == "exclude") return next_o();
 
     let typeTokens = o._type.split("/");
     let modality = typeTokens[0]; //func, dwi, anat, etc..
@@ -184,7 +185,8 @@ async.forEach(info.objects, (o, next_o)=>{
                         const io = info.objects[idx];
 
                         //if intended object is not included, skip it
-                        if(io.included) continue;
+                        //if(io.included) continue;
+                        if(io._type == "exclude") continue;
 
                         console.log("intended for", io._type);
                         const iomodality = io._type.split("/")[0];

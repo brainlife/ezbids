@@ -567,7 +567,6 @@ split:
             const series = this.$root.findSeries(o);
             o._type = series.type;
             if(o.type) o._type = o.type; //object level override
-            console.log("mapping to", o._type);
 
             //initialize with the proper object key ordering
             const e = this.getEntities(o._type);
