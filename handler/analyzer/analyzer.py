@@ -175,7 +175,7 @@ def select_unique_data(dir_list):
             volume_count = nib.load(json_list[j][:-4] + 'nii.gz').shape[3]
         except:
             volume_count = 1
-            
+           
         #Relative paths of json and nifti files (per SeriesNumber)
         paths = sorted(nifti_paths_for_json + [json_list[j]])
             
@@ -453,7 +453,7 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['include'] = False
             data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
             data_list_unique_series[i]['qc'] = 'Acquisition is localizer (non-BIDS) because localizer or scout is in the name'
-            data_list_unique_series[i]['br_type'] = 'localizer (non-BIDS)'
+            data_list_unique_series[i]['br_type'] = None
             
         #Assume not BIDS unless user specifies so
         else: 
@@ -463,7 +463,7 @@ def identify_series_info(data_list_unique_series):
                
         if data_list_unique_series[i]['DataType'] == '' and data_list_unique_series[i]['ModalityLabel'] == '':
             if 'localizer' not in data_list_unique_series[i]['br_type']:
-                data_list_unique_series[i]['br_type'] = 'non-BIDS'
+                data_list_unique_series[i]['br_type'] = None
         else:
             data_list_unique_series[i]['br_type'] = data_list_unique_series[i]['DataType'] + '/' + data_list_unique_series[i]['ModalityLabel']
             
@@ -477,6 +477,7 @@ def identify_series_info(data_list_unique_series):
                         'MultibandAccelerationFactor': data_list_unique_series[i]['MultibandAccelerationFactor'],
                         "entities": series_entities,
                         "type": data_list_unique_series[i]['br_type'],
+                        'message': data_list_unique_series[i]['error'],
                         "qc": data_list_unique_series[i]['qc'],
                         "repetitionTimes": [],
                         "object_indices": []
