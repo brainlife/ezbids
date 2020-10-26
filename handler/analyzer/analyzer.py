@@ -367,7 +367,7 @@ def identify_series_info(data_list_unique_series):
             #Spin echo field maps
             else:
                 data_list_unique_series[i]['ModalityLabel'] = 'epi'
-                data_list_unique_series[i]['qc'] = 'acquisition is fmap/epi because fmap or something is in the name and the acquisition is 4D'
+                data_list_unique_series[i]['qc'] = 'acquisition is fmap/epi because fmap is in the name and the acquisition is 4D'
                 series_entities['dir'] = data_list_unique_series[i]['dir']
             
         #DWI
@@ -474,8 +474,7 @@ def identify_series_info(data_list_unique_series):
                         'MultibandAccelerationFactor': data_list_unique_series[i]['MultibandAccelerationFactor'],
                         "entities": series_entities,
                         "type": data_list_unique_series[i]['br_type'],
-                        'message': data_list_unique_series[i]['error'],
-                        "qc": data_list_unique_series[i]['qc'],
+                        "message": data_list_unique_series[i]['qc'],
                         "repetitionTimes": [],
                         "object_indices": []
                         }
