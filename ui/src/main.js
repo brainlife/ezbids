@@ -669,7 +669,7 @@ split:
                 this.reload_t = setTimeout(()=>{
                     //console.log("will reload");
                     this.pollSession();
-                }, 1000);
+                }, 1000*5);
                 break;
 
             case "finished":

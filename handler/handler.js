@@ -36,7 +36,6 @@ function run_preprocess() {
                 console.error(err);
             }
         }
-        //console.log("done.. taking a break")
         setTimeout(run_preprocess, 1000);
     }));
 }
@@ -55,7 +54,6 @@ function run_bids() {
                 console.error(err);
             }
         }
-        //console.log("done.. taking a break")
         setTimeout(run_bids, 1000);
     }));
 }
@@ -85,6 +83,8 @@ function handle_uploaded_session(session) {
             });
             p.on('close', code => {
                 clearInterval(monitor);
+                fs.closeSync(logout);
+                fs.closeSync(errout);
                 //check status
                 console.debug("preprocess.sh finished: " + code);
                 if (code != 0) {
@@ -128,7 +128,7 @@ function handle_uploaded_session(session) {
                 }
                 if (list || done)
                     session.save();
-            }, 1000 * 5);
+            }, 1000 * 10);
         });
     });
 }
@@ -151,6 +151,8 @@ function handle_finalized_session(session) {
                 fs.writeSync(errout, data);
             });
             p.on('close', code => {
+                fs.closeSync(logout);
+                fs.closeSync(errout);
                 //check status
                 console.debug("bids.sh finished: " + code);
                 if (code != 0) {

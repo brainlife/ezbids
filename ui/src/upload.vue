@@ -60,7 +60,7 @@
                     :percentage="($root.session.dicomDone / $root.session.dicomCount)*100"/>
             </div>
             <h3 v-else>Analyzing...</h3>
-            <pre>{{$root.session.status_msg}}</pre>
+            <pre style="white-space: pre-wrap;">{{$root.session.status_msg}}</pre>
         </div>
 
         <div v-if="$root.session.status == 'failed'">
@@ -101,11 +101,12 @@
 
         <div v-if="['analyzed', 'finalized', 'finished'].includes($root.session.status)">
             <p>Analysis complete! Please proceed to the next tab.</p>
+            <h3>Objects</h3>
+            <pre class="object-list">{{this.$root.objects}}</pre>
             <div class="page-action">
                 <el-button type="secondary" @click="$root.reset()">Re-Upload</el-button>
                 <el-button type="primary" @click="next" style="float: right;">Next</el-button>
             </div>
-            <!--<pre>{{this.$root.objects}}</pre>-->
         </div>
     </div>
 </div>
@@ -355,7 +356,7 @@ export default {
 }
 .drop-area-backdrop {
     position: absolute; 
-    font-size: 30vh;
+    font-size: 25vh;
     opacity: 0.1;
     top: 0;
     left: 0;
@@ -363,19 +364,24 @@ export default {
     z-index: -1;
     padding: 30px 0;
     filter: blur(0.3vh);
-/*
-    text-shadow: 1vh 1vh 0.5vh #0009;
-*/
 }
 .stats {
-padding: 15px;
+    padding: 15px;
 }
 .stats ul {
-list-style: none;
-margin: 0;
-padding: 0;
+    list-style: none;
+    margin: 0;
+    padding: 0;
 }
 .stats ul li {
-font-family: monospace;
+    font-family: monospace;
+}
+.object-list {
+    background-color: #0001;
+    border-radius: 10px;
+    max-height: 500px;
+    overflow: auto;
+    white-space: pre-wrap;
+    padding: 10px 20px;
 }
 </style>

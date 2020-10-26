@@ -6,7 +6,7 @@
     </div>
     -->
     <div v-if="$root.session && ['finalized', 'bidsing'].includes($root.session.status)">
-        <p>Being Converted to BIDS...</p>
+        <p>Converting to BIDS...</p>
         <p><small><i>{{$root.session.status_msg}}</i></small></p>
     </div>
     <div v-if="$root.session && $root.session.status == 'finished'">

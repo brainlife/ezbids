@@ -48,6 +48,7 @@ app.use(bodyParser.json({
     limit: '50mb',
     type: "application/json",
 }));
+app.use(express.limit('50G'));
 //app.use(expressWinston.logger(config.logger.winston));
 app.use('/', require('./controllers'));
 //error handling

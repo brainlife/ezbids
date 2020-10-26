@@ -52,7 +52,7 @@
             
                 <p>
                     <el-button type="text" @click="scope.row._show = true" v-if="!scope.row._show">
-                        <i class="el-icon-caret-right"/> Show Objects
+                        <i class="el-icon-caret-right"/> Show Images
                         <el-tag :value="scope.row.object_indices.length" type="info" size="mini">{{scope.row.object_indices.length}}</el-tag>
                     </el-button>
                     <el-button type="text" @click="scope.row._show = false" v-if="scope.row._show">

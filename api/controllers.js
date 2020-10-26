@@ -159,7 +159,11 @@ router.post('/upload/:session_id', upload.single('file'), (req, res, next) => {
 });
 //done uploading.
 router.patch('/session/uploaded/:session_id', (req, res, next) => {
-    models.Session.findByIdAndUpdate(req.params.session_id, { status: "uploaded", upload_finish_date: new Date() }).then(session => {
+    models.Session.findByIdAndUpdate(req.params.session_id, {
+        status: "uploaded",
+        status_msg: "Waiting in the queue..",
+        upload_finish_date: new Date()
+    }).then(session => {
         if (!session)
             return next("no such session");
         res.send("ok");
