@@ -1,8 +1,8 @@
 <template>
-<div id="app" style="height: 100%;">
+<div style="height: 100%;">
     <el-container style="height: 100%;">
         <div class="menu">
-            <h1><span style="letter-spacing: -3px; opacity: 0.6;">ez</span>BIDS</h1>
+            <h1 style="font-size: 25pt"><span style="letter-spacing: -3px; opacity: 0.6;">ez</span>BIDS</h1>
             <div style="height: 300px; padding: 15px;" v-if="$root.currentPage">
                 <el-steps direction="vertical" :active="$root.currentPage.idx">
                     <el-step v-for="p in $root.pages" :key="p.idx" :title="p.title"></el-step>
@@ -81,8 +81,11 @@ h1 {
     font-size: 20pt;
 }
 h2, h3, h4 {
-margin: 0;
-margin-bottom: 10px;
+    margin: 0;
+    margin-bottom: 10px;
+}
+p {
+    line-height: 150%;
 }
 .el-main {
     /*there is something wrong bids structure page where the el-main doesn't get expaned all the way to the bottom*/

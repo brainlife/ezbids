@@ -27,6 +27,7 @@ exports.disconnect = disconnect;
 //
 var sessionSchema = mongoose.Schema({
     create_date: { type: Date, default: Date.now },
+    update_date: { type: Date, default: Date.now },
     request_headers: mongoose.Schema.Types.Mixed,
     upload_finish_date: Date,
     pre_begin_date: Date,
@@ -44,6 +45,10 @@ var sessionSchema = mongoose.Schema({
     dicomCount: Number,
     dicomDone: Number,
     status_msg: String,
+});
+sessionSchema.pre('save', function (next) {
+    this.update_date = Date.now();
+    next();
 });
 exports.Session = mongoose.model("Session", sessionSchema);
 var ezbidsSchema = mongoose.Schema({

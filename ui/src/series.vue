@@ -17,7 +17,9 @@
                     <br>
                     <small>RepetitionTime: {{scope.row.repetitionTimes}}</small>
                 </p>
+                <!--
                 <small>There are {{scope.row.object_indices.length}} objects that matches this series number.</small>
+                -->
                 
             </template>
         </el-table-column>
@@ -33,6 +35,8 @@
                                 </el-option>
                             </el-option-group>
                         </el-select>
+                        <br>
+                        <small v-if="scope.row.message">{{scope.row.message}}</small>
                     </el-form-item>
                     <div v-if="scope.row.type">
                         <el-form-item v-for="(v, entity) in getSomeEntities(scope.row.type)" :key="entity" 
@@ -55,13 +59,16 @@
                         <el-tag :value="scope.row.object_indices.length" type="info" size="mini">{{scope.row.object_indices.length}}</el-tag>
                     </el-button>
                     <el-button type="text" @click="scope.row._show = false" v-if="scope.row._show">
-                        <i class="el-icon-caret-bottom"/> Hide Objects
+                        <i class="el-icon-caret-bottom"/> Hide Images
                         <el-tag :value="scope.row.object_indices.length" type="info" size="mini">{{scope.row.object_indices.length}}</el-tag>
                     </el-button>
                 </p>
                 <div v-if="scope.row._show">
                     <div v-for="object_idx in scope.row.object_indices" :key="object_idx">
-                        <small>{{$root.objects[object_idx].entities}}</small>
+                        <el-tag size="mini" type="info" style="margin-right: 5px;"><small>sub-</small><b>{{$root.objects[object_idx]._entities['sub']}}</b></el-tag>
+                        <el-tag size="mini" type="info" style="margin-right: 5px;"><small>ses-</small><b>{{$root.objects[object_idx]._entities['ses']}}</b></el-tag>
+                        <br>
+                        <small>{{$root.objects[object_idx].pngPath}}</small>
                         <a :href="$root.getURL($root.objects[object_idx].pngPath)" v-if="$root.objects[object_idx].pngPath">
                             <img width="100%" :src="$root.getURL($root.objects[object_idx].pngPath)"/>
                         </a>
@@ -96,6 +103,8 @@ export default {
     watch: {
         '$root.currentPage'(v) {
             if(v.id == 'series') {
+                this.$root.objects.forEach(this.$root.mapObject); //for _entities
+
                 this.$root.series.forEach(this.validate);
                 this.$root.series.forEach(s=>{
                     Vue.set(s, "_show", false);

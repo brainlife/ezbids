@@ -27,7 +27,7 @@
         <br>
     </div>
 
-    <div v-if="!so" style="margin-left: 350px;">
+    <div v-if="!so" style="margin-left: 350px; padding: 20px;">
         <p>Please make sure all subject/session/series mappings are correctly applied to your data.</p>
         <p>By default, entities specified in the <b>Series</b> page will be used as defaults for all objects. On this page you can override those entities.</p>
         <br>
@@ -48,7 +48,6 @@
                     <el-checkbox v-model="so.include" title="Include this object in the BIDS output" @change="update(so)">Include this object in BIDS output</el-checkbox>
                 </el-form-item>
                 -->
-
                 <div :class="{'object-exclude': so._type == 'exclude'}">
                     <el-form-item label="Series">
                         {{$root.findSeries(so).SeriesDescription}}
@@ -293,7 +292,7 @@ overflow: auto;
 }
 .object {
 margin-left: 350px;
-margin-right: 30px;
+padding-right: 30px;
 box-shadow: -4px -2px 4px #0001;
 z-index: 1;
 position: relative;

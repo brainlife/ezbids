@@ -661,6 +661,7 @@ split:
                 headers: { 'Content-Type': 'application/json' },
             });
             this.session = await res.json();
+            console.log(this.session.update_date, this.session.status);
             switch(this.session.status) {
             case "created":
             case "uploaded":

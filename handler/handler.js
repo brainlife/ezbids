@@ -17,44 +17,32 @@ console.log("starting preprocess");
 models.connect(err => {
     if (err)
         throw err;
-    run_preprocess();
-    run_bids();
+    run();
 });
-function run_preprocess() {
+function run() {
     console.log("finding sessions to preprocess");
     models.Session.find({
         //TODO- why don't we just look for "uploaded" session?
         //upload_finish_date: {$exists: true}, 
         //pre_begin_date: {$exists: false},
-        status: "uploaded",
+        status: { $in: ["finalized", "uploaded"] },
     }).then((sessions) => __awaiter(this, void 0, void 0, function* () {
         for (let session of sessions) {
             try {
-                yield handle_uploaded_session(session);
+                switch (session.status) {
+                    case "uploaded":
+                        yield handle_uploaded_session(session);
+                        break;
+                    case "finalized":
+                        yield handle_finalized_session(session);
+                        break;
+                }
             }
             catch (err) {
                 console.error(err);
             }
         }
-        setTimeout(run_preprocess, 1000);
-    }));
-}
-function run_bids() {
-    console.log("finding sessions to bidzify");
-    models.Session.find({
-        //upload_finish_date: {$exists: true}, 
-        //pre_begin_date: {$exists: false},
-        status: "finalized",
-    }).then((sessions) => __awaiter(this, void 0, void 0, function* () {
-        for (let session of sessions) {
-            try {
-                yield handle_finalized_session(session);
-            }
-            catch (err) {
-                console.error(err);
-            }
-        }
-        setTimeout(run_bids, 1000);
+        setTimeout(run, 1000 * 3);
     }));
 }
 function handle_uploaded_session(session) {
@@ -93,13 +81,15 @@ function handle_uploaded_session(session) {
                     //update session and done.
                     session.save().then(() => {
                         resolve();
-                    });
+                    }).catch(reject);
                 }
                 else {
                     session.status = "analyzed";
                     session.status_msg = "successfully run preprocess.sh";
                     session.pre_finish_date = new Date();
                     fs.readFile(workdir + "/ezBIDS.json", "utf8", (err, data) => {
+                        if (err)
+                            reject();
                         let ezbids = new models.ezBIDS({
                             _session_id: session._id,
                             original: JSON.parse(data),
@@ -107,8 +97,8 @@ function handle_uploaded_session(session) {
                         ezbids.save().then(() => {
                             session.save().then(() => {
                                 resolve();
-                            });
-                        });
+                            }).catch(reject);
+                        }).catch(reject);
                     });
                 }
             });

@@ -69,17 +69,20 @@
             <h4>Debugging</h4>
             <el-collapse v-model="activeLogs" @change="logChange">
                 <el-collapse-item title="Preprocess/Analyzer Log" name="out">
-                    <pre class="text">{{out}}</pre>
+                    <pre class="text">{{stdout}}</pre>
                 </el-collapse-item>
                 <el-collapse-item title="Preprocess/Analyzer Error Log" name="err">
-                    <pre class="text">{{err}}</pre>
+                    <pre class="text">{{stderr}}</pre>
                 </el-collapse-item>
+
                 <el-collapse-item title="BIDS Conversion Log" name="bidsOut" v-if="$root.finalized">
                     <pre class="text">{{bidsOut}}</pre>
                 </el-collapse-item>
                 <el-collapse-item title="BIDS Conversion Error Log" name="bidsErr" v-if="$root.finalized">
                     <pre class="text">{{bidsErr}}</pre>
                 </el-collapse-item>
+
+                <!--
                 <el-collapse-item title="Objects" name="list" v-if="$root.analyzed">
                     <pre class="text">{{list}}</pre>
                     <div>
@@ -93,7 +96,15 @@
                         <pre>{{this.$root.objects}}</pre>
                     </div>
                 </el-collapse-item>
+                -->
+
             </el-collapse>
+            <br>
+            <br>
+            <br>
+            <br>
+            <br>
+            <br>
             <div class="page-action">
                 <el-button type="secondary" @click="$root.reset()">Re-Upload</el-button>
             </div>
@@ -101,8 +112,16 @@
 
         <div v-if="['analyzed', 'finalized', 'finished'].includes($root.session.status)">
             <p>Analysis complete! Please proceed to the next tab.</p>
-            <h3>Objects</h3>
-            <pre class="object-list">{{this.$root.objects}}</pre>
+            <h4>Object List</h4>
+            <el-collapse class="object-list">
+                <el-collapse-item v-for="(object, idx) in $root.objects" :key="idx" :title="idx+' '+object.paths[0]">
+                    <pre class="object-detail" style="font-size: 85%">{{object}}</pre>
+                </el-collapse-item>
+            </el-collapse>
+            <br>
+            <br>
+            <br>
+            <br>
             <div class="page-action">
                 <el-button type="secondary" @click="$root.reset()">Re-Upload</el-button>
                 <el-button type="primary" @click="next" style="float: right;">Next</el-button>
@@ -114,7 +133,13 @@
 
 <script>
 
-import axios from 'axios';
+import Vue from 'vue'
+import axios from 'axios'
+
+//const maxUploadThreads = 10; //289MB
+//const maxUploadThreads = 16; //400MB
+const maxUploadThreads = 32;
+//const maxUploadThreads = 5; //145MB
 
 export default {
     //store,
@@ -131,6 +156,12 @@ export default {
             uploading: [], //index of files that are currently being uploaded
             uploaded: [], //index of files that are successfully uploaded
             doneUploading: false,
+
+            //debug logs
+            activeLogs: [],
+            stdout: "",
+            stderr: "",
+            list: "",
         }
     },
     mounted() {
@@ -153,6 +184,26 @@ export default {
             this.dragging = false;
             await this.listDropFiles(e.dataTransfer.items);
             this.upload();
+        },
+
+        logChange() {
+            if(this.activeLogs.includes("out")) {
+                if(!this.out) fetch(this.$root.apihost+'/download/'+this.$root.session._id+'/preprocess.log').then(res=>res.text()).then(data=>{
+                        this.stdout = data;
+                });
+            } else this.out = "";
+
+            if(this.activeLogs.includes("err")) {
+                if(!this.err) fetch(this.$root.apihost+'/download/'+this.$root.session._id+'/preprocess.err').then(res=>res.text()).then(data=>{
+                        this.stderr = data;
+                });
+            } else this.err = "";
+
+            if(this.activeLogs.includes("list")) {
+                if(!this.list) fetch(this.$root.apihost+'/download/'+this.$root.session._id+'/list').then(res=>res.text()).then(data=>{
+                        this.list = data;
+                });
+            } else this.list = "";
         },
 
         selectit(e) {
@@ -251,7 +302,7 @@ export default {
             for(let i = 0;i < this.files.length;++i) {
                 let file = this.files[i];
                 file.retry = 0; 
-                file.loaded = 0; //for progress
+                Vue.set(file, 'loaded', 0); //for progress
             }           
 
             //start uploading files
@@ -262,7 +313,7 @@ export default {
             if(this.uploaded.length == this.files.length) {
                 return this.done_uploading();
             }
-            if(this.uploading.length >= 6) return; //don't upload more than 4 files concurrently
+            if(this.uploading.length >= maxUploadThreads) return; 
         
             //find next file to upload
             let file;
@@ -288,8 +339,8 @@ export default {
                 data.append("path", this.files[idx].path);
                 await axios.post(this.$root.apihost+'/upload/'+this.$root.session._id, data, {
                     onUploadProgress: evt=>{
-                        //this.$forceUpdate(); //I don't think we need it?
                         file.loaded = evt.loaded;
+                        this.$forceUpdate();
                     }
                 });
 
@@ -376,12 +427,26 @@ export default {
 .stats ul li {
     font-family: monospace;
 }
-.object-list {
+.object-detail {
     background-color: #0001;
     border-radius: 10px;
-    max-height: 500px;
+    max-height: 400px;
     overflow: auto;
     white-space: pre-wrap;
     padding: 10px 20px;
+}
+.object-list {
+    box-shadow: 0 0 3px #0007;
+    max-height: 400px;
+    overflow: auto;
+    white-space: pre-wrap;
+    padding: 10px 20px;
+}
+pre.text {
+background-color: #f0f0f0;
+border-radius: 10px;
+height: 450px;
+padding: 10px;
+overflow: auto;
 }
 </style>

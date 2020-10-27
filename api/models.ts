@@ -28,6 +28,8 @@ export function disconnect(cb) {
 var sessionSchema = mongoose.Schema({
 
     create_date: { type: Date, default: Date.now },
+    update_date: { type: Date, default: Date.now },
+
     request_headers: mongoose.Schema.Types.Mixed,
 
     upload_finish_date: Date, //when all files are uploaded
@@ -65,6 +67,10 @@ var sessionSchema = mongoose.Schema({
     //workdir: String, //directory containing uploaded file structure
 
     //removed: { type: Boolean, default: false },
+});
+sessionSchema.pre('save', function(next) {
+    this.update_date = Date.now();
+    next();
 });
 export let Session = mongoose.model("Session", sessionSchema);
 
