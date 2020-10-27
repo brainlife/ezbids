@@ -379,7 +379,7 @@ def identify_series_info(data_list_unique_series):
                 data_list_unique_series[i]['ModalityLabel'] = 'epi'
                 data_list_unique_series[i]['qc'] = 'acquisition is fmap/epi meant for dwi because there are bval/bvec files, but the max b-values are <= 50'
                 series_entities['dir'] = data_list_unique_series[i]['dir']
-            elif any(x in SD for x in ['trace','fa','adc']) and 'dti' in SD or 'dwi' in SD:
+            elif any(x in SD for x in ['trace','fa','adc']) and ('dti' in SD or 'dwi' in SD):
                 data_list_unique_series[i]['include'] = False
                 data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
                 data_list_unique_series[i]['qc'] = 'Acquisition is TRACE, FA, or ADCC because it is in the name'
