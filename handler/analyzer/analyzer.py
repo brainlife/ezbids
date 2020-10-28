@@ -430,7 +430,7 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/sbref because "sbref" is in the SeriesDescription'
         
         #T1w
-        elif any(x in SD for x in ['t1w','tfl3d','tfl','mprage']) or 'tfl3d1_16ns' in SequenceName:
+        elif any(x in SD for x in ['t1w','tfl3d','mprage']) or 'tfl3d1_16ns' in SequenceName:
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'T1w'
             if data_list_unique_series[i]['EchoNumber']:
@@ -465,7 +465,6 @@ def identify_series_info(data_list_unique_series):
             
         if data_list_unique_series[i]['include'] == True:
             data_list_unique_series[i]['br_type'] = data_list_unique_series[i]['DataType'] + '/' + data_list_unique_series[i]['ModalityLabel']
-            
     
         #Combine info above into dictionary, which will be displayed to user through the UI
         series_info = {"SeriesDescription": data_list_unique_series[i]['SeriesDescription'],
@@ -988,7 +987,8 @@ def build_objects_list(sub_protocol, objects_entities_list):
 
 ###################### Begin ######################
     
-data_dir = sys.argv[1]
+# data_dir = sys.argv[1]
+data_dir = '/media/data/ezbids/dicoms/OpenScience/20200122.OpenSciJan22.10462@thwjames_OpenScience'
 os.chdir(data_dir)
 
 print('########################################')
