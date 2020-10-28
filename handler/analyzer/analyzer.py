@@ -777,7 +777,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
         for x,y in enumerate(br_types[section_start:section_end]):
             bold_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'func/bold' and include[k+x] == True]
             dwi_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'dwi/dwi' and include[k+x] == True]
-            non_fmap_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if 'fmap' not in y]
+            non_fmap_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if 'fmap' not in y]
             
             if y == 'fmap/epi' and 'max b-values' not in messages[k+x]:
                 fmap_se_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' not in messages[k+x]]
