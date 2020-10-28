@@ -36,8 +36,10 @@
                             </el-option-group>
                         </el-select>
                         <br>
-                        <small v-if="scope.row.message">{{scope.row.message}}</small>
                     </el-form-item>
+                    <div style="margin-left: 100px;">
+                        <small v-if="scope.row.message">{{scope.row.message}}</small>
+                    </div>
                     <div v-if="scope.row.type">
                         <el-form-item v-for="(v, entity) in getSomeEntities(scope.row.type)" :key="entity" 
                             :label="entity+'-'+(v=='required'?' *':'')" style="width: 350px">
@@ -66,7 +68,7 @@
                 <div v-if="scope.row._show">
                     <div v-for="object_idx in scope.row.object_indices" :key="object_idx">
                         <el-tag size="mini" type="info" style="margin-right: 5px;"><small>sub-</small><b>{{$root.objects[object_idx]._entities['sub']}}</b></el-tag>
-                        <el-tag size="mini" type="info" style="margin-right: 5px;"><small>ses-</small><b>{{$root.objects[object_idx]._entities['ses']}}</b></el-tag>
+                        <el-tag v-if="$root.objects[object_idx]._entities['ses']" size="mini" type="info" style="margin-right: 5px;"><small>ses-</small><b>{{$root.objects[object_idx]._entities['ses']}}</b></el-tag>
                         <br>
                         <small>{{$root.objects[object_idx].pngPath}}</small>
                         <a :href="$root.getURL($root.objects[object_idx].pngPath)" v-if="$root.objects[object_idx].pngPath">

@@ -135,6 +135,7 @@ function handle_finalized_session(session) {
             p.stdout.on('data', data => {
                 console.log(data.toString("utf8"));
                 fs.writeSync(logout, data);
+                session.status_msg = data.toString("utf8").trim(); //.split("\n").pop();
             });
             p.stderr.on('data', data => {
                 console.log(data.toString("utf8"));

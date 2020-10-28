@@ -120,13 +120,11 @@
                 </div>
             </el-form>
         </div><!--selected != null-->
+        <br>
+        <br>
+        <br>
     </div><!--object-->
 
-    <br>
-    <br>
-    <br>
-    <br>
-    <br>
     <el-form>
         <el-form-item class="page-action">
             <el-button @click="back">Back</el-button>
@@ -199,6 +197,7 @@ export default {
         intendedForLabel(o) {
             let l = "(sn "+o.SeriesNumber+") ";
             l += o._type;
+            if(o._entities.task) l += " task-"+o._entities.task;
             if(o._entities.run) l += " run-"+o._entities.run;
             return l;
         },
@@ -284,18 +283,21 @@ export default {
 .bids-structure {
 position: fixed;
 top: 0;
-bottom: 0;
+bottom: 60px;
 left: 210px;
 width: 340px;
-height: 100%;
 overflow: auto;
 }
 .object {
-margin-left: 350px;
+position: fixed;
+top: 0;
+bottom: 60px;
+overflow-y: auto;
+left: 550px;
+right: 0;
 padding-right: 30px;
 box-shadow: -4px -2px 4px #0001;
 z-index: 1;
-position: relative;
 }
 .item {
 padding-bottom: 5px;

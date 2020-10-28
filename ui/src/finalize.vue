@@ -5,7 +5,7 @@
         <el-button @click="finalize" size="mini">Re-Finalize</el-button>
     </div>
     -->
-    <div v-if="$root.session && ['finalized', 'bidsing'].includes($root.session.status)">
+    <div v-if="$root.session && $root.session.status != 'finished'">
         <p>Converting to BIDS...</p>
         <p><small><i>{{$root.session.status_msg}}</i></small></p>
     </div>

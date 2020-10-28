@@ -85,7 +85,9 @@ h2, h3, h4 {
     margin-bottom: 10px;
 }
 p {
-    line-height: 150%;
+    line-height: 200%;
+}
+small {
 }
 .el-main {
     /*there is something wrong bids structure page where the el-main doesn't get expaned all the way to the bottom*/

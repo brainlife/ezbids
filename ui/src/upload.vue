@@ -112,7 +112,7 @@
 
         <div v-if="['analyzed', 'finalized', 'finished'].includes($root.session.status)">
             <p>Analysis complete! Please proceed to the next tab.</p>
-            <h4>Object List</h4>
+            <h4>Object List ({{$root.objects.length}})</h4>
             <el-collapse class="object-list">
                 <el-collapse-item v-for="(object, idx) in $root.objects" :key="idx" :title="idx+' '+object.paths[0]">
                     <pre class="object-detail" style="font-size: 85%">{{object}}</pre>
@@ -437,7 +437,7 @@ export default {
 }
 .object-list {
     box-shadow: 0 0 3px #0007;
-    max-height: 400px;
+    max-height: 500px;
     overflow: auto;
     white-space: pre-wrap;
     padding: 10px 20px;
