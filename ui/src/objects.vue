@@ -85,8 +85,10 @@
                                     :label="intendedForLabel(o)" :value="o.idx">
                                 </el-option>
                             </el-select>
-                            <small>* IntendedFor information is used to specify which epi image this fieldmap is intended for. This is an important information required by BIDS specification.</small>
                         </el-form-item>
+                        <p style="margin-left: 150px;">
+                            <small>* IntendedFor information is used to specify which epi image this fieldmap is intended for. This is an important information required by BIDS specification.</small>
+                        </p>
                     </div>
 
                     <div v-for="(item, idx) in so.items" :key="idx" class="border-top">

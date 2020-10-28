@@ -32,9 +32,11 @@ cat $root/dcm2niix.list
 echo "running dcm2niix"
 true > $root/dcm2niix.done
 function d2n {
+    set -e
+    set -x
     path=$1
     echo "----------------------- $path ------------------------"
-    timeout 600 dcm2niix -v 1 -ba n -z o -f 'time-%t-sn-%s' $path
+    timeout 1200 time dcm2niix -v 1 -ba n -z o -f 'time-%t-sn-%s' $path
     echo $1 >> dcm2niix.done
 }
 export -f d2n

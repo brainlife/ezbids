@@ -188,6 +188,9 @@ async.forEach(info.objects, (o, next_o)=>{
                         //if(io.included) continue;
                         if(io._type == "exclude") continue;
 
+                        //doesn't make sense to intentend for its own object (I don't think this ever happens)
+                        //if(io == o) continue;
+
                         console.log("intended for", io._type);
                         const iomodality = io._type.split("/")[0];
                         const suffix = io._type.split("/")[1];
