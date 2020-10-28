@@ -205,7 +205,6 @@ def select_unique_data(dir_list):
                        'series_id': 0,
                        'dir': PED,
                        'IntendedFor': 'N/A',
-                       'IntendedFor_all': 'N/A',
                        'TaskName': '',
                        "include": True,
                        'filesize': filesize,
@@ -754,8 +753,6 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
     messages = [sub_protocol[x]['message'] for x in range(len(sub_protocol))]
     phase_encoding_directions = [sub_protocol[x]['dir'] for x in range(len(sub_protocol))]
     section_indices = [x for x, y in enumerate(br_types) if x == 0 or ('localizer' in y and 'localizer' not in br_types[x-1])]
-    # fmap_counter = 0
-    # fmap_intended_for_index = 0  
     total_objects_indices = total_objects_indices
     
     for j,k in enumerate(section_indices):
@@ -824,10 +821,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
 
                 if len(fmap_se_indices) == 2:
                     for fm in fmap_se_indices:
-                        if sub_protocol[fm]['IntendedFor'] == 'N/A':
-                            sub_protocol[fm]['IntendedFor'] = bold_indices
-                        if sub_protocol[fm]['IntendedFor_all'] == 'N/A':
-                            sub_protocol[fm]['IntendedFor_all'] = bold_indices
+                        sub_protocol[fm]['IntendedFor'] = bold_indices
                         
            
             #Magnitude/Phasediff fmaps
@@ -864,10 +858,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                 
                 if len(fmap_magphase_indices) == 3:
                     for fm in fmap_magphase_indices:
-                        if sub_protocol[fm]['IntendedFor'] == 'N/A':
-                            sub_protocol[fm]['IntendedFor'] = bold_indices
-                        if sub_protocol[fm]['IntendedFor_all'] == 'N/A':
-                            sub_protocol[fm]['IntendedFor_all'] = bold_indices
+                        sub_protocol[fm]['IntendedFor'] = bold_indices
                         
             
             #Spin-echo fmaps for DWI
@@ -894,18 +885,17 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                 fmap_se_dwi_indices = [total_objects_indices+k+x for x,y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' in messages[k+x] and include[k+x] != False]
                 if len(fmap_se_dwi_indices) == 1:
                     for fm in fmap_se_dwi_indices:
-                        if sub_protocol[fm]['IntendedFor'] == 'N/A':
-                            sub_protocol[fm]['IntendedFor'] = dwi_indices
-                        if sub_protocol[fm]['IntendedFor_all'] == 'N/A':
-                            sub_protocol[fm]['IntendedFor_all'] = dwi_indices
+                        sub_protocol[fm]['IntendedFor'] = dwi_indices
             else:
                 pass
             
-            #Add IntendedFor_all to all non-fmap acquisitions
+            #Add IntendedFor to all non-fmap acquisitions
             #This allows IntendedFor fields to auto-fill if user changes datatype on UI
             for nfm in non_fmap_indices:
-                if sub_protocol[nfm]['IntendedFor_all'] == 'N/A':
-                    sub_protocol[nfm]['IntendedFor_all'] = bold_indices
+                if 'dwi' in sub_protocol[nfm]['br_type']:
+                    sub_protocol[nfm]['IntendedFor'] = dwi_indices
+                else:
+                    sub_protocol[nfm]['IntendedFor'] = bold_indices
                         
     return sub_protocol    
 
@@ -970,7 +960,6 @@ def build_objects_list(sub_protocol, objects_entities_list):
                     'SeriesNumber': sub_protocol[i]['sidecar']['SeriesNumber'],
                     "pngPath": '{}.png'.format(sub_protocol[i]['nifti_path'][:-7]),
                     "IntendedFor": sub_protocol[i]['IntendedFor'],
-                    "IntendedFor_all": sub_protocol[i]['IntendedFor_all'],
                     "entities": objects_entities_list[i],
                     "items": items,
                     "analysisResults": {
