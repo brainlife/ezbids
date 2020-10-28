@@ -893,15 +893,9 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
             #This allows IntendedFor fields to auto-fill if user changes datatype on UI
             for nfm in non_fmap_indices:
                 if 'dwi' in sub_protocol[nfm]['br_type']:
-                    if len(dwi_indices):
-                        sub_protocol[nfm]['IntendedFor'] = dwi_indices
-                    else:
-                        sub_protocol[nfm]['IntendedFor'] = 'N/A'
+                    sub_protocol[nfm]['IntendedFor'] = dwi_indices
                 else:
-                    if len(bold_indices):
-                        sub_protocol[nfm]['IntendedFor'] = bold_indices
-                    else:
-                        sub_protocol[nfm]['IntendedFor'] = 'N/A'
+                    sub_protocol[nfm]['IntendedFor'] = bold_indices
                         
     return sub_protocol    
 
