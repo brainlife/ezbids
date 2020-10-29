@@ -208,7 +208,7 @@ def select_unique_data(dir_list):
                        'TaskName': '',
                        "include": True,
                        'filesize': filesize,
-                       "VolumeCount": volume_count,
+                       "NumVolumes": volume_count,
                        'error': None,
                        'message': '',
                        'protocol_index': 0,
@@ -538,7 +538,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
             sub_protocol[p]['error'] = 'The data array is for this acquisition is improper, likely suggesting some issue with the corresponding DICOMS'
             sub_protocol[p]['message'] = sub_protocol[p]['error']
         else:
-            if sub_protocol[p]['VolumeCount'] > 1:
+            if sub_protocol[p]['NumVolumes'] > 1:
                 object_img_array = nib.load(sub_protocol[p]['nifti_path']).dataobj[..., 1]
             else:
                 object_img_array =nib.load(sub_protocol[p]['nifti_path']).dataobj[:]
@@ -600,9 +600,9 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
         #Functional bold
         elif sub_protocol[p]['br_type'] == 'func/bold':
             #Instances where functional bold acquisitions have less than 30 volumes (probably a restart/failure occurred, or some kind of non-BIDS test)
-            if sub_protocol[p]['VolumeCount'] < 30:
+            if sub_protocol[p]['NumVolumes'] < 30:
                 sub_protocol[p]['include'] = False
-                sub_protocol[p]['error'] = 'Functional run only contains {} volumes; ezBIDS minimum threshold is 30. This object will not be included in the BIDS output'.format(sub_protocol[p]['VolumeCount'])
+                sub_protocol[p]['error'] = 'Functional run only contains {} volumes; ezBIDS minimum threshold is 30. This object will not be included in the BIDS output'.format(sub_protocol[p]['NumVolumes'])
             else:
                 if objects_entities['run'] == '':
                     if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
@@ -963,7 +963,7 @@ def build_objects_list(sub_protocol, objects_entities_list):
                     "entities": objects_entities_list[i],
                     "items": items,
                     "analysisResults": {
-                        "VolumeCount": sub_protocol[i]['VolumeCount'],
+                        "NumVolumes": sub_protocol[i]['NumVolumes'],
                         "errors": sub_protocol[i]['error'],
                         "filesize": sub_protocol[i]['filesize']
                     },
