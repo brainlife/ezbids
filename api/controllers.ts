@@ -5,6 +5,7 @@ import path = require('path');
 import fs = require('fs');
 import mkdirp = require('mkdirp');
 import archiver = require('archiver');
+import async = require('async');
 
 import config = require('./config');
 import models = require('./models');
@@ -168,6 +169,51 @@ router.post('/upload/:session_id', upload.single('file'), (req:any, res, next)=>
         next(err);
     });
 });
+
+router.post('/upload-multi/:session_id', upload.any(), (req:any, res, next)=>{
+    models.Session.findById(req.params.session_id).then(async session=>{
+        let idx = -1;
+        async.eachSeries(req.files, (file, next_file)=>{
+            idx++;
+            let src_path = file.path;
+            /* //file
+11|ezbids- | {
+11|ezbids- |   fieldname: 'files',
+11|ezbids- |   originalname: 'i1848324.MRDC.82',
+11|ezbids- |   encoding: '7bit',
+11|ezbids- |   mimetype: 'application/octet-stream',
+11|ezbids- |   destination: '/mnt/ezbids/upload',
+11|ezbids- |   filename: '2d682c5694b0fb8da2beeea3e670350a',
+11|ezbids- |   path: '/mnt/ezbids/upload/2d682c5694b0fb8da2beeea3e670350a',
+11|ezbids- |   size: 147882
+11|ezbids- | }
+            */
+            //let dirty_path = config.workdir+"/"+req.params.session_id+"/"+req.body.path;
+            let dirty_path = config.workdir+"/"+req.params.session_id+"/"+req.body["paths"][idx];
+            let dest_path = path.resolve(dirty_path);
+
+            if(!dest_path.startsWith(config.workdir)) return next_file("invalid path:", dest_path);
+            let destdir = path.dirname(dest_path);
+
+            //move the file over to workdir
+            mkdirp(destdir).then(err=>{
+                console.log("renaming", src_path, dest_path);
+                fs.rename(src_path, dest_path, err=>{
+                    if(err) return next_file(err);
+                    next_file();
+                });
+            });
+        }, err=>{
+            if(err) return next(err);
+            res.send("ok");
+        });
+
+    }).catch(err=>{
+        console.error(err);
+        next(err);
+    });
+});
+
 
 //done uploading.
 router.patch('/session/uploaded/:session_id', (req, res, next)=>{
