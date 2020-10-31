@@ -62,7 +62,8 @@ function handle_uploaded_session(session) {
                 fs.writeSync(logout, data);
                 console.log(data.toString("utf8"));
                 //session.status_msg = data.toString("utf8").trim().split("\n").pop();
-                session.status_msg = data.toString("utf8").trim(); //.split("\n").pop();
+                let out = data.toString("utf8").trim();
+                session.status_msg = out.substring(out.length - 1000);
             });
             p.stderr.on('data', data => {
                 console.log(data.toString("utf8"));
@@ -135,7 +136,8 @@ function handle_finalized_session(session) {
             p.stdout.on('data', data => {
                 console.log(data.toString("utf8"));
                 fs.writeSync(logout, data);
-                session.status_msg = data.toString("utf8").trim(); //.split("\n").pop();
+                let out = data.toString("utf8").trim();
+                session.status_msg = out.substring(out.length - 1000);
             });
             p.stderr.on('data', data => {
                 console.log(data.toString("utf8"));

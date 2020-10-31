@@ -5,7 +5,7 @@
             Welcome to the <b><span style="letter-spacing: -2px; opacity: 0.5">ez</span>BIDS</b> - an online DICOM to BIDS conversion / organizing tool. 
         </p>
 
-        <div class="drop-area" :class="{dragging}" 
+        <div class="drop-area" :class="{dragging}" v-if="!starting"
             @drop="dropit" 
             @dragleave="dragging = false" 
             @dragover="dragover">
@@ -25,44 +25,47 @@
                         @change="selectit"/>
             </center>
         </div>
+
+        <div v-if="starting">
+            <h3>Initializing..</h3>
+        </div>
     </div>
 
     <div v-if="$root.session">
 
         <div v-if="$root.session.status == 'created'">
             <h3>Uploading ...</h3>
-            <!--
-            <el-progress status="success" 
-                :text-inside="true" 
-                :stroke-width="24" 
-                :percentage="parseFloat(((uploaded.length/files.length)*100).toFixed(1))"/>
-            -->
+            <p>
+                <small>Total size {{(total_size/(1024*1024))|formatNumber}} MB</small>
+                <small> | {{files.length}} Files </small>
+                <small> ({{uploaded.length}} done) </small>
+                <el-progress status="success" 
+                    :text-inside="true" 
+                    :stroke-width="24" 
+                    :percentage="parseFloat(((uploaded.length/files.length)*100).toFixed(1))"/>
+            </p>
 
-            <div class="stats">
-                <p>
-                    <small>Total size {{(total_size/(1024*1024))|formatNumber}} MB</small>
-                    <small> | {{files.length}} Files </small>
-                    <small> ({{uploaded.length}} done)</small>
-                </p>
-                <!--
-                <ul>
-                    <li v-for="idx in uploading" :key="idx">
-                        <small>{{idx}}.</small>
-                        {{files[idx].path}} ({{loadedPercentage(idx)}}%)
-                        <span v-if="files[idx].retry > 0">retry:{{files[idx].retry}}</span>
-                    </li>
-                </ul>
-                -->
-                <ul>
-                    <li v-for="(batch, bid) in batches" :key="bid">
-                        batch {{bid+1}}. {{batch.fileidx.length}} files 
-                        <span v-if="batch.evt">({{(batch.evt.total/(1024*1024))|formatNumber}} MB)</span>
+            <!--
+            <ul>
+                <li v-for="idx in uploading" :key="idx">
+                    <small>{{idx}}.</small>
+                    {{files[idx].path}} ({{loadedPercentage(idx)}}%)
+                    <span v-if="files[idx].retry > 0">retry:{{files[idx].retry}}</span>
+                </li>
+            </ul>
+            -->
+            <div v-for="(batch, bid) in batches" :key="bid">
+                <div v-if="batch.status != 'done'" class="batch-stat">
+                    batch {{bid+1}}. {{batch.fileidx.length}} files 
+                    <span> ({{(batch.size/(1024*1024))|formatNumber}} MB) </span>
+                    <b>{{batch.status}}</b> 
+                    <div style="height: 20px">
                         <el-progress v-if="batch.evt && batch.evt.total > 0"
                             :status="batchStatus(batch)"
                             :text-inside="true" :stroke-width="15"
                             :percentage="parseFloat(((batch.evt.loaded/batch.evt.total)*100).toFixed(0))"/>
-                    </li>
-                </ul>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -148,7 +151,7 @@
 
 <script>
 
-import Vue from 'vue'
+//import Vue from 'vue'
 import axios from 'axios'
 
 export default {
@@ -158,10 +161,12 @@ export default {
     data() {
         return {
             dragging: false,
+            starting: false, //wait for browser to handle all files
+
             total_size: null,
             files: [], //files to be uploaded (html5 file object)
 
-            reload_t: null,
+            //reload_t: null,
 
             //uploading: [], //index of files that are currently being uploaded
             uploaded: [], //index of files that are successfully uploaded
@@ -187,8 +192,10 @@ export default {
     },
     methods: {
         batchStatus(batch) {
-            if(batch.failed) return "exception";
-            if(batch.evt && batch.evt.loaded == batch.evt.total) return "success";
+            switch(batch.status) {
+            case "done": return "success";
+            case "failed": return "exception";
+            }
             return null;
         },
 
@@ -201,8 +208,11 @@ export default {
         async dropit(e) {
             e.preventDefault();
             this.dragging = false;
-            await this.listDropFiles(e.dataTransfer.items);
-            this.upload();
+            this.starting = true;
+            this.$nextTick(async ()=>{
+                await this.listDropFiles(e.dataTransfer.items);
+                this.upload();
+            });
         },
 
         logChange() {
@@ -226,11 +236,14 @@ export default {
         },
 
         selectit(e) {
-            this.files = e.target.files;
-            for(let file of e.target.files) {
-                file.path = file.webkitRelativePath;
-            }
-            this.upload();
+            this.starting = true;
+            this.$nextTick(()=>{
+                this.files = e.target.files;
+                for(let file of e.target.files) {
+                    file.path = file.webkitRelativePath;
+                }
+                this.upload();
+            });
         },
 
         //Unlike file input(directory) selecter, I have to do some convoluted thing to get all the files that user drops...
@@ -296,7 +309,8 @@ export default {
             this.$root.validatedSeries = false;
             this.$root.validatedObject = false;
             
-            clearTimeout(this.reload_t);
+            //clearTimeout(this.reload_t);
+            this.starting = false;
             this.doneUploading = false;
 
             //calculate total file size
@@ -316,22 +330,12 @@ export default {
             });
             this.$root.session = await res.json();
             location.hash = this.$root.session._id;
-
-            //reset some extra information for each file
-            /*
-            for(let i = 0;i < this.files.length;++i) {
-                let file = this.files[i];
-                //file.retry = 0; 
-                //Vue.set(file, 'loaded', 0); //for progress
-            }           
-            */
-
-            //start uploading files
             this.processFiles();
         },
 
         processFiles() {
-        
+            console.log("running processFiles");
+
             //find next files to upload
             let data = new FormData();
             let fileidx = [];
@@ -341,17 +345,10 @@ export default {
 
                 let file = this.files[i];
                 if(file.uploading) continue;
-                /*
-                if(file.retry > 3) {
-                    //ignore this file?
-                    this.$root.uploadFailed = true;
-                    continue;
-                }
-                */
                 batchSize += file.size;
 
-                //limit to less than 300MB or 300 files per batch
-                if(fileidx.length >= 300 || batchSize > 1024*1014*300) break;
+                //limit batch size (3000 files causes network error - probably too many?)
+                if(fileidx.length >= 500 || batchSize > 1024*1014*300) break;
 
                 //let's proceed!
                 file.uploading = true;
@@ -362,38 +359,64 @@ export default {
             if(fileidx.length == 0) return; //all done!
 
             //prepare a batch
-            let batch = {fileidx}
+            let batch = {fileidx, evt: null, status: "uploading", size: batchSize}
             this.batches.push(batch);
-            axios.post(this.$root.apihost+'/upload-multi/'+this.$root.session._id, data, {
-                onUploadProgress: evt=>{
-                    //now that we are batch uploading.. this isn't for each files but..
-                    Vue.set(batch, 'evt', evt); //evt.loaded, evt.total
-                    this.$forceUpdate();
-                }
-            }).then(res=>{
-                console.dir(res.data);
-                fileidx.forEach(idx=>{
-                    this.uploaded.push(idx);
-                });
-                if(this.uploaded.length == this.files.length) {
-                    return this.done_uploading();
-                }
-            }).catch(err=>{
-                //TODO.. handle axios error (complicated!?)
-                console.error(err);
-                batch.failed = true;
-                fileidx.forEach(idx=>{
-                    this.files[idx].uploading = false;
-                    //this.files[idx].retry++;
+
+            function doSend() {
+                axios.post(this.$root.apihost+'/upload-multi/'+this.$root.session._id, data, {
+                    onUploadProgress: evt=>{
+                        //now that we are batch uploading.. this isn't for each files but..
+                        batch.evt = evt;
+                        //this.$forceUpdate();
+                    }
+                }).then(res=>{
+                    let msg = res.data;
+                    if(msg == "ok") {
+                        batch.status = "done";
+                        fileidx.forEach(idx=>{
+                            this.uploaded.push(idx);
+                        });
+
+                        if(this.uploaded.length == this.files.length) {
+                            this.done_uploading();
+                        } else {
+                            setTimeout(this.processFiles, 1000);
+                        }
+                    } else {
+                        //server side error?
+                        batch.status = "failed";
+                        console.error(res);
+                    }
+                }).catch(err=>{
+                    console.dir(err);
+                    batch.status = "failed";
+                    /*
+                    if(batch.retry < 5) {
+                        batch.retry++;
+                        batch.status = "uploading";
+                        setTimeout(()=>{
+                            doSend.call(this);
+                        }, 1000*11);
+                    } else {
+                    }
+                    */
+
+                    //retry these files on a different batch
+                    fileidx.forEach(idx=>{
+                        this.files[idx].uploading = false;
+                    });
+                    setTimeout(this.processFiles, 1000*13);
                 });
 
-                //TODO I am not sure how to handle retry
-                //setTimeout(this.processFiles, 1000*5);
-            });
+                //see how many batches we are currently uploading
+                let uploadingBatches = this.batches.filter(b=>b.status == "uploading");
+                if(uploadingBatches.length < 6) {
+                    setTimeout(this.processFiles, 1000*5);
+                }
+            }
 
-            //go ahead and handle the next batch
-            this.processFiles();
-        },
+            doSend.call(this);
+         },
 
         async done_uploading() {
             //we have multiple files uploading concurrently, so the last files will could make this call back 
@@ -448,16 +471,12 @@ export default {
     right: 0;
     z-index: -1;
     padding: 30px 0;
-    filter: blur(0.3vh);
+    filter: blur(0.5vh);
 }
-.stats ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-.stats ul li {
+.batch-stat {
     font-family: monospace;
 }
+
 .object-detail {
     background-color: #0001;
     border-radius: 10px;

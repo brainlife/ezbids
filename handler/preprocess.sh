@@ -36,7 +36,7 @@ function d2n {
     set -x
     path=$1
     echo "----------------------- $path ------------------------"
-    timeout 3600 dcm2niix -v 1 -ba n -z o -f 'time-%t-sn-%s' $path
+    dcm2niix -v 1 -ba n -z o -f 'time-%t-sn-%s' $path
     echo $1 >> dcm2niix.done
 }
 export -f d2n
