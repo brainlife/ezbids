@@ -18,7 +18,7 @@
                     <el-badge v-if="o.validationErrors.length > 0" type="danger" 
                         :value="o.validationErrors.length" 
                         style="margin-left: 5px;"/>
-                    <el-badge v-if="o._type != 'excluded' && o.analysisResults.errors.length > 0" type="warning"
+                    <el-badge v-if="o._type != 'exclude' && o.analysisResults && o.analysisResults.errors && o.analysisResults.errors.length > 0" type="warning"
 			:value="o.analysisResults.errors.length" style="margin-left: 5px"/>
                 </div>
             </div>

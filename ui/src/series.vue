@@ -27,7 +27,7 @@
             <template slot-scope="scope">
                 <el-form label-width="100px">
                     <el-form-item label="Datatype">
-                        <el-select v-model="scope.row.type" reqiured placeholder="(exclude)" size="small">
+                        <el-select v-model="scope.row.type" reqiured placeholder="(exclude)" size="small" @change="validate(scope.row)">
                             <el-option value="exclude">(exclude from BIDS conversion)</el-option>
                             <el-option-group v-for="type in $root.datatypes" :key="type.label" :label="type.label">
                                 <el-option v-for="subtype in type.options" :key="subtype.value" :value="subtype.value">
@@ -131,6 +131,7 @@ export default {
         },
 
         validate(s) {
+            console.log("validating", s);
             Vue.set(s, 'validationErrors', []);
             let entities = this.$root.getEntities(s.type);
             for(let k in this.getSomeEntities(s.type)) {
@@ -150,7 +151,7 @@ export default {
             if(valid) {
                 this.$root.changePage("participant");
             } else {
-                alert('Please correct all issues');
+                alert('Please correct all issues, or update datatype to exclude');
                 return false;
             }
         },
