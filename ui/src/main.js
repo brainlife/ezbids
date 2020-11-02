@@ -50,6 +50,11 @@ Vue.config.productionTip = false
 
 import App from './App.vue'
 
+async function loadYaml(url) {
+    let json = await fetch(url).then(res=>res.text());
+    return jsyaml.load(json);
+}
+
 new Vue({
     el: '#app',
     components: {
@@ -71,7 +76,7 @@ new Vue({
             //data from dan's script
             //site: "", 
             datasetDescription: {
-                "Name": "",
+                "Name": "Untitled",
                 "BIDSVersion": "1.4.0",
                 "DatasetType": "raw",
                 "License": "CC0",
@@ -164,13 +169,9 @@ new Vue({
             this.pollSession();
         }
 
-        this.currentPage = this.pages[0];
-        this.pages.forEach((p, idx)=>{
-            p.idx = idx;
-        });
 
-        //dwi
-        //https://github.com/tsalo/bids-specification/blob/ref/json-entity/src/schema/datatypes/dwi.yaml
+        let _dwi = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/datatypes/dwi.yaml");
+        /*
         let _dwi = jsyaml.load(`
 - suffixes:
     - dwi
@@ -199,6 +200,7 @@ new Vue({
     dir: optional
     run: optional
 `);
+        */
         this.bids_datatypes["dwi"] = _dwi;
 
         let dwi = {label: "Diffusion", options: []}
@@ -209,8 +211,8 @@ new Vue({
         });
         this.datatypes.push(dwi);
         
-        //anat
-        //https://github.com/tsalo/bids-specification/blob/ref/json-entity/src/schema/datatypes/anat.yaml
+        let _anat = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/datatypes/anat.yaml");
+        /*
         let _anat = jsyaml.load(`
 # First group
 - suffixes:
@@ -255,6 +257,7 @@ new Vue({
     rec: optional
     mod: optional
 `);
+        */
         this.bids_datatypes["anat"] = _anat;
 
         let anat = {label: "Anatomical", options: []}
@@ -265,7 +268,9 @@ new Vue({
         });
         this.datatypes.push(anat);
 
-        //https://github.com/tsalo/bids-specification/blob/ref/json-entity/src/schema/datatypes/func.yaml
+        //https://github.com/bids-standard/bids-specification/blob/ref/json-entity/src/schema/datatypes/func.yaml
+        let _func = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/datatypes/func.yaml");
+        /*
         let _func = jsyaml.load(`
 - suffixes:
     - bold
@@ -317,6 +322,7 @@ new Vue({
     recording: optional
     proc: optional
 `);
+        */
         this.bids_datatypes["func"] = _func;
 
         let func = {label: "Functional", options: []}
@@ -327,7 +333,9 @@ new Vue({
         });
         this.datatypes.push(func);
 
-        //https://github.com/bids-standard/bids-specification/blob/master/src/schema/datatypes/fmap.yaml
+        //https://github.com/bids-standard/bids-specification/blob/master/src/schema/datatypes/fmap.yaml
+        let _fmap = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/datatypes/fmap.yaml");
+        /*
         let _fmap = jsyaml.load(`
 - suffixes:
     - phasediff
@@ -360,6 +368,7 @@ new Vue({
     dir: required
     run: optional
 `);
+        */
         this.bids_datatypes["fmap"] = _fmap;
 
         let fmap = {label: "Field Map", options: []}
@@ -370,6 +379,8 @@ new Vue({
         });
         this.datatypes.push(fmap);
 
+        this.bids_entities = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/entities.yaml");
+        /*
         this.bids_entities = jsyaml.load(`
 sub:
   name: Subject
@@ -496,7 +507,17 @@ split:
                 split-<index> entity to indicate each part."
   format: index
 `);
+        */
+        //alias somethings (they changed the naming keys?)
+        this.bids_entities["acq"] = this.bids_entities["acquisition"];
+        this.bids_entities["ce"] = this.bids_entities["ceagent"];
+        this.bids_entities["rec"] = this.bids_entities["reconstruction"];
+        this.bids_entities["dir"] = this.bids_entities["direction"];
 
+        this.currentPage = this.pages[0];
+        this.pages.forEach((p, idx)=>{
+            p.idx = idx;
+        });
     },
 
     computed: { },

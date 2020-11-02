@@ -45,15 +45,6 @@
                     :percentage="parseFloat(((uploaded.length/files.length)*100).toFixed(1))"/>
             </p>
 
-            <!--
-            <ul>
-                <li v-for="idx in uploading" :key="idx">
-                    <small>{{idx}}.</small>
-                    {{files[idx].path}} ({{loadedPercentage(idx)}}%)
-                    <span v-if="files[idx].retry > 0">retry:{{files[idx].retry}}</span>
-                </li>
-            </ul>
-            -->
             <div v-for="(batch, bid) in batches" :key="bid">
                 <div v-if="batch.status != 'done'" class="batch-stat">
                     batch {{bid+1}}. {{batch.fileidx.length}} files 
@@ -99,23 +90,6 @@
                 <el-collapse-item title="BIDS Conversion Error Log" name="bidsErr" v-if="$root.finalized">
                     <pre class="text">{{bidsErr}}</pre>
                 </el-collapse-item>
-
-                <!--
-                <el-collapse-item title="Objects" name="list" v-if="$root.analyzed">
-                    <pre class="text">{{list}}</pre>
-                    <div>
-                        <h3>Subjects</h3>
-                        <pre>{{this.$root.subjects}}</pre>
-                        <h3>Sessions</h3>
-                        <pre>{{this.$root.sessions}}</pre>
-                        <h3>Series</h3>
-                        <pre>{{this.$root.series}}</pre>
-                        <h3>Objects</h3>
-                        <pre>{{this.$root.objects}}</pre>
-                    </div>
-                </el-collapse-item>
-                -->
-
             </el-collapse>
             <br>
             <br>
@@ -136,6 +110,19 @@
                     <pre class="object-detail" style="font-size: 85%">{{object}}</pre>
                 </el-collapse-item>
             </el-collapse>
+
+            <br>
+            <br>
+            <el-collapse v-model="activeLogs" @change="logChange">
+                <el-collapse-item title="Preprocess/Analyzer Log" name="out">
+                    <pre class="text">{{stdout}}</pre>
+                </el-collapse-item>
+
+                <el-collapse-item title="Preprocess/Analyzer Error Log" name="err">
+                    <pre class="text">{{stderr}}</pre>
+                </el-collapse-item>
+            </el-collapse>
+
             <br>
             <br>
             <br>
@@ -356,7 +343,10 @@ export default {
                 data.append("files", file);
                 data.append("paths", file.path); //file doesn't contains the real path to store files to..
             }
-            if(fileidx.length == 0) return; //all done!
+            if(fileidx.length == 0) {
+                console.log("no more files to process.");
+                return; //all done!
+            } 
 
             //prepare a batch
             let batch = {fileidx, evt: null, status: "uploading", size: batchSize}
@@ -378,6 +368,7 @@ export default {
                         });
 
                         if(this.uploaded.length == this.files.length) {
+                            console.log("upload completed.. calling done_uploading");
                             this.done_uploading();
                         } else {
                             setTimeout(this.processFiles, 1000);

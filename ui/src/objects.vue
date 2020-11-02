@@ -71,7 +71,7 @@
                     <div style="width: 350px;">
                         <el-form-item v-for="(v, entity) in $root.getEntities($root.getType(so))" :key="entity" 
                             :label="entity+'-'+(v=='required'?' *':'')">
-                            <el-popover width="300" trigger="focus" placement="right-start"
+                            <el-popover width="300" trigger="focus" placement="right-start" v-if="$root.bids_entities[entity]"
                                 :title="$root.bids_entities[entity].name" 
                                 :content="$root.bids_entities[entity].description">
                                 <el-input slot="reference" v-model="so.entities[entity]" size="small" @blur="update(so)" :placeholder="getDefault(so, entity)"/>

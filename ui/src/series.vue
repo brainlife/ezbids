@@ -43,7 +43,7 @@
                     <div v-if="scope.row.type">
                         <el-form-item v-for="(v, entity) in getSomeEntities(scope.row.type)" :key="entity" 
                             :label="entity+'-'+(v=='required'?' *':'')" style="width: 350px">
-                            <el-popover width="300" trigger="focus" placement="right-start"
+                            <el-popover width="300" trigger="focus" placement="right-start" v-if="$root.bids_entities[entity]"
                                 :title="$root.bids_entities[entity].name" 
                                 :content="$root.bids_entities[entity].description">
                                 <el-input slot="reference" v-model="scope.row.entities[entity]" size="small" :required="v == 'required'" @change="validate(scope.row)"/>
@@ -106,7 +106,6 @@ export default {
         '$root.currentPage'(v) {
             if(v.id == 'series') {
                 this.$root.objects.forEach(this.$root.mapObject); //for _entities
-
                 this.$root.series.forEach(this.validate);
                 this.$root.series.forEach(s=>{
                     Vue.set(s, "_show", false);
@@ -131,7 +130,6 @@ export default {
         },
 
         validate(s) {
-            console.log("validating", s);
             Vue.set(s, 'validationErrors', []);
             let entities = this.$root.getEntities(s.type);
             for(let k in this.getSomeEntities(s.type)) {
