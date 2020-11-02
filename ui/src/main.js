@@ -129,7 +129,7 @@ new Vue({
             datatypes: [], //datatype catalog from bids-specification (suffixes only)
 
             bids_datatypes: {},  //keyed by modality (dwi, anat, then the content of the yaml)
-            bids_entities: null,  //keybed by entities, and info for each entities
+            bids_entities: {},  //keybed by entities, and info for each entities
 
             uploadFailed: false,
 
@@ -162,45 +162,13 @@ new Vue({
 
     async mounted() {
         if(location.hash) {
-            //console.log("reloading session");
             this.session = {
                 _id: location.hash.substring(1),
             }
             this.pollSession();
         }
 
-
         let _dwi = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/datatypes/dwi.yaml");
-        /*
-        let _dwi = jsyaml.load(`
-- suffixes:
-    - dwi
-  extensions:
-    - .nii.gz
-    - .nii
-    - .json
-    - .bvec
-    - .bval
-  entities:
-    sub: required
-    ses: optional
-    acq: optional
-    dir: optional
-    run: optional
-- suffixes:
-    - sbref
-  extensions:
-    - .nii.gz
-    - .nii
-    - .json
-  entities:
-    sub: required
-    ses: optional
-    acq: optional
-    dir: optional
-    run: optional
-`);
-        */
         this.bids_datatypes["dwi"] = _dwi;
 
         let dwi = {label: "Diffusion", options: []}
@@ -212,52 +180,6 @@ new Vue({
         this.datatypes.push(dwi);
         
         let _anat = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/datatypes/anat.yaml");
-        /*
-        let _anat = jsyaml.load(`
-# First group
-- suffixes:
-    - T1w
-    - T2w
-    - T1rho
-    - T1map
-    - T2map
-    - T2star
-    - FLAIR
-    - FLASH
-    - PD
-    - PDmap
-    - PDT2
-    - inplaneT1
-    - inplaneT2
-    - angio
-  extensions:
-    - .nii.gz
-    - .nii
-    - .json
-  entities:
-    sub: required
-    ses: optional
-    run: optional
-    acq: optional
-    ce: optional
-    rec: optional
-# Second group
-- suffixes:
-    - defacemask
-  extensions:
-    - .nii.gz
-    - .nii
-    - .json
-  entities:
-    sub: required
-    ses: optional
-    run: optional
-    acq: optional
-    ce: optional
-    rec: optional
-    mod: optional
-`);
-        */
         this.bids_datatypes["anat"] = _anat;
 
         let anat = {label: "Anatomical", options: []}
@@ -268,61 +190,7 @@ new Vue({
         });
         this.datatypes.push(anat);
 
-        //https://github.com/bids-standard/bids-specification/blob/ref/json-entity/src/schema/datatypes/func.yaml
         let _func = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/datatypes/func.yaml");
-        /*
-        let _func = jsyaml.load(`
-- suffixes:
-    - bold
-    - cbv
-    - phase
-    - sbref
-  extensions:
-    - .nii.gz
-    - .nii
-    - .json
-  entities:
-    sub: required
-    ses: optional
-    task: required
-    acq: optional
-    ce: optional
-    rec: optional
-    dir: optional
-    run: optional
-    echo: optional
-- suffixes:
-    - events
-  extensions:
-    - .tsv
-    - .json
-  entities:
-    sub: required
-    ses: optional
-    task: required
-    acq: optional
-    ce: optional
-    rec: optional
-    dir: optional
-    run: optional
-    echo: optional
-- suffixes:
-    - physio
-    - stim
-  extensions:
-    - .tsv.gz
-    - .json
-  entities:
-    sub: required
-    ses: optional
-    task: required
-    acq: optional
-    rec: optional
-    run: optional
-    recording: optional
-    proc: optional
-`);
-        */
         this.bids_datatypes["func"] = _func;
 
         let func = {label: "Functional", options: []}
@@ -333,42 +201,7 @@ new Vue({
         });
         this.datatypes.push(func);
 
-        //https://github.com/bids-standard/bids-specification/blob/master/src/schema/datatypes/fmap.yaml
         let _fmap = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/datatypes/fmap.yaml");
-        /*
-        let _fmap = jsyaml.load(`
-- suffixes:
-    - phasediff
-    - phase1
-    - phase2
-    - magnitude1
-    - magnitude2
-    - magnitude
-    - fieldmap
-  extensions:
-    - .nii.gz
-    - .nii
-    - .json
-  entities:
-    sub: required
-    ses: optional
-    acq: optional
-    run: optional
-- suffixes:
-    - epi
-  extensions:
-    - .nii.gz
-    - .nii
-    - .json
-  entities:
-    sub: required
-    ses: optional
-    acq: optional
-    ce: optional
-    dir: required
-    run: optional
-`);
-        */
         this.bids_datatypes["fmap"] = _fmap;
 
         let fmap = {label: "Field Map", options: []}
@@ -379,140 +212,11 @@ new Vue({
         });
         this.datatypes.push(fmap);
 
-        this.bids_entities = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/entities.yaml");
-        /*
-        this.bids_entities = jsyaml.load(`
-sub:
-  name: Subject
-  description: "A person or animal participating in the study."
-  format: label
-ses:
-  name: Session
-  description: |
-    A logical grouping of neuroimaging and behavioral data consistent across subjects.
-    Session can (but doesn't have to) be synonymous to a visit in a longitudinal study.
-    In general, subjects will stay in the scanner during one session.
-    However, for example, if a subject has to leave the scanner room and then be
-    re-positioned on the scanner bed, the set of MRI acquisitions will still be considered
-    as a session and match sessions acquired in other subjects.
-    Similarly, in situations where different data types are obtained over several visits
-    (for example fMRI on one day followed by DWI the day after) those can be grouped in one
-    session.
-    Defining multiple sessions is appropriate when several identical or similar data
-    acquisitions are planned and performed on all -or most- subjects, often in the case of
-    some intervention between sessions (e.g., training).
-  format: label
-task:
-  name: Task
-  format: label
-  description: "Each task has a unique label that MUST only consist of letters
-                and/or numbers (other characters, including spaces and
-                underscores, are not allowed).
-                Those labels MUST be consistent across subjects and sessions."
-acq:
-  name: Acquisition
-  description: "The OPTIONAL acq-<label> key/value pair corresponds to a custom
-                label the user MAY use to distinguish a different set of
-                parameters used for acquiring the same modality.
-                For example this should be used when a study includes two T1w
-                images - one full brain low resolution and and one restricted
-                field of view but high resolution. In such case two files could
-                have the following names: sub-01_acq-highres_T1w.nii.gz and
-                sub-01_acq-lowres_T1w.nii.gz, however the user is free to choose
-                any other label than highres and lowres as long as they are
-                consistent across subjects and sessions. In case different
-                sequences are used to record the same modality (e.g. RARE and
-                FLASH for T1w) this field can also be used to make that distinction.
-                At what level of detail to make the distinction (e.g. just between
-                RARE and FLASH, or between RARE, FLASH, and FLASHsubsampled)
-                remains at the discretion of the researcher."
-  format: label
-ce:
-  name: Contrast Enhancing Agent
-  description: "Similarly the OPTIONAL ce-<label> key/value can be used to
-                distinguish sequences using different contrast enhanced images.
-                The label is the name of the contrast agent.
-                The key ContrastBolusIngredient MAY be also be added in the JSON
-                file, with the same label."
-  format: label
-rec:
-  name: Reconstruction
-  description: "Similarly the OPTIONAL rec-<label> key/value can be used to
-                distinguish different reconstruction algorithms (for example
-                ones using motion correction)."
-  format: label
-dir:
-  name: Phase-Encoding Direction
-  description: "Similarly the OPTIONAL dir-<label> key/value can be used to
-                distinguish different phase-encoding directions."
-  format: label
-run:
-  name: Run
-  description: "If several scans of the same modality are acquired they MUST be
-                indexed with a key-value pair: _run-1, _run-2, _run-3 etc.
-                (only integers are allowed as run labels).
-                When there is only one scan of a given type the run key MAY be
-                omitted.
-                Please note that diffusion imaging data is stored elsewhere
-                (see below)."
-  format: index
-mod:
-  name: Corresponding Modality
-  description: "In such cases the OPTIONAL mod-<label> key/value pair corresponds
-                to modality label for eg: T1w, inplaneT1, referenced by a
-                defacemask image. E.g., sub-01_mod-T1w_defacemask.nii.gz."
-  format: label
-echo:
-  name: Echo
-  description: "Multi-echo data MUST be split into one file per echo.
-                Each file shares the same name with the exception of the
-                _echo-<index> key/value."
-  format: index
-recording:
-  name: Recording
-  description: "More than one continuous recording file can be included (with
-                different sampling frequencies).
-                In such case use different labels.
-                For example: _recording-contrast, _recording-saturation."
-  format: label
-proc:
-  name: Processed (on device)
-  description: "The proc label is analogous to rec for MR and denotes a variant
-                of a file that was a result of particular processing performed
-                on the device.
-                This is useful for files produced in particular by Elekta’s
-                MaxFilter (e.g. sss, tsss, trans, quat, mc, etc.), which some
-                installations impose to be run on raw data because of active
-                shielding software corrections before the MEG data can actually
-                be exploited."
-  format: label
-space:
-  name: Space
-  description: "The optional space label (*[_space-<label>]_electrodes.tsv) can
-                be used to indicate the way in which electrode positions are interpreted.
-                The space label needs to be taken from the list in Appendix VIII"
-  format: label
-split:
-  name: Split
-  description: "In the case of long data recordings that exceed a file size of
-                2Gb, the .fif files are conventionally split into multiple parts.
-                Each of these files has an internal pointer to the next file.
-                This is important when renaming these split recordings to the BIDS
-                convention.
-                Instead of a simple renaming, files should be read in and saved
-                under their new names with dedicated tools like MNE, which will
-                ensure that not only the file names, but also the internal file
-                pointers will be updated.
-                It is RECOMMENDED that .fif files with multiple parts use the
-                split-<index> entity to indicate each part."
-  format: index
-`);
-        */
-        //alias somethings (they changed the naming keys?)
-        this.bids_entities["acq"] = this.bids_entities["acquisition"];
-        this.bids_entities["ce"] = this.bids_entities["ceagent"];
-        this.bids_entities["rec"] = this.bids_entities["reconstruction"];
-        this.bids_entities["dir"] = this.bids_entities["direction"];
+        let _bids_entities = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/entities.yaml");
+        for(let key in _bids_entities) {
+            let ent = _bids_entities[key];
+            this.bids_entities[ent.entity] = ent;
+        }
 
         this.currentPage = this.pages[0];
         this.pages.forEach((p, idx)=>{

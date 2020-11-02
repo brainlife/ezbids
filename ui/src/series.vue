@@ -43,7 +43,7 @@
                     <div v-if="scope.row.type">
                         <el-form-item v-for="(v, entity) in getSomeEntities(scope.row.type)" :key="entity" 
                             :label="entity+'-'+(v=='required'?' *':'')" style="width: 350px">
-                            <el-popover width="300" trigger="focus" placement="right-start" v-if="$root.bids_entities[entity]"
+                            <el-popover width="300" trigger="focus" placement="right-start"
                                 :title="$root.bids_entities[entity].name" 
                                 :content="$root.bids_entities[entity].description">
                                 <el-input slot="reference" v-model="scope.row.entities[entity]" size="small" :required="v == 'required'" @change="validate(scope.row)"/>

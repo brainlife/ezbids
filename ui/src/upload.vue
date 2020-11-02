@@ -105,10 +105,15 @@
         <div v-if="['analyzed', 'finalized', 'finished'].includes($root.session.status)">
             <p>Analysis complete! Please proceed to the next tab.</p>
             <h4>Object List ({{$root.objects.length}})</h4>
-            <el-collapse class="object-list">
-                <el-collapse-item v-for="(object, idx) in $root.objects" :key="idx" :title="idx+' '+object.paths[0]">
-                    <pre class="object-detail" style="font-size: 85%">{{object}}</pre>
-                </el-collapse-item>
+            <el-collapse>
+                <div v-for="(object, idx) in $root.objects" :key="idx">
+                    <p style="margin: 0;">
+                        <el-link @click="toggleObject(idx)">
+                            <small>{{idx+' '+object.paths[0]}}</small>
+                        </el-link>
+                    </p>
+                    <pre v-if="opened.includes(idx)" class="object-detail" style="font-size: 85%">{{object}}</pre>
+                </div>
             </el-collapse>
 
             <br>
@@ -160,6 +165,8 @@ export default {
 
             batches: [], //object containing information for each batch upload {evt, fileidx} 
 
+            opened: [],
+
             doneUploading: false,
 
             //debug logs
@@ -178,6 +185,12 @@ export default {
     destroyed() {
     },
     methods: {
+        toggleObject(idx) {
+            let pos = this.opened.indexOf(idx);
+            if(~pos) this.opened.splice(pos, 1);
+            else this.opened.push(idx);
+        },
+
         batchStatus(batch) {
             switch(batch.status) {
             case "done": return "success";
