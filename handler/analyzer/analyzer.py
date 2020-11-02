@@ -602,7 +602,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
             #Instances where functional bold acquisitions have less than 30 volumes (probably a restart/failure occurred, or some kind of non-BIDS test)
             if sub_protocol[p]['NumVolumes'] < 30:
                 sub_protocol[p]['include'] = False
-                sub_protocol[p]['error'] = 'Functional run only contains {} volumes; ezBIDS minimum threshold is 30. This object will not be included in the BIDS output'.format(sub_protocol[p]['NumVolumes'])
+                sub_protocol[p]['error'] = 'Functional run only contains {} volumes; ezBIDS flags functional runs with under 30 volumes. Please check to see whether this should be excluded or not from BIDS conversion'.format(sub_protocol[p]['NumVolumes'])
             else:
                 if objects_entities['run'] == '':
                     if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
@@ -659,7 +659,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
             #Set include to False if functional bold after it has less than 30 volumes, which will cause it to not be converted to BIDS
             elif nib.load(sub_protocol[p+1]['nifti_path']).shape[3] < 30:
                 sub_protocol[p]['include'] = False
-                sub_protocol[p]['error'] = 'Functional bold acquisition following this sbref contains less than 30 volumes, causing it to not be converted to BIDS. Thus this sbref that precedes the functional bold will not be included in the BIDS output'
+                sub_protocol[p]['error'] = 'Functional bold acquisition following this sbref contains less than 30 volumes, therefore BIDS conversion for this acqusition (and the preceding sbref) not recommended.'
             else:    
                 if objects_entities['run'] == '':
                     if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
