@@ -98,6 +98,7 @@ router.post('/session/:session_id/finalize', (req, res, next)=>{
                 update_date: new Date(),
             }}).then(err=>{
                 session.status = "finalized";
+                session.status_msg = "Waiting to be finalized";
                 session.save().then(()=>{
                     res.send("ok"); 
                 });

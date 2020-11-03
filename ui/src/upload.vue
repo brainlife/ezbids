@@ -105,16 +105,14 @@
         <div v-if="['analyzed', 'finalized', 'finished'].includes($root.session.status)">
             <p>Analysis complete! Please proceed to the next tab.</p>
             <h4>Object List ({{$root.objects.length}})</h4>
-            <el-collapse>
-                <div v-for="(object, idx) in $root.objects" :key="idx">
-                    <p style="margin: 0;">
-                        <el-link @click="toggleObject(idx)">
-                            <small>{{idx+' '+object.paths[0]}}</small>
-                        </el-link>
-                    </p>
-                    <pre v-if="opened.includes(idx)" class="object-detail" style="font-size: 85%">{{object}}</pre>
-                </div>
-            </el-collapse>
+            <div v-for="(object, idx) in $root.objects" :key="idx">
+                <p style="margin: 0;">
+                    <el-link @click="toggleObject(idx)">
+                        <small>{{idx+' '+object.paths[0]}}</small>
+                    </el-link>
+                </p>
+                <pre v-if="opened.includes(idx)" class="object-detail" style="font-size: 85%">{{object}}</pre>
+            </div>
 
             <br>
             <br>
@@ -488,19 +486,15 @@ export default {
     overflow: auto;
     white-space: pre-wrap;
     padding: 10px 20px;
-}
-.object-list {
-    box-shadow: 0 0 3px #0007;
-    max-height: 500px;
-    overflow: auto;
-    white-space: pre-wrap;
-    padding: 10px 20px;
+    font-size: 80%;
 }
 pre.text {
-background-color: #f0f0f0;
-border-radius: 10px;
-height: 450px;
-padding: 10px;
-overflow: auto;
+    background-color: #f0f0f0;
+    border-radius: 10px;
+    height: 450px;
+    overflow: auto;
+    white-space: pre-wrap;
+    padding: 10px;
+    font-size: 80%;
 }
 </style>

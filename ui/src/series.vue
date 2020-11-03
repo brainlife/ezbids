@@ -37,9 +37,7 @@
                         </el-select>
                         <br>
                     </el-form-item>
-                    <p style="margin-left: 100px;">
-                        <small v-if="scope.row.message">{{scope.row.message}}</small>
-                    </p>
+                    <p style="margin-left: 100px;" v-if="scope.row.message">{{scope.row.message}}</p>
                     <div v-if="scope.row.type">
                         <el-form-item v-for="(v, entity) in getSomeEntities(scope.row.type)" :key="entity" 
                             :label="entity+'-'+(v=='required'?' *':'')" style="width: 350px">
