@@ -61,6 +61,7 @@ def select_unique_data(dir_list):
     print('Determining unique acquisitions in list')
     print('------------------------------------------')
     for j in range(len(json_list)):
+        print(json_list[j])
         json_data = open(json_list[j])
         json_data = json.load(json_data, strict=False)
         
@@ -204,7 +205,7 @@ def select_unique_data(dir_list):
                        'ModalityLabel': '',
                        'series_id': 0,
                        'dir': PED,
-                       'IntendedFor': 'N/A',
+                       'IntendedFor': [],
                        'TaskName': '',
                        "include": True,
                        'filesize': filesize,
