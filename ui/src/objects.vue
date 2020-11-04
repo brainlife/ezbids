@@ -82,7 +82,8 @@
                     <div v-if="$root.getType(so).startsWith('fmap/')" class="border-top">
                         <br>
                         <el-form-item label="IntendedFor">
-                            <el-select v-model="so.IntendedFor" multiple placeholder="Select Object" style="width: 100%">
+                            <el-select v-model="so.IntendedFor" multiple placeholder="Select Object" style="width: 100%" @change="update(so)">
+
                                 <el-option v-for="o in this.sess.objects" :key="o.idx"
                                     :label="intendedForLabel(o)" :value="o.idx">
                                 </el-option>
@@ -161,8 +162,11 @@ export default {
             if(v.id == 'object') {
                 //I have to map all objects at least once before I can validate any object
                 this.$root.objects.forEach(this.$root.mapObject);
+
                 //then validate
+                console.log("validating all objects");
                 this.$root.objects.forEach(this.validate);
+
                 this.$root.organizeObjects();
             }
         },
@@ -177,10 +181,10 @@ export default {
 
         update(o) {
             this.$root.mapObject(o);
+
             //I need to validate the entire list.. so I can detect collision
-            this.$root.objects.forEach(_o=>{
-                this.validate(_o);
-            });
+            this.$root.objects.forEach(this.validate);
+
             this.$root.organizeObjects();
         },
 

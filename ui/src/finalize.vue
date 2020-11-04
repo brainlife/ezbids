@@ -42,6 +42,8 @@
             <pre class="text">{{stderr}}</pre>
         </el-collapse-item>
     </el-collapse>
+    <br>
+    <br>
 
     <!---
     <div v-else-if="$root.session.status == 'analyzed'">
