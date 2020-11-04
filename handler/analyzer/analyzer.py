@@ -394,14 +394,6 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be TRACE, FA, or ADC because there are bval & bvec files with the same SeriesNumber, and "trace", "fa", or "adc" are in the SeriesDescription. Please modify if incorrect'
         
-        #Arterial Spin Labeling (ASL)
-        elif any(x in SD for x in ['asl']):
-            data_list_unique_series[i]['include'] = False
-            data_list_unique_series[i]['DataType'] = 'asl'
-            data_list_unique_series[i]['ModalityLabel'] = 'asl'
-            data_list_unique_series[i]['error'] = 'Acqusition appears to be ASL, which is currently not supported by ezBIDS at this time, but will be in the future'
-            data_list_unique_series[i]['message'] = 'Acquisition is believed to be asl/asl because "asl" is in the SeriesDescription. Please modify if incorrect. Currently, ezBIDS does not support ASL conversion to BIDS'
-            
         #Functional bold and phase
         elif any(x in SD for x in ['bold','func','fmri','epi','mri','task']) and 'sbref' not in SD:
             data_list_unique_series[i]['DataType'] = 'func'
@@ -454,6 +446,23 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be some form of localizer because "localizer" or "scout" is in the SeriesDescription. Please modify if incorrect. ezBIDS does not convert locazliers to BIDS'
             data_list_unique_series[i]['br_type'] = 'exclude (localizer)'
+            
+        #Arterial Spin Labeling (ASL)
+        elif any(x in SD for x in ['asl']):
+            data_list_unique_series[i]['include'] = False
+            data_list_unique_series[i]['DataType'] = 'asl'
+            data_list_unique_series[i]['ModalityLabel'] = 'asl'
+            data_list_unique_series[i]['error'] = 'Acqusition appears to be ASL, which is currently not supported by ezBIDS at this time, but will be in the future'
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be asl/asl because "asl" is in the SeriesDescription. Please modify if incorrect. Currently, ezBIDS does not support ASL conversion to BIDS'
+            
+        #Angiography
+        elif any(x in SD for x in ['angio']):
+            data_list_unique_series[i]['include'] = False
+            data_list_unique_series[i]['DataType'] = 'anat'
+            data_list_unique_series[i]['ModalityLabel'] = 'angio'
+            data_list_unique_series[i]['error'] = 'Acqusition appears to be an Angiography acquisition, which is currently not supported by ezBIDS at this time, but will be in the future'
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/angio because "angio" is in the SeriesDescription. Please modify if incorrect. Currently, ezBIDS does not support Angiography conversion to BIDS'
+            
             
         #Assume not BIDS-compliant acquisition unless user specifies so
         else: 
