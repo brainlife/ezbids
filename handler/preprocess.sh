@@ -11,6 +11,9 @@ if [ -z $1 ]; then
 fi
 root=$1
 
+echo "running expand.sh"
+time ./expand.sh $root
+
 echo "removing .nii.gz"
 find $root -name "*.nii.gz" -exec rm -rf {} \;
 
@@ -19,9 +22,6 @@ find $root -name "*.json" -exec rm -rf {} \;
 
 echo "removing .nii"
 find $root -name "*.nii" -exec rm -rf {} \;
-
-echo "running expand.sh"
-time ./expand.sh $root
 
 echo processing $root
 
@@ -52,12 +52,9 @@ cat $root/dcm2niix.list | parallel --wd $root -j 6 d2n {}
 
 #find products
 (cd $root && find . -type f \( -name "*.json" -o -name "*.nii.gz" -o -name "*.bval" -o -name "*.bvec" \) > list)
-#(cd $root && find . -type f -regex '.*\.\(gz\|bvec|json|bval\)' > list)
 cat $root/list
 
-if [ -s $root/list ]; then
-    echo "list is not empty.. proceeding"
-else
+if [ ! -s $root/list ]; then
     echo "couldn't find any dicom files. aborting"
     exit 1
 fi
@@ -66,3 +63,5 @@ echo "running analyzer"
 ./analyzer/run.sh $root
 
 echo "done preprocessing"
+
+

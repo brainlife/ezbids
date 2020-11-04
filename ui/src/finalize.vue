@@ -1,15 +1,11 @@
 <template>
 <div v-if="$root.currentPage.id == 'finalize'" style="padding: 20px;">
-    <!--
-    <div style="float: right;">
-        <el-button @click="finalize" size="mini">Re-Finalize</el-button>
-    </div>
-    -->
-    <div v-if="$root.session && $root.session.status != 'finished'">
+    <div v-if="$root.session.status == 'bidsing' || $root.session.status == 'finalized'">
         <p>Converting to BIDS...</p>
         <p><small><i>{{$root.session.status_msg}}</i></small></p>
     </div>
-    <div v-if="$root.session && $root.session.status == 'finished'">
+
+    <div v-if="$root.session.status == 'finished'">
         <div class="download">
             <br>
             <h3>Congratulations!</h3>
@@ -30,6 +26,23 @@
             <el-button @click="sendOpenneuro" size="small">TODO.. Upload Data to <b>OpenNeuro</b></el-button>
         </p>
     </div>
+    <div v-if="$root.session.status == 'failed'">
+        <p>Failed to convert to BIDS...</p>
+        <p><small><i>{{$root.session.status_msg}}</i></small></p>
+    </div>
+
+    <br>
+    <br>
+    <h4>Debugging</h4>
+    <el-collapse v-model="activeLogs" @change="logChange">
+        <el-collapse-item title="BIDS Conversion Log" name="out">
+            <pre class="text">{{stdout}}</pre>
+        </el-collapse-item>
+        <el-collapse-item title="BIDS Conversion Error Log" name="err">
+            <pre class="text">{{stderr}}</pre>
+        </el-collapse-item>
+    </el-collapse>
+
     <!---
     <div v-else-if="$root.session.status == 'analyzed'">
         <p>Your data is ready to be converted to BIDS.</p>
@@ -56,6 +69,10 @@ export default {
         return {
             //finalizing: false,
             //reload_t: null,
+
+            activeLogs: [],
+            stdout: "",
+            stderr: "",
         }
     },
 
@@ -91,6 +108,20 @@ export default {
 
         sendOpenneuro() {
             alert("TODO.. invoke API call with fetch URL like.. ezbids://"+this.$root.session._id);
+        },
+
+        logChange() {
+            if(this.activeLogs.includes("out")) {
+                if(!this.out) fetch(this.$root.apihost+'/download/'+this.$root.session._id+'/bids.log').then(res=>res.text()).then(data=>{
+                        this.stdout = data;
+                });
+            } else this.out = "";
+
+            if(this.activeLogs.includes("err")) {
+                if(!this.err) fetch(this.$root.apihost+'/download/'+this.$root.session._id+'/bids.err').then(res=>res.text()).then(data=>{
+                        this.stderr = data;
+                });
+            } else this.err = "";
         },
 
         back() {

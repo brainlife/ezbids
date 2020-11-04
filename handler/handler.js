@@ -150,7 +150,7 @@ function handle_finalized_session(session) {
                 console.debug("bids.sh finished: " + code);
                 if (code != 0) {
                     session.status = "failed";
-                    session.status_msg = "failed to run preprocess.sh";
+                    session.status_msg = "failed to run bids.sh";
                 }
                 else {
                     session.status = "finished";

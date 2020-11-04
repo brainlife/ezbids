@@ -35,6 +35,12 @@
 
         <div v-if="$root.session.status == 'created'">
             <h3>Uploading ...</h3>
+
+            <div v-if="failed.length > 0">
+                <el-alert type="error">Permanently failed to upload some files</el-alert>
+                <pre type="info" v-for="idx in failed" :key="idx" style="font-size: 80%;">{{files[idx].path}}</pre>
+            </div>
+
             <p>
                 <small>Total size {{(total_size/(1024*1024))|formatNumber}} MB</small>
                 <small> | {{files.length}} Files </small>
@@ -44,7 +50,6 @@
                     :stroke-width="24" 
                     :percentage="parseFloat(((uploaded.length/files.length)*100).toFixed(1))"/>
             </p>
-
             <div v-for="(batch, bid) in batches" :key="bid">
                 <div v-if="batch.status != 'done'" class="batch-stat">
                     batch {{bid+1}}. {{batch.fileidx.length}} files 
@@ -54,9 +59,12 @@
                         <el-progress v-if="batch.evt && batch.evt.total > 0"
                             :status="batchStatus(batch)"
                             :text-inside="true" :stroke-width="15"
-                            :percentage="parseFloat(((batch.evt.loaded/batch.evt.total)*100).toFixed(0))"/>
+                            :percentage="parseFloat(((batch.evt.loaded/batch.evt.total)*100).toFixed(1))"/>
                     </div>
                 </div>
+            </div>
+            <div class="page-action">
+                <el-button type="secondary" @click="$root.reset()">Cancel</el-button>
             </div>
         </div>
 
@@ -74,7 +82,8 @@
 
         <div v-if="$root.session.status == 'failed'">
             <p>ezBIDS failed.. Please check the log and/or contact ezBIDS team.</p>
-            <p>{{$root.session.status_msg}}</p>
+            <pre style="white-space: pre-wrap;">{{$root.session.status_msg}}</pre>
+            <br>
             <h4>Debugging</h4>
             <el-collapse v-model="activeLogs" @change="logChange">
                 <el-collapse-item title="Preprocess/Analyzer Log" name="out">
@@ -82,13 +91,6 @@
                 </el-collapse-item>
                 <el-collapse-item title="Preprocess/Analyzer Error Log" name="err">
                     <pre class="text">{{stderr}}</pre>
-                </el-collapse-item>
-
-                <el-collapse-item title="BIDS Conversion Log" name="bidsOut" v-if="$root.finalized">
-                    <pre class="text">{{bidsOut}}</pre>
-                </el-collapse-item>
-                <el-collapse-item title="BIDS Conversion Error Log" name="bidsErr" v-if="$root.finalized">
-                    <pre class="text">{{bidsErr}}</pre>
                 </el-collapse-item>
             </el-collapse>
             <br>
@@ -108,7 +110,7 @@
             <div v-for="(object, idx) in $root.objects" :key="idx">
                 <p style="margin: 0;">
                     <el-link @click="toggleObject(idx)">
-                        <small>{{idx+' '+object.paths[0]}}</small>
+                        <small><el-tag size="mini" type="info">{{idx}}</el-tag> {{object.paths[0]}}</small>
                     </el-link>
                 </p>
                 <pre v-if="opened.includes(idx)" class="object-detail" style="font-size: 85%">{{object}}</pre>
@@ -160,6 +162,7 @@ export default {
 
             //uploading: [], //index of files that are currently being uploaded
             uploaded: [], //index of files that are successfully uploaded
+            failed: [], //index of files failed to upload
 
             batches: [], //object containing information for each batch upload {evt, fileidx} 
 
@@ -318,6 +321,10 @@ export default {
                 this.total_size += file.size;
             }
 
+            this.files.forEach(file=>{
+                file.try = 0;
+            });
+
             //create new session
             const res = await fetch(this.$root.apihost+'/session', {
                 method: "POST",
@@ -327,7 +334,6 @@ export default {
                 //body: JSON.stringify(session_body),
             });
             this.$root.session = await res.json();
-            location.hash = this.$root.session._id;
             this.processFiles();
         },
 
@@ -343,6 +349,10 @@ export default {
 
                 let file = this.files[i];
                 if(file.uploading) continue;
+                if(file.try > 5) {
+                    if(!this.failed.includes(i)) this.failed.push(i);
+                    continue; //TODO we should abort upload?
+                }
                 batchSize += file.size;
 
                 //limit batch size (3000 files causes network error - probably too many?)
@@ -368,7 +378,6 @@ export default {
                     onUploadProgress: evt=>{
                         //now that we are batch uploading.. this isn't for each files but..
                         batch.evt = evt;
-                        //this.$forceUpdate();
                     }
                 }).then(res=>{
                     let msg = res.data;
@@ -382,7 +391,8 @@ export default {
                             console.log("upload completed.. calling done_uploading");
                             this.done_uploading();
                         } else {
-                            setTimeout(this.processFiles, 1000);
+                            //handle next batch
+                            this.processFiles();
                         }
                     } else {
                         //server side error?
@@ -392,19 +402,9 @@ export default {
                 }).catch(err=>{
                     console.dir(err);
                     batch.status = "failed";
-                    /*
-                    if(batch.retry < 5) {
-                        batch.retry++;
-                        batch.status = "uploading";
-                        setTimeout(()=>{
-                            doSend.call(this);
-                        }, 1000*11);
-                    } else {
-                    }
-                    */
-
                     //retry these files on a different batch
                     fileidx.forEach(idx=>{
+                        this.files[idx].try++;
                         this.files[idx].uploading = false;
                     });
                     setTimeout(this.processFiles, 1000*13);
@@ -431,6 +431,8 @@ export default {
                 headers: {'Content-Type': 'application/json'},
             });            
             
+            location.hash = this.$root.session._id;
+
             console.log("done uploading --------- start polling");
             this.$root.pollSession();
         },

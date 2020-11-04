@@ -172,6 +172,11 @@ async.forEach(info.objects, (o, next_o) => {
                             for (let idx of o.IntendedFor) {
                                 console.log("intended for", idx);
                                 const io = info.objects[idx];
+                                //this should not happen, but ezBIDS.json could be corrupted..
+                                if (!io) {
+                                    console.error("can't find object with ", idx);
+                                    continue;
+                                }
                                 //if intended object is not included, skip it
                                 //if(io.included) continue;
                                 if (io._type == "exclude")

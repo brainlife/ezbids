@@ -148,6 +148,7 @@ router.get('/download/:session_id/*', (req, res, next)=>{
     });
 });
 
+/*
 router.post('/upload/:session_id', upload.single('file'), (req:any, res, next)=>{
     models.Session.findById(req.params.session_id).then(session=>{
         let src_path = req.file.path;
@@ -170,8 +171,15 @@ router.post('/upload/:session_id', upload.single('file'), (req:any, res, next)=>
         next(err);
     });
 });
+*/
 
 router.post('/upload-multi/:session_id', upload.any(), (req:any, res, next)=>{
+
+    console.log("upload-multi called");
+
+    //when a single file is uploaded paths becomes just a string. convert it to an array of 1
+    let paths = req.body["paths"];
+    if(!Array.isArray(paths)) paths = [paths];
     models.Session.findById(req.params.session_id).then(async session=>{
         let idx = -1;
         async.eachSeries(req.files, (file, next_file)=>{
@@ -190,7 +198,7 @@ router.post('/upload-multi/:session_id', upload.any(), (req:any, res, next)=>{
 11|ezbids- | }
             */
             //let dirty_path = config.workdir+"/"+req.params.session_id+"/"+req.body.path;
-            let dirty_path = config.workdir+"/"+req.params.session_id+"/"+req.body["paths"][idx];
+            let dirty_path = config.workdir+"/"+req.params.session_id+"/"+paths[idx];
             let dest_path = path.resolve(dirty_path);
 
             if(!dest_path.startsWith(config.workdir)) return next_file("invalid path:", dest_path);
