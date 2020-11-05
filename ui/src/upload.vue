@@ -317,10 +317,21 @@ export default {
             this.starting = false;
             this.doneUploading = false;
 
+            //mark some file to ignore
+            for(let i = 0;i < this.files.length;++i) {
+                let file = this.files[i];
+                if(file.path.endsWith(".nii.gz")) {
+                    console.log("ignoring", file.path);
+                    file.ignore = true;
+                    this.uploaded.push(i);
+                }
+            }
+
             //calculate total file size
             this.total_size = 0;
             for(let i = 0;i < this.files.length;++i) {
                 let file = this.files[i];
+                if(file.ignore) continue;
                 this.total_size += file.size;
             }
 
@@ -352,6 +363,7 @@ export default {
 
                 let file = this.files[i];
                 if(file.uploading) continue;
+                if(file.ignore) continue;
                 if(file.try > 5) {
                     if(!this.failed.includes(i)) this.failed.push(i);
                     continue; //TODO we should abort upload?

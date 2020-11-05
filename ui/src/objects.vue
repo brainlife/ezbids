@@ -245,11 +245,11 @@ export default {
             });
 
             //make sure no 2 objects are exactly alike
+            console.log("validating", o, o._type);
             for(let o2 of this.$root.objects) {
                 if(o == o2) continue;
-                //if(!o2.include) continue;
                 if(o2._type == "exclude") continue;
-                if(o._type != o2.type) continue;
+                if(o._type != o2._type) continue;
                 let same = o2;
                 for(let k in o._entities) {
                     if(o._entities[k] != o2._entities[k]) {
