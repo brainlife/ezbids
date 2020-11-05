@@ -78,6 +78,9 @@
             </div>
             <h3 v-else>Analyzing...</h3>
             <pre style="white-space: pre-wrap;">{{$root.session.status_msg}}</pre>
+            <div class="page-action">
+                <el-button type="secondary" @click="$root.reset()">Cancel</el-button>
+            </div>
         </div>
 
         <div v-if="$root.session.status == 'failed'">

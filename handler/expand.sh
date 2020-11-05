@@ -2,7 +2,7 @@
 
 #for 7z sudo apt-get install p7zip-full
 
-set -e
+#set -e #this makes the whole expand to get stuck if it fails to untar
 set -x
 
 root=$1
@@ -15,52 +15,46 @@ function expand {
 
     #pigz can't handle xz.. so fall back to use native tar uncompressor
     for tar in $(find -name "*.tar.xz"); do
-        echo $tar
         #tar is too verbose
         tar -xf $tar -C $(dirname $tar)
-        rm $tar
+        rm -rf $tar
     done
 
     for tar in $(find -name "*.tar*"); do
-        echo $tar
         #tar is too verbose
         tar -I pigz -xf $tar -C $(dirname $tar)
-        rm $tar
+        rm -rf $tar
     done
 
     for tar in $(find -name "*.tgz"); do
-        echo $tar
         #tar is too verbose
         tar -I pigz -xf $tar -C $(dirname $tar)
-        rm $tar
+        rm -rf $tar
     done
 
     for gz in $(find -name "*.gz"); do
-        echo $tar
         gunzip $gz
+        rm -rf $gz
     done
 
     for zip in $(find -name "*.7z"); do
-        echo $tar
         7z x $zip
-        rm $zip
+        rm -rf $zip
     done
 
     for zip in $(find -name "*.bz2"); do
-        echo $tar
         bunzip2 $zip
+        rm -rf $zip
     done
 
     for zip in $(find -name "*.zip"); do
-        echo $tar
         unzip -o $zip -d $(dirname $zip)
-        rm $zip
+        rm -rf $zip
     done
 
     for rar in $(find -name "*.rar"); do
-        echo $rar
         unrar x $rar
-        rm $rar
+        rm -rf $rar
     done
 
     #TODO .xz?
@@ -73,8 +67,6 @@ while true; do
         echo "expand log empty ..done"
         rm expand.log
         break
-    else
-        echo "keep going"
     fi
 done
 

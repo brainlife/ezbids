@@ -12,14 +12,13 @@ fi
 root=$1
 
 echo "running expand.sh"
-time ./expand.sh $root
+timeout 3600 ./expand.sh $root
 
+#remove stuff that we know we can't convert
 echo "removing .nii.gz"
 find $root -name "*.nii.gz" -exec rm -rf {} \;
-
 echo "removing .json"
 find $root -name "*.json" -exec rm -rf {} \;
-
 echo "removing .nii"
 find $root -name "*.nii" -exec rm -rf {} \;
 
@@ -60,7 +59,7 @@ if [ ! -s $root/list ]; then
 fi
 
 echo "running analyzer"
-./analyzer/run.sh $root
+timeout 100 ./analyzer/run.sh $root
 
 echo "done preprocessing"
 
