@@ -9,7 +9,7 @@
                 <small>({{o_sub.objects.length}})</small>
             </span>
             <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}" class="left-border">
-                <span class="hierarchy" style="opacity: 0.8;"><i class="el-icon-time"/> <small v-if="ses">ses</small> {{ses}}</span>
+                <span class="hierarchy" style="opacity: 0.8;"><i class="el-icon-time"/> <small v-if="ses">ses</small> {{ses}} <small>{{o_ses.AcquisitionDate}}</small></span>
                 <div v-for="o in o_ses.objects" :key="o.idx" style="padding: 2px;" class="clickable" :class="{'selected': so === o}" @click="select(o, o_ses)">
                     <!--<el-tag type="info" size="mini"><small>{{o.series_id}}</small></el-tag>-->
                     <el-tag type="info" size="mini">sn {{o.SeriesNumber}}</el-tag>

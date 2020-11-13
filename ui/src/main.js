@@ -331,7 +331,7 @@ new Vue({
                 if(!this.subs[sub]) this.subs[sub] = {sess: {}, objects: []}; 
                 this.subs[sub].objects.push(o);
 
-                if(!this.subs[sub].sess[ses]) this.subs[sub].sess[ses] = { /*runs: {},*/ objects: [] };
+                if(!this.subs[sub].sess[ses]) this.subs[sub].sess[ses] = { AcquisitionDate: o.AcquisitionDate, /*runs: {},*/ objects: [] };
                 this.subs[sub].sess[ses].objects.push(o);
             });
         },

@@ -74,7 +74,7 @@
                 <el-progress status="success"
                     :text-inside="true" 
                     :stroke-width="24" 
-                    :percentage="($root.session.dicomDone / $root.session.dicomCount)*100"/>
+                    :percentage="($root.session.dicomDone*100 / $root.session.dicomCount).toFixed(1)"/>
             </div>
             <h3 v-else>Analyzing...</h3>
             <pre style="white-space: pre-wrap;">{{$root.session.status_msg}}</pre>
@@ -323,7 +323,6 @@ export default {
                 if(file.path.endsWith(".nii.gz")) {
                     console.log("ignoring", file.path);
                     file.ignore = true;
-                    this.uploaded.push(i);
                 }
             }
 
@@ -359,9 +358,8 @@ export default {
             let fileidx = [];
             let batchSize = 0;
             for(let i = 0;i < this.files.length;++i) {
-                if(this.uploaded.includes(i)) continue;
-
                 let file = this.files[i];
+                if(this.uploaded.includes(i)) continue;
                 if(file.uploading) continue;
                 if(file.ignore) continue;
                 if(file.try > 5) {
@@ -371,7 +369,7 @@ export default {
                 batchSize += file.size;
 
                 //limit batch size (3000 files causes network error - probably too many?)
-                if(fileidx.length >= 500 || batchSize > 1024*1014*300) break;
+                if(fileidx.length > 0 && (fileidx.length >= 500 || batchSize > 1024*1014*300)) break;
 
                 //let's proceed!
                 file.uploading = true;
@@ -401,7 +399,6 @@ export default {
                         fileidx.forEach(idx=>{
                             this.uploaded.push(idx);
                         });
-
                         if(this.uploaded.length == this.files.length) {
                             console.log("upload completed.. calling done_uploading");
                             this.done_uploading();
@@ -420,9 +417,12 @@ export default {
                     //retry these files on a different batch
                     fileidx.forEach(idx=>{
                         this.files[idx].try++;
-                        this.files[idx].uploading = false;
                     });
                     setTimeout(this.processFiles, 1000*13);
+                }).then(()=>{
+                    fileidx.forEach(idx=>{
+                        this.files[idx].uploading = false;
+                    });
                 });
 
                 //see how many batches we are currently uploading
