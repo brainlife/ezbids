@@ -993,7 +993,7 @@ print('########################################')
 print('')
 
 #Load in list
-dir_list = pd.read_csv('list', header=None)
+dir_list = pd.read_csv('list', header=None, sep='\n')
 
 #Determine variables data_list, data_list_unique_series, subjectIDs_info, and acquisition_dates
 data_list, data_list_unique_series, subjectIDs_info, acquisition_dates = select_unique_data(dir_list)
@@ -1016,11 +1016,15 @@ series_seriesID_list = [series_list[x]['series_id'] for x in range(len(series_li
 for s in range(len(acquisition_dates)):
     
     if acquisition_dates[s]['ses'] == '':
+        print('')
+        print('')
         print('Beginning conversion process for subject {} protocol acquisitions'.format(acquisition_dates[s]['sub']))
         print('-------------------------------------------------------------------')
         print('')
      
     else:
+        print('')
+        print('')
         print('Beginning conversion process for subject {}, session {} protocol acquisitions'.format(acquisition_dates[s]['sub'], acquisition_dates[s]['ses']))
         print('-------------------------------------------------------------------')
         print('')
