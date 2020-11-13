@@ -17,7 +17,6 @@ from math import floor
 
 warnings.filterwarnings("ignore")
 
-
 ######## Functions ########
 def select_unique_data(dir_list):
     '''
@@ -138,7 +137,7 @@ def select_unique_data(dir_list):
             AcquisitionDate = json_data['AcquisitionDateTime'].split('T')[0]
             AcquisitionTime = json_data['AcquisitionDateTime'].split('T')[-1]
         else:
-            AcquisitionDate = None
+            AcquisitionDate = '0000-00-00'
             AcquisitionTime = None
             
         #Find RepetitionTime
@@ -230,7 +229,7 @@ def select_unique_data(dir_list):
     acquisition_dates = list({(x['sub'], x['AcquisitionDate']):{'sub':x['sub'], 'AcquisitionDate':x['AcquisitionDate'], 'ses': ''} for x in data_list}.values())
     acquisition_dates = sorted(acquisition_dates, key = lambda i: i['AcquisitionDate'])
     
-    #Insert ses info if applicable
+    #Insert session info if applicable
     subj_ses = [[x['sub'], x['AcquisitionDate'], x['ses']] for x in data_list]
     subj_ses = sorted([list(x) for x in set(tuple(x) for x in subj_ses)], key = lambda i: i[1])
     
