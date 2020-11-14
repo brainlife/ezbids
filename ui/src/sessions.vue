@@ -17,9 +17,14 @@
     <el-table :data="$root.sessions" style="width: 100%" size="mini">
         <el-table-column label="DICOM AcquisitionDate" width="300px">
             <template slot-scope="scope">
-                <i class="el-icon-right" style="float: right; font-size: 150%; font-weight: bold;"/>
                 {{scope.row.AcquisitionDate}}
                 <small>{{scope.row.desc}}</small>
+            </template>
+        </el-table-column>
+        <el-table-column label="Unique Subjects" width="200px">
+            <template slot-scope="scope">
+                <i class="el-icon-right" style="float: right; font-size: 150%; font-weight: bold;"/>
+                <span v-for="sub in findUniqueSubjects(scope.row.AcquisitionDate)" :key="sub">{{sub}}&nbsp;</span>
             </template>
         </el-table-column>
         <el-table-column label="BIDS Session ID">
@@ -60,6 +65,12 @@ export default {
     },
 
     methods: {
+
+        findUniqueSubjects(acqDate) {
+            let subjects = this.$root.objects.filter(o=>o.AcquisitionDate == acqDate).map(o=>o._entities.sub);
+            return [...new Set(subjects)]; //unique
+        },
+
         resetSessions(command) {
             console.log("reset session");
             let num = 1;
