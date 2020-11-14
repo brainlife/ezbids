@@ -50,14 +50,14 @@
                     <el-checkbox v-model="so.include" title="Include this object in the BIDS output" @change="update(so)">Include this object in BIDS output</el-checkbox>
                 </el-form-item>
                 -->
-                <div :class="{'object-exclude': so._type == 'exclude'}">
+                <div :class="{'exclude': so._type == 'exclude'}">
                     <el-form-item label="Series">
-                        {{$root.findSeries(so).SeriesDescription}}
                         <el-tag type="info" size="mini">sn {{so.SeriesNumber}}</el-tag>
+                        {{$root.findSeries(so).SeriesDescription}}
                         <!--<el-tag type="info" size="mini"><small>series_id {{so.series_id}}</small></el-tag>-->
                     </el-form-item>
                     <el-form-item label="Datatype">
-                        <el-select v-model="so.type" clearable :placeholder="$root.getType(so) || '(exclude)'" size="small" style="width: 100%" @change="update(so)">
+                        <el-select v-model="so.type" clearable :placeholder="so._type" size="small" style="width: 100%" @change="update(so)">
                             <el-option value="">(Use series level datatype)</el-option>
                             <el-option value="exclude">(Exclude from BIDS conversion)</el-option>
                             <el-option-group v-for="type in $root.datatypes" :key="type.label" :label="type.label">
@@ -69,7 +69,7 @@
                     </el-form-item>
 
                     <div style="width: 350px;">
-                        <el-form-item v-for="(v, entity) in $root.getEntities($root.getType(so))" :key="entity" 
+                        <el-form-item v-for="(v, entity) in $root.getEntities(so._type)" :key="entity" 
                             :label="entity+'-'+(v=='required'?' *':'')">
                             <el-popover width="300" trigger="focus" placement="right-start"
                                 :title="$root.bids_entities[entity].name" 
@@ -79,12 +79,12 @@
                         </el-form-item>
                     </div>
 
-                    <div v-if="$root.getType(so).startsWith('fmap/')" class="border-top">
+                    <div v-if="so._type.startsWith('fmap/')" class="border-top">
                         <br>
                         <el-form-item label="IntendedFor">
                             <el-select v-model="so.IntendedFor" multiple placeholder="Select Object" style="width: 100%" @change="update(so)">
 
-                                <el-option v-for="o in this.sess.objects" :key="o.idx"
+                                <el-option v-for="o in this.sess.objects.filter(o=>o._type != 'exclude')" :key="o.idx"
                                     :label="intendedForLabel(o)" :value="o.idx">
                                 </el-option>
                             </el-select>
@@ -199,10 +199,18 @@ export default {
         },
 
         intendedForLabel(o) {
-            let l = "(sn "+o.SeriesNumber+") ";
+            let l = "[sn"+o.SeriesNumber+"] ";
             l += o._type;
+            /*
             if(o._entities.task) l += " task-"+o._entities.task;
             if(o._entities.run) l += " run-"+o._entities.run;
+            if(o._entities.dir) l += " dir-"+o._entities.dir;
+            */
+            for(let k in o._entities) {
+                if(k == "sub" || k == "ses") continue;
+                if(!o._entities[k]) continue;
+                l += " "+k+"-"+o._entities[k];
+            }
             return l;
         },
 
@@ -329,10 +337,7 @@ border-left: 2px solid #3331;
 padding-top: 4px;
 }
 .exclude {
-opacity: 0.5;
-}
-.object-exclude {
-opacity: 0.5;
+opacity: 0.6;
 }
 .sub-title {
 font-size: 85%;

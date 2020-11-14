@@ -77,7 +77,7 @@
                     :percentage="($root.session.dicomDone*100 / $root.session.dicomCount).toFixed(1)"/>
             </div>
             <h3 v-else>Analyzing...</h3>
-            <pre style="white-space: pre-wrap;">{{$root.session.status_msg}}</pre>
+            <pre>{{$root.session.status_msg}}</pre>
             <div class="page-action">
                 <el-button type="secondary" @click="$root.reset()">Cancel</el-button>
             </div>
@@ -85,7 +85,7 @@
 
         <div v-if="$root.session.status == 'failed'">
             <p>ezBIDS failed.. Please check the log and/or contact ezBIDS team.</p>
-            <pre style="white-space: pre-wrap;">{{$root.session.status_msg}}</pre>
+            <pre>{{$root.session.status_msg}}</pre>
             <br>
             <h4>Debugging</h4>
             <el-collapse v-model="activeLogs" @change="logChange">
@@ -501,17 +501,13 @@ export default {
     border-radius: 10px;
     max-height: 400px;
     overflow: auto;
-    white-space: pre-wrap;
     padding: 10px 20px;
-    font-size: 80%;
 }
 pre.text {
     background-color: #f0f0f0;
     border-radius: 10px;
     height: 450px;
     overflow: auto;
-    white-space: pre-wrap;
     padding: 10px;
-    font-size: 80%;
 }
 </style>

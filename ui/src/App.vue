@@ -87,6 +87,11 @@ h2, h3, h4 {
 p {
     line-height: 200%;
 }
+pre {
+    font-size: 80%;
+    white-space: pre-wrap;
+
+}
 small {
 }
 .el-main {

@@ -232,11 +232,13 @@ new Vue({
             location.reload();
         },
 
+        /*
         getType(o) {
             if(o.type) return o.type;
             const series = this.findSeries(o);
             return series.type;
         },
+        */
 
         getURL(path) {
             return this.apihost+"/download/"+this.session._id+'/'+path;

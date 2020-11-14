@@ -1,6 +1,7 @@
 <template>
 <div class="datatype" :class="{exclude: o._type == 'exclude'}" style="display: inline-block;">
-    <span :style="{'background-color': color}" class="bull">&nbsp;</span> {{$root.getType(o)||'(Exclude)'}}
+    <span :style="{'background-color': color}" class="bull">&nbsp;</span> {{o._type}}
+    <span v-if="o._type == 'exclude'">({{$root.findSeries(o).SeriesDescription}})</span>
     <el-tag v-for="(v,k) in entities" :key="k" size="mini" type="info"><small>{{k}}-</small><b>{{v}}</b></el-tag>
 </div>
 </template>
