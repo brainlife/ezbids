@@ -444,7 +444,7 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/sbref because "sbref" is in the SeriesDescription'
         
         #T1w
-        elif any(x in SD for x in ['t1w','tfl3d','mprage']) or 'tfl3d1_16ns' in SequenceName:
+        elif any(x in SD for x in ['t1w','tfl3d','mprage', 'spgr']) or 'tfl3d1_16ns' in SequenceName:
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'T1w'
             if data_list_unique_series[i]['EchoNumber']:
@@ -792,7 +792,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                     for fm in fmap_se_indices:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = 'No valid func/bold objects found in section. This object will not be included in the BIDS output'
+                        errors[fm] = 'No valid func/bold acquisitions found in section. This is due to the field maps and functional bold acquisitions separated by localizer(s), indicating that subject got out and then re-entered scanner. SDC is unlikely to work, therefore this field map acquisition will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                     
                 #Only one fmap/epi acquisition in section. Can't be converted b/c need pair
@@ -800,7 +800,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                     for fm in fmap_se_indices:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = 'Only one spin echo field map found; need pair. This object will not be included in the BIDS output'
+                        errors[fm] = 'Only one spin echo field map found; need pair. This acquisition will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                 
                 #If more than two fmap/epi acquisitions, only accept most recent pair in section
@@ -808,7 +808,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                     for fm in fmap_se_indices[:-2]:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = 'Multiple spin echo pairs detected in section; only selecting last pair for BIDS conversion. The other pair objects will not be included in the BIDS output'
+                        errors[fm] = 'Multiple spin echo field map pairs detected in section; only selecting last pair for BIDS conversion. The other pair acquisition(s) in this section will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                         
                 #Re-determine the fmap/epi indices in light of the checks above
@@ -821,7 +821,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                         for fm in fmap_se_indices:
                             include[fm] = False
                             sub_protocol[fm]['include'] = include[fm]
-                            errors[fm] = 'Spin echo fmap pair does not have opposite phase encoding directions. This object will not be included in the BIDS output'
+                            errors[fm] = 'Spin echo fmap pair does not have opposite phase encoding directions. This acquisition will not be included in the BIDS output'
                             sub_protocol[fm]['error'] = errors[fm]
                 
                 #Re-determine the fmap/epi indices again
@@ -842,7 +842,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                     for fm in fmap_magphase_indices:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = 'No valid func/bold objects found in section. This object will not be included in the BIDS output'
+                        errors[fm] = 'No valid func/bold acquisition found in section. This is due to the field maps and functional bold acquisitions separated by localizer(s), indicating that subject got out and then re-entered scanner. SDC is unlikely to work, therefore this field map acquisition will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                   
                 #Only one magnitude/phasediff acquisition in section. Can't be converted
@@ -850,7 +850,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                     for fm in fmap_magphase_indices:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = 'Need pair for magnitude/phasediff field maps. This object will not be included in the BIDS output'
+                        errors[fm] = 'Need pair or triplet for magnitude/phasediff field maps. This acquisition will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                         
                 #If more than three magnitude/phasediff acquisitions, only accept most recent three in section
@@ -878,7 +878,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                     for fm in fmap_se_dwi_indices:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = 'No valid dwi/dwi objects found in section. This object will not be included in the BIDS output'
+                        errors[fm] = 'No valid dwi/dwi acquisition(s) found in section. This is due to the field map and diffusion acquisition(s) separated by localizer(s), indicating that subject got out and then re-entered scanner. SDC is unlikely to work, therefore this field map acquisition will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                   
                 #If more than one fmap/epi_dwi acquisitions, only accept most recent one in section
@@ -886,7 +886,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                     for fm in fmap_se_dwi_indices[:-1]:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = 'More than one dwi-specific field maps detected in section; only selecting last one for BIDS conversion. Other object will not be included in the BIDS output'
+                        errors[fm] = 'More than one dwi-specific field map detected in section; only selecting last one for BIDS conversion. Other acquisition(s) will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                 
                 #Re-determine the fmap/epi_dwi indices in light of the checks above
