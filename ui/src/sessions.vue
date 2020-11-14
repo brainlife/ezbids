@@ -59,6 +59,7 @@ export default {
     watch: {
         '$root.currentPage'(v) {
             if(v.id == 'session') {
+                this.$root.objects.forEach(this.$root.mapObject);
                 this.$root.sessions.forEach(this.validate);
             }
         },

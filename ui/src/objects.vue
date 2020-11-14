@@ -162,11 +162,7 @@ export default {
             if(v.id == 'object') {
                 //I have to map all objects at least once before I can validate any object
                 this.$root.objects.forEach(this.$root.mapObject);
-
-                //then validate
-                console.log("validating all objects");
                 this.$root.objects.forEach(this.validate);
-
                 this.$root.organizeObjects();
             }
         },
