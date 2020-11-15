@@ -44,7 +44,8 @@
             <p>
                 <small>Total size {{(total_size/(1024*1024))|formatNumber}} MB</small>
                 <small> | {{files.length}} Files </small>
-                <small> ({{uploaded.length}} done) </small>
+                <small> ({{uploaded.length}} uploaded) </small>
+                <small v-if="ignoreCount > 0">({{ignoreCount}} ignored) </small>
                 <el-progress status="success" 
                     :text-inside="true" 
                     :stroke-width="24" 
@@ -159,6 +160,7 @@ export default {
             starting: false, //wait for browser to handle all files
 
             total_size: null,
+            ignoreCount: 0,
             files: [], //files to be uploaded (html5 file object)
 
             //reload_t: null,
@@ -323,6 +325,7 @@ export default {
                 if(file.path.endsWith(".nii.gz")) {
                     console.log("ignoring", file.path);
                     file.ignore = true;
+                    this.ignoreCount++;
                 }
             }
 
@@ -330,7 +333,7 @@ export default {
             this.total_size = 0;
             for(let i = 0;i < this.files.length;++i) {
                 let file = this.files[i];
-                if(file.ignore) continue;
+                //if(file.ignore) continue;
                 this.total_size += file.size;
             }
 
@@ -399,9 +402,10 @@ export default {
                         fileidx.forEach(idx=>{
                             this.uploaded.push(idx);
                         });
-                        if(this.uploaded.length == this.files.length) {
-                            console.log("upload completed.. calling done_uploading");
-                            this.done_uploading();
+
+                        if(this.uploaded.length+this.ignoreCount == this.files.length) {
+                            console.log("upload completed.. calling doneUploading");
+                            this.done();
                         } else {
                             //handle next batch
                             this.processFiles();
@@ -435,7 +439,7 @@ export default {
             doSend.call(this);
          },
 
-        async done_uploading() {
+        async done() {
             //we have multiple files uploading concurrently, so the last files will could make this call back 
             if(this.doneUploading) return; 
             this.doneUploading = true;
