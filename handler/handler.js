@@ -78,7 +78,7 @@ function handle_uploaded_session(session) {
                 console.debug("preprocess.sh finished: " + code);
                 if (code != 0) {
                     session.status = "failed";
-                    session.status_msg = "failed\n" + lasterr;
+                    session.status_msg = `failed with code:${code}\n${lasterr}`;
                     //update session and done.
                     session.save().then(() => {
                         resolve();

@@ -59,7 +59,7 @@ if [ ! -s $root/list ]; then
 fi
 
 echo "running analyzer"
-timeout 100 ./analyzer/run.sh $root
+timeout 600 ./analyzer/run.sh $root
 
 echo "done preprocessing"
 
