@@ -75,7 +75,7 @@
                 <el-progress status="success"
                     :text-inside="true" 
                     :stroke-width="24" 
-                    :percentage="($root.session.dicomDone*100 / $root.session.dicomCount).toFixed(1)"/>
+                    :percentage="parseFloat(($root.session.dicomDone*100 / $root.session.dicomCount).toFixed(1))"/>
             </div>
             <h3 v-else>Analyzing...</h3>
             <pre>{{$root.session.status_msg}}</pre>
@@ -431,8 +431,8 @@ export default {
 
                 //see how many batches we are currently uploading
                 let uploadingBatches = this.batches.filter(b=>b.status == "uploading");
-                if(uploadingBatches.length < 6) {
-                    setTimeout(this.processFiles, 1000*5);
+                if(uploadingBatches.length < 4) {
+                    setTimeout(this.processFiles, 1000*3);
                 }
             }
 
