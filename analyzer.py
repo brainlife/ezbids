@@ -5,7 +5,7 @@ Created on Fri Jun 26 08:37:56 2020
 @author: dlevitas
 """
 from __future__ import division
-import os, sys, json, warnings
+import os, sys, re, json, warnings
 import pandas as pd
 import numpy as np
 import nibabel as nib
@@ -16,7 +16,6 @@ from operator import itemgetter
 from math import floor
 
 warnings.filterwarnings("ignore")
-
 
 ######## Functions ########
 def select_unique_data(dir_list):
@@ -61,6 +60,7 @@ def select_unique_data(dir_list):
     print('Determining unique acquisitions in list')
     print('------------------------------------------')
     for j in range(len(json_list)):
+        print(json_list[j])
         json_data = open(json_list[j])
         json_data = json.load(json_data, strict=False)
         
@@ -97,8 +97,7 @@ def select_unique_data(dir_list):
         else:
             studyID = ''
         
-        #Find subjID from json 
-        #Some json files contain neither PatientName nor PatientID
+        #Find subjID from json (some files contain neither PatientName nor PatientID)
         if 'PatientName' in json_data:
             PatientName = json_data['PatientName']
         else:
@@ -114,8 +113,16 @@ def select_unique_data(dir_list):
             PatientBirthDate = json_data['PatientBirthDate'].replace('-','')
         else:
             PatientBirthDate = None
+            
+        #Find PatientSex
+        if 'PatientSex' in json_data:
+            PatientSex = json_data['PatientSex']
+            if PatientSex not in ['M','F']:
+                PatientSex = 'N/A'
+        else:
+            PatientSex = 'N/A'
         
-        #Find subjID to display to ezBIDS users
+        #Select subjID to display to ezBIDS users
         #Order of importance is: PatientName > PatientID > PatientBirthDate
         if PatientName:
             sub = PatientName
@@ -123,19 +130,14 @@ def select_unique_data(dir_list):
             sub = PatientID
         else:
             sub = PatientBirthDate
-        
-        #Find PatientSex
-        if 'PatientSex' in json_data: 
-            PatientSex = json_data['PatientSex']
-        else:
-            PatientSex = None
+        sub = re.sub('[^A-Za-z0-9]+', '', sub)
         
         #Find Acquisition Date & Time
         if 'AcquisitionDateTime' in json_data:
             AcquisitionDate = json_data['AcquisitionDateTime'].split('T')[0]
             AcquisitionTime = json_data['AcquisitionDateTime'].split('T')[-1]
         else:
-            AcquisitionDate = None
+            AcquisitionDate = '0000-00-00'
             AcquisitionTime = None
             
         #Find RepetitionTime
@@ -143,7 +145,6 @@ def select_unique_data(dir_list):
             RepetitionTime = json_data['RepetitionTime']
         else:
             RepetitionTime = 'N/A'
-            
         
         #Find EchoNumber
         if 'EchoNumber' in json_data:
@@ -174,7 +175,7 @@ def select_unique_data(dir_list):
             volume_count = nib.load(json_list[j][:-4] + 'nii.gz').shape[3]
         except:
             volume_count = 1
-            
+           
         #Relative paths of json and nifti files (per SeriesNumber)
         paths = sorted(nifti_paths_for_json + [json_list[j]])
             
@@ -183,10 +184,11 @@ def select_unique_data(dir_list):
                        'PatientName': PatientName,
                        'PatientID': PatientID,
                        'PatientBirthDate': PatientBirthDate,
+                       'PatientSex': PatientSex,
+                       'PatientAge': 'N/A',
                        'sub': sub,
                        'ses': '',
                        'SeriesNumber': json_data['SeriesNumber'],
-                       'PatientSex': PatientSex,
                        'AcquisitionDate': AcquisitionDate,
                        'AcquisitionTime': AcquisitionTime,
                        'SeriesDescription': json_data['SeriesDescription'],
@@ -202,13 +204,14 @@ def select_unique_data(dir_list):
                        'ModalityLabel': '',
                        'series_id': 0,
                        'dir': PED,
-                       'IntendedFor': 'N/A',
+                       'IntendedFor': [],
                        'TaskName': '',
                        "include": True,
                        'filesize': filesize,
-                       "VolumeCount": volume_count,
+                       "NumVolumes": volume_count,
                        'error': None,
-                       'qc': '',
+                       'section_ID': 0,
+                       'message': '',
                        'protocol_index': 0,
                        'br_type': '',
                        'nifti_path': [x for x in nifti_paths_for_json if '.nii.gz' in x][0],
@@ -221,13 +224,13 @@ def select_unique_data(dir_list):
         data_list.append(mapping_dic)
         
     #Curate subjectID and acquisition date info to display in UI
-    subjectIDs_info = list({x['sub']:{'sub':x['sub'], 'PatientID':x['PatientID'], 'PatientName':x['PatientName'], 'PatientBirthDate':x['PatientBirthDate']} for x in data_list}.values())
+    subjectIDs_info = list({x['sub']:{'sub':x['sub'], 'PatientID':x['PatientID'], 'PatientName':x['PatientName'], 'PatientBirthDate':x['PatientBirthDate'], 'phenotype':{'sex':x['PatientSex'], 'age':x['PatientAge']}} for x in data_list}.values())
     subjectIDs_info = sorted(subjectIDs_info, key = lambda i: i['sub'])
     
-    acquisition_dates = list({x['AcquisitionDate']:{'sub':x['sub'], 'AcquisitionDate':x['AcquisitionDate'], 'ses': ''} for x in data_list}.values())
+    acquisition_dates = list({(x['sub'], x['AcquisitionDate']):{'sub':x['sub'], 'AcquisitionDate':x['AcquisitionDate'], 'ses': ''} for x in data_list}.values())
     acquisition_dates = sorted(acquisition_dates, key = lambda i: i['AcquisitionDate'])
     
-    #Insert ses info if applicable
+    #Insert session info if applicable
     subj_ses = [[x['sub'], x['AcquisitionDate'], x['ses']] for x in data_list]
     subj_ses = sorted([list(x) for x in set(tuple(x) for x in subj_ses)], key = lambda i: i[1])
     
@@ -251,9 +254,6 @@ def select_unique_data(dir_list):
             if data_list[j]['sub'] == acquisition_dates[i]['sub'] and data_list[j]['AcquisitionDate'] == acquisition_dates[i]['AcquisitionDate']:
                 data_list[j]['ses'] = acquisition_dates[i]['ses']
         
-        
-    
-    
     #Unique data is determined from four values: SeriesDescription, EchoTime, ImageType, MultibandAccelerationFactor
     data_list_unique_series = []
     series_tuples = []
@@ -272,7 +272,6 @@ def select_unique_data(dir_list):
         
     return data_list, data_list_unique_series, subjectIDs_info, acquisition_dates
     
-
 
 def identify_series_info(data_list_unique_series):
     '''
@@ -294,6 +293,7 @@ def identify_series_info(data_list_unique_series):
         this information.
     '''
     
+    
     #Determine DataType and ModalityLabel of series list acquisitions
     series_list = []
     for i in range(len(data_list_unique_series)):
@@ -308,7 +308,6 @@ def identify_series_info(data_list_unique_series):
             SequenceName = data_list_unique_series[i]['sidecar']['ScanningSequence']
         else:
             SequenceName = 'N/A'
-        
         
         #Populate some labels fields (based on ReproIn convention)
         if 'sub-' in SD:
@@ -340,141 +339,152 @@ def identify_series_info(data_list_unique_series):
             series_entities['ce'] = SD.split('_ce-')[-1].split('_')[0]
         else:
             series_entities['ce'] = ''
+            
+        if '_echo-' in SD:
+            series_entities['echo'] = SD.split('_echo-')[-1].split('_')[0]
+        else:
+            series_entities['echo'] = ''
         
+        
+        #Make easier to find key characters/phrases in SD by removing non-alphanumeric characters and make everything lowercase
+        SD = re.sub('[^A-Za-z0-9]+', '', SD).lower()
         
         ### Determine DataTypes and ModalityLabels #######
-        # Magnitude/Phasediff and Spin echo (SE) field maps
-        if any(x in SD for x in ['FMAP','fmap','FIELDMAP','FieldMap','fieldmap','SE', 'Gre_Field_Mapping', 'gre_field_mapping', 'FIELD_MAPPING', 'Field_Mapping', 'field_mapping']) or SequenceName in ['epse2d', 'fm2d2r']:
+        #Localizers or other non-BIDS compatible acquisitions
+        if any(x in SD for x in ['localizer','scout']):
+            data_list_unique_series[i]['include'] = False
+            data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be some form of localizer because "localizer" or "scout" is in the SeriesDescription. Please modify if incorrect. ezBIDS does not convert locazliers to BIDS'
+            data_list_unique_series[i]['br_type'] = 'exclude (localizer)'
+            
+        #Arterial Spin Labeling (ASL)
+        elif any(x in SD for x in ['asl']):
+            data_list_unique_series[i]['include'] = False
+            data_list_unique_series[i]['DataType'] = 'asl'
+            data_list_unique_series[i]['ModalityLabel'] = 'asl'
+            data_list_unique_series[i]['error'] = 'Acqusition appears to be ASL, which is currently not supported by ezBIDS at this time, but will be in the future'
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be asl/asl because "asl" is in the SeriesDescription. Please modify if incorrect. Currently, ezBIDS does not support ASL conversion to BIDS'
+            
+        #Angiography
+        elif any(x in SD for x in ['angio']):
+            data_list_unique_series[i]['include'] = False
+            data_list_unique_series[i]['DataType'] = 'anat'
+            data_list_unique_series[i]['ModalityLabel'] = 'angio'
+            data_list_unique_series[i]['error'] = 'Acqusition appears to be an Angiography acquisition, which is currently not supported by ezBIDS at this time, but will be in the future'
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/angio because "angio" is in the SeriesDescription. Please modify if incorrect. Currently, ezBIDS does not support Angiography conversion to BIDS'
+                    
+        #Magnitude/Phasediff and Spin Echo (SE) field maps
+        elif any(x in SD for x in ['fmap', 'fieldmap']) or SequenceName in ['epse2d', 'fm2d2r']:
             data_list_unique_series[i]['DataType'] = 'fmap'
             #Magnitude/Phasediff field maps
             if 'EchoNumber' in data_list_unique_series[i]['sidecar']:
                 if data_list_unique_series[i]['EchoNumber'] == 1:
                     data_list_unique_series[i]['ModalityLabel'] = 'magnitude1'
-                    data_list_unique_series[i]['qc'] = 'acquisition is fmap/magnitude1 because data is 3D, and EchoNumber == 1 in json file'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/magnitude1 because "fmap" or "fieldmap" is in SeriesDescription, and EchoNumber == 1 in metadata. Please modify if incorrect'
                 elif data_list_unique_series[i]['EchoNumber'] == 2:
                     if 'PHASE' in data_list_unique_series[i]['ImageType']:
                         data_list_unique_series[i]['ModalityLabel'] = 'phasediff'
-                        data_list_unique_series[i]['qc'] = 'acquisition is fmap/phasediff because data is 3D, and PHASE is in ImageType in the json file'
+                        data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/phasediff because "fmap" or "fieldmap" is in SeriesDescription, and "PHASE" is in the ImageType field of the metadata. Please modify if incorrect'
                     else:
                         data_list_unique_series[i]['ModalityLabel'] = 'magnitude2'
-                        data_list_unique_series[i]['qc'] = 'acquisition is fmap/magnitude2 because data is 3D, and EchoNumber == 2 in json file'
+                        data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/magnitude2 because "fmap" or "fieldmap" is in SeriesDescription, and EchoNumber == 2 in metadata. Please modify if incorrect'
+            
             #Spin echo field maps
             else:
                 data_list_unique_series[i]['ModalityLabel'] = 'epi'
-                data_list_unique_series[i]['qc'] = 'acquisition is fmap/epi because fmap or something is in the name and the acquisition is 4D'
+                data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/epi because "fmap" or "fieldmap" is in SeriesDescription, and does not contain metadata info associated with magnitude/phasediff acquisitions. Please modify if incorrect'
                 series_entities['dir'] = data_list_unique_series[i]['dir']
             
         #DWI
-        elif any(x in SD for x in ['DWI','dwi','DTI','dti']) or 'ep_b' in SequenceName:
-            if data_list_unique_series[i]['VolumeCount'] < 10: #Probably field map meant for dwi acquisition instead. Based on number of volumes
-                data_list_unique_series[i]['DataType'] = 'fmap'
-                data_list_unique_series[i]['ModalityLabel'] = 'epi_dwi'
-                data_list_unique_series[i]['qc'] = 'acquisition is fmap/epi_dwi because it is in the name but volume count is under 10, so probably a field map meant for a dwi'
-            else:
-                data_list_unique_series[i]['DataType'] = 'dwi'
-                data_list_unique_series[i]['ModalityLabel'] = 'dwi'
-                data_list_unique_series[i]['qc'] = 'acquisition is dwi/dwi because dwi or dti is in the name'
-            series_entities['dir'] = data_list_unique_series[i]['dir']
-            
-        #Arterial Spin Labeling (ASL)
-        elif any(x in SD for x in ['ASL','Asl','asl']):
-            pass
-            
+        elif any('.bvec' in x for x in data_list_unique_series[i]['paths']):
+            if not any (x in SD for x in ['dti','dwi']):
+                data_list_unique_series[i]['include'] = False
+                data_list_unique_series[i]['error'] = 'Although this acquisition contains bval/bvec files, this is not in fact a dwi/dwi or fmap/epi acquistion meant for dwi. Please modify if incorrect'
+                data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
+            else:    
+                #Some "dwi" acquisitions are actually fmap/epi; check for this
+                bval = np.loadtxt([x for x in data_list_unique_series[i]['paths'] if 'bval' in x][0])
+                if np.max(bval) <= 50 and bval.size < 10:
+                    data_list_unique_series[i]['DataType'] = 'fmap'
+                    data_list_unique_series[i]['ModalityLabel'] = 'epi'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/epi meant for dwi because there are bval & bvec files with the same SeriesNumber, but the max b-values are <= 50 and the number of b-values is less than 10. Please modify if incorrect'
+                    series_entities['dir'] = data_list_unique_series[i]['dir']
+                elif any(x in SD for x in ['trace','fa','adc']) and not any(x in SD for x in ['dti','dwi']):
+                    data_list_unique_series[i]['include'] = False
+                    data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be TRACE, FA, or ADC because there are bval & bvec files with the same SeriesNumber, and "trace", "fa", or "adc" are in the SeriesDescription. Please modify if incorrect'
+                else:
+                    data_list_unique_series[i]['DataType'] = 'dwi'
+                    data_list_unique_series[i]['ModalityLabel'] = 'dwi'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be dwi/dwi because there are bval & bvec files with the same SeriesNumber, "dwi" or "dti" is in the SeriesDescription, and it does not appear to be dwi product data. Please modify if incorrect'
+                    series_entities['dir'] = data_list_unique_series[i]['dir']
+        
+        elif any(x in SD for x in ['trace','fa','adc']) and any(x in SD for x in ['dti','dwi']):
+            data_list_unique_series[i]['include'] = False
+            data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be TRACE, FA, or ADC because there are bval & bvec files with the same SeriesNumber, and "trace", "fa", or "adc" are in the SeriesDescription. Please modify if incorrect'
+        
         #Functional bold and phase
-        elif any(x in SD for x in ['BOLD','Bold','bold','FUNC','Func','func','FMRI','fMRI','fmri','EPI']) and ('SBRef' not in SD or 'sbref' not in SD):
+        elif any(x in SD for x in ['bold','func','fmri','epi','mri','task']) and 'sbref' not in SD:
             data_list_unique_series[i]['DataType'] = 'func'
-            if any(x in SD for x in ['REST','Rest','rest']):
+            if 'rest' in SD or 'rsfmri' in SD:
                 series_entities['task'] = 'rest'
-            if data_list_unique_series[i]['EchoNumber']:
-                data_list_unique_series[i]['ModalityLabel'] = 'multiecho'
-                data_list_unique_series[i]['qc'] = 'acquisition is func/multiecho because bold, func or something is in the name and EchoNumber is in the json file'
-                
-                series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
-            elif 'MOSAIC' and 'PHASE' in data_list_unique_series[i]['ImageType']:
+                data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
+            if 'MOSAIC' and 'PHASE' in data_list_unique_series[i]['ImageType']:
                 data_list_unique_series[i]['ModalityLabel'] = 'phase'
-                data_list_unique_series[i]['qc'] = 'acquisition is func/phase because bold, func or something is in the name and MOSAIC and PHASE are in the ImageType json field'
+                data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/phase because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"), and "MOSAIC" and "PHASE" are in the ImageType field of the metadata. Please modify if incorrect'
             else:
                 data_list_unique_series[i]['ModalityLabel'] = 'bold'
-                data_list_unique_series[i]['qc'] = 'acquisition is func/bold because bold, func or something is in the name'
-
-        #T1w
-        elif any(x in SD for x in ['T1W','T1w','t1w','tfl3d','tfl','mprage','MPRAGE']) or 'tfl3d1_16ns' in SequenceName:
-            data_list_unique_series[i]['DataType'] = 'anat'
+                if data_list_unique_series[i]['EchoNumber']:
+                    series_entities['echo'] = '0' +  str(data_list_unique_series[i]['EchoNumber'])
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
             if data_list_unique_series[i]['EchoNumber']:
-                data_list_unique_series[i]['ModalityLabel'] = 'multiecho'
-                data_list_unique_series[i]['qc'] = 'acquisition is anat/multiecho because anat, t1w, mprage or something is in the name and there is a EchoNumber field in the json file'
-                series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
-            else:
-                data_list_unique_series[i]['ModalityLabel'] = 'T1w'
-                data_list_unique_series[i]['qc'] = 'acquisition is anat/T1w because anat, t1w, mprage or something is in the name'
-        
-        #FLAIR
-        elif any(x in SD for x in ['FLAIR','Flair','flair','t2_space_da-fl']):
-            data_list_unique_series[i]['DataType'] = 'anat'
-            data_list_unique_series[i]['ModalityLabel'] = 'FLAIR'
-            data_list_unique_series[i]['qc'] = 'acquisition is anat/FLAIR because flair or something is in the name'
+                series_entities['echo'] = '0' +  str(data_list_unique_series[i]['EchoNumber'])
+                data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
 
-            
-        #T2w
-        elif any(x in SD for x in ['T2W','T2w','t2w']):
-            data_list_unique_series[i]['DataType'] = 'anat'
-            data_list_unique_series[i]['ModalityLabel'] = 'T2w'
-            data_list_unique_series[i]['qc'] = 'acquisition is anat/T2w because t2w or something is in the name'
-
-        
         #Functional single band reference (sbref)
-        elif any(x in SD for x in ['SBRef','sbref']):
+        elif 'sbref' in SD:
             data_list_unique_series[i]['DataType'] = 'func'
             data_list_unique_series[i]['ModalityLabel'] = 'sbref'
-            data_list_unique_series[i]['qc'] = 'acquisition is func/sbref because SBRef or sbref is in the name and the acquisition is 3D'
-            if any(x in SD for x in ['REST','Rest','rest']):
+            if 'rest' in SD or 'rsfmri' in SD:
                 series_entities['task'] = 'rest'
-                
-        #Localizers or other non-BIDS compatible acquisitions
-        elif any(x in SD for x in ['LOCALIZER','Localizer','localizer','SCOUT','Scout','scout']):
-            data_list_unique_series[i]['include'] = False
-            data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
-            data_list_unique_series[i]['qc'] = 'Acquisition is localizer (non-BIDS) because localizer or scout is in the name'
-            data_list_unique_series[i]['br_type'] = 'localizer (non-BIDS)'
+            if data_list_unique_series[i]['EchoNumber']:
+                series_entities['echo'] = '0' + str(data_list_unique_series[i]['EchoNumber'])
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/sbref because "sbref" is in the SeriesDescription'
+        
+        #T1w
+        elif any(x in SD for x in ['t1w','tfl3d','mprage', 'spgr']):
+            data_list_unique_series[i]['DataType'] = 'anat'
+            data_list_unique_series[i]['ModalityLabel'] = 'T1w'
+            if data_list_unique_series[i]['EchoNumber']:
+                series_entities['echo'] = '0' + str(data_list_unique_series[i]['EchoNumber'])
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T1w because "t1w","tfl3d","tfl","mprage" is in the SeriesDescription. Please modify if incorrect'
+        
+        #FLAIR
+        elif any(x in SD for x in ['flair','t2spacedafl']):
+            data_list_unique_series[i]['DataType'] = 'anat'
+            data_list_unique_series[i]['ModalityLabel'] = 'FLAIR'
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/FLAIR because "flair" or "t2spacedafl" is in the SeriesDescription. Please modify if incorrect'
+
+        #T2w
+        elif 't2w' in SD:
+            data_list_unique_series[i]['DataType'] = 'anat'
+            data_list_unique_series[i]['ModalityLabel'] = 'T2w'
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T2w because "t2w" is in the SeriesDescription. Please modify if incorrect'
             
-        #Assume not BIDS unless user specifies so
+        #Assume not BIDS-compliant acquisition unless user specifies so
         else: 
             data_list_unique_series[i]['include'] = False
             data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine whether or not this acquisition should be converted to BIDS'
-            data_list_unique_series[i]['qc'] = 'acquisition is unknown becasue there is no good identifying info'
-        
-        # #Can't initially determine DataType or ModalityLabel
-        # else:
-        #     #MultibandAccelerationFactor would indicate functional bold
-        #     if data_list_unique_series[i]['MultibandAccelerationFactor'] != 'N/A':
-        #         data_list_unique_series[i]['DataType'] = 'func'
-        #         data_list_unique_series[i]['ModalityLabel'] = 'bold'
-        #         data_list_unique_series[i]['qc'] = 'acquisition is func/bold because no good identifying info is in the name but there is a MultibandAccelerationFactor field in the json file'
-                
-        # #Do another pass if the SeriesDescription information isn't insightful
-        # else:
-        #     if EchoTime < 10: #Probably T1w
-        #         data_list_unique_series[i]['DataType'] = 'anat'
-        #         data_list_unique_series[i]['ModalityLabel'] = 'T1w'
-        #         data_list_unique_series[i]['qc'] = 'acquisition is anat/T1w because there is no good identifying info, data is 3D, and EchoTime < 10'
+            data_list_unique_series[i]['message'] = 'Acquisition is unknown because there is not enough adequate information, primarily in the SeriesDescription. Please modify if acquisition is desired for BIDS conversion, otherwise the acqusition will not be converted'
+            data_list_unique_series[i]['br_type'] = 'exclude'
             
-        #     elif data_list_unique_series[i]['InversionTime'] is not None and data_list_unique_series[i]['InversionTime'] > 0: #Probably FLAIR
-        #         data_list_unique_series[i]['DataType'] = 'anat'
-        #         data_list_unique_series[i]['ModalityLabel'] = 'FLAIR'
-        #         data_list_unique_series[i]['qc'] = 'acquisition is anat/FLAIR because there is no good identifying info, data is 3D, InversionTime field exists, and InversionTime > 0'
-            
-        #     elif EchoTime > 100: #Probably T2w
-        #         data_list_unique_series[i]['DataType'] = 'anat'
-        #         data_list_unique_series[i]['ModalityLabel'] = 'T2w'
-        #         data_list_unique_series[i]['qc'] = 'acquisition is anat/T2w because there is no good identifying info, data is 3D, and EchoTime > 100'
-
-               
-        if data_list_unique_series[i]['DataType'] == '' and data_list_unique_series[i]['ModalityLabel'] == '':
-            if 'localizer' not in data_list_unique_series[i]['br_type']:
-                data_list_unique_series[i]['br_type'] = 'non-BIDS'
-        else:
+        if data_list_unique_series[i]['include'] == True:
             data_list_unique_series[i]['br_type'] = data_list_unique_series[i]['DataType'] + '/' + data_list_unique_series[i]['ModalityLabel']
-            
+        elif data_list_unique_series[i]['include'] == False and 'localizer' not in data_list_unique_series[i]['br_type']:
+            data_list_unique_series[i]['br_type'] = 'exclude'
+        else:
+            pass
     
         #Combine info above into dictionary, which will be displayed to user through the UI
         series_info = {"SeriesDescription": data_list_unique_series[i]['SeriesDescription'],
@@ -485,9 +495,9 @@ def identify_series_info(data_list_unique_series):
                         'MultibandAccelerationFactor': data_list_unique_series[i]['MultibandAccelerationFactor'],
                         "entities": series_entities,
                         "type": data_list_unique_series[i]['br_type'],
-                        "qc": data_list_unique_series[i]['qc'],
+                        "message": data_list_unique_series[i]['message'],
                         "repetitionTimes": [],
-                        "png_objects_indices": []
+                        "object_indices": []
                         }
         series_list.append(series_info)
         print('Unique data acquisition file {}, Series Description {}, was determined to be {}'.format(data_list_unique_series[i]['nifti_path'], data_list_unique_series[i]['SeriesDescription'], data_list_unique_series[i]['br_type']))
@@ -544,12 +554,12 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
         
         #Weird issue where data array is RGB instead on intger
         object_img_array = nib.load(sub_protocol[p]['nifti_path']).dataobj
-        if object_img_array.dtype != '<i2':
+        if object_img_array.dtype not in ['<i2', '<u2']:
             sub_protocol[p]['include'] = False
             sub_protocol[p]['error'] = 'The data array is for this acquisition is improper, likely suggesting some issue with the corresponding DICOMS'
-            sub_protocol[p]['qc'] = sub_protocol[p]['error']
+            sub_protocol[p]['message'] = sub_protocol[p]['error']
         else:
-            if sub_protocol[p]['VolumeCount'] > 1:
+            if sub_protocol[p]['NumVolumes'] > 1:
                 object_img_array = nib.load(sub_protocol[p]['nifti_path']).dataobj[..., 1]
             else:
                 object_img_array =nib.load(sub_protocol[p]['nifti_path']).dataobj[:]
@@ -563,12 +573,12 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                 for i, slice in enumerate([slice_x, slice_y, slice_z]):
                     axes[i].imshow(slice.T, cmap="gray", origin="lower")
                     axes[i].axis('off')
-                plt.savefig('{}.png'.format(sub_protocol[p]['nifti_path'][:-7]))
+                plt.savefig('{}.png'.format(sub_protocol[p]['nifti_path'][:-7]), bbox_inches='tight')
             
         index = series_seriesID_list.index(sub_protocol[p]['series_id'])
-        objects_entities = {'sub': '', 'ses': '', 'run': '', 'acq': '', 'ce': ''}
+        objects_entities = {'sub': '', 'ses': '', 'run': '', 'acq': '', 'ce': '', 'echo': ''}
         
-        #Port Series level information down to the object level
+        #Port series level information down to the object level
         sub_protocol[p]['include'] = data_list_unique_series[index]['include']
         sub_protocol[p]['DataType'] = data_list_unique_series[index]['DataType']
         sub_protocol[p]['ModalityLabel'] = data_list_unique_series[index]['ModalityLabel']
@@ -585,31 +595,23 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
             objects_entities['acq'] = series_list[index]['entities']['acq']
         if 'ce' in series_list[index]['entities'] and series_list[index]['entities']['ce']:
             objects_entities['ce'] = series_list[index]['entities']['ce']
+        if 'echo' in series_list[index]['entities'] and series_list[index]['entities']['echo']:
+            objects_entities['echo'] = series_list[index]['entities']['echo']
         
-        #Determine other important BIDS information (i.e. run, dir, etc) for specific acquisitions        
-        #Don't include anatomical (non multiecho) acquisitions that are too small (<1.2MB)
-        if 'anat' in sub_protocol[p]['br_type'] and 'multiecho' not in sub_protocol[p]['br_type'] :
-            if sub_protocol[p]['filesize']/(1024*1024) < 1.2:
-                sub_protocol[p]['include'] = False
-                sub_protocol[p]['error'] = 'Acquisition filesize is only {}MB. The ezBIDS minimum threshold for anatomical acquisitions is 1.2MB. This object will not be included in the BIDS output'.format(sub_protocol[p]['filesize']/(1024*1024))
-        
+        #Determine other important BIDS information (i.e. run, dir, etc) for specific acquisitions
         #T1w
-        if sub_protocol[p]['br_type'] in ['anat/T1w', 'anat/multiecho'] and sub_protocol[p]['include'] == True:
+        if sub_protocol[p]['br_type'] == 'anat/T1w' and sub_protocol[p]['include'] == True:
             #non-normalized T1w images that have poor CNR, so best to not have in BIDS if there's an actual good T1w available
             if 'NORM' not in sub_protocol[p]['ImageType']:
                 # index_next = series_seriesID_list.index(sub_protocol[p+1]['series_id'])
                 # sub_protocol[p+1]['br_type'] = data_list_unique_series[index_next]['br_type']
-                
                 if p+1 == len(sub_protocol):
-                    sub_protocol[p]['include'] = True 
-                    sub_protocol[p]['error'] = None
-                elif sub_protocol[p]['br_type'] == 'anat/multiecho' and sub_protocol[p+1]['br_type'] == 'anat/multiecho':
                     sub_protocol[p]['include'] = True 
                     sub_protocol[p]['error'] = None
                 elif sub_protocol[p+1]['br_type'] == 'anat/T1w' and 'NORM' not in sub_protocol[p+1]['ImageType']:
                     sub_protocol[p]['include'] = True 
                     sub_protocol[p]['error'] = None
-                elif sub_protocol[p+1]['br_type'] not in ['anat/T1w', 'anat/multiecho']:
+                elif sub_protocol[p+1]['br_type'] != 'anat/T1w':
                     sub_protocol[p]['include'] = True 
                     sub_protocol[p]['error'] = None
                 else:
@@ -617,11 +619,11 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                     sub_protocol[p]['error'] = 'Acquisition is a poor resolution T1w (non-normalized); Please check to see if this T1w acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'
         
         #Functional bold
-        elif sub_protocol[p]['br_type'] in ['func/bold','func/multiecho']:
+        elif sub_protocol[p]['br_type'] == 'func/bold':
             #Instances where functional bold acquisitions have less than 30 volumes (probably a restart/failure occurred, or some kind of non-BIDS test)
-            if sub_protocol[p]['VolumeCount'] < 30:
+            if sub_protocol[p]['NumVolumes'] < 30:
                 sub_protocol[p]['include'] = False
-                sub_protocol[p]['error'] = 'Functional run only contains {} volumes; ezBIDS minimum threshold is 30. This object will not be included in the BIDS output'.format(sub_protocol[p]['VolumeCount'])
+                sub_protocol[p]['error'] = 'Functional run only contains {} volumes; ezBIDS flags functional runs with under 30 volumes. Please check to see whether this should be excluded or not from BIDS conversion'.format(sub_protocol[p]['NumVolumes'])
             else:
                 if objects_entities['run'] == '':
                     if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
@@ -671,14 +673,14 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                 sub_protocol[p+1]['br_type'] = data_list_unique_series[index_next]['br_type']
                 
             #Rare instances where sbref is not followed by functional bold
-            if sub_protocol[p+1]['br_type'] not in ['func/bold', 'func/multiecho']:
+            if sub_protocol[p+1]['br_type'] != 'func/bold':
                 sub_protocol[p]['include'] = False
                 sub_protocol[p]['error'] = 'Single band reference (sbref) acquisition is not immediately followed by a functional bold acquisition that is being converted to BIDS. This object will not be included in the BIDS output'
                 
             #Set include to False if functional bold after it has less than 30 volumes, which will cause it to not be converted to BIDS
             elif nib.load(sub_protocol[p+1]['nifti_path']).shape[3] < 30:
                 sub_protocol[p]['include'] = False
-                sub_protocol[p]['error'] = 'Functional bold acquisition following this sbref contains less than 30 volumes, causing it to not be converted to BIDS. Thus this sbref that precedes the functional bold will not be included in the BIDS output'
+                sub_protocol[p]['error'] = 'Functional bold acquisition following this sbref contains less than 30 volumes, therefore BIDS conversion for this acqusition (and the preceding sbref) not recommended.'
             else:    
                 if objects_entities['run'] == '':
                     if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
@@ -710,47 +712,39 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
             dwi_run +=1
         
         #Spin echo fmaps
-        elif sub_protocol[p]['br_type'] in ['fmap/epi','fmap/epi_dwi']:
+        elif sub_protocol[p]['br_type'] == 'fmap/epi':
             objects_entities['dir'] = sub_protocol[p]['dir']    
                     
         objects_entities_list.append(objects_entities)
         
-    #Add run number to anatomicals that have multiple acquisitions
-    #Not ideal to use run #'s for anatomical acquisitions, but best solution for now
-    t1w_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T1w']
-    t2w_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T2w']
-    flair_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/FLAIR']    
+    # #Add run number to anatomicals that have multiple acquisitions
+    # #Not ideal to use run #'s for anatomical acquisitions, but best solution for now
+    # t1w_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T1w']
+    # t2w_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T2w']
+    # flair_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/FLAIR']    
     
-    if len(t1w_index) > 1:
-        t1w_run = 1
-        for t1w in t1w_index:
-            objects_entities_list[t1w]['run'] = '0' + str(t1w_run)
-            t1w_run += 1
+    # if len(t1w_index) > 1:
+    #     t1w_run = 1
+    #     for t1w in t1w_index:
+    #         objects_entities_list[t1w]['run'] = '0' + str(t1w_run)
+    #         t1w_run += 1
     
-    if len(t2w_index) > 1:        
-        t2w_run = 1
-        for t2w in t2w_index:
-            objects_entities_list[t2w]['run'] = '0' + str(t2w_run)
-            t2w_run += 1
+    # if len(t2w_index) > 1:        
+    #     t2w_run = 1
+    #     for t2w in t2w_index:
+    #         objects_entities_list[t2w]['run'] = '0' + str(t2w_run)
+    #         t2w_run += 1
             
-    if len(flair_index) > 1:        
-        flair_run = 1
-        for flair in flair_index:
-            objects_entities_list[flair]['run'] = '0' + str(flair_run)
-            flair_run += 1
-            
-    # #If object-level entitites match series-level entities, make object-level entities blank
-    # check = [x['entities'] for x in series_list if x['series_id'] == sub_protocol[p]['series_id']][0]
-    # try:
-    #     if objects_entities_list[p]['dir'] == check['dir']:
-    #         objects_entities_list[p]['dir'] == ''
-    # except:
-    #     pass
-                
+    # if len(flair_index) > 1:        
+    #     flair_run = 1
+    #     for flair in flair_index:
+    #         objects_entities_list[flair]['run'] = '0' + str(flair_run)
+    #         flair_run += 1
+                            
     return sub_protocol, objects_entities_list
     
 
-def fmap_intended_for(sub_protocol):
+def fmap_intended_for(sub_protocol, total_objects_indices):
     '''
     Determine IntendedFor fields for fmap acquisitions 
     
@@ -769,10 +763,10 @@ def fmap_intended_for(sub_protocol):
     br_types = [sub_protocol[x]['br_type'] for x in range(len(sub_protocol))]
     include = [sub_protocol[x]['include'] for x in range(len(sub_protocol))]
     errors = [sub_protocol[x]['error'] for x in range(len(sub_protocol))]
+    messages = [sub_protocol[x]['message'] for x in range(len(sub_protocol))]
     phase_encoding_directions = [sub_protocol[x]['dir'] for x in range(len(sub_protocol))]
     section_indices = [x for x, y in enumerate(br_types) if x == 0 or ('localizer' in y and 'localizer' not in br_types[x-1])]
-    fmap_counter = 0
-    fmap_intended_for_index = 0    
+    total_objects_indices = total_objects_indices
     
     for j,k in enumerate(section_indices):
         '''
@@ -788,18 +782,23 @@ def fmap_intended_for(sub_protocol):
         except:
             section_end = len(br_types)
         
+            
         #Check for potential issues
         for x,y in enumerate(br_types[section_start:section_end]):
-            if y == 'fmap/epi':
-                fmap_se_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi']
-                bold_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'func/bold' and include[k+x] == True]
+            sub_protocol[k+x]['section_ID'] = j
+            bold_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'func/bold' and include[k+x] == True]
+            dwi_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'dwi/dwi' and include[k+x] == True]
+            non_fmap_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if 'fmap' not in y]
+            
+            if y == 'fmap/epi' and 'max b-values' not in messages[k+x]:
+                fmap_se_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' not in messages[k+x]]
                 
                 #If no func/bold acquisitions in section then the fmap/epi in this section are pointless, therefore won't be converted to BIDS
                 if len(bold_indices) == 0:
                     for fm in fmap_se_indices:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = 'No valid func/bold objects found in section. This object will not be included in the BIDS output'
+                        errors[fm] = 'No valid func/bold acquisitions found in section. This is due to the field maps and functional bold acquisitions separated by localizer(s), indicating that subject got out and then re-entered scanner. SDC is unlikely to work, therefore this field map acquisition will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                     
                 #Only one fmap/epi acquisition in section. Can't be converted b/c need pair
@@ -807,7 +806,7 @@ def fmap_intended_for(sub_protocol):
                     for fm in fmap_se_indices:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = 'Only one spin echo field map found; need pair. This object will not be included in the BIDS output'
+                        errors[fm] = 'Only one spin echo field map found; need pair. This acquisition will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                 
                 #If more than two fmap/epi acquisitions, only accept most recent pair in section
@@ -815,7 +814,7 @@ def fmap_intended_for(sub_protocol):
                     for fm in fmap_se_indices[:-2]:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = 'Multiple spin echo pairs detected in section; only selecting last pair for BIDS conversion. The other pair objects will not be included in the BIDS output'
+                        errors[fm] = 'Multiple spin echo field map pairs detected in section; only selecting last pair for BIDS conversion. The other pair acquisition(s) in this section will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                         
                 #Re-determine the fmap/epi indices in light of the checks above
@@ -828,7 +827,7 @@ def fmap_intended_for(sub_protocol):
                         for fm in fmap_se_indices:
                             include[fm] = False
                             sub_protocol[fm]['include'] = include[fm]
-                            errors[fm] = 'Spin echo fmap pair does not have opposite phase encoding directions. This object will not be included in the BIDS output'
+                            errors[fm] = 'Spin echo fmap pair does not have opposite phase encoding directions. This acquisition will not be included in the BIDS output'
                             sub_protocol[fm]['error'] = errors[fm]
                 
                 #Re-determine the fmap/epi indices again
@@ -837,20 +836,19 @@ def fmap_intended_for(sub_protocol):
                 if len(fmap_se_indices) == 2:
                     for fm in fmap_se_indices:
                         sub_protocol[fm]['IntendedFor'] = bold_indices
-            
-    
+                        
+           
             #Magnitude/Phasediff fmaps
             elif y in ['fmap/magnitude1','fmap/magnitude2','fmap/phasediff']:
                 #Remove duplicate magnitude/phasediff fmaps. Only the last three in each section will be kept
-                fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1', 'fmap/magnitude2', 'phasediff']]
-                bold_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'func/bold' and include[k+x] != False]
+                fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1', 'fmap/magnitude2', 'fmap/phasediff']]
                 
                 #If no func/bold acquisitions in section then the magnitude/phasediff in this section are pointless, therefore won't be converted to BIDS
                 if len(bold_indices) == 0:
                     for fm in fmap_magphase_indices:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = 'No valid func/bold objects found in section. This object will not be included in the BIDS output'
+                        errors[fm] = 'No valid func/bold acquisition found in section. This is due to the field maps and functional bold acquisitions separated by localizer(s), indicating that subject got out and then re-entered scanner. SDC is unlikely to work, therefore this field map acquisition will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                   
                 #Only one magnitude/phasediff acquisition in section. Can't be converted
@@ -858,7 +856,7 @@ def fmap_intended_for(sub_protocol):
                     for fm in fmap_magphase_indices:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = 'Need pair for magnitude/phasediff field maps. This object will not be included in the BIDS output'
+                        errors[fm] = 'Need pair or triplet for magnitude/phasediff field maps. This acquisition will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                         
                 #If more than three magnitude/phasediff acquisitions, only accept most recent three in section
@@ -876,17 +874,17 @@ def fmap_intended_for(sub_protocol):
                     for fm in fmap_magphase_indices:
                         sub_protocol[fm]['IntendedFor'] = bold_indices
                         
+            
             #Spin-echo fmaps for DWI
-            elif y == 'fmap/epi_dwi':
-                fmap_se_dwi_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi_dwi']
-                dwi_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'dwi/dwi' and include[k+x] == True]
-
+            elif y == 'fmap/epi' and 'max b-values' in messages[k+x]:
+                fmap_se_dwi_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' in messages[k+x]]
+            
                 #If no dwi/dwi acquisitions in section then the fmap/epi_dwi in this section are pointless, therefore won't be converted to BIDS
                 if len(dwi_indices) == 0:
                     for fm in fmap_se_dwi_indices:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = 'No valid dwi/dwi objects found in section. This object will not be included in the BIDS output'
+                        errors[fm] = 'No valid dwi/dwi acquisition(s) found in section. This is due to the field map and diffusion acquisition(s) separated by localizer(s), indicating that subject got out and then re-entered scanner. SDC is unlikely to work, therefore this field map acquisition will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                   
                 #If more than one fmap/epi_dwi acquisitions, only accept most recent one in section
@@ -894,16 +892,25 @@ def fmap_intended_for(sub_protocol):
                     for fm in fmap_se_dwi_indices[:-1]:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
-                        errors[fm] = 'More than one dwi-specific field maps detected in section; only selecting last one for BIDS conversion. Other object will not be included in the BIDS output'
+                        errors[fm] = 'More than one dwi-specific field map detected in section; only selecting last one for BIDS conversion. Other acquisition(s) will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                 
                 #Re-determine the fmap/epi_dwi indices in light of the checks above
-                fmap_se_dwi_indices = [k+x for x,y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi_dwi' and include[k+x] != False]
-
+                fmap_se_dwi_indices = [total_objects_indices+k+x for x,y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' in messages[k+x] and include[k+x] != False]
                 if len(fmap_se_dwi_indices) == 1:
                     for fm in fmap_se_dwi_indices:
                         sub_protocol[fm]['IntendedFor'] = dwi_indices
-                        sub_protocol[fm]['br_type'] = 'fmap/epi'
+            else:
+                pass
+            
+            #Add IntendedFor to all non-fmap acquisitions
+            #This allows IntendedFor fields to auto-fill if user changes datatype on UI
+            for nfm in non_fmap_indices:
+                if 'dwi' in sub_protocol[nfm]['br_type']:
+                    sub_protocol[nfm]['IntendedFor'] = dwi_indices
+                else:
+                    sub_protocol[nfm]['IntendedFor'] = bold_indices
+                        
     return sub_protocol    
 
 
@@ -931,7 +938,7 @@ def build_objects_list(sub_protocol, objects_entities_list):
         
         #Provide log output for acquisitions not deemed appropriate for BIDS conversion
         if sub_protocol[i]['include'] == False:
-            print('{} not recommended for BIDS conversion: {}'.format(sub_protocol[i]['SeriesDescription'], sub_protocol[i]['error']))
+            print('* {} not recommended for BIDS conversion: {}'.format(sub_protocol[i]['SeriesDescription'], sub_protocol[i]['error']))
         
         #Remove identifying information from sidecars
         remove_fields = ['SeriesInstanceUID', 'StudyInstanceUID', 
@@ -956,7 +963,7 @@ def build_objects_list(sub_protocol, objects_entities_list):
 
         if sub_protocol[i]['error']:
             sub_protocol[i]['error'] = [sub_protocol[i]['error']]
-            
+                    
         #Objects-level info for ezBIDS.json
         objects_info = {"include": sub_protocol[i]['include'],
                     "series_id": sub_protocol[i]['series_id'],
@@ -968,12 +975,12 @@ def build_objects_list(sub_protocol, objects_entities_list):
                     "pngPath": '{}.png'.format(sub_protocol[i]['nifti_path'][:-7]),
                     "IntendedFor": sub_protocol[i]['IntendedFor'],
                     "entities": objects_entities_list[i],
-                    "type": sub_protocol[i]['br_type'],
                     "items": items,
                     "analysisResults": {
-                        "VolumeCount": sub_protocol[i]['VolumeCount'],
-                        "errors": ,
-                        "filesize": sub_protocol[i]['filesize']
+                        "NumVolumes": sub_protocol[i]['NumVolumes'],
+                        "errors": sub_protocol[i]['error'],
+                        "filesize": sub_protocol[i]['filesize'],
+                        "section_ID": sub_protocol[i]['section_ID']
                     },
                     "paths": sub_protocol[i]['paths']
                   }
@@ -993,7 +1000,7 @@ print('########################################')
 print('')
 
 #Load in list
-dir_list = pd.read_csv('list', header=None)
+dir_list = pd.read_csv('list', header=None, sep='\n')
 
 #Determine variables data_list, data_list_unique_series, subjectIDs_info, and acquisition_dates
 data_list, data_list_unique_series, subjectIDs_info, acquisition_dates = select_unique_data(dir_list)
@@ -1005,9 +1012,9 @@ series_list = identify_series_info(data_list_unique_series)
 participantsColumn = {"sex": {"LongName": "gender", "Description": "generic gender field", "Levels": {"M": "male", "F": "female"}},
                       "age": {"LongName": "age", "Units": "years"}}
     
-
 #Define a few variables that apply across the entire objects level
 objects_list = []
+total_objects_indices = 0
 subjects = [acquisition_dates[x]['sub'] for x in range(len(acquisition_dates))]
 sessions = [acquisition_dates[x]['ses'] for x in range(len(acquisition_dates))]
 series_seriesID_list = [series_list[x]['series_id'] for x in range(len(series_list))]
@@ -1016,11 +1023,15 @@ series_seriesID_list = [series_list[x]['series_id'] for x in range(len(series_li
 for s in range(len(acquisition_dates)):
     
     if acquisition_dates[s]['ses'] == '':
+        print('')
+        print('')
         print('Beginning conversion process for subject {} protocol acquisitions'.format(acquisition_dates[s]['sub']))
         print('-------------------------------------------------------------------')
         print('')
-    
+     
     else:
+        print('')
+        print('')
         print('Beginning conversion process for subject {}, session {} protocol acquisitions'.format(acquisition_dates[s]['sub'], acquisition_dates[s]['ses']))
         print('-------------------------------------------------------------------')
         print('')
@@ -1032,21 +1043,23 @@ for s in range(len(acquisition_dates)):
     sub_protocol, objects_entities_list = identify_objects_info(sub_protocol, series_list, series_seriesID_list)
     
     #update sub_protocol based on fmap IntendedFor checks
-    sub_protocol = fmap_intended_for(sub_protocol)
-    
+    sub_protocol = fmap_intended_for(sub_protocol, total_objects_indices)
+        
     #Build objects_list
     objects_list = build_objects_list(sub_protocol, objects_entities_list)
     
+    total_objects_indices += len(sub_protocol)
+    
 #Extract values to plot for users
 for s in range(len(series_list)):
-    series_list[s]['png_objects_indices'] = [x for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']]
+    if series_list[s]['type'] == 'exclude (localizer)':
+        series_list[s]['type'] = 'exclude'
+    
+    series_list[s]['object_indices'] = [x for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']]
     try:
         series_list[s]['repetitionTimes'] = [[x for x in objects_list[x]['items'] if x['name'] == 'json'][0]['sidecar']['RepetitionTime'] for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']] 
     except:
-        pass
-    
-    if series_list[s]['type'] == 'fmap/epi_dwi':
-        series_list[s]['type'] = 'fmap/epi'
+        pass        
     
 #Push all info to ezBIDS.json
 ezBIDS = {"subjects": subjectIDs_info,
@@ -1060,7 +1073,6 @@ ezBIDS = {"subjects": subjectIDs_info,
 ezBIDS_file_name = 'ezBIDS.json'
 with open(ezBIDS_file_name, 'w') as fp: 
     json.dump(ezBIDS, fp, indent=3) 
-  
 
 
                 
