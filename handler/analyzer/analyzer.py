@@ -210,6 +210,7 @@ def select_unique_data(dir_list):
                        'filesize': filesize,
                        "NumVolumes": volume_count,
                        'error': None,
+                       'section_ID': 0,
                        'message': '',
                        'protocol_index': 0,
                        'br_type': '',
@@ -372,7 +373,7 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['error'] = 'Acqusition appears to be an Angiography acquisition, which is currently not supported by ezBIDS at this time, but will be in the future'
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/angio because "angio" is in the SeriesDescription. Please modify if incorrect. Currently, ezBIDS does not support Angiography conversion to BIDS'
                     
-        # Magnitude/Phasediff and Spin echo (SE) field maps
+        #Magnitude/Phasediff and Spin echo (SE) field maps
         elif any(x in SD for x in ['fmap', 'fieldmap']) or SequenceName in ['epse2d', 'fm2d2r']:
             data_list_unique_series[i]['DataType'] = 'fmap'
             #Magnitude/Phasediff field maps
@@ -387,6 +388,7 @@ def identify_series_info(data_list_unique_series):
                     else:
                         data_list_unique_series[i]['ModalityLabel'] = 'magnitude2'
                         data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/magnitude2 because "fmap" or "fieldmap" is in SeriesDescription, and EchoNumber == 2 in metadata. Please modify if incorrect'
+            
             #Spin echo field maps
             else:
                 data_list_unique_series[i]['ModalityLabel'] = 'epi'
@@ -422,6 +424,7 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['DataType'] = 'func'
             if 'rest' in SD or 'rsfmri' in SD:
                 series_entities['task'] = 'rest'
+                data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
             if 'MOSAIC' and 'PHASE' in data_list_unique_series[i]['ImageType']:
                 data_list_unique_series[i]['ModalityLabel'] = 'phase'
                 data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/phase because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"), and "MOSAIC" and "PHASE" are in the ImageType field of the metadata. Please modify if incorrect'
@@ -429,9 +432,10 @@ def identify_series_info(data_list_unique_series):
                 data_list_unique_series[i]['ModalityLabel'] = 'bold'
                 if data_list_unique_series[i]['EchoNumber']:
                     series_entities['echo'] = '0' +  str(data_list_unique_series[i]['EchoNumber'])
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
             if data_list_unique_series[i]['EchoNumber']:
                 series_entities['echo'] = '0' +  str(data_list_unique_series[i]['EchoNumber'])
-            data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
+                data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
 
         #Functional single band reference (sbref)
         elif 'sbref' in SD:
@@ -444,12 +448,12 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/sbref because "sbref" is in the SeriesDescription'
         
         #T1w
-        elif any(x in SD for x in ['t1w','tfl3d','mprage', 'spgr']) or 'tfl3d1_16ns' in SequenceName:
+        elif any(x in SD for x in ['t1w','tfl3d','mprage', 'spgr']):
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'T1w'
             if data_list_unique_series[i]['EchoNumber']:
                 series_entities['echo'] = '0' + str(data_list_unique_series[i]['EchoNumber'])
-            data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T1w because "t1w","tfl3d","tfl","mprage" is in the SeriesDescription, or "tfl3d1_16ns" is in the SequenceName. Please modify if incorrect'
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T1w because "t1w","tfl3d","tfl","mprage" is in the SeriesDescription. Please modify if incorrect'
         
         #FLAIR
         elif any(x in SD for x in ['flair','t2spacedafl']):
@@ -472,6 +476,10 @@ def identify_series_info(data_list_unique_series):
             
         if data_list_unique_series[i]['include'] == True:
             data_list_unique_series[i]['br_type'] = data_list_unique_series[i]['DataType'] + '/' + data_list_unique_series[i]['ModalityLabel']
+        elif data_list_unique_series[i]['include'] == False and 'localizer' not in data_list_unique_series[i]['br_type']:
+            data_list_unique_series[i]['br_type'] = 'exclude'
+        else:
+            pass
     
         #Combine info above into dictionary, which will be displayed to user through the UI
         series_info = {"SeriesDescription": data_list_unique_series[i]['SeriesDescription'],
@@ -704,38 +712,30 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                     
         objects_entities_list.append(objects_entities)
         
-    #Add run number to anatomicals that have multiple acquisitions
-    #Not ideal to use run #'s for anatomical acquisitions, but best solution for now
-    t1w_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T1w']
-    t2w_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T2w']
-    flair_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/FLAIR']    
+    # #Add run number to anatomicals that have multiple acquisitions
+    # #Not ideal to use run #'s for anatomical acquisitions, but best solution for now
+    # t1w_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T1w']
+    # t2w_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T2w']
+    # flair_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/FLAIR']    
     
-    if len(t1w_index) > 1:
-        t1w_run = 1
-        for t1w in t1w_index:
-            objects_entities_list[t1w]['run'] = '0' + str(t1w_run)
-            t1w_run += 1
+    # if len(t1w_index) > 1:
+    #     t1w_run = 1
+    #     for t1w in t1w_index:
+    #         objects_entities_list[t1w]['run'] = '0' + str(t1w_run)
+    #         t1w_run += 1
     
-    if len(t2w_index) > 1:        
-        t2w_run = 1
-        for t2w in t2w_index:
-            objects_entities_list[t2w]['run'] = '0' + str(t2w_run)
-            t2w_run += 1
+    # if len(t2w_index) > 1:        
+    #     t2w_run = 1
+    #     for t2w in t2w_index:
+    #         objects_entities_list[t2w]['run'] = '0' + str(t2w_run)
+    #         t2w_run += 1
             
-    if len(flair_index) > 1:        
-        flair_run = 1
-        for flair in flair_index:
-            objects_entities_list[flair]['run'] = '0' + str(flair_run)
-            flair_run += 1
-            
-    # #If object-level entitites match series-level entities, make object-level entities blank
-    # check = [x['entities'] for x in series_list if x['series_id'] == sub_protocol[p]['series_id']][0]
-    # try:
-    #     if objects_entities_list[p]['dir'] == check['dir']:
-    #         objects_entities_list[p]['dir'] == ''
-    # except:
-    #     pass
-                
+    # if len(flair_index) > 1:        
+    #     flair_run = 1
+    #     for flair in flair_index:
+    #         objects_entities_list[flair]['run'] = '0' + str(flair_run)
+    #         flair_run += 1
+                            
     return sub_protocol, objects_entities_list
     
 
@@ -776,10 +776,11 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
             section_end = section_indices[j+1]
         except:
             section_end = len(br_types)
-            
+        
             
         #Check for potential issues
         for x,y in enumerate(br_types[section_start:section_end]):
+            sub_protocol[k+x]['section_ID'] = j
             bold_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'func/bold' and include[k+x] == True]
             dwi_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'dwi/dwi' and include[k+x] == True]
             non_fmap_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if 'fmap' not in y]
@@ -957,7 +958,7 @@ def build_objects_list(sub_protocol, objects_entities_list):
 
         if sub_protocol[i]['error']:
             sub_protocol[i]['error'] = [sub_protocol[i]['error']]
-            
+                    
         #Objects-level info for ezBIDS.json
         objects_info = {"include": sub_protocol[i]['include'],
                     "series_id": sub_protocol[i]['series_id'],
@@ -973,7 +974,8 @@ def build_objects_list(sub_protocol, objects_entities_list):
                     "analysisResults": {
                         "NumVolumes": sub_protocol[i]['NumVolumes'],
                         "errors": sub_protocol[i]['error'],
-                        "filesize": sub_protocol[i]['filesize']
+                        "filesize": sub_protocol[i]['filesize'],
+                        "section_ID": sub_protocol[i]['section_ID']
                     },
                     "paths": sub_protocol[i]['paths']
                   }
@@ -1037,7 +1039,7 @@ for s in range(len(acquisition_dates)):
     
     #update sub_protocol based on fmap IntendedFor checks
     sub_protocol = fmap_intended_for(sub_protocol, total_objects_indices)
-    
+        
     #Build objects_list
     objects_list = build_objects_list(sub_protocol, objects_entities_list)
     
