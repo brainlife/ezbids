@@ -373,7 +373,7 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['error'] = 'Acqusition appears to be an Angiography acquisition, which is currently not supported by ezBIDS at this time, but will be in the future'
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/angio because "angio" is in the SeriesDescription. Please modify if incorrect. Currently, ezBIDS does not support Angiography conversion to BIDS'
                     
-        #Magnitude/Phasediff and Spin echo (SE) field maps
+        #Magnitude/Phasediff and Spin Echo (SE) field maps
         elif any(x in SD for x in ['fmap', 'fieldmap']) or SequenceName in ['epse2d', 'fm2d2r']:
             data_list_unique_series[i]['DataType'] = 'fmap'
             #Magnitude/Phasediff field maps
@@ -397,24 +397,29 @@ def identify_series_info(data_list_unique_series):
             
         #DWI
         elif any('.bvec' in x for x in data_list_unique_series[i]['paths']):
-            #Some "dwi" acquisitions are actually fmap/epi; check for this
-            bval = np.loadtxt([x for x in data_list_unique_series[i]['paths'] if 'bval' in x][0])
-            if np.max(bval) <= 50 and bval.size < 10:
-                data_list_unique_series[i]['DataType'] = 'fmap'
-                data_list_unique_series[i]['ModalityLabel'] = 'epi'
-                data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/epi meant for dwi because there are bval & bvec files with the same SeriesNumber, but the max b-values are <= 50 and the number of b-values is less than 10. Please modify if incorrect'
-                series_entities['dir'] = data_list_unique_series[i]['dir']
-            elif any(x in SD for x in ['trace','fa','adc']) and ('dti' in SD or 'dwi' in SD):
+            if not any (x in SD for x in ['dti','dwi']):
                 data_list_unique_series[i]['include'] = False
-                data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
-                data_list_unique_series[i]['message'] = 'Acquisition is believed to be TRACE, FA, or ADC because there are bval & bvec files with the same SeriesNumber, and "trace", "fa", or "adc" are in the SeriesDescription. Please modify if incorrect'
-            else:
-                data_list_unique_series[i]['DataType'] = 'dwi'
-                data_list_unique_series[i]['ModalityLabel'] = 'dwi'
-                data_list_unique_series[i]['message'] = 'Acquisition is believed to be dwi/dwi because there are bval & bvec files with the same SeriesNumber, "dwi" or "dti" is in the SeriesDescription, and it does not appear to be dwi product data. Please modify if incorrect'
-                series_entities['dir'] = data_list_unique_series[i]['dir']
+                data_list_unique_series[i]['error'] = 'Although this acquisition contains bval/bvec files, this is not in fact a dwi/dwi or fmap/epi acquistion meant for dwi. Please modify if incorrect'
+                data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
+            else:    
+                #Some "dwi" acquisitions are actually fmap/epi; check for this
+                bval = np.loadtxt([x for x in data_list_unique_series[i]['paths'] if 'bval' in x][0])
+                if np.max(bval) <= 50 and bval.size < 10:
+                    data_list_unique_series[i]['DataType'] = 'fmap'
+                    data_list_unique_series[i]['ModalityLabel'] = 'epi'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/epi meant for dwi because there are bval & bvec files with the same SeriesNumber, but the max b-values are <= 50 and the number of b-values is less than 10. Please modify if incorrect'
+                    series_entities['dir'] = data_list_unique_series[i]['dir']
+                elif any(x in SD for x in ['trace','fa','adc']) and not any(x in SD for x in ['dti','dwi']):
+                    data_list_unique_series[i]['include'] = False
+                    data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be TRACE, FA, or ADC because there are bval & bvec files with the same SeriesNumber, and "trace", "fa", or "adc" are in the SeriesDescription. Please modify if incorrect'
+                else:
+                    data_list_unique_series[i]['DataType'] = 'dwi'
+                    data_list_unique_series[i]['ModalityLabel'] = 'dwi'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be dwi/dwi because there are bval & bvec files with the same SeriesNumber, "dwi" or "dti" is in the SeriesDescription, and it does not appear to be dwi product data. Please modify if incorrect'
+                    series_entities['dir'] = data_list_unique_series[i]['dir']
         
-        elif any(x in SD for x in ['trace','fa','adc']) and 'dti' in SD or 'dwi' in SD:
+        elif any(x in SD for x in ['trace','fa','adc']) and any(x in SD for x in ['dti','dwi']):
             data_list_unique_series[i]['include'] = False
             data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be TRACE, FA, or ADC because there are bval & bvec files with the same SeriesNumber, and "trace", "fa", or "adc" are in the SeriesDescription. Please modify if incorrect'
