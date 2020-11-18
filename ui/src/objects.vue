@@ -10,7 +10,7 @@
             </span>
             <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}" class="left-border">
                 <span class="hierarchy" style="opacity: 0.8;"><i class="el-icon-time"/> <small v-if="ses">ses</small> {{ses}} <small>{{o_ses.AcquisitionDate}}</small></span>
-                <div v-for="o in o_ses.objects" :key="o.idx" style="padding: 2px;" class="clickable" :class="{'selected': so === o}" @click="select(o, o_ses)">
+                <div v-for="o in o_ses.objects" :key="o.idx" class="clickable hierarchy-item" :class="{'selected': so === o, 'section-top': isSectionTop(o)}" @click="select(o, o_ses)">
                     <!--<el-tag type="info" size="mini"><small>{{o.series_id}}</small></el-tag>-->
                     <el-tag type="info" size="mini">sn {{o.SeriesNumber}}</el-tag>
                     &nbsp;
@@ -168,7 +168,17 @@ export default {
         },
     },
     
+    computed: {
+    },
+    
     methods: {
+        isSectionTop(o) {
+            if(o.idx == 0) return false;
+            let prev = this.$root.objects[o.idx-1];
+            if(prev.analysisResults.section_ID != o.analysisResults.section_ID) return true;
+            return false;
+        },
+
         select(o, sess) {
             this.sess = sess;
             this.so = o;
@@ -249,7 +259,6 @@ export default {
             });
 
             //make sure no 2 objects are exactly alike
-            console.log("validating", o, o._type);
             for(let o2 of this.$root.objects) {
                 if(o == o2) continue;
                 if(o2._type == "exclude") continue;
@@ -293,74 +302,82 @@ export default {
 
 <style scoped>
 .bids-structure {
-position: fixed;
-top: 0;
-bottom: 60px;
-left: 210px;
-width: 340px;
-overflow: auto;
+    position: fixed;
+    top: 0;
+    bottom: 60px;
+    left: 210px;
+    width: 340px;
+    overflow: auto;
 }
 .object {
-position: fixed;
-top: 0;
-bottom: 60px;
-overflow-y: auto;
-left: 550px;
-right: 0;
-padding-right: 30px;
-box-shadow: -4px -2px 4px #0001;
-z-index: 1;
+    position: fixed;
+    top: 0;
+    bottom: 60px;
+    overflow-y: auto;
+    left: 550px;
+    right: 0;
+    padding-right: 30px;
+    box-shadow: -4px -2px 4px #0001;
+    z-index: 1;
 }
 .item {
-padding-bottom: 5px;
-margin-bottom: 5px;
+    padding-bottom: 5px;
+    margin-bottom: 5px;
 }
 .hierarchy {
-padding: 3px;
-display: block;
-line-height: 100%;
+    padding: 3px;
+    display: block;
+    line-height: 100%;
+}
+.hierarchy-item {
+    padding: 2px;
 }
 .clickable {
-transition: background-color 0.3s;
+    transition: background-color 0.3s;
 }
 .selected {
-background-color: #d9ecff;
+    background-color: #d9ecff;
+}
+.section-top {
+    margin-top: 5px;
+    border-top: 1px solid #eee;
+    padding-top: 5px;
 }
 .clickable:hover {
-background-color: #ddd;
-cursor: pointer;
+    background-color: #ddd;
+    cursor: pointer;
 }
 .left-border {
-margin-left: 8.5px; 
-padding-left: 4px; 
-border-left: 2px solid #3331;
-padding-top: 4px;
+    margin-left: 8.5px; 
+    padding-left: 4px; 
+    border-left: 2px solid #3331;
+    padding-top: 4px;
 }
 .exclude {
-opacity: 0.6;
+    opacity: 0.6;
 }
 .sub-title {
-font-size: 85%;
-margin-bottom: 5px;
+    font-size: 85%;
+    margin-bottom: 5px;
 }
 .el-form-item {
-margin-bottom: 0;
+    margin-bottom: 0;
 }
 .border-top {
-border-top: 1px solid #d9d9d9; 
-padding-top: 2px; 
-margin-top: 2px;
+    border-top: 1px solid #d9d9d9; 
+    padding-top: 2px; 
+    margin-top: 2px;
 }
 pre.headers {
-height: 200px;
-overflow: auto;
-line-height: 1.5;
-border-radius: 5px;
-padding: 5px 15px;
-font-family: Avenir, Helvetica, Arial, sans-serif;
-font-size: inherit;
-background-color: #eee;
-color: #999;
+    height: 200px;
+    overflow: auto;
+    line-height: 1.5;
+    border-radius: 5px;
+    padding: 5px 15px;
+    font-family: Avenir, Helvetica, Arial, sans-serif;
+    font-size: inherit;
+    background-color: #eee;
+    color: #999;
 }
 </style>
 
