@@ -799,7 +799,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
     return sub_protocol, objects_entities_list
     
 
-def fmap_intended_for(sub_protocol, total_objects_indices):
+def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list):
     '''
     Determine IntendedFor fields for fmap acquisitions 
     
@@ -822,6 +822,9 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
     phase_encoding_directions = [sub_protocol[x]['dir'] for x in range(len(sub_protocol))]
     section_indices = [x for x, y in enumerate(br_types) if x == 0 or ('localizer' in y and 'localizer' not in br_types[x-1])]
     total_objects_indices = total_objects_indices
+    fmap_magphase_runcheck = []
+    fmap_se_runcheck = []
+    fmap_se_dwi_runcheck = []
     
     for j,k in enumerate(section_indices):
         '''
@@ -892,6 +895,9 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                 if len(fmap_se_indices) == 2:
                     for fm in fmap_se_indices:
                         sub_protocol[fm]['IntendedFor'] = bold_indices
+                        
+                if fmap_se_indices not in fmap_se_runcheck:
+                    fmap_se_runcheck.append(fmap_se_indices)
                         
            
             #Magnitude/Phase[diff] fmaps
@@ -968,9 +974,11 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                     for fm in fmap_magphase_indices:
                         sub_protocol[fm]['IntendedFor'] = bold_indices
                         
-                        print(sub_protocol[fm]['IntendedFor'])
-                                                
-            
+                if fmap_magphase_indices not in fmap_magphase_runcheck:
+                    fmap_magphase_runcheck.append(fmap_magphase_indices)
+                
+                    
+                                    
             #Spin-echo fmaps for DWI
             elif y == 'fmap/epi' and 'max b-values' in messages[k+x]:
                 fmap_se_dwi_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' in messages[k+x]]
@@ -996,6 +1004,10 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                 if len(fmap_se_dwi_indices) == 1:
                     for fm in fmap_se_dwi_indices:
                         sub_protocol[fm]['IntendedFor'] = dwi_indices
+                        
+                if fmap_se_dwi_indices not in fmap_se_dwi_runcheck:
+                    fmap_se_dwi_runcheck.append(fmap_se_dwi_indices)
+                
             else:
                 pass
             
@@ -1006,8 +1018,24 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                     sub_protocol[nfm]['IntendedFor'] = dwi_indices
                 else:
                     sub_protocol[nfm]['IntendedFor'] = bold_indices
-                        
-    return sub_protocol    
+                    
+    #Add run label information if fmaps were retaken across sections
+    if len(fmap_se_runcheck) > 1:
+        for x,y in enumerate(fmap_se_runcheck):
+            for z in y:
+                objects_entities_list[z]['run'] = '0' + str(x+1)                    
+                    
+    if len(fmap_magphase_runcheck) > 1:
+        for x,y in enumerate(fmap_magphase_runcheck):
+            for z in y:
+                objects_entities_list[z]['run'] = '0' + str(x+1)
+                
+    if len(fmap_se_dwi_runcheck) > 1:
+        for x,y in enumerate(fmap_se_dwi_runcheck):
+            for z in y:
+                objects_entities_list[z]['run'] = '0' + str(x+1)
+          
+    return sub_protocol, objects_entities_list
 
 
 def build_objects_list(sub_protocol, objects_entities_list):
@@ -1139,7 +1167,7 @@ for s in range(len(acquisition_dates)):
     sub_protocol, objects_entities_list = identify_objects_info(sub_protocol, series_list, series_seriesID_list)
     
     #update sub_protocol based on fmap IntendedFor checks
-    sub_protocol = fmap_intended_for(sub_protocol, total_objects_indices)
+    sub_protocol, objects_entities_list = fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list)
         
     #Build objects_list
     objects_list = build_objects_list(sub_protocol, objects_entities_list)
