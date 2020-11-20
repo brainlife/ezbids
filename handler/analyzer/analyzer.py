@@ -455,7 +455,7 @@ def identify_series_info(data_list_unique_series):
         #Functional bold and phase
         elif any(x in SD for x in ['bold','func','fmri','epi','mri','task']) and 'sbref' not in SD:
             data_list_unique_series[i]['DataType'] = 'func'
-            if 'rest' in SD or 'rsfmri' in SD:
+            if any(x in SD for x in ['rest','rsfmri','fcmri']):
                 series_entities['task'] = 'rest'
                 data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
             if 'MOSAIC' and 'PHASE' in data_list_unique_series[i]['ImageType']:
@@ -891,12 +891,23 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                 #Remove duplicate magnitude/phasediff fmaps. Only last group in each section will be kept
                 
                 if 'magnitude' in y:
-                    if 'phase1' not in br_types[section_start:section_end][x+1] or 'phase2' not in br_types[section_start:section_end][x+1]:
-                        fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1','fmap/magnitude2','fmap/phasediff']]
-                        case = 0
-                    else:
+                    if 'phase1' in br_types[section_start:section_end][x+1] or 'phase2' in br_types[section_start:section_end][x+1]:
                         fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1','fmap/phase1','fmap/magnitude2','fmap/phase2']]
                         case = 1
+                    else:
+                        fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1','fmap/magnitude2','fmap/phasediff']]
+                        case = 0
+                        
+                elif 'phase1' in y or 'phase2' in y:
+                    fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1','fmap/phase1','fmap/magnitude2','fmap/phase2']]
+                    case = 1
+                    
+                elif 'phasediff' in y:
+                    fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1','fmap/magnitude2','fmap/phasediff']]
+                    case = 0
+                
+                else:
+                    pass
             
                 #If no func/bold acquisitions in section then the magnitude/phasediff in this section are pointless, therefore won't be converted to BIDS
                 if len(bold_indices) == 0:
@@ -939,11 +950,17 @@ def fmap_intended_for(sub_protocol, total_objects_indices):
                             sub_protocol[fm]['error'] = errors[fm]
                         
                 #Re-determine the magnitude/phasediff indices in light of the checks above
-                fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1', 'fmap/magnitude2', 'fmap/phasediff'] and include[k+x] != False]        
-                
+                if case == 0:
+                    fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1','fmap/magnitude2','fmap/phasediff'] and include[k+x] != False]  
+                else:
+                    fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1','fmap/phase1','fmap/magnitude2','fmap/phase2'] and include[k+x] != False]        
+
+               
                 if len(fmap_magphase_indices) == 3 or len(fmap_magphase_indices) == 4:
                     for fm in fmap_magphase_indices:
                         sub_protocol[fm]['IntendedFor'] = bold_indices
+                        
+                        print(sub_protocol[fm]['IntendedFor'])
                                                 
             
             #Spin-echo fmaps for DWI
