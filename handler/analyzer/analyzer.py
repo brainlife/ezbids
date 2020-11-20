@@ -480,9 +480,9 @@ def identify_series_info(data_list_unique_series):
                 series_entities['echo'] = '0' + str(data_list_unique_series[i]['EchoNumber'])
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/sbref because "sbref" is in the SeriesDescription'
         
-        #MP2RAGE
+        #MP2RAGE (technically not officially part of BIDS, but people still use it)
         elif 'mp2rage' in SD:
-            data_list_unique_series[i]['DataType'] = 'MP2RAGE'
+            data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'MP2RAGE'
             if 'InversionTime' not in data_list_unique_series[i]['sidecar']:
                 series_entitites['acq'] = 'UNI'
@@ -490,7 +490,7 @@ def identify_series_info(data_list_unique_series):
                 if 'inv1' in SD:
                     series_entities['inv'] = '01'
                 elif 'inv2' in SD:
-                    series_entities['inv'] = '01'
+                    series_entities['inv'] = '02'
                 else:
                     series_entitites['inv'] = '0' + str(mp2rage_inv)
                     mp2rage_inv += 1
@@ -902,7 +902,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list
                 if fmap_se_indices not in fmap_se_runcheck:
                     fmap_se_runcheck.append(fmap_se_indices)
                         
-           
+            
             #Magnitude/Phase[diff] fmaps
             elif y in ['fmap/magnitude1','fmap/phase1','fmap/magnitude2','fmap/phase2','fmap/phasediff']:
                 #Remove duplicate magnitude/phasediff fmaps. Only last group in each section will be kept
@@ -981,7 +981,6 @@ def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list
                     fmap_magphase_runcheck.append(fmap_magphase_indices)
                 
                     
-                                    
             #Spin-echo fmaps for DWI
             elif y == 'fmap/epi' and 'max b-values' in messages[k+x]:
                 fmap_se_dwi_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' in messages[k+x]]
@@ -1093,6 +1092,7 @@ def build_objects_list(sub_protocol, objects_entities_list):
                     
         #Objects-level info for ezBIDS.json
         objects_info = {"include": sub_protocol[i]['include'],
+                    "type": sub_protocol[i]['br_type'],
                     "series_id": sub_protocol[i]['series_id'],
                     "PatientName": sub_protocol[i]['PatientName'],
                     "PatientID": sub_protocol[i]['PatientID'],
