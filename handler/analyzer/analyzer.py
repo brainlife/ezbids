@@ -518,13 +518,21 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['ModalityLabel'] = 'T2w'
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T2w because "t2w" is in the SeriesDescription. Please modify if incorrect'
             
-        #Assume not BIDS-compliant acquisition unless user specifies so
-        else: 
-            data_list_unique_series[i]['include'] = False
-            data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine whether or not this acquisition should be converted to BIDS'
-            data_list_unique_series[i]['message'] = 'Acquisition is unknown because there is not enough adequate information, primarily in the SeriesDescription. Please modify if acquisition is desired for BIDS conversion, otherwise the acqusition will not be converted'
-            data_list_unique_series[i]['br_type'] = 'exclude'
+        #Can't discern from SeriesDescription, try using ndim and number of volumes to see if this is a func/bold
+        else:
+            test = nib.load(data_list_unique_series[i]['nifti_path'])
+            if test.ndim == 4 and test.shape[3] >= 50:
+                data_list_unique_series[i]['DataType'] = 'func'
+                data_list_unique_series[i]['ModalityLabel'] = 'bold'
+                data_list_unique_series[i]['message'] = 'SeriesDescription did not provide hints regarding the type of acquisition; however, it is believed to be a func/bold because it contains >= 50 volumes. Please modify if incorrect'
             
+            #Assume not BIDS-compliant acquisition unless user specifies so
+            else: 
+                data_list_unique_series[i]['include'] = False
+                data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine whether or not this acquisition should be converted to BIDS'
+                data_list_unique_series[i]['message'] = 'Acquisition is unknown because there is not enough adequate information, primarily in the SeriesDescription. Please modify if acquisition is desired for BIDS conversion, otherwise the acqusition will not be converted'
+                data_list_unique_series[i]['br_type'] = 'exclude'
+                
         #Combine DataType and ModalityLabel to form br_type variable (needed for internal brainlife.io storage)
         if data_list_unique_series[i]['include'] == True:
             data_list_unique_series[i]['br_type'] = data_list_unique_series[i]['DataType'] + '/' + data_list_unique_series[i]['ModalityLabel']
