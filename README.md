@@ -3,13 +3,13 @@ The cloud-based graphical user interface for automated DICOM to BIDS data ingest
 
 ### About
 This is the developmental repo for an automated [BIDS](https://bids.neuroimaging.io/) converter web service that allows users to upload a directory containing 
-DICOM files, and analyze the directory structure and sidecars generated from dcm2niix in order to *guess* 
-as much information about the data structure as possible. Users will then be asked to verify/modify
+DICOM files, and analyze the directory structure and sidecars generated from dcm2niix in order to *infer* 
+as much information about the data structure as possible. Users are then asked to verify/modify
 those assumptions before generating the final BIDS structure.
 
-Unlike other automated DICOM to BIDS converters, ezbids eliminates the need for the command line and setup.
+Unlike other automated DICOM to BIDS converters, ezBIDS eliminates the need for the command line and setup.
 
-The output can be downloaded back to the user's computer, or sent to other repositories such as
+The output can be downloaded back to the user's computer, or uploaded to open repositories such as
 [OpenNeuro](https://openneuro.org/), or [brainlife.io](https://brainlife.io/)
 
 ezBIDS accepts DICOMS from the three major MRI vendors: **Siemens**, **GE**, and **Phillips**
@@ -23,7 +23,9 @@ Due to the plethora of scanner acquisition types, not all are currently supporte
 * func/phase
 * fmap/epi
 * fmap/magnitude1
+* fmap/phase1
 * fmap/magnitude2
+* fmap/phase2
 * fmap/phasediff
 * dwi/dwi
 
