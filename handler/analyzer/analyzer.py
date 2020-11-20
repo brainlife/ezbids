@@ -521,7 +521,7 @@ def identify_series_info(data_list_unique_series):
         #Can't discern from SeriesDescription, try using ndim and number of volumes to see if this is a func/bold
         else:
             test = nib.load(data_list_unique_series[i]['nifti_path'])
-            if test.ndim == 4 and test.shape[3] >= 50:
+            if test.ndim == 4 and test.shape[3] >= 50 and not any(x in data_list_unique_series[i]['ImageType'] for x in ['DERIVED','PERFUSION','DIFFUSION','ASL']):
                 data_list_unique_series[i]['DataType'] = 'func'
                 data_list_unique_series[i]['ModalityLabel'] = 'bold'
                 data_list_unique_series[i]['message'] = 'SeriesDescription did not provide hints regarding the type of acquisition; however, it is believed to be a func/bold because it contains >= 50 volumes. Please modify if incorrect'
@@ -672,6 +672,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                 else:
                     sub_protocol[p]['include'] = False  
                     sub_protocol[p]['error'] = 'Acquisition is a poor resolution T1w (non-normalized); Please check to see if this T1w acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'
+                    sub_protocol[p]['message'] = sub_protocol[p]['error']
                     sub_protocol[p]['br_type'] = 'exclude'
         
         #Functional bold
