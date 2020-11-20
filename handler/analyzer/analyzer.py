@@ -485,7 +485,7 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'MP2RAGE'
             if 'InversionTime' not in data_list_unique_series[i]['sidecar']:
-                series_entitites['acq'] = 'UNI'
+                series_entities['acq'] = 'UNI'
             else:
                 if 'inv1' in SD:
                     series_entities['inv'] = '01'
