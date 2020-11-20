@@ -654,24 +654,24 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
             objects_entities['echo'] = series_list[index]['entities']['echo']
         
         #Determine other important BIDS information (i.e. run, dir, etc) for specific acquisitions
-        #T1w
-        if sub_protocol[p]['br_type'] == 'anat/T1w' and sub_protocol[p]['include'] == True:
-            #non-normalized T1w images that have poor CNR, so best to not have in BIDS if there's an actual good T1w available
+        #T1w & T2w
+        if sub_protocol[p]['br_type'] in ['anat/T1w','anat/T2w'] and sub_protocol[p]['include'] == True:
+            #non-normalized T1w or T2w images that have poor CNR, so best to not have in BIDS if there's an actual good T1w or T2w available
             if 'NORM' not in sub_protocol[p]['ImageType']:
                 # index_next = series_seriesID_list.index(sub_protocol[p+1]['series_id'])
                 # sub_protocol[p+1]['br_type'] = data_list_unique_series[index_next]['br_type']
                 if p+1 == len(sub_protocol):
                     sub_protocol[p]['include'] = True 
                     sub_protocol[p]['error'] = None
-                elif sub_protocol[p+1]['br_type'] == 'anat/T1w' and 'NORM' not in sub_protocol[p+1]['ImageType']:
+                elif sub_protocol[p+1]['br_type'] == sub_protocol[p]['br_type'] and 'NORM' not in sub_protocol[p+1]['ImageType']:
                     sub_protocol[p]['include'] = True 
                     sub_protocol[p]['error'] = None
-                elif sub_protocol[p+1]['br_type'] != 'anat/T1w':
+                elif sub_protocol[p+1]['br_type'] != sub_protocol[p]['br_type']:
                     sub_protocol[p]['include'] = True 
                     sub_protocol[p]['error'] = None
                 else:
                     sub_protocol[p]['include'] = False  
-                    sub_protocol[p]['error'] = 'Acquisition is a poor resolution T1w (non-normalized); Please check to see if this T1w acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'
+                    sub_protocol[p]['error'] = 'Acquisition is a poor resolution {} (non-normalized); Please check to see if this {} acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'.format(sub_protocol[p]['br_type'], sub_protocol[p]['br_type'])
                     sub_protocol[p]['message'] = sub_protocol[p]['error']
                     sub_protocol[p]['br_type'] = 'exclude'
         
@@ -735,10 +735,10 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                 sub_protocol[p]['include'] = False
                 sub_protocol[p]['error'] = 'Single band reference (sbref) acquisition is not immediately followed by a functional bold acquisition that is being converted to BIDS. This object will not be included in the BIDS output'
                 
-            #Set include to False if functional bold after it has less than 30 volumes, which will cause it to not be converted to BIDS
-            elif nib.load(sub_protocol[p+1]['nifti_path']).shape[3] < 30:
+            #Set include to False if functional bold after it has less than 50 volumes, which will cause it to not be converted to BIDS
+            elif nib.load(sub_protocol[p+1]['nifti_path']).shape[3] < 50:
                 sub_protocol[p]['include'] = False
-                sub_protocol[p]['error'] = 'Functional bold acquisition following this sbref contains less than 30 volumes, therefore BIDS conversion for this acqusition (and the preceding sbref) not recommended.'
+                sub_protocol[p]['error'] = 'Functional bold acquisition following this sbref contains less than 50 volumes, therefore BIDS conversion for this acqusition (and the preceding sbref) not recommended.'
             else:    
                 if objects_entities['run'] == '':
                     if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
