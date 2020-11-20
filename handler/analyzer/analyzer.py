@@ -672,13 +672,15 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                 else:
                     sub_protocol[p]['include'] = False  
                     sub_protocol[p]['error'] = 'Acquisition is a poor resolution T1w (non-normalized); Please check to see if this T1w acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'
+                    sub_protocol[p]['br_type'] = 'exclude'
         
         #Functional bold
         elif sub_protocol[p]['br_type'] == 'func/bold':
             #Instances where functional bold acquisitions have less than 30 volumes (probably a restart/failure occurred, or some kind of non-BIDS test)
-            if sub_protocol[p]['NumVolumes'] < 30:
+            if sub_protocol[p]['NumVolumes'] < 50:
                 sub_protocol[p]['include'] = False
-                sub_protocol[p]['error'] = 'Functional run only contains {} volumes; ezBIDS flags functional runs with under 30 volumes. Please check to see whether this should be excluded or not from BIDS conversion'.format(sub_protocol[p]['NumVolumes'])
+                sub_protocol[p]['error'] = 'Functional run only contains {} volumes; ezBIDS flags functional runs with under 50 volumes. Please check to see whether this should be excluded or not from BIDS conversion'.format(sub_protocol[p]['NumVolumes'])
+                sub_protocol[p]['br_type'] = 'exclude'
             else:
                 if objects_entities['run'] == '':
                     if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
