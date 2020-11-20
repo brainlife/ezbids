@@ -10,6 +10,9 @@ const json = fs.readFileSync(root + "/finalized.json");
 const info = JSON.parse(json);
 mkdirp.sync(root + "/bids");
 fs.writeFileSync(root + "/bids/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
+fs.writeFileSync(root + "/bids/.bidsignore", `
+**/excluded
+`);
 info.readme += `
 ## ezbids
 
@@ -46,9 +49,13 @@ fs.closeSync(tsvf);
 //handle each objects
 console.log("outputting objects");
 async.forEach(info.objects, (o, next_o) => {
-    //if(!o.include) return next_o();
-    if (o._type == "exclude")
-        return next_o();
+    //if(o._type == "exclude") return next_o();
+    if (o._type == "exclude") {
+        o._type = "excluded/obj" + o.idx;
+        //console.log("excluded object");
+        //console.dir(o);
+        o._entities.desc = o._SeriesDescription; //inject seriesdesc to filename
+    }
     let typeTokens = o._type.split("/");
     let modality = typeTokens[0]; //func, dwi, anat, etc..
     let suffix = typeTokens[1];
@@ -226,6 +233,12 @@ async.forEach(info.objects, (o, next_o) => {
                     default:
                         console.error("unknown dwi item name", item.name);
                 }
+            });
+            break;
+        case "excluded":
+            o.items.forEach((item, idx) => {
+                //sub-OpenSciJan22_desc-localizer_obj5-0.json
+                handleItem(item, suffix + "-" + idx + "." + item.name);
             });
             break;
         default:

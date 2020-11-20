@@ -12,21 +12,21 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
-    "@types/express": "^4.17.6",
-    "@vue/cli": "^4.4.4",
-    "archiver": "^5.0.0",
+    "@types/express": "^4.17.9",
+    "@vue/cli": "^4.5.9",
+    "archiver": "^5.0.2",
     "body-parser": "^1.19.0",
     "compression": "^1.7.4",
     "cors": "^2.8.5",
     "express": "^4.17.1",
-    "express-fileupload": "^1.1.6",
+    "express-fileupload": "^1.2.0",
     "mkdirp": "^1.0.4",
-    "mongoose": "^5.9.18",
+    "mongoose": "^5.10.15",
     "multer": "^1.4.2",
     "nocache": "^2.1.0"
   },
   "devDependencies": {
-    "@types/cors": "^2.8.6",
-    "@types/node": "^14"
+    "@types/cors": "^2.8.8",
+    "@types/node": "^14.14.8"
   }
 }

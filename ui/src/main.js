@@ -292,6 +292,7 @@ new Vue({
         //apply all mappings and store them under _entities
         mapObject(o) {
             const series = this.$root.findSeries(o);
+            o._SeriesDescription = series.SeriesDescription;
             o._type = series.type;
             if(o.type) o._type = o.type; //object level override
 
