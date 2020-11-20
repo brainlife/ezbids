@@ -1089,6 +1089,9 @@ def build_objects_list(sub_protocol, objects_entities_list):
 
         if sub_protocol[i]['error']:
             sub_protocol[i]['error'] = [sub_protocol[i]['error']]
+            
+        if sub_protocol[i]['br_type'] == 'exclude (localizer)':
+            sub_protocol[i]['br_type'] = 'exclude'
                     
         #Objects-level info for ezBIDS.json
         objects_info = {"include": sub_protocol[i]['include'],
