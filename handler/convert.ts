@@ -14,6 +14,7 @@ mkdirp.sync(root+"/bids");
 fs.writeFileSync(root+"/bids/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
 fs.writeFileSync(root+"/bids/.bidsignore", `
 **/excluded
+**/*_MP2RAGE.*
 `);
 
 info.readme += `
