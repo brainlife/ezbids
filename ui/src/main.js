@@ -51,8 +51,8 @@ Vue.config.productionTip = false
 import App from './App.vue'
 
 async function loadYaml(url) {
-    let json = await fetch(url).then(res=>res.text());
-    return jsyaml.load(json);
+    let yaml = await fetch(url).then(res=>res.text());
+    return jsyaml.load(yaml);
 }
 
 new Vue({
@@ -188,6 +188,7 @@ new Vue({
                 anat.options.push({value: "anat/"+suffix, label: suffix});
             });
         });
+
         this.datatypes.push(anat);
 
         let _func = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/datatypes/func.yaml");
@@ -217,6 +218,37 @@ new Vue({
             let ent = _bids_entities[key];
             this.bids_entities[ent.entity] = ent;
         }
+
+        //Inject MP2RAGE under anat
+        let _anatSupplement = jsyaml.load(`---
+- suffixes:
+    - MP2RAGE
+  extensions:
+    - .nii.gz
+    - .json
+  entities:
+    sub: required
+    ses: optional
+    run: optional
+    acq: optional
+    inv: optional
+`);
+        _anatSupplement.forEach(group=>{
+            this.bids_datatypes["anat"].push(group);
+            group.suffixes.forEach(suffix=>{
+                anat.options.push({value: "anat/"+suffix, label: suffix});
+            });
+        });
+        this.bids_entities.inv = jsyaml.load(`---
+invert:
+  name: invert
+  entities: inv
+  description: |
+    Please enter some description here.
+    You can use multiple lines like this.
+  format: label
+`).invert;
+        //console.log(JSON.stringify(this.bids_entities, null, 4));
 
         this.currentPage = this.pages[0];
         this.pages.forEach((p, idx)=>{
