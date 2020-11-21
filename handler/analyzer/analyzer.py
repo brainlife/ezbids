@@ -643,6 +643,8 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
             
         if 'run' in series_list[index]['entities'] and series_list[index]['entities']['run']:
             objects_entities['run'] = series_list[index]['entities']['run']
+        if 'dir' in series_list[index]['entities'] and series_list[index]['entities']['dir']:
+            objects_entities['dir'] = series_list[index]['entities']['dir']
         if 'task' in series_list[index]['entities'] and series_list[index]['entities']['task']:
             objects_entities['task'] = series_list[index]['entities']['task']
             sub_protocol[p]['TaskName'] = series_list[index]['entities']['task']
@@ -773,18 +775,17 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                     
         objects_entities_list.append(objects_entities)
         
-    #Add run number to anatomicals that have multiple acquisitions but with the same parameters
-    #Not ideal to use run #'s for anatomical acquisitions, but best solution for now
+    #Add run number to anat and dwi/dwi that have multiple acquisitions but with the same parameters
     t1w_indices = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T1w']
     t2w_indices = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T2w']
     flair_indices = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/FLAIR']
+    dwi_indices = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'dwi/dwi']
 
-    for w in [t1w_indices, t2w_indices, flair_indices]:
+    for w in [t1w_indices, t2w_indices, flair_indices, dwi_indices]:
         if len(w) > 1:      
             parameter_tuples = []
             parameter_id = 0   
-            
-            parameters = [[sub_protocol[y]['SeriesDescription'], sub_protocol[y]['EchoTime'], sub_protocol[y]['ImageType'], sub_protocol[y]['RepetitionTime'], 0] for y in w]
+            parameters = [[sub_protocol[y]['SeriesDescription'], sub_protocol[y]['EchoTime'], sub_protocol[y]['ImageType'], sub_protocol[y]['RepetitionTime'], sub_protocol[y]['dir'], parameter_id] for y in w]
             # parameters = [[1,2,3,1,0], [1,2,3,1,0], [2,2,3,2,0], [1,2,3,1,0], [2,2,3,2,0],[3,3,3,3,0]]
             for x in range(len(parameters)):  
                 tup = (parameters[x][:])
@@ -800,11 +801,14 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
             for u in uniques:
                 if len([x for x in parameter_tuples if x[-1] == 0]) == 1:
                     pass
-                else:
+                else:                        
                     run = 1
                     for xx,yy in enumerate(parameter_tuples):
                         if yy[-1] == u:
-                            objects_entities_list[w[xx]]['run'] = '0' + str(run)
+                            if run < 10:
+                                objects_entities_list[w[xx]]['run'] = '0' + str(run)
+                            else:
+                                objects_entities_list[w[xx]]['run'] = str(run)
                             run += 1 
                             
     return sub_protocol, objects_entities_list
