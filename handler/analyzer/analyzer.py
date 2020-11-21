@@ -631,7 +631,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                 plt.savefig('{}.png'.format(sub_protocol[p]['nifti_path'][:-7]), bbox_inches='tight')
             
         index = series_seriesID_list.index(sub_protocol[p]['series_id'])
-        objects_entities = {'sub': '', 'ses': '', 'run': '', 'acq': '', 'ce': '', 'echo': ''}
+        objects_entities = {'sub': '', 'ses': '', 'run': '', 'acq': '', 'ce': '', 'echo': '', 'fa': '', 'inv': '', 'part': ''}
         
         #Port series level information down to the object level
         sub_protocol[p]['include'] = data_list_unique_series[index]['include']
@@ -658,8 +658,6 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
         if sub_protocol[p]['br_type'] in ['anat/T1w','anat/T2w'] and sub_protocol[p]['include'] == True:
             #non-normalized T1w or T2w images that have poor CNR, so best to not have in BIDS if there's an actual good T1w or T2w available
             if 'NORM' not in sub_protocol[p]['ImageType']:
-                # index_next = series_seriesID_list.index(sub_protocol[p+1]['series_id'])
-                # sub_protocol[p+1]['br_type'] = data_list_unique_series[index_next]['br_type']
                 if p+1 == len(sub_protocol):
                     sub_protocol[p]['include'] = True 
                     sub_protocol[p]['error'] = None
@@ -677,7 +675,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
         
         #Functional bold
         elif sub_protocol[p]['br_type'] == 'func/bold':
-            #Instances where functional bold acquisitions have less than 30 volumes (probably a restart/failure occurred, or some kind of non-BIDS test)
+            #Instances where functional bold acquisitions have less than 50 volumes (probably a restart/failure occurred, or some kind of non-BIDS test)
             if sub_protocol[p]['NumVolumes'] < 50:
                 sub_protocol[p]['include'] = False
                 sub_protocol[p]['error'] = 'Functional run only contains {} volumes; ezBIDS flags functional runs with under 50 volumes. Please check to see whether this should be excluded or not from BIDS conversion'.format(sub_protocol[p]['NumVolumes'])
@@ -775,29 +773,39 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                     
         objects_entities_list.append(objects_entities)
         
-    # #Add run number to anatomicals that have multiple acquisitions
-    # #Not ideal to use run #'s for anatomical acquisitions, but best solution for now
-    # t1w_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T1w']
-    # t2w_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T2w']
-    # flair_index = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/FLAIR']    
-    
-    # if len(t1w_index) > 1:
-    #     t1w_run = 1
-    #     for t1w in t1w_index:
-    #         objects_entities_list[t1w]['run'] = '0' + str(t1w_run)
-    #         t1w_run += 1
-    
-    # if len(t2w_index) > 1:        
-    #     t2w_run = 1
-    #     for t2w in t2w_index:
-    #         objects_entities_list[t2w]['run'] = '0' + str(t2w_run)
-    #         t2w_run += 1
+    #Add run number to anatomicals that have multiple acquisitions but with the same parameters
+    #Not ideal to use run #'s for anatomical acquisitions, but best solution for now
+    t1w_indices = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T1w']
+    t2w_indices = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/T2w']
+    flair_indices = [x['protocol_index'] for x in sub_protocol if x['include'] == True and x['br_type'] == 'anat/FLAIR']
+
+    for w in [t1w_indices, t2w_indices, flair_indices]:
+        if len(w) > 1:      
+            parameter_tuples = []
+            parameter_id = 0   
             
-    # if len(flair_index) > 1:        
-    #     flair_run = 1
-    #     for flair in flair_index:
-    #         objects_entities_list[flair]['run'] = '0' + str(flair_run)
-    #         flair_run += 1
+            parameters = [[sub_protocol[y]['SeriesDescription'], sub_protocol[y]['EchoTime'], sub_protocol[y]['ImageType'], sub_protocol[y]['RepetitionTime'], 0] for y in w]
+            # parameters = [[1,2,3,1,0], [1,2,3,1,0], [2,2,3,2,0], [1,2,3,1,0], [2,2,3,2,0],[3,3,3,3,0]]
+            for x in range(len(parameters)):  
+                tup = (parameters[x][:])
+                if tup[:-1] not in [y[:-1] for y in parameter_tuples]: 
+                    tup[-1] = parameter_id
+                    parameter_id += 1
+                else:
+                    tup[-1] = parameter_tuples[[y[:-1] for y in parameter_tuples].index(tup[:-1])][-1]
+                        
+                parameter_tuples.append(tup)
+            
+            uniques = list(set([x[-1] for x in parameter_tuples]))
+            for u in uniques:
+                if len([x for x in parameter_tuples if x[-1] == 0]) == 1:
+                    pass
+                else:
+                    run = 1
+                    for xx,yy in enumerate(parameter_tuples):
+                        if yy[-1] == u:
+                            objects_entities_list[w[xx]]['run'] = '0' + str(run)
+                            run += 1 
                             
     return sub_protocol, objects_entities_list
     
@@ -860,6 +868,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list
                     for fm in fmap_se_indices:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
+                        sub_protocol[fm]['br_type'] = 'exclude'
                         errors[fm] = 'No valid func/bold acquisitions found in section. This is due to the field maps and functional bold acquisitions separated by localizer(s), indicating that subject got out and then re-entered scanner. SDC is unlikely to work, therefore this field map acquisition will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                     
@@ -868,6 +877,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list
                     for fm in fmap_se_indices:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
+                        sub_protocol[fm]['br_type'] = 'exclude'
                         errors[fm] = 'Only one spin echo field map found; need pair. This acquisition will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                 
@@ -876,6 +886,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list
                     for fm in fmap_se_indices[:-2]:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
+                        sub_protocol[fm]['br_type'] = 'exclude'
                         errors[fm] = 'Multiple spin echo field map pairs detected in section; only selecting last pair for BIDS conversion. The other pair acquisition(s) in this section will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                         
@@ -889,6 +900,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list
                         for fm in fmap_se_indices:
                             include[fm] = False
                             sub_protocol[fm]['include'] = include[fm]
+                            sub_protocol[fm]['br_type'] = 'exclude'
                             errors[fm] = 'Spin echo fmap pair does not have opposite phase encoding directions. This acquisition will not be included in the BIDS output'
                             sub_protocol[fm]['error'] = errors[fm]
                 
@@ -931,6 +943,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list
                     for fm in fmap_magphase_indices:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
+                        sub_protocol[fm]['br_type'] = 'exclude'
                         errors[fm] = 'No valid func/bold acquisition found in section. This is due to the field maps and functional bold acquisitions separated by localizer(s), indicating that subject got out and then re-entered scanner. SDC is unlikely to work, therefore this field map acquisition will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                   
@@ -940,6 +953,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list
                         for fm in fmap_magphase_indices:
                             include[fm] = False
                             sub_protocol[fm]['include'] = include[fm]
+                            sub_protocol[fm]['br_type'] = 'exclude'
                             errors[fm] = 'Need four images (2 magnitude, 2 phase). This acquisition will not be included in the BIDS output'
                             sub_protocol[fm]['error'] = errors[fm]
                             
@@ -947,6 +961,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list
                         for fm in fmap_magphase_indices[:-4]:
                             include[fm] = False
                             sub_protocol[fm]['include'] = include[fm]
+                            sub_protocol[fm]['br_type'] = 'exclude'
                             errors[fm] = 'Multiple images sets of (2 magnitude, 2 phase) field map acquisitions found in section. Only selecting most recent set. Other(s) will not be included in the BIDS output'
                             sub_protocol[fm]['error'] = errors[fm]
                         
@@ -956,6 +971,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list
                         for fm in fmap_magphase_indices:
                             include[fm] = False
                             sub_protocol[fm]['include'] = include[fm]
+                            sub_protocol[fm]['br_type'] = 'exclude'
                             errors[fm] = 'Need triplet for magnitude/phasediff field maps. This acquisition will not be included in the BIDS output'
                             sub_protocol[fm]['error'] = errors[fm]
                         
@@ -963,6 +979,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list
                         for fm in fmap_magphase_indices[:-3]:
                             include[fm] = False
                             sub_protocol[fm]['include'] = include[fm]
+                            sub_protocol[fm]['br_type'] = 'exclude'
                             errors[fm] = 'More than three magnitude/phasediff field map acquisitions found in section. Only selecting most recent three. Others will not be included in the BIDS output'
                             sub_protocol[fm]['error'] = errors[fm]
                         
@@ -990,6 +1007,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list
                     for fm in fmap_se_dwi_indices:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
+                        sub_protocol[fm]['br_type'] = 'exclude'
                         errors[fm] = 'No valid dwi/dwi acquisition(s) found in section. This is due to the field map and diffusion acquisition(s) separated by localizer(s), indicating that subject got out and then re-entered scanner. SDC is unlikely to work, therefore this field map acquisition will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                   
@@ -998,6 +1016,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list
                     for fm in fmap_se_dwi_indices[:-1]:
                         include[fm] = False
                         sub_protocol[fm]['include'] = include[fm]
+                        sub_protocol[fm]['br_type'] = 'exclude'
                         errors[fm] = 'More than one dwi-specific field map detected in section; only selecting last one for BIDS conversion. Other acquisition(s) will not be included in the BIDS output'
                         sub_protocol[fm]['error'] = errors[fm]
                 
