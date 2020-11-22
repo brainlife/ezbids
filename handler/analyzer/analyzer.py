@@ -60,7 +60,6 @@ def select_unique_data(dir_list):
     print('Determining unique acquisitions in list')
     print('------------------------------------------')
     for j in range(len(json_list)):
-        print(json_list[j])
         json_data = open(json_list[j])
         json_data = json.load(json_data, strict=False)
         
@@ -543,6 +542,7 @@ def identify_series_info(data_list_unique_series):
                 data_list_unique_series[i]['message'] = 'Acquisition is unknown because there is not enough adequate information, primarily in the SeriesDescription. Please modify if acquisition is desired for BIDS conversion, otherwise the acqusition will not be converted'
                 data_list_unique_series[i]['br_type'] = 'exclude'
                 
+        
         #Combine DataType and ModalityLabel to form br_type variable (needed for internal brainlife.io storage)
         if data_list_unique_series[i]['include'] == True:
             data_list_unique_series[i]['br_type'] = data_list_unique_series[i]['DataType'] + '/' + data_list_unique_series[i]['ModalityLabel']
@@ -552,17 +552,19 @@ def identify_series_info(data_list_unique_series):
             pass
     
         #Combine info above into dictionary, which will be displayed to user through the UI
-        series_info = {"SeriesDescription": data_list_unique_series[i]['SeriesDescription'],
-                        "SeriesNumber": data_list_unique_series[i]['SeriesNumber'],
-                        'series_id': data_list_unique_series[i]['series_id'],
-                        'EchoTime': data_list_unique_series[i]['EchoTime'],
-                        'ImageType': data_list_unique_series[i]['ImageType'],
-                        'MultibandAccelerationFactor': data_list_unique_series[i]['MultibandAccelerationFactor'],
-                        "entities": series_entities,
-                        "type": data_list_unique_series[i]['br_type'],
-                        "message": data_list_unique_series[i]['message'],
-                        "repetitionTimes": [],
-                        "object_indices": []
+        series_info = {"include": data_list_unique_series[i]['include'],
+                       "SeriesDescription": data_list_unique_series[i]['SeriesDescription'],
+                       "SeriesNumber": data_list_unique_series[i]['SeriesNumber'],
+                       "series_id": data_list_unique_series[i]['series_id'],
+                       "EchoTime": data_list_unique_series[i]['EchoTime'],
+                       "ImageType": data_list_unique_series[i]['ImageType'],
+                       "MultibandAccelerationFactor": data_list_unique_series[i]['MultibandAccelerationFactor'],
+                       "entities": series_entities,
+                       "type": data_list_unique_series[i]['br_type'],
+                       "error": data_list_unique_series[i]['error'],
+                       "message": data_list_unique_series[i]['message'],
+                       "repetitionTimes": [],
+                       "object_indices": []
                         }
         series_list.append(series_info)
         print('Unique data acquisition file {}, Series Description {}, was determined to be {}'.format(data_list_unique_series[i]['nifti_path'], data_list_unique_series[i]['SeriesDescription'], data_list_unique_series[i]['br_type']))
@@ -613,7 +615,6 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
         protocol_index += 1
         sub_protocol[p]['headers'] = str(nib.load(sub_protocol[p]['nifti_path']).header).splitlines()[1:]
                 
-        
         #Weird issue where data array is RGB instead on intger
         object_img_array = nib.load(sub_protocol[p]['nifti_path']).dataobj
         if object_img_array.dtype not in ['<i2', '<u2']:
@@ -642,12 +643,13 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
         objects_entities = {'sub': '', 'ses': '', 'run': '', 'task': '', 'dir': '', 'acq': '', 'ce': '', 'echo': '', 'fa': '', 'inv': '', 'part': ''}
         
         #Port series level information down to the object level
-        sub_protocol[p]['include'] = data_list_unique_series[index]['include']
+        sub_protocol[p]['include'] = series_list[index]['include']
         sub_protocol[p]['DataType'] = data_list_unique_series[index]['DataType']
         sub_protocol[p]['ModalityLabel'] = data_list_unique_series[index]['ModalityLabel']
-        sub_protocol[p]['br_type'] = data_list_unique_series[index]['br_type']
-        sub_protocol[p]['error'] = data_list_unique_series[index]['error']
+        sub_protocol[p]['br_type'] = series_list[index]['type']
+        sub_protocol[p]['error'] = series_list[index]['error']
         sub_protocol[p]['sub'] = subjects[s]
+                
             
         if 'run' in series_list[index]['entities'] and series_list[index]['entities']['run']:
             objects_entities['run'] = series_list[index]['entities']['run']
@@ -663,7 +665,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
         if 'echo' in series_list[index]['entities'] and series_list[index]['entities']['echo']:
             objects_entities['echo'] = series_list[index]['entities']['echo']
         
-        #Determine other important BIDS information (i.e. run, dir, etc) for specific acquisitions
+        #Determine other important BIDS information (i.e. run, dir, etc) for specific acquisitions        
         #T1w & T2w
         if sub_protocol[p]['br_type'] in ['anat/T1w','anat/T2w'] and sub_protocol[p]['include'] == True:
             #non-normalized T1w or T2w images that have poor CNR, so best to not have in BIDS if there's an actual good T1w or T2w available
@@ -768,14 +770,6 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                     objects_entities['run'] = sub_protocol[p]['func_sbref_run']
                 else:
                     sub_protocol[p]['func_sbref_run'] = objects_entities['run']
-                
-        # #DWI
-        # elif sub_protocol[p]['br_type'] == 'dwi/dwi':
-        #     objects_entities['dir'] = sub_protocol[p]['dir']
-        
-        # #Spin echo fmaps
-        # elif sub_protocol[p]['br_type'] == 'fmap/epi':
-        #     objects_entities['dir'] = sub_protocol[p]['dir']    
                     
         objects_entities_list.append(objects_entities)
         
@@ -844,7 +838,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list
     fmap_magphase_runcheck = []
     fmap_se_runcheck = []
     fmap_se_dwi_runcheck = []
-    
+        
     for j,k in enumerate(section_indices):
         '''
         Sections are determined by where the next set of localizers are.
