@@ -83,6 +83,7 @@ def select_unique_data(dir_list):
                 PED = ''
         except:
             PED = ''
+        
             
         #Nifti (and bval/bvec) file(s) associated with specific json file
         nifti_paths_for_json = [x for x in nifti_list if json_list[j][:-4] in x]
@@ -331,6 +332,12 @@ def identify_series_info(data_list_unique_series):
         else:
             pass
         
+        if '_dir-' in SD:
+            series_entities['dir'] = SD.split('_dir-')[-1].split('_')[0]
+        else:
+            series_entities['dir'] = ''
+    
+        
         if '_acq-' in SD:
             series_entities['acq'] = SD.split('_acq-')[-1].split('_')[0]
         else:
@@ -428,6 +435,7 @@ def identify_series_info(data_list_unique_series):
                 data_list_unique_series[i]['include'] = False
                 data_list_unique_series[i]['error'] = 'Although this acquisition contains bval/bvec files, this is not in fact a dwi/dwi or fmap/epi acquistion meant for dwi. Please modify if incorrect'
                 data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
+                data_list_unique_series[i]['br_type'] = 'exclude'
             else:    
                 #Some "dwi" acquisitions are actually fmap/epi; check for this
                 bval = np.loadtxt([x for x in data_list_unique_series[i]['paths'] if 'bval' in x][0])
@@ -440,6 +448,7 @@ def identify_series_info(data_list_unique_series):
                     data_list_unique_series[i]['include'] = False
                     data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
                     data_list_unique_series[i]['message'] = 'Acquisition is believed to be TRACE, FA, or ADC because there are bval & bvec files with the same SeriesNumber, and "trace", "fa", or "adc" are in the SeriesDescription. Please modify if incorrect'
+                    data_list_unique_series[i]['br_type'] = 'exclude'
                 else:
                     data_list_unique_series[i]['DataType'] = 'dwi'
                     data_list_unique_series[i]['ModalityLabel'] = 'dwi'
@@ -451,6 +460,7 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['include'] = False
             data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be TRACE, FA, or ADC because there are bval & bvec files with the same SeriesNumber, and "trace", "fa", or "adc" are in the SeriesDescription. Please modify if incorrect'
+            data_list_unique_series[i]['br_type'] = 'exclude'
         
         #Functional bold and phase
         elif any(x in SD for x in ['bold','func','fmri','epi','mri','task']) and 'sbref' not in SD:
@@ -592,9 +602,6 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
     func_sbref_run = 1
     func_phase_run = 1
     bold_run = 1
-    dwi_run = 1
-    fmap_se_run = 1
-    fmap_magphase_run = 1
     objects_entities_list = []
     series_func_list = []
     
@@ -613,6 +620,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
             sub_protocol[p]['include'] = False
             sub_protocol[p]['error'] = 'The data array is for this acquisition is improper, likely suggesting some issue with the corresponding DICOMS'
             sub_protocol[p]['message'] = sub_protocol[p]['error']
+            sub_protocol[p]['br_type'] = 'exclude'
         else:
             if sub_protocol[p]['NumVolumes'] > 1:
                 object_img_array = nib.load(sub_protocol[p]['nifti_path']).dataobj[..., 1]
@@ -631,7 +639,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                 plt.savefig('{}.png'.format(sub_protocol[p]['nifti_path'][:-7]), bbox_inches='tight')
             
         index = series_seriesID_list.index(sub_protocol[p]['series_id'])
-        objects_entities = {'sub': '', 'ses': '', 'run': '', 'acq': '', 'ce': '', 'echo': '', 'fa': '', 'inv': '', 'part': ''}
+        objects_entities = {'sub': '', 'ses': '', 'run': '', 'task': '', 'dir': '', 'acq': '', 'ce': '', 'echo': '', 'fa': '', 'inv': '', 'part': ''}
         
         #Port series level information down to the object level
         sub_protocol[p]['include'] = data_list_unique_series[index]['include']
@@ -723,7 +731,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
             else:
                 sub_protocol[p]['func_phase_run'] = objects_entities['run']
                     
-        
+
         #Functional single band reference (sbref)
         elif sub_protocol[p]['br_type'] == 'func/sbref':
             if p+1 < len(sub_protocol):
@@ -734,11 +742,13 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
             if sub_protocol[p+1]['br_type'] != 'func/bold':
                 sub_protocol[p]['include'] = False
                 sub_protocol[p]['error'] = 'Single band reference (sbref) acquisition is not immediately followed by a functional bold acquisition that is being converted to BIDS. This object will not be included in the BIDS output'
+                sub_protocol[p]['br_type'] = 'exclude'
                 
             #Set include to False if functional bold after it has less than 50 volumes, which will cause it to not be converted to BIDS
             elif nib.load(sub_protocol[p+1]['nifti_path']).shape[3] < 50:
                 sub_protocol[p]['include'] = False
                 sub_protocol[p]['error'] = 'Functional bold acquisition following this sbref contains less than 50 volumes, therefore BIDS conversion for this acqusition (and the preceding sbref) not recommended.'
+                sub_protocol[p]['br_type'] = 'exclude'
             else:    
                 if objects_entities['run'] == '':
                     if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
@@ -759,19 +769,13 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                 else:
                     sub_protocol[p]['func_sbref_run'] = objects_entities['run']
                 
-        #DWI
-        elif sub_protocol[p]['br_type'] == 'dwi/dwi':
-            if dwi_run < 10:
-                sub_protocol[p]['dwi_run'] = '0' + str(dwi_run)
-            else:
-                sub_protocol[p]['dwi_run'] = str(dwi_run)
-            objects_entities['run'] = sub_protocol[p]['dwi_run']
-            objects_entities['dir'] = sub_protocol[p]['dir']
-            dwi_run +=1
+        # #DWI
+        # elif sub_protocol[p]['br_type'] == 'dwi/dwi':
+        #     objects_entities['dir'] = sub_protocol[p]['dir']
         
-        #Spin echo fmaps
-        elif sub_protocol[p]['br_type'] == 'fmap/epi':
-            objects_entities['dir'] = sub_protocol[p]['dir']    
+        # #Spin echo fmaps
+        # elif sub_protocol[p]['br_type'] == 'fmap/epi':
+        #     objects_entities['dir'] = sub_protocol[p]['dir']    
                     
         objects_entities_list.append(objects_entities)
         
