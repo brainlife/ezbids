@@ -210,7 +210,7 @@ def select_unique_data(dir_list):
                        'filesize': filesize,
                        "NumVolumes": volume_count,
                        'error': None,
-                       'section_ID': 0,
+                       'section_ID': 1,
                        'message': '',
                        'protocol_index': 0,
                        'br_type': '',
@@ -670,13 +670,15 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
         if sub_protocol[p]['br_type'] in ['anat/T1w','anat/T2w'] and sub_protocol[p]['include'] == True:
             #non-normalized T1w or T2w images that have poor CNR, so best to not have in BIDS if there's an actual good T1w or T2w available
             if 'NORM' not in sub_protocol[p]['ImageType']:
+                index_next = series_seriesID_list.index(sub_protocol[p+1]['series_id'])
+                
                 if p+1 == len(sub_protocol):
                     sub_protocol[p]['include'] = True 
                     sub_protocol[p]['error'] = None
                 elif sub_protocol[p+1]['br_type'] == sub_protocol[p]['br_type'] and 'NORM' not in sub_protocol[p+1]['ImageType']:
                     sub_protocol[p]['include'] = True 
                     sub_protocol[p]['error'] = None
-                elif sub_protocol[p+1]['br_type'] != sub_protocol[p]['br_type']:
+                elif sub_protocol[p]['br_type'] != data_list_unique_series[index_next]['br_type']:
                     sub_protocol[p]['include'] = True 
                     sub_protocol[p]['error'] = None
                 else:
@@ -784,7 +786,6 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
             parameter_tuples = []
             parameter_id = 0   
             parameters = [[sub_protocol[y]['SeriesDescription'], sub_protocol[y]['EchoTime'], sub_protocol[y]['ImageType'], sub_protocol[y]['RepetitionTime'], sub_protocol[y]['dir'], parameter_id] for y in w]
-            # parameters = [[1,2,3,1,1,0], [1,2,3,1,1,0], [2,2,3,2,1,0], [1,2,3,1,1,0], [2,2,3,2,1,0],[3,3,3,3,1,0]]
             for x in range(len(parameters)):  
                 tup = (parameters[x][:])
                 if tup[:-1] not in [y[:-1] for y in parameter_tuples]: 
@@ -838,7 +839,8 @@ def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list
     fmap_magphase_runcheck = []
     fmap_se_runcheck = []
     fmap_se_dwi_runcheck = []
-        
+    
+
     for j,k in enumerate(section_indices):
         '''
         Sections are determined by where the next set of localizers are.
@@ -856,7 +858,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list
             
         #Check for potential issues
         for x,y in enumerate(br_types[section_start:section_end]):
-            sub_protocol[k+x]['section_ID'] = j
+            sub_protocol[k+x]['section_ID'] = j+1
             bold_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'func/bold' and include[k+x] == True]
             dwi_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'dwi/dwi' and include[k+x] == True]
             non_fmap_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if 'fmap' not in y]
