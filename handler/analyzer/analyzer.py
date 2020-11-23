@@ -396,7 +396,7 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/angio because "angio" is in the SeriesDescription. Please modify if incorrect. Currently, ezBIDS does not support Angiography conversion to BIDS'
                     
         #Magnitude/Phase[diff] and Spin Echo (SE) field maps
-        elif any(x in SD for x in ['fmap', 'fieldmap']):
+        elif any(x in SD for x in ['fmap','fieldmap','spinecho','sefmri','semri']):
             data_list_unique_series[i]['DataType'] = 'fmap'
             
             #Magnitude/Phase[diff] field maps
@@ -430,7 +430,7 @@ def identify_series_info(data_list_unique_series):
             
         #DWI
         elif any('.bvec' in x for x in data_list_unique_series[i]['paths']):
-            if not any (x in SD for x in ['dti','dwi']):
+            if not any (x in SD for x in ['dti','dwi','dmri']):
                 data_list_unique_series[i]['include'] = False
                 data_list_unique_series[i]['error'] = 'Although this acquisition contains bval/bvec files, this is not in fact a dwi/dwi or fmap/epi acquistion meant for dwi. Please modify if incorrect'
                 data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
@@ -455,14 +455,14 @@ def identify_series_info(data_list_unique_series):
                     series_entities['dir'] = data_list_unique_series[i]['dir']
         
         #DWI derivatives or other non-BIDS diffusion offshoot acquisitions 
-        elif any(x in SD for x in ['trace','fa','adc']) and any(x in SD for x in ['dti','dwi']):
+        elif any(x in SD for x in ['trace','fa','adc']) and any(x in SD for x in ['dti','dwi','dmri']):
             data_list_unique_series[i]['include'] = False
             data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be TRACE, FA, or ADC because there are bval & bvec files with the same SeriesNumber, and "trace", "fa", or "adc" are in the SeriesDescription. Please modify if incorrect'
             data_list_unique_series[i]['br_type'] = 'exclude'
         
         #Functional bold and phase
-        elif any(x in SD for x in ['bold','func','fmri','epi','mri','task']) and 'sbref' not in SD:
+        elif any(x in SD for x in ['bold','func','fmri','epi','mri','task','rest']) and 'sbref' not in SD:
             data_list_unique_series[i]['DataType'] = 'func'
             if any(x in SD for x in ['rest','rsfmri','fcmri']):
                 series_entities['task'] = 'rest'
@@ -784,7 +784,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
             parameter_tuples = []
             parameter_id = 0   
             parameters = [[sub_protocol[y]['SeriesDescription'], sub_protocol[y]['EchoTime'], sub_protocol[y]['ImageType'], sub_protocol[y]['RepetitionTime'], sub_protocol[y]['dir'], parameter_id] for y in w]
-            # parameters = [[1,2,3,1,0], [1,2,3,1,0], [2,2,3,2,0], [1,2,3,1,0], [2,2,3,2,0],[3,3,3,3,0]]
+            # parameters = [[1,2,3,1,1,0], [1,2,3,1,1,0], [2,2,3,2,1,0], [1,2,3,1,1,0], [2,2,3,2,1,0],[3,3,3,3,1,0]]
             for x in range(len(parameters)):  
                 tup = (parameters[x][:])
                 if tup[:-1] not in [y[:-1] for y in parameter_tuples]: 
@@ -1142,7 +1142,8 @@ def build_objects_list(sub_protocol, objects_entities_list):
 
 ###################### Begin ######################
     
-data_dir = sys.argv[1]
+# data_dir = sys.argv[1]
+data_dir = '/media/data/ezbids/dicoms/ADNI/batch1/114_S_4404'
 os.chdir(data_dir)
 
 print('########################################')
