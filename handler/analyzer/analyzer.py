@@ -1142,8 +1142,7 @@ def build_objects_list(sub_protocol, objects_entities_list):
 
 ###################### Begin ######################
     
-# data_dir = sys.argv[1]
-data_dir = '/media/data/ezbids/dicoms/ADNI/batch1/114_S_4404'
+data_dir = sys.argv[1]
 os.chdir(data_dir)
 
 print('########################################')
