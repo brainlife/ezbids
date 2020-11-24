@@ -1,15 +1,13 @@
 <template>
-<div class="datatype" :class="{exclude: o._type == 'exclude'}" style="display: inline-block;">
-    <span :style="{'background-color': color}" class="bull">&nbsp;</span> {{o._type}}
-    <span v-if="o._type == 'exclude'">({{$root.findSeries(o).SeriesDescription}})</span>
-    <el-tag v-for="(v,k) in entities" :key="k" size="mini" type="info"><small>{{k}}-</small><b>{{v}}</b></el-tag>
+<div class="datatype" :class="{exclude: type == 'exclude'}" style="display: inline-block;">
+    <span :style="{'background-color': color}" class="bull">&nbsp;</span> {{type}}
+    <el-tag v-for="(v,k) in sessionEntities" :key="k" size="mini" type="info"><small>{{k}}-</small><b>{{v}}</b></el-tag>
 </div>
 </template>
 
 <script>
-
 export default {
-    props: [ 'o' ],
+    props: [ 'type', 'series_id', 'entities' ],
     data() {
         return {
             something: "whatever", 
@@ -18,26 +16,26 @@ export default {
     method: {
     },
     computed: {
-        entities() {
+        sessionEntities() {
             let ents = {};
 
-            let series = this.$root.findSeries(this.o);
+            let series = this.$root.findSeries({series_id: this.series_id});
             for(let key in series.entities) {
                 if(series.entities[key] == "") continue;
                 ents[key] = series.entities[key];
             }
             
-            for(let key in this.o.entities) {
+            for(let key in this.entities) {
                 if(key == "sub") continue; 
                 if(key == "ses") continue; 
-                if(this.o.entities[key] == "") continue;
-                ents[key] = this.o.entities[key];
+                if(this.entities[key] == "") continue;
+                ents[key] = this.entities[key];
             }
             return ents;
         },
 
         color() {
-            const hash = this.o._type.split("").reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0);return a&a},0); 
+            const hash = this.type.split("").reduce(function(a,b){a=((a<<5)-a)+b.charCodeAt(0);return a&a},0); 
             const numhash = Math.abs(hash+12)%360;
             return "hsl("+(numhash%360)+", 50%, 55%)"; 
         },

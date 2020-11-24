@@ -10,16 +10,19 @@
             </span>
             <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}" class="left-border">
                 <span class="hierarchy" style="opacity: 0.8;"><i class="el-icon-time"/> <small v-if="ses">ses</small> {{ses}} <small>{{o_ses.AcquisitionDate}}</small></span>
-                <div v-for="o in o_ses.objects" :key="o.idx" class="clickable hierarchy-item" :class="{'selected': so === o, 'section-top': isSectionTop(o)}" @click="select(o, o_ses)">
-                    <!--<el-tag type="info" size="mini"><small>{{o.series_id}}</small></el-tag>-->
-                    <el-tag type="info" size="mini">sn {{o.SeriesNumber}}</el-tag>
-                    &nbsp;
-                    <datatype :o="o"/>
-                    <el-badge v-if="o.validationErrors.length > 0" type="danger" 
-                        :value="o.validationErrors.length" 
-                        style="margin-left: 5px;"/>
-                    <el-badge v-if="o._type != 'exclude' && o.analysisResults && o.analysisResults.errors && o.analysisResults.errors.length > 0" type="warning"
-			:value="o.analysisResults.errors.length" style="margin-left: 5px"/>
+                <div v-for="(section, sectionId) in groupSections(o_ses)" :key="sectionId" style="border-top: 1px dotted #bbb; margin-top: 3px; padding-top: 3px; position: relative;">
+                    <span style="position: absolute; right: 10px; top: -7px; background-color: white; font-size: 70%; color: #999; padding: 0px 5px;">section {{sectionId}}</span>
+                    <div v-for="o in section" :key="o.idx" class="clickable hierarchy-item" :class="{'selected': so === o}" @click="select(o, o_ses)">
+                        <!--<el-tag type="info" size="mini"><small>{{o.series_id}}</small></el-tag>-->
+                        <el-tag type="info" size="mini">sn {{o.seriesNumber}}</el-tag>
+                        &nbsp;
+                        <datatype :type="o._type" :series_id="o.series_id" :entities="o.entities"/>
+                        <el-badge v-if="o.validationErrors.length > 0" type="danger" 
+                            :value="o.validationErrors.length" 
+                            style="margin-left: 5px;"/>
+                        <el-badge v-if="o._type != 'exclude' && o.analysisResults && o.analysisResults.errors && o.analysisResults.errors.length > 0" type="warning"
+                :value="o.analysisResults.errors.length" style="margin-left: 5px"/>
+                    </div>
                 </div>
             </div>
         </div>
@@ -51,7 +54,7 @@
                 </el-form-item>
                 -->
                 <div :class="{'exclude': so._type == 'exclude'}">
-                    <el-form-item label="Series">
+                    <el-form-item label="Series Desc.">
                         <el-tag type="info" size="mini">sn {{so.SeriesNumber}}</el-tag>
                         {{$root.findSeries(so).SeriesDescription}}
                         <!--<el-tag type="info" size="mini"><small>series_id {{so.series_id}}</small></el-tag>-->
@@ -111,8 +114,8 @@
 
                 </div>
                 <div style="margin-top: 5px; padding: 5px; background-color: #f0f0f0;">
-                    <el-form-item label="Volume Count">
-                        {{so.analysisResults.VolumeCount}}
+                    <el-form-item label="Volumes">
+                        {{so.analysisResults.NumVolumes}}
                     </el-form-item>
                     <el-form-item label="File Size">
                         {{so.analysisResults.filesize|prettyBytes}}
@@ -172,12 +175,24 @@ export default {
     },
     
     methods: {
+        groupSections(sess) {
+            let sections = {};
+            sess.objects.forEach(o=>{
+                let sectionId = o.analysisResults.section_ID;
+                if(!sections[sectionId]) sections[sectionId] = [];
+                sections[sectionId].push(o);
+            });
+            return sections;
+        },
+
+        /*
         isSectionTop(o) {
             if(o.idx == 0) return false;
             let prev = this.$root.objects[o.idx-1];
             if(prev.analysisResults.section_ID != o.analysisResults.section_ID) return true;
             return false;
         },
+        */
 
         select(o, sess) {
             this.sess = sess;
@@ -272,7 +287,6 @@ export default {
                 }
                 if(same) {
                     o.validationErrors.push("This object looks exactly like another object with sn:"+same.SeriesNumber);
-                    //console.dir(same);
                     break;
                 }
             }
@@ -335,17 +349,12 @@ export default {
 .clickable {
     transition: background-color 0.3s;
 }
-.selected {
-    background-color: #d9ecff;
-}
-.section-top {
-    margin-top: 5px;
-    border-top: 1px solid #eee;
-    padding-top: 5px;
-}
 .clickable:hover {
     background-color: #ddd;
     cursor: pointer;
+}
+.selected {
+    background-color: #d9ecff;
 }
 .left-border {
     margin-left: 8.5px; 
