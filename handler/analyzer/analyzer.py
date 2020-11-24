@@ -12,6 +12,7 @@ import nibabel as nib
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+import scipy.interpolate as interp
 from operator import itemgetter
 from math import floor
 
@@ -430,11 +431,17 @@ def identify_series_info(data_list_unique_series):
             
         #DWI
         elif any('.bvec' in x for x in data_list_unique_series[i]['paths']):
-            if not any (x in SD for x in ['dti','dwi','dmri']):
-                data_list_unique_series[i]['include'] = False
-                data_list_unique_series[i]['error'] = 'Although this acquisition contains bval/bvec files, this is not in fact a dwi/dwi or fmap/epi acquistion meant for dwi. Please modify if incorrect'
-                data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
-                data_list_unique_series[i]['br_type'] = 'exclude'
+            
+            if any(x in SD for x in ['flair','t2spacedafl']):
+                data_list_unique_series[i]['DataType'] = 'anat'
+                data_list_unique_series[i]['ModalityLabel'] = 'FLAIR'
+                data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/FLAIR because "flair" or "t2spacedafl" is in the SeriesDescription. Please modify if incorrect'
+
+            elif 't2w' in SD:
+                data_list_unique_series[i]['DataType'] = 'anat'
+                data_list_unique_series[i]['ModalityLabel'] = 'T2w'
+                data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T2w because "t2w" is in the SeriesDescription. Please modify if incorrect'
+            
             else:    
                 #Some "dwi" acquisitions are actually fmap/epi; check for this
                 bval = np.loadtxt([x for x in data_list_unique_series[i]['paths'] if 'bval' in x][0])
@@ -635,7 +642,8 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                 slice_z = object_img_array[:, :, floor(object_img_array.shape[2]/2)]
                 fig, axes = plt.subplots(1,3)
                 for i, slice in enumerate([slice_x, slice_y, slice_z]):
-                    axes[i].imshow(slice.T, cmap="gray", origin="lower")
+                    
+                    axes[i].imshow(slice.T, cmap="gray", origin="lower", aspect='auto')
                     axes[i].axis('off')
                 plt.savefig('{}.png'.format(sub_protocol[p]['nifti_path'][:-7]), bbox_inches='tight')
             
@@ -675,7 +683,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                 if p+1 == len(sub_protocol):
                     sub_protocol[p]['include'] = True 
                     sub_protocol[p]['error'] = None
-                elif sub_protocol[p+1]['br_type'] == sub_protocol[p]['br_type'] and 'NORM' not in sub_protocol[p+1]['ImageType']:
+                elif sub_protocol[p]['br_type'] == data_list_unique_series[index_next]['br_type'] and 'NORM' not in data_list_unique_series[index_next]['ImageType']:
                     sub_protocol[p]['include'] = True 
                     sub_protocol[p]['error'] = None
                 elif sub_protocol[p]['br_type'] != data_list_unique_series[index_next]['br_type']:
