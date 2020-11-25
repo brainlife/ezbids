@@ -32,12 +32,12 @@
         <br>
     </div>
 
-    <div v-if="!so" style="margin-left: 350px; padding: 20px;">
+    <div v-if="!so" style="margin-left: 350px; padding: 20px; background-color: #eee;">
         <p>Please make sure all subject/session/series mappings are correctly applied to your data.</p>
         <p>By default, entities specified in the <b>Series</b> page will be used as defaults for all objects. On this page you can override those entities.</p>
-        <br>
-        <br>
-        <i class="el-icon-back"/> <small>Please select an object to view/edit in the BIDS Structure list</small>
+        <el-alert type="secondary" :closable="false">
+            <i class="el-icon-back"/> Please select an object to view/edit in the BIDS Structure list
+        </el-alert>
     </div>
     <div class="object" ref="object-detail">
         <div v-if="so">
