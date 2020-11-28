@@ -12,7 +12,6 @@ import nibabel as nib
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
-import scipy.interpolate as interp
 from operator import itemgetter
 from math import floor
 
@@ -402,7 +401,12 @@ def identify_series_info(data_list_unique_series):
             
             #Magnitude/Phase[diff] field maps
             if 'EchoNumber' in data_list_unique_series[i]['sidecar']:
-                if data_list_unique_series[i]['EchoNumber'] == 1 and '_e1_ph' not in data_list_unique_series[i]['json_path']:
+                if any(x in data_list_unique_series[i]['json_path'] for x in ['_real.','_imaginary.']):
+                    data_list_unique_series[i]['include'] = False
+                    data_list_unique_series[i]['error'] = 'Acquisition appears to be a real or imaginary field map that needs to be manually adjusted to magnitude and phase (ezBIDS currently does not have this functionality). This acqusition will not be converted'
+                    data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
+                    data_list_unique_series[i]['br_type'] = 'exclude'
+                elif data_list_unique_series[i]['EchoNumber'] == 1 and '_e1_ph' not in data_list_unique_series[i]['json_path']:
                     data_list_unique_series[i]['ModalityLabel'] = 'magnitude1'
                     data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/magnitude1 because "fmap" or "fieldmap" is in SeriesDescription, EchoNumber == 1 in metadata, and the substring "_e1_ph" is not in the filename. Please modify if incorrect'
                 elif data_list_unique_series[i]['EchoNumber'] == 1 and '_e1_ph' in data_list_unique_series[i]['json_path']:
@@ -441,6 +445,12 @@ def identify_series_info(data_list_unique_series):
                 data_list_unique_series[i]['DataType'] = 'anat'
                 data_list_unique_series[i]['ModalityLabel'] = 'T2w'
                 data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T2w because "t2w" is in the SeriesDescription. Please modify if incorrect'
+            
+            elif not any(x in SD for x in ['fmap','fieldmap']):
+                data_list_unique_series[i]['include'] = False
+                data_list_unique_series[i]['error'] = 'Acquisition has bval and bvec files but does not appear to be dwi/dwi or fmap/epi that work on dwi/dwi acquistions. Please modify if incorrect, otherwise will not convert to BIDS'
+                data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
+                data_list_unique_series[i]['br_type'] = 'exclude'
             
             else:    
                 #Some "dwi" acquisitions are actually fmap/epi; check for this
@@ -622,18 +632,18 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
         protocol_index += 1
         sub_protocol[p]['headers'] = str(nib.load(sub_protocol[p]['nifti_path']).header).splitlines()[1:]
                 
-        #Weird issue where data array is RGB instead on intger
-        object_img_array = nib.load(sub_protocol[p]['nifti_path']).dataobj
-        if object_img_array.dtype not in ['<i2', '<u2']:
+        image = nib.load(sub_protocol[p]['nifti_path'])
+        object_img_array = image.dataobj
+        if object_img_array.dtype not in ['<i2', '<u2']: #Weird issue where data array is RGB instead on intger
             sub_protocol[p]['include'] = False
             sub_protocol[p]['error'] = 'The data array is for this acquisition is improper, likely suggesting some issue with the corresponding DICOMS'
             sub_protocol[p]['message'] = sub_protocol[p]['error']
             sub_protocol[p]['br_type'] = 'exclude'
-        else:
+        else:            
             if sub_protocol[p]['NumVolumes'] > 1:
-                object_img_array = nib.load(sub_protocol[p]['nifti_path']).dataobj[..., 1]
+                object_img_array = image.dataobj[..., 1]
             else:
-                object_img_array =nib.load(sub_protocol[p]['nifti_path']).dataobj[:]
+                object_img_array = image.dataobj[:]
                     
             if not os.path.isfile('{}.png'.format(sub_protocol[p]['nifti_path'][:-7])):            
                 
@@ -642,7 +652,6 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                 slice_z = object_img_array[:, :, floor(object_img_array.shape[2]/2)]
                 fig, axes = plt.subplots(1,3)
                 for i, slice in enumerate([slice_x, slice_y, slice_z]):
-                    
                     axes[i].imshow(slice.T, cmap="gray", origin="lower", aspect='auto')
                     axes[i].axis('off')
                 plt.savefig('{}.png'.format(sub_protocol[p]['nifti_path'][:-7]), bbox_inches='tight')
@@ -678,7 +687,10 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
         if sub_protocol[p]['br_type'] in ['anat/T1w','anat/T2w'] and sub_protocol[p]['include'] == True:
             #non-normalized T1w or T2w images that have poor CNR, so best to not have in BIDS if there's an actual good T1w or T2w available
             if 'NORM' not in sub_protocol[p]['ImageType']:
-                index_next = series_seriesID_list.index(sub_protocol[p+1]['series_id'])
+                try:
+                    index_next = series_seriesID_list.index(sub_protocol[p+1]['series_id'])
+                except:
+                    index_next = None
                 
                 if p+1 == len(sub_protocol):
                     sub_protocol[p]['include'] = True 
@@ -847,6 +859,8 @@ def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list
     fmap_magphase_runcheck = []
     fmap_se_runcheck = []
     fmap_se_dwi_runcheck = []
+    
+    print(br_types)
     
 
     for j,k in enumerate(section_indices):
