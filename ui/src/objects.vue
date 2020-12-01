@@ -14,14 +14,15 @@
                     <div style="position: absolute; right: 10px; top: -7px; background-color: white; font-size: 70%; color: #999; padding: 0 5px;">section {{sectionId}}</div>
                     <div v-for="o in section" :key="o.idx" class="clickable hierarchy-item" :class="{'selected': so === o}" @click="select(o, o_ses)">
                         <!--<el-tag type="info" size="mini"><small>{{o.series_id}}</small></el-tag>-->
-                        <el-tag type="info" size="mini">sn {{o.seriesNumber}}</el-tag>
+                        <el-tag type="info" size="mini">sn {{o.SeriesNumber}}</el-tag>
                         &nbsp;
-                        <datatype :type="o._type" :series_id="o.series_id" :entities="o.entities"/>
+                        <datatype :type="o._type" :series_id="o.series_id" :entities="o.entities"/> 
+                        <small v-if="o._type == 'exclude'">&nbsp;({{o._SeriesDescription}})</small>
                         <el-badge v-if="o.validationErrors.length > 0" type="danger" 
                             :value="o.validationErrors.length" 
                             style="margin-left: 5px;"/>
                         <el-badge v-if="o._type != 'exclude' && o.analysisResults && o.analysisResults.errors && o.analysisResults.errors.length > 0" type="warning"
-                :value="o.analysisResults.errors.length" style="margin-left: 5px"/>
+                            :value="o.analysisResults.errors.length" style="margin-left: 5px"/>
                     </div>
                 </div>
             </div>
@@ -56,7 +57,7 @@
                 <div :class="{'exclude': so._type == 'exclude'}">
                     <el-form-item label="Series Desc.">
                         <el-tag type="info" size="mini">sn {{so.SeriesNumber}}</el-tag>
-                        {{$root.findSeries(so).SeriesDescription}}
+                        {{so._SeriesDescription}}
                         <!--<el-tag type="info" size="mini"><small>series_id {{so.series_id}}</small></el-tag>-->
                     </el-form-item>
                     <el-form-item label="Datatype">
