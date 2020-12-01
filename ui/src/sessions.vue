@@ -89,7 +89,7 @@ export default {
                 break;
             case "num":
                 this.$root.sessions.forEach(session=>{
-                    session.ses = num.toString();
+                    session.ses = num.toString().padStart(2, '0');
                     num++;
                 });
                 break;
