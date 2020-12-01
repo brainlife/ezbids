@@ -446,7 +446,7 @@ def identify_series_info(data_list_unique_series):
                 data_list_unique_series[i]['ModalityLabel'] = 'T2w'
                 data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T2w because "t2w" is in the SeriesDescription. Please modify if incorrect'
             
-            elif not any(x in SD for x in ['fmap','fieldmap']):
+            elif not any(x in SD for x in ['dwi','dti','dmri','trace','fa','adc']):
                 data_list_unique_series[i]['include'] = False
                 data_list_unique_series[i]['error'] = 'Acquisition has bval and bvec files but does not appear to be dwi/dwi or fmap/epi that work on dwi/dwi acquistions. Please modify if incorrect, otherwise will not convert to BIDS'
                 data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
@@ -460,7 +460,7 @@ def identify_series_info(data_list_unique_series):
                     data_list_unique_series[i]['ModalityLabel'] = 'epi'
                     data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/epi meant for dwi because there are bval & bvec files with the same SeriesNumber, but the max b-values are <= 50 and the number of b-values is less than 10. Please modify if incorrect'
                     series_entities['dir'] = data_list_unique_series[i]['dir']
-                elif any(x in SD for x in ['trace','fa','adc']) and not any(x in SD for x in ['dti','dwi']):
+                elif any(x in SD for x in ['trace','fa','adc']) and not any(x in SD for x in ['dti','dwi','dmri']):
                     data_list_unique_series[i]['include'] = False
                     data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
                     data_list_unique_series[i]['message'] = 'Acquisition is believed to be TRACE, FA, or ADC because there are bval & bvec files with the same SeriesNumber, and "trace", "fa", or "adc" are in the SeriesDescription. Please modify if incorrect'
@@ -1109,7 +1109,8 @@ def build_objects_list(sub_protocol, objects_entities_list):
         
         #Provide log output for acquisitions not deemed appropriate for BIDS conversion
         if sub_protocol[i]['include'] == False:
-            print('* {} not recommended for BIDS conversion: {}'.format(sub_protocol[i]['SeriesDescription'], sub_protocol[i]['error']))
+            print('')
+            print('* {} (sn-{}) not recommended for BIDS conversion: {}'.format(sub_protocol[i]['SeriesDescription'], sub_protocol[i]['SeriesNumber'], sub_protocol[i]['error']))
         
         #Remove identifying information from sidecars
         remove_fields = ['SeriesInstanceUID', 'StudyInstanceUID', 
