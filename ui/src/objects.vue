@@ -10,8 +10,8 @@
             </span>
             <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}" class="left-border">
                 <span class="hierarchy" style="opacity: 0.8;"><i class="el-icon-time"/> <small v-if="ses">ses</small> {{ses}} <small>{{o_ses.AcquisitionDate}}</small></span>
-                <div v-for="(section, sectionId) in groupSections(o_ses)" :key="sectionId" style="border-top: 1px dotted #bbb; margin-top: 3px; padding-top: 3px; position: relative;">
-                    <span style="position: absolute; right: 10px; top: -7px; background-color: white; font-size: 70%; color: #999; padding: 0px 5px;">section {{sectionId}}</span>
+                <div v-for="(section, sectionId) in groupSections(o_ses)" :key="sectionId" style="border-top: 1px dotted #bbb; margin-top: 10px; padding-top: 5px; position: relative;">
+                    <div style="position: absolute; right: 10px; top: -7px; background-color: white; font-size: 70%; color: #999; padding: 0 5px;">section {{sectionId}}</div>
                     <div v-for="o in section" :key="o.idx" class="clickable hierarchy-item" :class="{'selected': so === o}" @click="select(o, o_ses)">
                         <!--<el-tag type="info" size="mini"><small>{{o.series_id}}</small></el-tag>-->
                         <el-tag type="info" size="mini">sn {{o.seriesNumber}}</el-tag>

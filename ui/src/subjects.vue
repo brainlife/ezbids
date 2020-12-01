@@ -67,7 +67,7 @@ export default {
             switch(command) {
             case "num":
                 this.$root.subjects.forEach(subject=>{
-                    subject.sub = sub.toString();
+                    subject.sub = sub.toString().padStart(2, '0');
                     sub++;
                 });
                 break;

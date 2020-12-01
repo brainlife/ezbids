@@ -1,4 +1,5 @@
-FROM ubuntu:20.04
+#FROM ubuntu:20.04
+FROM neurodebian:nd20.04-non-free
 
 ENV DEBIAN_FRONTEND noninteractive
 
@@ -16,3 +17,20 @@ RUN cd /tmp && \
     make && make install
 
 RUN pip3 install pandas numpy nilearn matplotlib
+
+#install fsl
+#RUN apt install -y fsl python-numpy
+#ENV FSLDIR=/usr/share/fsl/5.0
+#ENV PATH=$PATH:$FSLDIR/bin
+#ENV LD_LIBRARY_PATH=/usr/lib/fsl/5.0:/usr/share/fsl/5.0/bin
+#ENV FSLBROWSER=/etc/alternatives/x-www-browser
+#ENV FSLCLUSTER_MAILOPTS=n
+#ENV FSLLOCKDIR=
+#ENV FSLMACHINELIST=
+#ENV FSLMULTIFILEQUIT=TRUE
+#ENV FSLOUTPUTTYPE=NIFTI_GZ
+#ENV FSLREMOTECALL=
+#ENV FSLTCLSH=/usr/bin/tclsh
+#ENV FSLWISH=/usr/bin/wish
+#ENV POSSUMDIR=/usr/share/fsl/5.0
+
