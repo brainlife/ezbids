@@ -9,12 +9,12 @@ those assumptions before generating the final BIDS structure.
 
 Unlike other automated DICOM to BIDS converters, ezBIDS eliminates the need for the command line and setup.
 
-The output can be downloaded back to the user's computer, or uploaded to open repositories such as
+The BIDS output can be downloaded back to the user's computer, or uploaded to open repositories such as
 [OpenNeuro](https://openneuro.org/), or [brainlife.io](https://brainlife.io/)
 
 ezBIDS accepts DICOMS from the three major MRI vendors: **Siemens**, **GE**, and **Phillips**
 
-Due to the plethora of scanner acquisition types, not all are currently supported by ezbids. Priority has therefore been given to acquisition types that are the most common in the neuroimaging community. These include:
+Due to the plethora of scanner acquisition types, not all are currently supported by ezBIDS. Priority has therefore been given to acquisition types that are the most common in the neuroimaging community. These include:
 * anat/T1w (including multiecho)
 * anat/T2w
 * anat/FLAIR
@@ -30,7 +30,8 @@ Due to the plethora of scanner acquisition types, not all are currently supporte
 * dwi/dwi
 
 ### Usage
-To access the ezBIDS web service, please visit https://brainlife.io/ezbids
+To access the ezBIDS web service, please visit https://brainlife.io/ezbids 
+Chrome or Firefox broswer preferred for accessing ezBIDS.
 
 
 ### Authors
