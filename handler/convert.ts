@@ -8,9 +8,12 @@ const root = process.argv[2];
 if(!root) throw "please specify root directory";
 
 const json = fs.readFileSync(root+"/finalized.json");
+
 const info = JSON.parse(json);
 
 mkdirp.sync(root+"/bids");
+//fs.symlinkSync(root+"/finalized.json", root+"/bids/finalized.json"); //doesn't work in .tar
+fs.writeFileSync(root+"/bids/finalized.json", JSON.stringify(info, null, 4)); //copy the finalized.json
 fs.writeFileSync(root+"/bids/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
 fs.writeFileSync(root+"/bids/.bidsignore", `
 **/excluded
@@ -27,7 +30,6 @@ This dataset was converted from DICOM to BIDS using ezbids (https://brainlife.io
 fs.writeFileSync(root+"/bids/README", info.readme);
 
 fs.writeFileSync(root+"/bids/participants.json", JSON.stringify(info.participantsColumn, null, 4));
-fs.symlinkSync(root+"/finalized.json", root+"/bids/finalized.json");
 
 //convert participants.json to tsv
 console.log("outputting participants.json/tsv");
