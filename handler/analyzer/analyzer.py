@@ -1137,7 +1137,29 @@ def build_objects_list(sub_protocol, objects_entities_list):
             sub_protocol[i]['br_type'] = 'exclude'
                     
         #Objects-level info for ezBIDS.json
-        objects_info = {"include": sub_protocol[i]['include'],
+        if sub_protocol[i]['br_type'] == 'exclude':
+            objects_info = {"include": sub_protocol[i]['include'],
+                    "type": sub_protocol[i]['br_type'],
+                    "series_id": sub_protocol[i]['series_id'],
+                    "PatientName": sub_protocol[i]['PatientName'],
+                    "PatientID": sub_protocol[i]['PatientID'],
+                    "PatientBirthDate": sub_protocol[i]['PatientBirthDate'],
+                    "AcquisitionDate": sub_protocol[i]['AcquisitionDate'],
+                    'SeriesNumber': sub_protocol[i]['sidecar']['SeriesNumber'],
+                    "pngPath": '{}.png'.format(sub_protocol[i]['nifti_path'][:-7]),
+                    "IntendedFor": sub_protocol[i]['IntendedFor'],
+                    "entities": objects_entities_list[i],
+                    "items": items,
+                    "analysisResults": {
+                        "NumVolumes": sub_protocol[i]['NumVolumes'],
+                        "errors": sub_protocol[i]['error'],
+                        "filesize": sub_protocol[i]['filesize'],
+                        "section_ID": sub_protocol[i]['section_ID']
+                    },
+                    "paths": sub_protocol[i]['paths']
+                  }
+        else:
+            objects_info = {"include": sub_protocol[i]['include'],
                     "series_id": sub_protocol[i]['series_id'],
                     "PatientName": sub_protocol[i]['PatientName'],
                     "PatientID": sub_protocol[i]['PatientID'],
