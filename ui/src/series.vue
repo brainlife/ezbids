@@ -7,7 +7,7 @@
             &nbsp;
             <el-tag type="plain" size="mini" title="Number of objects">{{s.object_indices.length}} obj</el-tag>
             &nbsp;
-            <datatype :type="s.type" :series_id="s.series_id" :entities="s.entities"/>
+            <datatype :type="s.type" :series_id="s.series_id" :entities="s.entities" :class="{excluded: s.type == 'exclude'}"/>
             &nbsp;
             <small style="opacity: 0.7;">({{s.SeriesDescription}})</small>
             <el-badge v-if="s.validationErrors.length > 0" type="danger" :value="s.validationErrors.length" style="margin-left: 5px;"/>
@@ -29,10 +29,6 @@
                     <el-tag type="info" size="mini"><small>EchoTime: {{ss.EchoTime}}</small></el-tag>&nbsp;
                     <el-tag type="info" size="mini"><small>ImageType: {{ss.ImageType}}</small></el-tag>&nbsp;
                     <el-tag type="info" size="mini"><small>MultibandAccelerationFactor: {{ss.MultibandAccelerationFactor}}</small></el-tag>&nbsp;
-                    <!--
-                    <br>
-                    <small>RepetitionTime: {{ss.repetitionTimes}}</small>
-                    -->
                 </p>
             </div>
             <h5>BIDS Datatype / Entities</h5>
@@ -67,7 +63,6 @@
                 <small>The following subjects contains objects for this series.</small>
             </p>
             <div v-for="object_idx in ss.object_indices" :key="object_idx" class="object">
-                <!--<h5 style="margin-bottom: 0"><small>sub-</small><b>{{$root.objects[object_idx]._entities['sub']}}</b></h5>-->
                 <i class="el-icon-caret-right"/>&nbsp;
                 <div v-for="(v, k) in $root.objects[object_idx]._entities" :key="object_idx+'.'+k" style="display: inline-block; font-size: 85%;">
                     <span v-if="v" style="margin-right: 10px;">
@@ -79,7 +74,6 @@
                     <el-tag size="mini" type="info">volumes: {{$root.objects[object_idx].analysisResults.NumVolumes}}</el-tag>&nbsp;
                 </div>
                 <div style="margin-left: 50px">
-                    <!--<el-tag>RepetitionTime: {{$root.objects[object_idx].sidecar}}</el-tag>-->
                     <a :href="$root.getURL($root.objects[object_idx].pngPath)" v-if="$root.objects[object_idx].pngPath">
                         <img width="100%" :src="$root.getURL($root.objects[object_idx].pngPath)"/>
                     </a>
@@ -224,7 +218,10 @@ export default {
     overflow: auto;
     box-shadow: 2px 2px 4px #0005;
 }
+.excluded {
+    opacity: 0.4;
+}
 h5 {
-padding: 0 20px;
+    padding: 0 20px;
 }
 </style>

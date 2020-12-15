@@ -320,6 +320,9 @@ invert:
             o._SeriesDescription = series.SeriesDescription;
             o._type = series.type;
             if(o.type) o._type = o.type; //object level override
+            
+            o._exclude = false;
+            if(o._type == 'exclude') o._exclude = true;
 
             //initialize with the proper object key ordering
             const e = this.getEntities(o._type);
@@ -332,15 +335,19 @@ invert:
                 if(o.entities[k]) e[k] = o.entities[k];
             }
 
+            const subject = this.$root.findSubject(o);
+            if(subject.exclude) o._exclude = true;
+            //
             //if sub is not set, use subject mapping as default
             if(!o.entities.sub) {
-                const subject = this.$root.findSubject(o);
                 e.sub = subject.sub;
             } 
 
+            const session = this.$root.findSession(o);
+            if(session.exclude) o._exclude = true;
+            
             //if ses is not set, use session mapping as default
             if(!o.entities.ses) {
-                const session = this.$root.findSession(o);
                 e.ses = session.ses;
             }
 
@@ -457,8 +464,6 @@ invert:
         },
 
         finalize() {
-            //clearTimeout(this.reload_t);
-
             fetch(this.apihost+'/session/'+this.session._id+'/finalize', {
                 method: "POST", 
                 headers: {'Content-Type': 'application/json; charset=UTF-8'},

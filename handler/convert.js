@@ -13,6 +13,7 @@ fs.writeFileSync(root + "/bids/dataset_description.json", JSON.stringify(info.da
 fs.writeFileSync(root + "/bids/.bidsignore", `
 **/excluded
 **/*_MP2RAGE.*
+finalized.json
 `);
 info.readme += `
 ## ezbids
@@ -22,6 +23,7 @@ This dataset was converted from DICOM to BIDS using ezbids (https://brainlife.io
 `;
 fs.writeFileSync(root + "/bids/README", info.readme);
 fs.writeFileSync(root + "/bids/participants.json", JSON.stringify(info.participantsColumn, null, 4));
+fs.symlinkSync(root + "/finalized.json", root + "/bids/finalized.json");
 //convert participants.json to tsv
 console.log("outputting participants.json/tsv");
 let keys = ["participant_id"];
@@ -50,11 +52,8 @@ fs.closeSync(tsvf);
 //handle each objects
 console.log("outputting objects");
 async.forEach(info.objects, (o, next_o) => {
-    //if(o._type == "exclude") return next_o();
-    if (o._type == "exclude") {
+    if (o._exclude) {
         o._type = "excluded/obj" + o.idx;
-        //console.log("excluded object");
-        //console.dir(o);
         o._entities.desc = o._SeriesDescription; //inject seriesdesc to filename
     }
     let typeTokens = o._type.split("/");

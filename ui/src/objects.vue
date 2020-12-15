@@ -231,7 +231,6 @@ export default {
 
             //I need to validate the entire list.. so I can detect collision
             this.$root.objects.forEach(this.validate);
-
             this.$root.organizeObjects();
         },
 
@@ -270,7 +269,8 @@ export default {
 
             //if not included, don't need to validate
             //if(!o.include) return;
-            if(o._type == "exclude") return;
+            //if(o._type == "exclude") return;
+            if(o._exclude) return;
 
             //make sure all required entities are set
             let series = this.$root.findSeries(o);
@@ -319,6 +319,9 @@ export default {
         },
 
         next() {
+            this.$root.objects.forEach(this.$root.mapObject);
+            this.$root.objects.forEach(this.validate);
+
             let valid = true;
             this.$root.objects.forEach(s=>{
                 if(s.validationErrors.length > 0) valid = false;
