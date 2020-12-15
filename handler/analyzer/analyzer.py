@@ -238,7 +238,7 @@ def select_unique_data(dir_list):
         sub_indices = [x for x,y in enumerate(subj_ses) if y[0] == i]
         if len(sub_indices) > 1:
             for j, k in enumerate(sub_indices):
-                subj_ses[k][-1] = '0' + str(j+1)
+                subj_ses[k][-1] = str(j+1)
     
     subj_ses = sorted([list(x) for x in set(tuple(x) for x in subj_ses)], key = lambda i: i[1])
     
@@ -490,10 +490,10 @@ def identify_series_info(data_list_unique_series):
             else:
                 data_list_unique_series[i]['ModalityLabel'] = 'bold'
                 if data_list_unique_series[i]['EchoNumber']:
-                    series_entities['echo'] = '0' +  str(data_list_unique_series[i]['EchoNumber'])
+                    series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
                     data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
             if data_list_unique_series[i]['EchoNumber']:
-                series_entities['echo'] = '0' +  str(data_list_unique_series[i]['EchoNumber'])
+                series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
                 data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
 
         #Functional single band reference (sbref)
@@ -503,7 +503,7 @@ def identify_series_info(data_list_unique_series):
             if 'rest' in SD or 'rsfmri' in SD:
                 series_entities['task'] = 'rest'
             if data_list_unique_series[i]['EchoNumber']:
-                series_entities['echo'] = '0' + str(data_list_unique_series[i]['EchoNumber'])
+                series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/sbref because "sbref" is in the SeriesDescription'
         
         #MP2RAGE (technically not officially part of BIDS, but people still use it)
@@ -514,22 +514,22 @@ def identify_series_info(data_list_unique_series):
                 series_entities['acq'] = 'UNI'
             else:
                 if 'inv1' in SD:
-                    series_entities['inv'] = '01'
+                    series_entities['inv'] = 1
                 elif 'inv2' in SD:
-                    series_entities['inv'] = '02'
+                    series_entities['inv'] = 2
                 else:
-                    series_entitites['inv'] = '0' + str(mp2rage_inv)
+                    series_entitites['inv'] = mp2rage_inv
                     mp2rage_inv += 1
             
             if 'EchoNumber' in data_list_unique_series[i]['sidecar']:
-                series_entities['echo'] = '0' + str(data_list_unique_series[i]['sidecar']['EchoNumber'])
+                series_entities['echo'] = data_list_unique_series[i]['sidecar']['EchoNumber']
 
         #T1w
         elif any(x in SD for x in ['t1w','tfl3d','mprage','spgr']):
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'T1w'
             if data_list_unique_series[i]['EchoNumber']:
-                series_entities['echo'] = '0' + str(data_list_unique_series[i]['EchoNumber'])
+                series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T1w because "t1w","tfl3d","tfl","mprage", or "spgr" is in the SeriesDescription. Please modify if incorrect'
         
         #FLAIR
@@ -719,14 +719,14 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                     if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
                         series_func_list.append([sub_protocol[p]['series_id'], 1])
                         bold_run = 1
-                        sub_protocol[p]['bold_run'] = '01'
+                        sub_protocol[p]['bold_run'] = '1'
                     else:
                         func_index = [x for x, y in enumerate(series_func_list) if y[0] == sub_protocol[p]['series_id']][0]
                         series_func_list[func_index][1] += 1
                         bold_run = series_func_list[func_index][1]
                         
                     if bold_run < 10:
-                        sub_protocol[p]['bold_run'] = '0' + str(bold_run)
+                        sub_protocol[p]['bold_run'] = str(bold_run)
                     else:
                         sub_protocol[p]['bold_run'] = str(bold_run)
                         
@@ -740,14 +740,14 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                 if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
                     series_func_list.append([sub_protocol[p]['series_id'], 1])
                     func_phase_run = 1
-                    sub_protocol[p]['func_phase_run'] = '01'
+                    sub_protocol[p]['func_phase_run'] = '1'
                 else:
                     func_index = [x for x, y in enumerate(series_func_list) if y[0] == sub_protocol[p]['series_id']][0]
                     series_func_list[func_index][1] += 1
                     func_phase_run = series_func_list[func_index][1]
                     
                 if func_phase_run < 10:
-                    sub_protocol[p]['func_phase_run'] = '0' + str(func_phase_run)
+                    sub_protocol[p]['func_phase_run'] = str(func_phase_run)
                 else:
                     sub_protocol[p]['func_phase_run'] = str(func_phase_run)
                     
@@ -778,14 +778,14 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                     if not len([x for x in series_func_list if x[0] == sub_protocol[p]['series_id']]):
                         series_func_list.append([sub_protocol[p]['series_id'], 1])
                         func_sbref_run = 1
-                        sub_protocol[p]['func_sbref_run'] = '01'
+                        sub_protocol[p]['func_sbref_run'] = '1'
                     else:
                         func_index = [x for x, y in enumerate(series_func_list) if y[0] == sub_protocol[p]['series_id']][0]
                         series_func_list[func_index][1] += 1
                         func_sbref_run = series_func_list[func_index][1]
                         
                     if func_sbref_run < 10:
-                        sub_protocol[p]['func_sbref_run'] = '0' + str(func_sbref_run)
+                        sub_protocol[p]['func_sbref_run'] = str(func_sbref_run)
                     else:
                         sub_protocol[p]['func_sbref_run'] = str(func_sbref_run)
                         
@@ -825,7 +825,7 @@ def identify_objects_info(sub_protocol, series_list, series_seriesID_list):
                     for xx,yy in enumerate(parameter_tuples):
                         if yy[-1] == u:
                             if run < 10:
-                                objects_entities_list[w[xx]]['run'] = '0' + str(run)
+                                objects_entities_list[w[xx]]['run'] = str(run)
                             else:
                                 objects_entities_list[w[xx]]['run'] = str(run)
                             run += 1 
@@ -858,10 +858,7 @@ def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list
     total_objects_indices = total_objects_indices
     fmap_magphase_runcheck = []
     fmap_se_runcheck = []
-    fmap_se_dwi_runcheck = []
-    
-    print(br_types)
-    
+    fmap_se_dwi_runcheck = []    
 
     for j,k in enumerate(section_indices):
         '''
@@ -1070,17 +1067,17 @@ def fmap_intended_for(sub_protocol, total_objects_indices, objects_entities_list
     if len(fmap_se_runcheck) > 1:
         for x,y in enumerate(fmap_se_runcheck):
             for z in y:
-                objects_entities_list[z]['run'] = '0' + str(x+1)                    
+                objects_entities_list[z]['run'] = str(x+1)                    
                     
     if len(fmap_magphase_runcheck) > 1:
         for x,y in enumerate(fmap_magphase_runcheck):
             for z in y:
-                objects_entities_list[z]['run'] = '0' + str(x+1)
+                objects_entities_list[z]['run'] = str(x+1)
                 
     if len(fmap_se_dwi_runcheck) > 1:
         for x,y in enumerate(fmap_se_dwi_runcheck):
             for z in y:
-                objects_entities_list[z]['run'] = '0' + str(x+1)
+                objects_entities_list[z]['run'] = str(x+1)
           
     return sub_protocol, objects_entities_list
 
@@ -1141,7 +1138,6 @@ def build_objects_list(sub_protocol, objects_entities_list):
                     
         #Objects-level info for ezBIDS.json
         objects_info = {"include": sub_protocol[i]['include'],
-                    "type": sub_protocol[i]['br_type'],
                     "series_id": sub_protocol[i]['series_id'],
                     "PatientName": sub_protocol[i]['PatientName'],
                     "PatientID": sub_protocol[i]['PatientID'],
