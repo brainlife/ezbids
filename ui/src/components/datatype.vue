@@ -1,5 +1,5 @@
 <template>
-<div class="datatype" :class="{exclude: type == 'exclude'}" style="display: inline-block;">
+<div class="datatype" style="display: inline-block;">
     <span :style="{'background-color': color}" class="bull">&nbsp;</span> {{type}}
     <el-tag v-for="(v,k) in sessionEntities" :key="k" size="mini" type="info"><small>{{k}}-</small><b>{{v}}</b></el-tag>
 </div>
@@ -52,8 +52,5 @@ font-size: 90%;
     height: 8px;
     display: inline-block;
     border-radius: 50%;
-}
-.exclude {
-    opacity: 0.2;
 }
 </style>

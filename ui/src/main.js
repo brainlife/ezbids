@@ -71,6 +71,8 @@ new Vue({
         //$root scope............................................
         //
         return {
+            config: Vue.config,
+
             apihost: (process.env.NODE_ENV == "development") ? "https://dev1.soichi.us/api/easybids" : "/api/ezbids",
 
             //data from dan's script
@@ -248,7 +250,6 @@ invert:
     You can use multiple lines like this.
   format: label
 `).invert;
-        //console.log(JSON.stringify(this.bids_entities, null, 4));
 
         this.currentPage = this.pages[0];
         this.pages.forEach((p, idx)=>{
@@ -355,10 +356,16 @@ invert:
                 let sub = o._entities.sub;
                 let ses = o._entities.ses;
 
-                if(!this.subs[sub]) this.subs[sub] = {sess: {}, objects: []}; 
+                if(!this.subs[sub]) this.subs[sub] = {
+                    sess: {}, 
+                    objects: []
+                }; 
                 this.subs[sub].objects.push(o);
 
-                if(!this.subs[sub].sess[ses]) this.subs[sub].sess[ses] = { AcquisitionDate: o.AcquisitionDate, /*runs: {},*/ objects: [] };
+                if(!this.subs[sub].sess[ses]) this.subs[sub].sess[ses] = { 
+                    AcquisitionDate: o.AcquisitionDate, 
+                    objects: [] 
+                };
                 this.subs[sub].sess[ses].objects.push(o);
             });
         },
@@ -379,11 +386,16 @@ invert:
 
                     //we shouldn't have to do this soon
                     if(series.png_objects_indices) Vue.set(series, 'object_indices', series.png_objects_indices);
+
                 });
 
-                //this should be deprecated soon
                 this.subjects.forEach(subject=>{
-                    if(!subject.phenotype) Vue.set(subject, 'phenotype', {});
+                    //if(!subject.phenotype) Vue.set(subject, 'phenotype', {});
+                    if(!subject.exclude) Vue.set(subject, 'exclude', false);
+                });
+
+                this.sessions.forEach(session=>{
+                    if(!session.exclude) Vue.set(session, 'exclude', false);
                 });
 
                 this.objects.forEach(object=>{

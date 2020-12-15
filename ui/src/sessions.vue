@@ -24,7 +24,7 @@
         <el-table-column label="Unique Subjects" width="200px">
             <template slot-scope="scope">
                 <i class="el-icon-right" style="float: right; font-size: 150%; font-weight: bold;"/>
-                <span v-for="sub in findUniqueSubjects(scope.row.AcquisitionDate)" :key="sub">{{sub}}&nbsp;</span>
+                <span v-for="sub in findUniqueSubjects(scope.row.AcquisitionDate)" :key="sub">&bull; {{sub}}&nbsp;</span>
             </template>
         </el-table-column>
         <el-table-column label="BIDS Session ID">
@@ -34,7 +34,14 @@
                 </el-input>
             </template>
         </el-table-column>
+        <el-table-column>
+            <template slot-scope="scope">
+                <el-checkbox v-model="scope.row.exclude" title="Exclude all objects for this session">Exclude</el-checkbox>
+            </template>
+        </el-table-column>
     </el-table>
+
+    <pre v-if="$root.config.debug">{{$root.sessions}}</pre>
 
     <br>
     <br>

@@ -19,6 +19,9 @@
             <objects/>
             <finalize/>
         </div>
+        <div class="main-content" v-else>
+            <p style="padding: 20px;">Initializing..</p>
+        </div>
     </el-container>
 </div>
 </template>
@@ -136,5 +139,9 @@ word-break: normal;
 .main-content {
     margin-left :200px;
     width: calc(100% - 200px);
+}
+.el-step .el-step__title {
+    font-size: 14px;
+
 }
 </style>

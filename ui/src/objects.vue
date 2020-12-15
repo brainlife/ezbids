@@ -3,16 +3,27 @@
     <div class="bids-structure">
         <h4 style="padding-top: 20px;">BIDS Structure</h4>
         <div v-for="(o_sub, sub) in $root.subs" :key="sub" style="font-size: 90%;">
-            <span v-if="sub != ''" class="hierarchy" style="opacity: 0.8;">
-                <i class="el-icon-user-solid"/> 
-                <small>sub</small> {{sub}}
-                <small>({{o_sub.objects.length}})</small>
+            <span v-if="sub != ''" class="hierarchy">
+                <span :class="{exclude: findSubject(sub).exclude}">
+                    <i class="el-icon-user-solid"/> 
+                    <small>sub</small> {{sub}} 
+                    <small>({{o_sub.objects.length}})</small>
+                </span>
+                &nbsp;
+                <el-checkbox :value="findSubject(sub).exclude" @change="findSubject(sub).exclude = $event">Exclude</el-checkbox>
             </span>
             <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}" class="left-border">
-                <span class="hierarchy" style="opacity: 0.8;"><i class="el-icon-time"/> <small v-if="ses">ses</small> {{ses}} <small>{{o_ses.AcquisitionDate}}</small></span>
+                <span class="hierarchy"><i class="el-icon-time"/> 
+                    <span :class="{exclude: (findSubject(sub).exclude || findSession(ses).exclude)}">
+                        <small v-if="ses">ses</small> {{ses}} 
+                        <small>{{o_ses.AcquisitionDate}}</small>
+                    </span>
+                    &nbsp;
+                    <el-checkbox :class="{exclude: findSubject(sub).exclude}" :value="findSession(ses).exclude" @change="findSession(ses).exclude = $event">Exclude</el-checkbox>
+                </span>
                 <div v-for="(section, sectionId) in groupSections(o_ses)" :key="sectionId" style="border-top: 1px dotted #bbb; margin-top: 10px; padding-top: 5px; position: relative;">
                     <div style="position: absolute; right: 10px; top: -7px; background-color: white; font-size: 70%; color: #999; padding: 0 5px;">section {{sectionId}}</div>
-                    <div v-for="o in section" :key="o.idx" class="clickable hierarchy-item" :class="{'selected': so === o}" @click="select(o, o_ses)">
+                    <div v-for="o in section" :key="o.idx" class="clickable hierarchy-item" :class="{selected: so === o, exclude: isExcluded(o)}" @click="select(o, o_ses)">
                         <!--<el-tag type="info" size="mini"><small>{{o.series_id}}</small></el-tag>-->
                         <el-tag type="info" size="mini">sn {{o.SeriesNumber}}</el-tag>
                         &nbsp;
@@ -36,7 +47,7 @@
     <div v-if="!so" style="margin-left: 350px; padding: 20px; background-color: #eee;">
         <p>Please make sure all subject/session/series mappings are correctly applied to your data.</p>
         <p>By default, entities specified in the <b>Series</b> page will be used as defaults for all objects. On this page you can override those entities.</p>
-        <el-alert type="secondary" :closable="false">
+        <el-alert type="info" :closable="false">
             <i class="el-icon-back"/> Please select an object to view/edit in the BIDS Structure list
         </el-alert>
     </div>
@@ -49,12 +60,7 @@
                 <el-alert show-icon :closable="false" type="warning" v-for="(error, idx) in so.analysisResults.errors" :key="idx" :title="error"/>
             </div>    
             <el-form label-width="150px">
-                <!--
-                <el-form-item label="Include">
-                    <el-checkbox v-model="so.include" title="Include this object in the BIDS output" @change="update(so)">Include this object in BIDS output</el-checkbox>
-                </el-form-item>
-                -->
-                <div :class="{'exclude': so._type == 'exclude'}">
+                <div :class="{'exclude': isExcluded(so)}">
                     <el-form-item label="Series Desc.">
                         <el-tag type="info" size="mini">sn {{so.SeriesNumber}}</el-tag>
                         {{so._SeriesDescription}}
@@ -62,7 +68,7 @@
                     </el-form-item>
                     <el-form-item label="Datatype">
                         <el-select v-model="so.type" clearable :placeholder="so._type" size="small" style="width: 100%" @change="update(so)">
-                            <el-option value="">(Use series level datatype)</el-option>
+                            <el-option value="">{{so._type}} (series default)</el-option>
                             <el-option value="exclude">(Exclude from BIDS conversion)</el-option>
                             <el-option-group v-for="type in $root.datatypes" :key="type.label" :label="type.label">
                                 <el-option v-for="subtype in type.options" :key="subtype.value" :value="subtype.value">
@@ -88,7 +94,7 @@
                         <el-form-item label="IntendedFor">
                             <el-select v-model="so.IntendedFor" multiple placeholder="Select Object" style="width: 100%" @change="update(so)">
 
-                                <el-option v-for="o in this.sess.objects.filter(o=>o._type != 'exclude')" :key="o.idx"
+                                <el-option v-for="o in this.sess.objects.filter(o=>!isExcluded(o))" :key="o.idx"
                                     :label="intendedForLabel(o)" :value="o.idx">
                                 </el-option>
                             </el-select>
@@ -157,7 +163,6 @@ export default {
         return {
             so: null, //selected object
             sses: [], //selected session
-            config: Vue.config,
         }
     },
 
@@ -176,6 +181,26 @@ export default {
     },
     
     methods: {
+        findSubject(sub) {
+            return this.$root.subjects.find(s=>s.sub == sub);
+        },
+        findSession(ses) {
+            return this.$root.sessions.find(s=>s.ses == ses);
+        },
+
+        isExcluded(o) {
+            if(o._type == 'exclude') return true;
+            /*
+            if(!o._entities) {
+                console.log("entities not set");
+                return false;
+            }
+            */
+            if(this.findSubject(o._entities.sub).exclude) return true;
+            if(this.findSession(o._entities.ses).exclude) return true;
+            return false;
+        },
+
         groupSections(sess) {
             let sections = {};
             sess.objects.forEach(o=>{
@@ -356,6 +381,9 @@ export default {
 }
 .selected {
     background-color: #d9ecff;
+}
+.excluded {
+    opacity: 0.2;
 }
 .left-border {
     margin-left: 8.5px; 

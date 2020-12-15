@@ -31,7 +31,14 @@
                 <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in scope.row.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
             </template>
         </el-table-column>
+        <el-table-column>
+            <template slot-scope="scope">
+                <el-checkbox v-model="scope.row.exclude" title="Exclude all objects from BIDS output for this subject">Exclude</el-checkbox>
+            </template>
+        </el-table-column>
     </el-table>
+
+    <pre v-if="config.debug">{{$root.subjects}}</pre>
 
     <br>
     <br>
@@ -50,6 +57,7 @@ export default {
     data() {
         return {
             //subjects: [] 
+            config: Vue.config,
         }
     },
     watch: {
