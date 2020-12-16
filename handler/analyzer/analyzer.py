@@ -323,6 +323,8 @@ def identify_series_info(data_list_unique_series):
             
         if '_run-' in SD:
             series_entities['run'] = SD.split('_run-')[-1].split('_')[0]
+            if series_entities['run'][0] == '0':
+                series_entities['run'] = series_entities['run'][1:]
         else:
             series_entities['run'] = ''
         
@@ -336,7 +338,6 @@ def identify_series_info(data_list_unique_series):
         else:
             series_entities['dir'] = ''
     
-        
         if '_acq-' in SD:
             series_entities['acq'] = SD.split('_acq-')[-1].split('_')[0]
         else:
@@ -349,6 +350,8 @@ def identify_series_info(data_list_unique_series):
             
         if '_echo-' in SD:
             series_entities['echo'] = SD.split('_echo-')[-1].split('_')[0]
+            if series_entities['echo'][0] == '0':
+                series_entities['echo'] = series_entities['echo'][1:]
         else:
             series_entities['echo'] = ''
         
@@ -359,6 +362,8 @@ def identify_series_info(data_list_unique_series):
             
         if '_inv-' in SD:
             series_entities['inv'] = SD.split('_inv-')[-1].split('_')[0]
+            if series_entities['inv'][0] == '0':
+                series_entities['inv'] = series_entities['inv'][1:]
         else:
             series_entities['inv'] = ''
             
@@ -1137,7 +1142,7 @@ def build_objects_list(sub_protocol, objects_entities_list):
             sub_protocol[i]['br_type'] = 'exclude'
                     
         #Objects-level info for ezBIDS.json
-        if sub_protocol[i]['br_type'] == 'exclude':
+        if sub_protocol[i]['br_type'] == 'exclude' and 'Acquisition cannot be resolved' not in sub_protocol[i]['error']:
             objects_info = {"include": sub_protocol[i]['include'],
                     "type": sub_protocol[i]['br_type'],
                     "series_id": sub_protocol[i]['series_id'],
