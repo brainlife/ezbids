@@ -1142,7 +1142,7 @@ def build_objects_list(sub_protocol, objects_entities_list):
             sub_protocol[i]['br_type'] = 'exclude'
                     
         #Objects-level info for ezBIDS.json
-        if sub_protocol[i]['br_type'] == 'exclude' and 'Acquisition cannot be resolved' not in sub_protocol[i]['error']:
+        if sub_protocol[i]['br_type'] == 'exclude' and 'Acquisition cannot be resolved' not in sub_protocol[i]['error'][0]:
             objects_info = {"include": sub_protocol[i]['include'],
                     "type": sub_protocol[i]['br_type'],
                     "series_id": sub_protocol[i]['series_id'],
