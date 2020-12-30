@@ -91,7 +91,7 @@
         <div v-if="$root.session.status == 'failed'">
             <p>ezBIDS failed.. Please check the log and/or contact ezBIDS team.</p>
             <pre>{{$root.session.status_msg}}</pre>
-            <br>
+            <!--
             <h4>Debugging</h4>
             <el-collapse v-model="activeLogs" @change="logChange">
                 <el-collapse-item title="Preprocess/Analyzer Log" name="out">
@@ -101,12 +101,7 @@
                     <pre class="text">{{stderr}}</pre>
                 </el-collapse-item>
             </el-collapse>
-            <br>
-            <br>
-            <br>
-            <br>
-            <br>
-            <br>
+            -->
             <div class="page-action">
                 <el-button type="secondary" @click="$root.reset()">Re-Upload</el-button>
             </div>
@@ -124,8 +119,7 @@
                 <pre v-if="opened.includes(idx)" class="object-detail" style="font-size: 85%">{{object}}</pre>
             </div>
 
-            <br>
-            <br>
+            <!--
             <el-collapse v-model="activeLogs" @change="logChange">
                 <el-collapse-item title="Preprocess/Analyzer Log" name="out">
                     <pre class="text">{{stdout}}</pre>
@@ -135,16 +129,27 @@
                     <pre class="text">{{stderr}}</pre>
                 </el-collapse-item>
             </el-collapse>
-
-            <br>
-            <br>
-            <br>
-            <br>
+            -->
             <div class="page-action">
                 <el-button type="secondary" @click="$root.reset()">Re-Upload</el-button>
                 <el-button type="primary" @click="next" style="float: right;">Next</el-button>
             </div>
         </div>
+
+        <br>
+        <el-collapse>
+            <el-collapse-item title="Debug Logs">
+                <ul style="list-style: none; padding-left: 0;">
+                    <li><a :href="$root.apihost+'/download/'+$root.session._id+'/preprocess.log'">preprocess.log</a></li>
+                    <li><a :href="$root.apihost+'/download/'+$root.session._id+'/preprocess.err'">preprocess.err</a></li>
+                    <li><a :href="$root.apihost+'/download/'+$root.session._id+'/list'">list</a></li>
+                    <li><a :href="$root.apihost+'/download/'+$root.session._id+'/ezBIDS.json'">ezBIDS.json</a></li>
+                </ul>
+            </el-collapse-item>
+        </el-collapse>
+        <br>
+        <br>
+        <br>
     </div>
 </div>
 </template>
@@ -181,8 +186,8 @@ export default {
 
             //debug logs
             activeLogs: [],
-            stdout: "",
-            stderr: "",
+            //stdout: "",
+            //stderr: "",
             list: "",
         }
     },
@@ -225,6 +230,7 @@ export default {
             });
         },
 
+        /*
         logChange() {
             if(this.activeLogs.includes("out")) {
                 if(!this.out) fetch(this.$root.apihost+'/download/'+this.$root.session._id+'/preprocess.log').then(res=>res.text()).then(data=>{
@@ -244,6 +250,7 @@ export default {
                 });
             } else this.list = "";
         },
+        */
 
         selectit(e) {
             this.starting = true;
