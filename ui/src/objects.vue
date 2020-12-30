@@ -4,27 +4,28 @@
         <h4 style="padding-top: 20px;">BIDS Structure</h4>
         <div v-for="(o_sub, sub) in $root.subs" :key="sub" style="font-size: 90%;">
             <span v-if="sub != ''" class="hierarchy">
-                <span :class="{exclude: findSubject(sub).exclude}">
+                <span :class="{exclude: isSubExcluded(sub)}">
                     <i class="el-icon-user-solid"/> 
                     <small>sub</small> {{sub}} 
                     <small>({{o_sub.objects.length}})</small>
                 </span>
                 &nbsp;
-                <el-checkbox :value="findSubject(sub).exclude" @change="findSubject(sub).exclude = $event">Exclude</el-checkbox>
+                &nbsp;
+                <el-checkbox v-if="findSubject(sub)" :value="findSubject(sub).exclude" @change="findSubject(sub).exclude = $event"><small>Exclude</small></el-checkbox>
             </span>
             <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}" class="left-border">
                 <span class="hierarchy"><i class="el-icon-time"/> 
-                    <span :class="{exclude: (findSubject(sub).exclude || findSession(ses).exclude)}">
+                    <span :class="{exclude: (isSubExcluded(sub) || isSesExcluded(findSubject(sub), ses))}">
                         <small v-if="ses">ses</small> {{ses}} 
                         <small>{{o_ses.AcquisitionDate}}</small>
                     </span>
                     &nbsp;
-                    <el-checkbox :class="{exclude: findSubject(sub).exclude}" :value="findSession(ses).exclude" @change="findSession(ses).exclude = $event">Exclude</el-checkbox>
+                    &nbsp;
+                    <el-checkbox v-if="findSession(findSubject(sub), ses)" :class="{exclude: isSubExcluded(sub)}" :value="findSession(findSubject(sub), ses).exclude" @change="findSession(findSubject(sub), ses).exclude = $event"><small>Exclude</small></el-checkbox>
                 </span>
                 <div v-for="(section, sectionId) in groupSections(o_ses)" :key="sectionId" style="border-top: 1px dotted #bbb; margin-top: 10px; padding-top: 5px; position: relative;">
                     <div style="position: absolute; right: 10px; top: -7px; background-color: white; font-size: 70%; color: #999; padding: 0 5px;">section {{sectionId}}</div>
                     <div v-for="o in section" :key="o.idx" class="clickable hierarchy-item" :class="{selected: so === o, exclude: isExcluded(o)}" @click="select(o, o_ses)">
-                        <!--<el-tag type="info" size="mini"><small>{{o.series_id}}</small></el-tag>-->
                         <el-tag type="info" size="mini">sn {{o.SeriesNumber}}</el-tag>
                         &nbsp;
                         <datatype :type="o._type" :series_id="o.series_id" :entities="o.entities"/> 
@@ -61,7 +62,7 @@
             </div>    
             <el-form label-width="150px">
                 <div :class="{'exclude': isExcluded(so)}">
-                    <el-form-item label="Series Desc.">
+                    <el-form-item label="Series#/Desc.">
                         <el-tag type="info" size="mini">sn {{so.SeriesNumber}}</el-tag>
                         {{so._SeriesDescription}}
                         <!--<el-tag type="info" size="mini"><small>series_id {{so.series_id}}</small></el-tag>-->
@@ -93,7 +94,6 @@
                         <br>
                         <el-form-item label="IntendedFor">
                             <el-select v-model="so.IntendedFor" multiple placeholder="Select Object" style="width: 100%" @change="update(so)">
-
                                 <el-option v-for="o in this.sess.objects.filter(o=>!isExcluded(o))" :key="o.idx"
                                     :label="intendedForLabel(o)" :value="o.idx">
                                 </el-option>
@@ -184,8 +184,29 @@ export default {
         findSubject(sub) {
             return this.$root.subjects.find(s=>s.sub == sub);
         },
-        findSession(ses) {
-            return this.$root.sessions.find(s=>s.ses == ses);
+        findSession(subject, ses) {
+            /*
+            let session = null;
+            this.$root.subjects.forEach(subject=>{
+                if(session) return; //already found
+                session = subject.sessions.find(s=>s.ses == ses);
+            });
+            return session;
+            */
+            if(!subject) return null;
+            return subject.sessions.find(s=>s.ses == ses);
+        },
+
+        isSubExcluded(sub) {
+            let subject = this.findSubject(sub);
+            if(!subject) return false;
+            if(subject.exclude) return true;
+        },
+
+        isSesExcluded(sub, ses) {
+            let session = this.findSession(sub, ses);
+            if(!session) return false;
+            if(session.exclude) return true;
         },
 
         isExcluded(o) {
@@ -196,8 +217,14 @@ export default {
                 return false;
             }
             */
-            if(this.findSubject(o._entities.sub).exclude) return true;
-            if(this.findSession(o._entities.ses).exclude) return true;
+            let subject = this.findSubject(o._entities.sub);
+            if(!subject) return false;
+            if(subject.exclude) return true;
+
+            let session = this.findSession(subject, o._entities.ses);
+            if(!session) return false;
+            if(session.exclude) return true;
+
             return false;
         },
 
@@ -210,15 +237,6 @@ export default {
             });
             return sections;
         },
-
-        /*
-        isSectionTop(o) {
-            if(o.idx == 0) return false;
-            let prev = this.$root.objects[o.idx-1];
-            if(prev.analysisResults.section_ID != o.analysisResults.section_ID) return true;
-            return false;
-        },
-        */
 
         select(o, sess) {
             this.sess = sess;
@@ -239,7 +257,8 @@ export default {
                 const subject = this.$root.findSubject(o);
                 return subject.sub;
             } else if(entity == "ses") {
-                const session = this.$root.findSession(o);
+                const subject = this.$root.findSubject(o);
+                const session = this.$root.findSession(subject, o);
                 return session.ses;
             } else {
                 //rest should come from series
@@ -336,7 +355,7 @@ export default {
         },
 
         back() {
-            this.$root.changePage("participant");
+            this.$root.changePage("series");
         },
     },
 

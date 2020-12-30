@@ -105,7 +105,7 @@ new Vue({
             participantsColumn: {},
             
             subjects: [],
-            sessions: [],
+            //sessions: [],
             series: [],
 
             objects: [],
@@ -119,11 +119,11 @@ new Vue({
             pages: [
                 {id: "upload", title: "Upload DICOM"},
                 {id: "description", title: "BIDS Description"},
-                {id: "subject", title: "Subject Mapping"},
-                {id: "session", title: "Session Mapping"},
-                {id: "series", title: "Series Mapping"},
+                {id: "subject", title: "Subjects/Sessions"},
                 {id: "participant", title: "Participants Info"},
-                {id: "object", title: "Finalize"},
+                //{id: "session", title: "Session Mapping"},
+                {id: "series", title: "Series Mapping"},
+                {id: "object", title: "Overrides"},
                 {id: "finalize", title: "Download BIDS"},
             ],
 
@@ -304,8 +304,8 @@ invert:
             return subject;
         },
 
-        findSession(o) {
-            let session = this.sessions.find(s=>s.AcquisitionDate == o.AcquisitionDate);
+        findSession(sub, o) {
+            let session = sub.sessions.find(s=>s.AcquisitionDate == o.AcquisitionDate);
             return session;
         },
 
@@ -343,7 +343,7 @@ invert:
                 e.sub = subject.sub;
             } 
 
-            const session = this.$root.findSession(o);
+            const session = this.$root.findSession(subject, o);
             if(session.exclude) o._exclude = true;
             
             //if ses is not set, use session mapping as default
@@ -381,7 +381,7 @@ invert:
 
             return fetch(url).then(res=>res.json()).then(conf=>{   
                 this.subjects = conf.subjects;
-                this.sessions = conf.sessions;
+                //this.sessions = conf.sessions;
                 this.series = conf.series;
                 this.objects = conf.objects;
 
@@ -399,11 +399,23 @@ invert:
                 this.subjects.forEach(subject=>{
                     //if(!subject.phenotype) Vue.set(subject, 'phenotype', {});
                     if(!subject.exclude) Vue.set(subject, 'exclude', false);
+
+                    //migrate from old structure (just stick the whole thing in for now)
+                    if(conf.sessions) {
+                        //this.sessions.push({AcquisitionDate: "2020-01-22", ses: "test"});
+                        Vue.set(subject, 'sessions', conf.sessions);
+                    }
+
+                    subject.sessions.forEach(session=>{
+                        if(!session.exclude) Vue.set(session, 'exclude', false);
+                    });
                 });
 
+                /*
                 this.sessions.forEach(session=>{
                     if(!session.exclude) Vue.set(session, 'exclude', false);
                 });
+                */
 
                 this.objects.forEach(object=>{
                     object.items.forEach(item=>{

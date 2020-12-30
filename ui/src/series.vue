@@ -10,7 +10,12 @@
             <datatype :type="s.type" :series_id="s.series_id" :entities="s.entities" :class="{excluded: s.type == 'exclude'}"/>
             &nbsp;
             <small style="opacity: 0.7;">({{s.SeriesDescription}})</small>
-            <el-badge v-if="s.validationErrors.length > 0" type="danger" :value="s.validationErrors.length" style="margin-left: 5px;"/>
+            &nbsp;
+            &nbsp;
+            &nbsp;
+            <el-badge v-if="s.validationErrors.length > 0" type="danger" :value="s.validationErrors.length" style="margin-left: 5px;">
+                <small/>
+            </el-badge>
         </div>
     </div>
 
@@ -161,7 +166,7 @@ export default {
                 if(s.validationErrors.length > 0) valid = false;
             });
             if(valid) {
-                this.$root.changePage("participant");
+                this.$root.changePage("object");
             } else {
                 alert('Please correct all issues, or update datatype to exclude');
                 return false;
@@ -169,7 +174,7 @@ export default {
         },
 
         back() {
-            this.$root.changePage("session");
+            this.$root.changePage("participant");
         },
 
     },

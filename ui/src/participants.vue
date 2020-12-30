@@ -103,7 +103,7 @@ export default {
 
         next() {
             if(this.validate()) {
-                this.$root.changePage("object");
+                this.$root.changePage("series");
             } else {
                 alert('Please correct all issues');
                 return false;
@@ -111,7 +111,7 @@ export default {
         },
 
         back() {
-            this.$root.changePage("series");
+            this.$root.changePage("subject");
         },
     },
 
