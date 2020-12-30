@@ -52,13 +52,13 @@ function handle_uploaded_session(session) {
             let lasterr = "";
             p.stdout.on('data', data=>{
                 fs.writeSync(logout, data);
-                console.log(data.toString("utf8"));
+                console.log("Stdout", data.toString("utf8"));
                 //session.status_msg = data.toString("utf8").trim().split("\n").pop();
                 let out = data.toString("utf8").trim();
                 session.status_msg = out.substring(out.length - 1000);
             });
             p.stderr.on('data', data=>{
-                console.log(data.toString("utf8"));
+                console.log("Stderr", data.toString("utf8"));
                 lasterr = data.toString("utf8");
                 fs.writeSync(errout, data);
             })
@@ -94,7 +94,6 @@ function handle_uploaded_session(session) {
                         }).catch(reject);
                     });
                 }
-
             })
 
             //monitor progress
@@ -111,8 +110,8 @@ function handle_uploaded_session(session) {
                     done = fs.readFileSync(workdir+"/dcm2niix.done", "utf8").split("\n");
                     session.dicomDone = done.length;
                 }
-                if(list || done) session.save();
-            }, 1000*10);
+                session.save(); //this saves for stdout too
+            }, 1000*5);
         });
     });
 }

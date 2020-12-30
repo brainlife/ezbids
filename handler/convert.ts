@@ -28,7 +28,6 @@ This dataset was converted from DICOM to BIDS using ezbids (https://brainlife.io
 
 `;
 fs.writeFileSync(root+"/bids/README", info.readme);
-
 fs.writeFileSync(root+"/bids/participants.json", JSON.stringify(info.participantsColumn, null, 4));
 
 //convert participants.json to tsv

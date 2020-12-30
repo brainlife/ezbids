@@ -70,7 +70,10 @@
         </div>
 
         <div v-if="['preprocessing', 'uploaded'].includes($root.session.status)">
-            <div v-if="$root.session.dicomDone !== undefined && $root.session.dicomDone < $root.session.dicomCount">
+            <h3 v-if="$root.session.dicomDone === undefined">
+                Inflating...
+            </h3>
+            <div v-else-if=" $root.session.dicomDone < $root.session.dicomCount">
                 <h3>Converting dicoms to nifti ...</h3>
                 <el-progress status="success"
                     :text-inside="true" 
@@ -79,6 +82,7 @@
             </div>
             <h3 v-else>Analyzing...</h3>
             <pre>{{$root.session.status_msg}}</pre>
+
             <div class="page-action">
                 <el-button type="secondary" @click="$root.reset()">Cancel</el-button>
             </div>
