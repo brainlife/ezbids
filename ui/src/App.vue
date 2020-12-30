@@ -13,7 +13,6 @@
             <upload/>
             <description/>
             <subjects/>
-            <sessions/>
             <series/>
             <participants/>
             <objects/>
@@ -32,7 +31,6 @@
 import upload from '@/upload'
 import description from '@/description'
 import subjects from '@/subjects'
-import sessions from '@/sessions'
 import series from '@/series'
 import participants from '@/participants'
 import objects from '@/objects'
@@ -46,9 +44,8 @@ export default {
         upload,
         description,
         subjects,
-        sessions,
-        series,
         participants,
+        series,
         objects,
         finalize,
     },
