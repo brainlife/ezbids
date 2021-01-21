@@ -50,6 +50,8 @@ Vue.config.productionTip = false
 
 import App from './App.vue'
 
+import lib from './lib'
+
 async function loadYaml(url) {
     let yaml = await fetch(url).then(res=>res.text());
     return jsyaml.load(yaml);
@@ -105,13 +107,11 @@ new Vue({
             participantsColumn: {},
             
             subjects: [],
-            //sessions: [],
             series: [],
-
             objects: [],
-            subs: {}, //objects organized into subs/ses/run for objects page
 
-            //page: "upload",
+            subs: {}, //objects organized into subs/ses/run/object for objects page
+
             currentPage: null,
 
             reload_t: null,
@@ -121,7 +121,6 @@ new Vue({
                 {id: "description", title: "BIDS Description"},
                 {id: "subject", title: "Subjects/Sessions"},
                 {id: "participant", title: "Participants Info"},
-                //{id: "session", title: "Session Mapping"},
                 {id: "series", title: "Series Mapping"},
                 {id: "object", title: "Overrides"},
                 {id: "finalize", title: "Download BIDS"},
@@ -352,6 +351,8 @@ invert:
             }
 
             o._entities = e;
+
+            //lib.intendedFor(this.$root);
         },
 
         organizeObjects() {
