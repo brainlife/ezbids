@@ -16,6 +16,7 @@ from operator import itemgetter
 from math import floor
 
 warnings.filterwarnings("ignore")
+os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
 
 ######## Functions ########
 def select_unique_data(dir_list):
@@ -224,7 +225,9 @@ def select_unique_data(dir_list):
         data_list.append(mapping_dic)
         
     #Curate subjectID and acquisition date info to display in UI
-    subjectIDs_info = list({x['sub']:{'sub':x['sub'], 'PatientID':x['PatientID'], 'PatientName':x['PatientName'], 'PatientBirthDate':x['PatientBirthDate'], 'phenotype':{'sex':x['PatientSex'], 'age':x['PatientAge']}} for x in data_list}.values())
+    subjectIDs_info = list({x['sub']:{'sub':x['sub'], 'PatientID':x['PatientID'], 'PatientName':x['PatientName'], 'PatientBirthDate':x['PatientBirthDate'], 'phenotype':{'sex':x['PatientSex'], 'age':x['PatientAge']}, 'exclude': False, 'sessions': []} for x in data_list}.values())
+
+                 
     subjectIDs_info = sorted(subjectIDs_info, key = lambda i: i['sub'])
     
     acquisition_dates = list({(x['sub'], x['AcquisitionDate']):{'sub':x['sub'], 'AcquisitionDate':x['AcquisitionDate'], 'ses': ''} for x in data_list}.values())
@@ -244,6 +247,15 @@ def select_unique_data(dir_list):
     
     for x,y in enumerate(acquisition_dates):
         y['ses'] = subj_ses[x][-1]
+        
+    
+    for si in range(len(subjectIDs_info)):
+        for ss in subj_ses:
+            if ss[0] == subjectIDs_info[si]['sub']:
+                subjectIDs_info[si]['sessions'].append({'AcquisitionDate': ss[1], 'ses': ss[2], 'exclude': False})
+        subjectIDs_info[si].update({'validationErrors': []})
+        
+
         
     #Sort list of dictionaries by subject, AcquisitionDate, SeriesNumber, and json_path
     data_list = sorted(data_list, key=itemgetter('sub', 'AcquisitionDate', 'SeriesNumber', 'json_path'))
@@ -1264,7 +1276,6 @@ for s in range(len(series_list)):
     
 #Push all info to ezBIDS.json
 ezBIDS = {"subjects": subjectIDs_info,
-          "sessions": acquisition_dates,
           "participantsColumn": participantsColumn,
           "series": series_list,
           "objects": objects_list
