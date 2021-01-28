@@ -22,8 +22,8 @@
             <small>* Patient to Subject mapping may contain sensitive PHI data. Please make sure to store in a secure location.</small>
         </div>
         <p>
-            <el-button @click="sendBrainlife" size="small">TODO.. Upload Data to <b>brainlife.io</b></el-button>
-            <el-button @click="sendOpenneuro" size="small">TODO.. Upload Data to <b>OpenNeuro</b></el-button>
+            <el-button @click="sendBrainlife" size="small">Import Data to <b>brainlife.io</b></el-button>
+            <el-button @click="sendOpenneuro" size="small">Import Data to <b>OpenNeuro</b></el-button>
         </p>
     </div>
     <div v-if="$root.session.status == 'failed'">
@@ -105,11 +105,11 @@ export default {
         },
 
         sendBrainlife() {
-            alert("TODO.. invoke API call with fetch URL like.. ezbids://"+this.$root.session._id);
+            document.location = "../projects#ezbids:"+this.$root.session._id;
         },
 
         sendOpenneuro() {
-            alert("TODO.. invoke API call with fetch URL like.. ezbids://"+this.$root.session._id);
+            alert("TODO.. invoke API call with fetch URL like.. https://openneuro.org/someapi/ezbidsimport/"+this.$root.session._id);
         },
 
         logChange() {

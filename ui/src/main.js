@@ -50,7 +50,7 @@ Vue.config.productionTip = false
 
 import App from './App.vue'
 
-import lib from './lib'
+//import lib from './lib'
 
 async function loadYaml(url) {
     let yaml = await fetch(url).then(res=>res.text());
