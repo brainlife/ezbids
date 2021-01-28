@@ -8,23 +8,20 @@
     <div v-if="$root.session.status == 'finished'">
         <div class="download">
             <br>
-            <h3>Congratulations!</h3>
+            <h3>All Done!</h3>
+            <p>
+            Please download the BIDS formatted data to your local computer, or send the data to other cloud resources.
+            </p>
             <p>
                 <el-button @click="download" type="primary">Download BIDS</el-button>
+                <el-button @click="sendBrainlife">Send to <b>brainlife.io</b></el-button>
+                <el-button @click="sendOpenneuro">Send to <b>OpenNeuro</b></el-button>
             </p>
-            <br>
             <p @click="downloadSubjectMapping">
-                <i class="el-icon-download"></i> PatientName to Subject Mapping
+                <i class="el-icon-download"></i> PatientName to Subject/Session Mapping
+                <small>* may contain sensitive PHI data. Please make sure to store in a secure location.</small>
             </p>
-            <p @click="downloadSessionMapping">
-                <i class="el-icon-download"></i> AcquisitionDate to Session Mapping
-            </p>
-            <small>* Patient to Subject mapping may contain sensitive PHI data. Please make sure to store in a secure location.</small>
         </div>
-        <p>
-            <el-button @click="sendBrainlife" size="small">Import Data to <b>brainlife.io</b></el-button>
-            <el-button @click="sendOpenneuro" size="small">Import Data to <b>OpenNeuro</b></el-button>
-        </p>
     </div>
     <div v-if="$root.session.status == 'failed'">
         <p>Failed to convert to BIDS...</p>
@@ -91,10 +88,6 @@ export default {
             this.downloadMapping(JSON.stringify(this.$root.subjects, null, 2), "subject_mappings.json");
         },
 
-        downloadSessionMapping() {
-            this.downloadMapping(JSON.stringify(this.$root.sessions, null, 2), "session_mappings.json");
-        },
-
         downloadMapping(data, name) {
             const blob = new Blob([data], { type: 'application/json' });
             const link = document.createElement('a');
@@ -105,11 +98,13 @@ export default {
         },
 
         sendBrainlife() {
-            document.location = "../projects#ezbids:"+this.$root.session._id;
+            window.open("../projects#ezbids:"+this.$root.session._id, "_brainlife");
+            //document.location = "../projects#ezbids:"+this.$root.session._id;
         },
 
         sendOpenneuro() {
-            alert("TODO.. invoke API call with fetch URL like.. https://openneuro.org/someapi/ezbidsimport/"+this.$root.session._id);
+            alert("Sorry! This functionality is yet to be implemented!");
+            //".. invoke API call with fetch URL like.. https://openneuro.org/someapi/ezbidsimport/"+this.$root.session._id);
         },
 
         logChange() {

@@ -123,7 +123,7 @@ new Vue({
                 {id: "participant", title: "Participants Info"},
                 {id: "series", title: "Series Mapping"},
                 {id: "object", title: "Overrides"},
-                {id: "finalize", title: "Download BIDS"},
+                {id: "finalize", title: "Download"},
             ],
 
             //TODO - deprecated - use bids_datatypes (datatype selector should be componentized)

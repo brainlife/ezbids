@@ -130,10 +130,12 @@ export default {
                 s.validationErrors.push("subject contains non alphanumeric characters");
             }
 
-            //make sure all sessions are filed out
+            //session is optional.
+            /*
             s.sessions.forEach(ses=>{
                 if(!ses.ses) s.validationErrors.push("Please populate session mapping for "+ses.AcquisitionDate);
             });
+            */
         },
 
         next() {
