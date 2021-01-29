@@ -463,11 +463,11 @@ def identify_series_info(data_list_unique_series):
                 data_list_unique_series[i]['ModalityLabel'] = 'T2w'
                 data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T2w because "t2w" is in the SeriesDescription. Please modify if incorrect'
             
-            elif not any(x in SD for x in ['dwi','dti','dmri','trace','fa','adc']):
-                data_list_unique_series[i]['include'] = False
-                data_list_unique_series[i]['error'] = 'Acquisition has bval and bvec files but does not appear to be dwi/dwi or fmap/epi that work on dwi/dwi acquistions. Please modify if incorrect, otherwise will not convert to BIDS'
-                data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
-                data_list_unique_series[i]['br_type'] = 'exclude'
+            # elif not any(x in SD for x in ['dwi','dti','dmri','trace','fa','adc']):
+            #     data_list_unique_series[i]['include'] = False
+            #     data_list_unique_series[i]['error'] = 'Acquisition has bval and bvec files but does not appear to be dwi/dwi or fmap/epi that work on dwi/dwi acquistions. Please modify if incorrect, otherwise will not convert to BIDS'
+            #     data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
+            #     data_list_unique_series[i]['br_type'] = 'exclude'
             
             else:    
                 #Some "dwi" acquisitions are actually fmap/epi; check for this
