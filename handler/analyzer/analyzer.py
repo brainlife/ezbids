@@ -1204,8 +1204,7 @@ def build_objects_list(subject_protocol, objects_entities_list):
 
 ###################### Begin ######################
     
-# data_dir = sys.argv[1]
-data_dir='/media/data/ezbids/dicoms/ADNI/orientation_test'
+data_dir = sys.argv[1]
 os.chdir(data_dir)
 
 print('########################################')
