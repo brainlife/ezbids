@@ -1,7 +1,20 @@
 <template>
 <div v-if="$root.currentPage.id == 'finalize'" style="padding: 20px;">
+
+    <div v-if="$root.session.status == 'analyzed'">
+        <p>Your data is ready to be converted to BIDS!</p>
+        <el-form>
+            <el-form-item>
+                <el-checkbox v-model="$root.deface">Deface all anatomical objects (and reorient images to RAS+)</el-checkbox>
+            </el-form-item>
+            <el-form-item>
+                <el-button @click="finalize" type="primary">Finalize</el-button>
+            </el-form-item>
+        </el-form>
+    </div>
+
     <div v-if="$root.session.status == 'bidsing' || $root.session.status == 'finalized'">
-        <p>Converting to BIDS...</p>
+        <h3>Converting to BIDS...</h3>
         <p><small><i>{{$root.session.status_msg}}</i></small></p>
     </div>
 
@@ -13,6 +26,7 @@
             Please download the BIDS formatted data to your local computer, or send the data to other cloud resources.
             </p>
             <p>
+                <el-button @click="rerun" type="success" style="float: right" size="small">Rerun Finalize Step</el-button>
                 <el-button @click="download" type="primary">Download BIDS</el-button>
                 <el-button @click="sendBrainlife">Send to <b>brainlife.io</b></el-button>
                 <el-button @click="sendOpenneuro">Send to <b>OpenNeuro</b></el-button>
@@ -38,20 +52,16 @@
         <el-collapse-item title="BIDS Conversion Error Log" name="err">
             <pre class="text">{{stderr}}</pre>
         </el-collapse-item>
-        <el-collapse-item title="Files" name="err">
+        <el-collapse-item title="Session" name="session">
+            <pre class="text">{{$root.session}}</pre>
+        </el-collapse-item>
+        <el-collapse-item title="Files" name="files">
             <a :href="$root.apihost+'/download/'+$root.session._id+'/finalized.json'">finalized.json</a>
         </el-collapse-item>
     </el-collapse>
     <br>
     <br>
 
-    <!---
-    <div v-else-if="$root.session.status == 'analyzed'">
-        <p>Your data is ready to be converted to BIDS.</p>
-        <p>Please click the finalize button below when you are ready to convert your data to BIDS.</p>
-        <el-button @click="finalize" type="primary" size="small">Finalize</el-button>
-    </div>
-    -->
     <div class="page-action">
         <el-button type="secondary" @click="back">Back</el-button>
     </div>
@@ -82,6 +92,15 @@ export default {
     },
 
     methods: {
+
+        finalize() {
+            this.$root.finalize();
+        },
+
+        rerun() {
+            console.log("going back to analyzed step")
+            this.$root.session.status = 'analyzed';
+        },
 
         download() {
             document.location = this.$root.apihost+'/download/'+this.$root.session._id+'/bids';

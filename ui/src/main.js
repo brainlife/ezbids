@@ -105,6 +105,8 @@ new Vue({
             },
             readme: "edit me", 
             participantsColumn: {},
+
+            deface: true,
             
             subjects: [],
             series: [],
@@ -145,19 +147,8 @@ new Vue({
             //      bidsing
             //      finished
 
-            /*
-            descErrors: 0,
-            subjectErrors: 0,
-            sessionErrors: 0,
-            seriesErrors: 0,
-            participantErrors: 0,
-            objectErrors: 0,
-            */
-
             analyzed: false,
             finalized: false,
-            //finalized: false,
-            //finished: false,
         }
     },
 
@@ -472,7 +463,7 @@ invert:
                 method: "GET",
                 headers: { 'Content-Type': 'application/json' },
             });
-            this.session = await res.json();
+            this.session = Object.assign({}, await res.json());
             console.log(this.session.update_date, this.session.status);
             switch(this.session.status) {
             case "created":
@@ -521,6 +512,7 @@ invert:
                     participantsColumn: this.participantsColumn,
                     subjects: this.subjects, //for phenotype
                     objects: this.objects,
+                    deface: this.deface, //deface anatomical
                     entityMappings,
                 }),
             }).then(res=>res.text()).then(status=>{

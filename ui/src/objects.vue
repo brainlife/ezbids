@@ -82,11 +82,12 @@
 
                     <div style="width: 350px;">
                         <el-form-item v-for="(v, entity) in $root.getEntities(so._type)" :key="entity" 
-                            :label="entity+(v=='required'?'*':'')">
+                            :label="$root.bids_entities[entity].entity+(v=='required'?'- *':'-')">
                             <el-popover width="300" trigger="focus" placement="right-start"
                                 :title="$root.bids_entities[entity].name" 
                                 :content="$root.bids_entities[entity].description">
-                                <el-input slot="reference" v-model="so.entities[entity]" size="small" @blur="update(so)" :placeholder="getDefault(so, entity)"/>
+                                <el-input slot="reference" v-model="so.entities[entity]" size="small" @blur="update(so)" 
+                                    :placeholder="getDefault(so, entity)"/>
                             </el-popover>
                         </el-form-item>
                     </div>
@@ -333,7 +334,7 @@ export default {
                 if(s.validationErrors.length > 0) valid = false;
             });
             if(valid) {
-                this.$root.finalize();
+                //this.$root.finalize();
                 this.$root.changePage("finalize");
             } else {
                 alert('Please correct all issues');
