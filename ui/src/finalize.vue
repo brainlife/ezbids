@@ -38,6 +38,9 @@
         <el-collapse-item title="BIDS Conversion Error Log" name="err">
             <pre class="text">{{stderr}}</pre>
         </el-collapse-item>
+        <el-collapse-item title="Files" name="err">
+            <a :href="$root.apihost+'/download/'+$root.session._id+'/finalized.json'">finalized.json</a>
+        </el-collapse-item>
     </el-collapse>
     <br>
     <br>

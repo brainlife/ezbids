@@ -25,7 +25,7 @@
         </el-table-column>
         <el-table-column label="BIDS Subject ID" width="300px">
             <template slot-scope="scope">
-                <el-input v-model="scope.row.sub" size="small" @change="validate(scope.row)">
+                <el-input v-model="scope.row.subject" size="small" @change="validate(scope.row)">
                     <template slot="prepend">sub-</template>
                 </el-input>
                 <p>
@@ -37,18 +37,10 @@
         <el-table-column label="AcquisitionDate / Session ID Mappings">
             <template slot-scope="scope">
                 <el-table :data="scope.row.sessions" size="mini" :show-header="false">
-                    <el-table-column prop="AcquisitionDate" width="150px">
-                        <!--
-                        <template slot-scope="scope">
-                            <div v-for="(session, idx) in scope.row.sessions" :key="idx">
-                                {{session.AcquisitionDate}}
-                            </div>
-                        </template>
-                        -->
-                    </el-table-column>
+                    <el-table-column prop="AcquisitionDate" width="150px"/>
                     <el-table-column>
                         <template slot-scope="sessionScope">
-                            <el-input v-model="sessionScope.row.ses" placeholder="no session" size="small" @change="validate(scope.row)">
+                            <el-input v-model="sessionScope.row.session" placeholder="no session" size="small" @change="validate(scope.row)">
                                 <template slot="prepend">ses-</template>
                             </el-input>
                         </template>
@@ -99,19 +91,19 @@ export default {
             let sub = 1;
             switch(command) {
             case "num":
-                this.$root.subjects.forEach(subject=>{
-                    subject.sub = sub.toString().padStart(2, '0');
+                this.$root.subjects.forEach(s=>{
+                    s.subject = sub.toString().padStart(2, '0');
                     sub++;
                 });
                 break;
             case "pid":
-                this.$root.subjects.forEach(subject=>{
-                    subject.sub = subject.PatientID.replace(/[^0-9a-zA-Z]/g, '');
+                this.$root.subjects.forEach(s=>{
+                    s.subject = s.PatientID.replace(/[^0-9a-zA-Z]/g, '');
                 });
                 break;
             case "pname":
-                this.$root.subjects.forEach(subject=>{
-                    subject.sub = subject.PatientName.replace(/[^0-9a-zA-Z]/g, '');
+                this.$root.subjects.forEach(s=>{
+                    s.subject = s.PatientName.replace(/[^0-9a-zA-Z]/g, '');
                 });
                 break;
             }        
@@ -121,21 +113,14 @@ export default {
 
         validate(s) {
             Vue.set(s, 'validationErrors', []);
-            s.sub = s.sub.trim();
-            if(s.sub.length == 0) {
+            s.subject = s.subject.trim();
+            if(s.subject.length == 0) {
                 s.validationErrors.push("subject is a required field");
             }
-            let cleansub = s.sub.replace(/[^0-9a-zA-Z]/g, '');
-            if(s.sub != cleansub) {
+            let cleansub = s.subject.replace(/[^0-9a-zA-Z]/g, '');
+            if(s.subject != cleansub) {
                 s.validationErrors.push("subject contains non alphanumeric characters");
             }
-
-            //session is optional.
-            /*
-            s.sessions.forEach(ses=>{
-                if(!ses.ses) s.validationErrors.push("Please populate session mapping for "+ses.AcquisitionDate);
-            });
-            */
         },
 
         next() {

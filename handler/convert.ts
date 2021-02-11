@@ -12,7 +12,6 @@ const json = fs.readFileSync(root+"/finalized.json");
 const info = JSON.parse(json);
 
 mkdirp.sync(root+"/bids");
-//fs.symlinkSync(root+"/finalized.json", root+"/bids/finalized.json"); //doesn't work in .tar
 fs.writeFileSync(root+"/bids/finalized.json", JSON.stringify(info, null, 4)); //copy the finalized.json
 fs.writeFileSync(root+"/bids/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
 fs.writeFileSync(root+"/bids/.bidsignore", `
@@ -45,7 +44,7 @@ tsv.push(tsvheader);
 
 info.subjects.forEach(subject=>{
     let tsvrec = [];
-    tsvrec.push(subject.sub);
+    tsvrec.push(subject.subject);
     for(let key in info.participantsColumn) {
         tsvrec.push(subject.phenotype[key]);
     }
@@ -71,15 +70,16 @@ async.forEach(info.objects, (o, next_o)=>{
 
     //setup directory
     let path = "bids";
-    path += "/sub-"+o._entities.sub;
-    if(o._entities.ses) path += "/ses-"+o._entities.ses;
+    path += "/sub-"+o._entities.subject;
+    if(o._entities.session) path += "/ses-"+o._entities.session;
     path += "/"+modality; 
     mkdirp.sync(root+"/"+path);
 
     //construct basename
     let tokens = [];
     for(let k in o._entities) {
-        if(o._entities[k]) tokens.push(k+"-"+o._entities[k]); 
+        const sk = info.entityMappings[k];
+        if(o._entities[k]) tokens.push(sk+"-"+o._entities[k]); 
     }
     const name = tokens.join("_");
 
@@ -211,11 +211,12 @@ async.forEach(info.objects, (o, next_o)=>{
 
                         //construct a path relative to the subject
                         let path = "";
-                        if(io._entities.ses) path += "ses-"+io._entities.ses+"/";
+                        if(io._entities.session) path += "ses-"+io._entities.session+"/";
                         path += iomodality+"/";
                         let tokens = [];
                         for(let k in io._entities) {
-                            if(io._entities[k]) tokens.push(k+"-"+io._entities[k]); 
+                            const sk = info.entityMappings[k];
+                            if(io._entities[k]) tokens.push(sk+"-"+io._entities[k]); 
                         }
                         path += tokens.join("_");
                         path += "_"+suffix+".nii.gz";  //TODO - not sure if this is robust enough..

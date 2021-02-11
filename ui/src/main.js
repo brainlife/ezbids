@@ -123,7 +123,7 @@ new Vue({
                 {id: "participant", title: "Participants Info"},
                 {id: "series", title: "Series Mapping"},
                 {id: "object", title: "Overrides"},
-                {id: "finalize", title: "Download"},
+                {id: "finalize", title: "Finalize"},
             ],
 
             //TODO - deprecated - use bids_datatypes (datatype selector should be componentized)
@@ -217,9 +217,11 @@ new Vue({
         let _bids_entities = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/entities.yaml");
         for(let key in _bids_entities) {
             let ent = _bids_entities[key];
-            this.bids_entities[ent.entity] = ent;
+            //this.bids_entities[ent.entity] = ent;
+            this.bids_entities[key] = ent;
         }
 
+        /*
         //Inject MP2RAGE under anat
         let _anatSupplement = jsyaml.load(`---
 - suffixes:
@@ -240,6 +242,9 @@ new Vue({
                 anat.options.push({value: "anat/"+suffix, label: suffix});
             });
         });
+        */
+
+        /*
         this.bids_entities.inv = jsyaml.load(`---
 invert:
   name: invert
@@ -249,6 +254,7 @@ invert:
     You can use multiple lines like this.
   format: label
 `).invert;
+        */
 
         this.currentPage = this.pages[0];
         this.pages.forEach((p, idx)=>{
@@ -338,16 +344,16 @@ invert:
             if(subject.exclude) o._exclude = true;
             //
             //if sub is not set, use subject mapping as default
-            if(!o.entities.sub) {
-                e.sub = subject.sub;
+            if(!o.entities.subject) {
+                e.subject = subject.subject;
             } 
 
             const session = this.$root.findSession(subject, o);
             if(session.exclude) o._exclude = true;
             
             //if ses is not set, use session mapping as default
-            if(!o.entities.ses) {
-                e.ses = session.ses;
+            if(!o.entities.session) {
+                e.session = session.session;
             }
 
             o._entities = e;
@@ -361,8 +367,10 @@ invert:
             this.objects.forEach((o, idx)=>{
                 o.idx = idx; //reindex
 
-                let sub = o._entities.sub;
-                let ses = o._entities.ses;
+                let sub = o._entities.subject;
+                let ses = o._entities.session||"";
+
+                console.log("organizing with", sub, ses)
 
                 if(!this.subs[sub]) this.subs[sub] = {
                     sess: {}, 
@@ -379,22 +387,24 @@ invert:
         },
 
         loadData(url) {
-
             return fetch(url).then(res=>res.json()).then(conf=>{   
                 this.subjects = conf.subjects;
-                //this.sessions = conf.sessions;
                 this.series = conf.series;
                 this.objects = conf.objects;
 
                 this.participantsColumn = conf.participantsColumn||{};
 
                 this.series.forEach(series=>{
+
+                    //for legacy reason.
                     delete series.entities.sub;
                     delete series.entities.ses;
 
+                    delete series.entities.subject;
+                    delete series.entities.session;
+
                     //we shouldn't have to do this soon
                     if(series.png_objects_indices) Vue.set(series, 'object_indices', series.png_objects_indices);
-
                 });
 
                 this.subjects.forEach(subject=>{
@@ -406,9 +416,27 @@ invert:
                         //this.sessions.push({AcquisitionDate: "2020-01-22", ses: "test"});
                         Vue.set(subject, 'sessions', conf.sessions);
                     }
+                    
+                    //migrate from old entity name to new
+                    /*
+                    if(subject.sub !== undefined) {
+                        console.log("ezBIDS.json using 'sub'.. renmaing to subject");
+                        Vue.set(subject, 'subject', subject.sub);
+                        delete subject.sub;
+                    }
+                    */
 
                     subject.sessions.forEach(session=>{
                         if(!session.exclude) Vue.set(session, 'exclude', false);
+
+                        //migrate from old entity name to new
+                        /*
+                        if(session.ses !== undefined) {
+                            console.log("ezBIDS.json using 'ses'.. renmaing to session");
+                            Vue.set(session, 'session', session.ses);
+                            delete session.ses;
+                        }
+                        */
                     });
                 });
 
@@ -477,6 +505,13 @@ invert:
         },
 
         finalize() {
+
+            //mapping between things like like "subject" to "sub"
+            const entityMappings = {};
+            for(const key in this.bids_entities) {
+                entityMappings[key] = this.bids_entities[key].entity;
+            }
+
             fetch(this.apihost+'/session/'+this.session._id+'/finalize', {
                 method: "POST", 
                 headers: {'Content-Type': 'application/json; charset=UTF-8'},
@@ -486,6 +521,7 @@ invert:
                     participantsColumn: this.participantsColumn,
                     subjects: this.subjects, //for phenotype
                     objects: this.objects,
+                    entityMappings,
                 }),
             }).then(res=>res.text()).then(status=>{
                 if(status == "ok") {

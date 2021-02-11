@@ -35,6 +35,9 @@
 
         <div v-if="$root.session.status == 'created'">
             <h3>Uploading ...</h3>
+            <p>
+                Please do not close your browser while uploading the data.
+            </p>
 
             <div v-if="failed.length > 0">
                 <el-alert type="error">Permanently failed to upload some files</el-alert>
@@ -55,7 +58,7 @@
                 <div v-if="batch.status != 'done'" class="batch-stat">
                     batch {{bid+1}}. {{batch.fileidx.length}} files 
                     <span> ({{(batch.size/(1024*1024))|formatNumber}} MB) </span>
-                    <b>{{batch.status}}</b> 
+                    <b style="text-transform: uppercase;">{{batch.status}}</b> 
                     <div style="height: 20px">
                         <el-progress v-if="batch.evt && batch.evt.total > 0"
                             :status="batchStatus(batch)"

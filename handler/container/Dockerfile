@@ -16,7 +16,7 @@ RUN cd /tmp && \
     cmake -DBATCH_VERSION=ON -DUSE_OPENJPEG=ON .. && \
     make && make install
 
-RUN pip3 install pandas numpy nilearn matplotlib
+RUN pip3 install pandas numpy nilearn matplotlib deepdefacer
 
 #install fsl
 #RUN apt install -y fsl python-numpy

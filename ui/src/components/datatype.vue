@@ -26,8 +26,8 @@ export default {
             }
             
             for(let key in this.entities) {
-                if(key == "sub") continue; 
-                if(key == "ses") continue; 
+                if(key == "subject") continue; 
+                if(key == "session") continue; 
                 if(this.entities[key] == "") continue;
                 ents[key] = this.entities[key];
             }

@@ -39,6 +39,7 @@
                 </div>
             </div>
         </div>
+        <pre v-if="$root.config.debug">{{$root.subs}}</pre>
         <br>
         <br>
         <br>
@@ -81,7 +82,7 @@
 
                     <div style="width: 350px;">
                         <el-form-item v-for="(v, entity) in $root.getEntities(so._type)" :key="entity" 
-                            :label="entity+'-'+(v=='required'?' *':'')">
+                            :label="entity+(v=='required'?'*':'')">
                             <el-popover width="300" trigger="focus" placement="right-start"
                                 :title="$root.bids_entities[entity].name" 
                                 :content="$root.bids_entities[entity].description">
@@ -182,19 +183,11 @@ export default {
     
     methods: {
         findSubject(sub) {
-            return this.$root.subjects.find(s=>s.sub == sub);
+            return this.$root.subjects.find(s=>s.subject == sub);
         },
         findSession(subject, ses) {
-            /*
-            let session = null;
-            this.$root.subjects.forEach(subject=>{
-                if(session) return; //already found
-                session = subject.sessions.find(s=>s.ses == ses);
-            });
-            return session;
-            */
             if(!subject) return null;
-            return subject.sessions.find(s=>s.ses == ses);
+            return subject.sessions.find(s=>s.session == ses);
         },
 
         isSubExcluded(sub) {
@@ -211,17 +204,11 @@ export default {
 
         isExcluded(o) {
             if(o._type == 'exclude') return true;
-            /*
-            if(!o._entities) {
-                console.log("entities not set");
-                return false;
-            }
-            */
-            let subject = this.findSubject(o._entities.sub);
+            let subject = this.findSubject(o._entities.subject);
             if(!subject) return false;
             if(subject.exclude) return true;
 
-            let session = this.findSession(subject, o._entities.ses);
+            let session = this.findSession(subject, o._entities.session);
             if(!session) return false;
             if(session.exclude) return true;
 
@@ -253,13 +240,13 @@ export default {
         },
 
         getDefault(o, entity) {
-            if(entity == "sub") {
+            if(entity == "subject") {
                 const subject = this.$root.findSubject(o);
-                return subject.sub;
-            } else if(entity == "ses") {
+                return subject.subject;
+            } else if(entity == "session") {
                 const subject = this.$root.findSubject(o);
                 const session = this.$root.findSession(subject, o);
-                return session.ses;
+                return session.session;
             } else {
                 //rest should come from series
                 const series = this.$root.findSeries(o);
@@ -276,7 +263,7 @@ export default {
             if(o._entities.dir) l += " dir-"+o._entities.dir;
             */
             for(let k in o._entities) {
-                if(k == "sub" || k == "ses") continue;
+                if(k == "subject" || k == "session") continue;
                 if(!o._entities[k]) continue;
                 l += " "+k+"-"+o._entities[k];
             }

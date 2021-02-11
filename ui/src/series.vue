@@ -17,6 +17,7 @@
                 <small/>
             </el-badge>
         </div>
+        <pre v-if="$root.config.debug">{{$root.series}}</pre>
     </div>
 
     <div v-if="!ss" style="margin-left: 450px; padding: 20px; background-color: #eee;">
@@ -29,7 +30,7 @@
     <div class="series-detail">
         <div v-if="ss">
             <div style="background-color: #eee; padding: 10px;">
-                <small>Common Metadata</small>
+                <small>All objects under this series contain the following common metadata</small>
                 <p style="margin-top: 0; margin-bottom: 0;"> 
                     <el-tag type="info" size="mini"><small>EchoTime: {{ss.EchoTime}}</small></el-tag>&nbsp;
                     <el-tag type="info" size="mini"><small>ImageType: {{ss.ImageType}}</small></el-tag>&nbsp;
@@ -37,7 +38,8 @@
                 </p>
             </div>
             <h5>BIDS Datatype / Entities</h5>
-            <el-form label-width="100px">
+            <el-form label-width="150px">
+                <el-alert v-if="ss.message" :title="ss.message" type="info"/>
                 <el-form-item label="Datatype">
                     <el-select v-model="ss.type" reqiured placeholder="(exclude)" size="small" @change="validate(ss)">
                         <el-option value="exclude">(Exclude from BIDS conversion)</el-option>
@@ -49,11 +51,11 @@
                     </el-select>
                     <br>
                 </el-form-item>
-                <p style="margin-left: 100px; font-size: 80%;" v-if="ss.message">{{ss.message}}</p>
+                <!--<p style="margin-left: 100px; font-size: 80%;" v-if="ss.message">{{ss.message}}</p>-->
                 <div v-if="ss.type">
                     <el-form-item v-for="(v, entity) in getSomeEntities(ss.type)" :key="entity" 
                         :label="entity+'-'+(v=='required'?' *':'')" style="width: 350px">
-                        <el-popover width="300" trigger="focus" placement="right-start"
+                        <el-popover v-if="$root.bids_entities[entity]" width="300" trigger="focus" placement="right-start"
                             :title="$root.bids_entities[entity].name" 
                             :content="$root.bids_entities[entity].description">
                             <el-input slot="reference" v-model="ss.entities[entity]" size="small" :required="v == 'required'" @change="validate(ss)"/>
@@ -89,7 +91,6 @@
                     </div>
                 </div>
             </div>
-            <pre v-if="$root.config.debug">{{ss}}</pre>
         </div>
     </div>
 
@@ -135,11 +136,14 @@ export default {
     methods: {
         getSomeEntities(type) {
             let entities = this.$root.getEntities(type);
+            console.log("getting entities for", type);
+            console.dir(entities);
 
             //we don't want user set sub/ses through series
-            delete entities.sub;
-            delete entities.ses;
-            //delete entities.run;
+            //delete entities.sub;
+            //delete entities.ses;
+            delete entities.subject;
+            delete entities.session;
 
             return entities;
         },
@@ -151,7 +155,9 @@ export default {
         validate(s) {
             Vue.set(s, 'validationErrors', []);
             let entities = this.$root.getEntities(s.type);
+
             for(let k in this.getSomeEntities(s.type)) {
+                console.log("validating", k)
                 if(entities[k] == "required") {
                     if(!s.entities[k]) {
                         s.validationErrors.push("entity: "+k+" is required.");
