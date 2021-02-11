@@ -373,11 +373,11 @@ def identify_series_info(data_list_unique_series):
             series_entities['fa'] = ''
             
         if '_inv-' in SD:
-            series_entities['inv'] = SD.split('_inv-')[-1].split('_')[0]
-            if series_entities['inv'][0] == '0':
-                series_entities['inv'] = series_entities['inv'][1:]
+            series_entities['inversion'] = SD.split('_inv-')[-1].split('_')[0]
+            if series_entities['inversion'][0] == '0':
+                series_entities['inversion'] = series_entities['inversion'][1:]
         else:
-            series_entities['inv'] = ''
+            series_entities['inversion'] = ''
             
         if '_part-' in SD:
             series_entities['part'] = SD.split('_part-')[-1].split('_')[0]
@@ -531,11 +531,11 @@ def identify_series_info(data_list_unique_series):
                 series_entities['acquisition'] = 'UNI'
             else:
                 if 'inv1' in SD:
-                    series_entities['inv'] = 1
+                    series_entities['inversion'] = 1
                 elif 'inv2' in SD:
-                    series_entities['inv'] = 2
+                    series_entities['inversion'] = 2
                 else:
-                    series_entitites['inv'] = mp2rage_inv
+                    series_entitites['inversion'] = mp2rage_inv
                     mp2rage_inv += 1
             
             if 'EchoNumber' in data_list_unique_series[i]['sidecar']:
@@ -676,7 +676,7 @@ def identify_objects_info(subject_protocol, series_list, series_seriesID_list):
                 plt.savefig('{}.png'.format(subject_protocol[p]['nifti_path'][:-7]), bbox_inches='tight')
             
         index = series_seriesID_list.index(subject_protocol[p]['series_id'])
-        objects_entities = {'subject': '', 'session': '', 'run': '', 'task': '', 'direction': '', 'acquisition': '', 'ceagent': '', 'echo': '', 'fa': '', 'inv': '', 'part': ''}
+        objects_entities = {'subject': '', 'session': '', 'run': '', 'task': '', 'direction': '', 'acquisition': '', 'ceagent': '', 'echo': '', 'fa': '', 'inversion': '', 'part': ''}
         
         #Port series level information down to the object level
         subject_protocol[p]['include'] = series_list[index]['include']
