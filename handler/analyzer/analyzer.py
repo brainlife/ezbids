@@ -41,7 +41,7 @@ def select_unique_data(dir_list):
         PatientID, PatientName, PatientBirthDatge
     
     acquisition_dates: list    
-        List of dictionaries containing the AcquisitionDate and sessions # (if applicable)
+        List of dictionaries containing the AcquisitionDate and session # (if applicable)
     '''
     
     #Load list generated from dcm2niix, and organize the nifti/json files by their SeriesNumber   
@@ -188,7 +188,7 @@ def select_unique_data(dir_list):
                        'PatientSex': PatientSex,
                        'PatientAge': 'N/A',
                        'subject': subject,
-                       'sessions': '',
+                       'session': '',
                        'SeriesNumber': json_data['SeriesNumber'],
                        'AcquisitionDate': AcquisitionDate,
                        'AcquisitionTime': AcquisitionTime,
@@ -230,29 +230,29 @@ def select_unique_data(dir_list):
                  
     subjectIDs_info = sorted(subjectIDs_info, key = lambda i: i['subject'])
     
-    acquisition_dates = list({(x['subject'], x['AcquisitionDate']):{'subject':x['subject'], 'AcquisitionDate':x['AcquisitionDate'], 'sessions': ''} for x in data_list}.values())
+    acquisition_dates = list({(x['subject'], x['AcquisitionDate']):{'subject':x['subject'], 'AcquisitionDate':x['AcquisitionDate'], 'session': ''} for x in data_list}.values())
     acquisition_dates = sorted(acquisition_dates, key = lambda i: i['AcquisitionDate'])
     
-    #Insert sessionss info if applicable
-    subject_sessions = [[x['subject'], x['AcquisitionDate'], x['sessions']] for x in data_list]
-    subject_sessions = sorted([list(x) for x in set(tuple(x) for x in subject_sessions)], key = lambda i: i[1])
+    #Insert sessions info if applicable
+    subject_session = [[x['subject'], x['AcquisitionDate'], x['session']] for x in data_list]
+    subject_session = sorted([list(x) for x in set(tuple(x) for x in subject_session)], key = lambda i: i[1])
     
-    for i in np.unique(np.array([x[0] for x in subject_sessions])):
-        subject_indices = [x for x,y in enumerate(subject_sessions) if y[0] == i]
+    for i in np.unique(np.array([x[0] for x in subject_session])):
+        subject_indices = [x for x,y in enumerate(subject_session) if y[0] == i]
         if len(subject_indices) > 1:
             for j, k in enumerate(subject_indices):
-                subject_sessions[k][-1] = str(j+1)
+                subject_session[k][-1] = str(j+1)
     
-    subject_sessions = sorted([list(x) for x in set(tuple(x) for x in subject_sessions)], key = lambda i: i[1])
+    subject_session = sorted([list(x) for x in set(tuple(x) for x in subject_session)], key = lambda i: i[1])
     
     for x,y in enumerate(acquisition_dates):
-        y['sessions'] = subject_sessions[x][-1]
+        y['session'] = subject_session[x][-1]
         
     
     for si in range(len(subjectIDs_info)):
-        for ss in subject_sessions:
+        for ss in subject_session:
             if ss[0] == subjectIDs_info[si]['subject']:
-                subjectIDs_info[si]['sessions'].append({'AcquisitionDate': ss[1], 'sessions': ss[2], 'exclude': False})
+                subjectIDs_info[si]['sessions'].append({'AcquisitionDate': ss[1], 'session': ss[2], 'exclude': False})
         subjectIDs_info[si].update({'validationErrors': []})
         
 
@@ -260,11 +260,11 @@ def select_unique_data(dir_list):
     #Sort list of dictionaries by subject, AcquisitionDate, SeriesNumber, and json_path
     data_list = sorted(data_list, key=itemgetter('subject', 'AcquisitionDate', 'SeriesNumber', 'json_path'))
     
-    #Add sessions info to data_list, if applicable
+    #Add session info to data_list, if applicable
     for i in range(len(acquisition_dates)):
         for j in range(len(data_list)):
             if data_list[j]['subject'] == acquisition_dates[i]['subject'] and data_list[j]['AcquisitionDate'] == acquisition_dates[i]['AcquisitionDate']:
-                data_list[j]['sessions'] = acquisition_dates[i]['sessions']
+                data_list[j]['session'] = acquisition_dates[i]['session']
         
     #Unique data is determined from four values: SeriesDescription, EchoTime, ImageType, MultibandAccelerationFactor
     data_list_unique_series = []
@@ -329,9 +329,9 @@ def identify_series_info(data_list_unique_series):
             series_entities['subject'] = None
         
         if '_ses-' in SD:
-            series_entities['sessions'] = SD.split('_ses-')[-1].split('_')[0]
+            series_entities['session'] = SD.split('_ses-')[-1].split('_')[0]
         else:
-            series_entities['sessions'] = None
+            series_entities['session'] = None
             
         if '_run-' in SD:
             series_entities['run'] = SD.split('_run-')[-1].split('_')[0]
@@ -373,11 +373,11 @@ def identify_series_info(data_list_unique_series):
             series_entities['fa'] = ''
             
         if '_inv-' in SD:
-            series_entities['inv'] = SD.split('_inv-')[-1].split('_')[0]
-            if series_entities['inv'][0] == '0':
-                series_entities['inv'] = series_entities['inv'][1:]
+            series_entities['inversion'] = SD.split('_inv-')[-1].split('_')[0]
+            if series_entities['inversion'][0] == '0':
+                series_entities['inversion'] = series_entities['inversion'][1:]
         else:
-            series_entities['inv'] = ''
+            series_entities['inversion'] = ''
             
         if '_part-' in SD:
             series_entities['part'] = SD.split('_part-')[-1].split('_')[0]
@@ -531,11 +531,11 @@ def identify_series_info(data_list_unique_series):
                 series_entities['acquisition'] = 'UNI'
             else:
                 if 'inv1' in SD:
-                    series_entities['inv'] = 1
+                    series_entities['inversion'] = 1
                 elif 'inv2' in SD:
-                    series_entities['inv'] = 2
+                    series_entities['inversion'] = 2
                 else:
-                    series_entitites['inv'] = mp2rage_inv
+                    series_entitites['inversion'] = mp2rage_inv
                     mp2rage_inv += 1
             
             if 'EchoNumber' in data_list_unique_series[i]['sidecar']:
@@ -610,7 +610,7 @@ def identify_series_info(data_list_unique_series):
 
 def identify_objects_info(subject_protocol, series_list, series_seriesID_list):
     '''
-    Takes list of dictionaries with key and unique information, and sessions it to 
+    Takes list of dictionaries with key and unique information, and session it to 
     determine the DataType and Modality labels of the unique acquisitions. 
     Other information (e.g. run, acq, ce) will be determined if the data follows 
     the ReproIn naming convention for SeriesDescriptions.
@@ -676,7 +676,7 @@ def identify_objects_info(subject_protocol, series_list, series_seriesID_list):
                 plt.savefig('{}.png'.format(subject_protocol[p]['nifti_path'][:-7]), bbox_inches='tight')
             
         index = series_seriesID_list.index(subject_protocol[p]['series_id'])
-        objects_entities = {'subject': '', 'sessions': '', 'run': '', 'task': '', 'direction': '', 'acquisition': '', 'ceagent': '', 'echo': '', 'fa': '', 'inv': '', 'part': ''}
+        objects_entities = {'subject': '', 'session': '', 'run': '', 'task': '', 'direction': '', 'acquisition': '', 'ceagent': '', 'echo': '', 'fa': '', 'inversion': '', 'part': ''}
         
         #Port series level information down to the object level
         subject_protocol[p]['include'] = series_list[index]['include']
@@ -1229,13 +1229,13 @@ participantsColumn = {"sex": {"LongName": "gender", "Description": "generic gend
 objects_list = []
 total_objects_indices = 0
 subjects = [acquisition_dates[x]['subject'] for x in range(len(acquisition_dates))]
-sessions = [acquisition_dates[x]['sessions'] for x in range(len(acquisition_dates))]
+session = [acquisition_dates[x]['session'] for x in range(len(acquisition_dates))]
 series_seriesID_list = [series_list[x]['series_id'] for x in range(len(series_list))]
 
 #Loop through all unique subjectIDs
 for s in range(len(acquisition_dates)):
     
-    if acquisition_dates[s]['sessions'] == '':
+    if acquisition_dates[s]['session'] == '':
         print('')
         print('')
         print('Beginning conversion process for subject {} protocol acquisitions'.format(acquisition_dates[s]['subject']))
@@ -1245,12 +1245,12 @@ for s in range(len(acquisition_dates)):
     else:
         print('')
         print('')
-        print('Beginning conversion process for subject {}, sessions {} protocol acquisitions'.format(acquisition_dates[s]['subject'], acquisition_dates[s]['sessions']))
+        print('Beginning conversion process for subject {}, session {} protocol acquisitions'.format(acquisition_dates[s]['subject'], acquisition_dates[s]['session']))
         print('-------------------------------------------------------------------')
         print('')
     
-    #Get initial subject_protocol list from subjectsetting by subject/sessionss
-    subject_protocol = [x for x in data_list if x['subject'] == acquisition_dates[s]['subject'] and x['sessions'] == acquisition_dates[s]['sessions']]
+    #Get initial subject_protocol list from subjectsetting by subject/sessions
+    subject_protocol = [x for x in data_list if x['subject'] == acquisition_dates[s]['subject'] and x['session'] == acquisition_dates[s]['session']]
     
     #Update subject_protocol based on object-level checks
     subject_protocol, objects_entities_list = identify_objects_info(subject_protocol, series_list, series_seriesID_list)
