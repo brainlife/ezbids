@@ -61,12 +61,12 @@ console.log("outputting objects");
 async.forEach(info.objects, (o, next_o)=>{
     if(o._exclude) {
         o._type = "excluded/obj"+o.idx;
-        o._entities.desc = o._SeriesDescription; //inject seriesdesc to filename
+        o._entities.description = o._SeriesDescription; //inject seriesdesc to filename
     }
 
     let typeTokens = o._type.split("/");
-    let modality = typeTokens[0]; //func, dwi, anat, etc..
-    let suffix = typeTokens[1];
+    let modality = typeTokens[0]; //func, dwi, anat, etc.. (or exclude)
+    let suffix = typeTokens[1]; //t1w, bold, or "objN" for exclude)
 
     //setup directory
     let path = "bids";
@@ -198,8 +198,7 @@ async.forEach(info.objects, (o, next_o)=>{
                             continue;
                         }
 
-                        //if intended object is not included, skip it
-                        //if(io.included) continue;
+                        //if intended object is excluded, skip it
                         if(io._type == "exclude") continue;
 
                         //doesn't make sense to intentend for its own object (I don't think this ever happens)
@@ -255,6 +254,7 @@ async.forEach(info.objects, (o, next_o)=>{
     case "excluded":
         o.items.forEach((item, idx)=>{
             //sub-OpenSciJan22_desc-localizer_obj5-0.json
+            //TODO - whty do I need to add idx?
             handleItem(item, suffix+"-"+idx+"."+item.name);
         });
         break;

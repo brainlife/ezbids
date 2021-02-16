@@ -5,6 +5,7 @@
             Welcome to the <b><span style="letter-spacing: -2px; opacity: 0.5">ez</span>BIDS</b> - an online DICOM to BIDS conversion / organizing tool. 
         </p>
 
+        <!--=@dragstart="dragstart"-->
         <div class="drop-area" :class="{dragging}" v-if="!starting"
             @drop="dropit" 
             @dragleave="dragging = false" 
@@ -219,6 +220,12 @@ export default {
             return null;
         },
 
+        /*
+        dragstart(e) {
+            e.dataTransfer.setData("text", e.target.id);
+        },
+        */
+
         //HTML5 drop event doesn't work unless dragover is handled
         dragover(e) {
             e.preventDefault();
@@ -229,11 +236,9 @@ export default {
             e.preventDefault();
             this.dragging = false;
             this.starting = true;
-            //this.$nexTick won't update the UI for starting flag change..
-            setTimeout(async ()=>{
-                await this.listDropFiles(e.dataTransfer.items);
-                this.upload();
-            }, 1000)
+            //I can't wrap this around timeout because chrome won't allow accessing dataTransfer.items outside dropevent context for security reason
+            await this.listDropFiles(e.dataTransfer.items);
+            this.upload();
         },
 
         /*
@@ -273,7 +278,7 @@ export default {
         //Unlike file input(directory) selecter, I have to do some convoluted thing to get all the files that user drops...
         async listDropFiles(items) {
             this.files = [];
-            
+
             // Get all the entries (files or sub-directories) in a directory 
             // by calling readEntries until it returns empty array
             async function readAllDirectoryEntries(directoryReader) {
@@ -372,8 +377,6 @@ export default {
         },
 
         processFiles() {
-            console.log("running processFiles");
-
             //find next files to upload
             let data = new FormData();
             let fileidx = [];
