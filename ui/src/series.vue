@@ -29,14 +29,6 @@
     </div>
     <div class="series-detail">
         <div v-if="ss">
-            <div style="background-color: #eee; padding: 10px;">
-                <small>All objects under this series contain the following common metadata</small>
-                <p style="margin-top: 0; margin-bottom: 0;"> 
-                    <el-tag type="info" size="mini"><small>EchoTime: {{ss.EchoTime}}</small></el-tag>&nbsp;
-                    <el-tag type="info" size="mini"><small>ImageType: {{ss.ImageType}}</small></el-tag>&nbsp;
-                    <el-tag type="info" size="mini"><small>MultibandAccelerationFactor: {{ss.MultibandAccelerationFactor}}</small></el-tag>&nbsp;
-                </p>
-            </div>
             <h5>BIDS Datatype / Entities</h5>
             <el-form label-width="150px">
                 <el-alert v-if="ss.message" :title="ss.message" type="info"/>
@@ -66,6 +58,14 @@
                     <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in ss.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
                 </div>
             </el-form>
+            <div style="background-color: #eee; padding: 10px 20px;">
+                <small>All objects under this series contain the following common metadata</small>
+                <p style="margin-top: 0; margin-bottom: 0;"> 
+                    <el-tag type="info" size="mini"><small>EchoTime: {{ss.EchoTime}}</small></el-tag>&nbsp;
+                    <el-tag type="info" size="mini"><small>ImageType: {{ss.ImageType}}</small></el-tag>&nbsp;
+                    <el-tag type="info" size="mini"><small>MultibandAccelerationFactor: {{ss.MultibandAccelerationFactor}}</small></el-tag>&nbsp;
+                </p>
+            </div>
             <p style="border-top: 1px solid #eee; padding: 10px 20px;">
                 <small>The following subjects contains objects for this series.</small>
             </p>

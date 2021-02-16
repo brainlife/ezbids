@@ -73,9 +73,7 @@
         </div>
 
         <div v-if="['preprocessing', 'uploaded'].includes($root.session.status)">
-            <h3 v-if="$root.session.dicomDone === undefined">
-                Inflating...
-            </h3>
+            <h3 v-if="$root.session.dicomDone === undefined"> Inflating... </h3>
             <div v-else-if=" $root.session.dicomDone < $root.session.dicomCount">
                 <h3>Converting dicoms to nifti ...</h3>
                 <el-progress status="success"
@@ -84,6 +82,10 @@
                     :percentage="parseFloat(($root.session.dicomDone*100 / $root.session.dicomCount).toFixed(1))"/>
             </div>
             <h3 v-else>Analyzing...</h3>
+
+            <p>
+                <small>Depending on the size of your dataset, this process might take several hours. You may shutdown your computer while we process your data.. (please refresh the page when you come back)</small>
+            </p>
             <pre>{{$root.session.status_msg}}</pre>
 
             <div class="page-action">
@@ -227,10 +229,11 @@ export default {
             e.preventDefault();
             this.dragging = false;
             this.starting = true;
-            this.$nextTick(async ()=>{
+            //this.$nexTick won't update the UI for starting flag change..
+            setTimeout(async ()=>{
                 await this.listDropFiles(e.dataTransfer.items);
                 this.upload();
-            });
+            }, 1000)
         },
 
         /*
@@ -257,13 +260,14 @@ export default {
 
         selectit(e) {
             this.starting = true;
-            this.$nextTick(()=>{
+            //this.$nextTick() won't update the UI with starting flag change
+            setTimeout(()=>{
                 this.files = e.target.files;
                 for(let file of e.target.files) {
                     file.path = file.webkitRelativePath;
                 }
                 this.upload();
-            });
+            }, 1000);
         },
 
         //Unlike file input(directory) selecter, I have to do some convoluted thing to get all the files that user drops...
