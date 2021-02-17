@@ -11,6 +11,9 @@ root=$1
 
 rm -rf $root/bids
 
+echo "running defacing"
+./deface.py $root
+
 echo "converting output to bids"
 ./convert.js $root
 
