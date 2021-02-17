@@ -312,14 +312,13 @@ invert:
 
         //apply all mappings and store them under _entities
         mapObject(o) {
+            o._exclude = o.exclude;
+
             const series = this.$root.findSeries(o);
             o._SeriesDescription = series.SeriesDescription;
             o._type = series.type;
             if(o.type) o._type = o.type; //object level override
             
-            o._exclude = false;
-            if(o._type == 'exclude') o._exclude = true;
-
             //initialize with the proper object key ordering
             const e = this.getEntities(o._type);
             for(let k in e) {
@@ -348,8 +347,6 @@ invert:
             }
 
             o._entities = e;
-
-            //lib.intendedFor(this.$root);
         },
 
         organizeObjects() {

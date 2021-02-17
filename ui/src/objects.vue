@@ -55,6 +55,9 @@
     </div>
     <div class="object" ref="object-detail">
         <div v-if="so">
+            <div style="margin-bottom: 10px;" v-if="isExcluded(so)">
+                <el-alert :closable="false" type="info">This object will be excluded from the BIDS output</el-alert>
+             </div>
             <div style="margin-bottom: 10px;">
                 <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in so.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
              </div>
@@ -68,10 +71,13 @@
                         {{so._SeriesDescription}}
                         <!--<el-tag type="info" size="mini"><small>series_id {{so.series_id}}</small></el-tag>-->
                     </el-form-item>
+                    <el-form-item>
+                        <el-checkbox v-model="so.exclude" title="Exclude this object from BIDS output">Exclude this object</el-checkbox>
+                    </el-form-item>
                     <el-form-item label="Datatype">
                         <el-select v-model="so.type" clearable :placeholder="so._type" size="small" style="width: 100%" @change="update(so)">
-                            <el-option value="">{{so._type}} (series default)</el-option>
-                            <el-option value="exclude">(Exclude from BIDS conversion)</el-option>
+                            <el-option value="">(Use Series Default)</el-option>
+                            <!--<el-option value="exclude">(Exclude from BIDS conversion)</el-option>-->
                             <el-option-group v-for="type in $root.datatypes" :key="type.label" :label="type.label">
                                 <el-option v-for="subtype in type.options" :key="subtype.value" :value="subtype.value">
                                     {{type.label}} / {{subtype.label}}
@@ -204,7 +210,9 @@ export default {
         },
 
         isExcluded(o) {
-            if(o._type == 'exclude') return true;
+            /*
+            //if(o._type == 'exclude') return true;
+            if(o.exclude) return true;
             let subject = this.findSubject(o._entities.subject);
             if(!subject) return false;
             if(subject.exclude) return true;
@@ -212,8 +220,11 @@ export default {
             let session = this.findSession(subject, o._entities.session);
             if(!session) return false;
             if(session.exclude) return true;
-
             return false;
+            */
+            this.$root.mapObject(o);
+            console.log(o._exclude);
+            return o._exclude; 
         },
 
         groupSections(sess) {
@@ -277,7 +288,8 @@ export default {
             //if not included, don't need to validate
             //if(!o.include) return;
             //if(o._type == "exclude") return;
-            if(o._exclude) return;
+            if(o.exclude) return; //excluded via exclude flag on this object
+            if(o._exclude) return; //excluded ia exclude flag on parent level
 
             //make sure all required entities are set
             let series = this.$root.findSeries(o);
@@ -309,7 +321,9 @@ export default {
             //make sure no 2 objects are exactly alike
             for(let o2 of this.$root.objects) {
                 if(o == o2) continue;
-                if(o2._type == "exclude") continue;
+                //if(o2._type == "exclude") continue;
+                if(o2.exclude) continue;
+                if(o2._exclude) continue;
                 if(o._type != o2._type) continue;
                 let same = o2;
                 for(let k in o._entities) {

@@ -37,7 +37,7 @@
         <div v-if="$root.session.status == 'created'">
             <h3>Uploading ...</h3>
             <p>
-                <small>Please do not close your browser</small>
+                <small>Please do not close your browser until all files are uploaded.</small>
             </p>
 
             <div v-if="failed.length > 0">
