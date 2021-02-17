@@ -11,14 +11,14 @@ Reorient & deface anatomical images
 import os, sys, json, deepdefacer
 import nibabel as nib
 
+print('sdsd', file = sys.stdout)
 root = sys.argv[0]
-print('hjjkhjk')
 
 finalize_json = open('.finalize.json')
 finalize_json = json.load(finalize_json, strict=False)
 
 if finalize_json['deface'] == True:
-    print('here we go')
+    print('here we go', file = sys.stdout)
     for i in range(len(finalize_json['objects'])):
         if 'anat' in finalize_json['objects'][i]['_type'] and finalize_json['objects'][i]['_exclude'] == False:
             anat_path = [x for x in finalize_json['objects'][i]['paths'] if '.nii' in x][0]
