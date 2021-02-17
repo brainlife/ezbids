@@ -25,4 +25,4 @@ if finalized_json['deface'] == True:
             new_img = nib.as_closest_canonical(img)
             nib.save(new_img, anat_path)
 
-            os.system('deepdefacer --input_file {} --defaced_output_path {}'.format(anat_path, anat_path.split('.nii')[0] + '_defaced' + '.nii.gz'))
+            os.system('deepdefacer --input_file {} --defaced_output_path {}'.format(anat_path, anat_path))
