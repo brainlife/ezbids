@@ -16,8 +16,8 @@ RUN cd /tmp && \
     cmake -DBATCH_VERSION=ON -DUSE_OPENJPEG=ON .. && \
     make && make install
 
-RUN pip3 install pandas numpy nilearn matplotlib tensorflow[tf_cpu] deepdefacer
-RUN pip3 install --update tensorflow[tf_cpu]
+RUN pip3 install pandas numpy nilearn matplotlib tensorflow deepdefacer[tf_cpu]
+RUN pip3 install --update tensorflow
 
 #install fsl
 #RUN apt install -y fsl python-numpy
