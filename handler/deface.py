@@ -10,11 +10,11 @@ Reorient & deface anatomical images
 import os, sys, json, deepdefacer
 import nibabel as nib
 
-print('sdsd', file = sys.stdout)
-root = sys.argv[0]
+root = sys.argv[1]
 
-os.getcwd()
-finalize_json = open('finalize.json')
+print(root, file = sys.stderr)
+
+finalize_json = open('{}/finalize.json'.format(root))
 finalize_json = json.load(finalize_json, strict=False)
 
 if finalize_json['deface'] == True:
@@ -28,4 +28,3 @@ if finalize_json['deface'] == True:
             nib.save(new_img, anat_path)
 
             os.system('deepdefacer --input_file {} --defaced_output_path {}'.format(anat_path, anat_path.split('.nii')[0] + '_defaced' + '.nii.gz'))
-
