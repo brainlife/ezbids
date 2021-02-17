@@ -16,7 +16,7 @@ root = sys.argv[0]
 finalize_json = open('{}/finalize.json'.format(root))
 finalize_json = json.load(finalize_json, strict=False)
 
-if finalize_json['defaced'] == True:
+if finalize_json['deface'] == True:
     for i in range(len(finalize_json['objects'])):
         if 'anat' in finalize_json['objects'][i]['_type']:
             anat_path = [x for x in finalize_json['objects'][i]['paths'] if '.nii' in x][0]
