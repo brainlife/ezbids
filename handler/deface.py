@@ -16,10 +16,9 @@ root = sys.argv[0]
 finalize_json = open('.finalize.json')
 finalize_json = json.load(finalize_json, strict=False)
 
-for i in range(len(finalize_json['objects'])):
-    if 'anat' in finalize_json['objects'][i]['_type']:
-        if finalize_json['objects'][i]['deface'] == True and finalize_json['objects'][i]['_exclude'] == False:
-
+if finalize_json['deface'] == True:
+    for i in range(len(finalize_json['objects'])):
+        if 'anat' in finalize_json['objects'][i]['_type'] and finalize_json['objects'][i]['_exclude'] == False:
             anat_path = [x for x in finalize_json['objects'][i]['paths'] if '.nii' in x][0]
             # anat_path = root + '/' + anat_path.split('./')[-1]
             img = nib.load(anat_path)
