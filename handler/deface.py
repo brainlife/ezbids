@@ -13,7 +13,8 @@ import nibabel as nib
 print('sdsd', file = sys.stdout)
 root = sys.argv[0]
 
-finalize_json = open('{}/finalize.json'.format(root))
+os.getcwd()
+finalize_json = open('finalize.json')
 finalize_json = json.load(finalize_json, strict=False)
 
 if finalize_json['deface'] == True:
