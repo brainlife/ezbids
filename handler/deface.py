@@ -8,7 +8,7 @@ Reorient & deface anatomical images
 @author: dlevitas
 """
 
-import os, sys json, deepdefacer
+import os, sys, json, deepdefacer
 import nibabel as nib
 
 root = sys.argv[0]
