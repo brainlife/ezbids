@@ -13,18 +13,18 @@ import nibabel as nib
 
 root = sys.argv[0]
 
-finalize_json = open('{}/finalize.json'.format(root))
+finalize_json = open('.finalize.json')
 finalize_json = json.load(finalize_json, strict=False)
 
-if finalize_json['deface'] == True:
-    for i in range(len(finalize_json['objects'])):
-        if 'anat' in finalize_json['objects'][i]['_type']:
+for i in range(len(finalize_json['objects'])):
+    if 'anat' in finalize_json['objects'][i]['_type']:
+        if finalize_json['objects'][i]['deface'] == True and finalize_json['objects'][i]['_exclude'] == False:
+
             anat_path = [x for x in finalize_json['objects'][i]['paths'] if '.nii' in x][0]
-            
             # anat_path = root + '/' + anat_path.split('./')[-1]
             img = nib.load(anat_path)
             new_img = nib.as_closest_canonical(img)
             nib.save(new_img, anat_path)
-            
+
             os.system('deepdefacer --input_file {} --defaced_output_path {}'.format(anat_path, anat_path.split('.nii')[0] + '_defaced' + '.nii.gz'))
 
