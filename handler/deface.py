@@ -17,8 +17,9 @@ finalized_json = json.load(finalized_json, strict=False)
 
 if finalized_json['deface'] == True:
     for i in range(len(finalized_json['objects'])):
-        if 'anat' in finalized_json['objects'][i]['_type'] and finalized_json['objects'][i]['_exclude'] == False:
+        if 'anat' in finalized_json['objects'][i]['_type'] and finalized_json['objects'][i]['include'] == True:
             anat_path = [x for x in finalized_json['objects'][i]['paths'] if '.nii' in x][0]
+            anat_path = root + '/' + anat_path.split('./')[-1]
             print('Performing defacing on {}'.format(anat_path), file = sys.stdout)
             img = nib.load(anat_path)
             new_img = nib.as_closest_canonical(img)
