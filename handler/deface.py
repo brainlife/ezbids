@@ -12,17 +12,14 @@ import nibabel as nib
 
 root = sys.argv[1]
 
-print(root, file = sys.stderr)
+finalized_json = open('{}/finalized.json'.format(root))
+finalized_json = json.load(finalized_json, strict=False)
 
-finalize_json = open('{}/finalize.json'.format(root))
-finalize_json = json.load(finalize_json, strict=False)
-
-if finalize_json['deface'] == True:
-    print('here we go', file = sys.stdout)
-    for i in range(len(finalize_json['objects'])):
-        if 'anat' in finalize_json['objects'][i]['_type'] and finalize_json['objects'][i]['_exclude'] == False:
-            anat_path = [x for x in finalize_json['objects'][i]['paths'] if '.nii' in x][0]
-            # anat_path = root + '/' + anat_path.split('./')[-1]
+if finalized_json['deface'] == True:
+    for i in range(len(finalized_json['objects'])):
+        if 'anat' in finalized_json['objects'][i]['_type'] and finalized_json['objects'][i]['_exclude'] == False:
+            anat_path = [x for x in finalized_json['objects'][i]['paths'] if '.nii' in x][0]
+            print('Performing defacing on {}'.format(anat_path), file = sys.stdout)
             img = nib.load(anat_path)
             new_img = nib.as_closest_canonical(img)
             nib.save(new_img, anat_path)
