@@ -17,6 +17,7 @@ RUN cd /tmp && \
     make && make install
 
 RUN pip3 install pandas numpy nilearn matplotlib tensorflow[tf_cpu] deepdefacer
+RUN pip3 install --update tensorflow[tf_cpu]
 
 #install fsl
 #RUN apt install -y fsl python-numpy
