@@ -2,7 +2,7 @@
 <div v-if="$root.currentPage.id == 'object'">
     <div class="bids-structure">
         <h4 style="padding-top: 20px;">BIDS Structure</h4>
-        <div v-for="(o_sub, sub) in $root.subs" :key="sub" style="font-size: 90%;">
+        <div v-for="(o_sub, sub) in $root.subs" :key="sub" style="font-size: 90%; margin-bottom: 10px">
             <span v-if="sub != ''" class="hierarchy">
                 <span :class="{exclude: isSubExcluded(sub)}">
                     <i class="el-icon-user-solid"/> 
@@ -26,7 +26,7 @@
                 <div v-for="(section, sectionId) in groupSections(o_ses)" :key="sectionId" style="border-top: 1px dotted #bbb; margin-top: 10px; padding-top: 5px; position: relative;">
                     <div style="position: absolute; right: 10px; top: -7px; background-color: white; font-size: 70%; color: #999; padding: 0 5px;">section {{sectionId}}</div>
                     <div v-for="o in section" :key="o.idx" class="clickable hierarchy-item" :class="{selected: so === o, exclude: isExcluded(o)}" @click="select(o, o_ses)">
-                        <el-tag type="info" size="mini">sn {{o.SeriesNumber}}</el-tag>
+                        <el-tag type="info" size="mini">Series# {{o.SeriesNumber}}</el-tag>
                         &nbsp;
                         <datatype :type="o._type" :series_id="o.series_id" :entities="o.entities"/> 
                         <small v-if="o._type == 'exclude'">&nbsp;({{o._SeriesDescription}})</small>
@@ -67,9 +67,8 @@
             <el-form label-width="150px">
                 <div :class="{'exclude': isExcluded(so)}">
                     <el-form-item label="Series#/Desc.">
-                        <el-tag type="info" size="mini">sn {{so.SeriesNumber}}</el-tag>
+                        <el-tag type="info" size="mini">Series# {{so.SeriesNumber}}</el-tag>
                         {{so._SeriesDescription}}
-                        <!--<el-tag type="info" size="mini"><small>series_id {{so.series_id}}</small></el-tag>-->
                     </el-form-item>
                     <el-form-item>
                         <el-checkbox v-model="so.exclude" title="Exclude this object from BIDS output">Exclude this object</el-checkbox>

@@ -16,6 +16,9 @@ RUN cd /tmp && \
     cmake -DBATCH_VERSION=ON -DUSE_OPENJPEG=ON .. && \
     make && make install
 
+#tensorflow2 needs pip>19
+RUN pip3 install --upgrade pip
+
 RUN pip3 install pandas numpy nilearn matplotlib tensorflow keras deepdefacer[tf_cpu]
 
 #install fsl

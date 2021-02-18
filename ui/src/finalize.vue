@@ -8,7 +8,7 @@
                 <el-checkbox v-model="$root.deface">Deface all anatomical objects (and reorient images to RAS+)</el-checkbox>
             </el-form-item>
             <el-form-item>
-                <el-button @click="finalize" type="primary">Finalize</el-button>
+                <el-button @click="finalize" type="primary" :disable="submitting">Finalize</el-button>
             </el-form-item>
         </el-form>
     </div>
@@ -39,6 +39,7 @@
     </div>
     <div v-if="$root.session.status == 'failed'">
         <p>Failed to convert to BIDS...</p>
+        <el-button @click="rerun" type="success" style="float: right" size="small">Rerun Finalize Step</el-button>
         <p><small><i>{{$root.session.status_msg}}</i></small></p>
     </div>
 
@@ -81,6 +82,7 @@ export default {
         return {
             //finalizing: false,
             //reload_t: null,
+            submitting: false,
 
             activeLogs: [],
             stdout: "",
@@ -94,7 +96,12 @@ export default {
     methods: {
 
         finalize() {
-            this.$root.finalize();
+            this.submitting = true;
+            this.$root.finalize(err=>{
+                if(err) this.$notify({ title: 'Failed', message: 'Failed to finalize:'+err});
+                if(err) console.error(err);
+                this.submitting = false;
+            });
         },
 
         rerun() {

@@ -143,8 +143,8 @@ new Vue({
             //      preprocessing
             //      analyzed
             //      failed
-            //      finalized
             //      bidsing
+            //      finalized
             //      finished
 
             analyzed: false,
@@ -492,7 +492,7 @@ invert:
             this.currentPage = this.pages.find(p=>p.id == id);
         },
 
-        finalize() {
+        finalize(cb) {
 
             //mapping between things like like "subject" to "sub"
             const entityMappings = {};
@@ -516,8 +516,9 @@ invert:
                 if(status == "ok") {
                     this.finalized = true;
                     this.pollSession();
+                    if(cb) cb();
                 } else {
-                    this.$notify({ title: 'Failed', message: 'Failed to finalize:'+status});
+                    if(cb) cb(status);
                 }
             }); 
         },

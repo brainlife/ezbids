@@ -36,9 +36,7 @@
 
         <div v-if="$root.session.status == 'created'">
             <h3>Uploading ...</h3>
-            <p>
-                <small>Please do not close your browser until all files are uploaded.</small>
-            </p>
+            <el-alert type="info">Please do not close your browser until all files are uploaded.</el-alert>
 
             <div v-if="failed.length > 0">
                 <el-alert type="error">Permanently failed to upload some files</el-alert>
@@ -84,9 +82,7 @@
             </div>
             <h3 v-else>Analyzing...</h3>
 
-            <p>
-                <small>Depending on the size of your dataset, this process might take several hours. You may shutdown your computer while we process your data.. (please refresh the page when you come back)</small>
-            </p>
+            <el-alert type="info">Depending on the size of your dataset, this process might take several hours. You may shutdown your computer while we process your data.. (please refresh the page when you come back)</el-alert>
             <pre>{{$root.session.status_msg}}</pre>
 
             <div class="page-action">
