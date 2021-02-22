@@ -37,3 +37,9 @@ RUN pip3 install pandas numpy nilearn matplotlib tensorflow keras deepdefacer[tf
 #ENV FSLWISH=/usr/bin/wish
 #ENV POSSUMDIR=/usr/share/fsl/5.0
 
+#install ROBEX
+COPY ROBEXv12.linux64.tar.gz /
+RUN tar -xzf /ROBEXv12.linux64.tar.gz
+ENV PATH=$PATH:/ROBEX
+
+RUN pip3 install quickshear

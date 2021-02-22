@@ -26,3 +26,5 @@ nohup.out
 tsc.log
 
 api/config.json
+
+handler/container/ROBEXv12.linux64.tar.gz
