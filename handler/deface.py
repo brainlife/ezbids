@@ -9,9 +9,9 @@ Deface anatomical images
 
 import os, sys, json
 import nibabel as nib
-import numpy as np
 import matplotlib.pyplot as plt
 from math import floor
+from multiprocessing import Pool
 
 root = sys.argv[1]
 
@@ -19,8 +19,19 @@ finalized_json = open('{}/finalized.json'.format(root))
 finalized_json = json.load(finalized_json, strict=False)
 
 deface_list = []
+if finalized_json['deface'] == True:
+    for i in range(len(finalized_json['objects'])):
+        if 'anat' in finalized_json['objects'][i]['_type'] and finalized_json['objects'][i]['include'] == True:
+            
+            anat_path = [x for x in finalized_json['objects'][i]['paths'] if '.nii' in x][0]
+            anat_path = root + '/' + anat_path.split('./')[-1]
 
-def deface(anat_file):
+            deface_list.append(anat_path)
+ 
+print('deface list is : {}'.format(deface_list))
+
+# Functions
+def deface(anat_path):
     # Skull strip and deface
     print('Performing defacing on {}'.format(anat_path), file = sys.stdout)
     os.system('runROBEX.sh {} {}'.format(anat_path, anat_path.split('.nii.gz')[0] + '_mask.nii.gz'))
@@ -44,19 +55,14 @@ def deface(anat_file):
     print('Defaced anat thumbnail: {}.png'.format(anat_path.split('.nii.gz')[0]), file = sys.stdout)
 
     
-if finalized_json['deface'] == True:
-    for i in range(len(finalized_json['objects'])):
-        if 'anat' in finalized_json['objects'][i]['_type'] and finalized_json['objects'][i]['include'] == True:
-            
-            anat_path = [x for x in finalized_json['objects'][i]['paths'] if '.nii' in x][0]
-            anat_path = root + '/' + anat_path.split('./')[-1]
+def deface_parallel():
+    pool = Pool(processes=len(deface_list))
+    pool.map(deface, deface_list)
+    
 
-            deface_list.append(anat_path)
-np.savetxt('{}/deface_list.txt'.format(root), deface_list, fmt='%s')
- 
-print('deface list is : {}'.format(deface_list))
-os.system('export -f {}'.format(deface))
-os.system('cat {}/deface_list.txt | parallel --wd {} -j 6 {}'.format(root, root, deface(anat_path)))
+if __name__ == '__main__':
+    deface_parallel()
+
 
             
                 
