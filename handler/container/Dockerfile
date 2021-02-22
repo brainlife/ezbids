@@ -19,7 +19,7 @@ RUN cd /tmp && \
 #tensorflow2 needs pip>19
 RUN pip3 install --upgrade pip
 
-RUN pip3 install pandas numpy matplotlib quickshear multiprocessing
+RUN pip3 install pandas numpy matplotlib quickshear
 
 #install fsl
 #RUN apt install -y fsl python-numpy
