@@ -9,6 +9,7 @@ Deface anatomical images
 
 import os, sys, json
 import nibabel as nib
+import numpy as np
 import matplotlib.pyplot as plt
 from math import floor
 
@@ -46,15 +47,16 @@ def deface(anat_file):
 if finalized_json['deface'] == True:
     for i in range(len(finalized_json['objects'])):
         if 'anat' in finalized_json['objects'][i]['_type'] and finalized_json['objects'][i]['include'] == True:
-
+            
             anat_path = [x for x in finalized_json['objects'][i]['paths'] if '.nii' in x][0]
             anat_path = root + '/' + anat_path.split('./')[-1]
 
             deface_list.append(anat_path)
+np.savetxt('{}/defaced_list.txt'.format(root), deface_list, fmt='%s')
  
 print('deface list is : {}'.format(deface_list))
 os.system('export -f {}'.format(deface))
-os.system('cat {}/deface_list | parallel --wd {} -j 6 {}'.format(root, root, deface(anat_path)))
+os.system('cat {}/deface_list.txt | parallel --wd {} -j 6 {}'.format(root, root, deface(anat_path)))
 
             
                 
