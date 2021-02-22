@@ -12,6 +12,9 @@ import nibabel as nib
 import matplotlib.pyplot as plt
 from math import floor
 
+warnings.filterwarnings("ignore")
+os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
+
 root = sys.argv[1]
 
 finalized_json = open('{}/finalized.json'.format(root))
