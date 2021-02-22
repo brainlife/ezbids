@@ -7,13 +7,10 @@ Deface anatomical images
 @author: dlevitas
 """
 
-import os, sys, json, warnings
+import os, sys, json
 import nibabel as nib
 import matplotlib.pyplot as plt
 from math import floor
-
-warnings.filterwarnings("ignore")
-os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
 
 root = sys.argv[1]
 
