@@ -43,7 +43,7 @@ def deface(anat_file):
     plt.savefig('{}.png'.format(anat_path.split('.nii.gz')[0]), bbox_inches='tight')
     print('Defaced anat thumbnail: {}.png'.format(anat_path.split('.nii.gz')[0]), file = sys.stdout)
 
-
+    
 if finalized_json['deface'] == True:
     for i in range(len(finalized_json['objects'])):
         if 'anat' in finalized_json['objects'][i]['_type'] and finalized_json['objects'][i]['include'] == True:
@@ -52,7 +52,7 @@ if finalized_json['deface'] == True:
             anat_path = root + '/' + anat_path.split('./')[-1]
 
             deface_list.append(anat_path)
-np.savetxt('{}/defaced_list.txt'.format(root), deface_list, fmt='%s')
+np.savetxt('{}/deface_list.txt'.format(root), deface_list, fmt='%s')
  
 print('deface list is : {}'.format(deface_list))
 os.system('export -f {}'.format(deface))
