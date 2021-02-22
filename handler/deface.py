@@ -2,12 +2,12 @@
 """
 Created on Wed Feb 17 08:32:55 2021
 
-Reorient & deface anatomical images
+Deface anatomical images
 
 @author: dlevitas
 """
 
-import os, sys, json, deepdefacer
+import os, sys, json
 import nibabel as nib
 
 root = sys.argv[1]
@@ -21,8 +21,7 @@ if finalized_json['deface'] == True:
             anat_path = [x for x in finalized_json['objects'][i]['paths'] if '.nii' in x][0]
             anat_path = root + '/' + anat_path.split('./')[-1]
             print('Performing defacing on {}'.format(anat_path), file = sys.stdout)
-            img = nib.load(anat_path)
-            new_img = nib.as_closest_canonical(img)
-            nib.save(new_img, anat_path)
-
-            os.system('deepdefacer --input_file {} --defaced_output_path {}'.format(anat_path, anat_path))
+            os.system('runROBEX.sh {} {}'.format(anat_path, anat_path.split('.nii.gz')[0] + '_mask.nii.gz'))
+            os.system('quickshear {} {} {}'.format(anat_path, anat_path.split('.nii.gz')[0] + '_mask.nii.gz', root +  anat_path))
+            #os.remove(anat_path.split('.nii.gz')[0] + '_mask.nii.gz')
+            print('Defaced anatomical file is {}'.format(anat_path), file = sys.stdout)
