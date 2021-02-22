@@ -44,13 +44,13 @@ def deface(anat_file):
 
 
 if finalized_json['deface'] == True:
-for i in range(len(finalized_json['objects'])):
-    if 'anat' in finalized_json['objects'][i]['_type'] and finalized_json['objects'][i]['include'] == True:
+    for i in range(len(finalized_json['objects'])):
+        if 'anat' in finalized_json['objects'][i]['_type'] and finalized_json['objects'][i]['include'] == True:
 
-        anat_path = [x for x in finalized_json['objects'][i]['paths'] if '.nii' in x][0]
-        anat_path = root + '/' + anat_path.split('./')[-1]
+            anat_path = [x for x in finalized_json['objects'][i]['paths'] if '.nii' in x][0]
+            anat_path = root + '/' + anat_path.split('./')[-1]
 
-        deface_list.append(anat_path)
+            deface_list.append(anat_path)
  
 print('deface list is : {}'.format(deface_list))
 os.system('export -f {}'.format(deface))
