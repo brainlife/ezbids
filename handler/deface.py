@@ -7,7 +7,7 @@ Deface anatomical images
 @author: dlevitas
 """
 
-import os, sys, json
+import os, sys, json, warnings
 import nibabel as nib
 import matplotlib.pyplot as plt
 from math import floor
