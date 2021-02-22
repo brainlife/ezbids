@@ -22,6 +22,6 @@ if finalized_json['deface'] == True:
             anat_path = root + '/' + anat_path.split('./')[-1]
             print('Performing defacing on {}'.format(anat_path), file = sys.stdout)
             os.system('runROBEX.sh {} {}'.format(anat_path, anat_path.split('.nii.gz')[0] + '_mask.nii.gz'))
-            os.system('quickshear {} {} {}'.format(anat_path, anat_path.split('.nii.gz')[0] + '_mask.nii.gz', root +  anat_path))
+            os.system('quickshear {} {} {}'.format(anat_path, anat_path.split('.nii.gz')[0] + '_mask.nii.gz', anat_path))
             #os.remove(anat_path.split('.nii.gz')[0] + '_mask.nii.gz')
             print('Defaced anatomical file is {}'.format(anat_path), file = sys.stdout)
