@@ -19,7 +19,7 @@ RUN cd /tmp && \
 #tensorflow2 needs pip>19
 RUN pip3 install --upgrade pip
 
-RUN pip3 install pandas numpy nilearn matplotlib tensorflow keras deepdefacer[tf_cpu]
+RUN pip3 install pandas numpy matplotlib quickshear
 
 #install fsl
 #RUN apt install -y fsl python-numpy
@@ -41,5 +41,3 @@ RUN pip3 install pandas numpy nilearn matplotlib tensorflow keras deepdefacer[tf
 COPY ROBEXv12.linux64.tar.gz /
 RUN tar -xzf /ROBEXv12.linux64.tar.gz
 ENV PATH=$PATH:/ROBEX
-
-RUN pip3 install quickshear
