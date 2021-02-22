@@ -54,7 +54,8 @@ for i in range(len(finalized_json['objects'])):
         anat_path = root + '/' + anat_path.split('./')[-1]
 
         deface_list.append(anat_path)
-        
+ 
+print('deface list is : {}'.format(deface_list))
 os.system('export -f {}'.format(deface))
 os.system('cat {}/deface_list | parallel --wd {} -j 6 {}'.format(root, root, deface(anat_path)))
 
