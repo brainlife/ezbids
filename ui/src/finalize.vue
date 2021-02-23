@@ -5,7 +5,7 @@
         <p>Your data is ready to be converted to BIDS!</p>
         <el-form>
             <el-form-item>
-                <el-checkbox v-model="$root.deface">Deface all anatomical objects (and reorient images to RAS+)</el-checkbox>
+                <el-checkbox v-model="$root.deface">Deface all anatomical objects</el-checkbox>
             </el-form-item>
             <el-form-item>
                 <el-button @click="finalize" type="primary" :disable="submitting">Finalize</el-button>
