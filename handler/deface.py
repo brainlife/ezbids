@@ -22,16 +22,21 @@ deface_list = []
 if finalized_json['deface'] == True:
     for i in range(len(finalized_json['objects'])):
         if 'anat' in finalized_json['objects'][i]['_type'] and finalized_json['objects'][i]['include'] == True:
+            sub = finalized_json['objects'][i]['_entities']['subject']
+            ses = finalized_json['objects'][i]['_entities']['session']
+            br_type = finalized_json['objects'][i]['_type']
             
-            anat_path = [x for x in finalized_json['objects'][i]['paths'] if '.nii' in x][0]
-            anat_path = root + '/' + anat_path.split('./')[-1]
+#             anat_path = [x for x in finalized_json['objects'][i]['paths'] if '.nii' in x][0]
+#             anat_path = root + '/' + anat_path.split('./')[-1]
+            anat_path = finalized_json['objects'][i]['paths'][-1]
 
-            deface_list.append(anat_path)
+            deface_list.append([anat_path, br_type, sub, ses])
  
-print('deface list is : {}'.format(deface_list))
+print('deface list is : {}'.format([x[0] for x in deface_list]))
 
 # Functions
-def deface(anat_path):
+def deface(deface_list):
+    anat_path = deface_list[0]
     # Skull strip and deface
     print('Performing defacing on {}'.format(anat_path), file = sys.stdout)
     os.system('runROBEX.sh {} {}'.format(anat_path, anat_path.split('.nii.gz')[0] + '_mask.nii.gz'))
@@ -52,7 +57,11 @@ def deface(anat_path):
         axes[i].axis('off')
     plt.subplots_adjust(wspace=0, hspace=0)
     plt.savefig('{}.png'.format(anat_path.split('.nii.gz')[0]), bbox_inches='tight')
-    print('Defaced anat thumbnail: {}.png'.format(anat_path.split('.nii.gz')[0]), file = sys.stdout)
+#     print('Defaced anat thumbnail: {}.png'.format(anat_path.split('.nii.gz')[0]), file = sys.stdout)
+    if ses == '':
+        pass
+    else:
+        print("thumbnail {'path': 'soichi/dicom/20191120/10580000/time-20191120102058-sn-2.png', 'name': {} defaced for sub-{}/ses-{}".format(br_type, sub, ses), file=sys.stdout}
 
     
 def deface_parallel():
