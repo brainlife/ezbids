@@ -61,7 +61,7 @@ def deface(deface_list):
     if ses == '':
         pass
     else:
-        print("thumbnail {'path': {}, 'name': {} defaced for sub-{}/ses-{}}".format(anat_path.split('.nii.gz')[0] + '.png', br_type, sub, ses), file=sys.stdout}
+        print("thumbnail {'path': {}, 'name': {} defaced for sub-{}/ses-{}}".format(anat_path.split('.nii.gz')[0] + '.png', br_type, sub, ses), file=sys.stdout)
 
     
 def deface_parallel():
