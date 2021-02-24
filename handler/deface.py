@@ -28,7 +28,7 @@ if finalized_json['deface'] == True:
             
 #             anat_path = [x for x in finalized_json['objects'][i]['paths'] if '.nii' in x][0]
 #             anat_path = root + '/' + anat_path.split('./')[-1]
-            anat_path = finalized_json['objects'][i]['paths'][-1]
+            anat_path = root + '/' + finalized_json['objects'][i]['paths'][-1].split('./')[-1]
 
             deface_list.append([anat_path, br_type, sub, ses])
  
@@ -61,7 +61,7 @@ def deface(deface_list):
     if ses == '':
         pass
     else:
-        print("thumbnail {'path': {}, 'name': {} defaced for sub-{}/ses-{}}".format(anat_path.split('.nii.gz')[0] + '.png', br_type, sub, ses), file=sys.stdout)
+        print("thumbnail {'path': {}, 'name': {} defaced for sub-{}/ses-{}}".format(anat_path.split(root)[-1].split('.nii.gz')[0] + '.png', br_type, sub, ses), file=sys.stdout)
 
     
 def deface_parallel():
