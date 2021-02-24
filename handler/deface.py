@@ -59,7 +59,7 @@ def deface(deface_list):
     plt.savefig('{}.png'.format(anat_path.split('.nii.gz')[0]), bbox_inches='tight')
 #     print('Defaced anat thumbnail: {}.png'.format(anat_path.split('.nii.gz')[0]), file = sys.stdout)
     if ses == '':
-        pass
+        print("thumbnail {'path': {}, 'name': {} defaced for sub-{}}".format(anat_path.split(root)[-1].split('.nii.gz')[0] + '.png', br_type, sub), file=sys.stdout)
     else:
         print("thumbnail {'path': {}, 'name': {} defaced for sub-{}/ses-{}}".format(anat_path.split(root)[-1].split('.nii.gz')[0] + '.png', br_type, sub, ses), file=sys.stdout)
 
