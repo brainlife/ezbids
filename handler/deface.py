@@ -25,11 +25,7 @@ if finalized_json['deface'] == True:
             sub = finalized_json['objects'][i]['_entities']['subject']
             ses = finalized_json['objects'][i]['_entities']['session']
             br_type = finalized_json['objects'][i]['_type']
-            
-#             anat_path = [x for x in finalized_json['objects'][i]['paths'] if '.nii' in x][0]
-#             anat_path = root + '/' + anat_path.split('./')[-1]
             anat_path = root + '/' + finalized_json['objects'][i]['paths'][-1].split('./')[-1]
-
             deface_list.append([anat_path, br_type, sub, ses])
  
 print('deface list is : {}'.format([x[0] for x in deface_list]))
@@ -57,7 +53,7 @@ def deface(deface_list):
         axes[i].axis('off')
     plt.subplots_adjust(wspace=0, hspace=0)
     plt.savefig('{}.png'.format(anat_path.split('.nii.gz')[0]), bbox_inches='tight')
-#     print('Defaced anat thumbnail: {}.png'.format(anat_path.split('.nii.gz')[0]), file = sys.stdout)
+    
     if ses == '':
         dic = {'path': anat_path.split(root)[-1].split('.nii.gz')[0] + '.png', 'name': '{} defaced for sub-{}'.format(br_type, sub)}
         print("thumbnail {}".format(dic), file=sys.stdout)
@@ -75,5 +71,3 @@ if __name__ == '__main__':
     deface_parallel()
 
 
-            
-                
