@@ -12,6 +12,7 @@ import nibabel as nib
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
+plt.style.use('dark_background')
 from operator import itemgetter
 from math import floor
 
@@ -667,10 +668,11 @@ def identify_objects_info(subject_protocol, series_list, series_seriesID_list):
                 slice_x = object_img_array[floor(object_img_array.shape[0]/2), :, :]
                 slice_y = object_img_array[:, floor(object_img_array.shape[1]/2), :]
                 slice_z = object_img_array[:, :, floor(object_img_array.shape[2]/2)]
+            
                                                                 
                 fig, axes = plt.subplots(1,3, figsize=(9,3))
                 for i, slice in enumerate([slice_x, slice_y, slice_z]):
-                    axes[i].imshow(slice.T, cmap="gray", origin="lower", aspect='auto')
+                    axes[i].imshow(slice.T, cmap="gray", origin="lower", aspect="auto")
                     axes[i].axis('off')
                 plt.subplots_adjust(wspace=0, hspace=0)
                 plt.savefig('{}.png'.format(subject_protocol[p]['nifti_path'][:-7]), bbox_inches='tight')
