@@ -1067,8 +1067,7 @@ def fmap_intended_for(subject_protocol, total_objects_indices, objects_entities_
                 #Re-determine the fmap/epi_dwi indices in light of the checks above
                 fmap_se_dwi_indices = [total_objects_indices+k+x for x,y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' in messages[k+x] and include[k+x] != False]
                 if len(fmap_se_dwi_indices) == 1:
-                    for fm in fmap_se_dwi_indices:
-                        subject_protocol[fm]['IntendedFor'] = dwi_indices
+                    subject_protocol[k+x]['IntendedFor'] = dwi_indices
                         
                 if fmap_se_dwi_indices not in fmap_se_dwi_runcheck:
                     fmap_se_dwi_runcheck.append(fmap_se_dwi_indices)
@@ -1207,6 +1206,7 @@ def build_objects_list(subject_protocol, objects_entities_list):
 ###################### Begin ######################
     
 data_dir = sys.argv[1]
+# data_dir = '/media/data/ezbids/dicoms/ADNI/batch2'
 os.chdir(data_dir)
 
 print('########################################')
