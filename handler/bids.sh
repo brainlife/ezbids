@@ -20,10 +20,10 @@ if [ ! -f $root/deface.out ]; then
 fi
 
 function deface {
-    ./deface.py $1
+    ./deface.py $root $2
 }
 export -f deface
-cat $root/deface_list.txt | parallel --wd $root -j 10 deface {}
+cat $root/deface_list.txt | parallel --wd $root -j 10 deface {$root}
 
 echo "converting output to bids"
 ./convert.js $root
