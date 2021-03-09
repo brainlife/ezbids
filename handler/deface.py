@@ -17,6 +17,7 @@ os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
 
 root = sys.argv[1]
 deface_info = sys.argv[2]
+log_file = sys.argv[3]
  
 # Function
 def deface(deface_info):
@@ -54,9 +55,9 @@ def deface(deface_info):
     else:
         dic = {'id': 1, 'defaced': anat_defaced, 'defaced_thumb': anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png', 'info': 'type {} is defaced for sub-{}/ses-{}'.format(br_type, sub, ses)}
 
-#     file = open(log_file, "a")
-#     file.write(repr(dic) + "\n")
-#     file.close()
+    file = open(log_file, "a")
+    file.write(repr(dic) + "\n")
+    file.close()
     print("thumbnail {}".format(dic), file=sys.stdout)
     
 
