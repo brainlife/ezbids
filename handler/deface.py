@@ -77,12 +77,12 @@ def deface(deface_list):
     file.close()
     print("thumbnail {}".format(dic), file=sys.stdout)
     
-def deface_parallel():
-    pool = Pool(processes=len(deface_list))
-    pool.map(deface, deface_list)
+# def deface_parallel():
+#     pool = Pool(processes=len(deface_list))
+#     pool.map(deface, deface_list)
     
 
-if __name__ == '__main__':
-    deface_parallel()
+# if __name__ == '__main__':
+#     deface_parallel()
 
 
