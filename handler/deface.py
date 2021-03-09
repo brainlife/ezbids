@@ -14,6 +14,8 @@ plt.style.use('dark_background')
 from math import floor
 from multiprocessing import Pool
 
+os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
+
 root = sys.argv[1]
 
 if not os.path.isfile('{}/deface.out'.format(root)):
@@ -27,12 +29,11 @@ deface_list = []
 if finalized_json['deface'] == True:
     for i in range(len(finalized_json['objects'])):
         if 'anat' in finalized_json['objects'][i]['_type'] and finalized_json['objects'][i]['include'] == True:
-            # sub = finalized_json['objects'][i]['_entities']['subject']
-            # ses = finalized_json['objects'][i]['_entities']['session']
-            # br_type = finalized_json['objects'][i]['_type']
+            sub = finalized_json['objects'][i]['_entities']['subject']
+            ses = finalized_json['objects'][i]['_entities']['session']
+            br_type = finalized_json['objects'][i]['_type']
             anat_orig = root + '/' + finalized_json['objects'][i]['paths'][-1].split('./')[-1]
-            # deface_list.append([anat_orig, br_type, sub, ses])
-            deface_list.append(anat_orig)
+            deface_list.append([anat_orig, br_type, sub, ses])
  
 print('deface list is : {}'.format([x[0] for x in deface_list]))
 
@@ -63,7 +64,11 @@ def deface(deface_list):
         plt.subplots_adjust(wspace=0, hspace=0)
         plt.savefig('{}.png'.format(anat.split('.nii.gz')[0]), bbox_inches='tight')
 
-    dic = {'id': 1, 'defaced': anat_defaced, 'defaced_thumb': anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png'}
+    if ses == '':
+        dic = {'id': 1, 'defaced': anat_defaced, 'defaced_thumb': anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png', 'info': 'type {} is defaced for sub-{}'.format(br_type, sub)}
+    else:
+        dic = {'id': 1, 'defaced': anat_defaced, 'defaced_thumb': anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png', 'info': 'type {} is defaced for sub-{}/ses-{}'.format(br_type, sub, ses)}
+
     file = open(log_file, "w")
     file.write(repr(dic) + "\n")
     file.close()
