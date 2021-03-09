@@ -32,6 +32,7 @@
             <h5>BIDS Datatype / Entities</h5>
             <el-form label-width="150px">
                 <el-alert v-if="ss.message" :title="ss.message" type="info"/>
+
                 <el-form-item label="Datatype">
                     <el-select v-model="ss.type" reqiured placeholder="(exclude)" size="small" @change="validate(ss)">
                         <el-option value="exclude">(Exclude from BIDS conversion)</el-option>
@@ -43,6 +44,18 @@
                     </el-select>
                     <br>
                 </el-form-item>
+
+                <div v-if="ss.type && ss.type.startsWith('fmap/')">
+                    <el-form-item label="FieldMap For">
+                        <el-select v-model="ss.forType" reqiured placeholder="(unknown)" size="small" @change="validate(ss)">
+                            <el-option value="dwi/dwi">Diffusion</el-option>
+                            <el-option value="func/bold">Functional/Bold</el-option>
+                        </el-select>
+                        <br>
+                        <small style="position: relative; top: -8px;">* Datatype that this fmap is intended for. Used to help assining correct IntendedFor field</small>
+                    </el-form-item>
+                </div>
+
                 <!--<p style="margin-left: 100px; font-size: 80%;" v-if="ss.message">{{ss.message}}</p>-->
                 <div v-if="ss.type">
                     <el-form-item v-for="(v, entity) in getSomeEntities(ss.type)" :key="entity" 
@@ -136,12 +149,8 @@ export default {
     methods: {
         getSomeEntities(type) {
             let entities = this.$root.getEntities(type);
-            console.log("getting entities for", type);
-            console.dir(entities);
 
             //we don't want user set sub/ses through series
-            //delete entities.sub;
-            //delete entities.ses;
             delete entities.subject;
             delete entities.session;
 

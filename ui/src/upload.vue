@@ -82,8 +82,8 @@
             </div>
             <h3 v-else>Analyzing...</h3>
 
-            <el-alert type="info">Depending on the size of your dataset, this process might take several hours. You may shutdown your computer while we process your data.. (please refresh the page when you come back)</el-alert>
             <pre>{{$root.session.status_msg}}</pre>
+            <el-alert type="info">Depending on the size of your dataset, this process might take several hours. You may shutdown your computer while we process your data.. (please refresh the page when you come back)</el-alert>
 
             <div class="page-action">
                 <el-button type="secondary" @click="$root.reset()">Cancel</el-button>

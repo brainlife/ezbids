@@ -128,14 +128,15 @@ function handle_finalized_session(session) {
         //session.pre_begin_date = new Date();
         session.status = "bidsing";
         session.save().then(() => {
+            let monitor;
             let workdir = config.workdir + "/" + session._id;
             const p = spawn('./bids.sh', [workdir], { cwd: __dirname });
             const logout = fs.openSync(workdir + "/bids.log", "w");
             const errout = fs.openSync(workdir + "/bids.err", "w");
             p.stdout.on('data', data => {
-                console.log(data.toString("utf8"));
                 fs.writeSync(logout, data);
                 let out = data.toString("utf8").trim();
+                console.log(out);
                 session.status_msg = out.substring(out.length - 1000);
             });
             p.stderr.on('data', data => {
@@ -143,6 +144,7 @@ function handle_finalized_session(session) {
                 fs.writeSync(errout, data);
             });
             p.on('close', code => {
+                clearInterval(monitor);
                 fs.closeSync(logout);
                 fs.closeSync(errout);
                 //check status
@@ -163,6 +165,10 @@ function handle_finalized_session(session) {
                     reject();
                 });
             });
+            //update session periodically
+            monitor = setInterval(() => {
+                session.save(); //saves for stdout
+            }, 1000 * 5);
         });
     });
 }

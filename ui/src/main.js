@@ -202,7 +202,7 @@ new Vue({
             group.suffixes.forEach(suffix=>{
                 fmap.options.push({value: "fmap/"+suffix, label: suffix});
             });
-        });
+        })
         this.datatypes.push(fmap);
 
         let _bids_entities = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/entities.yaml");
@@ -427,12 +427,6 @@ invert:
                         */
                     });
                 });
-
-                /*
-                this.sessions.forEach(session=>{
-                    if(!session.exclude) Vue.set(session, 'exclude', false);
-                });
-                */
 
                 this.objects.forEach(object=>{
                     object.items.forEach(item=>{

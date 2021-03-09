@@ -11,39 +11,13 @@ import config = require("./config");
 
 //init express
 const app: express.Application  = express();
-//app.options('*', cors()) // include before other routes
-
-/*
-var whitelist = ['http://localhost:3000', 'http://localhost:8080', 'http://localhost:8081', 'https://dev1.soichi.us']
-var corsOptionsDelegate = function (req, callback) {
-  var corsOptions;
-  if (whitelist.indexOf(req.header('Origin')) !== -1) {
-    corsOptions = { origin: true } // reflect (enable) the requested origin in the CORS response
-  } else {
-    corsOptions = { origin: false } // disable CORS for this request
-  }
-  console.dir(req.header('Origin'));
-  console.dir(corsOptions);
-  callback(null, corsOptions) // callback expects two parameters: error and options
-}
-app.use(cors(corsOptionsDelegate));
-*/
 app.use(cors());
 app.use(compression());
 app.use(nocache());
-/*
-app.use(fileupload({
-    useTempFiles : true,
-    tempFileDir : '/tmp/'
-}));
-*/
 
-//app.disable('etag'); //to speed things up, but I really haven't noticed much difference
 app.disable('x-powered-by'); //for better security?
 
-//app.use(express.limit('50G'));
 app.use(bodyParser.urlencoded({
-    //parameterLimit: 100000,
     limit: '50gb',
     extended: true
   }));
@@ -53,8 +27,6 @@ app.use(bodyParser.json({
     type: "application/json",
 }));
 
-
-//app.use(expressWinston.logger(config.logger.winston));
 app.use('/', require('./controllers'));
 
 //error handling
