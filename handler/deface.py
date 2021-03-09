@@ -15,8 +15,8 @@ from math import floor
 
 os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
 
-root = sys.argv[1]
-deface_info = sys.argv[2]
+root = os.getcwd()
+deface_info = sys.argv[1]
  
 # Function
 def deface(deface_info):
