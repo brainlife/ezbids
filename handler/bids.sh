@@ -20,7 +20,7 @@ if [ ! -f $root/deface.out ]; then
 fi
 
 function deface {
-    ./deface.py $root {} $root/deface.out
+    ./deface.py $root deface_info $root/deface.out
 }
 export -f deface
 cat $root/deface_list.txt | parallel -j 10 deface {}
