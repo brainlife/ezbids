@@ -58,12 +58,11 @@ def deface(deface_list):
         plt.subplots_adjust(wspace=0, hspace=0)
         plt.savefig('{}.png'.format(anat.split('.nii.gz')[0]), bbox_inches='tight')
 
-    if ses == '':
-        dic = {'anat_path_orig': anat_orig.split(root)[-1].split('.nii.gz')[0] + '.png', 'anat_path_defaced': anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png', 'name': '{} defaced for sub-{}'.format(br_type, sub)}
-        print("thumbnail {}".format(dic), file=sys.stdout)
-    else:
-        dic = {'anat_path_orig': anat_orig.split(root)[-1].split('.nii.gz')[0] + '.png', 'anat_path_defaced': anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png', 'name': '{} defaced for sub-{}/ses-{}'.format(br_type, sub, ses)}
-        print("thumbnail {}".format(br_type, sub, ses), file=sys.stdout)
+    dic = {'id': 1, 'defaced': anat_defaced, 'defaced_thumb': anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png'}
+    print("thumbnail {}".format(dic), file=sys.stdout)
+    
+    return dic
+    
 
     
 def deface_parallel():
