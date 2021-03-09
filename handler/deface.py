@@ -20,9 +20,9 @@ start = time.time()
 
 root = sys.argv[1]
 
-if not os.path.isfile('{}/deface.out'.format(root)):
-    os.system('touch {}/deface.out'.format(root))
-log_file = '{}/deface.out'.format(root)
+# if not os.path.isfile('{}/deface.out'.format(root)):
+#     os.system('touch {}/deface.out'.format(root))
+# log_file = '{}/deface.out'.format(root)
 
 finalized_json = open('{}/finalized.json'.format(root))
 finalized_json = json.load(finalized_json, strict=False)
