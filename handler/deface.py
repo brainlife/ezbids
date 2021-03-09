@@ -60,12 +60,10 @@ def deface(deface_list):
     else:
         dic = {'path': anat_path.split(root)[-1].split('.nii.gz')[0] + '.png', 'name': '{} defaced for sub-{}/ses-{}'.format(br_type, sub, ses)}
         print("thumbnail {}".format(br_type, sub, ses), file=sys.stdout)
-
     
 def deface_parallel():
     pool = Pool(processes=len(deface_list))
     pool.map(deface, deface_list)
-    
 
 if __name__ == '__main__':
     deface_parallel()
