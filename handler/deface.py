@@ -7,14 +7,16 @@ Deface anatomical images
 @author: dlevitas
 """
 
-import os, sys, json
+import os, sys, json, time
 import nibabel as nib
 import matplotlib.pyplot as plt
 plt.style.use('dark_background')
 from math import floor
-from multiprocessing import Pool
+# from multiprocessing import Pool
 
 os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
+
+start = time.time()
 
 root = sys.argv[1]
 
@@ -45,6 +47,7 @@ def deface(deface_list):
     ses = deface_list[3]
     anat_mask = anat_orig.split('.nii.gz')[0] + '_mask.nii.gz'
     anat_defaced = anat_orig.split('.nii.gz')[0] + '_defaced.nii.gz'
+    
     # Skull strip and deface
     print('Performing defacing on {}'.format(anat_orig), file = sys.stdout)
     os.system('runROBEX.sh {} {}'.format(anat_orig, anat_mask))
@@ -85,4 +88,6 @@ def deface(deface_list):
 # if __name__ == '__main__':
 #     deface_parallel()
 
+finish = time.time()
 
+print('Total elapsed defacing time was {}'.format(finish-start), file=sys.stdout)
