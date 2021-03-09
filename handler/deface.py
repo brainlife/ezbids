@@ -34,7 +34,7 @@ print('deface list is : {}'.format([x[0] for x in deface_list]))
 # Functions
 def deface(deface_list):
     anat_orig = deface_list[0]
-    anat_mask = anat_orig.split('.nii.gz')[0] + '_mask.nii.gz
+    anat_mask = anat_orig.split('.nii.gz')[0] + '_mask.nii.gz'
     anat_defaced = anat_orig.split('.nii.gz')[0] + '_defaced.nii.gz'
     # Skull strip and deface
     print('Performing defacing on {}'.format(anat_orig), file = sys.stdout)
