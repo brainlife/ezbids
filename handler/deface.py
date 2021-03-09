@@ -70,23 +70,17 @@ def deface(deface_list):
     if ses == '':
         dic = {'id': 1, 'defaced': anat_defaced, 'defaced_thumb': anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png', 'info': 'type {} is defaced for sub-{}'.format(br_type, sub)}
     else:
-<<<<<<< HEAD
-        dic = {'path': anat_path.split(root)[-1].split('.nii.gz')[0] + '.png', 'name': '{} defaced for sub-{}/ses-{}'.format(br_type, sub, ses)}
-        print("thumbnail {}".format(br_type, sub, ses), file=sys.stdout)
-=======
         dic = {'id': 1, 'defaced': anat_defaced, 'defaced_thumb': anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png', 'info': 'type {} is defaced for sub-{}/ses-{}'.format(br_type, sub, ses)}
 
     file = open(log_file, "w")
     file.write(repr(dic) + "\n")
     file.close()
     print("thumbnail {}".format(dic), file=sys.stdout)
-        
-
->>>>>>> a3a705b2d308b44806bced18765bff191764c4ff
     
 def deface_parallel():
     pool = Pool(processes=len(deface_list))
     pool.map(deface, deface_list)
+    
 
 if __name__ == '__main__':
     deface_parallel()
