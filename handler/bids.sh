@@ -16,7 +16,7 @@ echo "running defacing"
 if [ ! -f $root/deface.out ]; then
     touch $root/deface.out
 fi
-function deface{
+function deface {
     ./deface.py $root >> deface.out
 }
 parallel -j 10 deface 
