@@ -269,20 +269,42 @@ def select_unique_data(dir_list):
                 data_list[j]['session'] = acquisition_dates[i]['session']
         
     #Unique data is determined from four values: SeriesDescription, EchoTime, ImageType, MultibandAccelerationFactor
+    #If EchoTime values differ slightly (<3) and other values are the same, don't give new unique series ID
     data_list_unique_series = []
     series_tuples = []
     series_id = 0      
     
-    for x in range(len(data_list)):  
-        tup = (data_list[x]['SeriesDescription'], data_list[x]['EchoTime'], data_list[x]['ImageType'], data_list[x]['MultibandAccelerationFactor'], series_id)
-        if tup[:-1] not in [y[:-1] for y in series_tuples]: 
-            data_list[x]['series_id'] = series_id
-            series_id += 1
+    for x in range(len(data_list)):
+        unique_items = [data_list[x]['EchoTime'], data_list[x]['SeriesDescription'], data_list[x]['ImageType'], data_list[x]['MultibandAccelerationFactor']]
+        if x == 0:
+            data_list[x]['series_id'] = 0
             data_list_unique_series.append(data_list[x])
-        else:
-            data_list[x]['series_id'] = series_tuples[[y[:-1] for y in series_tuples].index(tup[:-1])][-1]
+        
+        
+        elif tuple(unique_items) not in [y[:-1] for y in series_tuples]:
+            echo_time = unique_items[0]
+            rest = unique_items[1:]
+            if tuple(rest) in [y[1:4] for y in series_tuples]:
+                common_series_index = [y[1:4] for y in series_tuples].index(tuple(rest))
+                if not series_tuples[common_series_index][0]-3 <= echo_time <= series_tuples[common_series_index][0]+3:
+                    series_id += 1
+                    data_list[x]['series_id'] = series_id
+                    data_list_unique_series.append(data_list[x]) 
+            else:
+                series_id += 1
+                data_list[x]['series_id'] = series_id
+                data_list_unique_series.append(data_list[x])
                 
+        else:
+            pass
+            # data_list[x]['series_id'] = series_tuples[[y[:-1] for y in series_tuples].index(tup[:-1])][-1]
+                
+        
+        tup = tuple(unique_items + [series_id])
         series_tuples.append(tup)
+    
+    # print(series_tuples)
+    
         
     return data_list, data_list_unique_series, subjectIDs_info, acquisition_dates
     
@@ -1210,7 +1232,6 @@ def build_objects_list(subject_protocol, objects_entities_list):
 ###################### Begin ######################
     
 data_dir = sys.argv[1]
-# data_dir = '/media/data/ezbids/dicoms/ADNI/batch2'
 os.chdir(data_dir)
 
 print('########################################')
