@@ -275,18 +275,19 @@ def select_unique_data(dir_list):
     series_id = 0      
     
     for x in range(len(data_list)):
-        unique_items = [data_list[x]['EchoTime'], data_list[x]['SeriesDescription'], data_list[x]['ImageType'], data_list[x]['MultibandAccelerationFactor']]
+        unique_items = [data_list[x]['EchoTime'], data_list[x]['SeriesDescription'], data_list[x]['ImageType'], data_list[x]['MultibandAccelerationFactor'], 1]
         if x == 0:
             data_list[x]['series_id'] = 0
             data_list_unique_series.append(data_list[x])
         
-        
         elif tuple(unique_items) not in [y[:-1] for y in series_tuples]:
             echo_time = unique_items[0]
             rest = unique_items[1:]
-            if tuple(rest) in [y[1:4] for y in series_tuples]:
-                common_series_index = [y[1:4] for y in series_tuples].index(tuple(rest))
+            if tuple(rest) in [y[1:-1] for y in series_tuples]:
+                common_series_index = [y[1:-1] for y in series_tuples].index(tuple(rest))
+
                 if not series_tuples[common_series_index][0]-3 <= echo_time <= series_tuples[common_series_index][0]+3:
+                    unique_items[-1] = 0
                     series_id += 1
                     data_list[x]['series_id'] = series_id
                     data_list_unique_series.append(data_list[x])
@@ -298,16 +299,14 @@ def select_unique_data(dir_list):
                 data_list_unique_series.append(data_list[x])
                 
         else:
-            pass
-            # data_list[x]['series_id'] = series_tuples[[y[:-1] for y in series_tuples].index(tup[:-1])][-1]
-                
+            common_index = [y[1:-1] for y in series_tuples].index(tuple(unique_items[1:]))
+            data_list[x]['series_id'] = series_tuples[common_index][-1]
+        
         
         tup = tuple(unique_items + [series_id])
         series_tuples.append(tup)
-    
-    # print(series_tuples)
-    
         
+    
     return data_list, data_list_unique_series, subjectIDs_info, acquisition_dates
     
 
