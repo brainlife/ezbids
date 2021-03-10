@@ -289,7 +289,9 @@ def select_unique_data(dir_list):
                 if not series_tuples[common_series_index][0]-3 <= echo_time <= series_tuples[common_series_index][0]+3:
                     series_id += 1
                     data_list[x]['series_id'] = series_id
-                    data_list_unique_series.append(data_list[x]) 
+                    data_list_unique_series.append(data_list[x])
+                else:
+                    data_list[x]['series_id'] = series_tuples[common_series_index][-1]
             else:
                 series_id += 1
                 data_list[x]['series_id'] = series_id
