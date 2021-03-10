@@ -207,6 +207,7 @@ def select_unique_data(dir_list):
                        'series_id': 0,
                        'direction': PED,
                        'IntendedFor': [],
+                       'forType': '',
                        'TaskName': '',
                        "include": True,
                        'filesize': filesize,
@@ -405,6 +406,7 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['error'] = 'Acqusition appears to be ASL, which is currently not supported by ezBIDS at this time, but will be in the future'
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be asl/asl because "asl" is in the SeriesDescription. Please modify if incorrect. Currently, ezBIDS does not support ASL conversion to BIDS'
             
+        
         #Angiography
         elif any(x in SD for x in ['angio']):
             data_list_unique_series[i]['include'] = False
@@ -416,6 +418,7 @@ def identify_series_info(data_list_unique_series):
         #Magnitude/Phase[diff] and Spin Echo (SE) field maps
         elif any(x in SD for x in ['fmap','fieldmap','spinecho','sefmri','semri']):
             data_list_unique_series[i]['DataType'] = 'fmap'
+            data_list_unique_series[i]['forType'] = 'func/bold'
             
             #Magnitude/Phase[diff] field maps
             if 'EchoNumber' in data_list_unique_series[i]['sidecar']:
@@ -476,6 +479,7 @@ def identify_series_info(data_list_unique_series):
                 if np.max(bval) <= 50 and bval.size < 10:
                     data_list_unique_series[i]['DataType'] = 'fmap'
                     data_list_unique_series[i]['ModalityLabel'] = 'epi'
+                    data_list_unique_series[i]['forType'] = 'dwi/dwi'
                     data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/epi meant for dwi because there are bval & bvec files with the same SeriesNumber, but the max b-values are <= 50 and the number of b-values is less than 10. Please modify if incorrect'
                     series_entities['direction'] = data_list_unique_series[i]['direction']
                 elif any(x in SD for x in ['trace','fa','adc']) and not any(x in SD for x in ['dti','dwi','dmri']):
