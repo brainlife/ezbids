@@ -14,20 +14,6 @@ The BIDS output can be downloaded back to the user's computer, or uploaded to op
 
 ezBIDS accepts DICOMS from the three major MRI vendors: **Siemens**, **GE**, and **Phillips**
 
-Due to the plethora of scanner acquisition types, not all are currently supported by ezBIDS. Priority has therefore been given to acquisition types that are the most common in the neuroimaging community. These include:
-* anat/T1w (including multiecho)
-* anat/T2w
-* anat/FLAIR
-* func/sbref
-* func/bold (including multiecho)
-* func/phase
-* fmap/epi
-* fmap/magnitude1
-* fmap/phase1
-* fmap/magnitude2
-* fmap/phase2
-* fmap/phasediff
-* dwi/dwi
 
 ### Usage
 To access the ezBIDS web service, please visit https://brainlife.io/ezbids 
