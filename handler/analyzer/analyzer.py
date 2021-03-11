@@ -570,12 +570,13 @@ def identify_series_info(data_list_unique_series):
                 series_entities['echo'] = data_list_unique_series[i]['sidecar']['EchoNumber']
 
         #T1w
-        elif any(x in SD for x in ['t1w','tfl3d','mprage','spgr']):
+        elif any(x in SD for x in ['t1w','tfl3d','mprage','spgr', 'tflmgh']):
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'T1w'
-            if data_list_unique_series[i]['EchoNumber']:
+            # if data_list_unique_series[i]['EchoNumber']:
+            if 'multiecho' in SD or 'echo' in SD:
                 series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
-            data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T1w because "t1w","tfl3d","tfl","mprage", or "spgr" is in the SeriesDescription. Please modify if incorrect'
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T1w because "t1w","tfl3d","tfl","mprage", "spgr", or "tflmgh" is in the SeriesDescription. Please modify if incorrect'
         
         #FLAIR
         elif any(x in SD for x in ['flair','t2spacedafl']):
