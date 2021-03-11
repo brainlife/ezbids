@@ -24,6 +24,12 @@ sub = deface_info[3]
 ses = deface_info[4]
 anat_mask = anat_orig.split('.nii.gz')[0] + '_mask.nii.gz'
 anat_defaced = anat_orig.split('.nii.gz')[0] + '_defaced.nii.gz'
+print('root: {}'.format(root))
+print('anat_orig: {}'.format(anat_orig))
+print('br_type: {}'.format(br_type))
+print('sub: {}'.format(sub))
+print('ses: {}'.format(ses))
+print('anat_mask: {}'.format(anat_mask))
 
 # Skull strip and deface
 print('Performing defacing on {}'.format(anat_orig), file = sys.stdout)
