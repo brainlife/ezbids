@@ -736,26 +736,32 @@ def identify_objects_info(subject_protocol, series_list, series_seriesID_list):
         if subject_protocol[p]['br_type'] in ['anat/T1w','anat/T2w'] and subject_protocol[p]['include'] == True:
             #non-normalized T1w or T2w images that have poor CNR, so best to not have in BIDS if there's an actual good T1w or T2w available
             if 'NORM' not in subject_protocol[p]['ImageType']:
-                try:
-                    index_next = series_seriesID_list.index(subject_protocol[p+1]['series_id'])
-                except:
-                    index_next = None
+                subject_protocol[p]['include'] = False  
+                subject_protocol[p]['error'] = 'Acquisition is a poor resolution {} (non-normalized); Please check to see if this {} acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'.format(subject_protocol[p]['br_type'], subject_protocol[p]['br_type'])
+                subject_protocol[p]['message'] = subject_protocol[p]['error']
+                subject_protocol[p]['br_type'] = 'exclude'
                 
                 
-                if p+1 == len(subject_protocol):
-                    subject_protocol[p]['include'] = True 
-                    subject_protocol[p]['error'] = None
+                # try:
+                #     index_next = series_seriesID_list.index(subject_protocol[p+1]['series_id'])
+                # except:
+                #     index_next = None
+                
+                
+                # if p+1 == len(subject_protocol):
+                #     subject_protocol[p]['include'] = True 
+                #     subject_protocol[p]['error'] = None
                 # elif subject_protocol[p]['br_type'] == data_list_unique_series[index_next]['br_type'] and 'NORM' not in data_list_unique_series[index_next]['ImageType']:
                 #     subject_protocol[p]['include'] = True 
                 #     subject_protocol[p]['error'] = None
-                elif subject_protocol[p]['br_type'] != data_list_unique_series[index_next]['br_type']:
-                    subject_protocol[p]['include'] = True 
-                    subject_protocol[p]['error'] = None
-                else:
-                    subject_protocol[p]['include'] = False  
-                    subject_protocol[p]['error'] = 'Acquisition is a poor resolution {} (non-normalized); Please check to see if this {} acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'.format(subject_protocol[p]['br_type'], subject_protocol[p]['br_type'])
-                    subject_protocol[p]['message'] = subject_protocol[p]['error']
-                    subject_protocol[p]['br_type'] = 'exclude'
+                # elif subject_protocol[p]['br_type'] != data_list_unique_series[index_next]['br_type']:
+                #     subject_protocol[p]['include'] = True 
+                #     subject_protocol[p]['error'] = None
+                # else:
+                #     subject_protocol[p]['include'] = False  
+                #     subject_protocol[p]['error'] = 'Acquisition is a poor resolution {} (non-normalized); Please check to see if this {} acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'.format(subject_protocol[p]['br_type'], subject_protocol[p]['br_type'])
+                #     subject_protocol[p]['message'] = subject_protocol[p]['error']
+                #     subject_protocol[p]['br_type'] = 'exclude'
 
         
         #Functional bold
