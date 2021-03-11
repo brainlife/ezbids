@@ -46,7 +46,7 @@ for anat in [anat_orig, anat_defaced]:
     plt.subplots_adjust(wspace=0, hspace=0)
     plt.savefig('{}.png'.format(anat.split('.nii.gz')[0]), bbox_inches='tight')
 
-if ses == '':
+if ses == 'N/A':
     dic = {'id': 'sub-{}'.format(sub), 'defaced': anat_defaced, 'defaced_thumb': anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png'}
 else:
     dic = {'id': 'sub-{}/ses-{}'.format(sub, ses), 'defaced': anat_defaced, 'defaced_thumb': anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png'}
