@@ -21,7 +21,7 @@ fi
 
 function deface {
     deface_info = $1 
-    python deface.py $deface_info
+    python3 deface.py $deface_info
 }
 export -f deface
 cat $root/deface_list.txt | parallel -j 10 deface {}
