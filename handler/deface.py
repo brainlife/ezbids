@@ -16,11 +16,11 @@ from math import floor
 os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
 
  
-root = sys.argv[0]
-anat_orig = sys.argv[1]
-br_type = sys.argv[2]
-sub = sys.argv[3]
-ses = sys.argv[4]
+root = sys.argv[1]
+anat_orig = sys.argv[2]
+br_type = sys.argv[3]
+sub = sys.argv[4]
+ses = sys.argv[5]
 
 print('root: {}'.format(root))
 print('anat_orig: {}'.format(anat_orig))
