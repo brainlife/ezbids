@@ -15,15 +15,15 @@ from math import floor
 
 os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
 
-root = sys.argv[1]
-deface_info = sys.argv[2]
+deface_info = sys.argv[1]
  
 # Function
 def deface(deface_info):
-    anat_orig = deface_info[0]
-    br_type = deface_info[1]
-    sub = deface_info[2]
-    ses = deface_info[3]
+    root = deface_info[0]
+    anat_orig = deface_info[1]
+    br_type = deface_info[2]
+    sub = deface_info[3]
+    ses = deface_info[4]
     anat_mask = anat_orig.split('.nii.gz')[0] + '_mask.nii.gz'
     anat_defaced = anat_orig.split('.nii.gz')[0] + '_defaced.nii.gz'
     
