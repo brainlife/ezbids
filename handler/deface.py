@@ -15,24 +15,14 @@ from math import floor
 
 os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
 
- 
 root = sys.argv[1]
 anat_orig = sys.argv[2]
 br_type = sys.argv[3]
 sub = sys.argv[4]
 ses = sys.argv[5]
 
-print('root: {}'.format(root))
-print('anat_orig: {}'.format(anat_orig))
-
 anat_mask = anat_orig.split('.nii.gz')[0] + '_mask.nii.gz'
 anat_defaced = anat_orig.split('.nii.gz')[0] + '_defaced.nii.gz'
-print('root: {}'.format(root))
-print('anat_orig: {}'.format(anat_orig))
-print('br_type: {}'.format(br_type))
-print('sub: {}'.format(sub))
-print('ses: {}'.format(ses))
-print('anat_mask: {}'.format(anat_mask))
 
 # Skull strip and deface
 print('Performing defacing on {}'.format(anat_orig), file = sys.stdout)
