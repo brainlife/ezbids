@@ -7,7 +7,7 @@
             <el-form-item>
                 <el-checkbox v-model="$root.deface">Deface all anatomical objects</el-checkbox>
                 <p style="margin: 0; padding-left: 25px;">
-                    <small>Run ROBEX/quickshear to remove facial features for each anat/t1w objects. Incur extra processing time.</small>
+                    <small>Run ROBEX/quickshear to remove facial features for each anat object. Will incur extra processing time.</small>
                 </p>
             </el-form-item>
             <el-form-item>
