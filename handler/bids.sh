@@ -19,13 +19,13 @@ if [ ! -f $root/deface.out ]; then
     touch $root/deface.out
 fi
 
+chmod -R 777 $root
+
 function deface {
     deface_info=$1 
     ./deface.py $deface_info
 }
 export -f deface
-echo 'here we go'
-cat $root/deface_list.txt
 cat $root/deface_list.txt | parallel -j 10 deface {}
 
 echo "converting output to bids"
