@@ -166,7 +166,6 @@ export default {
             let entities = this.$root.getEntities(s.type);
 
             for(let k in this.getSomeEntities(s.type)) {
-                console.log("validating", k)
                 if(entities[k] == "required") {
                     if(!s.entities[k]) {
                         s.validationErrors.push("entity: "+k+" is required.");

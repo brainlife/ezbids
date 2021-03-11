@@ -310,7 +310,7 @@ invert:
             return series;
         },
 
-        //apply all mappings and store them under _entities
+        //apply all parent entity mappings and store them under _entities
         mapObject(o) {
             o._exclude = o.exclude;
 
@@ -357,9 +357,6 @@ invert:
 
                 let sub = o._entities.subject;
                 let ses = o._entities.session||"";
-
-                console.log("organizing with", sub, ses)
-
                 if(!this.subs[sub]) this.subs[sub] = {
                     sess: {}, 
                     objects: []
@@ -455,7 +452,6 @@ invert:
                 headers: { 'Content-Type': 'application/json' },
             });
             this.session = Object.assign({}, await res.json());
-            console.log(this.session.update_date, this.session.status);
             switch(this.session.status) {
             case "created":
             case "uploaded":
@@ -463,7 +459,6 @@ invert:
             case "finalized":
             case "bidsing":
                 this.reload_t = setTimeout(()=>{
-                    //console.log("will reload");
                     this.pollSession();
                 }, 1000*5);
                 break;

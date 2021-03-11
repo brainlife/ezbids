@@ -111,14 +111,16 @@
 
         <div v-if="['analyzed', 'finalized', 'finished'].includes($root.session.status)">
             <p>Analysis complete! Please proceed to the next tab.</p>
-            <h4>Object List ({{$root.objects.length}})</h4>
-            <div v-for="(object, idx) in $root.objects" :key="idx">
-                <p style="margin: 0;">
-                    <el-link @click="toggleObject(idx)">
-                        <small><el-tag size="mini" type="info">{{idx}}</el-tag> {{object.paths[0]}}</small>
-                    </el-link>
-                </p>
-                <pre v-if="opened.includes(idx)" class="object-detail" style="font-size: 85%">{{object}}</pre>
+            <h4>Object List <small>({{$root.objects.length}})</small></h4>
+            <div style="max-height: 400px; overflow-x: auto;">
+                <div v-for="(object, idx) in $root.objects" :key="idx">
+                    <p style="margin: 0;">
+                        <el-link @click="toggleObject(idx)">
+                            <small><el-tag size="mini" type="info">{{idx}}</el-tag> {{object.paths[0]}}</small>
+                        </el-link>
+                    </p>
+                    <pre v-if="opened.includes(idx)" class="object-detail" style="font-size: 85%">{{object}}</pre>
+                </div>
             </div>
 
             <!--

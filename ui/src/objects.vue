@@ -4,24 +4,24 @@
         <h4 style="padding-top: 20px;">BIDS Structure</h4>
         <div v-for="(o_sub, sub) in $root.subs" :key="sub" style="font-size: 90%; margin-bottom: 10px">
             <span v-if="sub != ''" class="hierarchy">
-                <span :class="{exclude: isSubExcluded(sub)}">
-                    <i class="el-icon-user-solid"/> 
-                    <small>sub</small> {{sub}} 
-                    <small>({{o_sub.objects.length}})</small>
-                </span>
+                <i class="el-icon-user-solid"/> 
+                <small>sub</small> {{sub}} 
+                <small>({{o_sub.objects.length}})</small>
                 &nbsp;
                 &nbsp;
-                <el-checkbox v-if="findSubject(sub)" :value="findSubject(sub).exclude" @change="findSubject(sub).exclude = $event"><small>Exclude</small></el-checkbox>
+                <el-checkbox :value="o_sub.exclude" @change="excludeSubject(sub, $event)">
+                    <small>Exclude this subject</small>
+                </el-checkbox>
             </span>
             <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}" class="left-border">
                 <span class="hierarchy"><i class="el-icon-time"/> 
-                    <span :class="{exclude: (isSubExcluded(sub) || isSesExcluded(findSubject(sub), ses))}">
-                        <small v-if="ses">ses</small> {{ses}} 
-                        <small>{{o_ses.AcquisitionDate}}</small>
-                    </span>
+                    <small v-if="ses">ses</small> {{ses}} 
+                    <small>{{o_ses.AcquisitionDate}}</small>
                     &nbsp;
                     &nbsp;
-                    <el-checkbox v-if="findSession(findSubject(sub), ses)" :class="{exclude: isSubExcluded(sub)}" :value="findSession(findSubject(sub), ses).exclude" @change="findSession(findSubject(sub), ses).exclude = $event"><small>Exclude</small></el-checkbox>
+                    <el-checkbox :value="o_ses.exclude" @change="excludeSession(sub, ses, $event)">
+                        <small>Exclude this session</small>
+                    </el-checkbox>
                 </span>
                 <div v-for="(section, sectionId) in groupSections(o_ses)" :key="sectionId" style="border-top: 1px dotted #bbb; margin-top: 10px; padding-top: 5px; position: relative;">
                     <div style="position: absolute; right: 10px; top: -7px; background-color: white; font-size: 70%; color: #999; padding: 0 5px;">section {{sectionId}}</div>
@@ -39,7 +39,9 @@
                 </div>
             </div>
         </div>
+        <!--
         <pre v-if="$root.config.debug">{{$root.subs}}</pre>
+        -->
         <br>
         <br>
         <br>
@@ -55,15 +57,7 @@
     </div>
     <div class="object" ref="object-detail">
         <div v-if="so">
-            <div style="margin-bottom: 10px;" v-if="isExcluded(so)">
-                <el-alert :closable="false" type="info">This object will be excluded from the BIDS output</el-alert>
-             </div>
-            <div style="margin-bottom: 10px;">
-                <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in so.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
-             </div>
-            <div style="margin-bottom: 10px;">
-                <el-alert show-icon :closable="false" type="warning" v-for="(error, idx) in so.analysisResults.errors" :key="idx" :title="error"/>
-            </div>    
+   
             <el-form label-width="150px">
                 <div :class="{'exclude': isExcluded(so)}">
                     <el-form-item label="Series#/Desc.">
@@ -71,8 +65,22 @@
                         {{so._SeriesDescription}}
                     </el-form-item>
                     <el-form-item>
-                        <el-checkbox v-model="so.exclude" title="Exclude this object from BIDS output">Exclude this object</el-checkbox>
+                        <el-checkbox v-model="so.exclude" @change="validate(so)"
+                            title="Exclude this object from BIDS output">Exclude this object
+                        </el-checkbox>
                     </el-form-item>
+
+                    <!--messagess-->
+                    <div style="margin-bottom: 5px;" v-if="isExcluded(so)">
+                        <el-alert :closable="false" type="info">This object will be excluded from the BIDS output</el-alert>
+                    </div>
+                    <div style="margin-bottom: 5px;">
+                        <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in so.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
+                     </div>
+                    <div style="margin-bottom: 5px;">
+                        <el-alert show-icon :closable="false" type="warning" v-for="(error, idx) in so.analysisResults.errors" :key="idx" :title="error"/>
+                    </div> 
+
                     <el-form-item label="Datatype">
                         <el-select v-model="so.type" clearable :placeholder="so._type" size="small" style="width: 100%" @change="update(so)">
                             <el-option value="">(Use Series Default)</el-option>
@@ -117,7 +125,7 @@
                                 <el-option v-for="(path, idx) in so.paths" :key="idx" :label="path" :value="path"/>
                             </el-select>
                         </el-form-item>
-                        <el-form-item v-if="item.sidecar" label="Sidecar">
+                        <el-form-item v-if="item.sidecar" label="sidecar">
                             <el-input type="textarea" rows="10" v-model="item.sidecar_json" @blur="update(so)"/>
                         </el-form-item>
                         <el-form-item v-if="item.headers" label="Nifti Headers (readonly)">
@@ -127,6 +135,7 @@
                     </div>
 
                 </div>
+
                 <div style="margin-top: 5px; padding: 5px; background-color: #f0f0f0;">
                     <el-form-item label="Volumes">
                         {{so.analysisResults.NumVolumes}}
@@ -169,7 +178,7 @@ export default {
     data() {
         return {
             so: null, //selected object
-            sses: [], //selected session
+            sses: [], //selected session for IntendedFor handling
         }
     },
 
@@ -184,46 +193,42 @@ export default {
         },
     },
     
-    computed: {
-    },
-    
     methods: {
         findSubject(sub) {
             return this.$root.subjects.find(s=>s.subject == sub);
         },
-        findSession(subject, ses) {
+
+        //subject needs to be an object 
+        findSession(subject, session) {
+            /*
             if(!subject) return null;
-            return subject.sessions.find(s=>s.session == ses);
+            if(!subject.sess) {
+                console.log("no sessions", subject);
+            }
+            */
+            return subject.sessions.find(s=>s.session == session);
         },
 
-        isSubExcluded(sub) {
-            let subject = this.findSubject(sub);
-            if(!subject) return false;
-            if(subject.exclude) return true;
-        },
+        excludeSubject(sub, b) {
+            const subject = this.findSubject(sub);
+            subject.exclude = b;
 
-        isSesExcluded(sub, ses) {
-            let session = this.findSession(sub, ses);
-            if(!session) return false;
-            if(session.exclude) return true;
+            this.$root.objects.forEach(this.$root.mapObject); 
+            this.$root.objects.forEach(this.validate);
         },
 
         isExcluded(o) {
-            /*
-            //if(o._type == 'exclude') return true;
-            if(o.exclude) return true;
-            let subject = this.findSubject(o._entities.subject);
-            if(!subject) return false;
-            if(subject.exclude) return true;
-
-            let session = this.findSession(subject, o._entities.session);
-            if(!session) return false;
-            if(session.exclude) return true;
-            return false;
-            */
-            this.$root.mapObject(o);
-            console.log(o._exclude);
+            this.$root.mapObject(o); //apply parent exclude flags
             return o._exclude; 
+        },
+
+        excludeSession(sub, ses, b) {
+            const subject = this.findSubject(sub);
+            const session = this.findSession(subject, ses);
+            session.exclude = b;
+
+            this.$root.objects.forEach(this.$root.mapObject); 
+            this.$root.objects.forEach(this.validate);
         },
 
         groupSections(sess) {
@@ -237,7 +242,7 @@ export default {
         },
 
         select(o, sess) {
-            this.sess = sess;
+            this.sess = sess; //for IntendedFor
             this.so = o;
             window.scrollTo(0, 0);
         },
@@ -268,11 +273,6 @@ export default {
         intendedForLabel(o) {
             let l = "[sn"+o.SeriesNumber+"] ";
             l += o._type;
-            /*
-            if(o._entities.task) l += " task-"+o._entities.task;
-            if(o._entities.run) l += " run-"+o._entities.run;
-            if(o._entities.dir) l += " dir-"+o._entities.dir;
-            */
             for(let k in o._entities) {
                 if(k == "subject" || k == "session") continue;
                 if(!o._entities[k]) continue;
@@ -284,11 +284,11 @@ export default {
         validate(o) {
             Vue.set(o, 'validationErrors', []);
 
-            //if not included, don't need to validate
-            //if(!o.include) return;
-            //if(o._type == "exclude") return;
+            if(this.isExcluded(o)) return;
+            /*
             if(o.exclude) return; //excluded via exclude flag on this object
-            if(o._exclude) return; //excluded ia exclude flag on parent level
+            if(o._exclude) return; //excluded via exclude flag on parent level
+            */
 
             //make sure all required entities are set
             let series = this.$root.findSeries(o);
@@ -320,9 +320,7 @@ export default {
             //make sure no 2 objects are exactly alike
             for(let o2 of this.$root.objects) {
                 if(o == o2) continue;
-                //if(o2._type == "exclude") continue;
-                if(o2.exclude) continue;
-                if(o2._exclude) continue;
+                if(this.isExcluded(o2)) continue;
                 if(o._type != o2._type) continue;
                 let same = o2;
                 for(let k in o._entities) {
@@ -332,7 +330,7 @@ export default {
                     }
                 }
                 if(same) {
-                    o.validationErrors.push("This object looks exactly like another object with sn:"+same.SeriesNumber);
+                    o.validationErrors.push("This object looks exactly like another object with Series# "+same.SeriesNumber+". We can not convert this object to BIDS as they will overwrite each other");
                     break;
                 }
             }
@@ -405,7 +403,7 @@ export default {
 .selected {
     background-color: #d9ecff;
 }
-.excluded {
+.exclude {
     opacity: 0.2;
 }
 .left-border {
@@ -425,7 +423,7 @@ export default {
     margin-bottom: 0;
 }
 .border-top {
-    border-top: 1px solid #d9d9d9; 
+    border-top: 1px solid #f6f6f6;
     padding-top: 2px; 
     margin-top: 2px;
 }

@@ -1,6 +1,6 @@
 <template>
 <div v-if="$root.currentPage.id == 'subject'" style="padding: 20px;">
-    <h4>Patient / Subject Mappings</h4>
+    <h4>Patient/Subject and Acq/Session Mappings</h4>
     <el-dropdown @command="resetSubjects" style="float: right; margin: 10px;" size="small">
         <el-button type="primary" size="small">
             Reset Subject Mapping <i class="el-icon-arrow-down el-icon--right"></i>
@@ -13,44 +13,49 @@
     </el-dropdown>
     <p>Decide how you want to map DICOM PatientID to BIDS Subject ID. You can also specify AcquisitionDate/session mappings for each subject. You can download the mapping table later.</p>
     <el-table :data="$root.subjects" style="width: 100%" size="mini" class="table-align-top">
-        <el-table-column label="DICOM Patient" width="300px">
+        <el-table-column label="DICOM Patient" width="270px">
             <template slot-scope="scope">
                 <i class="el-icon-right" style="float: right; font-size: 150%; font-weight: bold;"/>
                 <div>
                     <b>PatientID</b> {{scope.row.PatientID}}<br>
                     <b>PatientName</b> {{scope.row.PatientName}}<br>
-                    <b>PatientBirthDate</b> {{scope.row.PatientBirthDate}}<br>
+                    <b>PatientBirthDate</b> {{scope.row.PatientBirthDate||'(not set)'}}<br>
                 </div>
             </template>
         </el-table-column>
-        <el-table-column label="BIDS Subject ID" width="300px">
+        <el-table-column label="Subject/Sessions">
             <template slot-scope="scope">
-                <el-input v-model="scope.row.subject" size="small" @change="validate(scope.row)">
-                    <template slot="prepend">sub-</template>
-                </el-input>
-                <p>
-                    <el-checkbox v-model="scope.row.exclude" title="Exclude all objects from BIDS output for this subject">Exclude this subject</el-checkbox>
-                </p>
+                <el-row :gutter="10">
+                    <el-col :span="16">
+                        <el-input v-model="scope.row.subject" size="small" @change="validate(scope.row)">
+                            <template slot="prepend">sub-</template>
+                        </el-input>
+                    </el-col>
+                    <el-col :span="8">
+                        <el-checkbox v-model="scope.row.exclude" title="Exclude all objects from BIDS output for this subject">Exclude this subject</el-checkbox>
+                    </el-col>
+                </el-row>
                 <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in scope.row.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
-            </template>
-        </el-table-column>
-        <el-table-column label="AcquisitionDate / Session ID Mappings">
-            <template slot-scope="scope">
                 <el-table :data="scope.row.sessions" size="mini" :show-header="false">
-                    <el-table-column prop="AcquisitionDate" width="150px"/>
-                    <el-table-column>
+                    <el-table-column :span="16">
                         <template slot-scope="sessionScope">
-                            <el-input v-model="sessionScope.row.session" placeholder="no session" size="small" @change="validate(scope.row)">
-                                <template slot="prepend">ses-</template>
-                            </el-input>
-                        </template>
-                    </el-table-column>
-                    <el-table-column label="">
-                        <template slot-scope="sessionScope">
-                            <el-checkbox v-model="sessionScope.row.exclude" title="Exclude all objects for this session">Exclude this session</el-checkbox>
+                            <el-row :gutter="10">
+                                <el-col :span="6">
+                                    <b>AcquisitionDate</b> {{sessionScope.row.AcquisitionDate}}
+                                </el-col>
+                                <el-col :span="8">
+                                    <el-input v-model="sessionScope.row.session" placeholder="no session" size="small" @change="validate(scope.row)">
+                                        <template slot="prepend">ses-</template>
+                                    </el-input>
+                                </el-col>
+                                <el-col :span="10">
+                                    <el-checkbox v-model="sessionScope.row.exclude" title="Exclude all objects for this session">Exclude this session</el-checkbox>
+                                </el-col>
+                            </el-row>
                         </template>
                     </el-table-column>
                 </el-table>
+
             </template>
         </el-table-column>
     </el-table>
@@ -145,3 +150,5 @@ export default {
 
 <style scoped>
 </style>
+
+
