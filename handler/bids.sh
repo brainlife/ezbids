@@ -26,7 +26,7 @@ function deface {
     ./deface.py $deface_info
 }
 export -f deface
-cat $root/deface_list.txt | parallel -j 10 deface {}
+cat $root/deface_list.txt | parallel -j 12 deface {}
 
 echo "converting output to bids"
 ./convert.js $root
