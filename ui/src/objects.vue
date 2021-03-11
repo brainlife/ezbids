@@ -30,11 +30,16 @@
                         &nbsp;
                         <datatype :type="o._type" :series_id="o.series_id" :entities="o.entities"/> 
                         <small v-if="o._type == 'exclude'">&nbsp;({{o._SeriesDescription}})</small>
-                        <el-badge v-if="o.validationErrors.length > 0" type="danger" 
-                            :value="o.validationErrors.length" 
-                            style="margin-left: 5px;"/>
-                        <el-badge v-if="o._type != 'exclude' && o.analysisResults && o.analysisResults.errors && o.analysisResults.errors.length > 0" type="warning"
-                            :value="o.analysisResults.errors.length" style="margin-left: 5px"/>
+                        
+                        <span v-if="!isExcluded(o)">
+                            <!--show validation error as "error"-->
+                            <el-badge v-if="o.validationErrors.length > 0" type="danger" 
+                                :value="o.validationErrors.length" style="margin-left: 5px;"/>
+
+                            <!-- show "QC errors" as warnings-->
+                            <el-badge v-if="o._type != 'exclude' && o.analysisResults && o.analysisResults.errors && o.analysisResults.errors.length > 0" type="warning"
+                                :value="o.analysisResults.errors.length" style="margin-left: 5px"/>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -65,9 +70,7 @@
                         {{so._SeriesDescription}}
                     </el-form-item>
                     <el-form-item>
-                        <el-checkbox v-model="so.exclude" @change="validate(so)"
-                            title="Exclude this object from BIDS output">Exclude this object
-                        </el-checkbox>
+                        <el-checkbox v-model="so.exclude" @change="validate(so)">Exclude this object</el-checkbox>
                     </el-form-item>
 
                     <!--messagess-->
@@ -219,6 +222,7 @@ export default {
 
         isExcluded(o) {
             this.$root.mapObject(o); //apply parent exclude flags
+            if(o._type == "exclude") return true;
             return o._exclude; 
         },
 
@@ -284,11 +288,7 @@ export default {
         validate(o) {
             Vue.set(o, 'validationErrors', []);
 
-            if(this.isExcluded(o)) return;
-            /*
-            if(o.exclude) return; //excluded via exclude flag on this object
-            if(o._exclude) return; //excluded via exclude flag on parent level
-            */
+            //if(this.isExcluded(o)) return;
 
             //make sure all required entities are set
             let series = this.$root.findSeries(o);
@@ -341,8 +341,9 @@ export default {
             this.$root.objects.forEach(this.validate);
 
             let valid = true;
-            this.$root.objects.forEach(s=>{
-                if(s.validationErrors.length > 0) valid = false;
+            this.$root.objects.forEach(o=>{
+                if(this.isExcluded(o)) return;
+                if(o.validationErrors.length > 0) valid = false;
             });
             if(valid) {
                 //this.$root.finalize();

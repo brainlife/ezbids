@@ -393,8 +393,7 @@ invert:
                 });
 
                 this.subjects.forEach(subject=>{
-                    //if(!subject.phenotype) Vue.set(subject, 'phenotype', {});
-                    if(!subject.exclude) Vue.set(subject, 'exclude', false);
+                    Vue.set(subject, 'exclude', !!(subject.exclude));
 
                     //migrate from old structure (just stick the whole thing in for now)
                     if(conf.sessions) {
@@ -412,7 +411,7 @@ invert:
                     */
 
                     subject.sessions.forEach(session=>{
-                        if(!session.exclude) Vue.set(session, 'exclude', false);
+                        Vue.set(session, 'exclude', !!(session.exclude));
 
                         //migrate from old entity name to new
                         /*
@@ -426,6 +425,8 @@ invert:
                 });
 
                 this.objects.forEach(object=>{
+                    Vue.set(object, 'exclude', !!(object.exclude));
+
                     object.items.forEach(item=>{
                         if(item.sidecar) {
 
