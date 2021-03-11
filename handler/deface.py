@@ -22,6 +22,9 @@ br_type = sys.argv[2]
 sub = sys.argv[3]
 ses = sys.argv[4]
 
+print('root: {}'.format(root))
+print('anat_orig: {}'.format(anat_orig))
+
 anat_mask = anat_orig.split('.nii.gz')[0] + '_mask.nii.gz'
 anat_defaced = anat_orig.split('.nii.gz')[0] + '_defaced.nii.gz'
 print('root: {}'.format(root))
