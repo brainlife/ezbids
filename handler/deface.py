@@ -48,9 +48,9 @@ for anat in [anat_orig, anat_defaced]:
     plt.savefig('{}.png'.format(anat.split('.nii.gz')[0]), bbox_inches='tight')
 
 if ses == '':
-    dic = {'id': 1, 'defaced': anat_defaced, 'defaced_thumb': anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png', 'info': 'type {} is defaced for sub-{}'.format(br_type, sub)}
+    dic = {'id': 'sub-{}'.format(sub), 'defaced': anat_defaced, 'defaced_thumb': anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png'}
 else:
-    dic = {'id': 1, 'defaced': anat_defaced, 'defaced_thumb': anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png', 'info': 'type {} is defaced for sub-{}/ses-{}'.format(br_type, sub, ses)}
+    dic = {'id': 'sub-{}/ses-{}'.format(sub, ses), 'defaced': anat_defaced, 'defaced_thumb': anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png'}
 
 file = open('{}/deface.out'.format(root), 'a')
 file.write(repr(dic) + "\n")
