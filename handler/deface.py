@@ -55,7 +55,7 @@ else:
 file = open('{}/deface.out'.format(root), 'a')
 file.write(repr(dic) + "\n")
 file.close()
-print("thumbnail {}".format(dic), file=sys.stdout)
+print("thumbnail {}".format(dic))
 
 
 
