@@ -21,7 +21,7 @@ if finalized_json['deface'] == True:
         if 'anat' in finalized_json['objects'][i]['_type'] and finalized_json['objects'][i]['include'] == True:
             sub = finalized_json['objects'][i]['_entities']['subject']
             ses = finalized_json['objects'][i]['_entities']['session']
-            if not ses or ses == '':
+            if not ses:
                 ses = 'N/A'
             br_type = finalized_json['objects'][i]['_type']
             anat_orig = root + '/' + finalized_json['objects'][i]['paths'][-1].split('./')[-1]
