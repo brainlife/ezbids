@@ -23,7 +23,7 @@ if finalized_json['deface'] == True:
             ses = finalized_json['objects'][i]['_entities']['session']
             br_type = finalized_json['objects'][i]['_type']
             anat_orig = root + '/' + finalized_json['objects'][i]['paths'][-1].split('./')[-1]
-            deface_list.append([anat_orig, br_type, sub, ses])
+            deface_list.append([root, anat_orig, br_type, sub, ses])
 
             
 np.savetxt('{}/deface_list.txt'.format(root), np.array(deface_list), fmt="%s")
