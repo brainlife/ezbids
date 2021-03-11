@@ -269,7 +269,7 @@ def select_unique_data(dir_list):
                 data_list[j]['session'] = acquisition_dates[i]['session']
         
     #Unique data is determined from four values: SeriesDescription, EchoTime, ImageType, MultibandAccelerationFactor
-    #If EchoTime values differ slightly (<1) and other values are the same, don't give new unique series ID
+    #If EchoTime values differ slightly (>< 0.5) and other values are the same, don't give new unique series ID
     data_list_unique_series = []
     series_tuples = []
     series_id = 0      
@@ -286,7 +286,7 @@ def select_unique_data(dir_list):
             if tuple(rest) in [y[1:-1] for y in series_tuples]:
                 common_series_index = [y[1:-1] for y in series_tuples].index(tuple(rest))
 
-                if not series_tuples[common_series_index][0]-1 <= echo_time <= series_tuples[common_series_index][0]+1:
+                if not series_tuples[common_series_index][0]-0.5 <= echo_time <= series_tuples[common_series_index][0]+0.5:
                     unique_items[-1] = 0
                     series_id += 1
                     data_list[x]['series_id'] = series_id
