@@ -17,48 +17,46 @@ os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
 
 deface_info = sys.argv[1]
  
-# Function
-def deface(deface_info):
-    root = deface_info[0]
-    anat_orig = deface_info[1]
-    br_type = deface_info[2]
-    sub = deface_info[3]
-    ses = deface_info[4]
-    anat_mask = anat_orig.split('.nii.gz')[0] + '_mask.nii.gz'
-    anat_defaced = anat_orig.split('.nii.gz')[0] + '_defaced.nii.gz'
-    
-    # Skull strip and deface
-    print('Performing defacing on {}'.format(anat_orig), file = sys.stdout)
-    os.system('runROBEX.sh {} {}'.format(anat_orig, anat_mask))
-    os.system('quickshear {} {} {}'.format(anat_orig, anat_mask, anat_defaced))
-    print('Defaced anatomical file is {}'.format(anat_defaced), file = sys.stdout)
+root = deface_info[0]
+anat_orig = deface_info[1]
+br_type = deface_info[2]
+sub = deface_info[3]
+ses = deface_info[4]
+anat_mask = anat_orig.split('.nii.gz')[0] + '_mask.nii.gz'
+anat_defaced = anat_orig.split('.nii.gz')[0] + '_defaced.nii.gz'
 
-    # Create PNG file of defaced image
-    for anat in [anat_orig, anat_defaced]:
-        image = nib.load(anat)
-        object_img_array = image.dataobj[:]
+# Skull strip and deface
+print('Performing defacing on {}'.format(anat_orig), file = sys.stdout)
+os.system('runROBEX.sh {} {}'.format(anat_orig, anat_mask))
+os.system('quickshear {} {} {}'.format(anat_orig, anat_mask, anat_defaced))
+print('Defaced anatomical file is {}'.format(anat_defaced), file = sys.stdout)
 
-        slice_x = object_img_array[floor(object_img_array.shape[0]/2), :, :]
-        slice_y = object_img_array[:, floor(object_img_array.shape[1]/2), :]
-        slice_z = object_img_array[:, :, floor(object_img_array.shape[2]/2)]
+# Create PNG file of defaced image
+for anat in [anat_orig, anat_defaced]:
+    image = nib.load(anat)
+    object_img_array = image.dataobj[:]
 
-        fig, axes = plt.subplots(1,3, figsize=(9,3))
-        for i, slice in enumerate([slice_x, slice_y, slice_z]):
-            axes[i].imshow(slice.T, cmap="gray", origin="lower", aspect='auto')
-            axes[i].axis('off')
-        plt.subplots_adjust(wspace=0, hspace=0)
-        plt.savefig('{}.png'.format(anat.split('.nii.gz')[0]), bbox_inches='tight')
+    slice_x = object_img_array[floor(object_img_array.shape[0]/2), :, :]
+    slice_y = object_img_array[:, floor(object_img_array.shape[1]/2), :]
+    slice_z = object_img_array[:, :, floor(object_img_array.shape[2]/2)]
 
-    if ses == '':
-        dic = {'id': 1, 'defaced': anat_defaced, 'defaced_thumb': anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png', 'info': 'type {} is defaced for sub-{}'.format(br_type, sub)}
-    else:
-        dic = {'id': 1, 'defaced': anat_defaced, 'defaced_thumb': anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png', 'info': 'type {} is defaced for sub-{}/ses-{}'.format(br_type, sub, ses)}
+    fig, axes = plt.subplots(1,3, figsize=(9,3))
+    for i, slice in enumerate([slice_x, slice_y, slice_z]):
+        axes[i].imshow(slice.T, cmap="gray", origin="lower", aspect='auto')
+        axes[i].axis('off')
+    plt.subplots_adjust(wspace=0, hspace=0)
+    plt.savefig('{}.png'.format(anat.split('.nii.gz')[0]), bbox_inches='tight')
 
-    file = open('{}/deface.out'.format(root), 'a')
-    file.write(repr(dic) + "\n")
-    file.close()
-    print("thumbnail {}".format(dic), file=sys.stdout)
-    
+if ses == '':
+    dic = {'id': 1, 'defaced': anat_defaced, 'defaced_thumb': anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png', 'info': 'type {} is defaced for sub-{}'.format(br_type, sub)}
+else:
+    dic = {'id': 1, 'defaced': anat_defaced, 'defaced_thumb': anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png', 'info': 'type {} is defaced for sub-{}/ses-{}'.format(br_type, sub, ses)}
+
+file = open('{}/deface.out'.format(root), 'a')
+file.write(repr(dic) + "\n")
+file.close()
+print("thumbnail {}".format(dic), file=sys.stdout)
+
 
 
 
