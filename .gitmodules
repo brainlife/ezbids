@@ -1,0 +1,4 @@
+[submodule "bids-specification"]
+	path = bids-specification
+	url = https://github.com/bids-standard/bids-specification
+	branch = rel/1.5.0
