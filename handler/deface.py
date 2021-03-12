@@ -23,7 +23,6 @@ ses = sys.argv[5]
 
 anat_mask = anat_orig.split('.nii.gz')[0] + '_mask.nii.gz'
 anat_defaced = anat_orig.split('.nii.gz')[0] + '_defaced.nii.gz'
-defaced_thumb = anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png'
 
 # Skull strip and deface
 print('Performing defacing on {}'.format(anat_orig), file = sys.stdout)
@@ -45,13 +44,17 @@ for anat in [anat_orig, anat_defaced]:
         axes[i].imshow(slice.T, cmap="gray", origin="lower", aspect='auto')
         axes[i].axis('off')
     plt.subplots_adjust(wspace=0, hspace=0)
+    defaced_thumb = anat_defaced.split(root)[-1].split('.nii.gz')[0] + '.png'
     plt.savefig(defaced_thumb, bbox_inches='tight')
 
 if ses == 'N/A':
-    dic = {'id': 'sub-{}'.format(sub), 'defaced': anat_defaced[1:], 'defaced_thumb': defaced_thumb[1:]}
+    dic = {'id': 'sub-{}'.format(sub), 'defaced': anat_defaced[1:], 'defaced_thumb': defaced_thumb}
 else:
-    dic = {'id': 'sub-{}/ses-{}'.format(sub, ses), 'defaced': anat_defaced[1:], 'defaced_thumb': defaced_thumb[1:]}
+    dic = {'id': 'sub-{}/ses-{}'.format(sub, ses), 'defaced': anat_defaced[1:], 'defaced_thumb': defaced_thumb}
 
+print('defaced file is: {}'.format(anat_defaced))
+print('defaced png file is: {}'.format(defaced_thumb))
+    
 file = open('{}/deface.out'.format(root), 'a')
 file.write(repr(dic) + "\n")
 file.close()
