@@ -1208,47 +1208,67 @@ def build_objects_list(subject_protocol, objects_entities_list):
             subject_protocol[i]['br_type'] = 'exclude'
                     
         #Objects-level info for ezBIDS.json
-        if subject_protocol[i]['br_type'] == 'exclude' and 'Acquisition cannot be resolved' not in subject_protocol[i]['error'][0]:
-            objects_info = {"exclude": subject_protocol[i]['exclude'],
-                    "type": subject_protocol[i]['br_type'],
-                    "series_id": subject_protocol[i]['series_id'],
-                    "PatientName": subject_protocol[i]['PatientName'],
-                    "PatientID": subject_protocol[i]['PatientID'],
-                    "PatientBirthDate": subject_protocol[i]['PatientBirthDate'],
-                    "AcquisitionDate": subject_protocol[i]['AcquisitionDate'],
-                    'SeriesNumber': subject_protocol[i]['sidecar']['SeriesNumber'],
-                    "pngPath": '{}.png'.format(subject_protocol[i]['nifti_path'][:-7]),
-                    "IntendedFor": subject_protocol[i]['IntendedFor'],
-                    "entities": objects_entities_list[i],
-                    "items": items,
-                    "analysisResults": {
-                        "NumVolumes": subject_protocol[i]['NumVolumes'],
-                        "errors": subject_protocol[i]['error'],
-                        "filesize": subject_protocol[i]['filesize'],
-                        "section_ID": subject_protocol[i]['section_ID']
-                    },
-                    "paths": subject_protocol[i]['paths']
-                  }
-        else:
-            objects_info = {"exclude": subject_protocol[i]['exclude'],
-                    "series_id": subject_protocol[i]['series_id'],
-                    "PatientName": subject_protocol[i]['PatientName'],
-                    "PatientID": subject_protocol[i]['PatientID'],
-                    "PatientBirthDate": subject_protocol[i]['PatientBirthDate'],
-                    "AcquisitionDate": subject_protocol[i]['AcquisitionDate'],
-                    'SeriesNumber': subject_protocol[i]['sidecar']['SeriesNumber'],
-                    "pngPath": '{}.png'.format(subject_protocol[i]['nifti_path'][:-7]),
-                    "IntendedFor": subject_protocol[i]['IntendedFor'],
-                    "entities": objects_entities_list[i],
-                    "items": items,
-                    "analysisResults": {
-                        "NumVolumes": subject_protocol[i]['NumVolumes'],
-                        "errors": subject_protocol[i]['error'],
-                        "filesize": subject_protocol[i]['filesize'],
-                        "section_ID": subject_protocol[i]['section_ID']
-                    },
-                    "paths": subject_protocol[i]['paths']
-                  }
+        # if subject_protocol[i]['br_type'] == 'exclude' and 'Acquisition cannot be resolved' not in subject_protocol[i]['error'][0]:
+        #     objects_info = {"exclude": subject_protocol[i]['exclude'],
+        #             "type": subject_protocol[i]['br_type'],
+        #             "series_id": subject_protocol[i]['series_id'],
+        #             "PatientName": subject_protocol[i]['PatientName'],
+        #             "PatientID": subject_protocol[i]['PatientID'],
+        #             "PatientBirthDate": subject_protocol[i]['PatientBirthDate'],
+        #             "AcquisitionDate": subject_protocol[i]['AcquisitionDate'],
+        #             'SeriesNumber': subject_protocol[i]['sidecar']['SeriesNumber'],
+        #             "pngPath": '{}.png'.format(subject_protocol[i]['nifti_path'][:-7]),
+        #             "IntendedFor": subject_protocol[i]['IntendedFor'],
+        #             "entities": objects_entities_list[i],
+        #             "items": items,
+        #             "analysisResults": {
+        #                 "NumVolumes": subject_protocol[i]['NumVolumes'],
+        #                 "errors": subject_protocol[i]['error'],
+        #                 "filesize": subject_protocol[i]['filesize'],
+        #                 "section_ID": subject_protocol[i]['section_ID']
+        #             },
+        #             "paths": subject_protocol[i]['paths']
+        #           }
+        # else:
+        #     objects_info = {"exclude": subject_protocol[i]['exclude'],
+        #             "series_id": subject_protocol[i]['series_id'],
+        #             "PatientName": subject_protocol[i]['PatientName'],
+        #             "PatientID": subject_protocol[i]['PatientID'],
+        #             "PatientBirthDate": subject_protocol[i]['PatientBirthDate'],
+        #             "AcquisitionDate": subject_protocol[i]['AcquisitionDate'],
+        #             'SeriesNumber': subject_protocol[i]['sidecar']['SeriesNumber'],
+        #             "pngPath": '{}.png'.format(subject_protocol[i]['nifti_path'][:-7]),
+        #             "IntendedFor": subject_protocol[i]['IntendedFor'],
+        #             "entities": objects_entities_list[i],
+        #             "items": items,
+        #             "analysisResults": {
+        #                 "NumVolumes": subject_protocol[i]['NumVolumes'],
+        #                 "errors": subject_protocol[i]['error'],
+        #                 "filesize": subject_protocol[i]['filesize'],
+        #                 "section_ID": subject_protocol[i]['section_ID']
+        #             },
+        #             "paths": subject_protocol[i]['paths']
+        #           }
+            
+        objects_info = {"exclude": subject_protocol[i]['exclude'],
+                "series_id": subject_protocol[i]['series_id'],
+                "PatientName": subject_protocol[i]['PatientName'],
+                "PatientID": subject_protocol[i]['PatientID'],
+                "PatientBirthDate": subject_protocol[i]['PatientBirthDate'],
+                "AcquisitionDate": subject_protocol[i]['AcquisitionDate'],
+                'SeriesNumber': subject_protocol[i]['sidecar']['SeriesNumber'],
+                "pngPath": '{}.png'.format(subject_protocol[i]['nifti_path'][:-7]),
+                "IntendedFor": subject_protocol[i]['IntendedFor'],
+                "entities": objects_entities_list[i],
+                "items": items,
+                "analysisResults": {
+                    "NumVolumes": subject_protocol[i]['NumVolumes'],
+                    "errors": subject_protocol[i]['error'],
+                    "filesize": subject_protocol[i]['filesize'],
+                    "section_ID": subject_protocol[i]['section_ID']
+                },
+                "paths": subject_protocol[i]['paths']
+              }
         objects_list.append(objects_info)
 
     return objects_list
