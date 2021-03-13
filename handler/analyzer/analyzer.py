@@ -362,6 +362,7 @@ def identify_series_info(data_list_unique_series):
         
         series_entities = {}
         SD = data_list_unique_series[i]['SeriesDescription']
+        image_type = data_list_unique_series[i]['ImageType']
         EchoTime = data_list_unique_series[i]['EchoTime']
         TR = data_list_unique_series[i]['RepetitionTime']
         mp2rage_inv = 1
@@ -441,14 +442,13 @@ def identify_series_info(data_list_unique_series):
         ### Determine DataTypes and ModalityLabels #######
         #Localizers or other non-BIDS compatible acquisitions
         if any(x in SD for x in ['localizer','scout']):
-            data_list_unique_series[i]['exclude'] = True
             data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be some form of localizer because "localizer" or "scout" is in the SeriesDescription. Please modify if incorrect. ezBIDS does not convert locazliers to BIDS'
             data_list_unique_series[i]['br_type'] = 'exclude (localizer)'
             
         #Arterial Spin Labeling (ASL)
         elif any(x in SD for x in ['asl']):
-            data_list_unique_series[i]['exclude'] = True
+            data_list_unique_series[i]['br_type'] = True
             data_list_unique_series[i]['DataType'] = 'asl'
             data_list_unique_series[i]['ModalityLabel'] = 'asl'
             data_list_unique_series[i]['error'] = 'Acqusition appears to be ASL, which is currently not supported by ezBIDS at this time, but will be in the future'
@@ -457,7 +457,7 @@ def identify_series_info(data_list_unique_series):
         
         #Angiography
         elif any(x in SD for x in ['angio']):
-            data_list_unique_series[i]['exclude'] = True
+            data_list_unique_series[i]['br_type'] = True
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'angio'
             data_list_unique_series[i]['error'] = 'Acqusition appears to be an Angiography acquisition, which is currently not supported by ezBIDS at this time, but will be in the future'
@@ -471,7 +471,6 @@ def identify_series_info(data_list_unique_series):
             #Magnitude/Phase[diff] field maps
             if 'EchoNumber' in data_list_unique_series[i]['sidecar']:
                 if any(x in data_list_unique_series[i]['json_path'] for x in ['_real.','_imaginary.']):
-                    data_list_unique_series[i]['exclude'] = True
                     data_list_unique_series[i]['error'] = 'Acquisition appears to be a real or imaginary field map that needs to be manually adjusted to magnitude and phase (ezBIDS currently does not have this functionality). This acqusition will not be converted'
                     data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
                     data_list_unique_series[i]['br_type'] = 'exclude'
@@ -491,7 +490,6 @@ def identify_series_info(data_list_unique_series):
                     data_list_unique_series[i]['ModalityLabel'] = 'phasediff'
                     data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/phasediff because "fmap" or "fieldmap" is in SeriesDescription, EchoNumber == 2 in metadata, and the subjectstring "_e2_ph" is in the filename but "_e1_ph" not in the one two before. Please modify if incorrect'
                 else:
-                    data_list_unique_series[i]['exclude'] = True
                     data_list_unique_series[i]['error'] = 'Acquisition appears to be some form of fieldmap with an EchoNumber, however, unable to determine if it is a magnitude, phase, or phasediff. Please modify if acquisition is desired for BIDS conversion, otherwise the acqusition will not be converted'
                     data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
                     data_list_unique_series[i]['br_type'] = 'exclude'
@@ -516,7 +514,6 @@ def identify_series_info(data_list_unique_series):
                 data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T2w because "t2w" is in the SeriesDescription. Please modify if incorrect'
             
             elif 'DIFFUSION' not in data_list_unique_series[i]['ImageType']:
-                data_list_unique_series[i]['exclude'] = True
                 data_list_unique_series[i]['error'] = 'Acquisition has bval and bvec files but does not appear to be dwi/dwi or fmap/epi that work on dwi/dwi acquistions. Please modify if incorrect, otherwise will not convert to BIDS'
                 data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
                 data_list_unique_series[i]['br_type'] = 'exclude'
@@ -531,7 +528,6 @@ def identify_series_info(data_list_unique_series):
                     data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/epi meant for dwi because there are bval & bvec files with the same SeriesNumber, but the max b-values are <= 50 and the number of b-values is less than 10. Please modify if incorrect'
                     series_entities['direction'] = data_list_unique_series[i]['direction']
                 elif any(x in SD for x in ['trace','fa','adc']) and not any(x in SD for x in ['dti','dwi','dmri']):
-                    data_list_unique_series[i]['exclude'] = True
                     data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
                     data_list_unique_series[i]['message'] = 'Acquisition is believed to be TRACE, FA, or ADC because there are bval & bvec files with the same SeriesNumber, and "trace", "fa", or "adc" are in the SeriesDescription. Please modify if incorrect'
                     data_list_unique_series[i]['br_type'] = 'exclude'
@@ -543,7 +539,6 @@ def identify_series_info(data_list_unique_series):
         
         #DWI derivatives or other non-BIDS diffusion offshoots
         elif any(x in SD for x in ['trace','fa','adc']) and any(x in SD for x in ['dti','dwi','dmri']):
-            data_list_unique_series[i]['exclude'] = True
             data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be TRACE, FA, or ADC because there are bval & bvec files with the same SeriesNumber, and "trace", "fa", or "adc" are in the SeriesDescription. Please modify if incorrect'
             data_list_unique_series[i]['br_type'] = 'exclude'
@@ -600,7 +595,8 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['ModalityLabel'] = 'T1w'
             # if data_list_unique_series[i]['EchoNumber']:
             if 'multiecho' in SD or 'echo' in SD:
-                series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
+                if 'MEAN' not in image_type:
+                    series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T1w because "t1w","tfl3d","tfl","mprage", "spgr", or "tflmgh" is in the SeriesDescription. Please modify if incorrect'
         
         #FLAIR
@@ -625,23 +621,26 @@ def identify_series_info(data_list_unique_series):
             
             #Assume not BIDS-compliant acquisition unless user specifies so
             else: 
-                data_list_unique_series[i]['exclude'] = True
                 data_list_unique_series[i]['error'] = 'Acquisition cannot be resolved. Please determine whether or not this acquisition should be converted to BIDS'
                 data_list_unique_series[i]['message'] = 'Acquisition is unknown because there is not enough adequate information, primarily in the SeriesDescription. Please modify if acquisition is desired for BIDS conversion, otherwise the acqusition will not be converted'
                 data_list_unique_series[i]['br_type'] = 'exclude'
-                
+            
         
         #Combine DataType and ModalityLabel to form br_type variable (needed for internal brainlife.io storage)
-        if data_list_unique_series[i]['exclude'] == False:
+        if 'exclude' not in data_list_unique_series[i]['br_type']:
             data_list_unique_series[i]['br_type'] = data_list_unique_series[i]['DataType'] + '/' + data_list_unique_series[i]['ModalityLabel']
-        elif data_list_unique_series[i]['exclude'] == True and 'localizer' not in data_list_unique_series[i]['br_type']:
+        elif 'exclude' in data_list_unique_series[i]['br_type'] and 'localizer' not in data_list_unique_series[i]['br_type']:
             data_list_unique_series[i]['br_type'] = 'exclude'
         else:
             pass
+        
+        #Set non-normalized anatomicals to exclude
+        if 'anat' in data_list_unique_series[i]['br_type'] and 'NORM' not in data_list_unique_series[i]['ImageType']:
+            data_list_unique_series[i]['br_type'] = 'exclude'
+            data_list_unique_series[i]['error'] = 'Acquisition is a poor resolution {} (non-normalized); Please check to see if this {} acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'.format(data_list_unique_series[i]['br_type'], data_list_unique_series[i]['br_type'])
     
         #Combine info above into dictionary, which will be displayed to user through the UI
-        series_info = {"exclude": data_list_unique_series[i]['exclude'],
-                       "SeriesDescription": data_list_unique_series[i]['SeriesDescription'],
+        series_info = {"SeriesDescription": data_list_unique_series[i]['SeriesDescription'],
                        "SeriesNumber": data_list_unique_series[i]['SeriesNumber'],
                        "series_id": data_list_unique_series[i]['series_id'],
                        "EchoTime": data_list_unique_series[i]['EchoTime'],
@@ -702,7 +701,6 @@ def identify_objects_info(subject_protocol, series_list, series_seriesID_list):
         if p == 0:
             protocol_index = 0
             
-            
         subject_protocol[p]['protocol_index'] = protocol_index
         protocol_index += 1
         subject_protocol[p]['headers'] = str(nib.load(subject_protocol[p]['nifti_path']).header).splitlines()[1:]
@@ -737,13 +735,18 @@ def identify_objects_info(subject_protocol, series_list, series_seriesID_list):
         objects_entities = {'subject': '', 'session': '', 'run': '', 'task': '', 'direction': '', 'acquisition': '', 'ceagent': '', 'echo': '', 'fa': '', 'inversion': '', 'part': ''}
         
         #Port series level information down to the object level
-        subject_protocol[p]['exclude'] = series_list[index]['exclude']
+        # subject_protocol[p]['exclude'] = series_list[index]['exclude']
+        if 'exclude' in series_list[index]['type']:
+            subject_protocol[p]['exclude'] = True
+        else:
+            subject_protocol[p]['exclude'] = False
+            
         subject_protocol[p]['DataType'] = data_list_unique_series[index]['DataType']
         subject_protocol[p]['ModalityLabel'] = data_list_unique_series[index]['ModalityLabel']
         subject_protocol[p]['br_type'] = series_list[index]['type']
         subject_protocol[p]['error'] = series_list[index]['error']
         subject_protocol[p]['subject'] = subjects[s]
-                
+        
             
         if 'run' in series_list[index]['entities'] and series_list[index]['entities']['run']:
             objects_entities['run'] = series_list[index]['entities']['run']
