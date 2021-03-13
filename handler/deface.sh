@@ -20,9 +20,6 @@ export appdir=$(pwd)
 function runDeface() {
     #this function runs inside $root (by --wd $root)
 
-    set -e
-    set -x
-
     config=$1
     
     idx=$(echo $config | jq -r .idx) 
@@ -40,15 +37,20 @@ function runDeface() {
         ;;
     esac
 
-    #create thumbnail
-    timeout 100 $appdir/createThumbnail.py $defaced $defaced.png
-    
-    echo $idx >> $root/deface.finished
+    if [ $? -ne 0 ]; then
+        echo $idx >> $root/deface.failed
+    else
+        #create thumbnail
+        timeout 100 $appdir/createThumbnail.py $defaced $defaced.png
+        echo $idx >> $root/deface.finished
+    fi
+
 }
 export -f runDeface
 
 #list of idx that finished defacing
 true > $root/deface.finished 
+true > $root/deface.failed
 
 #now run defacing
 jq -c '.list[]' $root/deface.json | parallel --linebuffer --wd $root -j 6 "runDeface {} {}"

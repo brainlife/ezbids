@@ -45,4 +45,5 @@ ENV POSSUMDIR=/usr/share/fsl/5.0
 #install pydeface
 RUN pip3 install pydeface
 
-
+#forgot to add
+RUN apt install -y jq

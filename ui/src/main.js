@@ -374,7 +374,6 @@ invert:
                 this.subjects = conf.subjects;
                 this.series = conf.series;
                 this.objects = conf.objects;
-
                 this.participantsColumn = conf.participantsColumn||{};
 
                 this.series.forEach(series=>{

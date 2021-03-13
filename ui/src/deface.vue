@@ -4,7 +4,7 @@
         $root.session.status == 'analyzed' || 
         $root.session.status == 'finished'">
         <p>
-            If you'd like to deface all T1 anatomical images, please select a defacing method and click <b>Deface</b> button. 
+            If you'd like to deface all T1 anatomical images, please select a defacing method and click <b>Run Deface</b> button. 
         </p>
         <p>
             Otherwise, you can skip this page.
@@ -13,8 +13,8 @@
         <el-form-item>
             <el-select v-model="$root.defacingMethod" placeholder="Select a defacing method" style="width: 300px;">
                 <el-option value="" label="Don't Deface"/>
-                <el-option value="quickshear" label="quickshear"/>
-                <el-option value="pydeface" label="pydeface"/>
+                <el-option value="quickshear" label="Quickshear (recommended)"/>
+                <el-option value="pydeface" label="pyDeface"/>
             </el-select>
 
             <!--sub options-->
@@ -78,6 +78,7 @@
                     <img width="100%" :src="getDefacedThumbURL(anat)"/>
                 </a>
                 <p v-if="!anat.defaced" class="missingThumb"><small>Not yet defaced</small></p>
+                <p v-if="anat.defaceFailed" class="missingThumb fail"><small>Defacing Failed</small></p>
             </td>
         </tr>
     </table>
@@ -85,7 +86,12 @@
     <el-form>
         <el-form-item class="page-action">
             <el-button @click="back">Back</el-button>
-            <el-button type="primary" @click="next" :disabled="$root.session.status == 'deface' || $root.session.status == 'defacing'" style="float: right;">Next</el-button>
+            method:{{$root.defacingMethod}}
+            <el-button type="primary" @click="next" :disabled="
+                $root.session.status == 'deface' || 
+                $root.session.status == 'defacing' || 
+                ($root.session.status == 'analyzed' && $root.defacingMethod != '')" 
+                style="float: right;">Next</el-button>
         </el-form-item>
     </el-form>
 </div>
@@ -146,20 +152,34 @@ export default {
             this.defacing = false;
             this.$root.objects.filter(o=>o._type == 'anat/T1w').forEach(anat=>{
                 Vue.set(anat, "defaced", false);
+                Vue.set(anat, "defaceFailed", false);
                 Vue.set(anat, "defaceSelection", "defaced");
             });
             this.$root.session.status = "analyzed";
         },
 
         startLogLoader() {
-            fetch(this.$root.apihost+'/download/'+this.$root.session._id+'/deface.finished').then(res=>res.text()).then(data=>{
-                let idxs = data.trim().split("\n");
-                idxs.forEach(idx=>{
-                    let o = this.$root.objects.find(o=>o.idx == idx);
-                    if(!o) console.error("can't find", idx);
-                    o.defaced = true;
-                });
-            });
+            if(this.$root.session.status == "defacing" || this.$root.session.status == "defaced") {
+                fetch(this.$root.apihost+'/download/'+this.$root.session._id+'/deface.finished').then(res=>res.text()).then(data=>{
+                    if(!data) return;
+                    let idxs = data.trim().split("\n");
+                    idxs.forEach(idx=>{
+                        let o = this.$root.objects.find(o=>o.idx == idx);
+                        if(!o) console.error("can't find", idx);
+                        o.defaced = true;
+                    });
+                }).catch(console.error);
+
+                fetch(this.$root.apihost+'/download/'+this.$root.session._id+'/deface.failed').then(res=>res.text()).then(data=>{
+                    if(!data) return;
+                    let idxs = data.trim().split("\n");
+                    idxs.forEach(idx=>{
+                        let o = this.$root.objects.find(o=>o.idx === idx);
+                        if(!o) console.error("can't find", idx);
+                        o.defaceFailed = true;
+                    });
+                }).catch(console.error);    
+            }
 
             //load next
             this.tm = setTimeout(this.startLogLoader, 5*1000);
@@ -224,9 +244,12 @@ export default {
     background-color: #eee;
     padding: 30px;
     width: 500px;
-    height: 185px;
     box-sizing: border-box;
     margin: 0;
+}
+.missingThumb.fail {
+    background-color: #c44;
+    color: white;
 }
 .el-form-item {
     margin-bottom: 0;
