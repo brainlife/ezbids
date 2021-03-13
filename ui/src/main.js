@@ -145,7 +145,7 @@ new Vue({
 
             session: null, //created when upload begins
 
-            defacingMethod: null,
+            defacingMethod: "",
 
             analyzed: false,
             finalized: false,

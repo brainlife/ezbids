@@ -3,7 +3,7 @@ FROM neurodebian:nd20.04-non-free
 
 ENV DEBIAN_FRONTEND noninteractive
 
-RUN apt update && apt install -y parallel nodejs python3 python3-pip tree curl unzip git
+RUN apt update && apt install -y parallel nodejs python3 python3-pip tree curl unzip git jq
 
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y build-essential pkg-config cmake git pigz && \
@@ -17,7 +17,7 @@ RUN cd /tmp && \
     make && make install
 
 #tensorflow2 needs pip>19
-RUN pip3 install --upgrade pip
+#RUN pip3 install --upgrade pip
 
 RUN pip3 install pandas numpy matplotlib quickshear
 
@@ -45,5 +45,3 @@ ENV POSSUMDIR=/usr/share/fsl/5.0
 #install pydeface
 RUN pip3 install pydeface
 
-#forgot to add
-RUN apt install -y jq

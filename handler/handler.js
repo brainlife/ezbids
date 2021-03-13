@@ -109,10 +109,8 @@ function handle_deface(session) {
         session.status = "defacing";
         yield handle(session, "./deface.sh", "deface", cb => {
             //monitor cb
-            console.log("monitor cb.. empty");
             cb();
         }, cb => {
-            console.log("fnish cb");
             //finish cb
             session.status = "defaced";
             cb();

@@ -9,7 +9,12 @@ Deface anatomical image(s)
 
 import os, sys
 import nibabel as nib
+
+import matplotlib
+matplotlib.use('Agg')
+
 import matplotlib.pyplot as plt
+
 plt.style.use('dark_background')
 from math import floor
 
