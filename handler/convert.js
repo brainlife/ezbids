@@ -97,7 +97,6 @@ async.forEach(info.objects, (o, next_o) => {
             //I need to use hardlink so that when archiver tries to create .zip in download API
             //the files will be found. As far as I know, archiver module can't de-reference 
             //symlinks
-            //fs.symlinkSync(goback+item.path, fullpath);
             fs.linkSync(root + "/" + item.path, fullpath);
         }
     }
@@ -123,10 +122,13 @@ async.forEach(info.objects, (o, next_o) => {
             o.items.forEach(item => {
                 switch (item.name) {
                     case "nii.gz":
+                        if (o.defaced && o.defaceSelection == "defaced") {
+                            item.path = item.path + ".defaced.nii.gz";
+                            console.log("using defaced version of t1w", item.path);
+                        }
                         handleItem(item, suffix + ".nii.gz");
                         break;
                     case "json":
-                        //bids requires TaskName set on sidecar
                         handleItem(item, suffix + ".json");
                         break;
                     default:

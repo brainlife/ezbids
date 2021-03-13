@@ -46,48 +46,19 @@ router.get('/session/:session_id', (req, res, next) => {
     });
 });
 
-/*
-//deprecated by /download/:session_id/*
-router.get('/session/:session_id/log', (req, res, next) => {
+router.post('/session/:session_id/deface', (req, res, next)=>{
     models.Session.findById(req.params.session_id).then(session=>{
-        res.setHeader("content-type", "text/plain");
-        fs.createReadStream(config.workdir+"/"+session._id+"/preprocess.log").pipe(res);
-    }).catch(err=>{
-        next(err);
-    });
-});
+        if(!session) return next("no such session");
 
-//deprecated by /download/:session_id/*
-router.get('/session/:session_id/error', (req, res, next) => {
-    models.Session.findById(req.params.session_id).then(session=>{
-        res.setHeader("content-type", "text/plain");
-        fs.createReadStream(config.workdir+"/"+session._id+"/preprocess.err").pipe(res);
-    }).catch(err=>{
-        next(err);
+        fs.writeFile(config.workdir+"/"+session._id+"/deface.json", JSON.stringify(req.body), err=>{
+            session.status = "deface";
+            session.status_msg = "Waiting to be defaced";
+            session.save().then(()=>{
+                res.send("ok"); 
+            });
+        });
     });
 });
-
-//deprecated by /download/:session_id/*
-router.get('/session/:session_id/list', (req, res, next) => {
-    models.Session.findById(req.params.session_id).then(session=>{
-        res.setHeader("content-type", "text/plain");
-        fs.createReadStream(config.workdir+"/"+session._id+"/list").pipe(res);
-    }).catch(err=>{
-        next(err);
-    });
-});
-
-//deprecated by /download/:session_id/*
-router.get('/session/:session_id/ezbids', (req, res, next) => {
-    models.Session.findById(req.params.session_id).then(session=>{
-        res.setHeader("content-type", "application/json");
-        console.debug("loading ezbids.json from", config.workdir, session._id);
-        fs.createReadStream(config.workdir+"/"+session._id+"/ezBIDS.json").pipe(res);
-    }).catch(err=>{
-        next(err);
-    });
-});
-*/
 
 router.post('/session/:session_id/finalize', (req, res, next)=>{
     models.Session.findById(req.params.session_id).then(session=>{
@@ -104,16 +75,6 @@ router.post('/session/:session_id/finalize', (req, res, next)=>{
                 });
             });
         });
-        /*
-        //store finalized content disk
-        req.pipe(fs.createWriteStream(config.workdir+"/"+session._id+"/finalized.json"));
-        req.on('end', ()=>{
-            session.status = "finalized";
-            session.save().then(()=>{
-                res.send("ok"); 
-            });
-        });
-        */
     });
 });
 
@@ -147,31 +108,6 @@ router.get('/download/:session_id/*', (req, res, next)=>{
         next(err);
     });
 });
-
-/*
-router.post('/upload/:session_id', upload.single('file'), (req:any, res, next)=>{
-    models.Session.findById(req.params.session_id).then(session=>{
-        let src_path = req.file.path;
-        let dirty_path = config.workdir+"/"+req.params.session_id+"/"+req.body.path;
-        let dest_path = path.resolve(dirty_path);
-
-        if(!dest_path.startsWith(config.workdir)) return next("invalid path");
-        let destdir = path.dirname(dest_path);
-
-        //move the file over to workdir
-        mkdirp(destdir).then(err=>{
-            fs.rename(src_path, dest_path, err=>{
-                if(err) return next(err);
-                res.send("ok");
-            });
-        });
-
-    }).catch(err=>{
-        console.error(err);
-        next(err);
-    });
-});
-*/
 
 router.post('/upload-multi/:session_id', upload.any(), (req:any, res, next)=>{
 

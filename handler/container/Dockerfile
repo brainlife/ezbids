@@ -21,23 +21,28 @@ RUN pip3 install --upgrade pip
 
 RUN pip3 install pandas numpy matplotlib quickshear
 
-#install fsl
-#RUN apt install -y fsl python-numpy
-#ENV FSLDIR=/usr/share/fsl/5.0
-#ENV PATH=$PATH:$FSLDIR/bin
-#ENV LD_LIBRARY_PATH=/usr/lib/fsl/5.0:/usr/share/fsl/5.0/bin
-#ENV FSLBROWSER=/etc/alternatives/x-www-browser
-#ENV FSLCLUSTER_MAILOPTS=n
-#ENV FSLLOCKDIR=
-#ENV FSLMACHINELIST=
-#ENV FSLMULTIFILEQUIT=TRUE
-#ENV FSLOUTPUTTYPE=NIFTI_GZ
-#ENV FSLREMOTECALL=
-#ENV FSLTCLSH=/usr/bin/tclsh
-#ENV FSLWISH=/usr/bin/wish
-#ENV POSSUMDIR=/usr/share/fsl/5.0
-
 #install ROBEX
 COPY ROBEXv12.linux64.tar.gz /
 RUN tar -xzf /ROBEXv12.linux64.tar.gz
 ENV PATH=$PATH:/ROBEX
+
+#install fsl
+RUN apt install -y fsl-core
+ENV FSLDIR=/usr/share/fsl/5.0
+ENV PATH=$PATH:$FSLDIR/bin
+ENV LD_LIBRARY_PATH=/usr/lib/fsl/5.0:/usr/share/fsl/5.0/bin
+ENV FSLBROWSER=/etc/alternatives/x-www-browser
+ENV FSLCLUSTER_MAILOPTS=n
+ENV FSLLOCKDIR=
+ENV FSLMACHINELIST=
+ENV FSLMULTIFILEQUIT=TRUE
+ENV FSLOUTPUTTYPE=NIFTI_GZ
+ENV FSLREMOTECALL=
+ENV FSLTCLSH=/usr/bin/tclsh
+ENV FSLWISH=/usr/bin/wish
+ENV POSSUMDIR=/usr/share/fsl/5.0
+
+#install pydeface
+RUN pip3 install pydeface
+
+

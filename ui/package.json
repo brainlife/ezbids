@@ -13,10 +13,13 @@
     "core-js": "^3.6.5",
     "element-ui": "^2.13.2",
     "js-yaml": "^3.14.0",
+    "json-loader": "^0.5.7",
     "numeral": "^2.0.6",
     "vue": "^2.6.12",
+    "vue-cli-plugin-yaml-loader": "^1.0.0",
     "vue-router": "^3.4.8",
-    "vue-slide-up-down": "^2.0.1"
+    "vue-slide-up-down": "^2.0.1",
+    "yaml-loader": "^0.6.0"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "^4.5.8",

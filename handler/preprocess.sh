@@ -47,7 +47,7 @@ function d2n {
     echo $1 >> dcm2niix.done
 }
 export -f d2n
-cat $root/dcm2niix.list | parallel --wd $root -j 6 d2n {}
+cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n {}
 
 #find products
 (cd $root && find . -type f \( -name "*.json" -o -name "*.nii.gz" -o -name "*.bval" -o -name "*.bvec" \) > list)

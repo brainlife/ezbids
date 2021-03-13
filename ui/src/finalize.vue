@@ -1,15 +1,9 @@
 <template>
 <div v-if="$root.currentPage.id == 'finalize'" style="padding: 20px;">
 
-    <div v-if="$root.session.status == 'analyzed'">
+    <div v-if="$root.session.status == 'analyzed' || $root.session.status == 'defaced'">
         <p>Your data is ready to be converted to BIDS!</p>
         <el-form>
-            <el-form-item>
-                <el-checkbox v-model="$root.deface">Deface all anatomical objects</el-checkbox>
-                <p style="margin: 0; padding-left: 25px;">
-                    <small>Run ROBEX/quickshear to remove facial features for each anat object. Will incur extra processing time.</small>
-                </p>
-            </el-form-item>
             <el-form-item>
                 <el-button @click="finalize" type="primary" :disable="submitting">Finalize</el-button>
             </el-form-item>
@@ -45,6 +39,13 @@
         <el-button @click="rerun" type="success" style="float: right" size="small">Rerun Finalize Step</el-button>
         <p><small><i>{{$root.session.status_msg}}</i></small></p>
     </div>
+
+    <!--defacing status-->
+    <div v-if="defacingStats">
+        <p v-for="stat in defacingStats" :key="stat.id">
+            {{stat}}
+        </p>
+    </div><!--end of defacing status-->
 
     <br>
     <br>
@@ -90,6 +91,8 @@ export default {
             activeLogs: [],
             stdout: "",
             stderr: "",
+
+            defacingStats: null,
         }
     },
 
@@ -154,7 +157,7 @@ export default {
         },
 
         back() {
-            this.$root.changePage("object");
+            this.$root.changePage("deface");
         },
     },
 }

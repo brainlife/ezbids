@@ -16,6 +16,7 @@
             <series/>
             <participants/>
             <objects/>
+            <deface/>
             <finalize/>
         </div>
         <div class="main-content" v-else>
@@ -34,31 +35,19 @@ import subjects from '@/subjects'
 import series from '@/series'
 import participants from '@/participants'
 import objects from '@/objects'
+import deface from '@/deface'
 import finalize from '@/finalize'
 
 export default {
-    //store,
     components: {
-        //themenu,
-
         upload,
         description,
         subjects,
         participants,
         series,
         objects,
+        deface,
         finalize,
-    },
-    data() {
-        return {
-        }
-    },
-    computed: {
-    },
-    methods: {
-    },
-    created() {
-        console.log("App");
     },
 }
 </script>

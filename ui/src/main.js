@@ -37,8 +37,6 @@ import 'element-ui/lib/theme-chalk/index.css';
 import locale from 'element-ui/lib/locale/lang/en'
 Vue.use(ElementUI, { locale } );
 
-import jsyaml from 'js-yaml';
-
 //import Vuex from 'vuex'
 //Vue.use(Vuex)
 
@@ -50,12 +48,20 @@ Vue.config.productionTip = false
 
 import App from './App.vue'
 
-//import lib from './lib'
+import bidsEntities from './assets/schema/entities.yaml'
 
+import anatDatatype from './assets/schema/datatypes/anat.yaml'
+import dwiDatatype from './assets/schema/datatypes/dwi.yaml'
+import funcDatatype from './assets/schema/datatypes/func.yaml'
+import fmapDatatype from './assets/schema/datatypes/fmap.yaml'
+
+/*
+import jsyaml from 'js-yaml';
 async function loadYaml(url) {
     let yaml = await fetch(url).then(res=>res.text());
     return jsyaml.load(yaml);
 }
+*/
 
 new Vue({
     el: '#app',
@@ -106,7 +112,7 @@ new Vue({
             readme: "edit me", 
             participantsColumn: {},
 
-            deface: true,
+            //deface: true,
             
             subjects: [],
             series: [],
@@ -125,6 +131,7 @@ new Vue({
                 {id: "participant", title: "Participants Info"},
                 {id: "series", title: "Series Mapping"},
                 {id: "object", title: "Overrides"},
+                {id: "deface", title: "Deface"},
                 {id: "finalize", title: "Finalize"},
             ],
 
@@ -137,15 +144,8 @@ new Vue({
             uploadFailed: false,
 
             session: null, //created when upload begins
-            //session.status... 
-            //      created
-            //      uploaded
-            //      preprocessing
-            //      analyzed
-            //      failed
-            //      bidsing
-            //      finalized
-            //      finished
+
+            defacingMethod: null,
 
             analyzed: false,
             finalized: false,
@@ -160,22 +160,20 @@ new Vue({
             this.pollSession();
         }
 
-        let _dwi = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/datatypes/dwi.yaml");
-        this.bids_datatypes["dwi"] = _dwi;
-
+        //let _dwi = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/datatypes/dwi.yaml");
+        this.bids_datatypes["dwi"] = dwiDatatype;
         let dwi = {label: "Diffusion", options: []}
-        _dwi.forEach(group=>{
+        dwiDatatype.forEach(group=>{
             group.suffixes.forEach(suffix=>{
                 dwi.options.push({value: "dwi/"+suffix, label: suffix});
             });
         });
         this.datatypes.push(dwi);
         
-        let _anat = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/datatypes/anat.yaml");
-        this.bids_datatypes["anat"] = _anat;
-
+        //let _anat = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/datatypes/anat.yaml");
+        this.bids_datatypes["anat"] = anatDatatype;
         let anat = {label: "Anatomical", options: []}
-        _anat.forEach(group=>{
+        anatDatatype.forEach(group=>{
             group.suffixes.forEach(suffix=>{
                 anat.options.push({value: "anat/"+suffix, label: suffix});
             });
@@ -183,31 +181,31 @@ new Vue({
 
         this.datatypes.push(anat);
 
-        let _func = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/datatypes/func.yaml");
-        this.bids_datatypes["func"] = _func;
+        //let _func = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/datatypes/func.yaml");
+        this.bids_datatypes["func"] = funcDatatype;
 
         let func = {label: "Functional", options: []}
-        _func.forEach(group=>{
+        funcDatatype.forEach(group=>{
             group.suffixes.forEach(suffix=>{
                 func.options.push({value: "func/"+suffix, label: suffix});
             });
         });
         this.datatypes.push(func);
 
-        let _fmap = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/datatypes/fmap.yaml");
-        this.bids_datatypes["fmap"] = _fmap;
+        //let _fmap = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/datatypes/fmap.yaml");
+        this.bids_datatypes["fmap"] = fmapDatatype;
 
         let fmap = {label: "Field Map", options: []}
-        _fmap.forEach(group=>{
+        fmapDatatype.forEach(group=>{
             group.suffixes.forEach(suffix=>{
                 fmap.options.push({value: "fmap/"+suffix, label: suffix});
             });
         })
         this.datatypes.push(fmap);
 
-        let _bids_entities = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/entities.yaml");
-        for(let key in _bids_entities) {
-            let ent = _bids_entities[key];
+        //let _bids_entities = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/entities.yaml");
+        for(let key in bidsEntities) {
+            let ent = bidsEntities[key];
             //this.bids_entities[ent.entity] = ent;
             this.bids_entities[key] = ent;
         }
@@ -457,6 +455,8 @@ invert:
             case "created":
             case "uploaded":
             case "preprocessing":
+            case "deface":
+            case "defacing":
             case "finalized":
             case "bidsing":
                 this.reload_t = setTimeout(()=>{
@@ -465,6 +465,7 @@ invert:
                 break;
 
             case "finished":
+            case "defaced":
             case "analyzed":
                 if(!this.analyzed) {
                     await this.loadData(this.apihost+'/download/'+this.session._id+'/ezBIDS.json');
@@ -482,8 +483,8 @@ invert:
             this.currentPage = this.pages.find(p=>p.id == id);
         },
 
+        //TODO - should I move to finalize.vue?
         finalize(cb) {
-
             //mapping between things like like "subject" to "sub"
             const entityMappings = {};
             for(const key in this.bids_entities) {
@@ -499,7 +500,7 @@ invert:
                     participantsColumn: this.participantsColumn,
                     subjects: this.subjects, //for phenotype
                     objects: this.objects,
-                    deface: this.deface, //deface anatomical
+                    //deface: this.deface, //deface anatomical
                     entityMappings,
                 }),
             }).then(res=>res.text()).then(status=>{

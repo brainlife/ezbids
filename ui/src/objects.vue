@@ -346,8 +346,7 @@ export default {
                 if(o.validationErrors.length > 0) valid = false;
             });
             if(valid) {
-                //this.$root.finalize();
-                this.$root.changePage("finalize");
+                this.$root.changePage("deface");
             } else {
                 alert('Please correct all issues');
                 return false;

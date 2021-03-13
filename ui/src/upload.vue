@@ -36,7 +36,7 @@
 
         <div v-if="$root.session.status == 'created'">
             <h3>Uploading ...</h3>
-            <el-alert type="info">Please do not close your browser until all files are uploaded.</el-alert>
+            <el-alert type="info">Please do not close your browser (nor refresh page) until all files are uploaded.</el-alert>
 
             <div v-if="failed.length > 0">
                 <el-alert type="error">Permanently failed to upload some files</el-alert>
@@ -83,7 +83,7 @@
             <h3 v-else>Analyzing...</h3>
 
             <pre>{{$root.session.status_msg}}</pre>
-            <el-alert type="info">Depending on the size of your dataset, this process might take several hours. You may shutdown your computer while we process your data.. (please refresh the page when you come back)</el-alert>
+            <el-alert type="info">Depending on the size of your dataset, this process might take several hours. You can close this page while we process your data (you might need to refresh the page when you come back)</el-alert>
 
             <div class="page-action">
                 <el-button type="secondary" @click="$root.reset()">Cancel</el-button>
@@ -109,7 +109,7 @@
             </div>
         </div>
 
-        <div v-if="['analyzed', 'finalized', 'finished'].includes($root.session.status)">
+        <div v-if="['analyzed', 'finalized', 'finished', 'deface', 'defacing', 'defaced'].includes($root.session.status)">
             <p>Analysis complete! Please proceed to the next tab.</p>
             <h4>Object List <small>({{$root.objects.length}})</small></h4>
             <div style="max-height: 400px; overflow-x: auto;">
