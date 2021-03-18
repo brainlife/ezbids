@@ -11,6 +11,8 @@ In lieu of DICOMs, users may upload a directory containing the NIFTI/JSON files 
 
 Unlike other automated DICOM to BIDS converters, ezBIDS eliminates the need for the command line and heuristic/configuration file setup.
 
+ezBIDS provides options for the defacing of anatomical acquisitions.
+
 The BIDS output can be downloaded back to the user's computer, or uploaded to open repositories such as
 [OpenNeuro](https://openneuro.org/), or [brainlife.io](https://brainlife.io/)
 
