@@ -1229,6 +1229,7 @@ def build_objects_list(subject_protocol, objects_entities_list):
                 'SeriesNumber': subject_protocol[i]['sidecar']['SeriesNumber'],
                 "pngPath": '{}.png'.format(subject_protocol[i]['nifti_path'][:-7]),
                 "IntendedFor": subject_protocol[i]['IntendedFor'],
+                "forType": subject_protocol[i]['forType'],
                 "entities": objects_entities_list[i],
                 "items": items,
                 "analysisResults": {
