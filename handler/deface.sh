@@ -21,9 +21,11 @@ function runDeface() {
     #this function runs inside $root (by --wd $root)
 
     config=$1
+    echo $config
     
     idx=$(echo $config | jq -r .idx) 
     anat=$(echo $config | jq -r .path) 
+    echo $anat
     defaced=$anat.defaced.nii.gz
     echo "--------------- defacing($method) [$idx] $anat to $defaced ----------------"
 
