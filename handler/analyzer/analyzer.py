@@ -661,6 +661,7 @@ def identify_series_info(data_list_unique_series):
                        "MultibandAccelerationFactor": data_list_unique_series[i]['MultibandAccelerationFactor'],
                        "entities": series_entities,
                        "type": data_list_unique_series[i]['br_type'],
+                       "forType": data_list_unique_series[i]['forType'],
                        "error": data_list_unique_series[i]['error'],
                        "message": data_list_unique_series[i]['message'],
                        "repetitionTimes": [],
