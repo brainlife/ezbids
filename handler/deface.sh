@@ -25,26 +25,32 @@ function runDeface() {
     idx=$(echo $config | jq -r .idx) 
     anat=$(echo $config | jq -r .path) 
     defaced=$anat.defaced.nii.gz
+
     echo "--------------- defacing($method) [$idx] $anat to $defaced ----------------"
-
-    case $method in
-        quickshear)
-            time runROBEX.sh $anat $anat.mask.nii.gz
-            timeout 60 quickshear $anat $anat.mask.nii.gz $defaced
-        ;;
-        pydeface)
-            time pydeface --force $anat --outfile $defaced
-        ;;
-    esac
-
-    if [ $? -ne 0 ]; then
-        echo $idx >> $root/deface.failed
-    else
-        #create thumbnail
-        timeout 100 $appdir/createThumbnail.py $defaced $defaced.png
+    if [ -f $defaced ]; then
+        echo "already defaced"
         echo $idx >> $root/deface.finished
-    fi
+    else
+        #TODO - add other methods?
+        case $method in
+            quickshear)
+                time runROBEX.sh $anat $anat.mask.nii.gz
+                timeout 60 quickshear $anat $anat.mask.nii.gz $defaced
+            ;;
+            pydeface)
+                time pydeface --force $anat --outfile $defaced
+            ;;
+        esac
 
+        if [ $? -ne 0 ]; then
+            echo "defacing faile?"
+            echo $idx >> $root/deface.failed
+        else
+            #create thumbnail
+            timeout 100 $appdir/createThumbnail.py $defaced $defaced.png
+            echo $idx >> $root/deface.finished
+        fi
+    fi
 }
 export -f runDeface
 

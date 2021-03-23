@@ -31,7 +31,7 @@
         <div v-if="ss">
             <h5>BIDS Datatype / Entities</h5>
             <el-form label-width="150px">
-                <el-alert v-if="ss.message" :title="ss.message" type="info"/>
+                <el-alert v-if="ss.message" :title="ss.message" type="warning"/>
 
                 <el-form-item label="Datatype">
                     <el-select v-model="ss.type" reqiured placeholder="(exclude)" size="small" @change="validate(ss)">
@@ -70,15 +70,15 @@
                 <div style="margin-bottom: 10px;">
                     <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in ss.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
                 </div>
+                <el-form-item label="Common Metadata">
+                    <small>All objects under this series contain the following common metadata</small>
+                    <p style="margin-top: 0; margin-bottom: 0;"> 
+                        <el-tag type="info" size="mini"><small>EchoTime: {{ss.EchoTime}}</small></el-tag>&nbsp;
+                        <el-tag type="info" size="mini"><small>ImageType: {{ss.ImageType}}</small></el-tag>&nbsp;
+                        <el-tag type="info" size="mini"><small>MultibandAccelerationFactor: {{ss.MultibandAccelerationFactor}}</small></el-tag>&nbsp;
+                    </p>
+                </el-form-item>
             </el-form>
-            <div style="background-color: #eee; padding: 10px 20px;">
-                <small>All objects under this series contain the following common metadata</small>
-                <p style="margin-top: 0; margin-bottom: 0;"> 
-                    <el-tag type="info" size="mini"><small>EchoTime: {{ss.EchoTime}}</small></el-tag>&nbsp;
-                    <el-tag type="info" size="mini"><small>ImageType: {{ss.ImageType}}</small></el-tag>&nbsp;
-                    <el-tag type="info" size="mini"><small>MultibandAccelerationFactor: {{ss.MultibandAccelerationFactor}}</small></el-tag>&nbsp;
-                </p>
-            </div>
             <p style="border-top: 1px solid #eee; padding: 10px 20px;">
                 <small>The following subjects contains objects for this series.</small>
             </p>

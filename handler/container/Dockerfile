@@ -19,29 +19,37 @@ RUN cd /tmp && \
 #tensorflow2 needs pip>19
 #RUN pip3 install --upgrade pip
 
-RUN pip3 install pandas numpy matplotlib quickshear
+RUN pip3 install numpy nibabel pandas matplotlib #need it before I can install quickshear
+RUN pip3 install quickshear
 
 #install ROBEX
 COPY ROBEXv12.linux64.tar.gz /
 RUN tar -xzf /ROBEXv12.linux64.tar.gz
 ENV PATH=$PATH:/ROBEX
 
-#install fsl
-RUN apt install -y fsl-core
-ENV FSLDIR=/usr/share/fsl/5.0
+#install fsl6
+#https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation/Linux
+RUN apt update && apt install -y wget python libgl-dev jq python-numpy
+
+#install fsl, but get rid of src 
+RUN wget https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py && \
+      python fslinstaller.py -d /usr/local/fsl -V 6.0.4 && rm -rf /usr/local/fsl/src
+
+ENV FSLDIR=/usr/local/fsl
 ENV PATH=$PATH:$FSLDIR/bin
-ENV LD_LIBRARY_PATH=/usr/lib/fsl/5.0:/usr/share/fsl/5.0/bin
-ENV FSLBROWSER=/etc/alternatives/x-www-browser
-ENV FSLCLUSTER_MAILOPTS=n
-ENV FSLLOCKDIR=
-ENV FSLMACHINELIST=
-ENV FSLMULTIFILEQUIT=TRUE
+ENV LD_LIBRARY_PATH=$FSLDIR/lib
+
+RUN . $FSLDIR/etc/fslconf/fsl.sh
+
 ENV FSLOUTPUTTYPE=NIFTI_GZ
-ENV FSLREMOTECALL=
-ENV FSLTCLSH=/usr/bin/tclsh
-ENV FSLWISH=/usr/bin/wish
-ENV POSSUMDIR=/usr/share/fsl/5.0
+
+#make sure fslpython is properly installed
+RUN which imcp
+
+ADD fsl5 /usr/local/fsl5
+ENV PATH=/usr/local/fsl5:$PATH
 
 #install pydeface
 RUN pip3 install pydeface
 
+RUN rm /bin/sh && ln -s /bin/bash /bin/sh

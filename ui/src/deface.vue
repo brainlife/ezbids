@@ -1,8 +1,6 @@
 <template>
 <div v-if="$root.currentPage.id == 'deface'" style="padding: 20px;">
-    <el-form v-if="
-        $root.session.status == 'analyzed' || 
-        $root.session.status == 'finished'">
+    <el-form v-if="$root.session.status == 'analyzed' || $root.session.status == 'finished'">
         <p>
             If you'd like to deface all T1 anatomical images, please select a defacing method and click <b>Run Deface</b> button. 
         </p>
@@ -27,6 +25,11 @@
             <div v-if="$root.defacingMethod && !defacing">
                 <el-button @click="submit" type="success">Run Deface!</el-button>
             </div>
+            <!--
+            <div v-if="defacing">
+                <el-button @click="submit" type="success" disabled>Running Deface</el-button>
+            </div>
+            -->
         </el-form-item>
     </el-form>
 
@@ -86,7 +89,6 @@
     <el-form>
         <el-form-item class="page-action">
             <el-button @click="back">Back</el-button>
-            method:{{$root.defacingMethod}}
             <el-button type="primary" @click="next" :disabled="
                 $root.session.status == 'deface' || 
                 $root.session.status == 'defacing' || 
@@ -117,18 +119,22 @@ export default {
 
     computed: {
         anats() {
-            console.dir(this.$root.objects);
             return this.$root.objects.filter(o=>o._type == 'anat/T1w' && !o._exclude)
         }
     },
 
     watch: {
 
+        /*
+        '$root.session.status'() {
+            this.defacing = (this.$root.session.status == 'defacing');
+            console.log(this.$root.session.status, this.defacing);
+        },
+        */
+
         '$root.currentPage'(v) {
             clearTimeout(this.tm);
             if(v.id == 'deface') {
-                console.log("deface page");
-
                 this.$root.objects.filter(o=>o._type == 'anat/T1w').forEach(anat=>{
                     if(!anat.defaced) Vue.set(anat, "defaced", false);
                     if(!anat.defaceSelection) Vue.set(anat, "defaceSelection", "defaced");
@@ -208,7 +214,6 @@ export default {
                     method: this.$root.defacingMethod,
                 }),
             }).then(res=>res.text()).then(status=>{
-                this.defacing = false;
                 if(status != "ok") {
                     this.$notify({ title: 'Failed', message: 'Failed to submit deface request'});
                 }
@@ -243,7 +248,6 @@ export default {
 .missingThumb {
     background-color: #eee;
     padding: 30px;
-    width: 500px;
     box-sizing: border-box;
     margin: 0;
 }
