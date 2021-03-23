@@ -24,7 +24,7 @@
                     </el-checkbox>
                 </span>
                 <div v-for="(section, sectionId) in groupSections(o_ses)" :key="sectionId" style="position: relative;">
-                    <div v-if="section.length > 0" style="border-top: 1px dotted #bbb; width: 100%; margin: 9px 0;">
+                    <div v-if="section.length > 1" style="border-top: 1px dotted #bbb; width: 100%; margin: 9px 0;">
                         <span style="float: right; top: -7px; position: relative; background-color: white; font-size: 70%; color: #999; padding: 0 10px; margin-right: 10px;">section {{sectionId}}</span>
                     </div>
                     <div v-for="o in section" :key="o.idx" class="clickable hierarchy-item" :class="{selected: so === o, exclude: isExcluded(o)}" @click="select(o, o_ses)">

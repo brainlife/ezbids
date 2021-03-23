@@ -6,7 +6,9 @@
     "test": "npx cypress open",
     "serve": "vue-cli-service serve --port 3000",
     "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint"
+    "lint": "vue-cli-service lint",
+    "deploy": "ssh -t hayashis@test.brainlife.io \"sudo su -c 'cd /root/docker/ezbids && ./update-ui.sh'\"",
+    "deploy-prod": "ssh -t -J hayashis@brainlife.io ubuntu@ezbids \"sudo su -c 'cd /root/docker/ezbids && ./update.sh'\""
   },
   "dependencies": {
     "axios": "^0.19.2",
