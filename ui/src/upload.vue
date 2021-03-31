@@ -150,6 +150,11 @@
                     <li><a :href="$root.apihost+'/download/'+$root.session._id+'/ezBIDS.json'">ezBIDS.json</a></li>
                 </ul>
             </el-collapse-item>
+            <!--
+            <el-collapse-item title="$root" v-if="debug">
+                <pre>{{JSON.stringify($root.subs, null, 4)}}</pre>
+            </el-collapse-item>
+            -->
         </el-collapse>
         <br>
         <br>
@@ -160,7 +165,7 @@
 
 <script>
 
-//import Vue from 'vue'
+import Vue from 'vue'
 import axios from 'axios'
 
 export default {
@@ -193,6 +198,8 @@ export default {
             //stdout: "",
             //stderr: "",
             list: "",
+
+            debug: Vue.config.debug,
         }
     },
     mounted() {

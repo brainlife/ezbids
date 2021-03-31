@@ -367,6 +367,8 @@ invert:
                 };
                 this.subs[sub].sess[ses].objects.push(o);
             });
+
+            console.dir(this.subs);
         },
 
         loadData(url) {
