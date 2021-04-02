@@ -1,6 +1,27 @@
 
 exports.setIntendedFor = $root=>{
 
+    //first iterate over all subjects
+    for (const subject in $root.subs) {
+        console.debug("subject", subject);
+
+        //then iterate over each session under this subject
+        const sessions = $root.subs[subject].sess;
+        for(const session in sessions) {
+            console.debug("session", session); //might be empty string
+
+            //finally iterate through objects under this subject/session
+            sessions[session].objects.forEach(o=>{
+                console.log(o.idx, o._type);
+                //do things with this object(o)
+                //...
+                 
+            });
+        }
+    }
+
+    process.exit(1);
+
     $root.subjects.forEach(sub=>{
 
         // Determine how many sections there are per subject (and session)
