@@ -17,9 +17,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 1,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-1_i00001.png",
-                            "IntendedFor": [
-                                3
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
@@ -194,9 +192,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 1,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-1_i00002.png",
-                            "IntendedFor": [
-                                3
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
@@ -371,9 +367,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 1,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-1_i00003.png",
-                            "IntendedFor": [
-                                3
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
@@ -548,9 +542,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 2,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-2.png",
-                            "IntendedFor": [
-                                3
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
@@ -816,9 +808,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 3,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-3_ph.png",
-                            "IntendedFor": [
-                                3
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
@@ -1085,9 +1075,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 4,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-4.png",
-                            "IntendedFor": [
-                                3
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
@@ -1268,12 +1256,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 5,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-5.png",
-                            "IntendedFor": [
-                                6,
-                                7,
-                                12,
-                                13
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
@@ -1568,12 +1551,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 6,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-6.png",
-                            "IntendedFor": [
-                                6,
-                                7,
-                                12,
-                                13
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
@@ -1868,9 +1846,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 7,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-7.png",
-                            "IntendedFor": [
-                                3
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
@@ -2045,9 +2021,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 8,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-8.png",
-                            "IntendedFor": [
-                                3
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
@@ -2222,9 +2196,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 9,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-9.png",
-                            "IntendedFor": [
-                                3
-                            ],
+                            "IntendedFor": [],
                             "forType": "func/bold",
                             "entities": {
                                 "subject": "",
@@ -2483,9 +2455,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 10,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-10.png",
-                            "IntendedFor": [
-                                3
-                            ],
+                            "IntendedFor": [],
                             "forType": "func/bold",
                             "entities": {
                                 "subject": "",
@@ -2744,12 +2714,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 11,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-11.png",
-                            "IntendedFor": [
-                                6,
-                                7,
-                                12,
-                                13
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
@@ -3044,12 +3009,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 12,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-12.png",
-                            "IntendedFor": [
-                                6,
-                                7,
-                                12,
-                                13
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
@@ -3344,9 +3304,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 13,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-13.png",
-                            "IntendedFor": [
-                                3
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
@@ -3528,9 +3486,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 14,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-14.png",
-                            "IntendedFor": [
-                                3
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
@@ -3708,9 +3664,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 15,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-15.png",
-                            "IntendedFor": [
-                                3
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
@@ -3892,9 +3846,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 16,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-16.png",
-                            "IntendedFor": [
-                                3
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
@@ -4073,9 +4025,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 17,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-17.png",
-                            "IntendedFor": [
-                                3
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
@@ -4257,9 +4207,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 18,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-18.png",
-                            "IntendedFor": [
-                                3
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
@@ -4438,9 +4386,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 19,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-19.png",
-                            "IntendedFor": [
-                                3
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
@@ -4622,9 +4568,7 @@
                             "AcquisitionDate": "2020-10-26",
                             "SeriesNumber": 20,
                             "pngPath": "./20201026.WML_005_1.10646@franpest_WML/time-20201026101733-sn-20.png",
-                            "IntendedFor": [
-                                3
-                            ],
+                            "IntendedFor": [],
                             "forType": "",
                             "entities": {
                                 "subject": "",
