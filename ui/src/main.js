@@ -359,7 +359,7 @@ invert:
                     sess: {}, 
                     objects: []
                 }; 
-                this.subs[sub].objects.push(o);
+                //this.subs[sub].objects.push(o);
 
                 if(!this.subs[sub].sess[ses]) this.subs[sub].sess[ses] = { 
                     AcquisitionDate: o.AcquisitionDate, 
