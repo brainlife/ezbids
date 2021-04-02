@@ -6,7 +6,6 @@
             <span v-if="sub != ''" class="hierarchy">
                 <i class="el-icon-user-solid"/> 
                 <small>sub</small> {{sub}} 
-                <small>({{o_sub.objects.length}})</small>
                 &nbsp;
                 &nbsp;
                 <el-checkbox :value="o_sub.exclude" @change="excludeSubject(sub, $event)">
