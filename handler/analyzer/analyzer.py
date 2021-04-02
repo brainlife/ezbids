@@ -58,6 +58,56 @@ os.chdir(data_dir)
 
 
 ######## Functions ######## 
+
+        
+    
+
+
+# def correctPE(input, nii_img, nii_key=None):
+    
+#     if nii_key in input["meta"]:
+#         pe = input["meta"][nii_key]["PhaseEncodingDirection"]
+#     elif "PhaseEncodingDirection" in input["meta"]:
+#         pe = input["meta"]["PhaseEncodingDirection"]
+#     else:
+#         print("Cannot read PhaseEncodingDirection.")
+
+#     #if it's using ijk already don't need to do anything
+#     if pe[0] == 'i' or pe[0] == 'j' or pe[0] == 'k':
+#         print("Phase Encoding Direction conversion not needed.")
+#         return pe
+    
+#     #convert xyz to ijk
+#     img = nib.load(nii_img)
+#     codes = nib.aff2axcodes(img.affine) 
+#     ax_idcs = {"x": 0, "y": 1, "z": 2}
+#     axis = ax_idcs[pe[0]]
+#     if codes[axis] in ('L', 'R'):
+#         updated_pe = 'i'
+#     if codes[axis] in ('P', 'A'):
+#         updated_pe = 'j'
+#     if codes[axis] in ('I', 'S'):
+#         updated_pe = 'k'
+    
+#     #flip polarity if it's using L/P/I
+#     inv = pe[1:] == "-"
+#     if pe[0] == 'x':
+#         if codes[0] == 'L':
+#             inv = not inv 
+#     if pe[0] == 'y':
+#         if codes[1] == 'P':
+#             inv = not inv 
+#     if pe[0] == 'z':
+#         if codes[2] == 'I':
+#             inv = not inv 
+#     if inv:
+#         updated_pe += "-"
+#     print(f"Orientation: {codes}")    
+#     print(f"Phase Encoding Direction updated: {updated_pe}") 
+
+#     return updated_pe
+
+
 def select_unique_data(dir_list):
     '''
     Takes list of nifti, json, and bval/bvec files generated frm dcm2niix to find the 
