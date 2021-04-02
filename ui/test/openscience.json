@@ -13,10 +13,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 1,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-1_i00001.png",
-                        "IntendedFor": [
-                            7,
-                            9
-                        ],
+                        "IntendedFor": [],
                         "forType": "",
                         "entities": {
                             "subject": "",
@@ -191,10 +188,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 1,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-1_i00002.png",
-                        "IntendedFor": [
-                            7,
-                            9
-                        ],
+                        "IntendedFor": [],
                         "forType": "",
                         "entities": {
                             "subject": "",
@@ -369,10 +363,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 1,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-1_i00003.png",
-                        "IntendedFor": [
-                            7,
-                            9
-                        ],
+                        "IntendedFor": [],
                         "forType": "",
                         "entities": {
                             "subject": "",
@@ -547,10 +538,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 2,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-2.png",
-                        "IntendedFor": [
-                            7,
-                            9
-                        ],
+                        "IntendedFor": [],
                         "forType": "",
                         "entities": {
                             "subject": "",
@@ -732,10 +720,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 3,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-3.png",
-                        "IntendedFor": [
-                            7,
-                            9
-                        ],
+                        "IntendedFor": [],
                         "forType": "func/bold",
                         "entities": {
                             "subject": "",
@@ -970,10 +955,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 4,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-4.png",
-                        "IntendedFor": [
-                            7,
-                            9
-                        ],
+                        "IntendedFor": [],
                         "forType": "func/bold",
                         "entities": {
                             "subject": "",
@@ -1208,10 +1190,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 5,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-5.png",
-                        "IntendedFor": [
-                            7,
-                            9
-                        ],
+                        "IntendedFor": [],
                         "forType": "",
                         "entities": {
                             "subject": "",
@@ -1450,10 +1429,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 6,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-6.png",
-                        "IntendedFor": [
-                            7,
-                            9
-                        ],
+                        "IntendedFor": [],
                         "forType": "",
                         "entities": {
                             "subject": "",
@@ -1694,10 +1670,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 7,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-7.png",
-                        "IntendedFor": [
-                            7,
-                            9
-                        ],
+                        "IntendedFor": [],
                         "forType": "",
                         "entities": {
                             "subject": "",
@@ -1936,10 +1909,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 8,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-8.png",
-                        "IntendedFor": [
-                            7,
-                            9
-                        ],
+                        "IntendedFor": [],
                         "forType": "",
                         "entities": {
                             "subject": "",
@@ -2180,10 +2150,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 9,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-9_i00001.png",
-                        "IntendedFor": [
-                            18,
-                            20
-                        ],
+                        "IntendedFor": [],
                         "forType": "",
                         "entities": {
                             "subject": "",
@@ -2358,10 +2325,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 9,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-9_i00002.png",
-                        "IntendedFor": [
-                            18,
-                            20
-                        ],
+                        "IntendedFor": [],
                         "forType": "",
                         "entities": {
                             "subject": "",
@@ -2536,10 +2500,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 9,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-9_i00003.png",
-                        "IntendedFor": [
-                            18,
-                            20
-                        ],
+                        "IntendedFor": [],
                         "forType": "",
                         "entities": {
                             "subject": "",
@@ -2714,10 +2675,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 10,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-10.png",
-                        "IntendedFor": [
-                            18,
-                            20
-                        ],
+                        "IntendedFor": [],
                         "forType": "",
                         "entities": {
                             "subject": "",
@@ -2898,10 +2856,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 11,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-11_e1.png",
-                        "IntendedFor": [
-                            18,
-                            20
-                        ],
+                        "IntendedFor": [],
                         "forType": "func/bold",
                         "entities": {
                             "subject": "",
@@ -3114,10 +3069,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 11,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-11_e2.png",
-                        "IntendedFor": [
-                            18,
-                            20
-                        ],
+                        "IntendedFor": [],
                         "forType": "func/bold",
                         "entities": {
                             "subject": "",
@@ -3330,10 +3282,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 12,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-12_e2_ph.png",
-                        "IntendedFor": [
-                            18,
-                            20
-                        ],
+                        "IntendedFor": [],
                         "forType": "func/bold",
                         "entities": {
                             "subject": "",
@@ -3549,10 +3498,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 13,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-13.png",
-                        "IntendedFor": [
-                            18,
-                            20
-                        ],
+                        "IntendedFor": [],
                         "forType": "",
                         "entities": {
                             "subject": "",
@@ -3791,10 +3737,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 14,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-14.png",
-                        "IntendedFor": [
-                            18,
-                            20
-                        ],
+                        "IntendedFor": [],
                         "forType": "",
                         "entities": {
                             "subject": "",
@@ -4035,10 +3978,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 15,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-15.png",
-                        "IntendedFor": [
-                            18,
-                            20
-                        ],
+                        "IntendedFor": [],
                         "forType": "",
                         "entities": {
                             "subject": "",
@@ -4277,10 +4217,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 16,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-16.png",
-                        "IntendedFor": [
-                            18,
-                            20
-                        ],
+                        "IntendedFor": [],
                         "forType": "",
                         "entities": {
                             "subject": "",
@@ -4521,10 +4458,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 17,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-17.png",
-                        "IntendedFor": [
-                            18,
-                            20
-                        ],
+                        "IntendedFor": [],
                         "forType": "",
                         "entities": {
                             "subject": "",
@@ -4708,10 +4642,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 18,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-18.png",
-                        "IntendedFor": [
-                            22,
-                            23
-                        ],
+                        "IntendedFor": [],
                         "forType": "",
                         "entities": {
                             "subject": "",
@@ -5006,10 +4937,7 @@
                         "AcquisitionDate": "2020-01-22",
                         "SeriesNumber": 19,
                         "pngPath": "./20200122.OpenSciJan22.10462@thwjames_OpenScience/time-20200122142947-sn-19.png",
-                        "IntendedFor": [
-                            22,
-                            23
-                        ],
+                        "IntendedFor": [],
                         "forType": "",
                         "entities": {
                             "subject": "",

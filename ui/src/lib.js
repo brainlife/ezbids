@@ -50,6 +50,10 @@ exports.setIntendedFor = $root=>{
                 // Perform fmap QA
                 if (funcObjs.length > 0) {
 
+                    let funcIntendedFor = funcObjs.map(function (e) {
+                        return e.idx
+                    });
+
                     // Remove all spin-echo fmaps except for last two
                     if (fmapFuncObjs.length > 2) {
                         let badObjs = fmapFuncObjs.slice(0,-2)
@@ -111,24 +115,19 @@ exports.setIntendedFor = $root=>{
                             });
                         }
 
-                        // For spin-echo field maps, do not include func/bold acquisitions where the PEDs don't match
-                        let funcIntendedFor = funcObjs.map(function (e) {
-                            return e.idx
+                        // // For spin-echo field maps, do not include func/bold acquisitions where the PEDs don't match
+                        // funcObjs.forEach((obj, idx)=> {
+                        //     if (!fmapFuncPEDs.includes(obj.items[0].sidecar.PhaseEncodingDirection)) {
+                        //         let funcIntendedFor = funcIntendedFor.filter(e=>e != idx)
+                        //     }
+                        // });
+
+                        fmapFuncObjs.forEach(obj=> {
+                            obj.IntendedFor = funcIntendedFor
                         });
 
-                        // fmapFuncObjs.forEach((obj, idx)=> {
-                            
-
-                        // })
-                        
-                        //         funcIndices.forEach((funcIndex, idx)=>{
-                        //             if (!fmapFuncPEDs.includes(funcPEDs[idx])) {
-                        //                 intendedFor = intendedFor.filter(v=>v != funcIndex)
-                        //                 $root.objects[funcIndex].IntendedFor = intendedFor
-                        //             }
-                        //         });
-                        //     }
                     }
+   
 
                     // Remove magnitudes & phasediff if less than 3
                     if (fmapMagPhasediffObjs.length < 3) {
@@ -141,10 +140,16 @@ exports.setIntendedFor = $root=>{
                     // Remove all magnitudes and phasediff except for last 3
                     if (fmapMagPhasediffObjs.length > 3) {
                         let badObjs = fmapMagPhasediffObjs.slice(0,-3)
+                        let goodObjs = fmapMagPhasediffObjs.slice(-3)
                         badObjs.forEach(obj=> {
                             obj._exclude = true
                             obj.errors = 'More than three magnitude/phasediff field map acquisitions found in section. Only selecting most recent three. Others will not be included in the BIDS output'
                         });
+
+                        goodObjs.forEach(obj=> {
+                            obj.IntendedFor = funcIntendedFor
+                        });
+
                     }
 
                     // Remove magnitudes and phases if less than 4
@@ -158,12 +163,16 @@ exports.setIntendedFor = $root=>{
                     // Remove all magnitudes and phases except for last 4
                     if (fmapMagPhaseObjs.length < 4) {
                         let badObjs = fmapMagPhaseObjs.slice(0,-4)
+                        let goodObjs = fmapMagPhaseObjs.slice(-4)
                         badObjs.forEach(obj=> {
                             obj._exclude = true
                             obj.errors = 'Multiple images sets of (2 magnitude, 2 phase) field map acquisitions found in section. Only selecting most recent set. Other(s) will not be included in the BIDS output'
                         });
-                    }
 
+                        goodObjs.forEach(obj=> {
+                            obj.IntendedFor = funcIntendedFor
+                        });
+                    }
                 } else {
                     fmapFuncObjs.forEach(obj=> {
                         obj._exclude = true
@@ -195,36 +204,18 @@ exports.setIntendedFor = $root=>{
                         obj._exclude = true
                         obj.errors = 'Multiple spin echo field maps (meant for dwi/dwi) detected in section; only selecting last one for BIDS conversion. The other fmap acquisition(s) in this section will not be included in the BIDS output'
                     });
+                }
+
+                if (fmapDwiObjs.length == 1) {
+                    let dwiIntendedFor = dwiObjs.map(function (e) {
+                        return e.idx
+                    });
+
+                    fmapDwiObjs.forEach(obj=> {
+                        obj.IntendedFor = dwiIntendedFor
+                    });
                 }                
             });
-
-           
-
-           
-
-            //     // For spin-echo field maps, do not include func/bold (or dwi/dwi) acquisitions where the PEDs don't match
-            //     let intendedFor = funcIndices
-            //     if (funcPEDs.length > 0 && fmapFuncPEDs.length > 0) {
-            //         funcIndices.forEach((funcIndex, idx)=>{
-            //             if (!fmapFuncPEDs.includes(funcPEDs[idx])) {
-            //                 intendedFor = intendedFor.filter(v=>v != funcIndex)
-            //                 $root.objects[funcIndex].IntendedFor = intendedFor
-            //             }
-            //         });
-            //     }
-
-            //     // Enter the IntendedFor fields for the fmaps
-            //     for (const i of fmapFuncIndices) {
-            //         $root.objects[i].IntendedFor = funcIndices
-            //     }
-            //     for (const i of fmapMagPhasediffIndices) {
-            //         $root.objects[i].IntendedFor = funcIndices
-            //     }
-            //     for (const i of fmapMagPhaseIndices) {
-            //         $root.objects[i].IntendedFor = funcIndices
-            //     }
-            // });
-            // console.log(funcIndices)
         }
     }     
 }
