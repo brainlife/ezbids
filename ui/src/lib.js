@@ -9,6 +9,7 @@ exports.setIntendedFor = $root=>{
 
             let sectionIDs = sessions[session].objects.map(function (e) {
                 return e.analysisResults.section_ID
+
             });
             console.log(sectionIDs)
 
