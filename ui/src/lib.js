@@ -22,7 +22,7 @@ exports.fmapQA = $root=>{
                 let fmapSpinEchoDwiObjs = section.filter(e=>e._type.startsWith('fmap/epi') && e.forType == 'dwi/dwi')
                 let fmapMagPhaseObjs = section.filter(function (e) {
                     return e._type.startsWith('fmap/magnitude1') ||
-                    e._type.startsWith('fmap/magnitude2')
+                    e._type.startsWith('fmap/magnitude2') ||
                     e._type.includes('phase1') ||
                     e._type.includes('phase2')
                 });
@@ -64,9 +64,7 @@ exports.fmapQA = $root=>{
                         let fmapFuncPEDs = fmapSpinEchoFuncObjs.map(e=>e.items[0].sidecar.PhaseEncodingDirection)
 
                         if (fmapFuncPEDs[0].toString().split('').reverse().join('').slice(-1) == fmapFuncPEDs[1].toString().split('').reverse().join('').slice(-1)) {
-                            if ((fmapFuncPEDs[0].length == 2 && fmapFuncPEDs[1].length == 1) || (fmapFuncPEDs[0].length == 1 && fmapFuncPEDs[1].length == 2)) {
-                                {}
-                            } else {
+                            if !((fmapFuncPEDs[0].length == 2 && fmapFuncPEDs[1].length == 1) || (fmapFuncPEDs[0].length == 1 && fmapFuncPEDs[1].length == 2)) {
                                 fmapSpinEchoFuncObjs.forEach(obj=> {
                                     obj.exclude = true
                                     obj.errors = 'Spin echo field map pair do not have opposite phase encoding directions (PEDs) and will not be included in the BIDS output'
