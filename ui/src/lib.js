@@ -42,7 +42,6 @@ exports.fmapQA = $root=>{
                     // Remove all spin-echo fmaps except for last two
                     if (fmapSpinEchoFuncObjs.length > 2) {
                         let fmapFuncBadObjs = fmapSpinEchoFuncObjs.slice(0,-2)
-                        let fmapFuncGoodObjs = fmapSpinEchoFuncObjs.slice(-2)
                         fmapFuncBadObjs.forEach(obj=> {
                             obj.exclude = true
                             obj.errors = 'Multiple spin echo field map pairs detected in section; only selecting last pair for BIDS conversion. The other pair acquisition(s) in this section will not be included in the BIDS output'
@@ -92,7 +91,6 @@ exports.fmapQA = $root=>{
                     // Remove all magnitudes and phasediff except for last 3
                     if (fmapMagPhasediffObjs.length > 3) {
                         let fmapMagPhasediffBadObjs = fmapMagPhasediffObjs.slice(0,-3)
-                        let fmapMagPhasediffGoodObjs = fmapMagPhasediffObjs.slice(-3)
                         fmapMagPhasediffBadObjs.forEach(obj=> {
                             obj.exclude = true
                             obj.errors = 'More than three magnitude/phasediff field map acquisitions found in section. Only selecting most recent three. Others will not be included in the BIDS output'
@@ -110,7 +108,6 @@ exports.fmapQA = $root=>{
                     // Remove all magnitudes and phases except for last 4
                     if (fmapMagPhaseObjs.length > 4) {
                         let fmapMagPhaseBadObjs = fmapMagPhaseObjs.slice(0,-4)
-                        let fmapMagPhaseGoodObjs = fmapMagPhaseObjs.slice(-4)
                         fmapMagPhaseBadObjs.forEach(obj=> {
                             obj.exclude = true
                             obj.errors = 'Multiple images sets of (2 magnitude, 2 phase) field map acquisitions found in section. Only selecting most recent set. Other(s) will not be included in the BIDS output'
@@ -120,7 +117,6 @@ exports.fmapQA = $root=>{
                     // Remove all magnitudes & fieldmaps except for last 2
                     if (fmapMagFieldmapObjs.length > 2) {
                         let fmapMagFieldmapBadObjs = fmapMagFieldmapObjs.slice(0,-2)
-                        let fmapMagFieldmapGoodObjs = fmapMagFieldmapObjs.slice(-2)
                         fmapMagFieldmapBadObjs.forEach(obj=> {
                             obj.exclude = true
                             obj.errors = 'Multiple image sets of magnitude & fieldmap field map acquistions found in section. Only selecting most recent pair. Other(s) will not be included in BIDS output'
