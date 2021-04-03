@@ -294,7 +294,6 @@ def select_unique_data(dir_list):
                        'ModalityLabel': '',
                        'series_id': 0,
                        'direction': PED,
-                       'IntendedFor': [],
                        'forType': '',
                        'TaskName': '',
                        "exclude": False,
@@ -968,253 +967,6 @@ def identify_objects_info(subject_protocol, series_list, series_seriesID_list):
     return subject_protocol, objects_entities_list
     
 
-def fmap_intended_for(subject_protocol, total_objects_indices, objects_entities_list):
-    '''
-    Determine IntendedFor fields for fmap acquisitions 
-    
-    Parameters
-    ----------
-    subject_protocol: list
-        List of dictionary, containing pertinent information needed 
-        for the UI side of ezBIDS
-    
-    Returns
-    ----------
-    subject_protocol: list
-        Same as above, but with updated information from the checks
-    '''
-    
-    br_types = [subject_protocol[x]['br_type'] for x in range(len(subject_protocol))]
-    exclude = [subject_protocol[x]['exclude'] for x in range(len(subject_protocol))]
-    errors = [subject_protocol[x]['error'] for x in range(len(subject_protocol))]
-    messages = [subject_protocol[x]['message'] for x in range(len(subject_protocol))]
-    phase_encoding_directions = [subject_protocol[x]['direction'] for x in range(len(subject_protocol))]
-    section_indices = [x for x, y in enumerate(br_types) if x == 0 or ('localizer' in y and 'localizer' not in br_types[x-1])]
-    total_objects_indices = total_objects_indices
-    fmap_magphase_runcheck = []
-    fmap_se_runcheck = []
-    fmap_se_dwi_runcheck = []    
-
-    for j,k in enumerate(section_indices):
-        '''
-        Sections are determined by where the next set of localizers are.
-        A "typical" protocol will likely only have 1 section, but if subject
-            comes in and out of scanner then there are now two sections.
-        Protocols with fmaps will have fmaps for each section.
-        '''
-        # Determine section start and end points
-        section_start = k
-        try:
-            section_end = section_indices[j+1]
-        except:
-            section_end = len(br_types)
-        
-            
-        # Check for potential issues
-        for x,y in enumerate(br_types[section_start:section_end]):
-            subject_protocol[k+x]['section_ID'] = j+1
-            bold_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'func/bold' and exclude[k+x] == False]
-            dwi_indices = [total_objects_indices+k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'dwi/dwi' and exclude[k+x] == False]
-            non_fmap_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if 'fmap' not in y]
-            # Spin echo fmaps to be applied to func/bold acquisitions
-            if y == 'fmap/epi' and 'max b-values' not in messages[k+x]:
-                fmap_se_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' not in messages[k+x]]
-                
-                # If no func/bold acquisitions in section then the fmap/epi in this section are pointless, therefore won't be converted to BIDS
-                if len(bold_indices) == 0:
-                    for fm in fmap_se_indices:
-                        exclude[fm] = True
-                        subject_protocol[fm]['exclude'] = exclude[fm]
-                        subject_protocol[fm]['br_type'] = 'exclude'
-                        errors[fm] = 'No valid func/bold acquisitions found in section. This is due to the field maps and functional bold acquisitions separated by localizer(s), indicating that subject got out and then re-entered scanner. SDC is unlikely to work, therefore this field map acquisition will not be included in the BIDS output'
-                        subject_protocol[fm]['error'] = errors[fm]
-                    
-                # Only one fmap/epi acquisition in section. Can't be converted b/c need pair
-                if len(fmap_se_indices) == 1:
-                    for fm in fmap_se_indices:
-                        exclude[fm] = True
-                        subject_protocol[fm]['exclude'] = exclude[fm]
-                        subject_protocol[fm]['br_type'] = 'exclude'
-                        errors[fm] = 'Only one spin echo field map found; need pair. This acquisition will not be included in the BIDS output'
-                        subject_protocol[fm]['error'] = errors[fm]
-                
-                # If more than two fmap/epi acquisitions, only accept most recent pair in section
-                if len(fmap_se_indices) > 2:
-                    for fm in fmap_se_indices[:-2]:
-                        exclude[fm] = True
-                        subject_protocol[fm]['exclude'] = exclude[fm]
-                        subject_protocol[fm]['br_type'] = 'exclude'
-                        errors[fm] = 'Multiple spin echo field map pairs detected in section; only selecting last pair for BIDS conversion. The other pair acquisition(s) in this section will not be included in the BIDS output'
-                        subject_protocol[fm]['error'] = errors[fm]
-                        
-                # Re-determine the fmap/epi indices in light of the checks above
-                fmap_se_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and exclude[k+x] == False]
-                
-                # If fmap/epi pair don't have opposing phase encoding directions, won't be converted to BIDS
-                if len(fmap_se_indices) == 2:
-                    fmap_se_PEDs = [y for x,y in enumerate(phase_encoding_directions) if k+x in fmap_se_indices]
-                    if fmap_se_PEDs[0][::-1] != fmap_se_PEDs[1]:
-                        for fm in fmap_se_indices:
-                            exclude[fm] = True
-                            subject_protocol[fm]['exclude'] = exclude[fm]
-                            subject_protocol[fm]['br_type'] = 'exclude'
-                            errors[fm] = 'Spin echo fmap pair does not have opposite phase encoding directions. This acquisition will not be included in the BIDS output'
-                            subject_protocol[fm]['error'] = errors[fm]
-                
-                # Re-determine the fmap/epi indices again
-                fmap_se_indices = [k+x for x,y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and exclude[k+x] == False]
-
-                if len(fmap_se_indices) == 2:
-                    for fm in fmap_se_indices:
-                        subject_protocol[fm]['IntendedFor'] = bold_indices
-                        
-                if fmap_se_indices not in fmap_se_runcheck:
-                    fmap_se_runcheck.append(fmap_se_indices)
-                        
-            
-            # Magnitude/Phase[diff] fmaps
-            elif y in ['fmap/magnitude1','fmap/phase1','fmap/magnitude2','fmap/phase2','fmap/phasediff']:
-                # Remove duplicate magnitude/phasediff fmaps. Only last group in each section will be kept
-                
-                if 'magnitude' in y:
-                    if 'phase1' in br_types[section_start:section_end][x+1] or 'phase2' in br_types[section_start:section_end][x+1]:
-                        fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1','fmap/phase1','fmap/magnitude2','fmap/phase2']]
-                        case = 1
-                    else:
-                        fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1','fmap/magnitude2','fmap/phasediff']]
-                        case = 0
-                        
-                elif 'phase1' in y or 'phase2' in y:
-                    fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1','fmap/phase1','fmap/magnitude2','fmap/phase2']]
-                    case = 1
-                    
-                elif 'phasediff' in y:
-                    fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1','fmap/magnitude2','fmap/phasediff']]
-                    case = 0
-                
-                else:
-                    pass
-            
-                # If no func/bold acquisitions in section then the magnitude/phasediff in this section are pointless, therefore won't be converted to BIDS
-                if len(bold_indices) == 0:
-                    for fm in fmap_magphase_indices:
-                        exclude[fm] = True
-                        subject_protocol[fm]['exclude'] = exclude[fm]
-                        subject_protocol[fm]['br_type'] = 'exclude'
-                        errors[fm] = 'No valid func/bold acquisition found in section. This is due to the field maps and functional bold acquisitions separated by localizer(s), indicating that subject got out and then re-entered scanner. SDC is unlikely to work, therefore this field map acquisition will not be included in the BIDS output'
-                        subject_protocol[fm]['error'] = errors[fm]
-                  
-                # two magnitude images, two phase images
-                if case == 1:
-                    if len(fmap_magphase_indices) < 4:
-                        for fm in fmap_magphase_indices:
-                            exclude[fm] = True
-                            subject_protocol[fm]['exclude'] = exclude[fm]
-                            subject_protocol[fm]['br_type'] = 'exclude'
-                            errors[fm] = 'Need four images (2 magnitude, 2 phase). This acquisition will not be included in the BIDS output'
-                            subject_protocol[fm]['error'] = errors[fm]
-                            
-                    if len(fmap_magphase_indices) > 4 and len(fmap_magphase_indices) % 4 == 0:
-                        for fm in fmap_magphase_indices[:-4]:
-                            exclude[fm] = True
-                            subject_protocol[fm]['exclude'] = exclude[fm]
-                            subject_protocol[fm]['br_type'] = 'exclude'
-                            errors[fm] = 'Multiple images sets of (2 magnitude, 2 phase) field map acquisitions found in section. Only selecting most recent set. Other(s) will not be included in the BIDS output'
-                            subject_protocol[fm]['error'] = errors[fm]
-                        
-                # one (or two) magnitude images, one phasediff images
-                if case == 0:
-                    if len(fmap_magphase_indices) < 3:
-                        for fm in fmap_magphase_indices:
-                            exclude[fm] = True
-                            subject_protocol[fm]['exclude'] = exclude[fm]
-                            subject_protocol[fm]['br_type'] = 'exclude'
-                            errors[fm] = 'Need triplet for magnitude/phasediff field maps. This acquisition will not be included in the BIDS output'
-                            subject_protocol[fm]['error'] = errors[fm]
-                        
-                    if len(fmap_magphase_indices) > 3 and len(fmap_magphase_indices) % 3 == 0:
-                        for fm in fmap_magphase_indices[:-3]:
-                            exclude[fm] = True
-                            subject_protocol[fm]['exclude'] = exclude[fm]
-                            subject_protocol[fm]['br_type'] = 'exclude'
-                            errors[fm] = 'More than three magnitude/phasediff field map acquisitions found in section. Only selecting most recent three. Others will not be included in the BIDS output'
-                            subject_protocol[fm]['error'] = errors[fm]
-                        
-                # Re-determine the magnitude/phasediff indices in light of the checks above
-                if case == 0:
-                    fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1','fmap/magnitude2','fmap/phasediff'] and exclude[k+x] != True]  
-                else:
-                    fmap_magphase_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y in ['fmap/magnitude1','fmap/phase1','fmap/magnitude2','fmap/phase2'] and exclude[k+x] != True]        
-
-               
-                if len(fmap_magphase_indices) == 3 or len(fmap_magphase_indices) == 4:
-                    for fm in fmap_magphase_indices:
-                        subject_protocol[fm]['IntendedFor'] = bold_indices
-                        
-                if fmap_magphase_indices not in fmap_magphase_runcheck:
-                    fmap_magphase_runcheck.append(fmap_magphase_indices)
-                
-                    
-            # Spin-echo fmaps for DWI
-            elif y == 'fmap/epi' and 'max b-values' in messages[k+x]:
-                fmap_se_dwi_indices = [k+x for x, y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' in messages[k+x]]
-            
-                # If no dwi/dwi acquisitions in section then the fmap/epi_dwi in this section are pointless, therefore won't be converted to BIDS
-                if len(dwi_indices) == 0:
-                    for fm in fmap_se_dwi_indices:
-                        exclude[fm] = True
-                        subject_protocol[fm]['exclude'] = exclude[fm]
-                        subject_protocol[fm]['br_type'] = 'exclude'
-                        errors[fm] = 'No valid dwi/dwi acquisition(s) found in section. This is due to the field map and diffusion acquisition(s) separated by localizer(s), indicating that subject got out and then re-entered scanner. SDC is unlikely to work, therefore this field map acquisition will not be included in the BIDS output'
-                        subject_protocol[fm]['error'] = errors[fm]
-                  
-                # If more than one fmap/epi_dwi acquisitions, only accept most recent one in section
-                if len(fmap_se_dwi_indices) > 1:
-                    for fm in fmap_se_dwi_indices[:-1]:
-                        exclude[fm] = True
-                        subject_protocol[fm]['exclude'] = exclude[fm]
-                        subject_protocol[fm]['br_type'] = 'exclude'
-                        errors[fm] = 'More than one dwi-specific field map detected in section; only selecting last one for BIDS conversion. Other acquisition(s) will not be included in the BIDS output'
-                        subject_protocol[fm]['error'] = errors[fm]
-                
-                # Re-determine the fmap/epi_dwi indices in light of the checks above
-                fmap_se_dwi_indices = [total_objects_indices+k+x for x,y in enumerate(br_types[section_start:section_end]) if y == 'fmap/epi' and 'max b-values' in messages[k+x] and exclude[k+x] != True]
-                if len(fmap_se_dwi_indices) == 1:
-                    subject_protocol[k+x]['IntendedFor'] = dwi_indices
-                        
-                if fmap_se_dwi_indices not in fmap_se_dwi_runcheck:
-                    fmap_se_dwi_runcheck.append(fmap_se_dwi_indices)
-                
-            else:
-                pass
-            
-            # Add IntendedFor to all non-fmap acquisitions
-            # This allows IntendedFor fields to auto-fill if user changes datatype on UI
-            for nfm in non_fmap_indices:
-                if 'dwi' in subject_protocol[nfm]['br_type']:
-                    subject_protocol[nfm]['IntendedFor'] = dwi_indices
-                else:
-                    subject_protocol[nfm]['IntendedFor'] = bold_indices
-                    
-    # Add run label information if fmaps were retaken across sections
-    if len(fmap_se_runcheck) > 1:
-        for x,y in enumerate(fmap_se_runcheck):
-            for z in y:
-                objects_entities_list[z]['run'] = str(x+1)                    
-                    
-    if len(fmap_magphase_runcheck) > 1:
-        for x,y in enumerate(fmap_magphase_runcheck):
-            for z in y:
-                objects_entities_list[z]['run'] = str(x+1)
-                
-    if len(fmap_se_dwi_runcheck) > 1:
-        for x,y in enumerate(fmap_se_dwi_runcheck):
-            for z in y:
-                objects_entities_list[z]['run'] = str(x+1)
-          
-    return subject_protocol, objects_entities_list
-
-
 def build_objects_list(subject_protocol, objects_entities_list):
     '''
     Create ezBIDS.json file, which provides all information used by the UI
@@ -1278,7 +1030,6 @@ def build_objects_list(subject_protocol, objects_entities_list):
                 "AcquisitionDate": subject_protocol[i]['AcquisitionDate'],
                 'SeriesNumber': subject_protocol[i]['sidecar']['SeriesNumber'],
                 "pngPath": '{}.png'.format(subject_protocol[i]['nifti_path'][:-7]),
-                "IntendedFor": subject_protocol[i]['IntendedFor'],
                 "forType": subject_protocol[i]['forType'],
                 "entities": objects_entities_list[i],
                 "items": items,
@@ -1344,10 +1095,7 @@ for s in range(len(acquisition_dates)):
     
     # Update subject_protocol based on object-level checks
     subject_protocol, objects_entities_list = identify_objects_info(subject_protocol, series_list, series_seriesID_list)
-    
-    # update subject_protocol based on fmap IntendedFor checks
-    subject_protocol, objects_entities_list = fmap_intended_for(subject_protocol, total_objects_indices, objects_entities_list)
-        
+      
     # Build objects_list
     objects_list = build_objects_list(subject_protocol, objects_entities_list)
     
