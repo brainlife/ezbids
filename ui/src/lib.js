@@ -39,9 +39,6 @@ exports.fmapQA = $root=>{
                 // Perform fmap QA
                 if (funcObjs.length > 0) {
 
-                    // Determine functional indices
-                    let funcIntendedFor = funcObjs.map(e=>e.idx)
-
                     // Remove all spin-echo fmaps except for last two
                     if (fmapSpinEchoFuncObjs.length > 2) {
                         let fmapFuncBadObjs = fmapSpinEchoFuncObjs.slice(0,-2)
@@ -203,19 +200,14 @@ exports.setIntendedFor = $root=>{
                 let fmapDwiObjs = section.filter(e=>e._type.startsWith('fmap') && e.forType == 'dwi/dwi')
 
                 // Assign IntendedFor information 
-                if (fmapFuncObjs.length > 0) {
 
-                    fmapFuncObjs.forEach(obj=> {
-                        obj.IntendedFor = funcObjs.map(e=>e.idx)
-                    });
-                }
+                fmapFuncObjs.forEach(obj=> {
+                    obj.IntendedFor = funcObjs.map(e=>e.idx)
+                });
 
-                if (fmapDwiObjs.length > 0) {
-
-                    fmapDwiObjs.forEach(obj=> {
-                        obj.IntendedFor = dwiObjs.map(e=>e.idx)
-                    });
-                }
+                fmapDwiObjs.forEach(obj=> {
+                    obj.IntendedFor = dwiObjs.map(e=>e.idx)
+                });
             });
         }
     }
