@@ -31,13 +31,12 @@ def determinePED(pe_direction, ornt):
 
     Returns
     -------
-    corrected_pe_direction: string
+    proper_pe_direction: string
         Either input pe_direction (if ijk), or corrected pe_direction (if xyz)
     PED: string
         direction value used by BIDS _dir-
     '''
             
-
     # json_data = open(json_file)
     # json_data = json.load(json_data, strict=False)
     # pe_direction = json_data['PhaseEncodingDirection']
@@ -61,12 +60,10 @@ def determinePED(pe_direction, ornt):
                 if flip[not inv].startswith(axcode):
                     PED = "".join(flip)
                     
-        
         print("With a pe_direction of '{}' and orientation of '{}', the " \
              "PED value is '{}'".format(pe_direction, ornt, PED))
         return proper_pe_direction, PED
         
-
     # pe_direction is not ijk and needs to be adjusted
     else:
         axcode = ornt[improper_ax_idcs[pe_direction[0]]]
@@ -112,7 +109,7 @@ def determinePED(pe_direction, ornt):
              "and the PED value is '{}'".format(pe_direction, ornt, proper_pe_direction, PED))
         return proper_pe_direction, PED
 
-            
+
 # Perform check
 # proper_pe_direction, PED = determinePED(nifti_file, json_file)
 proper_pe_direction, PED = determinePED('j-','LAS')
