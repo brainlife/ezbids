@@ -4,7 +4,6 @@ const lib = require('../src/lib');
 
 const $root = require('./test.root.json');
 
-lib.fmapQA($root);
-lib.setIntendedFor($root);
+lib.fmapQA($root); // fmap sanity check
+lib.setIntendedFor($root); // set fmap IntendedFor fields
 
-//check the result

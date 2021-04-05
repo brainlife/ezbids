@@ -19,6 +19,7 @@ import matplotlib.pyplot as plt
 plt.style.use('dark_background')
 from operator import itemgetter
 from math import floor
+import time
 
 warnings.filterwarnings("ignore")
 os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
@@ -769,6 +770,7 @@ def identify_objects_info(subject_protocol, series_list, series_seriesID_list):
         subject_protocol[p]['headers'] = str(nib.load(subject_protocol[p]['nifti_path']).header).splitlines()[1:]
                 
         image = nib.load(subject_protocol[p]['nifti_path'])
+        begin = time.time()
         object_img_array = image.dataobj
         if object_img_array.dtype not in ['<i2', '<u2']: # Weird issue where data array is RGB instead on intger
             subject_protocol[p]['exclude'] = True
@@ -793,6 +795,10 @@ def identify_objects_info(subject_protocol, series_list, series_seriesID_list):
                     axes[i].axis('off')
                 plt.subplots_adjust(wspace=0, hspace=0)
                 plt.savefig('{}.png'.format(subject_protocol[p]['nifti_path'][:-7]), bbox_inches='tight')
+                end = time.time()
+                print('')
+                print('Total elapsed time for thumbail generation is: {}'.format(end - begin))
+                print('')
             
         index = series_seriesID_list.index(subject_protocol[p]['series_id'])
         objects_entities = {'subject': '', 'session': '', 'run': '', 'task': '', 'direction': '', 'acquisition': '', 'ceagent': '', 'echo': '', 'fa': '', 'inversion': '', 'part': ''}
