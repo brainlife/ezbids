@@ -633,7 +633,7 @@ def identify_series_info(data_list_unique_series):
                 series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/sbref because "sbref" is in the SeriesDescription'
         
-        # MP2RAGE (technically not officially part of BIDS, but people still use it)
+        # MP2RAGE
         elif 'mp2rage' in SD:
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'MP2RAGE'
@@ -652,7 +652,7 @@ def identify_series_info(data_list_unique_series):
                 series_entities['echo'] = data_list_unique_series[i]['sidecar']['EchoNumber']
 
         # T1w
-        elif any(x in SD for x in ['t1w','tfl3d','mprage','spgr', 'tflmgh']):
+        elif any(x in SD for x in ['t1w','tfl3d','mprage','spgr','tflmgh']):
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'T1w'
             #  if data_list_unique_series[i]['EchoNumber']:
@@ -697,7 +697,7 @@ def identify_series_info(data_list_unique_series):
             pass
         
         # Set non-normalized anatomicals to exclude
-        if 'anat' in data_list_unique_series[i]['br_type'] and 'NORM' not in data_list_unique_series[i]['ImageType']:
+        if 'anat' in data_list_unique_series[i]['br_type'] and not any(x in ['DERIVED','NORM'] for x in data_list_unique_series[i]['ImageType']):
             data_list_unique_series[i]['br_type'] = 'exclude'
             data_list_unique_series[i]['error'] = 'Acquisition is a poor resolution {} (non-normalized); Please check to see if this {} acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'.format(data_list_unique_series[i]['br_type'], data_list_unique_series[i]['br_type'])
             data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
@@ -834,7 +834,7 @@ def identify_objects_info(subject_protocol, series_list, series_seriesID_list):
         #  anatomical data
         if 'anat' in subject_protocol[p]['br_type'].split('/') and subject_protocol[p]['exclude'] == False:
             # non-normalized anat images have poor CNR, so best to not have in BIDS if there's an actual good T1w or T2w available
-            if 'NORM' not in subject_protocol[p]['ImageType']:
+            if not any(x in ['DERIVED','NORM'] for x in subject_protocol[p]['ImageType']):
                 if len([x[-1] for x in anat_SDs_image_types if 'NORM' in x[-1]]):
                     # There's at least one anat that is normalized so exclude non-normalized anat(s)
                     subject_protocol[p]['exclude'] = True  
