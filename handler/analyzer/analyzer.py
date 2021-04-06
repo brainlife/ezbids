@@ -19,7 +19,6 @@ import matplotlib.pyplot as plt
 plt.style.use('dark_background')
 from operator import itemgetter
 from math import floor
-import time
 
 warnings.filterwarnings("ignore")
 os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
@@ -420,6 +419,7 @@ def identify_series_info(data_list_unique_series):
     
     # Determine DataType and ModalityLabel of series list acquisitions
     series_list = []
+    mp2rage_inv = 1
     for i in range(len(data_list_unique_series)):
         
         series_entities = {}
@@ -427,7 +427,6 @@ def identify_series_info(data_list_unique_series):
         image_type = data_list_unique_series[i]['ImageType']
         EchoTime = data_list_unique_series[i]['EchoTime']
         TR = data_list_unique_series[i]['RepetitionTime']
-        mp2rage_inv = 1
         if 'SequenceName' in data_list_unique_series[i]['sidecar']:
             SequenceName = data_list_unique_series[i]['sidecar']['SequenceName']
         elif 'ScanningSequence' in data_list_unique_series[i]['sidecar']:
@@ -633,23 +632,26 @@ def identify_series_info(data_list_unique_series):
                 series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/sbref because "sbref" is in the SeriesDescription'
         
-        # MP2RAGE
+        # MP2RAGE/UNIT1
         elif 'mp2rage' in SD:
             data_list_unique_series[i]['DataType'] = 'anat'
-            data_list_unique_series[i]['ModalityLabel'] = 'MP2RAGE'
-            if 'InversionTime' not in data_list_unique_series[i]['sidecar']:
-                series_entities['acquisition'] = 'UNI'
-            else:
-                if 'inv1' in SD:
-                    series_entities['inversion'] = 1
-                elif 'inv2' in SD:
-                    series_entities['inversion'] = 2
+            if 'InversionTime' in data_list_unique_series[i]['sidecar']:
+                data_list_unique_series[i]['ModalityLabel'] = 'MP2RAGE'
+                series_entities['inversion'] = mp2rage_inv
+                mp2rage_inv += 1
+
+                # Look for echo number
+                if 'EchoNumber' in data_list_unique_series[i]['sidecar']:
+                    series_entities['echo'] = data_list_unique_series[i]['sidecar']['EchoNumber']
+                
+                # Determine part value (mag/phase)
+                if '_e2.json' in data_list_unique_series[i]['json_path']:
+                    series_entities['part'] = 'phase'
                 else:
-                    series_entitites['inversion'] = mp2rage_inv
-                    mp2rage_inv += 1
-            
-            if 'EchoNumber' in data_list_unique_series[i]['sidecar']:
-                series_entities['echo'] = data_list_unique_series[i]['sidecar']['EchoNumber']
+                    series_entities['part'] = 'mag'
+
+            else: 
+                data_list_unique_series[i]['ModalityLabel'] = 'UNIT1'
 
         # T1w
         elif any(x in SD for x in ['t1w','tfl3d','mprage','spgr','tflmgh']):
@@ -770,7 +772,6 @@ def identify_objects_info(subject_protocol, series_list, series_seriesID_list):
         subject_protocol[p]['headers'] = str(nib.load(subject_protocol[p]['nifti_path']).header).splitlines()[1:]
                 
         image = nib.load(subject_protocol[p]['nifti_path'])
-        begin = time.time()
         object_img_array = image.dataobj
         if object_img_array.dtype not in ['<i2', '<u2']: # Weird issue where data array is RGB instead on intger
             subject_protocol[p]['exclude'] = True
@@ -795,10 +796,7 @@ def identify_objects_info(subject_protocol, series_list, series_seriesID_list):
                     axes[i].axis('off')
                 plt.subplots_adjust(wspace=0, hspace=0)
                 plt.savefig('{}.png'.format(subject_protocol[p]['nifti_path'][:-7]), bbox_inches='tight')
-                end = time.time()
-                print('')
-                print('Total elapsed time for thumbail generation is: {}'.format(end - begin))
-                print('')
+
             
         index = series_seriesID_list.index(subject_protocol[p]['series_id'])
         objects_entities = {'subject': '', 'session': '', 'run': '', 'task': '', 'direction': '', 'acquisition': '', 'ceagent': '', 'echo': '', 'fa': '', 'inversion': '', 'part': ''}
@@ -829,6 +827,12 @@ def identify_objects_info(subject_protocol, series_list, series_seriesID_list):
             objects_entities['ceagent'] = series_list[index]['entities']['ceagent']
         if 'echo' in series_list[index]['entities'] and series_list[index]['entities']['echo']:
             objects_entities['echo'] = series_list[index]['entities']['echo']
+        if 'inversion' in series_list[index]['entities'] and series_list[index]['entities']['inversion']:
+            objects_entities['inversion'] = series_list[index]['entities']['inversion']
+        if 'part' in series_list[index]['entities'] and series_list[index]['entities']['part']:
+            objects_entities['part'] = series_list[index]['entities']['part']
+        if 'fa' in series_list[index]['entities'] and series_list[index]['entities']['fa']:
+            objects_entities['fa'] = series_list[index]['entities']['fa']
         
         # Determine other important BIDS information (i.e. run, dir, etc) for specific acquisitions        
         #  anatomical data
