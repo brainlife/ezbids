@@ -18,7 +18,7 @@ finalized_json = json.load(finalized_json, strict=False)
 deface_list = []
 if finalized_json['deface'] == True:
     for i in range(len(finalized_json['objects'])):
-        if 'anat' in finalized_json['objects'][i]['_type'] and finalized_json['objects'][i]['include'] == True:
+        if 'anat' in finalized_json['objects'][i]['_type'] and finalized_json['objects'][i]['_exclude'] == False:
             sub = finalized_json['objects'][i]['_entities']['subject']
             ses = finalized_json['objects'][i]['_entities']['session']
             if not ses:
