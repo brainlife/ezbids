@@ -23,7 +23,9 @@ function runDeface() {
     config=$1
     
     idx=$(echo $config | jq -r .idx) 
-    anat=$(echo $config | jq -r .path) 
+    anat=$(echo $config | jq -r .path)
+    echo "anat image to deface:"
+    echo $anat
     defaced=$anat.defaced.nii.gz
 
     echo "--------------- defacing($method) [$idx] $anat to $defaced ----------------"
