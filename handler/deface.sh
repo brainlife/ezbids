@@ -12,6 +12,8 @@ fi
 root=$1
 method=$(jq -r .method $root/deface.json)
 
+echo "root is $root"
+
 #so runDeface parallel function can access it
 export root
 export method
