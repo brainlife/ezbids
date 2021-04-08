@@ -154,6 +154,8 @@
                     </div>
                 </div>
             </el-form>
+
+            <pre v-if="$root.config.debug">{{so}}</pre>
         </div><!--selected != null-->
         <br>
         <br>
@@ -175,6 +177,8 @@ import Vue from 'vue'
 
 import datatype from '@/components/datatype'
 
+import lib from './lib.js'
+
 export default {
     components: {
         datatype,
@@ -191,8 +195,12 @@ export default {
             if(v.id == 'object') {
                 //I have to map all objects at least once before I can validate any object
                 this.$root.objects.forEach(this.$root.mapObject);
-                this.$root.objects.forEach(this.validate);
                 this.$root.organizeObjects();
+
+                lib.fmapQA(this.$root);
+                lib.setIntendedFor(this.$root);
+
+                this.$root.objects.forEach(this.validate);
             }
         },
     },
@@ -288,8 +296,6 @@ export default {
 
         validate(o) {
             Vue.set(o, 'validationErrors', []);
-
-            //if(this.isExcluded(o)) return;
 
             //make sure all required entities are set
             let series = this.$root.findSeries(o);

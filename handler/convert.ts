@@ -68,13 +68,6 @@ async.forEach(info.objects, (o, next_o)=>{
     let modality = typeTokens[0]; //func, dwi, anat, etc.. (or exclude)
     let suffix = typeTokens[1]; //t1w, bold, or "objN" for exclude)
 
-    //setup directory
-    let path = "bids";
-    path += "/sub-"+o._entities.subject;
-    if(o._entities.session) path += "/ses-"+o._entities.session;
-    path += "/"+modality; 
-    mkdirp.sync(root+"/"+path);
-
     //construct basename
     let tokens = [];
     for(let k in o._entities) {
@@ -83,11 +76,22 @@ async.forEach(info.objects, (o, next_o)=>{
     }
     const name = tokens.join("_");
 
-    function handleItem(item, filename) {
+    function handleItem(item, filename, derivatives = null) {
+        /*
         let goback = "";
         for(let i = 0;i < path.split("/").length; ++i) {
             goback += "../";
         }
+        */
+
+        //setup directory
+        let path = "bids";
+        if(derivatives) path += "/derivatives/"+derivatives;
+
+        path += "/sub-"+o._entities.subject;
+        if(o._entities.session) path += "/ses-"+o._entities.session;
+        path += "/"+modality; 
+        mkdirp.sync(root+"/"+path);
 
         let fullpath = root+"/"+path+"/"+name+"_"+filename;
         //console.log(item.name, fullpath);
@@ -130,17 +134,26 @@ async.forEach(info.objects, (o, next_o)=>{
             - angio
         */
 
+        //find manufacturer (used by UNIT1 derivatives)
+        let manufacturer = "UnknownManufacturer";
         o.items.forEach(item=>{
+            if(item.sidecar && item.sidecar.Manufacturer) manufacturer = item.sidecar.Manufacturer;
+        });
+
+        o.items.forEach(item=>{
+            let derivatives = null;
+            if(suffix == "UNIT1") derivatives = manufacturer;
+
             switch(item.name) {
             case "nii.gz":
                 if(o.defaced && o.defaceSelection == "defaced") {
                     item.path = item.path+".defaced.nii.gz";
                     console.log("using defaced version of t1w", item.path);
                 }
-                handleItem(item, suffix+".nii.gz");
+                handleItem(item, suffix+".nii.gz", derivatives);
                 break;
             case "json":
-                handleItem(item, suffix+".json");
+                handleItem(item, suffix+".json", derivatives);
                 break;
             default:
                 console.error("unknown anat item name", item.name);
