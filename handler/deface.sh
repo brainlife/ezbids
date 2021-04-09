@@ -12,6 +12,9 @@ fi
 root=$1
 method=$(jq -r .method $root/deface.json)
 
+echo "root is $root"
+echo "method is $method"
+
 #so runDeface parallel function can access it
 export root
 export method
@@ -22,8 +25,11 @@ function runDeface() {
 
     config=$1
     
+    echo "config is $config"
+    
     idx=$(echo $config | jq -r .idx) 
-    anat=$(echo $config | jq -r .path) 
+    anat=$(echo $config | jq -r .path)
+    echo "anat image to deface is $anat"
     defaced=$anat.defaced.nii.gz
 
     echo "--------------- defacing($method) [$idx] $anat to $defaced ----------------"

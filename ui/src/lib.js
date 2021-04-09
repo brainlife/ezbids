@@ -64,7 +64,7 @@ exports.fmapQA = $root=>{
                         let fmapFuncPEDs = fmapSpinEchoFuncObjs.map(e=>e.items[0].sidecar.PhaseEncodingDirection)
 
                         if (fmapFuncPEDs[0].toString().split('').reverse().join('').slice(-1) == fmapFuncPEDs[1].toString().split('').reverse().join('').slice(-1)) {
-                            if !((fmapFuncPEDs[0].length == 2 && fmapFuncPEDs[1].length == 1) || (fmapFuncPEDs[0].length == 1 && fmapFuncPEDs[1].length == 2)) {
+                            if ((fmapFuncPEDs[0].length != 2 || fmapFuncPEDs[1].length != 1) && (fmapFuncPEDs[0].length != 1 || fmapFuncPEDs[1].length != 2)) {
                                 fmapSpinEchoFuncObjs.forEach(obj=> {
                                     obj.exclude = true
                                     obj.errors = 'Spin echo field map pair do not have opposite phase encoding directions (PEDs) and will not be included in the BIDS output'
