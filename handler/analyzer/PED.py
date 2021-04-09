@@ -82,7 +82,7 @@ def determineDir(pe_direction, ornt):
 
     Returns
     -------
-    dir: string
+    direction: string
         direction for BIDS "_dir-" label
     '''
     
@@ -109,7 +109,7 @@ def determineDir(pe_direction, ornt):
     return direction
         
 # Perform check
-test = ('y-', 'LAS')
+test = ('j', 'LAS')
 proper_pe_direction = correctPE(test[0], test[1])
 direction = determineDir(proper_pe_direction, test[1])
 

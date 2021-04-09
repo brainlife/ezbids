@@ -119,7 +119,7 @@ export default {
 
     computed: {
         anats() {
-            return this.$root.objects.filter(o=>o._type == 'anat/T1w' && !o._exclude)
+            return this.$root.objects.filter(o=>o._type.startsWith('anat') && !o._exclude)
         }
     },
 
