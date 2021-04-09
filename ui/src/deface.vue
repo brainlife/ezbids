@@ -2,7 +2,7 @@
 <div v-if="$root.currentPage.id == 'deface'" style="padding: 20px;">
     <el-form v-if="$root.session.status == 'analyzed' || $root.session.status == 'finished'">
         <p>
-            If you'd like to deface all T1 anatomical images, please select a defacing method and click <b>Run Deface</b> button. 
+            If you'd like to deface all anatomical images, please select a defacing method and click <b>Run Deface</b> button. 
         </p>
         <p>
             Otherwise, you can skip this page.
