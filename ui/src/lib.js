@@ -26,15 +26,35 @@ exports.fmapQA = $root=>{
                     e._type.includes('phase1') ||
                     e._type.includes('phase2')
                 });
+
+                let fmapMagPhaseCheck = fmapMagPhaseObjs.filter(e=>e._type.includes('fmap/phase1'))
+                if (!fmapMagPhaseCheck.length) {
+                    fmapMagPhaseObjs = []
+                }
+
+
                 let fmapMagPhasediffObjs = section.filter(function (e) {
                     return e._type.startsWith('fmap/magnitude1') || 
                     e._type.startsWith('fmap/magnitude2') ||
                     e._type.includes('phasediff')
                 });
+
+                let fmapMagPhasediffCheck = fmapMagPhasediffObjs.filter(e=>e._type.includes('fmap/phasediff'))
+                if (!fmapMagPhasediffCheck.length) {
+                    fmapMagPhasediffObjs = []
+                }
+
+
+
                 let fmapMagFieldmapObjs = section.filter(function (e) {
                     return e._type.startsWith('fmap/magnitude') ||
                     e._type.includes('fieldmap')
                 })
+
+                let fmapMagFieldmapCheck = fmapMagFieldmapObjs.filter(e=>e._type.includes('fmap/fieldmap'))
+                if (!fmapMagFieldmapCheck.length) {
+                    fmapMagFieldmapObjs = []
+                }
 
                 // Perform fmap QA
                 if (funcObjs.length > 0) {
@@ -175,7 +195,7 @@ exports.setIntendedFor = $root=>{
 
     // Loop through subjects
     for (const subject in $root.subs) {
-        
+
         // Loop through sessions
         const sessions = $root.subs[subject].sess
         for (const session in sessions) {
@@ -188,10 +208,10 @@ exports.setIntendedFor = $root=>{
             sectionIDs.forEach(s=> {
                 let section = sessions[session].objects.filter(e=>e.analysisResults.section_ID == s && !e._exclude)
 
-                let funcObjs = section.filter(e=>e._type == 'func/bold')
-                let dwiObjs = section.filter(e=>e._type == 'dwi/dwi')
-                let fmapFuncObjs = section.filter(e=>e._type.startsWith('fmap') && e.forType == 'func/bold')
-                let fmapDwiObjs = section.filter(e=>e._type.startsWith('fmap') && e.forType == 'dwi/dwi')
+                let funcObjs = section.filter(e=>e._type == 'func/bold' && !e._exclude)
+                let dwiObjs = section.filter(e=>e._type == 'dwi/dwi' && !e._exclude)
+                let fmapFuncObjs = section.filter(e=>e._type.startsWith('fmap') && e.forType == 'func/bold' && !e._exclude)
+                let fmapDwiObjs = section.filter(e=>e._type.startsWith('fmap') && e.forType == 'dwi/dwi' && !e._exclude)
 
                 // Assign IntendedFor information 
 
