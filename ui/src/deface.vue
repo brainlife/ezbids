@@ -135,7 +135,7 @@ export default {
         '$root.currentPage'(v) {
             clearTimeout(this.tm);
             if(v.id == 'deface') {
-                this.$root.objects.filter(o=>o._type == 'anat/T1w').forEach(anat=>{
+                this.$root.objects/*filter(o=>o._type == 'anat/T1w')*/.forEach(anat=>{
                     if(!anat.defaced) Vue.set(anat, "defaced", false);
                     if(!anat.defaceSelection) Vue.set(anat, "defaceSelection", "defaced");
                 });
@@ -156,7 +156,7 @@ export default {
 
         reset() {
             this.defacing = false;
-            this.$root.objects.filter(o=>o._type == 'anat/T1w').forEach(anat=>{
+            this.$root.objects/*.filter(o=>o._type == 'anat/T1w')*/.forEach(anat=>{
                 Vue.set(anat, "defaced", false);
                 Vue.set(anat, "defaceFailed", false);
                 Vue.set(anat, "defaceSelection", "defaced");
