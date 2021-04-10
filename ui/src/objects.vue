@@ -337,7 +337,7 @@ export default {
                     }
                 }
                 if(same) {
-                    o.validationErrors.push("This object looks exactly like another object with Series# "+same.SeriesNumber+". We can not convert this object to BIDS as they will overwrite each other");
+                    o.validationErrors.push("This object looks exactly like another object with Series# "+same.SeriesNumber+". We can not convert this object to BIDS as they will overwrite each other. Please set entities such as 'run' to make them all unique.");
                     break;
                 }
             }
