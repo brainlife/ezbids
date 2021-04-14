@@ -8,6 +8,12 @@
                     <el-step v-for="p in $root.pages" :key="p.idx" :title="p.title"></el-step>
                 </el-steps>
             </div>
+            <div style="padding: 15px;" v-if="$root.session">
+                <p style="font-size: 80%; line-height: 150%; opacity: 0.8;">* You can reload page to revert session to the initial state.</p>
+                <!--
+                <el-button @click="reset" size="mini" v-if="!$root.session.status != 'finalized'">Reset Session</el-button>
+                -->
+            </div>
         </div>
         <div class="main-content" v-if="$root.currentPage">
             <upload/>
@@ -48,6 +54,14 @@ export default {
         objects,
         deface,
         finalize,
+    },
+    methods: {
+        /*
+        reset() {
+            this.$root.loadData();
+            this.$root.changePage("upload");
+        }
+        */
     },
 }
 </script>

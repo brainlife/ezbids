@@ -350,6 +350,25 @@ invert:
         organizeObjects() {
             this.subs = {}; 
 
+            //sort object by subject/session
+            this.objects.sort((a,b)=>{
+                let asub = a._entities.subject;
+                let bsub = b._entities.subject;
+                let ases = a._entities.session||"";
+                let bses = b._entities.session||"";
+                let adate = a.AcquisitionDate;
+                let bdate = b.AcquisitionDate;
+
+                //sort by sub / ses / acq date
+                if(asub == bsub) {
+                    if(ases == bses) 
+                        return adate < bdate;
+                    else 
+                        return ases.localeCompare(bses);
+                } else 
+                    return asub.localeCompare(bsub);
+            });
+
             this.objects.forEach((o, idx)=>{
                 o.idx = idx; //reindex
 
@@ -369,12 +388,43 @@ invert:
             });
         },
 
-        loadData(url) {
-            return fetch(url).then(res=>res.json()).then(conf=>{   
+        loadData() {
+            console.log("loading ezBIDS.json");
+            return fetch(this.apihost+'/download/'+this.session._id+'/ezBIDS.json').then(res=>res.json()).then(conf=>{   
+                console.dir(conf);
+
                 this.subjects = conf.subjects;
                 this.series = conf.series;
                 this.objects = conf.objects;
                 this.participantsColumn = conf.participantsColumn||{};
+                
+                //TODO - does analyzer provide this?
+                Object.assign(this.datasetDescription, {
+                    "Name": "Untitled",
+                    "BIDSVersion": "1.4.0",
+                    "DatasetType": "raw",
+                    "License": "CC0",
+                    "Authors": [
+                        "Soichi Hayashi",
+                        "Dan Levitas"
+                    ],
+                    "Acknowledgements": "", //"Special thanks to Korbinian Brodmann for help in formatting this dataset in BIDS. We thank Alan Lloyd Hodgkin and Andrew Huxley for helpful comments and discussions about the experiment and manuscript; Hermann Ludwig Helmholtz for administrative support; and Claudius Galenus for providing data for the medial-to-lateral index analysis.",
+                    "HowToAcknowledge": "", //"Please cite this paper: https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
+                    "Funding": [
+                        //"National Institute of Neuroscience Grant F378236MFH1",
+                        //"National Institute of Neuroscience Grant 5RMZ0023106"
+                    ],
+                    "EthicsApprovals": [
+                        //"Army Human Research Protections Office (Protocol ARL-20098-10051, ARL 12-040, and ARL 12-041)"
+                    ],
+                    "ReferencesAndLinks": [
+                        //"https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
+                        //"http://doi.org/1920.8/jndata.2015.7"
+                    ],
+                    "DatasetDOI": "", //"10.0.2.3/dfjj.10"
+                });
+
+                this.readme = "edit me";
 
                 this.series.forEach(series=>{
 
@@ -394,30 +444,11 @@ invert:
 
                     //migrate from old structure (just stick the whole thing in for now)
                     if(conf.sessions) {
-                        //this.sessions.push({AcquisitionDate: "2020-01-22", ses: "test"});
                         Vue.set(subject, 'sessions', conf.sessions);
                     }
                     
-                    //migrate from old entity name to new
-                    /*
-                    if(subject.sub !== undefined) {
-                        console.log("ezBIDS.json using 'sub'.. renmaing to subject");
-                        Vue.set(subject, 'subject', subject.sub);
-                        delete subject.sub;
-                    }
-                    */
-
                     subject.sessions.forEach(session=>{
                         Vue.set(session, 'exclude', !!(session.exclude));
-
-                        //migrate from old entity name to new
-                        /*
-                        if(session.ses !== undefined) {
-                            console.log("ezBIDS.json using 'ses'.. renmaing to session");
-                            Vue.set(session, 'session', session.ses);
-                            delete session.ses;
-                        }
-                        */
                     });
                 });
 
@@ -439,7 +470,7 @@ invert:
 
                 this.series.sort((a,b)=>a.SeriesNumber - b.SeriesNumber);
             }).catch(err=>{
-                console.error("failed to load", url);
+                console.error("failed to load");
                 console.error(err);
             });
         },
@@ -467,7 +498,7 @@ invert:
             case "defaced":
             case "analyzed":
                 if(!this.analyzed) {
-                    await this.loadData(this.apihost+'/download/'+this.session._id+'/ezBIDS.json');
+                    await this.loadData();
                     this.analyzed = true;
                 }
                 break;
