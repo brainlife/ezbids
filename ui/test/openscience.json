@@ -1199,7 +1199,7 @@
                             "entities": {
                                 "subject": "",
                                 "session": "",
-                                "run": "1",
+                                "run": "",
                                 "task": "bart",
                                 "direction": "",
                                 "acquisition": "",
@@ -1417,7 +1417,7 @@
                                 "acquisition": "",
                                 "ceagent": "",
                                 "direction": "",
-                                "run": "1",
+                                "run": "",
                                 "echo": "",
                                 "part": ""
                             },
@@ -1438,7 +1438,7 @@
                             "entities": {
                                 "subject": "",
                                 "session": "",
-                                "run": "1",
+                                "run": "",
                                 "task": "bart",
                                 "direction": "",
                                 "acquisition": "",
@@ -1658,7 +1658,7 @@
                                 "acquisition": "",
                                 "ceagent": "",
                                 "direction": "",
-                                "run": "1",
+                                "run": "",
                                 "echo": "",
                                 "part": ""
                             },
@@ -1679,7 +1679,7 @@
                             "entities": {
                                 "subject": "",
                                 "session": "",
-                                "run": "1",
+                                "run": "",
                                 "task": "rest",
                                 "direction": "",
                                 "acquisition": "",
@@ -1897,7 +1897,7 @@
                                 "acquisition": "",
                                 "ceagent": "",
                                 "direction": "",
-                                "run": "1",
+                                "run": "",
                                 "echo": "",
                                 "part": ""
                             },
@@ -1918,7 +1918,7 @@
                             "entities": {
                                 "subject": "",
                                 "session": "",
-                                "run": "1",
+                                "run": "",
                                 "task": "rest",
                                 "direction": "",
                                 "acquisition": "",
@@ -2138,7 +2138,7 @@
                                 "acquisition": "",
                                 "ceagent": "",
                                 "direction": "",
-                                "run": "1",
+                                "run": "",
                                 "echo": "",
                                 "part": ""
                             },
@@ -3507,7 +3507,7 @@
                             "entities": {
                                 "subject": "",
                                 "session": "",
-                                "run": "2",
+                                "run": "",
                                 "task": "bart",
                                 "direction": "",
                                 "acquisition": "",
@@ -3725,7 +3725,7 @@
                                 "acquisition": "",
                                 "ceagent": "",
                                 "direction": "",
-                                "run": "2",
+                                "run": "",
                                 "echo": "",
                                 "part": ""
                             },
@@ -3746,7 +3746,7 @@
                             "entities": {
                                 "subject": "",
                                 "session": "",
-                                "run": "2",
+                                "run": "",
                                 "task": "bart",
                                 "direction": "",
                                 "acquisition": "",
@@ -3966,7 +3966,7 @@
                                 "acquisition": "",
                                 "ceagent": "",
                                 "direction": "",
-                                "run": "2",
+                                "run": "",
                                 "echo": "",
                                 "part": ""
                             },
@@ -3987,7 +3987,7 @@
                             "entities": {
                                 "subject": "",
                                 "session": "",
-                                "run": "2",
+                                "run": "",
                                 "task": "rest",
                                 "direction": "",
                                 "acquisition": "",
@@ -4205,7 +4205,7 @@
                                 "acquisition": "",
                                 "ceagent": "",
                                 "direction": "",
-                                "run": "2",
+                                "run": "",
                                 "echo": "",
                                 "part": ""
                             },
@@ -4226,7 +4226,7 @@
                             "entities": {
                                 "subject": "",
                                 "session": "",
-                                "run": "2",
+                                "run": "",
                                 "task": "rest",
                                 "direction": "",
                                 "acquisition": "",
@@ -4446,7 +4446,7 @@
                                 "acquisition": "",
                                 "ceagent": "",
                                 "direction": "",
-                                "run": "2",
+                                "run": "",
                                 "echo": "",
                                 "part": ""
                             },

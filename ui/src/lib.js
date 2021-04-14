@@ -1,3 +1,43 @@
+exports.objectsMapping = $root=>{
+	// Loop through subjects
+    for (const subject in $root.subs) {
+        
+        // Loop through sessions
+        const sessions = $root.subs[subject].sess
+        for (const session in sessions) {
+
+        	// Determine unique series_id values
+            let allSeriesIDs = sessions[session].objects.map(e=>e.series_id)
+            let uniqueSeriesIDs = Array.from(new Set(allSeriesIDs))
+
+            uniqueSeriesIDs.forEach(si=>{
+            	// Enter run number
+            	let seriesObjects = sessions[session].objects.filter(e=>e.series_id == si && !e._exclude)
+            	let run = 1
+            	if (seriesObjects.length > 1) {
+					seriesObjects.forEach(obj=>{
+						obj._entities.run = run.toString()
+						run = run + 1
+					});
+            	}
+            	// T1w, T2w, and FLAIR anatomicals can be non-normalized (poor CNR),
+            	// suggest exclusion from BIDS conversion
+            	let anatObjs = seriesObjects.filter(function (e) {
+                    return e._type.startsWith('anat/T1w') || 
+                    e._type.startsWith('anat/T2w') ||
+                    e._type.includes('anat/FLAIR')
+                });
+
+                anatObjs.forEach(obj=>{
+                	if (!obj.items[0].sidecar.ImageType.includes('NORM') || !obj.items[0].sidecar.ImageType.includes('DERIVED')) {
+                		obj.analysisResults.errors = 'This anatomical image appears to be non-normalized, meaning it has a poor Contrast to Noise Ratio (CNR). If there is a normalized anatomical image for this subject/session, please consider excluding this non-normalized image from BIDS conversion'
+                	}
+                });
+            });
+        }
+    }
+}
+
 
 exports.fmapQA = $root=>{
 
@@ -64,7 +104,7 @@ exports.fmapQA = $root=>{
                         let fmapFuncBadObjs = fmapSpinEchoFuncObjs.slice(0,-2)
                         fmapFuncBadObjs.forEach(obj=> {
                             obj.exclude = true
-                            obj.errors = 'Multiple spin echo field map pairs detected in section; only selecting last pair for BIDS conversion. The other pair acquisition(s) in this section will not be included in the BIDS output'
+                            obj.analysisResults.errors = 'Multiple spin echo field map pairs detected in section; only selecting last pair for BIDS conversion. The other pair acquisition(s) in this section will not be included in the BIDS output'
                         });
                     }
 
@@ -72,7 +112,7 @@ exports.fmapQA = $root=>{
                     if (fmapSpinEchoFuncObjs.length == 1) {
                         fmapSpinEchoFuncObjs.forEach(obj=> {
                             obj.exclude = true
-                            obj.errors = 'Only one spin echo field map found; need pair. This acquisition will not be included in the BIDS output'
+                            obj.analysisResults.errors = 'Only one spin echo field map found; need pair. This acquisition will not be included in the BIDS output'
                         });
                     }
 
@@ -87,13 +127,13 @@ exports.fmapQA = $root=>{
                             if ((fmapFuncPEDs[0].length != 2 || fmapFuncPEDs[1].length != 1) && (fmapFuncPEDs[0].length != 1 || fmapFuncPEDs[1].length != 2)) {
                                 fmapSpinEchoFuncObjs.forEach(obj=> {
                                     obj.exclude = true
-                                    obj.errors = 'Spin echo field map pair do not have opposite phase encoding directions (PEDs) and will not be included in the BIDS output'
+                                    obj.analysisResults.errors = 'Spin echo field map pair do not have opposite phase encoding directions (PEDs) and will not be included in the BIDS output'
                                 });
                             }
                         } else {
                             fmapSpinEchoFuncObjs.forEach(obj=> {
                                 obj.exclude = true
-                                obj.errors = 'Spin echo field map pair do not have opposite phase encoding directions (PEDs) and will not be included in the BIDS output'
+                                obj.analysisResults.errors = 'Spin echo field map pair do not have opposite phase encoding directions (PEDs) and will not be included in the BIDS output'
                             });
                         }
                     }
@@ -102,7 +142,7 @@ exports.fmapQA = $root=>{
                     if (fmapMagPhasediffObjs.length < 3) {
                         fmapMagPhasediffObjs.forEach(obj=> {
                             obj.exclude = true
-                            obj.errors = 'Need triplet for magnitude/phasediff field maps. This acquisition will not be included in the BIDS output'
+                            obj.analysisResults.errors = 'Need triplet for magnitude/phasediff field maps. This acquisition will not be included in the BIDS output'
                         });
                     }
 
@@ -111,7 +151,7 @@ exports.fmapQA = $root=>{
                         let fmapMagPhasediffBadObjs = fmapMagPhasediffObjs.slice(0,-3)
                         fmapMagPhasediffBadObjs.forEach(obj=> {
                             obj.exclude = true
-                            obj.errors = 'More than three magnitude/phasediff field map acquisitions found in section. Only selecting most recent three. Others will not be included in the BIDS output'
+                            obj.analysisResults.errors = 'More than three magnitude/phasediff field map acquisitions found in section. Only selecting most recent three. Others will not be included in the BIDS output'
                         });
                     }
 
@@ -119,7 +159,7 @@ exports.fmapQA = $root=>{
                     if (fmapMagPhaseObjs.length < 4) {
                         fmapMagPhaseObjs.forEach(obj=> {
                             obj.exclude = true
-                            obj.errors = 'Need four images (2 magnitude, 2 phase). This acquisition will not be included in the BIDS output'
+                            obj.analysisResults.errors = 'Need four images (2 magnitude, 2 phase). This acquisition will not be included in the BIDS output'
                         });
                     }
 
@@ -128,7 +168,7 @@ exports.fmapQA = $root=>{
                         let fmapMagPhaseBadObjs = fmapMagPhaseObjs.slice(0,-4)
                         fmapMagPhaseBadObjs.forEach(obj=> {
                             obj.exclude = true
-                            obj.errors = 'Multiple images sets of (2 magnitude, 2 phase) field map acquisitions found in section. Only selecting most recent set. Other(s) will not be included in the BIDS output'
+                            obj.analysisResults.errors = 'Multiple images sets of (2 magnitude, 2 phase) field map acquisitions found in section. Only selecting most recent set. Other(s) will not be included in the BIDS output'
                         });
                     }
 
@@ -137,7 +177,7 @@ exports.fmapQA = $root=>{
                         let fmapMagFieldmapBadObjs = fmapMagFieldmapObjs.slice(0,-2)
                         fmapMagFieldmapBadObjs.forEach(obj=> {
                             obj.exclude = true
-                            obj.errors = 'Multiple image sets of magnitude & fieldmap field map acquistions found in section. Only selecting most recent pair. Other(s) will not be included in BIDS output'
+                            obj.analysisResults.errors = 'Multiple image sets of magnitude & fieldmap field map acquistions found in section. Only selecting most recent pair. Other(s) will not be included in BIDS output'
                         });
                     }
 
@@ -145,29 +185,29 @@ exports.fmapQA = $root=>{
                     if (fmapMagFieldmapObjs.length < 2) {
                         fmapMagFieldmapObjs.forEach(obj=> {
                             obj.exclude = true
-                            obj.errors = 'Need pair (magnitude & fieldmap). This acquisition will not be included in BIDS output'
+                            obj.analysisResults.errors = 'Need pair (magnitude & fieldmap). This acquisition will not be included in BIDS output'
                         });
                     }
 
                 } else {
                     fmapSpinEchoFuncObjs.forEach(obj=> {
                         obj.exclude = true
-                        obj.errors = 'No valid func/bold acquisitions found in section, spin echo field map pair will not be included in the BIDS output'
+                        obj.analysisResults.errors = 'No valid func/bold acquisitions found in section, spin echo field map pair will not be included in the BIDS output'
                     });
 
                     fmapMagPhasediffObjs.forEach(obj=> {
                         obj.exclude = true
-                        obj.errors = 'No valid func/bold acquisitions found in section, magnitude & phasediff field maps will not be included in the BIDS output'
+                        obj.analysisResults.errors = 'No valid func/bold acquisitions found in section, magnitude & phasediff field maps will not be included in the BIDS output'
                     });
 
                     fmapMagPhaseObjs.forEach(obj=> {
                         obj.exclude = true
-                        obj.errors = 'No valid func/bold acquisitions found in section, magnitude & phase field maps will not be included in the BIDS output'
+                        obj.analysisResults.errors = 'No valid func/bold acquisitions found in section, magnitude & phase field maps will not be included in the BIDS output'
                     });
 
                     fmapMagFieldmapObjs.forEach(obj=> {
                         obj.exclude = true
-                        obj.errors = 'No valid func/bold acquisitions found in section, magnitude & fieldmap will not be included in the BIDS output'
+                        obj.analysisResults.errors = 'No valid func/bold acquisitions found in section, magnitude & fieldmap will not be included in the BIDS output'
                     })
                 }
 
@@ -175,7 +215,7 @@ exports.fmapQA = $root=>{
                 if (dwiObjs.length == 0 && fmapSpinEchoDwiObjs.length > 0) {
                     fmapSpinEchoDwiObjs.forEach(obj=> {
                         obj.exclude = true
-                        obj.errors = 'No valid dwi/dwi acquisitions found in section, spin echo field map will not be included in the BIDS output'
+                        obj.analysisResults.errors = 'No valid dwi/dwi acquisitions found in section, spin echo field map will not be included in the BIDS output'
                     });
                 }
 
@@ -183,9 +223,9 @@ exports.fmapQA = $root=>{
                 if (fmapSpinEchoDwiObjs.length > 1) {
                     fmapSpinEchoDwiObjs.forEach(obj=> {
                         obj.exclude = true
-                        obj.errors = 'Multiple spin echo field maps (meant for dwi/dwi) detected in section; only selecting last one for BIDS conversion. The other fmap acquisition(s) in this section will not be included in the BIDS output'
+                        obj.analysisResults.errors = 'Multiple spin echo field maps (meant for dwi/dwi) detected in section; only selecting last one for BIDS conversion. The other fmap acquisition(s) in this section will not be included in the BIDS output'
                     });
-                }            
+                } 
             });           
         }
     }     
