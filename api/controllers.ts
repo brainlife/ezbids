@@ -159,7 +159,6 @@ router.post('/upload-multi/:session_id', upload.any(), (req:any, res, next)=>{
     });
 });
 
-
 //done uploading.
 router.patch('/session/uploaded/:session_id', (req, res, next)=>{
     models.Session.findByIdAndUpdate(req.params.session_id, {

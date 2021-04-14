@@ -7,7 +7,9 @@
     "uidev": "cd ui && lite-server",
     "tsc": "tsc",
     "dev": "ts-node-dev --respawn --transpileOnly ./api/ezbids.ts",
-    "prod": "tsc && node ./build/ezbids.js"
+    "prod": "tsc && node ./build/ezbids.js",
+    "deploy": "ssh -t hayashis@test.brainlife.io \"sudo su -c 'cd /root/docker/ezbids && ./update.sh'\"",
+    "deploy-prod": "ssh -t -J hayashis@brainlife.io ubuntu@ezbids \"sudo su -c 'cd /root/docker/ezbids && ./update.sh'\""
   },
   "author": "",
   "license": "MIT",
