@@ -639,6 +639,9 @@ def identify_series_info(data_list_unique_series):
                 data_list_unique_series[i]['ModalityLabel'] = 'MP2RAGE'
                 series_entities['inversion'] = mp2rage_inv
                 mp2rage_inv += 1
+                if mp2rage_inv > 2:
+                    mp2rage_inv = 1
+                    
 
                 # Look for echo number
                 if 'EchoNumber' in data_list_unique_series[i]['sidecar']:
@@ -758,6 +761,7 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
     func_sbref_run = 1
     func_phase_run = 1
     bold_run = 1
+    dwi_run = 1
     objects_entities_list = []
     series_func_list = []
     anat_SDs_image_types = [[x['br_type'],x['ImageType']] for x in subject_protocol]
@@ -767,9 +771,9 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
         if p == 0:
             protocol_index = 0
             
-        # subject_protocol[p]['protocol_index'] = protocol_index
+        subject_protocol[p]['protocol_index'] = protocol_index
         protocol_index += 1
-        # subject_protocol[p]['headers'] = str(nib.load(subject_protocol[p]['nifti_path']).header).splitlines()[1:]
+        subject_protocol[p]['headers'] = str(nib.load(subject_protocol[p]['nifti_path']).header).splitlines()[1:]
                 
         image = nib.load(subject_protocol[p]['nifti_path'])
         object_img_array = image.dataobj
@@ -899,7 +903,8 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
             else:
                 subject_protocol[p]['func_phase_run'] = objects_entities['run']
                     
-
+        
+        
         # Functional single band reference (sbref)
         elif subject_protocol[p]['br_type'] == 'func/sbref':
             if p+1 < len(subject_protocol):
@@ -944,9 +949,9 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
     t2w_indices = [x['protocol_index'] for x in subject_protocol if x['exclude'] == False and x['br_type'] == 'anat/T2w']
     flair_indices = [x['protocol_index'] for x in subject_protocol if x['exclude'] == False and x['br_type'] == 'anat/FLAIR']
     dwi_indices = [x['protocol_index'] for x in subject_protocol if x['exclude'] == False and x['br_type'] == 'dwi/dwi']
-
+    
     for w in [t1w_indices, t2w_indices, flair_indices, dwi_indices]:
-        if len(w) > 1:      
+        if len(w) > 1:
             parameter_tuples = []
             parameter_id = 0   
             parameters = [[subject_protocol[y]['SeriesDescription'], subject_protocol[y]['EchoTime'], subject_protocol[y]['ImageType'], subject_protocol[y]['RepetitionTime'], subject_protocol[y]['direction'], parameter_id] for y in w]
