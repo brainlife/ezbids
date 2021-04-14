@@ -23,7 +23,9 @@ from math import floor
 warnings.filterwarnings("ignore")
 os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
 
-data_dir = sys.argv[1]
+# data_dir = sys.argv[1]
+data_dir = '/media/data/ezbids/dicoms/WML/20201117.WML018_210718@franpest_WML'
+
 os.chdir(data_dir)
 
 #  #  Suffixes and identifiers
@@ -247,12 +249,6 @@ def select_unique_data(dir_list):
             EchoTime = json_data['EchoTime']*1000
         else:
             EchoTime = 0
-            
-        # Find InversionTime
-        if 'InversionTime' in json_data:
-            InversionTime = json_data['InversionTime']
-        else:
-            InversionTime = None
         
         # Find MultibandAccerationFactor
         if 'MultibandAccelerationFactor' in json_data:
@@ -288,7 +284,6 @@ def select_unique_data(dir_list):
                        'RepetitionTime': RepetitionTime,
                        'EchoNumber': EchoNumber,
                        'EchoTime': EchoTime,
-                       'InversionTime': InversionTime,
                        'MultibandAccelerationFactor': MultibandAccelerationFactor,
                        'DataType': '',
                        'ModalityLabel': '',
@@ -419,7 +414,6 @@ def identify_series_info(data_list_unique_series):
     
     # Determine DataType and ModalityLabel of series list acquisitions
     series_list = []
-    mp2rage_inv = 1
     for i in range(len(data_list_unique_series)):
         
         series_entities = {}
@@ -635,12 +629,17 @@ def identify_series_info(data_list_unique_series):
         # MP2RAGE/UNIT1
         elif 'mp2rage' in SD:
             data_list_unique_series[i]['DataType'] = 'anat'
-            if 'inv1' in SD:
+            try:
+                InversionTime = data_list_unique_series[i]['sidecar']['InversionTime']
+            except:
+                InversionTime = None
+            
+            if InversionTime:
                 data_list_unique_series[i]['ModalityLabel'] = 'MP2RAGE'
-                series_entities['inversion'] = 1
-            elif 'inv2' in SD:
-                data_list_unique_series[i]['ModalityLabel'] = 'MP2RAGE'
-                series_entities['inversion'] = 2
+                if InversionTime < 1.0:
+                    series_entities['inversion'] = 1
+                else:
+                    series_entities['inversion'] = 2
 
                 # Look for echo number
                 if 'EchoNumber' in data_list_unique_series[i]['sidecar']:
