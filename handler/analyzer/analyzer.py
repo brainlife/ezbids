@@ -23,9 +23,7 @@ from math import floor
 warnings.filterwarnings("ignore")
 os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
 
-# data_dir = sys.argv[1]
-data_dir = '/media/data/ezbids/dicoms/WML/20201117.WML018_210718@franpest_WML'
-
+data_dir = sys.argv[1]
 os.chdir(data_dir)
 
 #  #  Suffixes and identifiers
