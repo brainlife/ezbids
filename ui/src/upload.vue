@@ -81,9 +81,8 @@
                     :percentage="parseFloat(($root.session.dicomDone*100 / $root.session.dicomCount).toFixed(1))"/>
             </div>
             <h3 v-else>Analyzing...</h3>
-
-            <el-alert type="info">Depending on the size of your dataset, this process might take several hours. You can close this page while we process your data (you might need to refresh the page when you come back)</el-alert>
-            <pre style="margin-top: 5px;">{{$root.session.status_msg}}</pre>
+            <pre class="status">{{$root.session.status_msg}}</pre>
+            <el-alert type="info">Depending on the size of your dataset, this process might take several hours. You can shutdown your computer while we process your data (please record/bookmark the URL for this page to come back to it)</el-alert>
 
             <div class="page-action">
                 <el-button type="secondary" @click="$root.reset()">Cancel</el-button>
@@ -92,18 +91,7 @@
 
         <div v-if="$root.session.status == 'failed'">
             <p>ezBIDS failed.. Please check the log and/or contact ezBIDS team.</p>
-            <pre>{{$root.session.status_msg}}</pre>
-            <!--
-            <h4>Debugging</h4>
-            <el-collapse v-model="activeLogs" @change="logChange">
-                <el-collapse-item title="Preprocess/Analyzer Log" name="out">
-                    <pre class="text">{{stdout}}</pre>
-                </el-collapse-item>
-                <el-collapse-item title="Preprocess/Analyzer Error Log" name="err">
-                    <pre class="text">{{stderr}}</pre>
-                </el-collapse-item>
-            </el-collapse>
-            -->
+            <pre class="status">{{$root.session.status_msg}}</pre>
             <div class="page-action">
                 <el-button type="secondary" @click="$root.reset()">Re-Upload</el-button>
             </div>
@@ -122,18 +110,6 @@
                     <pre v-if="opened.includes(idx)" class="object-detail" style="font-size: 85%">{{object}}</pre>
                 </div>
             </div>
-
-            <!--
-            <el-collapse v-model="activeLogs" @change="logChange">
-                <el-collapse-item title="Preprocess/Analyzer Log" name="out">
-                    <pre class="text">{{stdout}}</pre>
-                </el-collapse-item>
-
-                <el-collapse-item title="Preprocess/Analyzer Error Log" name="err">
-                    <pre class="text">{{stderr}}</pre>
-                </el-collapse-item>
-            </el-collapse>
-            -->
             <div class="page-action">
                 <el-button type="secondary" @click="$root.reset()">Re-Upload</el-button>
                 <el-button type="primary" @click="next" style="float: right;">Next</el-button>
@@ -533,11 +509,12 @@ export default {
     overflow: auto;
     padding: 10px 20px;
 }
-pre.text {
-    background-color: #f0f0f0;
-    border-radius: 10px;
-    height: 450px;
+pre.status {
+    background-color: #666;
+    color: white;
+    height: 150px;
     overflow: auto;
     padding: 10px;
+    margin-bottom: 5px;
 }
 </style>

@@ -22,9 +22,6 @@
             <div v-if="$root.defacingMethod == 'pydeface'">
                 <small>pydeface uses fsl to align facial mask template. 5min per image</small>
             </div>
-            <div v-if="$root.defacingMethod && !defacing">
-                <el-button @click="submit" type="success">Run Deface!</el-button>
-            </div>
             <!--
             <div v-if="defacing">
                 <el-button @click="submit" type="success" disabled>Running Deface</el-button>
@@ -33,22 +30,20 @@
         </el-form-item>
     </el-form>
 
-    <div v-if="$root.session.status == 'deface' || $root.session.status == 'defacing'">
-        <el-button @click="reset" size="small" style="float: right;">Reset Deface</el-button>
-        Defacing..
-        <pre>{{$root.session.status_msg}}</pre>
-
+    <div v-if="defacing">
+        Defacing ...
+        <pre class="status">{{$root.session.status_msg}}</pre>
         <!--debug-->
     </div>
     <div v-if="$root.session.status == 'defaced'">
-        <el-button @click="reset" size="small" style="float: right;">Reset Deface</el-button>
-        Defacing completed! Please proceed to the next page.
-        <pre>{{$root.session.status_msg}}</pre>
+        Defacing completed! Please check the defacing results and proceed to the next page.
+        <!--
+        <pre class="status">{{$root.session.status_msg}}</pre>
+        -->
     </div>
     <div v-if="$root.session.status == 'failed'">
-        <el-button @click="reset" size="small" style="float: right;">Reset Deface</el-button>
         Failed!
-        <pre>{{$root.session.status_msg}}</pre>
+        <pre class="status">{{$root.session.status_msg}}</pre>
     </div>
 
     <table class="table table-sm" v-if="$root.defacingMethod">
@@ -89,11 +84,13 @@
     <el-form>
         <el-form-item class="page-action">
             <el-button @click="back">Back</el-button>
+            <el-button @click="reset" v-if="defacing || $root.session.status == 'defaced'">Reset Deface</el-button>
             <el-button type="primary" @click="next" :disabled="
-                $root.session.status == 'deface' || 
-                $root.session.status == 'defacing' || 
+                defacing || 
                 ($root.session.status == 'analyzed' && $root.defacingMethod != '')" 
                 style="float: right;">Next</el-button>
+            <el-button v-if="$root.session.status != 'defaced' && ($root.defacingMethod && !defacing)"
+                @click="submit" type="success" style="float: right;">Run Deface</el-button>
         </el-form-item>
     </el-form>
 </div>
@@ -155,6 +152,8 @@ export default {
         },
 
         reset() {
+            //TODO - make an API call to stop the defacing job (doesn't exist yet)
+
             this.defacing = false;
             this.$root.objects/*.filter(o=>o._type == 'anat/T1w')*/.forEach(anat=>{
                 Vue.set(anat, "defaced", false);
@@ -186,6 +185,7 @@ export default {
                     });
                 }).catch(console.error);    
             }
+            if(["defaced", "failed", "analyzed"].includes(this.$root.session.status)) this.defacing = false;
 
             //load next
             this.tm = setTimeout(this.startLogLoader, 5*1000);
@@ -257,6 +257,14 @@ export default {
 }
 .el-form-item {
     margin-bottom: 0;
+}
+pre.status {
+    background-color: #666;
+    color: white;
+    height: 150px;
+    overflow: auto;
+    padding: 10px;
+    margin-bottom: 5px;
 }
 </style>
 
