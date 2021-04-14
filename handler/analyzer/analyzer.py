@@ -699,10 +699,11 @@ def identify_series_info(data_list_unique_series):
         
         # Set non-normalized anatomicals to exclude
         if 'anat' in data_list_unique_series[i]['br_type'] and not any(x in ['DERIVED','NORM'] for x in data_list_unique_series[i]['ImageType']):
-            data_list_unique_series[i]['br_type'] = 'exclude'
-            data_list_unique_series[i]['error'] = 'Acquisition is a poor resolution {} (non-normalized); Please check to see if this {} acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'.format(data_list_unique_series[i]['br_type'], data_list_unique_series[i]['br_type'])
-            data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
-    
+            if '7deg' not in SD:
+                data_list_unique_series[i]['br_type'] = 'exclude'
+                data_list_unique_series[i]['error'] = 'Acquisition is a poor resolution {} (non-normalized); Please check to see if this {} acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'.format(data_list_unique_series[i]['br_type'], data_list_unique_series[i]['br_type'])
+                data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
+        
         # Combine info above into dictionary, which will be displayed to user through the UI
         series_info = {"SeriesDescription": data_list_unique_series[i]['SeriesDescription'],
                        "SeriesNumber": data_list_unique_series[i]['SeriesNumber'],
