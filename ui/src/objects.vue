@@ -352,6 +352,14 @@ export default {
                 if(this.isExcluded(o)) return;
                 if(o.validationErrors.length > 0) valid = false;
             });
+
+            //make sure there is at least 1 object to output
+            let one = this.$root.objects.find(o=>!o._exclude);
+            if(!one) {
+                alert('All objects are excluded. There are no objects to output.');
+                return false;
+            }
+
             if(valid) {
                 this.$root.changePage("deface");
             } else {

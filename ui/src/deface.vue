@@ -31,7 +31,7 @@
     </el-form>
 
     <div v-if="defacing">
-        Defacing ...
+        Defacing ... 
         <pre class="status">{{$root.session.status_msg}}</pre>
         <!--debug-->
     </div>
@@ -85,9 +85,7 @@
         <el-form-item class="page-action">
             <el-button @click="back">Back</el-button>
             <el-button @click="reset" v-if="defacing || $root.session.status == 'defaced'">Reset Deface</el-button>
-            <el-button type="primary" @click="next" :disabled="
-                defacing || 
-                ($root.session.status == 'analyzed' && $root.defacingMethod != '')" 
+            <el-button type="primary" @click="next" :disabled="defacing" v-if="($root.session.status != 'analyzed' || $root.defacingMethod == '')" 
                 style="float: right;">Next</el-button>
             <el-button v-if="$root.session.status != 'defaced' && ($root.defacingMethod && !defacing)"
                 @click="submit" type="success" style="float: right;">Run Deface</el-button>
@@ -137,7 +135,7 @@ export default {
                     if(!anat.defaceSelection) Vue.set(anat, "defaceSelection", "defaced");
                 });
 
-                this.startLogLoader();
+                this.loadLogAndRepeat();
             }
         },
     },
@@ -163,7 +161,7 @@ export default {
             this.$root.session.status = "analyzed";
         },
 
-        startLogLoader() {
+        loadLogAndRepeat() {
             if(this.$root.session.status == "defacing" || this.$root.session.status == "defaced") {
                 fetch(this.$root.apihost+'/download/'+this.$root.session._id+'/deface.finished').then(res=>res.text()).then(data=>{
                     if(!data) return;
@@ -188,7 +186,7 @@ export default {
             if(["defaced", "failed", "analyzed"].includes(this.$root.session.status)) this.defacing = false;
 
             //load next
-            this.tm = setTimeout(this.startLogLoader, 5*1000);
+            this.tm = setTimeout(this.loadLogAndRepeat, 5*1000);
         },
 
         next() {
