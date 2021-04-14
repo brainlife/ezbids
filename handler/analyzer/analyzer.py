@@ -835,20 +835,20 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
             objects_entities['fa'] = series_list[index]['entities']['fa']
         
         # Determine other important BIDS information (i.e. run, dir, etc) for specific acquisitions        
-        #  anatomical data
-        if 'anat' in subject_protocol[p]['br_type'].split('/') and subject_protocol[p]['exclude'] == False:
-            # non-normalized anat images have poor CNR, so best to not have in BIDS if there's an actual good T1w or T2w available
-            if not any(x in ['DERIVED','NORM'] for x in subject_protocol[p]['ImageType']):
-                if len([x[-1] for x in anat_SDs_image_types if 'NORM' in x[-1]]):
-                    # There's at least one anat that is normalized so exclude non-normalized anat(s)
-                    subject_protocol[p]['exclude'] = True  
-                    subject_protocol[p]['error'] = 'Acquisition is a poor resolution {} (non-normalized); Please check to see if this {} acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'.format(subject_protocol[p]['br_type'], subject_protocol[p]['br_type'])
-                    subject_protocol[p]['message'] = subject_protocol[p]['error']
-                    subject_protocol[p]['br_type'] = 'exclude'
-                else:
-                    # There aren't any normalized anat for this subject/session, so do not exclude
-                    subject_protocol[p]['exclude'] = False 
-                    subject_protocol[p]['error'] = None
+        # #  anatomical data
+        # if 'anat' in subject_protocol[p]['br_type'].split('/') and subject_protocol[p]['exclude'] == False:
+        #     # non-normalized anat images have poor CNR, so best to not have in BIDS if there's an actual good T1w or T2w available
+        #     if not any(x in ['DERIVED','NORM'] for x in subject_protocol[p]['ImageType']):
+        #         if len([x[-1] for x in anat_SDs_image_types if 'NORM' in x[-1]]):
+        #             # There's at least one anat that is normalized so exclude non-normalized anat(s)
+        #             subject_protocol[p]['exclude'] = True  
+        #             subject_protocol[p]['error'] = 'Acquisition is a poor resolution {} (non-normalized); Please check to see if this {} acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'.format(subject_protocol[p]['br_type'], subject_protocol[p]['br_type'])
+        #             subject_protocol[p]['message'] = subject_protocol[p]['error']
+        #             subject_protocol[p]['br_type'] = 'exclude'
+        #         else:
+        #             # There aren't any normalized anat for this subject/session, so do not exclude
+        #             subject_protocol[p]['exclude'] = False 
+        #             subject_protocol[p]['error'] = None
 
         
         # Functional bold
