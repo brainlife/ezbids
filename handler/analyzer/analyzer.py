@@ -758,7 +758,7 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
     func_sbref_run = 1
     func_phase_run = 1
     bold_run = 1
-    # objects_entities_list = []
+    objects_entities_list = []
     series_func_list = []
     anat_SDs_image_types = [[x['br_type'],x['ImageType']] for x in subject_protocol]
     anat_SDs_image_types = [x for x in anat_SDs_image_types if 'anat' in x[0].split('/')]
@@ -799,40 +799,40 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
 
             
         index = series_seriesID_list.index(subject_protocol[p]['series_id'])
-        # objects_entities = {'subject': '', 'session': '', 'run': '', 'task': '', 'direction': '', 'acquisition': '', 'ceagent': '', 'echo': '', 'fa': '', 'inversion': '', 'part': ''}
+        objects_entities = {'subject': '', 'session': '', 'run': '', 'task': '', 'direction': '', 'acquisition': '', 'ceagent': '', 'echo': '', 'fa': '', 'inversion': '', 'part': ''}
         
-        # # Port series level information down to the object level
-        # if 'exclude' in series_list[index]['type']:
-        #     subject_protocol[p]['exclude'] = True
-        # else:
-        #     subject_protocol[p]['exclude'] = False
+        # Port series level information down to the object level
+        if 'exclude' in series_list[index]['type']:
+            subject_protocol[p]['exclude'] = True
+        else:
+            subject_protocol[p]['exclude'] = False
             
-        # subject_protocol[p]['DataType'] = data_list_unique_series[index]['DataType']
-        # subject_protocol[p]['ModalityLabel'] = data_list_unique_series[index]['ModalityLabel']
-        # subject_protocol[p]['br_type'] = series_list[index]['type']
-        # subject_protocol[p]['error'] = series_list[index]['error']
-        # subject_protocol[p]['subject'] = subjects[s]
+        subject_protocol[p]['DataType'] = data_list_unique_series[index]['DataType']
+        subject_protocol[p]['ModalityLabel'] = data_list_unique_series[index]['ModalityLabel']
+        subject_protocol[p]['br_type'] = series_list[index]['type']
+        subject_protocol[p]['error'] = series_list[index]['error']
+        subject_protocol[p]['subject'] = subjects[s]
         
             
-        # if 'run' in series_list[index]['entities'] and series_list[index]['entities']['run']:
-        #     objects_entities['run'] = series_list[index]['entities']['run']
-        # if 'direction' in series_list[index]['entities'] and series_list[index]['entities']['direction']:
-        #     objects_entities['direction'] = series_list[index]['entities']['direction']
-        # if 'task' in series_list[index]['entities'] and series_list[index]['entities']['task']:
-        #     objects_entities['task'] = series_list[index]['entities']['task']
-        #     subject_protocol[p]['TaskName'] = series_list[index]['entities']['task']
-        # if 'acquisition' in series_list[index]['entities'] and series_list[index]['entities']['acquisition']:
-        #     objects_entities['acquisition'] = series_list[index]['entities']['acquisition']
-        # if 'ceagent' in series_list[index]['entities'] and series_list[index]['entities']['ceagent']:
-        #     objects_entities['ceagent'] = series_list[index]['entities']['ceagent']
-        # if 'echo' in series_list[index]['entities'] and series_list[index]['entities']['echo']:
-        #     objects_entities['echo'] = series_list[index]['entities']['echo']
-        # if 'inversion' in series_list[index]['entities'] and series_list[index]['entities']['inversion']:
-        #     objects_entities['inversion'] = series_list[index]['entities']['inversion']
-        # if 'part' in series_list[index]['entities'] and series_list[index]['entities']['part']:
-        #     objects_entities['part'] = series_list[index]['entities']['part']
-        # if 'fa' in series_list[index]['entities'] and series_list[index]['entities']['fa']:
-        #     objects_entities['fa'] = series_list[index]['entities']['fa']
+        if 'run' in series_list[index]['entities'] and series_list[index]['entities']['run']:
+            objects_entities['run'] = series_list[index]['entities']['run']
+        if 'direction' in series_list[index]['entities'] and series_list[index]['entities']['direction']:
+            objects_entities['direction'] = series_list[index]['entities']['direction']
+        if 'task' in series_list[index]['entities'] and series_list[index]['entities']['task']:
+            objects_entities['task'] = series_list[index]['entities']['task']
+            subject_protocol[p]['TaskName'] = series_list[index]['entities']['task']
+        if 'acquisition' in series_list[index]['entities'] and series_list[index]['entities']['acquisition']:
+            objects_entities['acquisition'] = series_list[index]['entities']['acquisition']
+        if 'ceagent' in series_list[index]['entities'] and series_list[index]['entities']['ceagent']:
+            objects_entities['ceagent'] = series_list[index]['entities']['ceagent']
+        if 'echo' in series_list[index]['entities'] and series_list[index]['entities']['echo']:
+            objects_entities['echo'] = series_list[index]['entities']['echo']
+        if 'inversion' in series_list[index]['entities'] and series_list[index]['entities']['inversion']:
+            objects_entities['inversion'] = series_list[index]['entities']['inversion']
+        if 'part' in series_list[index]['entities'] and series_list[index]['entities']['part']:
+            objects_entities['part'] = series_list[index]['entities']['part']
+        if 'fa' in series_list[index]['entities'] and series_list[index]['entities']['fa']:
+            objects_entities['fa'] = series_list[index]['entities']['fa']
         
         # Determine other important BIDS information (i.e. run, dir, etc) for specific acquisitions        
         #  anatomical data
@@ -845,10 +845,10 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
                     subject_protocol[p]['error'] = 'Acquisition is a poor resolution {} (non-normalized); Please check to see if this {} acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'.format(subject_protocol[p]['br_type'], subject_protocol[p]['br_type'])
                     subject_protocol[p]['message'] = subject_protocol[p]['error']
                     subject_protocol[p]['br_type'] = 'exclude'
-                # else:
-                #     # There aren't any normalized anat for this subject/session, so do not exclude
-                #     subject_protocol[p]['exclude'] = False 
-                #     subject_protocol[p]['error'] = None
+                else:
+                    # There aren't any normalized anat for this subject/session, so do not exclude
+                    subject_protocol[p]['exclude'] = False 
+                    subject_protocol[p]['error'] = None
 
         
         # Functional bold
@@ -937,7 +937,7 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
                 else:
                     subject_protocol[p]['func_sbref_run'] = objects_entities['run']
                     
-        # objects_entities_list.append(objects_entities)
+        objects_entities_list.append(objects_entities)
         
     # Add run number to anat and dwi/dwi that have multiple acquisitions but with the same parameters
     t1w_indices = [x['protocol_index'] for x in subject_protocol if x['exclude'] == False and x['br_type'] == 'anat/T1w']
