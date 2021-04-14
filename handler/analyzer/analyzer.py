@@ -635,13 +635,12 @@ def identify_series_info(data_list_unique_series):
         # MP2RAGE/UNIT1
         elif 'mp2rage' in SD:
             data_list_unique_series[i]['DataType'] = 'anat'
-            if 'InversionTime' in data_list_unique_series[i]['sidecar']:
+            if 'inv1' in SD:
                 data_list_unique_series[i]['ModalityLabel'] = 'MP2RAGE'
-                series_entities['inversion'] = mp2rage_inv
-                mp2rage_inv += 1
-                if mp2rage_inv > 2:
-                    mp2rage_inv = 1
-                    
+                series_entities['inversion'] = 1
+            elif 'inv2' in SD:
+                data_list_unique_series[i]['ModalityLabel'] = 'MP2RAGE'
+                series_entities['inversion'] = 2
 
                 # Look for echo number
                 if 'EchoNumber' in data_list_unique_series[i]['sidecar']:
