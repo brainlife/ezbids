@@ -1,42 +1,31 @@
-// exports.objectsMapping = $root=>{
-// 	// Loop through subjects
-//     for (const subject in $root.subs) {
+exports.setRun = $root=>{
+
+	// Loop through subjects
+    for (const subject in $root.subs) {
         
-//         // Loop through sessions
-//         const sessions = $root.subs[subject].sess
-//         for (const session in sessions) {
+        // Loop through sessions
+        const sessions = $root.subs[subject].sess
+        for (const session in sessions) {
 
-//         	// Determine unique series_id values
-//             let allSeriesIDs = sessions[session].objects.map(e=>e.series_id)
-//             let uniqueSeriesIDs = Array.from(new Set(allSeriesIDs))
+        	// Determine unique series_id values
+            let allSeriesIDs = sessions[session].objects.map(e=>e.series_id)
+            let uniqueSeriesIDs = Array.from(new Set(allSeriesIDs))
 
-//             uniqueSeriesIDs.forEach(si=>{
-//             	// Enter run number
-//             	let seriesObjects = sessions[session].objects.filter(e=>e.series_id == si && !e._exclude)
-//             	let run = 1
-//             	if (seriesObjects.length > 1) {
-// 					seriesObjects.forEach(obj=>{
-// 						obj._entities.run = run.toString()
-// 						run = run + 1
-// 					});
-//             	}
-//             	// T1w, T2w, and FLAIR anatomicals can be non-normalized (poor CNR),
-//             	// suggest exclusion from BIDS conversion
-//             	let anatObjs = seriesObjects.filter(function (e) {
-//                     return e._type.startsWith('anat/T1w') || 
-//                     e._type.startsWith('anat/T2w') ||
-//                     e._type.includes('anat/FLAIR')
-//                 });
-
-//                 anatObjs.forEach(obj=>{
-//                 	if (!obj.items[0].sidecar.ImageType.includes('NORM') || !obj.items[0].sidecar.ImageType.includes('DERIVED')) {
-//                 		obj.analysisResults.errors = 'This anatomical image appears to be non-normalized, meaning it has a poor Contrast to Noise Ratio (CNR). If there is a normalized anatomical image for this subject/session, please consider excluding this non-normalized image from BIDS conversion'
-//                 	}
-//                 });
-//             });
-//         }
-//     }
-// }
+            uniqueSeriesIDs.forEach(si=>{
+            	// Enter run number
+            	let seriesObjects = sessions[session].objects.filter(e=>e.series_id == si && !e._exclude)
+            	let run = 1
+            	if (seriesObjects.length > 1) {
+					seriesObjects.forEach(obj=>{
+						obj._entities.run = run.toString()
+						console.log(obj.items[0]['sidecar']['SeriesDescription'], obj._entities.run)
+						run = run + 1
+					});
+            	}
+            });
+        }
+    }
+}
 
 
 exports.fmapQA = $root=>{
@@ -83,8 +72,6 @@ exports.fmapQA = $root=>{
                 if (!fmapMagPhasediffCheck.length) {
                     fmapMagPhasediffObjs = []
                 }
-
-
 
                 let fmapMagFieldmapObjs = section.filter(function (e) {
                     return e._type.startsWith('fmap/magnitude') ||
@@ -254,7 +241,6 @@ exports.setIntendedFor = $root=>{
                 let fmapDwiObjs = section.filter(e=>e._type.startsWith('fmap') && e.forType == 'dwi/dwi' && !e._exclude)
 
                 // Assign IntendedFor information 
-
                 fmapFuncObjs.forEach(obj=> {
                     obj.IntendedFor = funcObjs.map(e=>e.idx)
                 });
