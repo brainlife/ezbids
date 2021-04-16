@@ -15,11 +15,11 @@ exports.funcQA = $root=>{
 
             uniqueSeriesIDs.forEach(si=>{
             	
-            	let seriesObjects = sessions[session].objects.filter(e=>e.series_id == si && !e._exclude && e._type.startsWith('func'))
+            	let seriesObjects = sessions[session].objects.filter(e=>e.series_id == si && !e._exclude && e._type == 'func/bold')
 				seriesObjects.forEach(obj=>{
 					if (obj.analysisResults.NumVolumes < 50) {
 						obj.exclude = true
-						obj.analysisResults.errors = 'Functional acquisition contains less than 50 volumes, a possible indiciation of a failed/restarted run. Please check to see if you want to keep this, otherwise, this acquisitions will be excluded from BIDS conversion'
+						obj.analysisResults.errors = ['Functional acquisition contains less than 50 volumes, a possible indiciation of a failed/restarted run. Please check to see if you want to keep this, otherwise, this acquisitions will be excluded from BIDS conversion']
 					}
 				});
             });
@@ -93,7 +93,7 @@ exports.fmapQA = $root=>{
                         let fmapFuncBadObjs = fmapSpinEchoFuncObjs.slice(0,-2)
                         fmapFuncBadObjs.forEach(obj=> {
                             obj.exclude = true
-                            obj.analysisResults.errors = 'Multiple spin echo field map pairs detected in section; only selecting last pair for BIDS conversion. The other pair acquisition(s) in this section will not be included in the BIDS output'
+                            obj.analysisResults.errors = ['Multiple spin echo field map pairs detected in section; only selecting last pair for BIDS conversion. The other pair acquisition(s) in this section will not be included in the BIDS output']
                         });
                     }
 
@@ -101,7 +101,7 @@ exports.fmapQA = $root=>{
                     if (fmapSpinEchoFuncObjs.length == 1) {
                         fmapSpinEchoFuncObjs.forEach(obj=> {
                             obj.exclude = true
-                            obj.analysisResults.errors = 'Only one spin echo field map found; need pair. This acquisition will not be included in the BIDS output'
+                            obj.analysisResults.errors = ['Only one spin echo field map found; need pair. This acquisition will not be included in the BIDS output']
                         });
                     }
 
@@ -116,13 +116,13 @@ exports.fmapQA = $root=>{
                             if ((fmapFuncPEDs[0].length != 2 || fmapFuncPEDs[1].length != 1) && (fmapFuncPEDs[0].length != 1 || fmapFuncPEDs[1].length != 2)) {
                                 fmapSpinEchoFuncObjs.forEach(obj=> {
                                     obj.exclude = true
-                                    obj.analysisResults.errors = 'Spin echo field map pair do not have opposite phase encoding directions (PEDs) and will not be included in the BIDS output'
+                                    obj.analysisResults.errors = ['Spin echo field map pair do not have opposite phase encoding directions (PEDs) and will not be included in the BIDS output']
                                 });
                             }
                         } else {
                             fmapSpinEchoFuncObjs.forEach(obj=> {
                                 obj.exclude = true
-                                obj.analysisResults.errors = 'Spin echo field map pair do not have opposite phase encoding directions (PEDs) and will not be included in the BIDS output'
+                                obj.analysisResults.errors = ['Spin echo field map pair do not have opposite phase encoding directions (PEDs) and will not be included in the BIDS output']
                             });
                         }
                     }
@@ -131,7 +131,7 @@ exports.fmapQA = $root=>{
                     if (fmapMagPhasediffObjs.length < 3) {
                         fmapMagPhasediffObjs.forEach(obj=> {
                             obj.exclude = true
-                            obj.analysisResults.errors = 'Need triplet for magnitude/phasediff field maps. This acquisition will not be included in the BIDS output'
+                            obj.analysisResults.errors = ['Need triplet for magnitude/phasediff field maps. This acquisition will not be included in the BIDS output']
                         });
                     }
 
@@ -140,7 +140,7 @@ exports.fmapQA = $root=>{
                         let fmapMagPhasediffBadObjs = fmapMagPhasediffObjs.slice(0,-3)
                         fmapMagPhasediffBadObjs.forEach(obj=> {
                             obj.exclude = true
-                            obj.analysisResults.errors = 'More than three magnitude/phasediff field map acquisitions found in section. Only selecting most recent three. Others will not be included in the BIDS output'
+                            obj.analysisResults.errors = ['More than three magnitude/phasediff field map acquisitions found in section. Only selecting most recent three. Others will not be included in the BIDS output']
                         });
                     }
 
@@ -148,7 +148,7 @@ exports.fmapQA = $root=>{
                     if (fmapMagPhaseObjs.length < 4) {
                         fmapMagPhaseObjs.forEach(obj=> {
                             obj.exclude = true
-                            obj.analysisResults.errors = 'Need four images (2 magnitude, 2 phase). This acquisition will not be included in the BIDS output'
+                            obj.analysisResults.errors = ['Need four images (2 magnitude, 2 phase). This acquisition will not be included in the BIDS output']
                         });
                     }
 
@@ -157,7 +157,7 @@ exports.fmapQA = $root=>{
                         let fmapMagPhaseBadObjs = fmapMagPhaseObjs.slice(0,-4)
                         fmapMagPhaseBadObjs.forEach(obj=> {
                             obj.exclude = true
-                            obj.analysisResults.errors = 'Multiple images sets of (2 magnitude, 2 phase) field map acquisitions found in section. Only selecting most recent set. Other(s) will not be included in the BIDS output'
+                            obj.analysisResults.errors = ['Multiple images sets of (2 magnitude, 2 phase) field map acquisitions found in section. Only selecting most recent set. Other(s) will not be included in the BIDS output']
                         });
                     }
 
@@ -166,7 +166,7 @@ exports.fmapQA = $root=>{
                         let fmapMagFieldmapBadObjs = fmapMagFieldmapObjs.slice(0,-2)
                         fmapMagFieldmapBadObjs.forEach(obj=> {
                             obj.exclude = true
-                            obj.analysisResults.errors = 'Multiple image sets of magnitude & fieldmap field map acquistions found in section. Only selecting most recent pair. Other(s) will not be included in BIDS output'
+                            obj.analysisResults.errors = ['Multiple image sets of magnitude & fieldmap field map acquistions found in section. Only selecting most recent pair. Other(s) will not be included in BIDS output']
                         });
                     }
 
@@ -174,29 +174,29 @@ exports.fmapQA = $root=>{
                     if (fmapMagFieldmapObjs.length < 2) {
                         fmapMagFieldmapObjs.forEach(obj=> {
                             obj.exclude = true
-                            obj.analysisResults.errors = 'Need pair (magnitude & fieldmap). This acquisition will not be included in BIDS output'
+                            obj.analysisResults.errors = ['Need pair (magnitude & fieldmap). This acquisition will not be included in BIDS output']
                         });
                     }
 
                 } else {
                     fmapSpinEchoFuncObjs.forEach(obj=> {
                         obj.exclude = true
-                        obj.analysisResults.errors = 'No valid func/bold acquisitions found in section, spin echo field map pair will not be included in the BIDS output'
+                        obj.analysisResults.errors = ['No valid func/bold acquisitions found in section, spin echo field map pair will not be included in the BIDS output']
                     });
 
                     fmapMagPhasediffObjs.forEach(obj=> {
                         obj.exclude = true
-                        obj.analysisResults.errors = 'No valid func/bold acquisitions found in section, magnitude & phasediff field maps will not be included in the BIDS output'
+                        obj.analysisResults.errors = ['No valid func/bold acquisitions found in section, magnitude & phasediff field maps will not be included in the BIDS output']
                     });
 
                     fmapMagPhaseObjs.forEach(obj=> {
                         obj.exclude = true
-                        obj.analysisResults.errors = 'No valid func/bold acquisitions found in section, magnitude & phase field maps will not be included in the BIDS output'
+                        obj.analysisResults.errors = ['No valid func/bold acquisitions found in section, magnitude & phase field maps will not be included in the BIDS output']
                     });
 
                     fmapMagFieldmapObjs.forEach(obj=> {
                         obj.exclude = true
-                        obj.analysisResults.errors = 'No valid func/bold acquisitions found in section, magnitude & fieldmap will not be included in the BIDS output'
+                        obj.analysisResults.errors = ['No valid func/bold acquisitions found in section, magnitude & fieldmap will not be included in the BIDS output']
                     })
                 }
 
@@ -204,7 +204,7 @@ exports.fmapQA = $root=>{
                 if (dwiObjs.length == 0 && fmapSpinEchoDwiObjs.length > 0) {
                     fmapSpinEchoDwiObjs.forEach(obj=> {
                         obj.exclude = true
-                        obj.analysisResults.errors = 'No valid dwi/dwi acquisitions found in section, spin echo field map will not be included in the BIDS output'
+                        obj.analysisResults.errors = ['No valid dwi/dwi acquisitions found in section, spin echo field map will not be included in the BIDS output']
                     });
                 }
 
@@ -212,7 +212,7 @@ exports.fmapQA = $root=>{
                 if (fmapSpinEchoDwiObjs.length > 1) {
                     fmapSpinEchoDwiObjs.forEach(obj=> {
                         obj.exclude = true
-                        obj.analysisResults.errors = 'Multiple spin echo field maps (meant for dwi/dwi) detected in section; only selecting last one for BIDS conversion. The other fmap acquisition(s) in this section will not be included in the BIDS output'
+                        obj.analysisResults.errors = ['Multiple spin echo field maps (meant for dwi/dwi) detected in section; only selecting last one for BIDS conversion. The other fmap acquisition(s) in this section will not be included in the BIDS output']
                     });
                 } 
             });           
