@@ -36,7 +36,7 @@
 
         <div v-if="$root.session.status == 'created'">
             <h3>Uploading ...</h3>
-            <el-alert type="info">Please do not close your browser (nor refresh page) until all files are uploaded.</el-alert>
+            <small>* Please do not close your browser (nor refresh page) until all files are uploaded.</small>
 
             <div v-if="failed.length > 0">
                 <el-alert type="error">Permanently failed to upload some files</el-alert>
@@ -82,7 +82,7 @@
             </div>
             <h3 v-else>Analyzing...</h3>
             <pre class="status">{{$root.session.status_msg}}</pre>
-            <el-alert type="info">Depending on the size of your dataset, this process might take several hours. You can shutdown your computer while we process your data (please record/bookmark the URL for this page to come back to it)</el-alert>
+            <small>* Depending on the size of your dataset, this process might take several hours. You can shutdown your computer while we process your data (please record/bookmark the URL for this page to come back to it)</small>
 
             <div class="page-action">
                 <el-button type="secondary" @click="$root.reset()">Cancel</el-button>
@@ -512,7 +512,7 @@ export default {
 pre.status {
     background-color: #666;
     color: white;
-    height: 150px;
+    height: 125px;
     overflow: auto;
     padding: 10px;
     margin-bottom: 5px;
