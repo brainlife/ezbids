@@ -197,7 +197,9 @@ export default {
                 this.$root.objects.forEach(this.$root.mapObject);
                 this.$root.organizeObjects();
 
+                lib.funcQA(this.$root);
                 lib.fmapQA(this.$root);
+                lib.setRun(this.$root);
                 lib.setIntendedFor(this.$root);
 
                 this.$root.objects.forEach(this.validate);
