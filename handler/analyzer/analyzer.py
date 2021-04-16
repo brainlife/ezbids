@@ -26,87 +26,8 @@ os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
 data_dir = sys.argv[1]
 os.chdir(data_dir)
 
-#  #  Suffixes and identifiers
-#  datatype_schema_dir = '/home/dlevitas/ezbids/bids-specification/src/schema/datatypes'
-#  anat_yaml = yaml.load(open('{}/anat.yaml'.format(datatype_schema_dir)))
-#  fmap_yaml = yaml.load(open('{}/fmap.yaml'.format(datatype_schema_dir)))
-#  func_yaml = yaml.load(open('{}/func.yaml'.format(datatype_schema_dir)))
-#  dwi_yaml = yaml.load(open('{}/dwi.yaml'.format(datatype_schema_dir)))
-
-#  localizer_identifiers= ['localizer','scout']
-
-#  asl_identifiers = ['asl']
-
-#  anat_suffixes = [x for y in [x['suffixes'] for x in anat_yaml] for x in y]
-#  t1w_identifiers = ['t1w','tfl3d','mprage','spgr','tflmgh']
-#  t2w_identifiers = ['t2w']
-#  flair_identifiers = ['flair','t2spacedafl']
-
-#  fmap_suffixes = [x for y in [x['suffixes'] for x in fmap_yaml] for x in y]
-#  fmap_identifiers = ['fmap','fieldmap','spinecho','sefmri','semri']
-
-#  sbref_identifiers = ['sbref']
-
-#  func_suffixes = [x for y in [x['suffixes'] for x in func_yaml] for x in y]
-#  func_identifiers = ['bold','func','fmri','epi','mri','task','rest']
-#  rest_identifiers = ['rest','rsfmri','fcmri']
-
-#  dwi_suffixes = [x for y in [x['suffixes'] for x in dwi_yaml] for x in y]
-#  dwi_identifiers = ['dti','dwi','dmri']
-#  dwi_derivative_identifiers = ['trace','fa','adc']
-
-
 
 ######## Functions ######## 
-
-        
-    
-
-
-# def correctPE(input, nii_img, nii_key=None):
-    
-#     if nii_key in input["meta"]:
-#         pe = input["meta"][nii_key]["PhaseEncodingDirection"]
-#     elif "PhaseEncodingDirection" in input["meta"]:
-#         pe = input["meta"]["PhaseEncodingDirection"]
-#     else:
-#         print("Cannot read PhaseEncodingDirection.")
-
-#     #if it's using ijk already don't need to do anything
-#     if pe[0] == 'i' or pe[0] == 'j' or pe[0] == 'k':
-#         print("Phase Encoding Direction conversion not needed.")
-#         return pe
-    
-#     #convert xyz to ijk
-#     img = nib.load(nii_img)
-#     codes = nib.aff2axcodes(img.affine) 
-#     ax_idcs = {"x": 0, "y": 1, "z": 2}
-#     axis = ax_idcs[pe[0]]
-#     if codes[axis] in ('L', 'R'):
-#         updated_pe = 'i'
-#     if codes[axis] in ('P', 'A'):
-#         updated_pe = 'j'
-#     if codes[axis] in ('I', 'S'):
-#         updated_pe = 'k'
-    
-#     #flip polarity if it's using L/P/I
-#     inv = pe[1:] == "-"
-#     if pe[0] == 'x':
-#         if codes[0] == 'L':
-#             inv = not inv 
-#     if pe[0] == 'y':
-#         if codes[1] == 'P':
-#             inv = not inv 
-#     if pe[0] == 'z':
-#         if codes[2] == 'I':
-#             inv = not inv 
-#     if inv:
-#         updated_pe += "-"
-#     print(f"Orientation: {codes}")    
-#     print(f"Phase Encoding Direction updated: {updated_pe}") 
-
-#     return updated_pe
-
 
 def select_unique_data(dir_list):
     '''
@@ -755,10 +676,7 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
         Same as above but with updated information
     '''
     
-    func_sbref_run = 1
-    func_phase_run = 1
-    bold_run = 1
-    dwi_run = 1
+
     objects_entities_list = []
     series_func_list = []
     anat_SDs_image_types = [[x['br_type'],x['ImageType']] for x in subject_protocol]
@@ -802,179 +720,16 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
         index = series_seriesID_list.index(subject_protocol[p]['series_id'])
         objects_entities = {'subject': '', 'session': '', 'run': '', 'task': '', 'direction': '', 'acquisition': '', 'ceagent': '', 'echo': '', 'fa': '', 'inversion': '', 'part': ''}
         
-        # Port series level information down to the object level
-        if 'exclude' in series_list[index]['type']:
-            subject_protocol[p]['exclude'] = True
-        else:
-            subject_protocol[p]['exclude'] = False
-            
         subject_protocol[p]['DataType'] = data_list_unique_series[index]['DataType']
         subject_protocol[p]['ModalityLabel'] = data_list_unique_series[index]['ModalityLabel']
         subject_protocol[p]['br_type'] = series_list[index]['type']
         subject_protocol[p]['error'] = series_list[index]['error']
         subject_protocol[p]['subject'] = subjects[s]
-        
-            
-        if 'run' in series_list[index]['entities'] and series_list[index]['entities']['run']:
-            objects_entities['run'] = series_list[index]['entities']['run']
-        if 'direction' in series_list[index]['entities'] and series_list[index]['entities']['direction']:
-            objects_entities['direction'] = series_list[index]['entities']['direction']
-        if 'task' in series_list[index]['entities'] and series_list[index]['entities']['task']:
-            objects_entities['task'] = series_list[index]['entities']['task']
-            subject_protocol[p]['TaskName'] = series_list[index]['entities']['task']
-        if 'acquisition' in series_list[index]['entities'] and series_list[index]['entities']['acquisition']:
-            objects_entities['acquisition'] = series_list[index]['entities']['acquisition']
-        if 'ceagent' in series_list[index]['entities'] and series_list[index]['entities']['ceagent']:
-            objects_entities['ceagent'] = series_list[index]['entities']['ceagent']
-        if 'echo' in series_list[index]['entities'] and series_list[index]['entities']['echo']:
-            objects_entities['echo'] = series_list[index]['entities']['echo']
-        if 'inversion' in series_list[index]['entities'] and series_list[index]['entities']['inversion']:
-            objects_entities['inversion'] = series_list[index]['entities']['inversion']
-        if 'part' in series_list[index]['entities'] and series_list[index]['entities']['part']:
-            objects_entities['part'] = series_list[index]['entities']['part']
-        if 'fa' in series_list[index]['entities'] and series_list[index]['entities']['fa']:
-            objects_entities['fa'] = series_list[index]['entities']['fa']
-        
-        # Determine other important BIDS information (i.e. run, dir, etc) for specific acquisitions        
-        # #  anatomical data
-        # if 'anat' in subject_protocol[p]['br_type'].split('/') and subject_protocol[p]['exclude'] == False:
-        #     # non-normalized anat images have poor CNR, so best to not have in BIDS if there's an actual good T1w or T2w available
-        #     if not any(x in ['DERIVED','NORM'] for x in subject_protocol[p]['ImageType']):
-        #         if len([x[-1] for x in anat_SDs_image_types if 'NORM' in x[-1]]):
-        #             # There's at least one anat that is normalized so exclude non-normalized anat(s)
-        #             subject_protocol[p]['exclude'] = True  
-        #             subject_protocol[p]['error'] = 'Acquisition is a poor resolution {} (non-normalized); Please check to see if this {} acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'.format(subject_protocol[p]['br_type'], subject_protocol[p]['br_type'])
-        #             subject_protocol[p]['message'] = subject_protocol[p]['error']
-        #             subject_protocol[p]['br_type'] = 'exclude'
-        #         else:
-        #             # There aren't any normalized anat for this subject/session, so do not exclude
-        #             subject_protocol[p]['exclude'] = False 
-        #             subject_protocol[p]['error'] = None
 
-        
-        # Functional bold
-        elif subject_protocol[p]['br_type'] == 'func/bold':
-            # Instances where functional bold acquisitions have less than 50 volumes (probably a restart/failure occurred, or some kind of non-BIDS test)
-            if subject_protocol[p]['NumVolumes'] < 50:
-                subject_protocol[p]['exclude'] = True
-                subject_protocol[p]['error'] = 'Functional run only contains {} volumes; ezBIDS flags functional runs with under 50 volumes. Please check to see whether this should be excluded or not from BIDS conversion'.format(subject_protocol[p]['NumVolumes'])
-                subject_protocol[p]['br_type'] = 'exclude'
-            else:
-                if objects_entities['run'] == '':
-                    if not len([x for x in series_func_list if x[0] == subject_protocol[p]['series_id']]):
-                        series_func_list.append([subject_protocol[p]['series_id'], 1])
-                        bold_run = 1
-                        subject_protocol[p]['bold_run'] = '1'
-                    else:
-                        func_index = [x for x, y in enumerate(series_func_list) if y[0] == subject_protocol[p]['series_id']][0]
-                        series_func_list[func_index][1] += 1
-                        bold_run = series_func_list[func_index][1]
-                        
-                    if bold_run < 10:
-                        subject_protocol[p]['bold_run'] = str(bold_run)
-                    else:
-                        subject_protocol[p]['bold_run'] = str(bold_run)
-                        
-                    objects_entities['run'] = subject_protocol[p]['bold_run']
-                else:
-                    subject_protocol[p]['bold_run'] = objects_entities['run']
-                
-        # Functional phase
-        elif subject_protocol[p]['br_type'] == 'func/phase':
-            if objects_entities['run'] == '':
-                if not len([x for x in series_func_list if x[0] == subject_protocol[p]['series_id']]):
-                    series_func_list.append([subject_protocol[p]['series_id'], 1])
-                    func_phase_run = 1
-                    subject_protocol[p]['func_phase_run'] = '1'
-                else:
-                    func_index = [x for x, y in enumerate(series_func_list) if y[0] == subject_protocol[p]['series_id']][0]
-                    series_func_list[func_index][1] += 1
-                    func_phase_run = series_func_list[func_index][1]
-                    
-                if func_phase_run < 10:
-                    subject_protocol[p]['func_phase_run'] = str(func_phase_run)
-                else:
-                    subject_protocol[p]['func_phase_run'] = str(func_phase_run)
-                    
-                objects_entities['run'] = subject_protocol[p]['func_phase_run']
-            else:
-                subject_protocol[p]['func_phase_run'] = objects_entities['run']
-                    
-        
-        
-        # Functional single band reference (sbref)
-        elif subject_protocol[p]['br_type'] == 'func/sbref':
-            if p+1 < len(subject_protocol):
-                index_next = series_seriesID_list.index(subject_protocol[p+1]['series_id'])
-                subject_protocol[p+1]['br_type'] = data_list_unique_series[index_next]['br_type']
-                
-            # Rare instances where sbref is not followed by functional bold
-            if subject_protocol[p+1]['br_type'] != 'func/bold':
-                subject_protocol[p]['exclude'] = True
-                subject_protocol[p]['error'] = 'Single band reference (sbref) acquisition is not immediately followed by a functional bold acquisition that is being converted to BIDS. This object will not be included in the BIDS output'
-                subject_protocol[p]['br_type'] = 'exclude'
-                
-            # Set exclude to True if functional bold after it has less than 50 volumes, which will cause it to not be converted to BIDS
-            elif nib.load(subject_protocol[p+1]['nifti_path']).shape[3] < 50:
-                subject_protocol[p]['exclude'] = True
-                subject_protocol[p]['error'] = 'Functional bold acquisition following this sbref contains less than 50 volumes, therefore BIDS conversion for this acqusition (and the preceding sbref) not recommended.'
-                subject_protocol[p]['br_type'] = 'exclude'
-            else:    
-                if objects_entities['run'] == '':
-                    if not len([x for x in series_func_list if x[0] == subject_protocol[p]['series_id']]):
-                        series_func_list.append([subject_protocol[p]['series_id'], 1])
-                        func_sbref_run = 1
-                        subject_protocol[p]['func_sbref_run'] = '1'
-                    else:
-                        func_index = [x for x, y in enumerate(series_func_list) if y[0] == subject_protocol[p]['series_id']][0]
-                        series_func_list[func_index][1] += 1
-                        func_sbref_run = series_func_list[func_index][1]
-                        
-                    if func_sbref_run < 10:
-                        subject_protocol[p]['func_sbref_run'] = str(func_sbref_run)
-                    else:
-                        subject_protocol[p]['func_sbref_run'] = str(func_sbref_run)
-                        
-                    objects_entities['run'] = subject_protocol[p]['func_sbref_run']
-                else:
-                    subject_protocol[p]['func_sbref_run'] = objects_entities['run']
+
                     
         objects_entities_list.append(objects_entities)
         
-    # Add run number to anat and dwi/dwi that have multiple acquisitions but with the same parameters
-    t1w_indices = [x['protocol_index'] for x in subject_protocol if x['exclude'] == False and x['br_type'] == 'anat/T1w']
-    t2w_indices = [x['protocol_index'] for x in subject_protocol if x['exclude'] == False and x['br_type'] == 'anat/T2w']
-    flair_indices = [x['protocol_index'] for x in subject_protocol if x['exclude'] == False and x['br_type'] == 'anat/FLAIR']
-    dwi_indices = [x['protocol_index'] for x in subject_protocol if x['exclude'] == False and x['br_type'] == 'dwi/dwi']
-    
-    for w in [t1w_indices, t2w_indices, flair_indices, dwi_indices]:
-        if len(w) > 1:
-            parameter_tuples = []
-            parameter_id = 0   
-            parameters = [[subject_protocol[y]['SeriesDescription'], subject_protocol[y]['EchoTime'], subject_protocol[y]['ImageType'], subject_protocol[y]['RepetitionTime'], subject_protocol[y]['direction'], parameter_id] for y in w]
-            for x in range(len(parameters)):  
-                tup = (parameters[x][:])
-                if tup[:-1] not in [y[:-1] for y in parameter_tuples]: 
-                    tup[-1] = parameter_id
-                    parameter_id += 1
-                else:
-                    tup[-1] = parameter_tuples[[y[:-1] for y in parameter_tuples].index(tup[:-1])][-1]
-                        
-                parameter_tuples.append(tup)
-            
-            uniques = list(set([x[-1] for x in parameter_tuples]))
-            for u in uniques:
-                if len([x for x in parameter_tuples if x[-1] == 0]) == 1:
-                    pass
-                else:                        
-                    run = 1
-                    for xx,yy in enumerate(parameter_tuples):
-                        if yy[-1] == u:
-                            if run < 10:
-                                objects_entities_list[w[xx]]['run'] = str(run)
-                            else:
-                                objects_entities_list[w[xx]]['run'] = str(run)
-                            run += 1 
                             
     return subject_protocol, objects_entities_list
     

@@ -1,4 +1,6 @@
-exports.setRun = $root=>{
+exports.funcQA = $root=>{
+	// Exclude instances where functional bold acquisitions have less than 50 volumes,
+	// which are probably a restart or failure functional acquisition occurrence
 
 	// Loop through subjects
     for (const subject in $root.subs) {
@@ -12,16 +14,14 @@ exports.setRun = $root=>{
             let uniqueSeriesIDs = Array.from(new Set(allSeriesIDs))
 
             uniqueSeriesIDs.forEach(si=>{
-            	// Enter run number
-            	let seriesObjects = sessions[session].objects.filter(e=>e.series_id == si && !e._exclude)
-            	let run = 1
-            	if (seriesObjects.length > 1) {
-					seriesObjects.forEach(obj=>{
-						obj._entities.run = run.toString()
-						console.log(obj.items[0]['sidecar']['SeriesDescription'], obj._entities.run)
-						run = run + 1
-					});
-            	}
+            	
+            	let seriesObjects = sessions[session].objects.filter(e=>e.series_id == si && !e._exclude && e._type.startsWith('func'))
+				seriesObjects.forEach(obj=>{
+					if (obj.analysisResults.NumVolumes < 50) {
+						obj.exclude = true
+						obj.analysisResults.errors = 'Functional acquisition contains less than 50 volumes, a possible indiciation of a failed/restarted run. Please check to see if you want to keep this, otherwise, this acquisitions will be excluded from BIDS conversion'
+					}
+				});
             });
         }
     }
@@ -29,6 +29,8 @@ exports.setRun = $root=>{
 
 
 exports.fmapQA = $root=>{
+	// Assesses fieldmaps for improper PEDs (for spin-echo field maps),
+	// and excludes extra fieldmaps in section
 
     // Loop through subjects
     for (const subject in $root.subs) {
@@ -218,7 +220,37 @@ exports.fmapQA = $root=>{
     }     
 }
 
+exports.setRun = $root=>{
+	// Set run label
+
+	// Loop through subjects
+    for (const subject in $root.subs) {
+        
+        // Loop through sessions
+        const sessions = $root.subs[subject].sess
+        for (const session in sessions) {
+
+        	// Determine unique series_id values
+            let allSeriesIDs = sessions[session].objects.map(e=>e.series_id)
+            let uniqueSeriesIDs = Array.from(new Set(allSeriesIDs))
+
+            uniqueSeriesIDs.forEach(si=>{
+            	// Enter run number
+            	let seriesObjects = sessions[session].objects.filter(e=>e.series_id == si && !e._exclude)
+            	let run = 1
+            	if (seriesObjects.length > 1) {
+					seriesObjects.forEach(obj=>{
+						obj._entities.run = run.toString()
+						run = run + 1
+					});
+            	}
+            });
+        }
+    }
+}
+
 exports.setIntendedFor = $root=>{
+	// Apply fmap intendedFor mapping
 
     // Loop through subjects
     for (const subject in $root.subs) {
