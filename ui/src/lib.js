@@ -1,21 +1,19 @@
 exports.funcQA = $root=>{
 	// Exclude instances where functional bold acquisitions have less than 50 volumes,
-	// which are probably a restart or failure functional acquisition occurrence
+	// which are probably a restart or failure functional acquisition occurrence.
 
 	// Loop through subjects
     for (const subject in $root.subs) {
-        
         // Loop through sessions
         const sessions = $root.subs[subject].sess
         for (const session in sessions) {
-
-        	// Determine unique series_id values
+        // Determine unique series_id values
             let allSeriesIDs = sessions[session].objects.map(e=>e.series_id)
             let uniqueSeriesIDs = Array.from(new Set(allSeriesIDs))
 
             uniqueSeriesIDs.forEach(si=>{
-            	
-            	let seriesObjects = sessions[session].objects.filter(e=>e.series_id == si && !e._exclude && e._type == 'func/bold')
+
+                let seriesObjects = sessions[session].objects.filter(e=>e.series_id == si && !e._exclude && e._type == 'func/bold')
 				seriesObjects.forEach(obj=>{
 					if (obj.analysisResults.NumVolumes < 50) {
 						obj.exclude = true
@@ -229,22 +227,21 @@ exports.setRun = $root=>{
         // Loop through sessions
         const sessions = $root.subs[subject].sess
         for (const session in sessions) {
+        // Determine unique series_id values
 
-        	// Determine unique series_id values
             let allSeriesIDs = sessions[session].objects.map(e=>e.series_id)
             let uniqueSeriesIDs = Array.from(new Set(allSeriesIDs))
 
             uniqueSeriesIDs.forEach(si=>{
-            	// Enter run number
-            	let seriesObjects = sessions[session].objects.filter(e=>e.series_id == si && !e._exclude)
-            	let run = 1
-            	if (seriesObjects.length > 1) {
+                let seriesObjects = sessions[session].objects.filter(e=>e.series_id == si && !e._exclude)
+                let run = 1
+                if (seriesObjects.length > 1) {
 					seriesObjects.forEach(obj=>{
-						obj._entities.run = run.toString()
+						obj.entities.run = run.toString()
 						run = run + 1
 					});
-            	}
-            });
+				}
+			});
         }
     }
 }
