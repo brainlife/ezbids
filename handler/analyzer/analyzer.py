@@ -875,6 +875,12 @@ for s in range(len(acquisition_dates)):
 for s in range(len(series_list)):
     if series_list[s]['type'] == 'exclude (localizer)':
         series_list[s]['type'] = 'exclude'
+        
+    series_list[s]['object_indices'] = [x for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']]
+    try:
+        series_list[s]['repetitionTimes'] = [[x for x in objects_list[x]['items'] if x['name'] == 'json'][0]['sidecar']['RepetitionTime'] for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']] 
+    except:
+        pass   
           
     
 # Convert infor to dictionary
