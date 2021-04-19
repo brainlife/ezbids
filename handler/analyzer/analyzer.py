@@ -216,7 +216,6 @@ def select_unique_data(dir_list):
                        'error': None,
                        'section_ID': 1,
                        'message': '',
-                       'protocol_index': 0,
                        'br_type': '',
                        'nifti_path': [x for x in nifti_paths_for_json if '.nii.gz' in x][0],
                        'json_path': json_list[j],
@@ -676,18 +675,24 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
         Same as above but with updated information
     '''
     
-
     objects_entities_list = []
-    series_func_list = []
-    anat_SDs_image_types = [[x['br_type'],x['ImageType']] for x in subject_protocol]
-    anat_SDs_image_types = [x for x in anat_SDs_image_types if 'anat' in x[0].split('/')]
+    section_ID = 0
     
     for p in range(len(subject_protocol)):
+        
+        # Update section_ID information
         if p == 0:
-            protocol_index = 0
+            section_ID += 1
+            subject_protocol[p]['section_ID'] = section_ID
+        
+        elif any(x in subject_protocol[p]['SeriesDescription'] for x in ['localizer','scout']) and not any(x in subject_protocol[p-1]['SeriesDescription'] for x in ['localizer','scout']):
+            section_ID += 1
+            subject_protocol[p]['section_ID'] = section_ID
+        else:
+            subject_protocol[p]['section_ID'] = section_ID
             
-        subject_protocol[p]['protocol_index'] = protocol_index
-        protocol_index += 1
+        
+                
         subject_protocol[p]['headers'] = str(nib.load(subject_protocol[p]['nifti_path']).header).splitlines()[1:]
                 
         image = nib.load(subject_protocol[p]['nifti_path'])
@@ -726,8 +731,6 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
         subject_protocol[p]['error'] = series_list[index]['error']
         subject_protocol[p]['subject'] = subjects[s]
 
-
-                    
         objects_entities_list.append(objects_entities)
         
                             
@@ -825,7 +828,7 @@ dir_list = pd.read_csv('list', header=None, sep='\n')
 
 # Determine variables data_list, data_list_unique_series, subjectIDs_info, and acquisition_dates
 data_list, data_list_unique_series, subjectIDs_info, acquisition_dates = select_unique_data(dir_list)
-    
+
 # Determine series-level info
 series_list = identify_series_info(data_list_unique_series)
 
@@ -859,25 +862,20 @@ for s in range(len(acquisition_dates)):
     
     # Get initial subject_protocol list from subjectsetting by subject/sessions
     subject_protocol = [x for x in data_list if x['subject'] == acquisition_dates[s]['subject'] and x['session'] == acquisition_dates[s]['session']]
-    
+
     # Update subject_protocol based on object-level checks
     subject_protocol, objects_entities_list = modify_objects_info(subject_protocol, series_list, series_seriesID_list)
-      
+    
     # Build objects_list
     objects_list = build_objects_list(subject_protocol, objects_entities_list)
     
     total_objects_indices += len(subject_protocol)
     
-# Extract values to plot for users
+# Rename ezBIDS localizer designators to "exclude"
 for s in range(len(series_list)):
     if series_list[s]['type'] == 'exclude (localizer)':
         series_list[s]['type'] = 'exclude'
-    
-    series_list[s]['object_indices'] = [x for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']]
-    try:
-        series_list[s]['repetitionTimes'] = [[x for x in objects_list[x]['items'] if x['name'] == 'json'][0]['sidecar']['RepetitionTime'] for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']] 
-    except:
-        pass        
+          
     
 # Convert infor to dictionary
 ezBIDS = {"subjects": subjectIDs_info,
