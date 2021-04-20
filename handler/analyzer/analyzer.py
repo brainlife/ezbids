@@ -339,6 +339,7 @@ def identify_series_info(data_list_unique_series):
         image_type = data_list_unique_series[i]['ImageType']
         EchoTime = data_list_unique_series[i]['EchoTime']
         TR = data_list_unique_series[i]['RepetitionTime']
+        
         if 'SequenceName' in data_list_unique_series[i]['sidecar']:
             SequenceName = data_list_unique_series[i]['sidecar']['SequenceName']
         elif 'ScanningSequence' in data_list_unique_series[i]['sidecar']:
@@ -413,6 +414,7 @@ def identify_series_info(data_list_unique_series):
         SD = re.sub('[^A-Za-z0-9]+', '', SD).lower()
         
         # # #  Determine DataTypes and ModalityLabels # # # # # # # 
+        
         # Localizers or other non-BIDS compatible acquisitions
         if any(x in SD for x in ['localizer','scout']):
             data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
@@ -421,7 +423,7 @@ def identify_series_info(data_list_unique_series):
             
         # Arterial Spin Labeling (ASL)
         elif any(x in SD for x in ['asl']):
-            data_list_unique_series[i]['br_type'] = True
+            data_list_unique_series[i]['br_type'] = 'exclude'
             data_list_unique_series[i]['DataType'] = 'asl'
             data_list_unique_series[i]['ModalityLabel'] = 'asl'
             data_list_unique_series[i]['error'] = 'Acqusition appears to be ASL, which is currently not supported by ezBIDS at this time, but will be in the future'
@@ -430,7 +432,7 @@ def identify_series_info(data_list_unique_series):
         
         # Angiography
         elif any(x in SD for x in ['angio']):
-            data_list_unique_series[i]['br_type'] = True
+            data_list_unique_series[i]['br_type'] = 'exclude'
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'angio'
             data_list_unique_series[i]['error'] = 'Acqusition appears to be an Angiography acquisition, which is currently not supported by ezBIDS at this time, but will be in the future'
@@ -518,21 +520,26 @@ def identify_series_info(data_list_unique_series):
         
         # Functional bold and phase
         elif any(x in SD for x in ['bold','func','fmri','epi','mri','task','rest']) and 'sbref' not in SD:
-            data_list_unique_series[i]['DataType'] = 'func'
-            if any(x in SD for x in ['rest','rsfmri','fcmri']):
-                series_entities['task'] = 'rest'
-                data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
-            if 'MOSAIC' and 'PHASE' in data_list_unique_series[i]['ImageType']:
-                data_list_unique_series[i]['ModalityLabel'] = 'phase'
-                data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/phase because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"), and "MOSAIC" and "PHASE" are in the ImageType field of the metadata. Please modify if incorrect'
+            if data_list_unique_series[i]['NumVolumes'] < 50: #ezBIDS uses 50 volumes for exclusion cutoff
+                data_list_unique_series[i]['br_type'] = 'exclude'
+                data_list_unique_series[i]['error'] = 'Acquisition appears to be func/bold; however, there are < 50 volumes, suggesting a failure/restart, or the acquisition has been misidentified. Please modify if incorrect'
+                data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
             else:
-                data_list_unique_series[i]['ModalityLabel'] = 'bold'
+                data_list_unique_series[i]['DataType'] = 'func'
+                if any(x in SD for x in ['rest','rsfmri','fcmri']):
+                    series_entities['task'] = 'rest'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
+                if 'MOSAIC' and 'PHASE' in data_list_unique_series[i]['ImageType']:
+                    data_list_unique_series[i]['ModalityLabel'] = 'phase'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/phase because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"), and "MOSAIC" and "PHASE" are in the ImageType field of the metadata. Please modify if incorrect'
+                else:
+                    data_list_unique_series[i]['ModalityLabel'] = 'bold'
+                    if data_list_unique_series[i]['EchoNumber']:
+                        series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
+                        data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
                 if data_list_unique_series[i]['EchoNumber']:
                     series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
                     data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
-            if data_list_unique_series[i]['EchoNumber']:
-                series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
-                data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
 
         # Functional single band reference (sbref)
         elif 'sbref' in SD:
@@ -576,7 +583,6 @@ def identify_series_info(data_list_unique_series):
         elif any(x in SD for x in ['t1w','tfl3d','mprage','spgr','tflmgh']):
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'T1w'
-            #  if data_list_unique_series[i]['EchoNumber']:
             if 'multiecho' in SD or 'echo' in SD:
                 if 'MEAN' not in image_type:
                     series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
@@ -589,11 +595,11 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/FLAIR because "flair" or "t2spacedafl" is in the SeriesDescription. Please modify if incorrect'
 
         # T2w
-        elif 't2w' in SD:
+        elif any (x in SD for x in ['t2w','t2']) and data_list_unique_series[i]['EchoTime'] > 100: #T2w acquisitions typically have EchoTime > 100ms
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'T2w'
-            data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T2w because "t2w" is in the SeriesDescription. Please modify if incorrect'
-            
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T2w because "t2w" or "t2" is in the SeriesDescription and EchoTime > 100ms. Please modify if incorrect'
+        
         # Can't discern from SeriesDescription, try using ndim and number of volumes to see if this is a func/bold
         else:
             test = nib.load(data_list_unique_series[i]['nifti_path'])
