@@ -200,6 +200,7 @@ export default {
                 lib.funcQA(this.$root);
                 lib.fmapQA(this.$root);
                 lib.setRun(this.$root);
+                lib.updateErrors(this.$root);
                 lib.setIntendedFor(this.$root);
 
                 this.$root.objects.forEach(this.validate);

@@ -218,6 +218,28 @@ exports.fmapQA = $root=>{
     }     
 }
 
+
+exports.updateErrors = $root =>{
+    // Series that have been un-excluded at Series mapping have warning/error messages
+    // that need to be removed, since user is aware and wants the acquisition(s) anyway,
+    // or the identification was incorrect to begin with
+
+    for (const subject in $root.subs) {
+        
+        const sessions = $root.subs[subject].sess
+        for (const session in sessions) {
+
+            let allObjects = sessions[session].objects
+
+            allObjects.forEach(obj=>{
+                if (!obj.exclude) {
+                    obj.analysisResults.errors = []
+                }
+            });
+        }
+    }
+}
+
 exports.setRun = $root=>{
 	// Set run label
 

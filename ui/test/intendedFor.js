@@ -8,5 +8,6 @@ const $root = require('./openscience.json');
 lib.funcQA($root);
 lib.fmapQA($root); // fmap sanity check
 lib.setRun($root);
+lib.updateErrors($root);
 lib.setIntendedFor($root); // set fmap IntendedFor fields
 
