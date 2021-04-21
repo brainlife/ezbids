@@ -739,15 +739,15 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
         
         # Make items list (part of objects list)
         items = []
-        for item in subject_protocol[i]['paths']:
+        for item in subject_protocol[p]['paths']:
             if '.bval' in item:
                 items.append({'path':item, 'name':'bval'})
             elif '.bvec' in item:
                 items.append({'path':item, 'name':'bvec'})
             elif '.json' in item:
-                items.append({'path':item, 'name':'json', 'sidecar':subject_protocol[i]['sidecar']})
+                items.append({'path':item, 'name':'json', 'sidecar':subject_protocol[p]['sidecar']})
             elif '.nii.gz' in item:
-                items.append({'path':item, 'name':'nii.gz', 'headers':subject_protocol[i]['headers']})
+                items.append({'path':item, 'name':'nii.gz', 'headers':subject_protocol[p]['headers']})
 
         
         # Remove identifying information from sidecars
