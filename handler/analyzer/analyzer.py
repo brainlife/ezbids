@@ -679,8 +679,9 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
         Same as above but with updated information
     '''
     
-    objects_entities_list = []
+    # objects_entities_list = []
     section_ID = 0
+    objects_list = []
     
     for p in range(len(subject_protocol)):
         
@@ -696,12 +697,11 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
             subject_protocol[p]['section_ID'] = section_ID
             
         
-                
         subject_protocol[p]['headers'] = str(nib.load(subject_protocol[p]['nifti_path']).header).splitlines()[1:]
                 
         image = nib.load(subject_protocol[p]['nifti_path'])
         object_img_array = image.dataobj
-        if object_img_array.dtype not in ['<i2', '<u2']: # Weird issue where data array is RGB instead on intger
+        if object_img_array.dtype not in ['<i2', '<u2']: # Weird issue where data array is RGB instead of intger
             subject_protocol[p]['exclude'] = True
             subject_protocol[p]['error'] = 'The data array is for this acquisition is improper, likely suggesting some issue with the corresponding DICOMS'
             subject_protocol[p]['message'] = subject_protocol[p]['error']
@@ -727,56 +727,16 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
 
             
         index = series_seriesID_list.index(subject_protocol[p]['series_id'])
-        objects_entities = {'subject': '', 'session': '', 'run': '', 'task': '', 'direction': '', 'acquisition': '', 'ceagent': '', 'echo': '', 'fa': '', 'inversion': '', 'part': ''}
+        # objects_entities = {'subject': '', 'session': '', 'run': '', 'task': '', 'direction': '', 'acquisition': '', 'ceagent': '', 'echo': '', 'fa': '', 'inversion': '', 'part': ''}
         
-        subject_protocol[p]['DataType'] = data_list_unique_series[index]['DataType']
-        subject_protocol[p]['ModalityLabel'] = data_list_unique_series[index]['ModalityLabel']
-        subject_protocol[p]['br_type'] = series_list[index]['type']
-        subject_protocol[p]['error'] = series_list[index]['error']
-        subject_protocol[p]['subject'] = subjects[s]
+        # subject_protocol[p]['DataType'] = data_list_unique_series[index]['DataType']
+        # subject_protocol[p]['ModalityLabel'] = data_list_unique_series[index]['ModalityLabel']
+        # subject_protocol[p]['br_type'] = series_list[index]['type']
+        # subject_protocol[p]['error'] = series_list[index]['error']
+        # subject_protocol[p]['subject'] = subjects[s]
 
-        objects_entities_list.append(objects_entities)
+        # objects_entities_list.append(objects_entities)
         
-                            
-    return subject_protocol, objects_entities_list
-    
-
-def build_objects_list(subject_protocol, objects_entities_list):
-    '''
-    Create ezBIDS.json file, which provides all information used by the UI
-    to display to users
-    
-    Parameters
-    ----------
-    subject_protocol: list
-        List of dictionaries, containing pertinent information needed 
-        for the UI side of ezBIDS
-        
-    objects_entities_list: list
-        List of dictionaries containing additional information for files names,
-        such as "acq","run","dir","ce", etc
-    
-    Returns
-    ----------
-    objects_list: list
-        List of dictionaries containing info for the objects-level of ezBIDS.json
-    '''
-    for i in range(len(subject_protocol)):
-        
-        # Provide log output for acquisitions not deemed appropriate for BIDS conversion
-        if subject_protocol[i]['exclude'] == True:
-            print('')
-            print('* {} (sn-{}) not recommended for BIDS conversion: {}'.format(subject_protocol[i]['SeriesDescription'], subject_protocol[i]['SeriesNumber'], subject_protocol[i]['error']))
-        
-        # Remove identifying information from sidecars
-        remove_fields = ['SeriesInstanceUID', 'StudyInstanceUID', 
-                         'ReferringPhysicianName', 'StudyID', 'PatientName', 
-                         'PatientID', 'AccessionNumber', 'PatientBirthDate', 
-                         'PatientSex', 'PatientWeight']
-        for remove in remove_fields:
-            if remove in subject_protocol[i]['sidecar']:
-                del subject_protocol[i]['sidecar'][remove]
-                
         # Make items list (part of objects list)
         items = []
         for item in subject_protocol[i]['paths']:
@@ -789,34 +749,81 @@ def build_objects_list(subject_protocol, objects_entities_list):
             elif '.nii.gz' in item:
                 items.append({'path':item, 'name':'nii.gz', 'headers':subject_protocol[i]['headers']})
 
-        if subject_protocol[i]['error']:
-            subject_protocol[i]['error'] = [subject_protocol[i]['error']]
-            
-        if subject_protocol[i]['br_type'] == 'exclude (localizer)':
-            subject_protocol[i]['br_type'] = 'exclude'
-                    
+        
+        # Remove identifying information from sidecars
+        remove_fields = ['SeriesInstanceUID', 'StudyInstanceUID', 
+                         'ReferringPhysicianName', 'StudyID', 'PatientName', 
+                         'PatientID', 'AccessionNumber', 'PatientBirthDate', 
+                         'PatientSex', 'PatientWeight']
+        
+        for remove in remove_fields:
+            if remove in subject_protocol[i]['sidecar']:
+                del subject_protocol[i]['sidecar'][remove]
+                
+        # Provide log output for acquisitions not deemed appropriate for BIDS conversion
+        if subject_protocol[p]['exclude'] == True:
+            print('')
+            print('* {} (sn-{}) not recommended for BIDS conversion: {}'.format(subject_protocol[p]['SeriesDescription'], subject_protocol[p]['SeriesNumber'], subject_protocol[p]['error']))
+        
         # Objects-level info for ezBIDS.json
-        objects_info = {"exclude": subject_protocol[i]['exclude'],
-                "series_id": subject_protocol[i]['series_id'],
-                "PatientName": subject_protocol[i]['PatientName'],
-                "PatientID": subject_protocol[i]['PatientID'],
-                "PatientBirthDate": subject_protocol[i]['PatientBirthDate'],
-                "AcquisitionDate": subject_protocol[i]['AcquisitionDate'],
-                'SeriesNumber': subject_protocol[i]['sidecar']['SeriesNumber'],
-                "pngPath": '{}.png'.format(subject_protocol[i]['nifti_path'][:-7]),
-                "entities": objects_entities_list[i],
+        objects_info = {"series_id": subject_protocol[p]['series_id'],
+                "PatientName": subject_protocol[p]['PatientName'],
+                "PatientID": subject_protocol[p]['PatientID'],
+                "PatientBirthDate": subject_protocol[p]['PatientBirthDate'],
+                "AcquisitionDate": subject_protocol[p]['AcquisitionDate'],
+                'SeriesNumber': subject_protocol[p]['sidecar']['SeriesNumber'],
+                "pngPath": '{}.png'.format(subject_protocol[p]['nifti_path'][:-7]),
                 "items": items,
                 "analysisResults": {
-                    "NumVolumes": subject_protocol[i]['NumVolumes'],
-                    "errors": subject_protocol[i]['error'],
-                    "filesize": subject_protocol[i]['filesize'],
-                    "section_ID": subject_protocol[i]['section_ID']
+                    "NumVolumes": subject_protocol[p]['NumVolumes'],
+                    "errors": subject_protocol[p]['error'],
+                    "filesize": subject_protocol[p]['filesize'],
+                    "section_ID": subject_protocol[p]['section_ID']
                 },
-                "paths": subject_protocol[i]['paths']
+                "paths": subject_protocol[p]['paths']
               }
         objects_list.append(objects_info)
+                            
+    # return subject_protocol, objects_entities_list
+    return subject_protocol, objects_list
 
-    return objects_list
+    
+
+# def build_objects_list(subject_protocol, objects_entities_list):
+#     '''
+#     Create ezBIDS.json file, which provides all information used by the UI
+#     to display to users
+    
+#     Parameters
+#     ----------
+#     subject_protocol: list
+#         List of dictionaries, containing pertinent information needed 
+#         for the UI side of ezBIDS
+        
+#     objects_entities_list: list
+#         List of dictionaries containing additional information for files names,
+#         such as "acq","run","dir","ce", etc
+    
+#     Returns
+#     ----------
+#     objects_list: list
+#         List of dictionaries containing info for the objects-level of ezBIDS.json
+#     '''
+#     for i in range(len(subject_protocol)):
+        
+
+
+                
+
+#         # if subject_protocol[i]['error']:
+#         #     subject_protocol[i]['error'] = [subject_protocol[i]['error']]
+            
+#         # if subject_protocol[i]['br_type'] == 'exclude (localizer)':
+#         #     subject_protocol[i]['br_type'] = 'exclude'
+                    
+        
+
+#     return objects_list
     
 
 ##################### Begin ##################### 
@@ -840,8 +847,8 @@ participantsColumn = {"sex": {"LongName": "gender", "Description": "generic gend
                       "age": {"LongName": "age", "Units": "years"}}
     
 # Define a few variables that apply across the entire objects level
-objects_list = []
-total_objects_indices = 0
+# objects_list = []
+# total_objects_indices = 0
 subjects = [acquisition_dates[x]['subject'] for x in range(len(acquisition_dates))]
 session = [acquisition_dates[x]['session'] for x in range(len(acquisition_dates))]
 series_seriesID_list = [series_list[x]['series_id'] for x in range(len(series_list))]
@@ -867,12 +874,12 @@ for s in range(len(acquisition_dates)):
     subject_protocol = [x for x in data_list if x['subject'] == acquisition_dates[s]['subject'] and x['session'] == acquisition_dates[s]['session']]
 
     # Update subject_protocol based on object-level checks
-    subject_protocol, objects_entities_list = modify_objects_info(subject_protocol, series_list, series_seriesID_list)
+    subject_protocol, objects_list = modify_objects_info(subject_protocol, series_list, series_seriesID_list)
     
     # Build objects_list
-    objects_list = build_objects_list(subject_protocol, objects_entities_list)
+    # objects_list = build_objects_list(subject_protocol, objects_entities_list)
     
-    total_objects_indices += len(subject_protocol)
+    # total_objects_indices += len(subject_protocol)
     
 # Rename ezBIDS localizer designators to "exclude"
 for s in range(len(series_list)):
