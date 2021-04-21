@@ -625,11 +625,10 @@ def identify_series_info(data_list_unique_series):
         
         # Set non-normalized anatomicals to exclude
         if 'anat' in data_list_unique_series[i]['br_type'] and not any(x in ['DERIVED','NORM'] for x in data_list_unique_series[i]['ImageType']):
-            if '7deg' not in SD:
-                data_list_unique_series[i]['br_type'] = 'exclude'
-                data_list_unique_series[i]['error'] = 'Acquisition is a poor resolution {} (non-normalized); Please check to see if this {} acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'.format(data_list_unique_series[i]['br_type'], data_list_unique_series[i]['br_type'])
-                data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
-        
+            data_list_unique_series[i]['br_type'] = 'exclude'
+            data_list_unique_series[i]['error'] = 'Acquisition is a poor resolution {} (non-normalized); Please check to see if this {} acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'.format(data_list_unique_series[i]['br_type'], data_list_unique_series[i]['br_type'])
+            data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
+    
         # Combine info above into dictionary, which will be displayed to user through the UI
         series_info = {"SeriesDescription": data_list_unique_series[i]['SeriesDescription'],
                        "SeriesNumber": data_list_unique_series[i]['SeriesNumber'],
@@ -642,7 +641,6 @@ def identify_series_info(data_list_unique_series):
                        "forType": data_list_unique_series[i]['forType'],
                        "error": data_list_unique_series[i]['error'],
                        "message": data_list_unique_series[i]['message'],
-                       "repetitionTimes": [],
                        "object_indices": []
                         }
         series_list.append(series_info)
@@ -806,7 +804,6 @@ def build_objects_list(subject_protocol, objects_entities_list):
                 "AcquisitionDate": subject_protocol[i]['AcquisitionDate'],
                 'SeriesNumber': subject_protocol[i]['sidecar']['SeriesNumber'],
                 "pngPath": '{}.png'.format(subject_protocol[i]['nifti_path'][:-7]),
-                "forType": subject_protocol[i]['forType'],
                 "entities": objects_entities_list[i],
                 "items": items,
                 "analysisResults": {
@@ -883,10 +880,10 @@ for s in range(len(series_list)):
         series_list[s]['type'] = 'exclude'
         
     series_list[s]['object_indices'] = [x for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']]
-    try:
-        series_list[s]['repetitionTimes'] = [[x for x in objects_list[x]['items'] if x['name'] == 'json'][0]['sidecar']['RepetitionTime'] for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']] 
-    except:
-        pass   
+    # try:
+    #     series_list[s]['repetitionTimes'] = [[x for x in objects_list[x]['items'] if x['name'] == 'json'][0]['sidecar']['RepetitionTime'] for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']] 
+    # except:
+    #     pass   
           
     
 # Convert infor to dictionary
