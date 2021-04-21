@@ -218,30 +218,8 @@ exports.fmapQA = $root=>{
     }     
 }
 
-
-exports.updateErrors = $root =>{
-    // Series that have been un-excluded at Series mapping have warning/error messages
-    // that need to be removed, since user is aware and wants the acquisition(s) anyway,
-    // or the identification was incorrect to begin with
-
-    for (const subject in $root.subs) {
-        
-        const sessions = $root.subs[subject].sess
-        for (const session in sessions) {
-
-            let allObjects = sessions[session].objects
-
-            allObjects.forEach(obj=>{
-                if (!obj.exclude) {
-                    obj.analysisResults.errors = []
-                }
-            });
-        }
-    }
-}
-
 exports.setRun = $root=>{
-	// Set run label
+	// Set run label if not already specified at Series level
 
 	// Loop through subjects
     for (const subject in $root.subs) {
@@ -268,6 +246,27 @@ exports.setRun = $root=>{
     }
 }
 
+exports.updateErrors = $root =>{
+    // Series that have been un-excluded at Series mapping have warning/error messages
+    // that need to be removed, since user is aware and wants the acquisition(s) anyway,
+    // or the identification was incorrect to begin with
+
+    for (const subject in $root.subs) {
+        
+        const sessions = $root.subs[subject].sess
+        for (const session in sessions) {
+
+            let allObjects = sessions[session].objects
+
+            allObjects.forEach(obj=>{
+                if (!obj.exclude) {
+                    obj.analysisResults.errors = []
+                }
+            });
+        }
+    }
+}
+
 exports.setIntendedFor = $root=>{
 	// Apply fmap intendedFor mapping
 
@@ -289,6 +288,8 @@ exports.setIntendedFor = $root=>{
                 let funcObjs = section.filter(e=>e._type == 'func/bold' && !e._exclude)
                 let dwiObjs = section.filter(e=>e._type == 'dwi/dwi' && !e._exclude)
                 let fmapFuncObjs = section.filter(e=>e._type.startsWith('fmap') && e.forType == 'func/bold' && !e._exclude)
+                console.log(fmapFuncObjs)
+                console.log(session, s)
                 let fmapDwiObjs = section.filter(e=>e._type.startsWith('fmap') && e.forType == 'dwi/dwi' && !e._exclude)
 
                 // Assign IntendedFor information 
