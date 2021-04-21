@@ -310,6 +310,8 @@ invert:
 
         //apply all parent entity mappings and store them under _entities
         mapObject(o) {
+            //console.log("called! mapObject")
+            //console.trace();
             o._exclude = o.exclude;
 
             const series = this.$root.findSeries(o);
@@ -468,7 +470,7 @@ invert:
                     });
                 });
 
-                this.series.sort((a,b)=>a.SeriesNumber - b.SeriesNumber);
+                //this.series.sort((a,b)=>a.SeriesNumber - b.SeriesNumber);
             }).catch(err=>{
                 console.error("failed to load");
                 console.error(err);
@@ -542,6 +544,28 @@ invert:
                     if(cb) cb(status);
                 }
             }); 
+        },
+
+        dump() {
+            var element = document.createElement('a');
+            const state = {
+                datasetDescription: this.datasetDescription,
+                readme: this.readme,
+                participantsColumn: this.participantsColumn,
+
+                subjects: this.subjects,
+                series: this.series,
+                objects: this.objects,
+
+                subs: this.subs,
+            };
+
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(JSON.stringify(state, null, 4)));
+            element.setAttribute('download', "root.json");
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
         },
 
     },

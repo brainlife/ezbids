@@ -3,15 +3,17 @@
     <div class="series-list">
         <h4 style="padding-top: 20px;">Series Description / Datatype Mappings</h4>
         <div v-for="s in $root.series" :key="s.series_id" class="clickable" :class="{'selected': ss === s}" @click="ss = s" style="padding: 2px;">
-            <el-tag type="info" size="mini" title="SeriesNumber">Series# {{s.SeriesNumber}}</el-tag>
+            <!--
+            <el-tag type="info" size="mini" title="SeriesNumber"># {{s.SeriesNumber}}</el-tag>
             &nbsp;
-            <el-tag type="plain" size="mini" title="Number of objects">{{s.object_indices.length}} obj</el-tag>
-            &nbsp;
+            -->
             <datatype :type="s.type" :series_id="s.series_id" :entities="s.entities" :class="{excluded: s.type == 'exclude'}"/>
-            &nbsp;
+            <!--
+            <el-tag type="plain" size="mini" title="Number of objects">{{s.object_indices.length}} obj</el-tag>
+            -->
             <small style="opacity: 0.7;">({{s.SeriesDescription}})</small>
             &nbsp;
-            &nbsp;
+            <el-badge type="info" size="mini" title="Number of objects" :value="s.object_indices.length+' obj'"/>
             &nbsp;
             <el-badge v-if="s.validationErrors.length > 0" type="danger" :value="s.validationErrors.length" style="margin-left: 5px;">
                 <small/>
@@ -71,8 +73,11 @@
                     <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in ss.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
                 </div>
                 <el-form-item label="Common Metadata">
+
                     <small>All objects under this series contain the following common metadata</small>
                     <p style="margin-top: 0; margin-bottom: 0;"> 
+                        SeriesDescription: {{ss.SeriesDescription}}
+                        <br>
                         <el-tag type="info" size="mini"><small>EchoTime: {{ss.EchoTime}}</small></el-tag>&nbsp;
                         <el-tag type="info" size="mini"><small>ImageType: {{ss.ImageType}}</small></el-tag>&nbsp;
                         <el-tag type="info" size="mini"><small>MultibandAccelerationFactor: {{ss.MultibandAccelerationFactor}}</small></el-tag>&nbsp;

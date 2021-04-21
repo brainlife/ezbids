@@ -1,5 +1,5 @@
 <template>
-<div class="datatype" style="display: inline-block;">
+<div class="datatype" style="display: inline;">
     <span :style="{'background-color': color}" class="bull">&nbsp;</span> {{type}}
     <el-tag v-for="(v,k) in sessionEntities" :key="k" size="mini" effect="plain" type="info" style="margin-right: 3px;"><small>{{k}}-</small><b>{{v}}</b></el-tag>
 </div>

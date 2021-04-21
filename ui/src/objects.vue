@@ -27,9 +27,7 @@
                         <span style="float: right; top: -7px; position: relative; background-color: white; font-size: 70%; color: #999; padding: 0 10px; margin-right: 10px;">section {{sectionId}}</span>
                     </div>
                     <div v-for="o in section" :key="o.idx" class="clickable hierarchy-item" :class="{selected: so === o, exclude: isExcluded(o)}" @click="select(o, o_ses)">
-                        <el-tag type="info" size="mini">Series# {{o.SeriesNumber}}</el-tag>
-                        &nbsp;
-                        <datatype :type="o._type" :series_id="o.series_id" :entities="o.entities"/> 
+                        <el-tag type="info" size="mini">sn {{o.SeriesNumber}}</el-tag>&nbsp;<datatype :type="o._type" :series_id="o.series_id" :entities="o.entities"/> 
                         <small v-if="o._type == 'exclude'">&nbsp;({{o._SeriesDescription}})</small>
                         
                         <span v-if="!isExcluded(o)">
@@ -165,7 +163,8 @@
     <el-form>
         <el-form-item class="page-action">
             <el-button @click="back">Back</el-button>
-            <el-button type="primary" @click="next" style="float: right;">Next</el-button>
+            <el-button type="primary" @click="next" style="float: right;" :disabled="!!totalIssues">Next </el-button>
+            <span style="padding: 0 10px; float: right;" v-if="totalIssues"><b>{{totalIssues}}</b> issues remaining</span>
         </el-form-item>
     </el-form>
 </div>
@@ -205,6 +204,17 @@ export default {
 
                 this.$root.objects.forEach(this.validate);
             }
+        },
+    },
+
+    computed: {
+        totalIssues() {
+            let count = 0;
+            this.$root.objects.forEach(o=>{
+                if(this.isExcluded(o)) return;
+                count += o.validationErrors.length;
+            });
+            return count;
         },
     },
     
@@ -351,15 +361,16 @@ export default {
             this.$root.objects.forEach(this.validate);
 
             let valid = true;
-            this.$root.objects.forEach(o=>{
-                if(this.isExcluded(o)) return;
-                if(o.validationErrors.length > 0) valid = false;
-            });
+            /*
+            if(this.totalIssues) {
+                valid = false;
+            }
+            */
 
             //make sure there is at least 1 object to output
             let one = this.$root.objects.find(o=>!o._exclude);
             if(!one) {
-                alert('All objects are excluded. There are no objects to output.');
+                alert('All objects are excluded. Please update so that there is at least 1 object to output to BIDS');
                 return false;
             }
 

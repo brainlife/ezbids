@@ -118,19 +118,15 @@
 
         <br>
         <el-collapse>
-            <el-collapse-item title="Debug Logs">
+            <el-collapse-item title="Debug">
                 <ul style="list-style: none; padding-left: 0;">
                     <li><a :href="$root.apihost+'/download/'+$root.session._id+'/preprocess.log'">preprocess.log</a></li>
                     <li><a :href="$root.apihost+'/download/'+$root.session._id+'/preprocess.err'">preprocess.err</a></li>
                     <li><a :href="$root.apihost+'/download/'+$root.session._id+'/list'">list</a></li>
                     <li><a :href="$root.apihost+'/download/'+$root.session._id+'/ezBIDS.json'">ezBIDS.json</a></li>
                 </ul>
+                <el-button type="secondary" @click="this.$root.dump" size="mini">Dump state</el-button>
             </el-collapse-item>
-            <!--
-            <el-collapse-item title="$root" v-if="debug">
-                <pre>{{JSON.stringify($root.subs, null, 4)}}</pre>
-            </el-collapse-item>
-            -->
         </el-collapse>
         <br>
         <br>
