@@ -757,8 +757,8 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
                          'PatientSex', 'PatientWeight']
         
         for remove in remove_fields:
-            if remove in subject_protocol[i]['sidecar']:
-                del subject_protocol[i]['sidecar'][remove]
+            if remove in subject_protocol[p]['sidecar']:
+                del subject_protocol[p]['sidecar'][remove]
                 
         # Provide log output for acquisitions not deemed appropriate for BIDS conversion
         if subject_protocol[p]['exclude'] == True:
