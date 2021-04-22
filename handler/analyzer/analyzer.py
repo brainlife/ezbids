@@ -23,7 +23,8 @@ from math import floor
 warnings.filterwarnings("ignore")
 os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
 
-data_dir = sys.argv[1]
+# data_dir = sys.argv[1]
+data_dir = '/media/data/ezbids/dicoms/WML/session_test'
 os.chdir(data_dir)
 
 
@@ -681,7 +682,7 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
     
     # objects_entities_list = []
     section_ID = 0
-    objects_list = []
+    objects_data = []
     
     for p in range(len(subject_protocol)):
         
@@ -729,14 +730,6 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
         index = series_seriesID_list.index(subject_protocol[p]['series_id'])
         objects_entities = {'subject': '', 'session': '', 'run': '', 'task': '', 'direction': '', 'acquisition': '', 'ceagent': '', 'echo': '', 'fa': '', 'inversion': '', 'part': ''}
         
-        # subject_protocol[p]['DataType'] = data_list_unique_series[index]['DataType']
-        # subject_protocol[p]['ModalityLabel'] = data_list_unique_series[index]['ModalityLabel']
-        # subject_protocol[p]['br_type'] = series_list[index]['type']
-        # subject_protocol[p]['error'] = series_list[index]['error']
-        # subject_protocol[p]['subject'] = subjects[s]
-
-        # objects_entities_list.append(objects_entities)
-        
         # Make items list (part of objects list)
         items = []
         for item in subject_protocol[p]['paths']:
@@ -783,48 +776,9 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
                 },
                 "paths": subject_protocol[p]['paths']
               }
-        objects_list.append(objects_info)
+        objects_data.append(objects_info)
                             
-    # return subject_protocol, objects_entities_list
-    return subject_protocol, objects_list
-
-    
-
-# def build_objects_list(subject_protocol, objects_entities_list):
-#     '''
-#     Create ezBIDS.json file, which provides all information used by the UI
-#     to display to users
-    
-#     Parameters
-#     ----------
-#     subject_protocol: list
-#         List of dictionaries, containing pertinent information needed 
-#         for the UI side of ezBIDS
-        
-#     objects_entities_list: list
-#         List of dictionaries containing additional information for files names,
-#         such as "acq","run","dir","ce", etc
-    
-#     Returns
-#     ----------
-#     objects_list: list
-#         List of dictionaries containing info for the objects-level of ezBIDS.json
-#     '''
-#     for i in range(len(subject_protocol)):
-        
-
-
-                
-
-#         # if subject_protocol[i]['error']:
-#         #     subject_protocol[i]['error'] = [subject_protocol[i]['error']]
-            
-#         # if subject_protocol[i]['br_type'] == 'exclude (localizer)':
-#         #     subject_protocol[i]['br_type'] = 'exclude'
-                    
-        
-
-#     return objects_list
+    return subject_protocol, objects_data
     
 
 ##################### Begin ##################### 
@@ -848,7 +802,7 @@ participantsColumn = {"sex": {"LongName": "gender", "Description": "generic gend
                       "age": {"LongName": "age", "Units": "years"}}
     
 # Define a few variables that apply across the entire objects level
-# objects_list = []
+objects_list = []
 # total_objects_indices = 0
 subjects = [acquisition_dates[x]['subject'] for x in range(len(acquisition_dates))]
 session = [acquisition_dates[x]['session'] for x in range(len(acquisition_dates))]
@@ -875,25 +829,19 @@ for s in range(len(acquisition_dates)):
     subject_protocol = [x for x in data_list if x['subject'] == acquisition_dates[s]['subject'] and x['session'] == acquisition_dates[s]['session']]
 
     # Update subject_protocol based on object-level checks
-    subject_protocol, objects_list = modify_objects_info(subject_protocol, series_list, series_seriesID_list)
+    subject_protocol, objects_data = modify_objects_info(subject_protocol, series_list, series_seriesID_list)
     
-    # Build objects_list
-    # objects_list = build_objects_list(subject_protocol, objects_entities_list)
+    objects_list.append(objects_data)    
     
-    # total_objects_indices += len(subject_protocol)
-    
+objects_list = [x for y in objects_list for x in y]
+
 # Rename ezBIDS localizer designators to "exclude"
 for s in range(len(series_list)):
     if series_list[s]['type'] == 'exclude (localizer)':
         series_list[s]['type'] = 'exclude'
         
     series_list[s]['object_indices'] = [x for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']]
-    # try:
-    #     series_list[s]['repetitionTimes'] = [[x for x in objects_list[x]['items'] if x['name'] == 'json'][0]['sidecar']['RepetitionTime'] for x in range(len(objects_list)) if objects_list[x]['series_id'] == series_list[s]['series_id']] 
-    # except:
-    #     pass   
-          
-    
+
 # Convert infor to dictionary
 ezBIDS = {"subjects": subjectIDs_info,
           "participantsColumn": participantsColumn,
