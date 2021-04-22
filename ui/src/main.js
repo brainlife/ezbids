@@ -317,6 +317,7 @@ invert:
             const series = this.$root.findSeries(o);
             o._SeriesDescription = series.SeriesDescription;
             o._type = series.type;
+            o._forType = series.forType;
             if(o.type) o._type = o.type; //object level override
             
             //initialize with the proper object key ordering

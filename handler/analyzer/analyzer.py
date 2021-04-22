@@ -313,7 +313,6 @@ def select_unique_data(dir_list):
                        'ModalityLabel': '',
                        'series_id': 0,
                        'direction': PED,
-                       'forType': '',
                        'TaskName': '',
                        "exclude": False,
                        'filesize': filesize,
