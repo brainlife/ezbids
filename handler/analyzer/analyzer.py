@@ -34,7 +34,8 @@ def correctPE(pe_direction, ornt):
     if need be. Correction occurs if the pe_direction is "xyz". Otherwise,
     no correction is necessary.
     
-    Based on https://github.com/nipreps/fmriprep/issues/2341
+    Based on https://github.com/nipreps/fmriprep/issues/2341 and original code
+    comes from Chris Markiewicz and Mathias Goncalves
 
     Parameters
     ----------
@@ -91,8 +92,9 @@ def determineDir(pe_direction, ornt):
     Takes pe_direction and image orientation to determine direction 
     required by BIDS "_dir-" label
     
-    Based on https://github.com/nipreps/fmriprep/issues/2341
-
+    Based on https://github.com/nipreps/fmriprep/issues/2341 and original code
+    comes from Chris Markiewicz and Mathias Goncalves
+    
     Parameters
     ----------
     pe_direction : string
@@ -378,9 +380,7 @@ def select_unique_data(dir_list):
     for x in range(len(data_list)):
         """
         If retro-reconstruction (RR) acquistions are found ("_RR" in SeriesDescription), 
-        they should be part of same unique series as non retro-reconstruction ones. 
-        Therefore, if RR found, use ProtocolName instead of SeriesDescription
-        as one of the 4 dicom header fields to determine unique series.
+        they should be part of same unique series as non retro-reconstruction ones.
         """
         if '_RR' in data_list[x]['SeriesDescription']:
             modified_SD = data_list[x]['SeriesDescription'].replace('_RR', '')
@@ -871,6 +871,7 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
         
         # Objects-level info for ezBIDS.json
         objects_info = {"series_id": subject_protocol[p]['series_id'],
+                "SeriesDescription": subject_protocol[p]['SeriesDescription'],
                 "PatientName": subject_protocol[p]['PatientName'],
                 "PatientID": subject_protocol[p]['PatientID'],
                 "PatientBirthDate": subject_protocol[p]['PatientBirthDate'],
