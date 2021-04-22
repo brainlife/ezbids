@@ -23,8 +23,7 @@ from math import floor
 warnings.filterwarnings("ignore")
 os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
 
-# data_dir = sys.argv[1]
-data_dir = '/media/data/ezbids/dicoms/WML/session_test'
+data_dir = sys.argv[1]
 os.chdir(data_dir)
 
 
