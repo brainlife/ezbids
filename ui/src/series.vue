@@ -76,8 +76,9 @@
 
                     <small>All objects under this series contain the following common metadata</small>
                     <p style="margin-top: 0; margin-bottom: 0;"> 
-                        SeriesDescription: {{ss.SeriesDescription}}
                         <br>
+                        <el-tag type="info" size="mini"><small>SeriesDescription: 
+                        {{ss.SeriesDescription}}</small></el-tag>&nbsp;
                         <el-tag type="info" size="mini"><small>EchoTime: {{ss.EchoTime}}</small></el-tag>&nbsp;
                         <el-tag type="info" size="mini"><small>ImageType: {{ss.ImageType}}</small></el-tag>&nbsp;
                         <el-tag type="info" size="mini"><small>MultibandAccelerationFactor: {{ss.MultibandAccelerationFactor}}</small></el-tag>&nbsp;
