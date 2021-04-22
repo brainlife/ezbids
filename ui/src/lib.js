@@ -287,8 +287,8 @@ exports.setIntendedFor = $root=>{
 
                 let funcObjs = section.filter(e=>e._type == 'func/bold' && !e._exclude)
                 let dwiObjs = section.filter(e=>e._type == 'dwi/dwi' && !e._exclude)
-                let fmapFuncObjs = section.filter(e=>e._type.startsWith('fmap') && e.forType == 'func/bold' && !e._exclude)
-                let fmapDwiObjs = section.filter(e=>e._type.startsWith('fmap') && e.forType == 'dwi/dwi' && !e._exclude)
+                let fmapFuncObjs = section.filter(e=>e._type.startsWith('fmap') && e._forType == 'func/bold' && !e._exclude)
+                let fmapDwiObjs = section.filter(e=>e._type.startsWith('fmap') && e._forType == 'dwi/dwi' && !e._exclude)
 
                 // Assign IntendedFor information 
                 fmapFuncObjs.forEach(obj=> {
