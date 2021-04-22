@@ -194,12 +194,9 @@ def select_unique_data(dir_list):
         else:
             PED = ''
         
-            
-            
         # Select SeriesNumbers
         SN = json_data['SeriesNumber']
         
-            
         # Nifti (and bval/bvec) file(s) associated with specific json file
         nifti_paths_for_json = [x for x in nifti_list if json_list[j][:-4] in x]
         nifti_paths_for_json = [x for x in nifti_paths_for_json if '.json' not in x]
@@ -372,14 +369,25 @@ def select_unique_data(dir_list):
             if data_list[j]['subject'] == acquisition_dates[i]['subject'] and data_list[j]['AcquisitionDate'] == acquisition_dates[i]['AcquisitionDate']:
                 data_list[j]['session'] = acquisition_dates[i]['session']
         
-    # Unique data is determined from four values: SeriesDescription, EchoTime, ImageType, MultibandAccelerationFactor
+    # Unique data is determined from 4 dicom header values: SeriesDescription, EchoTime, ImageType, MultibandAccelerationFactor
     # If EchoTime values differ slightly (>< 1) and other values are the same, don't give new unique series ID
     data_list_unique_series = []
     series_tuples = []
     series_id = 0      
     
     for x in range(len(data_list)):
-        unique_items = [data_list[x]['EchoTime'], data_list[x]['SeriesDescription'], data_list[x]['ImageType'], data_list[x]['MultibandAccelerationFactor'], 1]
+        """
+        If retro-reconstruction (RR) acquistions are found ("_RR" in SeriesDescription), 
+        they should be part of same unique series as non retro-reconstruction ones. 
+        Therefore, if RR found, use ProtocolName instead of SeriesDescription
+        as one of the 4 dicom header fields to determine unique series.
+        """
+        if '_RR' in data_list[x]['SeriesDescription']:
+            modified_SD = data_list[x]['SeriesDescription'].replace('_RR', '')
+            unique_items = [data_list[x]['EchoTime'], modified_SD, data_list[x]['ImageType'], data_list[x]['MultibandAccelerationFactor'], 1]
+        else:
+            unique_items = [data_list[x]['EchoTime'], data_list[x]['SeriesDescription'], data_list[x]['ImageType'], data_list[x]['MultibandAccelerationFactor'], 1]
+       
         if x == 0:
             data_list[x]['series_id'] = 0
             data_list_unique_series.append(data_list[x])
@@ -405,7 +413,6 @@ def select_unique_data(dir_list):
         else:
             common_index = [y[1:-1] for y in series_tuples].index(tuple(unique_items[1:]))
             data_list[x]['series_id'] = series_tuples[common_index][-1]
-        
         
         tup = tuple(unique_items + [series_id])
         series_tuples.append(tup)
