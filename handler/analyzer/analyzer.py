@@ -727,7 +727,7 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
 
             
         index = series_seriesID_list.index(subject_protocol[p]['series_id'])
-        # objects_entities = {'subject': '', 'session': '', 'run': '', 'task': '', 'direction': '', 'acquisition': '', 'ceagent': '', 'echo': '', 'fa': '', 'inversion': '', 'part': ''}
+        objects_entities = {'subject': '', 'session': '', 'run': '', 'task': '', 'direction': '', 'acquisition': '', 'ceagent': '', 'echo': '', 'fa': '', 'inversion': '', 'part': ''}
         
         # subject_protocol[p]['DataType'] = data_list_unique_series[index]['DataType']
         # subject_protocol[p]['ModalityLabel'] = data_list_unique_series[index]['ModalityLabel']
@@ -773,6 +773,7 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
                 "AcquisitionDate": subject_protocol[p]['AcquisitionDate'],
                 'SeriesNumber': subject_protocol[p]['sidecar']['SeriesNumber'],
                 "pngPath": '{}.png'.format(subject_protocol[p]['nifti_path'][:-7]),
+                "entities": objects_entities,
                 "items": items,
                 "analysisResults": {
                     "NumVolumes": subject_protocol[p]['NumVolumes'],
