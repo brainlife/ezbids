@@ -317,6 +317,7 @@ def select_unique_data(dir_list):
                        "exclude": False,
                        'filesize': filesize,
                        "NumVolumes": volume_count,
+                       "forType": '',
                        'error': None,
                        'section_ID': 1,
                        'message': '',
