@@ -871,7 +871,6 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
         
         # Objects-level info for ezBIDS.json
         objects_info = {"series_id": subject_protocol[p]['series_id'],
-                "SeriesDescription": subject_protocol[p]['SeriesDescription'],
                 "PatientName": subject_protocol[p]['PatientName'],
                 "PatientID": subject_protocol[p]['PatientID'],
                 "PatientBirthDate": subject_protocol[p]['PatientBirthDate'],

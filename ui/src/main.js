@@ -315,7 +315,7 @@ invert:
             o._exclude = o.exclude;
 
             const series = this.$root.findSeries(o);
-            o._SeriesDescription = series.SeriesDescription;
+            o._SeriesDescription = series.SeriesDescription.replace('_RR', "");
             o._type = series.type;
             o._forType = series.forType;
             if(o.type) o._type = o.type; //object level override
