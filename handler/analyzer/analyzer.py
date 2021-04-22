@@ -871,7 +871,6 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
                 'SeriesNumber': subject_protocol[p]['sidecar']['SeriesNumber'],
                 "pngPath": '{}.png'.format(subject_protocol[p]['nifti_path'][:-7]),
                 "entities": objects_entities,
-                "forType": '',
                 "items": items,
                 "analysisResults": {
                     "NumVolumes": subject_protocol[p]['NumVolumes'],
