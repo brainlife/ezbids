@@ -21,9 +21,8 @@ from operator import itemgetter
 from math import floor
 
 warnings.filterwarnings("ignore")
-os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
 
-# data_dir = sys.argv[1]
+data_dir = sys.argv[1]
 data_dir = '/media/data/ezbids/dicoms/dan_test'
 os.chdir(data_dir)
 
