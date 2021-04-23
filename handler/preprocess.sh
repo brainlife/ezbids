@@ -16,35 +16,37 @@ timeout 3600 ./expand.sh $root
 
 
 # Check to see if nifti/json (and bval/bvec) files are okay to use for ezBIDS
-json_files=$(find $root -name "*.json")
-nifti_files=$(find $root -name "*.nii*")
-dwi_files=$(find $root -name "*.bv*")
+json_files=($(find $root -name "*.json"))
+nifti_files=($(find $root -name "*.nii*"))
+dwi_files=($(find $root -name "*.bv*"))
 
 combined_files=("${json_files[@]}" "${nifti_files[@]}" "${dwi_files[@]}")
-num_combined=${#combined_files[@]}
-bad_files=0
 
-for file in ${combined_files[@]}; do
-    if [[ "$file" == *".bv"* ]]; then
-        base_name=`ls $file | rev | cut -c5- | rev`
-    elif [[ "$file" == *".json" ]]; then
-        base_name=`ls $file | rev | cut -c5- | rev`
-        if ! grep -q "ConversionSoftware" $file; then
+if [ ${#combined_files[@]} -gt 0 ]; then
+    bad_files=0
+
+    for file in ${combined_files[@]}; do
+        if [[ "$file" == *".bv"* ]]; then
+            base_name=`ls $file | rev | cut -c5- | rev`
+        elif [[ "$file" == *".json" ]]; then
+            base_name=`ls $file | rev | cut -c5- | rev`
+            if ! grep -q "ConversionSoftware" $file; then
+                echo "bad file(s): $file"
+                bad_files=$(($bad_files + 1))
+            fi
+        elif [[ "$file" == *".nii.gz" ]]; then
+            base_name=`ls $file | rev | cut -c7- | rev`
+        elif [[ "$file" == *".nii" ]]; then
+            base_name=`ls $file | rev | cut -c4- | rev`
+        fi
+
+        num_base_name=`ls ${base_name}* | wc -l`
+        if [ $num_base_name -ne 2 ] && [ $num_base_name -ne 4 ]; then
             echo "bad file(s): $file"
             bad_files=$(($bad_files + 1))
         fi
-    elif [[ "$file" == *".nii.gz" ]]; then
-        base_name=`ls $file | rev | cut -c7- | rev`
-    elif [[ "$file" == *".nii" ]]; then
-        base_name=`ls $file | rev | cut -c4- | rev`
-    fi
-
-    num_base_name=`ls ${base_name}* | wc -l`
-    if [ $num_base_name -ne 2 ] && [ $num_base_name -ne 4 ]; then
-        echo "bad file(s): $file"
-        bad_files=$(($bad_files + 1))
-    fi
-done
+    done
+fi
 
 
 # If any files aren't usable for ezBIDS, we remove ALL files and default to the dicoms
@@ -71,7 +73,7 @@ echo "finding dicom directories"
 ./find_dicomdir.py $root > $root/dcm2niix.list
 cat $root/dcm2niix.list
 
-if [ $num_combined -gt 0 ] && [ $bad_files -ne 0 ]; then
+if [ ${#combined_files[@]} -eq 0 ] || [ $bad_files -ne 0 ]; then
 	echo "running dcm2niix"
 	true > $root/dcm2niix.done
 	function d2n {
