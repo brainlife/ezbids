@@ -82,7 +82,7 @@ async.forEach(info.objects, (o, next_o) => {
         }
         */
         //setup directory
-        let path = datasetName;
+        let path = "bids";
         if (derivatives)
             path += "/derivatives/" + derivatives;
         path += "/sub-" + o._entities.subject;
