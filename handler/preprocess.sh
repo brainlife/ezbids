@@ -21,6 +21,7 @@ nifti_files=$(find $root -name "*.nii*")
 dwi_files=$(find $root -name "*.bv*")
 
 combined_files=("${json_files[@]}" "${nifti_files[@]}" "${dwi_files[@]}")
+num_combined=${#combined_files[@]}
 bad_files=0
 
 for file in ${combined_files[@]}; do
@@ -70,7 +71,7 @@ echo "finding dicom directories"
 ./find_dicomdir.py $root > $root/dcm2niix.list
 cat $root/dcm2niix.list
 
-if [ $bad_files -ne 0 ]; then
+if [ $num_combined -gt 0 ] && [ $bad_files -ne 0 ]; then
 	echo "running dcm2niix"
 	true > $root/dcm2niix.done
 	function d2n {
