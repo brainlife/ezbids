@@ -8,10 +8,11 @@ if (!root)
     throw "please specify root directory";
 const json = fs.readFileSync(root + "/finalized.json");
 const info = JSON.parse(json);
-mkdirp.sync(root + "/bids");
-fs.writeFileSync(root + "/bids/finalized.json", JSON.stringify(info, null, 4)); //copy the finalized.json
-fs.writeFileSync(root + "/bids/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
-fs.writeFileSync(root + "/bids/.bidsignore", `
+let datasetName = info.datasetDescription.Name
+mkdirp.sync(root + "/" + datasetName);
+fs.writeFileSync(root + "/" + datasetName + "/finalized.json", JSON.stringify(info, null, 4)); //copy the finalized.json
+fs.writeFileSync(root + "/" + datasetName + "/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
+fs.writeFileSync(root + "/" + datasetName + "/.bidsignore", `
 **/excluded
 **/*_MP2RAGE.*
 finalized.json
@@ -22,8 +23,8 @@ info.readme += `
 This dataset was converted from DICOM to BIDS using ezbids (https://brainlife.io/ezbids)
 
 `;
-fs.writeFileSync(root + "/bids/README", info.readme);
-fs.writeFileSync(root + "/bids/participants.json", JSON.stringify(info.participantsColumn, null, 4));
+fs.writeFileSync(root + "/" + datasetName + "/README", info.readme);
+fs.writeFileSync(root + "/" + datasetName + "/participants.json", JSON.stringify(info.participantsColumn, null, 4));
 //convert participants.json to tsv
 console.log("outputting participants.json/tsv");
 let keys = ["participant_id"];
@@ -50,7 +51,7 @@ info.subjects.forEach(subject => {
     }
     tsv.push(tsvrec);
 });
-let tsvf = fs.openSync(root + "/bids/participants.tsv", "w");
+let tsvf = fs.openSync(root + "/" + datasetName + "/participants.tsv", "w");
 for (let rec of tsv) {
     fs.writeSync(tsvf, rec.join("\t") + "\n");
 }
@@ -81,7 +82,7 @@ async.forEach(info.objects, (o, next_o) => {
         }
         */
         //setup directory
-        let path = "bids";
+        let path = datasetName;
         if (derivatives)
             path += "/derivatives/" + derivatives;
         path += "/sub-" + o._entities.subject;
