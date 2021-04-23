@@ -29,6 +29,7 @@ for file in ${combined_files[@]}; do
     elif [[ "$file" == *".json" ]]; then
         base_name=`ls $file | rev | cut -c5- | rev`
         if ! grep -q "ConversionSoftware" $file; then
+            echo "bad file(s): $file"
             bad_files=$(($bad_files + 1))
         fi
     elif [[ "$file" == *".nii.gz" ]]; then
@@ -39,6 +40,7 @@ for file in ${combined_files[@]}; do
 
     num_base_name=`ls ${base_name}* | wc -l`
     if [ $num_base_name -ne 2 ] && [ $num_base_name -ne 4 ]; then
+        echo "bad file(s): $file"
         bad_files=$(($bad_files + 1))
     fi
 done
