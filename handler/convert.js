@@ -38,9 +38,9 @@ for (let key of keys) {
 tsv.push(tsvheader);
 info.subjects.forEach(subject => {
     let tsvrec = [];
-    
-    if (subject.subject.includes('sub-')) {
-        tsvrec.push(subject.subject);
+
+    if (subject.subject.includes('sub')) {
+        tsvrec.push('sub-'+subject.subject.replace('sub', ''));
     } else {
         tsvrec.push('sub-'+subject.subject);
     }
