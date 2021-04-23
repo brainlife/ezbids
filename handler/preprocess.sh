@@ -70,7 +70,7 @@ echo "finding dicom directories"
 ./find_dicomdir.py $root > $root/dcm2niix.list
 cat $root/dcm2niix.list
 
-if [ $bad_files -gt 1 ]; then
+if [ $bad_files -ne 0 ]; then
 	echo "running dcm2niix"
 	true > $root/dcm2niix.done
 	function d2n {
