@@ -33,7 +33,17 @@
                 <small>* may contain sensitive PHI data. Please make sure to store in a secure location.</small>
             </p>
         </div>
+
+        <br>
+        <h4>BIDS Structure</h4>
+        <showfile path="tree.log"/>
+
+        <br>
+        <h4>bids-validator output</h4>
+        <showfile path="validator.log"/>
+
     </div>
+
     <div v-if="$root.session.status == 'failed'">
         <p>Failed to convert to BIDS...</p>
         <el-button @click="rerun" type="success" style="float: right" size="small">Rerun Finalize Step</el-button>
@@ -50,12 +60,12 @@
     <br>
     <br>
     <h4>Debugging</h4>
-    <el-collapse v-model="activeLogs" @change="logChange">
-        <el-collapse-item title="BIDS Conversion Log" name="out">
-            <pre class="text">{{stdout}}</pre>
+    <el-collapse v-model="activeLogs">
+        <el-collapse-item title="BIDS Conversion Log" name="bids.log" v-if="$root.session.status == 'finished'">
+            <showfile path="bids.log" />
         </el-collapse-item>
-        <el-collapse-item title="BIDS Conversion Error Log" name="err">
-            <pre class="text">{{stderr}}</pre>
+        <el-collapse-item title="BIDS Conversion Error Log" name="bids.err" v-if="$root.session.status == 'finished'">
+            <showfile path="bids.err"/>
         </el-collapse-item>
         <el-collapse-item title="Session" name="session">
             <pre class="text">{{$root.session}}</pre>
@@ -75,29 +85,24 @@
 
 <script>
 
-//import processStatus from '@/components/processStatus';
+import showfile from '@/components/showfile'
 
 export default {
-    components: {
-        //processStatus,
-    },
+    components: { showfile },
 
     data() {
         return {
-            //finalizing: false,
-            //reload_t: null,
             submitting: false,
 
             activeLogs: [],
-            stdout: "",
-            stderr: "",
+            //stdout: "",
+            //stderr: "",
 
             defacingStats: null,
         }
     },
 
-    created() {
-    },
+    created() {},
 
     methods: {
 
@@ -134,14 +139,13 @@ export default {
 
         sendBrainlife() {
             window.open("../projects#ezbids:"+this.$root.session._id, "_brainlife");
-            //document.location = "../projects#ezbids:"+this.$root.session._id;
         },
 
         sendOpenneuro() {
             alert("Sorry! This functionality is yet to be implemented!");
-            //".. invoke API call with fetch URL like.. https://openneuro.org/someapi/ezbidsimport/"+this.$root.session._id);
         },
 
+        /*
         logChange() {
             if(this.activeLogs.includes("out")) {
                 if(!this.out) fetch(this.$root.apihost+'/download/'+this.$root.session._id+'/bids.log').then(res=>res.text()).then(data=>{
@@ -155,6 +159,7 @@ export default {
                 });
             } else this.err = "";
         },
+        */
 
         back() {
             this.$root.changePage("deface");
@@ -178,3 +183,5 @@ export default {
     text-decoration: underline;
 }
 </style>
+
+

@@ -158,6 +158,7 @@ new Vue({
                 _id: location.hash.substring(1),
             }
             this.pollSession();
+            this.loadezBIDS();
         }
 
         //let _dwi = await loadYaml("https://raw.githubusercontent.com/bids-standard/bids-specification/master/src/schema/datatypes/dwi.yaml");
@@ -391,11 +392,14 @@ invert:
             });
         },
 
-        loadData() {
+        loadezBIDS() {
+            //I don't like this being here.. but a lot of UI uses this instead of session status .. why?
+            if(this.analyzed) return;
+            this.analyzed = true;
+
             console.log("loading ezBIDS.json");
             return fetch(this.apihost+'/download/'+this.session._id+'/ezBIDS.json').then(res=>res.json()).then(conf=>{   
                 console.dir(conf);
-
                 this.subjects = conf.subjects;
                 this.series = conf.series;
                 this.objects = conf.objects;
@@ -484,7 +488,10 @@ invert:
                 headers: { 'Content-Type': 'application/json' },
             });
             this.session = Object.assign({}, await res.json());
+            console.log(new Date(), this.session.status);
             switch(this.session.status) {
+
+            //progressing states
             case "created":
             case "uploaded":
             case "preprocessing":
@@ -492,18 +499,21 @@ invert:
             case "defacing":
             case "finalized":
             case "bidsing":
+                    /*
                 this.reload_t = setTimeout(()=>{
                     this.pollSession();
-                }, 1000*5);
+                }, 1000*3);
+                */
+                this.reload_t = setTimeout(this.pollSession, 1000*3);
+                break;
+
+            //static states
+            case "analyzed":
+                await this.loadezBIDS();
                 break;
 
             case "finished":
             case "defaced":
-            case "analyzed":
-                if(!this.analyzed) {
-                    await this.loadData();
-                    this.analyzed = true;
-                }
                 break;
 
             case "failed":

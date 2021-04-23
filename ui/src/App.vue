@@ -93,7 +93,6 @@ p {
 pre {
     font-size: 80%;
     white-space: pre-wrap;
-
 }
 small {
 }

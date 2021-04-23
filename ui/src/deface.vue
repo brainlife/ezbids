@@ -8,7 +8,8 @@
             Otherwise, you can skip this page.
         </p>
 
-        <el-form-item>
+        <el-alert v-if="anats.length == 0" type="warning">No anatomy files to deface</el-alert>
+        <el-form-item v-if="anats.length">
             <el-select v-model="$root.defacingMethod" placeholder="Select a defacing method" style="width: 300px;">
                 <el-option value="" label="Don't Deface"/>
                 <el-option value="quickshear" label="Quickshear (recommended)"/>
@@ -22,11 +23,6 @@
             <div v-if="$root.defacingMethod == 'pydeface'">
                 <small>pydeface uses fsl to align facial mask template. 5min per image</small>
             </div>
-            <!--
-            <div v-if="defacing">
-                <el-button @click="submit" type="success" disabled>Running Deface</el-button>
-            </div>
-            -->
         </el-form-item>
     </el-form>
 
@@ -259,7 +255,7 @@ export default {
 pre.status {
     background-color: #666;
     color: white;
-    height: 150px;
+    height: 125px;
     overflow: auto;
     padding: 10px;
     margin-bottom: 5px;

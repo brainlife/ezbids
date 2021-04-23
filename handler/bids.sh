@@ -33,4 +33,8 @@ echo "converting output to bids"
 ./convert.js $root
 
 echo "output bids directory structure"
-tree $root/bids
+tree $root/bids > $root/tree.log
+
+echo "running bids validator"
+bids-validator $root/bids > $root/validator.log || true
+

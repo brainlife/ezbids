@@ -53,3 +53,8 @@ ENV PATH=/usr/local/fsl5:$PATH
 RUN pip3 install pydeface
 
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
+
+#install bids-validator
+RUN apt-get install -y npm 
+RUN npm install -g bids-validator
+
