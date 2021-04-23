@@ -33,8 +33,10 @@ function expand {
     done
 
     for gz in $(find -name "*.gz"); do
-        gunzip $gz
-        rm -rf $gz
+        if [[ "$gz" != *".nii.gz" ]]; then
+            gunzip $gz
+            rm -rf $gz
+        fi
     done
 
     for zip in $(find -name "*.7z"); do

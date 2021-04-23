@@ -14,40 +14,83 @@ root=$1
 echo "running expand.sh"
 timeout 3600 ./expand.sh $root
 
-#remove stuff that we know we can't convert
-echo "removing .nii.gz"
-find $root -name "*.nii.gz" -exec rm -rf {} \;
-echo "removing .json"
-find $root -name "*.json" -exec rm -rf {} \;
-echo "removing .nii"
-find $root -name "*.nii" -exec rm -rf {} \;
 
-echo processing $root
+# Check to see if nifti/json (and bval/bvec) files are okay to use for ezBIDS
+json_files=$(find $root -name "*.json")
+nifti_files=$(find $root -name "*.nii*")
+dwi_files=$(find $root -name "*.bv*")
+
+combined_files=("${json_files[@]}" "${nifti_files[@]}" "${dwi_files[@]}")
+bad_files=0
+
+for file in ${combined_files[@]}; do
+    if [[ "$file" == *".bv"* ]]; then
+        base_name=`ls $file | rev | cut -c5- | rev`
+    elif [[ "$file" == *".json" ]]; then
+        base_name=`ls $file | rev | cut -c5- | rev`
+        if ! grep -q "ConversionSoftware" $file; then
+            bad_files=$(($bad_files + 1))
+        fi
+    elif [[ "$file" == *".nii.gz" ]]; then
+        base_name=`ls $file | rev | cut -c7- | rev`
+    elif [[ "$file" == *".nii" ]]; then
+        base_name=`ls $file | rev | cut -c4- | rev`
+    fi
+
+    num_base_name=`ls ${base_name}* | wc -l`
+    if [ $num_base_name -ne 2 ] && [ $num_base_name -ne 4 ]; then
+        bad_files=$(($bad_files + 1))
+    fi
+done
+
+
+# If any files aren't usable for ezBIDS, we remove ALL files and default to the dicoms
+echo ""
+echo "Number of files unuseable for ezBIDS: $bad_files"
+if [ $bad_files -gt 0 ]; then
+    for file in ${combined_files[@]}; do
+        rm -rf $file
+    done
+fi
+
+
+# If there are usable .nii files, compress them to .nii.gz
+nii_files=$(find $root -name "*.nii")
+if [ ${#nii_files[@]} ]; then
+	for nii in ${nii_files[@]}; do
+		zip ${nii}.gz $nii
+		rm -rf $nii
+	done
+fi
+
+echo "processing $root"
 
 echo "finding dicom directories"
 ./find_dicomdir.py $root > $root/dcm2niix.list
 cat $root/dcm2niix.list
 
-echo "running dcm2niix"
-true > $root/dcm2niix.done
-function d2n {
-    path=$1
-    echo "----------------------- $path ------------------------"
-    timeout 3600 dcm2niix -v 1 -ba n -z o -f 'time-%t-sn-%s' $path
-    ret=$!
-    if [ $ret == 2 ]; then
-        #probably empty directory?
-        echo "skipping"
-        return
-    fi
-    if [ $ret != 0]; then
-        echo "dcm2niix failed"
-        exit $ret
-    fi
-    echo $1 >> dcm2niix.done
-}
-export -f d2n
-cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n {}
+if [ ! -f $root/*.json ]; then
+	echo "running dcm2niix"
+	true > $root/dcm2niix.done
+	function d2n {
+	    path=$1
+	    echo "----------------------- $path ------------------------"
+	    timeout 3600 dcm2niix -v 1 -ba n -z o -f 'time-%t-sn-%s' $path
+	    ret=$!
+	    if [ $ret == 2 ]; then
+	        #probably empty directory?
+	        echo "skipping"
+	        return
+	    fi
+	    if [ $ret != 0]; then
+	        echo "dcm2niix failed"
+	        exit $ret
+	    fi
+	    echo $1 >> dcm2niix.done
+	}
+	export -f d2n
+	cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n {}
+fi
 
 #find products
 (cd $root && find . -type f \( -name "*.json" -o -name "*.nii.gz" -o -name "*.bval" -o -name "*.bvec" \) > list)
