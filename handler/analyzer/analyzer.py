@@ -23,7 +23,8 @@ from math import floor
 warnings.filterwarnings("ignore")
 os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
 
-data_dir = sys.argv[1]
+# data_dir = sys.argv[1]
+data_dir = '/media/data/ezbids/dicoms/dan_test'
 os.chdir(data_dir)
 
 
@@ -164,7 +165,7 @@ def select_unique_data(dir_list):
     
     # Get separate nifti and json (i.e. sidecar) lists
     json_list = sorted([x for x in dir_list['path'] if '.json' in x and 'ezbids' not in x])
-    nifti_list = [x for x in dir_list['path'] if '.nii.gz' in x or '.bval' in x or '.bvec' in x]   
+    nifti_list = sorted([x for x in dir_list['path'] if '.nii.gz' in x or '.bval' in x or '.bvec' in x])
     
     # Create list for appending dictionaries to
     data_list = []
@@ -243,8 +244,10 @@ def select_unique_data(dir_list):
             subject = PatientName
         elif PatientID:
             subject = PatientID
-        else:
+        elif PatientBirthDate:
             subject = PatientBirthDate
+        else:
+            subject = 'NA'
         subject = re.sub('[^A-Za-z0-9]+', '', subject)
         
         # Find Acquisition Date & Time

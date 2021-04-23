@@ -58,8 +58,7 @@ fi
 nii_files=$(find $root -name "*.nii")
 if [ ${#nii_files[@]} ]; then
 	for nii in ${nii_files[@]}; do
-		zip ${nii}.gz $nii
-		rm -rf $nii
+		gzip $nii
 	done
 fi
 
@@ -69,7 +68,7 @@ echo "finding dicom directories"
 ./find_dicomdir.py $root > $root/dcm2niix.list
 cat $root/dcm2niix.list
 
-if [ ! -f $root/*.json ]; then
+if [ $bad_files -ne 0 ]; then
 	echo "running dcm2niix"
 	true > $root/dcm2niix.done
 	function d2n {
