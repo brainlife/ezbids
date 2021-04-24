@@ -73,6 +73,9 @@ echo "finding dicom directories"
 ./find_dicomdir.py $root > $root/dcm2niix.list
 cat $root/dcm2niix.list
 
+echo "number of combined files is: ${#combined_files[@]}"
+echo "number of bad files is: $bad_files"
+
 if [ ${#combined_files[@]} -eq 0 ] || [ $bad_files -ne 0 ]; then
 	echo "running dcm2niix"
 	true > $root/dcm2niix.done
