@@ -21,6 +21,8 @@ nifti_files=($(find $root -name "*.nii*"))
 dwi_files=($(find $root -name "*.bv*"))
 
 combined_files=("${json_files[@]}" "${nifti_files[@]}" "${dwi_files[@]}")
+echo $combined_files
+echo "number of combined files is: ${#combined_files[@]}"
 
 if [ ${#combined_files[@]} -gt 0 ]; then
     bad_files=0
