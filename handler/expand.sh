@@ -14,19 +14,19 @@ echo "expanding zip/gz/tar in $root"
 function expand {
 
     #pigz can't handle xz.. so fall back to use native tar uncompressor
-    for tar in $(find -name "*.tar.xz"); do
+    for tar in $(find $root -name "*.tar.xz"); do
         #tar is too verbose
         tar -xf $tar -C $(dirname $tar)
         rm -rf $tar
     done
 
-    for tar in $(find -name "*.tar*"); do
+    for tar in $(find $root -name "*.tar*"); do
         #tar is too verbose
         tar -I pigz -xf $tar -C $(dirname $tar)
         rm -rf $tar
     done
 
-    for tar in $(find -name "*.tgz"); do
+    for tar in $(find $root -name "*.tgz"); do
         #tar is too verbose
         tar -I pigz -xf $tar -C $(dirname $tar)
         rm -rf $tar
@@ -39,22 +39,22 @@ function expand {
         fi
     done
 
-    for zip in $(find -name "*.7z"); do
+    for zip in $(find $root -name "*.7z"); do
         7z x $zip
         rm -rf $zip
     done
 
-    for zip in $(find -name "*.bz2"); do
+    for zip in $(find $root -name "*.bz2"); do
         bunzip2 $zip
         rm -rf $zip
     done
 
-    for zip in $(find -name "*.zip"); do
+    for zip in $(find $root -name "*.zip"); do
         unzip -o $zip -d $(dirname $zip)
         rm -rf $zip
     done
 
-    for rar in $(find -name "*.rar"); do
+    for rar in $(find $root -name "*.rar"); do
         unrar x $rar
         rm -rf $rar
     done
