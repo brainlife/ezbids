@@ -319,6 +319,7 @@ export default {
             this.starting = false;
             this.doneUploading = false;
 
+            /*
             //mark some file to ignore
             for(let i = 0;i < this.files.length;++i) {
                 let file = this.files[i];
@@ -328,6 +329,7 @@ export default {
                     this.ignoreCount++;
                 }
             }
+            */
 
             //calculate total file size
             this.total_size = 0;

@@ -32,10 +32,8 @@ function expand {
         rm -rf $tar
     done
 
-    for gz in $(find -name "*.gz"); do
-        echo "the gz is: $gz"
+    for gz in $(find $root -name "*.gz"); do
         if [[ "$gz" != *".nii.gz" ]]; then
-            echo "oh no"
             gunzip $gz
             rm -rf $gz
         fi

@@ -22,7 +22,8 @@ from math import floor
 
 warnings.filterwarnings("ignore")
 
-data_dir = sys.argv[1]
+# data_dir = sys.argv[1]
+data_dir = '/media/data/ezbids/dicoms/OpenScience'
 os.chdir(data_dir)
 
 
@@ -175,7 +176,7 @@ def select_unique_data(dir_list):
         json_data = open(json_list[j])
         json_data = json.load(json_data, strict=False)
         
-        corresponding_nifti = [x for x in nifti_list if json_list[j][:-4] in x][0]
+        corresponding_nifti = [x for x in nifti_list if json_list[j][:-4] in x if 'nii' in x][0]
         
         #Phase encoding direction info
         try:
@@ -194,6 +195,7 @@ def select_unique_data(dir_list):
             PED = determineDir(proper_pe_direction, ornt)
         else:
             PED = ''
+            
         
         # Select SeriesNumbers
         SN = json_data['SeriesNumber']
