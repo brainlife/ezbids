@@ -79,6 +79,7 @@
                     :text-inside="true" 
                     :stroke-width="24" 
                     :percentage="parseFloat(($root.session.dicomDone*100 / $root.session.dicomCount).toFixed(1))"/>
+                <br>
             </div>
             <h3 v-else>Analyzing...</h3>
             <pre class="status">{{$root.session.status_msg}}</pre>
@@ -319,10 +320,15 @@ export default {
             this.starting = false;
             this.doneUploading = false;
 
-            //mark some file to ignore
+            //only allow certain files
             for(let i = 0;i < this.files.length;++i) {
                 let file = this.files[i];
-                if(file.path.endsWith(".nii.gz")) {
+                if( file.path.endsWith(".dcm") ||
+                    file.path.endsWith(".json") ||
+                    file.path.endsWith(".nii.gz") ||
+                    !file.path.includes(".")) {
+                    //accept these files!
+                } else {
                     console.log("ignoring", file.path);
                     file.ignore = true;
                     this.ignoreCount++;

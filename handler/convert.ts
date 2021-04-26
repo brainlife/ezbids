@@ -76,23 +76,20 @@ async.forEach(info.objects, (o, next_o)=>{
     }
     const name = tokens.join("_");
 
-    function handleItem(item, filename, derivatives = null) {
-        /*
-        let goback = "";
-        for(let i = 0;i < path.split("/").length; ++i) {
-            goback += "../";
-        }
-        */
-
-        //setup directory
+    function composePath(derivatives) {
         let path = "bids";
         if(derivatives) path += "/derivatives/"+derivatives;
-
         path += "/sub-"+o._entities.subject;
         if(o._entities.session) path += "/ses-"+o._entities.session;
         path += "/"+modality; 
+        return path;
+    }
+
+    function handleItem(item, filename, derivatives = null) {
+        const path = composePath(derivatives);
         mkdirp.sync(root+"/"+path);
 
+        //setup directory
         let fullpath = root+"/"+path+"/"+name+"_"+filename;
         //console.log(item.name, fullpath);
         if(item.name == "json") {
@@ -265,6 +262,39 @@ async.forEach(info.objects, (o, next_o)=>{
                 console.error("unknown dwi item name", item.name);
             }
         });
+
+        if(!o.items.find(item=>item.name == "bvec")) {
+            console.log("bvec is missing.. assuming that this is b0, and setup empty bvec");
+            const path = composePath(false);
+
+            //construct dummy bvec
+            const ones = [];
+            for(let j = 0;j < o.analysisResults.NumVolumes; ++j) {
+                ones.push(1);
+            }
+            const zeros = [];
+            for(let j = 0;j < o.analysisResults.NumVolumes; ++j) {
+                zeros.push(0);
+            }
+            const bvec = `${ones.join(" ")}\n${zeros.join(" ")}\n${zeros.join(" ")}\n`;
+
+            fs.writeFileSync(root+"/"+path+"/"+name+"_dwi.bvec", bvec);
+        }
+
+        if(!o.items.find(item=>item.name == "bval")) {
+            console.log("bval is missing.. assuming that this is b0, and setup empty bval");
+            const path = composePath(false);
+
+            //construct dummy bval
+            const zeros = [];
+            for(let j = 0;j < o.analysisResults.NumVolumes; ++j) {
+                zeros.push(1);
+            }
+            const bval = zeros.join(" ")+"\n";
+
+            fs.writeFileSync(root+"/"+path+"/"+name+"_dwi.bval", bval);
+        }
+
         break;
     case "excluded":
         o.items.forEach((item, idx)=>{

@@ -52,11 +52,11 @@
         </thead>
         <tr v-for="anat in anats" :key="anat.idx">
             <td>
-                <div style="margin-bottom: 0; font-sisze: 90%; line-height: 200%;">
+                <div style="margin-bottom: 0; font-size: 85%; line-height: 200%;">
                     <span><small>sub</small> {{anat._entities.subject}} </span>
                     <span v-if="anat._entities.session">/ <small>ses</small> {{anat._entities.session}} </span>
                 </div>
-                <el-tag type="info" size="mini">Series# {{anat.SeriesNumber}}</el-tag>
+                <el-tag type="info" size="mini">sn {{anat.SeriesNumber}}</el-tag>
                 &nbsp;
                 <datatype :type="anat._type" :series_id="anat.series_id" :entities="anat.entities"/> 
             </td>
