@@ -175,7 +175,7 @@ def select_unique_data(dir_list):
         json_data = open(json_list[j])
         json_data = json.load(json_data, strict=False)
         
-        corresponding_nifti = [x for x in nifti_list if json_list[j][:-4] in x][0]
+        corresponding_nifti = [x for x in nifti_list if json_list[j][:-4] in x if 'nii' in x][0]
         
         #Phase encoding direction info
         try:
@@ -194,6 +194,7 @@ def select_unique_data(dir_list):
             PED = determineDir(proper_pe_direction, ornt)
         else:
             PED = ''
+            
         
         # Select SeriesNumbers
         SN = json_data['SeriesNumber']
@@ -589,8 +590,12 @@ def identify_series_info(data_list_unique_series):
                 series_entities['direction'] = data_list_unique_series[i]['direction']
             
         # DWI
+        elif not any('.bvec' in x for x in data_list_unique_series[i]['paths']) and 'DIFFUSION' in data_list_unique_series[i]['ImageType']:
+            data_list_unique_series[i]['error'] = 'Acquisitions has "DIFFUSION" label in the ImageType; however, there are no corresponding bval/bvec files. This may or may not be dwi/dwi. Please modify if incorrect.'
+            data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
+            data_list_unique_series[i]['br_type'] = 'exclude'
+
         elif any('.bvec' in x for x in data_list_unique_series[i]['paths']):
-            
             if any(x in SD for x in ['flair','t2spacedafl']):
                 data_list_unique_series[i]['DataType'] = 'anat'
                 data_list_unique_series[i]['ModalityLabel'] = 'FLAIR'
