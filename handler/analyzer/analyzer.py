@@ -594,6 +594,7 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['DataType'] = 'dwi'
             data_list_unique_series[i]['ModalityLabel'] = 'dwi'
             series_entities['acquisition'] = 'b0'
+            series_entities['direction'] = data_list_unique_series[i]['direction']
             data_list_unique_series[i]['message'] = 'Acquisition appears to be b0 dwi/dwi because "DIFFUSION" is in ImageType, and "b0" is in the SeriesDescription,. Please modify if incorrect'
                 
         elif not any('.bvec' in x for x in data_list_unique_series[i]['paths']) and 'DIFFUSION' in data_list_unique_series[i]['ImageType']:
@@ -624,8 +625,9 @@ def identify_series_info(data_list_unique_series):
                     data_list_unique_series[i]['DataType'] = 'dwi'
                     data_list_unique_series[i]['ModalityLabel'] = 'dwi'
                     series_entities['acquisition'] = 'b0'
-                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be b0 dwi/dwi because there are bval & bvec files, but with low b-values. Please modify if incorrect'
                     series_entities['direction'] = data_list_unique_series[i]['direction']
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be b0 dwi/dwi because there are bval & bvec files, but with low b-values. Please modify if incorrect'
+                    
                 elif any(x in SD for x in ['trace','fa','adc']) and not any(x in SD for x in ['dti','dwi','dmri']):
                     data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
                     data_list_unique_series[i]['message'] = 'Acquisition is believed to be TRACE, FA, or ADC because there are bval & bvec files with the same SeriesNumber, and "trace", "fa", or "adc" are in the SeriesDescription. Please modify if incorrect'
@@ -633,8 +635,8 @@ def identify_series_info(data_list_unique_series):
                 else:
                     data_list_unique_series[i]['DataType'] = 'dwi'
                     data_list_unique_series[i]['ModalityLabel'] = 'dwi'
-                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be dwi/dwi because there are bval & bvec files with the same SeriesNumber, "dwi" or "dti" is in the SeriesDescription, and it does not appear to be dwi product data. Please modify if incorrect'
                     series_entities['direction'] = data_list_unique_series[i]['direction']
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be dwi/dwi because there are bval & bvec files with the same SeriesNumber, "dwi" or "dti" is in the SeriesDescription, and it does not appear to be dwi product data. Please modify if incorrect'
         
         # DWI derivatives or other non-BIDS diffusion offshoots
         elif any(x in SD for x in ['trace','fa','adc']) and any(x in SD for x in ['dti','dwi','dmri']):
@@ -644,21 +646,25 @@ def identify_series_info(data_list_unique_series):
         
         # Functional bold and phase
         elif any(x in SD for x in ['bold','func','fmri','epi','mri','task','rest']) and 'sbref' not in SD:
-            data_list_unique_series[i]['DataType'] = 'func'
-            if any(x in SD for x in ['rest','rsfmri','fcmri']):
-                series_entities['task'] = 'rest'
-                data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
-            if 'MOSAIC' and 'PHASE' in data_list_unique_series[i]['ImageType']:
-                data_list_unique_series[i]['ModalityLabel'] = 'phase'
-                data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/phase because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"), and "MOSAIC" and "PHASE" are in the ImageType field of the metadata. Please modify if incorrect'
+            if data_list_unique_series[i]['NumVolumes'] < 50: 
+                data_list_unique_series[i]['br_type'] = 'exclude'
+                data_list_unique_series[i]['message'] = 'Acquisition appears to be functional but contain less than 50 volumes, suggesting a failure/restart, or some form of test acquisition. Please modify if incorrect'
             else:
-                data_list_unique_series[i]['ModalityLabel'] = 'bold'
+                data_list_unique_series[i]['DataType'] = 'func'
+                if any(x in SD for x in ['rest','rsfmri','fcmri']):
+                    series_entities['task'] = 'rest'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
+                if 'MOSAIC' and 'PHASE' in data_list_unique_series[i]['ImageType']:
+                    data_list_unique_series[i]['ModalityLabel'] = 'phase'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/phase because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"), and "MOSAIC" and "PHASE" are in the ImageType field of the metadata. Please modify if incorrect'
+                else:
+                    data_list_unique_series[i]['ModalityLabel'] = 'bold'
+                    if data_list_unique_series[i]['EchoNumber']:
+                        series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
+                        data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
                 if data_list_unique_series[i]['EchoNumber']:
                     series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
                     data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
-            if data_list_unique_series[i]['EchoNumber']:
-                series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
-                data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
 
         # Functional single band reference (sbref)
         elif 'sbref' in SD:
