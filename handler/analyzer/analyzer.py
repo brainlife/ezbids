@@ -162,7 +162,7 @@ def select_unique_data(dir_list):
     dir_list = dir_list[~dir_list.path.str.contains('PARREC|Parrec|parrec')].reset_index(drop=True)    
     
     # Get separate nifti and json (i.e. sidecar) lists
-    json_list = sorted([x for x in dir_list['path'] if '.json' in x and 'ezbids' not in x])
+    json_list = sorted([x for x in dir_list['path'] if '.json' in x and 'ezBIDS' not in x])
     nifti_list = sorted([x for x in dir_list['path'] if '.nii.gz' in x or '.bval' in x or '.bvec' in x])
     
     # Create list for appending dictionaries to
@@ -216,18 +216,18 @@ def select_unique_data(dir_list):
         if 'PatientName' in json_data:
             PatientName = json_data['PatientName']
         else:
-            PatientName = None
+            PatientName = os.path.dirname(json_list[j])
             
         if 'PatientID' in json_data:
             PatientID = json_data['PatientID']
         else:
-            PatientID = None
+            PatientID = os.path.basename(json_list[j])
             
         # Find PatientBirthDate
         if 'PatientBirthDate' in json_data:
             PatientBirthDate = json_data['PatientBirthDate'].replace('-','')
         else:
-            PatientBirthDate = None
+            PatientBirthDate = '00000000'
             
         # Find PatientSex
         if 'PatientSex' in json_data:
@@ -238,16 +238,17 @@ def select_unique_data(dir_list):
             PatientSex = 'N/A'
         
         # Select subjectID to display to ezBIDS users
-        # Order of importance is: PatientName > PatientID > PatientBirthDate
+        # Precedence order: PatientName > PatientID > PatientBirthDate
         if PatientName:
             subject = PatientName
         elif PatientID:
             subject = PatientID
         elif PatientBirthDate:
             subject = PatientBirthDate
-        else:
-            subject = 'NA'
+
         subject = re.sub('[^A-Za-z0-9]+', '', subject)
+        if not subject:
+            subject = 'NA'
         
         # Find Acquisition Date & Time
         if 'AcquisitionDateTime' in json_data:
@@ -356,14 +357,12 @@ def select_unique_data(dir_list):
     for x,y in enumerate(acquisition_dates):
         y['session'] = subject_session[x][-1]
         
-    
     for si in range(len(subjectIDs_info)):
         for ss in subject_session:
             if ss[0] == subjectIDs_info[si]['subject']:
                 subjectIDs_info[si]['sessions'].append({'AcquisitionDate': ss[1], 'session': ss[2], 'exclude': False})
         subjectIDs_info[si].update({'validationErrors': []})
         
-
     # Sort list of dictionaries by subject, AcquisitionDate, SeriesNumber, and json_path
     data_list = sorted(data_list, key=itemgetter('subject', 'AcquisitionDate', 'SeriesNumber', 'json_path'))
     
@@ -444,7 +443,7 @@ def identify_series_info(data_list_unique_series):
     '''
     
     
-    # Determine DataType and ModalityLabel of series list acquisitions
+    # Determine DataType, ModalityLabel, and labels of series list acquisitions
     series_list = []
     for i in range(len(data_list_unique_series)):
         
@@ -590,11 +589,11 @@ def identify_series_info(data_list_unique_series):
             
         # DWI
         elif 'DIFFUSION' in data_list_unique_series[i]['ImageType'] and 'b0' in SD:
-            data_list_unique_series[i]['DataType'] = 'dwi'
-            data_list_unique_series[i]['ModalityLabel'] = 'dwi'
-            series_entities['acquisition'] = 'b0'
+            data_list_unique_series[i]['DataType'] = 'fmap'
+            data_list_unique_series[i]['ModalityLabel'] = 'epi'
+            data_list_unique_series[i]['forType'] = 'dwi/dwi'
             series_entities['direction'] = data_list_unique_series[i]['direction']
-            data_list_unique_series[i]['message'] = 'Acquisition appears to be b0 dwi/dwi because "DIFFUSION" is in ImageType, and "b0" is in the SeriesDescription,. Please modify if incorrect'
+            data_list_unique_series[i]['message'] = 'Acquisition appears to be a fmap/epi meant for dwi/dwi, as "DIFFUSION" is in ImageType, and "b0" is in the SeriesDescription. Please modify if incorrect'
                 
         elif not any('.bvec' in x for x in data_list_unique_series[i]['paths']) and 'DIFFUSION' in data_list_unique_series[i]['ImageType']:
             data_list_unique_series[i]['error'] = 'Acquisitions has "DIFFUSION" label in the ImageType; however, there are no corresponding bval/bvec files. This may or may not be dwi/dwi. Please modify if incorrect.'
@@ -621,11 +620,11 @@ def identify_series_info(data_list_unique_series):
                 # low b-values, should be dwi, but with unique acquisition label
                 bval = np.loadtxt([x for x in data_list_unique_series[i]['paths'] if 'bval' in x][0])
                 if np.max(bval) <= 50:
-                    data_list_unique_series[i]['DataType'] = 'dwi'
-                    data_list_unique_series[i]['ModalityLabel'] = 'dwi'
-                    series_entities['acquisition'] = 'b0'
+                    data_list_unique_series[i]['DataType'] = 'fmap'
+                    data_list_unique_series[i]['ModalityLabel'] = 'epi'
                     series_entities['direction'] = data_list_unique_series[i]['direction']
-                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be b0 dwi/dwi because there are bval & bvec files, but with low b-values. Please modify if incorrect'
+                    data_list_unique_series[i]['forType'] = 'dwi/dwi'
+                    data_list_unique_series[i]['message'] = 'Acquisition appears to be fmap/epi meant for dwi/dwi, as there are bval & bvec files, but with low b-values. Please modify if incorrect'
                     
                 elif any(x in SD for x in ['trace','fa','adc']) and not any(x in SD for x in ['dti','dwi','dmri']):
                     data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
@@ -928,7 +927,7 @@ print('Beginning conversion process of dataset')
 print('########################################')
 print('')
 
-# Load in list
+# Load list
 dir_list = pd.read_csv('list', header=None, sep='\n')
 
 # Determine variables data_list, data_list_unique_series, subjectIDs_info, and acquisition_dates

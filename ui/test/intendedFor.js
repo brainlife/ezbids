@@ -3,7 +3,7 @@
 const lib = require('../src/lib');
 
 // const $root = require('./test.root.json');
-const $root = require('./Video_root.json');
+const $root = require('./openscience_testBadPeds.json');
 
 lib.funcQA($root);
 lib.fmapQA($root); // fmap sanity check
