@@ -164,7 +164,7 @@ def select_unique_data(dir_list):
     # Get separate nifti and json (i.e. sidecar) lists
     json_list = sorted([x for x in dir_list['path'] if '.json' in x and 'ezBIDS' not in x])
     nifti_list = sorted([x for x in dir_list['path'] if '.nii.gz' in x or '.bval' in x or '.bvec' in x])
-    
+
     # Create list for appending dictionaries to
     data_list = []
     

@@ -47,8 +47,8 @@ exports.fmapQA = $root=>{
 
                 let funcObjs = section.filter(e=>e._type == 'func/bold')
                 let dwiObjs = section.filter(e=>e._type == 'dwi/dwi')
-                let fmapSpinEchoFuncObjs = section.filter(e=>e._type.startsWith('fmap/epi') && e.forType == 'func/bold')
-                let fmapSpinEchoDwiObjs = section.filter(e=>e._type.startsWith('fmap/epi') && e.forType == 'dwi/dwi')
+                let fmapSpinEchoFuncObjs = section.filter(e=>e._type.startsWith('fmap/epi') && e._forType == 'func/bold')
+                let fmapSpinEchoDwiObjs = section.filter(e=>e._type.startsWith('fmap/epi') && e._forType == 'dwi/dwi')
                 let fmapMagPhaseObjs = section.filter(function (e) {
                     return e._type.startsWith('fmap/magnitude1') ||
                     e._type.startsWith('fmap/magnitude2') ||
@@ -60,7 +60,6 @@ exports.fmapQA = $root=>{
                 if (!fmapMagPhaseCheck.length) {
                     fmapMagPhaseObjs = []
                 }
-
 
                 let fmapMagPhasediffObjs = section.filter(function (e) {
                     return e._type.startsWith('fmap/magnitude1') || 
@@ -109,7 +108,6 @@ exports.fmapQA = $root=>{
                     // Check for proper PEDs for spin-echo pairs
                     if (fmapSpinEchoFuncObjs.length == 2) {
                         let fmapFuncPEDs = fmapSpinEchoFuncObjs.map(e=>e.items[0].sidecar.PhaseEncodingDirection)
-
                         if (fmapFuncPEDs[0].toString().split('').reverse().join('').slice(-1) == fmapFuncPEDs[1].toString().split('').reverse().join('').slice(-1)) {
                             if ((fmapFuncPEDs[0].length != 2 || fmapFuncPEDs[1].length != 1) && (fmapFuncPEDs[0].length != 1 || fmapFuncPEDs[1].length != 2)) {
                                 fmapSpinEchoFuncObjs.forEach(obj=> {
