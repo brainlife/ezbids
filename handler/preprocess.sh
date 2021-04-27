@@ -12,7 +12,7 @@ fi
 root=$1
 
 echo "running expand.sh"
-timeout 3600 ./expand.sh $root
+timeout 1800 ./expand.sh $root
 
 
 # Check to see if nifti/json (and bval/bvec) files are okay to use for ezBIDS
@@ -59,7 +59,6 @@ if [ $bad_files -gt 0 ]; then
         rm -rf $file
     done
 fi
-
 
 # If there are usable .nii files, compress them to .nii.gz
 nii_files=$(find $root -name "*.nii")

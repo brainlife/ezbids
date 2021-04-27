@@ -13,7 +13,7 @@
             -->
             <small style="opacity: 0.7;">({{s.SeriesDescription}})</small>
             &nbsp;
-            <el-badge type="info" size="mini" title="Number of objects" :value="s.object_indices.length+' obj'"/>
+            <el-badge type="info" size="mini" title="Number of objects" :value="s.object_indices.length"/>
             &nbsp;
             <el-badge v-if="s.validationErrors.length > 0" type="danger" :value="s.validationErrors.length" style="margin-left: 5px;">
                 <small/>
