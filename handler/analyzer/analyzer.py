@@ -188,14 +188,14 @@ def select_unique_data(dir_list):
             ornt = ''.join([x for x in ornt])
         except:
             ornt = None
-        
+                
         if pe_direction is not None and ornt is not None:
             proper_pe_direction = correctPE(pe_direction, ornt)
             PED = determineDir(proper_pe_direction, ornt)
         else:
             PED = ''
             
-        
+                    
         # Select SeriesNumbers
         SN = json_data['SeriesNumber']
         
@@ -543,7 +543,6 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['error'] = 'Acqusition appears to be ASL, which is currently not supported by ezBIDS at this time, but will be in the future'
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be asl/asl because "asl" is in the SeriesDescription. Please modify if incorrect. Currently, ezBIDS does not support ASL conversion to BIDS'
             
-        
         # Angiography
         elif any(x in SD for x in ['angio']):
             data_list_unique_series[i]['br_type'] = 'exclude'
@@ -668,14 +667,19 @@ def identify_series_info(data_list_unique_series):
 
         # Functional single band reference (sbref)
         elif 'sbref' in SD:
-            data_list_unique_series[i]['DataType'] = 'func'
             data_list_unique_series[i]['ModalityLabel'] = 'sbref'
-            if 'rest' in SD or 'rsfmri' in SD:
-                series_entities['task'] = 'rest'
-            if data_list_unique_series[i]['EchoNumber']:
-                series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
-            data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/sbref because "sbref" is in the SeriesDescription'
-        
+            
+            if 'DIFFUSION' in data_list_unique_series[i]['ImageType']:
+                data_list_unique_series[i]['DataType'] = 'dwi'
+            else:
+                data_list_unique_series[i]['DataType'] = 'func'
+                
+                if 'rest' in SD or 'rsfmri' in SD:
+                    series_entities['task'] = 'rest'
+                if data_list_unique_series[i]['EchoNumber']:
+                    series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
+                data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/sbref because "sbref" is in the SeriesDescription'
+            
         # MP2RAGE/UNIT1
         elif 'mp2rage' in SD:
             data_list_unique_series[i]['DataType'] = 'anat'
@@ -769,10 +773,22 @@ def identify_series_info(data_list_unique_series):
                        "object_indices": []
                         }
         series_list.append(series_info)
+        
+        
         print('Unique data acquisition file {}, Series Description {}, was determined to be {}'.format(data_list_unique_series[i]['nifti_path'], data_list_unique_series[i]['SeriesDescription'], data_list_unique_series[i]['br_type']))
         print('')
         print('')
 
+    # Check sbref acquisitions to see that their corresponding func or dwi acquisitions are not excluded
+    # If so, exclude the sbref as well
+    for s in series_list:
+        if 'sbref' in s['type']:
+            SD = s['SeriesDescription']
+            corresponding_file = [y for x,y in enumerate(series_list) if SD[:-6] == series_list[x]['SeriesDescription']][0]
+            if corresponding_file['type'] == 'exclude':
+                s['message'] = 'The corresponding file to this sbref is excluded, therefore this acquisition will also be excluded. Please modify if incorrect'
+                s['type'] = 'exclude'
+    
     return series_list
 
 
@@ -804,23 +820,23 @@ def modify_objects_info(subject_protocol, series_list, series_seriesID_list):
         Same as above but with updated information
     '''
     
-    # objects_entities_list = []
-    section_ID = 0
+    section_ID = 1
     objects_data = []
     
     for p in range(len(subject_protocol)):
+        SD = re.sub('[^A-Za-z0-9]+', '', subject_protocol[p]['SeriesDescription']).lower()
+        previous_SD = re.sub('[^A-Za-z0-9]+', '', subject_protocol[p-1]['SeriesDescription']).lower()
         
         # Update section_ID information
         if p == 0:
-            section_ID += 1
             subject_protocol[p]['section_ID'] = section_ID
         
-        elif any(x in subject_protocol[p]['SeriesDescription'] for x in ['localizer','scout']) and not any(x in subject_protocol[p-1]['SeriesDescription'] for x in ['localizer','scout']):
+        elif any(x in SD for x in ['localizer','scout']) and not any(x in previous_SD for x in ['localizer','scout']):
             section_ID += 1
             subject_protocol[p]['section_ID'] = section_ID
         else:
             subject_protocol[p]['section_ID'] = section_ID
-            
+                    
         
         subject_protocol[p]['headers'] = str(nib.load(subject_protocol[p]['nifti_path']).header).splitlines()[1:]
                 

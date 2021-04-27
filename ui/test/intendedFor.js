@@ -3,7 +3,7 @@
 const lib = require('../src/lib');
 
 // const $root = require('./test.root.json');
-const $root = require('./WML.json');
+const $root = require('./Video_root.json');
 
 lib.funcQA($root);
 lib.fmapQA($root); // fmap sanity check
