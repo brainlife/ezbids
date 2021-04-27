@@ -18,6 +18,8 @@ The BIDS output can be downloaded back to the user's computer, or uploaded to op
 
 ezBIDS accepts DICOMS from the three major MRI vendors: **Siemens**, **GE**, and **Phillips**
 
+A video demonstration of how to use ezBIDS can be found [here](https://www.youtube.com/watch?v=mY3_bmt_e80)
+
 
 ### Usage
 To access the ezBIDS web service, please visit https://brainlife.io/ezbids (Chrome or Firefox broswer preferred).
