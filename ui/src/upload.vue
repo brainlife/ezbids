@@ -108,7 +108,7 @@
                             <small><el-tag size="mini" type="info">{{idx}}</el-tag> {{object.paths[0]}}</small>
                         </el-link>
                     </p>
-                    <pre v-if="opened.includes(idx)" class="object-detail" style="font-size: 85%">{{object}}</pre>
+                    <pre v-if="opened.includes(idx)" class="status">{{object}}</pre>
                 </div>
             </div>
             <div class="page-action">
@@ -504,13 +504,6 @@ export default {
     font-family: monospace;
 }
 
-.object-detail {
-    background-color: #0001;
-    border-radius: 10px;
-    max-height: 400px;
-    overflow: auto;
-    padding: 10px 20px;
-}
 pre.status {
     background-color: #666;
     color: white;

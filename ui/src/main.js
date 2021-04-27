@@ -294,6 +294,7 @@ invert:
                     if(s.PatientBirthDate == o.PatientBirthDate) return true;
                     return false;
                 }
+                console.error("none of the patient idenfitying fields are set.. can't find this object");
                 return false;
             });
             return subject;

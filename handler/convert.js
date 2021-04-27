@@ -249,7 +249,7 @@ async.forEach(info.objects, (o, next_o) => {
                 }
             });
             if (!o.items.find(item => item.name == "bvec")) {
-                console.log("bvec is missing.. assuming that this is b0, and setup empty bvec");
+                console.log("bvec is missing.. assuming that this is b0, and setup empty bvec/bval");
                 const path = composePath(false);
                 //construct dummy bvec
                 const ones = [];
@@ -262,15 +262,6 @@ async.forEach(info.objects, (o, next_o) => {
                 }
                 const bvec = `${ones.join(" ")}\n${zeros.join(" ")}\n${zeros.join(" ")}\n`;
                 fs.writeFileSync(root + "/" + path + "/" + name + "_dwi.bvec", bvec);
-            }
-            if (!o.items.find(item => item.name == "bval")) {
-                console.log("bval is missing.. assuming that this is b0, and setup empty bval");
-                const path = composePath(false);
-                //construct dummy bval
-                const zeros = [];
-                for (let j = 0; j < o.analysisResults.NumVolumes; ++j) {
-                    zeros.push(1);
-                }
                 const bval = zeros.join(" ") + "\n";
                 fs.writeFileSync(root + "/" + path + "/" + name + "_dwi.bval", bval);
             }
