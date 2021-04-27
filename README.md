@@ -23,6 +23,7 @@ ezBIDS accepts DICOMS from the three major MRI vendors: **Siemens**, **GE**, and
 To access the ezBIDS web service, please visit https://brainlife.io/ezbids (Chrome or Firefox broswer preferred).
 
 ### Backend Workflow
+*(unnecessary to read, unless interested in the backend API workflow)*
 
 1. Uploading Data
 
