@@ -326,6 +326,7 @@ export default {
                 if( file.path.endsWith(".dcm") ||
                     file.path.endsWith(".json") ||
                     file.path.endsWith(".nii.gz") ||
+                    file.path.endsWith(".nii") ||
                     file.path.endsWith(".bval") ||
                     file.path.endsWith(".bvec") ||
                     !file.path.includes(".")) {
