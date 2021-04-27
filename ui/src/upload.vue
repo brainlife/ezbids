@@ -329,7 +329,20 @@ export default {
                     file.path.endsWith(".nii") ||
                     file.path.endsWith(".bval") ||
                     file.path.endsWith(".bvec") ||
-                    !file.path.includes(".")) {
+
+                    //zip files
+                    file.path.endsWith(".zip") ||
+                    file.path.endsWith(".gz") ||
+                    file.path.endsWith(".tgz") ||
+                    file.path.endsWith(".7z") ||
+                    file.path.endsWith(".bz2") ||
+                    file.path.endsWith(".xz") ||
+                    file.path.includes(".tar") ||
+                    file.path.includes(".rar") ||
+
+                    //dicom files doesn't have any file extensions..
+                    !file.path.includes(".")) { 
+
                     //accept these files!
                 } else {
                     console.log("ignoring", file.path);
