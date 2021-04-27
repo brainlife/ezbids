@@ -14,7 +14,7 @@ Unlike other automated DICOM to BIDS converters, ezBIDS eliminates the need for 
 ezBIDS provides options for the defacing of anatomical acquisitions.
 
 The BIDS output can be downloaded back to the user's computer, or uploaded to open repositories such as
-[OpenNeuro](https://openneuro.org/), or [brainlife.io](https://brainlife.io/)
+[brainlife.io](https://brainlife.io/), or in the future, [OpenNeuro](https://openneuro.org/).
 
 ezBIDS accepts DICOMS from the three major MRI vendors: **Siemens**, **GE**, and **Phillips**
 
