@@ -25,7 +25,7 @@ A video demonstration of how to use ezBIDS can be found [here](https://www.youtu
 To access the ezBIDS web service, please visit https://brainlife.io/ezbids (Chrome or Firefox broswer preferred).
 
 ### Backend Workflow
-*(unnecessary to read, unless interested in the backend API workflow)*
+*(optional reading, if interested in the backend API workflow)*
 
 1. Uploading Data
 
