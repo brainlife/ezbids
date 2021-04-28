@@ -9,8 +9,8 @@ those assumptions before generating the final BIDS structure.
 
 Users do not need to organize their uploaded directory in any specific manner. The uploaded directory may contain various sub-directories or none, and users and may compress (e.g. zip, tar) their upload directory if they so choose. ezBIDS allows two types of data to be uploaded:
 
-1). DICOMS files - Only DICOMS should be included in the uploaded directory. ezBIDS will perform dcm2niix on the files and begin the BIDS conversion process.
-2). dcm2niix generated output (i.e. NIFTI, json, bval, and bvec) files - Only these files (e.g. no DICOMS) should be included in the uploaded directory. We recommend subjects and sessions be organized into sub-directories.
+1. DICOMS files - Only DICOMS should be included in the uploaded directory. ezBIDS will perform dcm2niix on the files and begin the BIDS conversion process.
+2. dcm2niix generated output (i.e. NIFTI, json, bval, and bvec) files - Only these files (e.g. no DICOMS) should be included in the uploaded directory. We recommend subjects and sessions be organized into sub-directories.
 
 Unlike other automated DICOM to BIDS converters, ezBIDS eliminates the need for the command line and heuristic/configuration setup.
 
