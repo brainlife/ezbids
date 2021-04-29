@@ -667,8 +667,9 @@ def identify_series_info(data_list_unique_series):
                     series_entities['task'] = 'rest'
                     data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "{}" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'.format([x for x in func_keys if re.findall(x,SD)][0])
                 if 'MOSAIC' and 'PHASE' in data_list_unique_series[i]['ImageType']:
-                    data_list_unique_series[i]['ModalityLabel'] = 'phase'
-                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/phase because "{}" is in the SeriesDescription (but not "sbref"), and "MOSAIC" and "PHASE" are in the ImageType field of the metadata. Please modify if incorrect'.format([x for x in func_keys if re.findall(x,SD)][0])
+                    data_list_unique_series[i]['DataType'] = 'bold'
+                    series_entities['part'] = 'phase'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold (part-phase) because "{}" is in the SeriesDescription (but not "sbref"), and "MOSAIC" and "PHASE" are in the ImageType field of the metadata. Please modify if incorrect'.format([x for x in func_keys if re.findall(x,SD)][0])
                 else:
                     data_list_unique_series[i]['ModalityLabel'] = 'bold'
                     if data_list_unique_series[i]['EchoNumber']:
