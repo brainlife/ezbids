@@ -14,7 +14,6 @@ root=$1
 echo "running expand.sh"
 timeout 1800 ./expand.sh $root
 
-
 # Check to see if nifti/json (and bval/bvec) files are okay to use for ezBIDS
 json_files=($(find $root -name "*.json"))
 nifti_files=($(find $root -name "*.nii*"))
@@ -94,7 +93,7 @@ if [ ${#combined_files[@]} -eq 0 ] || [ $bad_files -ne 0 ]; then
 	        echo "dcm2niix failed"
 	        exit $ret
 	    fi
-	    echo $1 >> dcm2niix.done
+	    echo $1 >> $root/dcm2niix.done
 	}
 	export -f d2n
 	cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n {}

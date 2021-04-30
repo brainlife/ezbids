@@ -41,10 +41,9 @@ for(let key of keys) {
     tsvheader.push(key);
 }
 tsv.push(tsvheader);
-
 info.subjects.forEach(subject=>{
     let tsvrec = [];
-    tsvrec.push(subject.subject);
+    tsvrec.push("sub-"+subject.subject);
     for(let key in info.participantsColumn) {
         tsvrec.push(subject.phenotype[key]);
     }
