@@ -526,32 +526,46 @@ def identify_series_info(data_list_unique_series):
         # Make easier to find key characters/phrases in SD by removing non-alphanumeric characters and make everything lowercase
         SD = re.sub('[^A-Za-z0-9]+', '', SD).lower()
         
+        # Keys for helping determine acquisition types, based on SeriesDescription
+        localizer_keys = ['localizer','scout']
+        asl_keys = ['asl']
+        angio_keys = ['angio']
+        se_magPhase_fmap_keys = ['fmap','fieldmap','spinecho','sefmri','semri']
+        flair_keys = ['flair','t2spacedafl']
+        dwi_derived_keys = ['trace','fa','adc']
+        dwi_keys = ['dti','dwi','dmri']
+        func_keys = ['bold','func','fmri','epi','mri','task','rest']
+        func_rest_keys = ['rest','rsfmri','fcmri']
+        t1w_keys = ['t1w','tfl3d','mprage','spgr','tflmgh']
+        t2w_keys = ['t2w','t2']
+        
         # # #  Determine DataTypes and ModalityLabels # # # # # # # 
         
-        # Localizers or other non-BIDS compatible acquisitions
-        if any(x in SD for x in ['localizer','scout']):
-            data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizer or other non-compatible BIDS acquisition'
-            data_list_unique_series[i]['message'] = 'Acquisition is believed to be some form of localizer because "localizer" or "scout" is in the SeriesDescription. Please modify if incorrect. ezBIDS does not convert locazliers to BIDS'
+        # Localizers
+        if any(x in SD for x in localizer_keys):
+            data_list_unique_series[i]['error'] = 'Acquisition appears to be a localizer'
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be a localizer because "{}" is in the SeriesDescription. Please modify if incorrect.'.format([x for x in localizer_keys if re.findall(x,SD)][0])
             data_list_unique_series[i]['br_type'] = 'exclude (localizer)'
             
         # Arterial Spin Labeling (ASL)
-        elif any(x in SD for x in ['asl']):
+    
+        elif any(x in SD for x in asl_keys):
             data_list_unique_series[i]['br_type'] = 'exclude'
             data_list_unique_series[i]['DataType'] = 'asl'
             data_list_unique_series[i]['ModalityLabel'] = 'asl'
             data_list_unique_series[i]['error'] = 'Acqusition appears to be ASL, which is currently not supported by ezBIDS at this time, but will be in the future'
-            data_list_unique_series[i]['message'] = 'Acquisition is believed to be asl/asl because "asl" is in the SeriesDescription. Please modify if incorrect. Currently, ezBIDS does not support ASL conversion to BIDS'
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be asl/asl because "{}" is in the SeriesDescription. Please modify if incorrect. Currently, ezBIDS does not support ASL conversion to BIDS'.format([x for x in asl_keys if re.findall(x,SD)][0])
             
         # Angiography
-        elif any(x in SD for x in ['angio']):
+        elif any(x in SD for x in angio_keys):
             data_list_unique_series[i]['br_type'] = 'exclude'
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'angio'
             data_list_unique_series[i]['error'] = 'Acqusition appears to be an Angiography acquisition, which is currently not supported by ezBIDS at this time, but will be in the future'
-            data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/angio because "angio" is in the SeriesDescription. Please modify if incorrect. Currently, ezBIDS does not support Angiography conversion to BIDS'
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/angio because "{}" is in the SeriesDescription. Please modify if incorrect. Currently, ezBIDS does not support Angiography conversion to BIDS'.format([x for x in angio_keys if re.findall(x,SD)][0])
                     
         # Magnitude/Phase[diff] and Spin Echo (SE) field maps
-        elif any(x in SD for x in ['fmap','fieldmap','spinecho','sefmri','semri']):
+        elif any(x in SD for x in se_magPhase_fmap_keys):
             data_list_unique_series[i]['DataType'] = 'fmap'
             data_list_unique_series[i]['forType'] = 'func/bold'
             
@@ -563,19 +577,19 @@ def identify_series_info(data_list_unique_series):
                     data_list_unique_series[i]['br_type'] = 'exclude'
                 elif data_list_unique_series[i]['EchoNumber'] == 1 and '_e1_ph' not in data_list_unique_series[i]['json_path']:
                     data_list_unique_series[i]['ModalityLabel'] = 'magnitude1'
-                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/magnitude1 because "fmap" or "fieldmap" is in SeriesDescription, EchoNumber == 1 in metadata, and the subjectstring "_e1_ph" is not in the filename. Please modify if incorrect'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/magnitude1 because "{}" is in SeriesDescription, EchoNumber == 1 in metadata, and the phrase "_e1_ph" is not in the filename. Please modify if incorrect'.format([x for x in se_magPhase_fmap_keys if re.findall(x,SD)][0])
                 elif data_list_unique_series[i]['EchoNumber'] == 1 and '_e1_ph' in data_list_unique_series[i]['json_path']:
                     data_list_unique_series[i]['ModalityLabel'] = 'phase1'
-                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/phase1 because "fmap" or "fieldmap" is in SeriesDescription, EchoNumber == 1 in metadata, and the subjectstring "_e1_ph" is in the filename. Please modify if incorrect'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/phase1 because "{}" is in SeriesDescription, EchoNumber == 1 in metadata, and the phrase "_e1_ph" is in the filename. Please modify if incorrect'.format([x for x in se_magPhase_fmap_keys if re.findall(x,SD)][0])
                 elif data_list_unique_series[i]['EchoNumber'] == 2 and '_e2_ph' not in data_list_unique_series[i]['json_path']:
                     data_list_unique_series[i]['ModalityLabel'] = 'magnitude2'
-                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/magnitude2 because "fmap" or "fieldmap" is in SeriesDescription, EchoNumber == 2 in metadata, and the subjectstring "_e2_ph" is not in the filename. Please modify if incorrect'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/magnitude2 because "{}" is in SeriesDescription, EchoNumber == 2 in metadata, and the phrase "_e2_ph" is not in the filename. Please modify if incorrect'.format([x for x in se_magPhase_fmap_keys if re.findall(x,SD)][0])
                 elif data_list_unique_series[i]['EchoNumber'] == 2 and '_e2_ph' in data_list_unique_series[i]['json_path'] and '_e1_ph' in data_list_unique_series[i-2]['json_path']:
                     data_list_unique_series[i]['ModalityLabel'] = 'phase2'
-                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/phase2 because "fmap" or "fieldmap" is in SeriesDescription, EchoNumber == 2 in metadata, and the subjectstring "_e2_ph" is in the filename and "_e1_ph" the one two before. Please modify if incorrect'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/phase2 because "{}" is in SeriesDescription, EchoNumber == 2 in metadata, and the phrase "_e2_ph" is in the filename and "_e1_ph" the one two before. Please modify if incorrect'.format([x for x in se_magPhase_fmap_keys if re.findall(x,SD)][0])
                 elif data_list_unique_series[i]['EchoNumber'] == 2 and '_e2_ph' in data_list_unique_series[i]['json_path'] and '_e1_ph' not in data_list_unique_series[i-2]['json_path']:
                     data_list_unique_series[i]['ModalityLabel'] = 'phasediff'
-                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/phasediff because "fmap" or "fieldmap" is in SeriesDescription, EchoNumber == 2 in metadata, and the subjectstring "_e2_ph" is in the filename but "_e1_ph" not in the one two before. Please modify if incorrect'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/phasediff because "fmap" or "fieldmap" is in SeriesDescription, EchoNumber == 2 in metadata, and the subjectstring "_e2_ph" is in the filename but "_e1_ph" not found in the acquisition two before. Please modify if incorrect'
                 else:
                     data_list_unique_series[i]['error'] = 'Acquisition appears to be some form of fieldmap with an EchoNumber, however, unable to determine if it is a magnitude, phase, or phasediff. Please modify if acquisition is desired for BIDS conversion, otherwise the acqusition will not be converted'
                     data_list_unique_series[i]['message'] = data_list_unique_series[i]['error']
@@ -584,7 +598,7 @@ def identify_series_info(data_list_unique_series):
             # Spin echo field maps
             else:
                 data_list_unique_series[i]['ModalityLabel'] = 'epi'
-                data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/epi because "fmap" or "fieldmap" is in SeriesDescription, and does not contain metadata info associated with magnitude/phasediff acquisitions. Please modify if incorrect'
+                data_list_unique_series[i]['message'] = 'Acquisition is believed to be fmap/epi because "{}" is in SeriesDescription, and does not contain metadata info associated with magnitude/phasediff acquisitions. Please modify if incorrect'.format([x for x in se_magPhase_fmap_keys if re.findall(x,SD)][0])
                 series_entities['direction'] = data_list_unique_series[i]['direction']
             
         # DWI
@@ -601,10 +615,10 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['br_type'] = 'exclude'
 
         elif any('.bvec' in x for x in data_list_unique_series[i]['paths']):
-            if any(x in SD for x in ['flair','t2spacedafl']):
+            if any(x in SD for x in flair_keys):
                 data_list_unique_series[i]['DataType'] = 'anat'
                 data_list_unique_series[i]['ModalityLabel'] = 'FLAIR'
-                data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/FLAIR because "flair" or "t2spacedafl" is in the SeriesDescription. Please modify if incorrect'
+                data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/FLAIR because "{}" is in the SeriesDescription. Please modify if incorrect'.format([x for x in flair_keys if re.findall(x,SD)][0])
 
             elif 't2w' in SD:
                 data_list_unique_series[i]['DataType'] = 'anat'
@@ -617,7 +631,7 @@ def identify_series_info(data_list_unique_series):
                 data_list_unique_series[i]['br_type'] = 'exclude'
             
             else:    
-                # low b-values, should be dwi, but with unique acquisition label
+                # low b-values will default to fmap/epi, intended to be used on dwi/dwi data
                 bval = np.loadtxt([x for x in data_list_unique_series[i]['paths'] if 'bval' in x][0])
                 if np.max(bval) <= 50:
                     data_list_unique_series[i]['DataType'] = 'fmap'
@@ -626,43 +640,44 @@ def identify_series_info(data_list_unique_series):
                     data_list_unique_series[i]['forType'] = 'dwi/dwi'
                     data_list_unique_series[i]['message'] = 'Acquisition appears to be fmap/epi meant for dwi/dwi, as there are bval & bvec files, but with low b-values. Please modify if incorrect'
                     
-                elif any(x in SD for x in ['trace','fa','adc']) and not any(x in SD for x in ['dti','dwi','dmri']):
+                elif any(x in SD for x in dwi_derived_keys) and not any(x in SD for x in dwi_keys):
                     data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
-                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be TRACE, FA, or ADC because there are bval & bvec files with the same SeriesNumber, and "trace", "fa", or "adc" are in the SeriesDescription. Please modify if incorrect'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be TRACE, FA, or ADC because there are bval & bvec files with the same SeriesNumber, and "{}" are in the SeriesDescription. Please modify if incorrect'.format([x for x in dwi_derived_keys if re.findall(x,SD)][0])
                     data_list_unique_series[i]['br_type'] = 'exclude'
                 else:
                     data_list_unique_series[i]['DataType'] = 'dwi'
                     data_list_unique_series[i]['ModalityLabel'] = 'dwi'
                     series_entities['direction'] = data_list_unique_series[i]['direction']
-                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be dwi/dwi because there are bval & bvec files with the same SeriesNumber, "dwi" or "dti" is in the SeriesDescription, and it does not appear to be dwi product data. Please modify if incorrect'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be dwi/dwi because there are bval & bvec files with the same SeriesNumber, "{}" is in the SeriesDescription, and it does not appear to be derived dwi data. Please modify if incorrect'.format([x for x in dwi_keys if re.findall(x,SD)][0])
         
         # DWI derivatives or other non-BIDS diffusion offshoots
-        elif any(x in SD for x in ['trace','fa','adc']) and any(x in SD for x in ['dti','dwi','dmri']):
+        elif any(x in SD for x in dwi_derived_keys) and any(x in SD for x in dwi_keys):
             data_list_unique_series[i]['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
-            data_list_unique_series[i]['message'] = 'Acquisition is believed to be TRACE, FA, or ADC because there are bval & bvec files with the same SeriesNumber, and "trace", "fa", or "adc" are in the SeriesDescription. Please modify if incorrect'
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be TRACE, FA, or ADC because there are bval & bvec files with the same SeriesNumber, and "{}" are in the SeriesDescription. Please modify if incorrect'.format([x for x in dwi_derived_keys if re.findall(x,SD)][0])
             data_list_unique_series[i]['br_type'] = 'exclude'
         
         # Functional bold and phase
-        elif any(x in SD for x in ['bold','func','fmri','epi','mri','task','rest']) and 'sbref' not in SD:
+        elif any(x in SD for x in func_keys) and 'sbref' not in SD:
             if data_list_unique_series[i]['NumVolumes'] < 50: 
                 data_list_unique_series[i]['br_type'] = 'exclude'
-                data_list_unique_series[i]['message'] = 'Acquisition appears to be functional but contain less than 50 volumes, suggesting a failure/restart, or some form of test acquisition. Please modify if incorrect'
+                data_list_unique_series[i]['message'] = 'Acquisition appears to be functional but contain less than 50 volumes, suggesting a failure/restart, or possibly a test acquisition. Please modify if incorrect'
             else:
                 data_list_unique_series[i]['DataType'] = 'func'
-                if any(x in SD for x in ['rest','rsfmri','fcmri']):
+                if any(x in SD for x in func_rest_keys):
                     series_entities['task'] = 'rest'
-                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "{}" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'.format([x for x in func_keys if re.findall(x,SD)][0])
                 if 'MOSAIC' and 'PHASE' in data_list_unique_series[i]['ImageType']:
-                    data_list_unique_series[i]['ModalityLabel'] = 'phase'
-                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/phase because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"), and "MOSAIC" and "PHASE" are in the ImageType field of the metadata. Please modify if incorrect'
+                    data_list_unique_series[i]['ModalityLabel'] = 'bold'
+                    series_entities['part'] = 'phase'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold (part-phase) because "{}" is in the SeriesDescription (but not "sbref"), and "MOSAIC" and "PHASE" are in the ImageType field of the metadata. Please modify if incorrect'.format([x for x in func_keys if re.findall(x,SD)][0])
                 else:
                     data_list_unique_series[i]['ModalityLabel'] = 'bold'
                     if data_list_unique_series[i]['EchoNumber']:
                         series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
-                        data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
+                        data_list_unique_series[i]['message'] = 'Acquisition is believed to be multiecho func/bold because "{}" is in the SeriesDescription (but not "sbref"), and EchoTime == {}. Please modify if incorrect'.format([x for x in func_keys if re.findall(x,SD)][0], data_list_unique_series[i]['EchoNumber'])
                 if data_list_unique_series[i]['EchoNumber']:
                     series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
-                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be func/bold because "bold","func","fmri","epi","mri", or"task" is in the SeriesDescription (but not "sbref"). Please modify if incorrect'
+                    data_list_unique_series[i]['message'] = 'Acquisition is believed to be multiecho func/bold because "{}" is in the SeriesDescription (but not "sbref"), and EchoTime == {}. Please modify if incorrect'.format([x for x in func_keys if re.findall(x,SD)][0], data_list_unique_series[i]['EchoNumber'])
 
         # Functional single band reference (sbref)
         elif 'sbref' in SD:
@@ -673,7 +688,7 @@ def identify_series_info(data_list_unique_series):
             else:
                 data_list_unique_series[i]['DataType'] = 'func'
                 
-                if 'rest' in SD or 'rsfmri' in SD:
+                if any(x in SD for x in func_rest_keys):
                     series_entities['task'] = 'rest'
                 if data_list_unique_series[i]['EchoNumber']:
                     series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
@@ -689,6 +704,8 @@ def identify_series_info(data_list_unique_series):
             
             if InversionTime:
                 data_list_unique_series[i]['ModalityLabel'] = 'MP2RAGE'
+                data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/mpr2rage, but "mp2rage" in in the SeriesDescription, and there is an InversionTime in the metadata. Please modify if incorrect.'
+
                 if InversionTime < 1.0:
                     series_entities['inversion'] = 1
                 else:
@@ -706,27 +723,29 @@ def identify_series_info(data_list_unique_series):
 
             else: 
                 data_list_unique_series[i]['ModalityLabel'] = 'UNIT1'
+                data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/UNIT1, but "mp2rage" in in the SeriesDescription, but there is no InversionTime in the metadata. Please modify if incorrect.'
+
 
         # T1w
-        elif any(x in SD for x in ['t1w','tfl3d','mprage','spgr','tflmgh']):
+        elif any(x in SD for x in t1w_keys):
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'T1w'
             if 'multiecho' in SD or 'echo' in SD:
                 if 'MEAN' not in image_type:
                     series_entities['echo'] = data_list_unique_series[i]['EchoNumber']
-            data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T1w because "t1w","tfl3d","tfl","mprage", "spgr", or "tflmgh" is in the SeriesDescription. Please modify if incorrect'
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T1w because "{}" is in the SeriesDescription. Please modify if incorrect'.format([x for x in t1w_keys if re.findall(x,SD)][0])
         
         # FLAIR
-        elif any(x in SD for x in ['flair','t2spacedafl']):
+        elif any(x in SD for x in flair_keys):
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'FLAIR'
-            data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/FLAIR because "flair" or "t2spacedafl" is in the SeriesDescription. Please modify if incorrect'
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/FLAIR because "{}" is in the SeriesDescription. Please modify if incorrect'.format([x for x in flair_keys if re.findall(x,SD)][0])
 
         # T2w
-        elif any (x in SD for x in ['t2w','t2']) and data_list_unique_series[i]['EchoTime'] > 100: #T2w acquisitions typically have EchoTime > 100ms
+        elif any (x in SD for x in t2w_keys) and data_list_unique_series[i]['EchoTime'] > 100: #T2w acquisitions typically have EchoTime > 100ms
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'T2w'
-            data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T2w because "t2w" or "t2" is in the SeriesDescription and EchoTime > 100ms. Please modify if incorrect'
+            data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T2w because "{}" is in the SeriesDescription and EchoTime > 100ms. Please modify if incorrect'.format([x for x in t2w_keys if re.findall(x,SD)][0])
         
         # Can't discern from SeriesDescription, try using ndim and number of volumes to see if this is a func/bold
         else:
@@ -734,7 +753,7 @@ def identify_series_info(data_list_unique_series):
             if test.ndim == 4 and test.shape[3] >= 50 and not any(x in data_list_unique_series[i]['ImageType'] for x in ['DERIVED','PERFUSION','DIFFUSION','ASL']):
                 data_list_unique_series[i]['DataType'] = 'func'
                 data_list_unique_series[i]['ModalityLabel'] = 'bold'
-                data_list_unique_series[i]['message'] = 'SeriesDescription did not provide hints regarding the type of acquisition; however, it is believed to be a func/bold because it contains >= 50 volumes. Please modify if incorrect'
+                data_list_unique_series[i]['message'] = 'SeriesDescription did not provide hints regarding the type of acquisition; however, it is believed to be a func/bold because it contains >= 50 volumes and is 4D. Please modify if incorrect'
             
             # Assume not BIDS-compliant acquisition unless user specifies so
             else: 
