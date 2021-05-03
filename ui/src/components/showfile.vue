@@ -27,7 +27,7 @@ export default {
 
 
 </script>
-<style>
+<style scoped>
 pre {
     background-color: #333;
     color: white;

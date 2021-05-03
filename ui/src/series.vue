@@ -104,7 +104,8 @@
                     <small><b>Files</b></small>
                     <div v-for="(item, idx) in $root.objects[object_idx].items" :key="idx">
                         <pre>{{item.path}}</pre>
-                        <pre class="sidecar" v-if="item.sidecar">{{item.sidecar}}</pre>
+                        <!--<pre class="sidecar" v-if="item.sidecar">{{item.sidecar}}</pre>-->
+                        <showfile v-if="['json', 'bval', 'bvec'].includes(item.path.split('.').pop())" :path="item.path"/>
                     </div>
                 </div>
             </div>
@@ -127,11 +128,14 @@
 
 import Vue from 'vue'
 
+import showfile from '@/components/showfile'
+
 import datatype from '@/components/datatype'
 
 export default {
     components: {
         datatype,
+        showfile,
     },
     data() {
         return {

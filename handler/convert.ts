@@ -267,15 +267,17 @@ async.forEach(info.objects, (o, next_o)=>{
             const path = composePath(false);
 
             //construct dummy bvec
+            /*
             const ones = [];
             for(let j = 0;j < o.analysisResults.NumVolumes; ++j) {
                 ones.push(1);
             }
+            */
             const zeros = [];
             for(let j = 0;j < o.analysisResults.NumVolumes; ++j) {
                 zeros.push(0);
             }
-            const bvec = `${ones.join(" ")}\n${zeros.join(" ")}\n${zeros.join(" ")}\n`;
+            const bvec = `${zeros.join(" ")}\n${zeros.join(" ")}\n${zeros.join(" ")}\n`;
             fs.writeFileSync(root+"/"+path+"/"+name+"_dwi.bvec", bvec);
 
             const bval = zeros.join(" ")+"\n";
