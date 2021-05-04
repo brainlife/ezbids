@@ -166,8 +166,8 @@ def add_dirList(dir_list):
         
         # Only want json files with corresonding nifti (and bval/bvec) and if the files come from dcm2niix
         if 'ConversionSoftware' in json_data and json_data['ConversionSoftware'] == 'dcm2niix':
-            if len([x for x in os.listdir(data_dir) if json_list[j][2:-4] in x]) > 1:
-                new_dir_list.append([x for x in os.listdir(data_dir) if json_list[j][2:-4] in x])
+            if len([x for x in os.listdir(os.path.dirname(json_list[j])) if json_list[j][2:-4] in x]) > 1:
+                new_dir_list.append([x for x in os.listdir(os.path.dirname(json_list[j])) if json_list[j][2:-4] in x])
         
     # Flatten list of lists
     new_dir_list = [file for sublist in new_dir_list for file in sublist]
