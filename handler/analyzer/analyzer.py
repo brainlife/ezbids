@@ -576,6 +576,11 @@ def identify_series_info(data_list_unique_series):
         func_rest_keys = ['rest','rsfmri','fcmri']
         t1w_keys = ['t1w','tfl3d','mprage','spgr','tflmgh']
         t2w_keys = ['t2w','t2']
+        additional_anat_keys = ['pdw','t2starw','inplanet1','inplanet2','pdt2']
+        anat_parametric_keys = ['t1map','r1map','t2map','r2map','t2starmap',
+                                'r2starmap','pdmap','mtrmap','mtsat','t1rho',
+                                'mwfmap','mtvmap','pdt2map','chimap','tb1map',
+                                'rb1map','s0map','m0map','']
         
         # # #  Determine DataTypes and ModalityLabels # # # # # # # 
         
@@ -586,7 +591,6 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['br_type'] = 'exclude (localizer)'
             
         # Arterial Spin Labeling (ASL)
-    
         elif any(x in SD for x in asl_keys):
             data_list_unique_series[i]['br_type'] = 'exclude'
             data_list_unique_series[i]['DataType'] = 'asl'
@@ -606,7 +610,11 @@ def identify_series_info(data_list_unique_series):
         elif any(x in SD for x in se_magPhase_fmap_keys):
             data_list_unique_series[i]['DataType'] = 'fmap'
             data_list_unique_series[i]['forType'] = 'func/bold'
-            
+            if 'REAL' in data_list_unique_series[i]['ImageType']:
+                series_entities['part'] = 'real'
+            if 'IMAGINARY' in data_list_unique_series[i]['ImageType']:
+                series_entities['part'] = 'imag'
+                
             # Magnitude/Phase[diff] field maps
             if 'EchoNumber' in data_list_unique_series[i]['sidecar']:
                 if any(x in data_list_unique_series[i]['json_path'] for x in ['_real.','_imaginary.']):
