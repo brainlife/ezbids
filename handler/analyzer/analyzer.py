@@ -22,7 +22,8 @@ from math import floor
 
 warnings.filterwarnings("ignore")
 
-data_dir = sys.argv[1]
+# data_dir = sys.argv[1]
+data_dir = '/media/data/ezbids/dicoms/OpenScience'
 os.chdir(data_dir)
 
 
@@ -164,10 +165,11 @@ def add_dirList(dir_list):
         json_data = open(json_list[j])
         json_data = json.load(json_data, strict=False)
         
+        
         # Only want json files with corresonding nifti (and bval/bvec) and if the files come from dcm2niix
         if 'ConversionSoftware' in json_data and json_data['ConversionSoftware'] == 'dcm2niix':
-            if len([x for x in os.listdir(os.path.dirname(json_list[j])) if json_list[j][2:-4] in x]) > 1:
-                new_dir_list.append([x for x in os.listdir(os.path.dirname(json_list[j])) if json_list[j][2:-4] in x])
+            if len([os.path.dirname(json_list[j]) + '/' + x for x in os.listdir(os.path.dirname(json_list[j])) if os.path.basename(json_list[j])[:-4] in x]) > 1:
+                new_dir_list.append([os.path.dirname(json_list[j]) + '/' + x for x in os.listdir(os.path.dirname(json_list[j])) if os.path.basename(json_list[j][:-4]) in x])
         
     # Flatten list of lists
     new_dir_list = [file for sublist in new_dir_list for file in sublist]
