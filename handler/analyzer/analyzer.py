@@ -577,11 +577,11 @@ def identify_series_info(data_list_unique_series):
         func_rest_keys = ['rest','rsfmri','fcmri']
         t1w_keys = ['t1w','tfl3d','mprage','spgr','tflmgh']
         t2w_keys = ['t2w','t2']
-        additional_anat_keys = ['pdw','t2starw','inplanet1','inplanet2','pdt2']
-        anat_parametric_keys = ['t1map','r1map','t2map','r2map','t2starmap',
-                                'r2starmap','pdmap','mtrmap','mtsat','t1rho',
-                                'mwfmap','mtvmap','pdt2map','chimap','tb1map',
-                                'rb1map','s0map','m0map','']
+        additional_anat_keys = ['t2starw','inplanet1','inplanet2','pdt2','pdw']
+        anat_parametric_keys = ['pdt2map','t2starmap','r2starmap',
+                                'mwfmap','mtvmap','chimap','tb1map',
+                                'pdmap','mtrmap','mtsat','t1rho',
+                                'rb1map','s0map','m0map','t1map','r1map','t2map','r2map']
         
         # # #  Determine DataTypes and ModalityLabels # # # # # # # 
         
@@ -793,11 +793,50 @@ def identify_series_info(data_list_unique_series):
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/FLAIR because "{}" is in the SeriesDescription. Please modify if incorrect'.format([x for x in flair_keys if re.findall(x,SD)][0])
 
         # T2w
-        elif any (x in SD for x in t2w_keys) and data_list_unique_series[i]['EchoTime'] > 100: #T2w acquisitions typically have EchoTime > 100ms
+        elif any(x in SD for x in t2w_keys) and data_list_unique_series[i]['EchoTime'] > 100: #T2w acquisitions typically have EchoTime > 100ms
             data_list_unique_series[i]['DataType'] = 'anat'
             data_list_unique_series[i]['ModalityLabel'] = 'T2w'
             data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/T2w because "{}" is in the SeriesDescription and EchoTime > 100ms. Please modify if incorrect'.format([x for x in t2w_keys if re.findall(x,SD)][0])
         
+       
+        # Anatomical non-parametric
+        elif any(x in SD for x in additional_anat_keys):
+            data_list_unique_series[i]['DataType'] = 'anat'
+            if 't2starw' in SD:
+                data_list_unique_series[i]['ModalityLabel'] = 'T2starw'
+                data_list_unique_series[i]['message'] = 'Acquisitions is believed to be anat/T2starw because "T2starw" is in the SeriesDescription. Please modify if incorrect'
+            elif 'inplanet1' in SD:
+                data_list_unique_series[i]['ModalityLabel'] = 'inplaneT1'
+                data_list_unique_series[i]['message'] = 'Acquisitions is believed to be anat/inplaneT1 because "inplaneT1" is in the SeriesDescription. Please modify if incorrect'
+            elif 'inplanet2' in SD:
+                data_list_unique_series[i]['ModalityLabel'] = 'inplaneT2'
+                data_list_unique_series[i]['message'] = 'Acquisitions is believed to be anat/inplaneT2 because "inplaneT2" is in the SeriesDescription. Please modify if incorrect'
+            elif 'pdt2' in SD:
+                data_list_unique_series[i]['ModalityLabel'] = 'PDT2'
+                data_list_unique_series[i]['message'] = 'Acquisitions is believed to be anat/PDT2 because "PDT2" is in the SeriesDescription. Please modify if incorrect'
+            elif 'pdw' in SD:
+                data_list_unique_series[i]['ModalityLabel'] = 'PDw'
+                data_list_unique_series[i]['message'] = 'Acquisitions is believed to be anat/PDw because "PDw" is in the SeriesDescription. Please modify if incorrect'
+                
+                
+        # # anatomical parametric maps
+       #  elif any(x in SD for x in anat_parametric_keys):
+       #      data_list_unique_series[i]['DataType'] = 'anat'
+       #      if 'chimap' in SD:
+       #          data_list_unique_series[i]['ModalityLabel'] = 'Chimap'
+       #          data_list_unique_series[i]['message'] = 'Acquisitions is believed to be anat/Chimap because "Chimap" is in the SeriesDescription. Please modify if incorrect'
+       #      elif 't1rho' in SD:
+       #          data_list_unique_series[i]['ModalityLabel'] = 'T1rho'
+       #          data_list_unique_series[i]['message'] = 'Acquisitions is believed to be anat/T1rho because "T1rho" is in the SeriesDescription. Please modify if incorrect'
+       #      elif 'mtsat' in SD:
+       #          data_list_unique_series[i]['ModalityLabel'] = 'MTsat'
+       #          data_list_unique_series[i]['message'] = 'Acquisitions is believed to be anat/MTsat because "MTsat" is in the SeriesDescription. Please modify if incorrect'
+       #      else:
+       #          modality_label = [x for x in anat_parametric_keys if re.findall(x,SD)][0]
+       #          data_list_unique_series[i]['ModalityLabel'] = modality_label.split('map')[0].upper() + 'map'
+       #          data_list_unique_series[i]['message'] = 'Acquisition is believed to be anat/{} because {} is in the SeriesDescription. Please modify if incorrect'.format(modality_label, modality_label)
+                
+                                
         # Can't discern from SeriesDescription, try using ndim and number of volumes to see if this is a func/bold
         else:
             test = nib.load(data_list_unique_series[i]['nifti_path'])
