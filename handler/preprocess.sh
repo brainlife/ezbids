@@ -25,7 +25,6 @@ echo "finding dicom directories"
 ./find_dicomdir.py $root > $root/dcm2niix.list
 cat $root/dcm2niix.list
 
-
 echo "running dcm2niix"
 true > $root/dcm2niix.done
 function d2n {

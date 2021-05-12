@@ -55,14 +55,6 @@ import dwiDatatype from './assets/schema/datatypes/dwi.yaml'
 import funcDatatype from './assets/schema/datatypes/func.yaml'
 import fmapDatatype from './assets/schema/datatypes/fmap.yaml'
 
-/*
-import jsyaml from 'js-yaml';
-async function loadYaml(url) {
-    let yaml = await fetch(url).then(res=>res.text());
-    return jsyaml.load(yaml);
-}
-*/
-
 new Vue({
     el: '#app',
     components: {
@@ -306,7 +298,8 @@ invert:
         },
 
         findSeries(o) {
-            let series = this.series.find(s=>s.series_id == o.series_id);
+            //let series = this.series.find(s=>s.series_id == o.series_id);
+            let series = this.series[o.series_id];
             return series;
         },
 
@@ -317,7 +310,7 @@ invert:
             o._exclude = o.exclude;
 
             const series = this.$root.findSeries(o);
-            o._SeriesDescription = series.SeriesDescription.replace('_RR', "");
+            o._SeriesDescription = series.SeriesDescription.replace('_RR', ""); //TODO what is this?
             o._type = series.type;
             o._forType = series.forType;
             if(o.type) o._type = o.type; //object level override

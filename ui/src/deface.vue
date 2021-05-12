@@ -42,7 +42,7 @@
         <pre class="status">{{$root.session.status_msg}}</pre>
     </div>
 
-    <table class="table table-sm" v-if="$root.defacingMethod">
+    <table class="table table-sm" v-if="$root.defacingMethod || $root.session.status == 'defaced'">
         <thead>
             <tr>
                 <th></th>
@@ -56,7 +56,7 @@
                     <span><small>sub</small> {{anat._entities.subject}} </span>
                     <span v-if="anat._entities.session">/ <small>ses</small> {{anat._entities.session}} </span>
                 </div>
-                <el-tag type="info" size="mini">sn {{anat.SeriesNumber}}</el-tag>
+                <el-tag type="info" size="mini">sn {{$root.series[anat.series_id].SeriesNumber}}</el-tag>
                 &nbsp;
                 <datatype :type="anat._type" :series_id="anat.series_id" :entities="anat.entities"/> 
             </td>

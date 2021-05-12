@@ -98,6 +98,7 @@
                     <el-tag size="mini" type="info">volumes: {{$root.objects[object_idx].analysisResults.NumVolumes}}</el-tag>&nbsp;
                 </div>
                 <div style="margin-left: 50px">
+                    <small><b>Preview</b></small>
                     <a :href="$root.getURL($root.objects[object_idx].pngPath)" v-if="$root.objects[object_idx].pngPath">
                         <img width="100%" :src="$root.getURL($root.objects[object_idx].pngPath)"/>
                     </a>
