@@ -2,10 +2,10 @@
     <div v-if="$root.currentPage.id == 'series'">
     <div class="series-list">
         <h4 style="padding-top: 20px;">Series Description / Datatype Mappings</h4>
-        <div v-for="s in $root.series" :key="s.series_id" class="clickable" :class="{'selected': ss === s}" @click="ss = s" style="padding: 2px;">
-            <el-tag type="info" size="mini" title="SeriesNumber">sn {{s.SeriesNumber}}</el-tag>
+        <div v-for="(s, series_idx) in $root.series" :key="s.series_idx" class="clickable" :class="{'selected': ss === s}" @click="ss = s" style="padding: 2px;">
+            <el-tag type="info" size="mini" title="Series index">#{{series_idx}}</el-tag>
             &nbsp;
-            <datatype :type="s.type" :series_id="s.series_id" :entities="s.entities" :class="{excluded: s.type == 'exclude'}"/>
+            <datatype :type="s.type" :series_idx="series_idx" :entities="s.entities" :class="{excluded: s.type == 'exclude'}"/>
             <!--
             <el-tag type="plain" size="mini" title="Number of objects">{{s.object_indices.length}} obj</el-tag>
             -->

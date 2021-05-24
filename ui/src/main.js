@@ -298,15 +298,12 @@ invert:
         },
 
         findSeries(o) {
-            //let series = this.series.find(s=>s.series_id == o.series_id);
-            let series = this.series[o.series_id];
+            let series = this.series[o.series_idx];
             return series;
         },
 
         //apply all parent entity mappings and store them under _entities
         mapObject(o) {
-            //console.log("called! mapObject")
-            //console.trace();
             o._exclude = o.exclude;
 
             const series = this.$root.findSeries(o);
@@ -438,6 +435,7 @@ invert:
 
                     //we shouldn't have to do this soon
                     if(series.png_objects_indices) Vue.set(series, 'object_indices', series.png_objects_indices);
+
                 });
 
                 this.subjects.forEach(subject=>{
@@ -467,9 +465,14 @@ invert:
                             Vue.set(item, 'sidecar_json', JSON.stringify(sidecar, null, 4));
                         }
                     });
-                });
 
-                //this.series.sort((a,b)=>a.SeriesNumber - b.SeriesNumber);
+                    if(object.series_id !== undefined) {
+                        object.series_idx = object.series_id;
+                        delete object.series_id;
+                    }
+                    delete object.SeriesNumber; //should be removed from analyzer soon
+
+                });
             }).catch(err=>{
                 console.error("failed to load");
                 console.error(err);

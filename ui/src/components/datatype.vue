@@ -7,7 +7,7 @@
 
 <script>
 export default {
-    props: [ 'type', 'series_id', 'entities' ],
+    props: [ 'type', 'series_idx', 'entities' ],
     data() {
         return {
             something: "whatever", 
@@ -19,7 +19,7 @@ export default {
         sessionEntities() {
             let ents = {};
 
-            let series = this.$root.findSeries({series_id: this.series_id});
+            let series = this.$root.findSeries({series_idx: this.series_idx});
             for(let key in series.entities) {
                 if(series.entities[key] == "") continue;
                 ents[key] = series.entities[key];

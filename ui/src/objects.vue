@@ -27,7 +27,7 @@
                         <span style="float: right; top: -7px; position: relative; background-color: white; font-size: 70%; color: #999; padding: 0 10px; margin-right: 10px;">section {{sectionId}}</span>
                     </div>
                     <div v-for="o in section" :key="o.idx" class="clickable hierarchy-item" :class="{selected: so === o, exclude: isExcluded(o)}" @click="select(o, o_ses)">
-                        <el-tag type="info" size="mini">sn {{$root.series[o.series_id].SeriesNumber}}</el-tag>&nbsp;<datatype :type="o._type" :series_id="o.series_id" :entities="o.entities"/> 
+                        <el-tag type="info" size="mini">#{{o.series_idx}}</el-tag>&nbsp;<datatype :type="o._type" :series_idx="o.series_idx" :entities="o.entities"/> 
                         <small v-if="o._type == 'exclude'">&nbsp;({{o._SeriesDescription}})</small>
                         
                         <span v-if="!isExcluded(o)">
@@ -297,7 +297,7 @@ export default {
 
         intendedForLabel(o) {
             let series = this.$root.findSeries(o);
-            let l = "[sn"+series.SeriesNumber+"] ";
+            let l = "#"+series.series_idx;
             l += o._type;
             for(let k in o._entities) {
                 if(k == "subject" || k == "session") continue;
@@ -351,7 +351,7 @@ export default {
                 }
                 if(same) {
                     const sameseries = this.$root.findSeries(same);
-                    o.validationErrors.push("This object looks exactly like another object with Series# "+sameseries.SeriesNumber+". We can not convert this object to BIDS as they will overwrite each other. Please set entities such as 'run' to make them all unique.");
+                    o.validationErrors.push("This object looks exactly like another object with Series #"+sameseries.series_idx+". We can not convert this object to BIDS as they will overwrite each other. Please set entities such as 'run' to make them all unique.");
                     break;
                 }
             }

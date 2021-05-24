@@ -1,25 +1,25 @@
 exports.funcQA = $root=>{
-	// Exclude instances where functional bold acquisitions have less than 50 volumes,
-	// which are probably a restart or failure functional acquisition occurrence.
+    // Exclude instances where functional bold acquisitions have less than 50 volumes,
+    // which are probably a restart or failure functional acquisition occurrence.
 
-	// Loop through subjects
+    // Loop through subjects
     for (const subject in $root.subs) {
         // Loop through sessions
         const sessions = $root.subs[subject].sess
         for (const session in sessions) {
-        // Determine unique series_id values
-            let allSeriesIDs = sessions[session].objects.map(e=>e.series_id)
+            // Determine unique series_id values
+            let allSeriesIDs = sessions[session].objects.map(e=>e.series_idx)
             let uniqueSeriesIDs = Array.from(new Set(allSeriesIDs))
 
             uniqueSeriesIDs.forEach(si=>{
 
-                let seriesObjects = sessions[session].objects.filter(e=>e.series_id == si && !e._exclude && e._type == 'func/bold')
-				seriesObjects.forEach(obj=>{
-					if (obj.analysisResults.NumVolumes < 50) {
-						obj.exclude = true
-						obj.analysisResults.errors = ['Functional acquisition contains less than 50 volumes, a possible indiciation of a failed/restarted run. Please check to see if you want to keep this, otherwise, this acquisitions will be excluded from BIDS conversion']
-					}
-				});
+                let seriesObjects = sessions[session].objects.filter(e=>e.series_idx == si && !e._exclude && e._type == 'func/bold')
+                seriesObjects.forEach(obj=>{
+                    if (obj.analysisResults.NumVolumes < 50) {
+                        obj.exclude = true
+                        obj.analysisResults.errors = ['Functional acquisition contains less than 50 volumes, a possible indiciation of a failed/restarted run. Please check to see if you want to keep this, otherwise, this acquisitions will be excluded from BIDS conversion']
+                    }
+                });
             });
         }
     }
@@ -27,8 +27,8 @@ exports.funcQA = $root=>{
 
 
 exports.fmapQA = $root=>{
-	// Assesses fieldmaps for improper PEDs (for spin-echo field maps),
-	// and excludes extra fieldmaps in section
+    // Assesses fieldmaps for improper PEDs (for spin-echo field maps),
+    // and excludes extra fieldmaps in section
 
     // Loop through subjects
     for (const subject in $root.subs) {
@@ -217,29 +217,28 @@ exports.fmapQA = $root=>{
 }
 
 exports.setRun = $root=>{
-	// Set run label if not already specified at Series level
+    // Set run label if not already specified at Series level
 
-	// Loop through subjects
+    // Loop through subjects
     for (const subject in $root.subs) {
         
         // Loop through sessions
         const sessions = $root.subs[subject].sess
         for (const session in sessions) {
-        // Determine unique series_id values
-
-            let allSeriesIDs = sessions[session].objects.map(e=>e.series_id)
+            // Determine unique series_id values
+            let allSeriesIDs = sessions[session].objects.map(e=>e.series_idx)
             let uniqueSeriesIDs = Array.from(new Set(allSeriesIDs))
 
             uniqueSeriesIDs.forEach(si=>{
-                let seriesObjects = sessions[session].objects.filter(e=>e.series_id == si && !e._exclude)
+                let seriesObjects = sessions[session].objects.filter(e=>e.series_idx == si && !e._exclude)
                 let run = 1
                 if (seriesObjects.length > 1) {
-					seriesObjects.forEach(obj=>{
-						obj.entities.run = run.toString()
-						run = run + 1
-					});
-				}
-			});
+                    seriesObjects.forEach(obj=>{
+                        obj.entities.run = run.toString()
+                        run = run + 1
+                    });
+                }
+            });
         }
     }
 }
@@ -266,7 +265,7 @@ exports.updateErrors = $root =>{
 }
 
 exports.setIntendedFor = $root=>{
-	// Apply fmap intendedFor mapping
+    // Apply fmap intendedFor mapping
 
     // Loop through subjects
     for (const subject in $root.subs) {

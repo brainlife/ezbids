@@ -56,9 +56,9 @@
                     <span><small>sub</small> {{anat._entities.subject}} </span>
                     <span v-if="anat._entities.session">/ <small>ses</small> {{anat._entities.session}} </span>
                 </div>
-                <el-tag type="info" size="mini">sn {{$root.series[anat.series_id].SeriesNumber}}</el-tag>
+                <el-tag type="info" size="mini">#{{anat.series_idx}}</el-tag>
                 &nbsp;
-                <datatype :type="anat._type" :series_id="anat.series_id" :entities="anat.entities"/> 
+                <datatype :type="anat._type" :series_idx="anat.series_idx" :entities="anat.entities"/> 
             </td>
             <td width="40%">
                 <el-radio v-model="anat.defaceSelection" label="original">Use Original</el-radio>
