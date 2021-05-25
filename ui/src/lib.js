@@ -2,25 +2,11 @@ exports.funcQA = $root=>{
     // Exclude instances where functional bold acquisitions have less than 50 volumes,
     // which are probably a restart or failure functional acquisition occurrence.
 
-    // Loop through subjects
-    for (const subject in $root.subs) {
-        // Loop through sessions
-        const sessions = $root.subs[subject].sess
-        for (const session in sessions) {
-            // Determine unique series_id values
-            let allSeriesIDs = sessions[session].objects.map(e=>e.series_idx)
-            let uniqueSeriesIDs = Array.from(new Set(allSeriesIDs))
-
-            uniqueSeriesIDs.forEach(si=>{
-
-                let seriesObjects = sessions[session].objects.filter(e=>e.series_idx == si && !e._exclude && e._type == 'func/bold')
-                seriesObjects.forEach(obj=>{
-                    if (obj.analysisResults.NumVolumes < 50) {
-                        obj.exclude = true
-                        obj.analysisResults.errors = ['Functional acquisition contains less than 50 volumes, a possible indiciation of a failed/restarted run. Please check to see if you want to keep this, otherwise, this acquisitions will be excluded from BIDS conversion']
-                    }
-                });
-            });
+    // Loop through all acquisition objects
+    for (const obj in $root.objects) {
+        if (!obj._exclude && obj._type == 'func/bold' && obj.analysisResults.NumVolumes < 50) {
+            obj.exclude = true
+            obj.analysisResults.errors = ['Functional acquisition contains less than 50 volumes, a possible indiciation of a failed/restarted run. Please check to see if you want to keep this, otherwise, this acquisitions will be excluded from BIDS conversion']
         }
     }
 }
@@ -225,11 +211,11 @@ exports.setRun = $root=>{
         // Loop through sessions
         const sessions = $root.subs[subject].sess
         for (const session in sessions) {
-            // Determine unique series_id values
-            let allSeriesIDs = sessions[session].objects.map(e=>e.series_idx)
-            let uniqueSeriesIDs = Array.from(new Set(allSeriesIDs))
+            // Determine series_idx values
+            let allSeriesIndices = sessions[session].objects.map(e=>e.series_idx)
+            let uniqueSeriesIndices = Array.from(new Set(allSeriesIndices))
 
-            uniqueSeriesIDs.forEach(si=>{
+            uniqueSeriesIndices.forEach(si=>{
                 let seriesObjects = sessions[session].objects.filter(e=>e.series_idx == si && !e._exclude)
                 let run = 1
                 if (seriesObjects.length > 1) {
