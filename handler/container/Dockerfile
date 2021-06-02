@@ -56,5 +56,5 @@ RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
 #install bids-validator
 RUN apt-get install -y npm 
-RUN npm install -g bids-validator
+RUN npm install -g bids-validator@1.7.2
 

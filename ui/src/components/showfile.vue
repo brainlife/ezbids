@@ -1,5 +1,5 @@
 <template>
-<pre v-html="content"/>
+<pre v-html="content" :style="{maxHeight, height}"/>
 </template>
 
 <script>
@@ -10,17 +10,28 @@ const convert = new Convert();
 export default {
     props: {
         path: String,
-        bgColor: String,
+        tall: {
+            type: Boolean,
+            default: false
+        },
+    },
+    data() {
+        return {
+            content: null,
+            maxHeight: "200px",
+            height: "200px",
+        }
     },
     mounted() {
         console.log("fetching file", this.path);
         fetch(this.$root.apihost+'/download/'+this.$root.session._id+'/'+this.path).then(res=>res.text()).then(data=>{
             this.content = convert.toHtml(data);
         });
-    },
-    data() {
-        return {
-            content: null,
+
+        if(this.tall) {
+            console.log("using tall");
+            this.maxHeight = "400px";
+            this.height = "400px";
         }
     },
 }
@@ -33,7 +44,6 @@ pre {
     color: white;
     padding: 10px;
     margin: 0;
-    max-height: 200px;
     overflow: auto;
 }
 </style>

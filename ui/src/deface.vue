@@ -71,7 +71,7 @@
                 <a :href="getDefacedThumbURL(anat)" v-if="anat.defaced">
                     <img width="100%" :src="getDefacedThumbURL(anat)"/>
                 </a>
-                <p v-if="!anat.defaced" class="missingThumb"><small>Not yet defaced</small></p>
+                <p v-if="!anat.defaced" class="missingThumb"><small>Defacing ...</small></p>
                 <p v-if="anat.defaceFailed" class="missingThumb fail"><small>Defacing Failed</small></p>
             </td>
         </tr>

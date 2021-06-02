@@ -35,13 +35,16 @@
         </div>
 
         <br>
-        <h4>BIDS Structure</h4>
-        <showfile path="tree.log"/>
-
-        <br>
-        <h4>bids-validator output</h4>
-        <showfile path="validator.log"/>
-
+        <el-row>
+            <el-col :span="12">
+                <h4>BIDS Structure</h4>
+                <showfile path="tree.log" style="margin-right: 15px;" :tall="true"/>
+            </el-col>
+            <el-col :span="12">
+                <h4>bids-validator output</h4>
+                <showfile path="validator.log" :tall="true"/>
+            </el-col>
+        </el-row>
     </div>
 
     <div v-if="$root.session.status == 'failed'">
