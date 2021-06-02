@@ -9,6 +9,10 @@ if (!root)
 const json = fs.readFileSync(root + "/finalized.json");
 const info = JSON.parse(json);
 mkdirp.sync(root + "/bids");
+mkdirp.sync(root + "/bids/code");
+mkdirp.sync(root + "/bids/derivatives");
+mkdirp.sync(root + "/bids/sourcedata");
+
 fs.writeFileSync(root + "/bids/finalized.json", JSON.stringify(info, null, 4)); //copy the finalized.json
 fs.writeFileSync(root + "/bids/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
 fs.writeFileSync(root + "/bids/.bidsignore", `
