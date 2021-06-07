@@ -14,6 +14,11 @@
                 <el-button @click="reset" size="mini" v-if="!$root.session.status != 'finalized'">Reset Session</el-button>
                 -->
             </div>
+            <p class="menu-footer">
+                <a href="https://github.com/brainlife/ezbids" target="github">
+                    <font-awesome-icon :icon="['fab', 'github']" />
+                </a>
+            </p>
         </div>
         <div class="main-content" v-if="$root.currentPage">
             <upload/>
@@ -114,7 +119,7 @@ small {
     margin-top: 0;
 }
 .el-table .cell {
-word-break: normal;
+    word-break: normal;
 }
 .page-action {
     position: fixed;
@@ -134,6 +139,7 @@ word-break: normal;
     bottom: 0; 
     background-color: #0001;
     box-shadow: inset -3px 0 5px #9991;
+    
 }
 .main-content {
     margin-left :200px;
@@ -142,5 +148,17 @@ word-break: normal;
 .el-step .el-step__title {
     font-size: 14px;
 
+}
+</style>
+
+<style scoped>
+.menu-footer {
+    position: fixed;
+    bottom: 0;
+    margin: 5px 10px;
+}
+.menu-footer a {
+    color: gray;
+    font-size: 125%;
 }
 </style>

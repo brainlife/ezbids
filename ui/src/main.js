@@ -37,11 +37,31 @@ import 'element-ui/lib/theme-chalk/index.css';
 import locale from 'element-ui/lib/locale/lang/en'
 Vue.use(ElementUI, { locale } );
 
-//import Vuex from 'vuex'
-//Vue.use(Vuex)
+import { library } from '@fortawesome/fontawesome-svg-core'
+//import { faUserSecret } from '@fortawesome/free-solid-svg-icons'
+import { faGithub } from '@fortawesome/free-brands-svg-icons'
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome'
+
+library.add(faGithub)
+Vue.component('font-awesome-icon', FontAwesomeIcon)
+
+import VueGtag from "vue-gtag";
 
 if(process.env.NODE_ENV == "development") {
     Vue.config.debug = true;
+} else {
+    Vue.use(VueGtag, {
+        //pageTrackerExcludedRotues: ['route_path_value', 'route_name_value']
+        config: { id: "UA-118407195-1" },
+        /*
+        pageTrackerTemplate(to) {
+            return {
+                page_title: 'amazing page',
+                page_path: to.path
+            }
+        }
+        */
+    }/*, router*/);
 }
 
 Vue.config.productionTip = false
@@ -64,7 +84,6 @@ new Vue({
         return createElement('App');
     },
     
-    //router,
     data() {
 
         //
