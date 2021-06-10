@@ -28,9 +28,9 @@ cat $root/dcm2niix.list
 echo "running dcm2niix"
 true > $root/dcm2niix.done
 function d2n {
-    path=$1
+    path="$1"
     echo "----------------------- $path ------------------------"
-    timeout 3600 dcm2niix -v 1 -ba n -z o -f 'time-%t-sn-%s' $path
+    timeout 3600 dcm2niix -v 1 -ba n -z o -f 'time-%t-sn-%s' "$path"
     ret=$!
     if [ $ret == 2 ]; then
         #probably empty directory?
@@ -45,7 +45,7 @@ function d2n {
 }
 
 export -f d2n
-cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n {}
+cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n "{}"
 
 #find products
 (cd $root && find . -type f \( -name "*.json" \) > list)
