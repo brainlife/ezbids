@@ -691,7 +691,8 @@ def identify_series_info(data_list_unique_series):
                     series['forType'] = 'dwi/dwi'
                     series['message'] = 'Acquisition appears to be fmap/epi meant for dwi/dwi, as there are bval & bvec files, but with low b-values. Please modify if incorrect'
                     
-                elif any(x in SD for x in dwi_derived_keys) and not any(x in SD for x in dwi_keys):
+                # elif any(x in SD for x in dwi_derived_keys) and not any(x in SD for x in dwi_keys):
+                elif any(x in SD for x in dwi_derived_keys):
                     series['error'] = 'Acquisition appears to be a TRACE, FA, or ADC, which are unsupported by ezBIDS and will therefore not be converted'
                     series['message'] = 'Acquisition is believed to be TRACE, FA, or ADC because there are bval & bvec files with the same SeriesNumber, and "{}" are in the SeriesDescription. Please modify if incorrect'.format([x for x in dwi_derived_keys if re.findall(x,SD)][0])
                     series['br_type'] = 'exclude'
