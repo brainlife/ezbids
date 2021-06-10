@@ -27,10 +27,10 @@ function runDeface() {
     defaced=$anat.defaced.nii.gz
 
     echo "--------------- defacing($method) [$idx] $anat to $defaced ----------------"
-    if [ -f $defaced ]; then
-        echo "already defaced"
-        echo $idx >> $root/deface.finished
-    else
+    #if [ -f $defaced ]; then
+    #    echo "already defaced"
+    #    echo $idx >> $root/deface.finished
+    #else
         #TODO - add other methods?
         case $method in
             quickshear)
@@ -43,14 +43,14 @@ function runDeface() {
         esac
 
         if [ $? -ne 0 ]; then
-            echo "defacing faile?"
+            echo "defacing failed?"
             echo $idx >> $root/deface.failed
         else
             #create thumbnail
             timeout 100 $appdir/createThumbnail.py $defaced $defaced.png
             echo $idx >> $root/deface.finished
         fi
-    fi
+    #fi
 }
 export -f runDeface
 

@@ -499,6 +499,7 @@ invert:
         },
 
         async pollSession() {
+            console.log("polling session");
             const res = await fetch(this.apihost+'/session/'+this.session._id, {
                 method: "GET",
                 headers: { 'Content-Type': 'application/json' },

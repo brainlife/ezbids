@@ -108,7 +108,7 @@ function handle_deface(session) {
     return __awaiter(this, void 0, void 0, function* () {
         session.status = "defacing";
         yield handle(session, "./deface.sh", "deface", cb => {
-            //monitor cb
+            //monitor cb - nothing special to do yet
             cb();
         }, cb => {
             //finish cb
@@ -125,7 +125,7 @@ function handle(session, script, name, cb_monitor, cb_finish) {
             try {
                 let monitor;
                 let workdir = config.workdir + "/" + session._id;
-                const p = spawn(script, [workdir], { cwd: __dirname });
+                const p = spawn(script, [workdir], { cwd: __dirname, detached: true });
                 const logout = fs.openSync(workdir + "/" + name + ".log", "w");
                 const errout = fs.openSync(workdir + "/" + name + ".err", "w");
                 let lasterr = "";
@@ -142,6 +142,7 @@ function handle(session, script, name, cb_monitor, cb_finish) {
                 });
                 p.on('close', code => {
                     clearInterval(monitor);
+                    console.log("process closed");
                     fs.closeSync(logout);
                     fs.closeSync(errout);
                     //check status
@@ -160,6 +161,28 @@ function handle(session, script, name, cb_monitor, cb_finish) {
                 });
                 //update session periodically
                 monitor = setInterval(() => {
+                    //handle cancel request
+                    if (fs.existsSync(workdir + "/.cancel")) {
+                        console.log("received .cancel request.. killing process group");
+                        //p.stdin.pause();
+                        process.kill(-p.pid); //, 'SIGKILL');
+                        setTimeout(() => {
+                            //parallel will wait for child process to end unless we seng SIGTERM again
+                            process.kill(-p.pid); //, 'SIGKILL');
+                        }, 1000);
+                        fs.rename(workdir + "/" + name + ".log", workdir + "/" + name + ".log.canceled", err => {
+                            if (err)
+                                console.error(err);
+                        });
+                        fs.rename(workdir + "/" + name + ".err", workdir + "/" + name + ".err.canceled", err => {
+                            if (err)
+                                console.error(err);
+                        });
+                        fs.rename(workdir + "/.cancel", workdir + "/.cancel.ed", err => {
+                            if (err)
+                                console.error(err);
+                        });
+                    }
                     cb_monitor(() => {
                         session.save(); //saves for stdout and any update made by monitor_cb
                     });

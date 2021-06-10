@@ -1,6 +1,7 @@
 <template>
 <div v-if="$root.currentPage.id == 'deface'" style="padding: 20px;">
-    <el-form v-if="$root.session.status == 'analyzed' || $root.session.status == 'finished'">
+    <el-form v-if="$root.session.status == 'analyzed' || $root.session.status == 'finished' || 
+        ($root.session.status == 'defaced' && !$root.defacingMethod)">
         <p>
             If you'd like to deface all anatomical images, please select a defacing method and click <b>Run Deface</b> button. 
         </p>
@@ -13,7 +14,7 @@
             <el-select v-model="$root.defacingMethod" placeholder="Select a defacing method" style="width: 300px;">
                 <el-option value="" label="Don't Deface"/>
                 <el-option value="quickshear" label="Quickshear (recommended)"/>
-                <el-option value="pydeface" label="pyDeface"/>
+                <el-option value="pydeface" label="pyDeface (more accurate but takes a much longer time)"/>
             </el-select>
 
             <!--sub options-->
@@ -27,12 +28,14 @@
     </el-form>
 
     <div v-if="defacing">
-        Defacing ... 
+        Runnig <small>{{$root.defacingMethod}}</small>...  
         <pre class="status">{{$root.session.status_msg}}</pre>
         <!--debug-->
     </div>
     <div v-if="$root.session.status == 'defaced'">
-        Defacing completed! Please check the defacing results and proceed to the next page.
+        <el-alert type="success" show-icon>
+            Defacing completed! Please check the defacing results and proceed to the next page.
+        </el-alert>
         <!--
         <pre class="status">{{$root.session.status_msg}}</pre>
         -->
@@ -71,7 +74,7 @@
                 <a :href="getDefacedThumbURL(anat)" v-if="anat.defaced">
                     <img width="100%" :src="getDefacedThumbURL(anat)"/>
                 </a>
-                <p v-if="!anat.defaced" class="missingThumb"><small>Defacing ...</small></p>
+                <p v-if="defacing && !anat.defaced" class="missingThumb"><small>Defacing ...</small></p>
                 <p v-if="anat.defaceFailed" class="missingThumb fail"><small>Defacing Failed</small></p>
             </td>
         </tr>
@@ -80,7 +83,8 @@
     <el-form>
         <el-form-item class="page-action">
             <el-button @click="back">Back</el-button>
-            <el-button @click="reset" v-if="defacing || $root.session.status == 'defaced'">Reset Deface</el-button>
+            <el-button @click="cancel" v-if="defacing" type="warning">Cancel Defacing</el-button>
+            <el-button @click="reset" v-if="!defacing">Reset Deface</el-button>
             <el-button type="primary" @click="next" :disabled="defacing" v-if="($root.session.status != 'analyzed' || $root.defacingMethod == '')" 
                 style="float: right;">Next</el-button>
             <el-button v-if="$root.session.status != 'defaced' && ($root.defacingMethod && !defacing)"
@@ -102,8 +106,6 @@ export default {
     },
     data() {
         return {
-            defacing: false,
-
             tm: null, //timeout for reloading deface.log
         }
     },
@@ -111,27 +113,21 @@ export default {
     computed: {
         anats() {
             return this.$root.objects.filter(o=>o._type.startsWith('anat') && !o._exclude)
+        },
+        defacing() {
+            return ["deface", "defacing"].includes(this.$root.session.status);
         }
     },
 
     watch: {
-
-        /*
-        '$root.session.status'() {
-            this.defacing = (this.$root.session.status == 'defacing');
-            console.log(this.$root.session.status, this.defacing);
-        },
-        */
-
         '$root.currentPage'(v) {
             clearTimeout(this.tm);
             if(v.id == 'deface') {
-                this.$root.objects/*filter(o=>o._type == 'anat/T1w')*/.forEach(anat=>{
+                this.$root.objects.forEach(anat=>{
                     if(!anat.defaced) Vue.set(anat, "defaced", false);
                     if(!anat.defaceSelection) Vue.set(anat, "defaceSelection", "defaced");
                 });
-
-                this.loadLogAndRepeat();
+                this.startChecking();
             }
         },
     },
@@ -145,44 +141,63 @@ export default {
             return this.$root.getURL(path)
         },
 
-        reset() {
-            //TODO - make an API call to stop the defacing job (doesn't exist yet)
-
-            this.defacing = false;
-            this.$root.objects/*.filter(o=>o._type == 'anat/T1w')*/.forEach(anat=>{
-                Vue.set(anat, "defaced", false);
-                Vue.set(anat, "defaceFailed", false);
-                Vue.set(anat, "defaceSelection", "defaced");
+        cancel() {
+            fetch(this.$root.apihost+'/session/'+this.$root.session._id+'/canceldeface', {
+                method: "POST", 
+                headers: {'Content-Type': 'application/json; charset=UTF-8'},
+            }).then(res=>res.text()).then(status=>{
+                if(status != "ok") {
+                    this.$notify({ title: 'Failed', message: 'Failed to cancel defacing'});
+                } else {
+                    this.$notify({ title: 'Success', message: 'Requested to cancel defacing..'});
+                }
             });
-            this.$root.session.status = "analyzed";
         },
 
-        loadLogAndRepeat() {
-            if(this.$root.session.status == "defacing" || this.$root.session.status == "defaced") {
-                fetch(this.$root.apihost+'/download/'+this.$root.session._id+'/deface.finished').then(res=>res.text()).then(data=>{
-                    if(!data) return;
-                    let idxs = data.trim().split("\n");
-                    idxs.forEach(idx=>{
-                        let o = this.$root.objects.find(o=>o.idx == idx);
-                        if(!o) console.error("can't find", idx);
-                        o.defaced = true;
-                    });
-                }).catch(console.error);
+        reset() {
+            fetch(this.$root.apihost+'/session/'+this.$root.session._id+'/resetdeface', {
+                method: "POST", 
+                headers: {'Content-Type': 'application/json; charset=UTF-8'},
+            }).then(res=>res.text()).then(status=>{
+                if(status != "ok") {
+                    this.$notify({ title: 'Failed', message: 'Failed to reset defacing'});
+                }
+                this.$root.objects.forEach(anat=>{
+                    Vue.set(anat, "defaced", false);
+                    Vue.set(anat, "defaceFailed", false);
+                    Vue.set(anat, "defaceSelection", "defaced");
+                });
+                this.$root.session.status = "analyzed";
+            });
+        },
 
-                fetch(this.$root.apihost+'/download/'+this.$root.session._id+'/deface.failed').then(res=>res.text()).then(data=>{
-                    if(!data) return;
-                    let idxs = data.trim().split("\n");
-                    idxs.forEach(idx=>{
-                        let o = this.$root.objects.find(o=>o.idx === idx);
-                        if(!o) console.error("can't find", idx);
-                        o.defaceFailed = true;
-                    });
-                }).catch(console.error);    
-            }
-            if(["defaced", "failed", "analyzed"].includes(this.$root.session.status)) this.defacing = false;
+        startChecking() {
+            this.loadLog();
+            this.tm = setTimeout(this.startChecking, 1000*5);
+        },
 
-            //load next
-            this.tm = setTimeout(this.loadLogAndRepeat, 5*1000);
+        loadLog() {
+            console.log("loading info");
+            fetch(this.$root.apihost+'/download/'+this.$root.session._id+'/deface.finished').then(res=>res.text()).then(data=>{
+                if(!data) return;
+                let idxs = data.trim().split("\n");
+                idxs.forEach(idx=>{
+                    let o = this.$root.objects.find(o=>o.idx == idx);
+                    if(!o) console.error("can't find", idx);
+                    o.defaced = true;
+                });
+            }).catch(console.error);
+
+            fetch(this.$root.apihost+'/download/'+this.$root.session._id+'/deface.failed').then(res=>res.text()).then(data=>{
+                if(!data) return;
+                let idxs = data.trim().split("\n");
+                idxs.forEach(idx=>{
+                    let o = this.$root.objects.find(o=>o.idx === idx);
+                    if(!o) console.error("can't find", idx);
+                    else o.defaceFailed = true;
+                });
+            }).catch(console.error);    
+
         },
 
         next() {
@@ -194,7 +209,7 @@ export default {
         },
 
         submit() {
-            this.defacing = true;
+            //this.defacing = true;
 
             const list = this.anats.map(o=>{
                 return {idx: o.idx, path: o.paths.find(p=>p.endsWith(".nii.gz"))};

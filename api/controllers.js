@@ -60,6 +60,50 @@ router.post('/session/:session_id/deface', (req, res, next) => {
         });
     });
 });
+router.post('/session/:session_id/canceldeface', (req, res, next) => {
+    models.Session.findById(req.params.session_id).then(session => {
+        if (!session)
+            return next("no such session");
+        //request deface.cancel by writing out "deface.cancel" file
+        console.debug("writing .cancel");
+        fs.writeFile(config.workdir + "/" + session._id + "/.cancel", "", err => {
+            if (err)
+                console.error(err);
+            session.status_msg = "requested to cancel defacing";
+            //handler should set the status when the job is killed so this shouldn't 
+            //be necessary.. but right not kill() doesn't work.. so 
+            session.status = "analyzed";
+            session.save().then(() => {
+                res.send("ok");
+            });
+        });
+    });
+});
+router.post('/session/:session_id/resetdeface', (req, res, next) => {
+    models.Session.findById(req.params.session_id).then(session => {
+        if (!session)
+            return next("no such session");
+        try {
+            const workdir = config.workdir + "/" + session._id;
+            console.log("removing deface output");
+            if (fs.existsSync(workdir + "/deface.finished")) {
+                fs.unlinkSync(workdir + "/deface.finished");
+            }
+            if (fs.existsSync(workdir + "/deface.failed")) {
+                fs.unlinkSync(workdir + "/deface.failed");
+            }
+            session.status = "analyzed";
+            session.status_msg = "reset defacing";
+            session.save().then(() => {
+                res.send("ok");
+            });
+        }
+        catch (err) {
+            console.error(err);
+            res.send(err);
+        }
+    });
+});
 router.post('/session/:session_id/finalize', (req, res, next) => {
     models.Session.findById(req.params.session_id).then(session => {
         if (!session)
