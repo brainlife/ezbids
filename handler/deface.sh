@@ -18,7 +18,9 @@ export method
 export appdir=$(pwd)
 
 function runDeface() {
-    #this function runs inside $root (by --wd $root)
+    #note.. this function runs inside $root (by --wd $root)
+    set -e
+    set -x
 
     config=$1
         
@@ -59,6 +61,6 @@ true > $root/deface.finished
 true > $root/deface.failed
 
 #now run defacing
-jq -c '.list[]' $root/deface.json | parallel --linebuffer --wd $root -j 6 "runDeface {} {}"
+jq -c '.list[]' $root/deface.json | parallel --linebuffer --wd $root -j 6 runDeface {}
 
 echo "all done defacing"

@@ -85,7 +85,7 @@
             <el-button @click="back">Back</el-button>
             <el-button @click="cancel" v-if="defacing" type="warning">Cancel Defacing</el-button>
             <el-button @click="reset" v-if="!defacing">Reset Deface</el-button>
-            <el-button type="primary" @click="next" :disabled="defacing" v-if="($root.session.status != 'analyzed' || $root.defacingMethod == '')" 
+            <el-button type="primary" @click="next" :disabled="defacing" v-if="$root.session.status == 'defaced' || ($root.session.status == 'analyzed' && $root.defacingMethod == '')" 
                 style="float: right;">Next</el-button>
             <el-button v-if="$root.session.status != 'defaced' && ($root.defacingMethod && !defacing)"
                 @click="submit" type="success" style="float: right;">Run Deface</el-button>
