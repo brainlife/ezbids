@@ -22,8 +22,7 @@ from math import floor
 
 warnings.filterwarnings("ignore")
 
-# data_dir = sys.argv[1]
-data_dir = '/media/data/ezbids/dicoms/Lippard_Vida_Data'
+data_dir = sys.argv[1]
 os.chdir(data_dir)
 
 
