@@ -46,8 +46,8 @@ ENV FSLOUTPUTTYPE=NIFTI_GZ
 #make sure fslpython is properly installed
 RUN which imcp
 
-ADD fsl5 /usr/local/fsl5
-ENV PATH=/usr/local/fsl5:$PATH
+#ADD fsl5 /usr/local/fsl5
+#ENV PATH=/usr/local/fsl5:$PATH
 
 #install pydeface
 RUN pip3 install pydeface
@@ -58,3 +58,4 @@ RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 RUN apt-get install -y npm 
 RUN npm install -g bids-validator@1.7.2
 
+RUN apt-get install -y rename 
