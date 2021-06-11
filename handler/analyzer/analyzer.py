@@ -22,7 +22,8 @@ from math import floor
 
 warnings.filterwarnings("ignore")
 
-data_dir = sys.argv[1]
+# data_dir = sys.argv[1]
+data_dir = '/media/data/ezbids/dicoms/Lippard_Vida_Data'
 os.chdir(data_dir)
 
 
@@ -865,8 +866,9 @@ def identify_series_info(data_list_unique_series):
         if 'anat' in series['br_type'] and not any(x in ['DERIVED','NORM'] for x in series['ImageType']):
             series['br_type'] = 'exclude'
             series['error'] = 'Acquisition is a poor resolution {} (non-normalized); Please check to see if this {} acquisition should be converted to BIDS. Otherwise, this object will not be included in the BIDS output'.format(series['br_type'], series['br_type'])
-            series['message'] = series['error']
-    
+            series['message'] = series['error']                
+            
+        
         # Combine info above into dictionary, which will be displayed to user through the UI
         series_info = {"SeriesDescription": series['SeriesDescription'],
                        "series_idx": series['series_idx'],
@@ -896,6 +898,15 @@ def identify_series_info(data_list_unique_series):
             if corresponding_file['type'] == 'exclude':
                 s['message'] = 'The corresponding file to this sbref is excluded, therefore this acquisition will also be excluded. Please modify if incorrect'
                 s['type'] = 'exclude'
+    
+    # If series_entities items contain periods (not allowed in BIDS), replace them with "p"
+    for s in series_list:
+        for key, value in s['entities'].items():
+            try:
+                if '.' in value:
+                    s['entities'][key] = value.replace('.', 'p')
+            except:
+                pass
     
     return series_list
 
