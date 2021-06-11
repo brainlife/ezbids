@@ -314,6 +314,8 @@ export default {
             let series = this.$root.findSeries(o);
             let entities_requirement = this.$root.getEntities(o._type);
 
+            if(!this.isExcluded(o)) this.$root.validateEntities(o);
+
             if(o._type.startsWith("func/")) {
                 if(entities_requirement['task'] && !o.entities.task && !series.entities.task) {
                     o.validationErrors.push("Task Name is required for func/bold but not set in series nor overridden.");

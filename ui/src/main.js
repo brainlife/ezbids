@@ -271,6 +271,16 @@ invert:
             location.reload();
         },
 
+        validateEntities(o) {
+            //validate entity (only alpha numeric values)
+            for(const k in o.entities) {
+                const v = o.entities[k];
+                if(v && !/^[a-zA-Z0-9]*$/.test(v)) {
+                    o.validationErrors.push("Entity:"+k+" contains non-alphanumeric character");
+                }
+            }
+        },
+
         getURL(path) {
             return this.apihost+"/download/"+this.session._id+'/'+path;
         },

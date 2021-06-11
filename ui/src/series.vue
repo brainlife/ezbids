@@ -11,7 +11,9 @@
             -->
             <small style="opacity: 0.7;">({{s.SeriesDescription}})</small>
             &nbsp;
-            <el-badge type="info" size="mini" title="Number of objects" :value="s.object_indices.length"/>
+            &nbsp;
+            <el-tag type="info" effect="plain" size="mini" title="Number of objects">{{s.object_indices.length}} objs</el-tag>
+            &nbsp;
             &nbsp;
             <el-badge v-if="s.validationErrors.length > 0" type="danger" :value="s.validationErrors.length" style="margin-left: 5px;">
                 <small/>
@@ -32,6 +34,9 @@
             <h5>BIDS Datatype / Entities</h5>
             <el-form label-width="150px">
                 <el-alert v-if="ss.message" :title="ss.message" type="warning"/>
+                <div style="margin-bottom: 10px;">
+                    <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in ss.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
+                </div>
 
                 <el-form-item label="Datatype">
                     <el-select v-model="ss.type" reqiured placeholder="(exclude)" size="small" @change="validate(ss)">
@@ -66,9 +71,6 @@
                             <el-input slot="reference" v-model="ss.entities[entity]" size="small" :required="v == 'required'" @change="validate(ss)"/>
                         </el-popover>
                     </el-form-item>
-                </div>
-                <div style="margin-bottom: 10px;">
-                    <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in ss.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
                 </div>
                 <el-form-item label="Common Metadata">
 
@@ -173,6 +175,8 @@ export default {
         validate(s) {
             Vue.set(s, 'validationErrors', []);
             let entities = this.$root.getEntities(s.type);
+
+            if(s.type != "exclude") this.$root.validateEntities(s);
 
             for(let k in this.getSomeEntities(s.type)) {
                 if(entities[k] == "required") {
