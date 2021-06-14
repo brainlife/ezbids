@@ -14,7 +14,7 @@
             <el-select v-model="$root.defacingMethod" placeholder="Select a defacing method" style="width: 300px;">
                 <el-option value="" label="Don't Deface"/>
                 <el-option value="quickshear" label="Quickshear (recommended)"/>
-                <el-option value="pydeface" label="pyDeface (more accurate but takes a much longer time)"/>
+                <el-option value="pydeface" label="pyDeface (more common but takes a much longer time)"/>
             </el-select>
 
             <!--sub options-->
