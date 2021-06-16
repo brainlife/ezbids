@@ -40,7 +40,7 @@ function runDeface() {
                 timeout 60 quickshear $anat $anat.mask.nii.gz $defaced
             ;;
             pydeface)
-                time pydeface --force $anat --outfile $defaced
+                time pydeface --verbose --force $anat --outfile $defaced
             ;;
         esac
 

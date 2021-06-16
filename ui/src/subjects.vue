@@ -13,7 +13,7 @@
     </el-dropdown>
     <p>Decide how you want to map DICOM PatientID to BIDS Subject ID. You can also specify AcquisitionDate/session mappings for each subject. You can download the mapping table later.</p>
     <el-table :data="$root.subjects" style="width: 100%" size="mini" class="table-align-top">
-        <el-table-column label="DICOM Patient" width="270px">
+        <el-table-column label="DICOM Patient" width="330px">
             <template slot-scope="scope">
                 <i class="el-icon-right" style="float: right; font-size: 150%; font-weight: bold;"/>
                 <div>

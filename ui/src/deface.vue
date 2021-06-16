@@ -72,7 +72,7 @@
             <td width="40%">
                 <el-radio v-model="anat.defaceSelection" label="defaced">Use Defaced</el-radio>
                 <a :href="getDefacedThumbURL(anat)" v-if="anat.defaced">
-                    <img width="100%" :src="getDefacedThumbURL(anat)"/>
+                    <img width="100%" :src="getDefacedThumbURL(anat)+'?nocache='+Date.now()"/>
                 </a>
                 <p v-if="defacing && !anat.defaced" class="missingThumb"><small>Defacing ...</small></p>
                 <p v-if="anat.defaceFailed" class="missingThumb fail"><small>Defacing Failed</small></p>
@@ -255,8 +255,8 @@ export default {
     vertical-align: top;
 }
 .missingThumb {
-    background-color: #eee;
-    padding: 30px;
+    background-color: #f0f0f0;
+    padding: 10px 20px;
     box-sizing: border-box;
     margin: 0;
 }
