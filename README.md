@@ -1,5 +1,5 @@
 # ezBIDS
-The secure, cloud-based service that support humans via a graphical interface to semi-automated mapping of entire MRI scanning sessions (DICOM files) to the Brain Imaging Data Structure ([BIDS](https://bids.neuroimaging.io/)) standard.  
+The secure, cloud-based service via a browser interface for the semi-automated mapping of entire MRI scanning sessions (DICOM files) to the Brain Imaging Data Structure ([BIDS](https://bids.neuroimaging.io/)) standard.  
 
 ### About
 This is the developmental repository for a semi-automated [BIDS](https://bids.neuroimaging.io/) web service that allows users to upload to a secure server a directory containing DICOM files from an MRI scanner to be converted to BIDS. 
