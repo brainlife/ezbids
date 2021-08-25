@@ -7,8 +7,10 @@ if (config.mongoose_debug)
 function connect(cb) {
     console.debug("connecting to mongo");
     mongoose.connect(config.mongodb, {
+        readPreference: 'nearest',
         useNewUrlParser: true,
         useUnifiedTopology: true,
+        auto_reconnect: true,
     }, err => {
         if (err)
             return cb(err);
