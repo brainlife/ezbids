@@ -2,7 +2,7 @@
 <div v-if="$root.currentPage.id == 'upload'" style="padding: 20px;">
     <div v-if="!$root.session">
         <p>
-            Welcome to the <b><span style="letter-spacing: -2px; opacity: 0.5">ez</span>BIDS</b> - an online DICOM to BIDS conversion / organizing tool. 
+            Welcome to <b><span style="letter-spacing: -2px; opacity: 0.5">ez</span>BIDS</b> - an online DICOM to BIDS conversion / organizing tool. 
         </p>
 
         <!--=@dragstart="dragstart"-->
