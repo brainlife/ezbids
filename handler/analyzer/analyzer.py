@@ -424,7 +424,7 @@ def generate_dataset_list(uploaded_files_list):
             "forType": "",
             "error": None,
             "section_ID": 1,
-            "message": "",
+            "message": [],
             "br_type": "",
             "nifti_path": [x for x in nifti_paths_for_json if ".nii.gz" in x][0],
             'nibabel_image': image,
@@ -1303,6 +1303,12 @@ def modify_objects_info(dataset_list):
             else:
                 # Generate screenshot of every acquisition in dataset
                 create_screenshots(protocol['nifti_path'], image, protocol["NumVolumes"])
+
+
+            if protocol["error"]:
+                protocol["error"] = [protocol["error"]]
+            else:
+                protocol["error"] = []
 
             # index = series_seriesID_list.index(protocol["series_idx"])
             objects_entities = {"subject": "",
