@@ -1,65 +1,28 @@
 {
-  "name": "ezbids",
-  "version": "0.1.0",
-  "private": true,
+  "name": "ui",
+  "version": "0.2.0",
   "scripts": {
-    "test": "npx cypress open",
-    "dev": "vue-cli-service serve --port 3000",
-    "build": "vue-cli-service build",
-    "lint": "vue-cli-service lint",
-    "deploy": "ssh -t hayashis@test.brainlife.io \"sudo su - -c 'cd /root/docker/ezbids && ./update-ui.sh'\"",
-    "deploy-prod": "ssh -t -J hayashis@brainlife.io ubuntu@ezbids \"sudo su - -c 'cd /root/docker/ezbids && ./update.sh'\""
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "serve": "vite preview"
   },
   "dependencies": {
-    "@fortawesome/fontawesome-svg-core": "^1.2.35",
-    "@fortawesome/free-brands-svg-icons": "^5.15.3",
-    "@fortawesome/free-regular-svg-icons": "^5.15.3",
-    "@fortawesome/free-solid-svg-icons": "^5.15.3",
-    "@fortawesome/vue-fontawesome": "^2.0.2",
-    "ansi-to-html": "^0.6.14",
     "axios": "^0.21.1",
-    "core-js": "^3.11.0",
-    "element-ui": "^2.15.1",
-    "js-yaml": "^3.14.1",
-    "json-loader": "^0.5.7",
+    "element-plus": "^1.1.0-beta.7",
     "numeral": "^2.0.6",
-    "vue": "^2.6.12",
-    "vue-cli-plugin-yaml-loader": "^1.0.0",
-    "vue-gtag": "^1.16.1",
-    "vue-router": "^3.5.1",
-    "vue-slide-up-down": "^2.0.1",
-    "yaml-loader": "^0.6.0"
+    "vue": "^3.2.6",
+    "vue-gtag-next": "^1.14.0",
+    "vue-router": "^4.0.11",
+    "vuex": "^4.0.2"
   },
   "devDependencies": {
-    "@vue/cli-plugin-babel": "^4.5.12",
-    "@vue/cli-plugin-eslint": "^4.5.12",
-    "@vue/cli-plugin-router": "^4.5.12",
-    "@vue/cli-service": "^4.5.12",
-    "babel-eslint": "^10.1.0",
-    "cypress": "^4.12.1",
-    "eslint": "^6.7.2",
-    "eslint-plugin-vue": "^6.2.2",
-    "node-sass": "^6.0.0",
-    "sass-loader": "^12.0.0",
-    "vue-template-compiler": "^2.6.12"
-  },
-  "eslintConfig": {
-    "root": true,
-    "env": {
-      "node": true
-    },
-    "extends": [
-      "plugin:vue/essential",
-      "eslint:recommended"
-    ],
-    "parserOptions": {
-      "parser": "babel-eslint"
-    },
-    "rules": {}
-  },
-  "browserslist": [
-    "> 1%",
-    "last 2 versions",
-    "not dead"
-  ]
+    "@types/node": "^16.7.6",
+    "@types/vue-router": "^2.0.0",
+    "@vitejs/plugin-vue": "^1.6.0",
+    "@vue/compiler-sfc": "^3.0.5",
+    "ansi-to-html": "^0.7.1",
+    "typescript": "^4.3.2",
+    "vite": "^2.5.1",
+    "vue-tsc": "^0.3.0"
+  }
 }

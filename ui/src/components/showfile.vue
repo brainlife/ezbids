@@ -2,12 +2,16 @@
 <pre v-html="content" :style="{maxHeight, height}"/>
 </template>
 
-<script>
+<script lang="ts">
 
-const Convert = require('ansi-to-html');
+// @ts-ignore
+import Convert from 'ansi-to-html';
 const convert = new Convert();
 
-export default {
+import { mapState } from 'vuex'
+import { defineComponent } from 'vue'
+
+export default defineComponent({
     props: {
         path: String,
         tall: {
@@ -15,16 +19,22 @@ export default {
             default: false
         },
     },
+
     data() {
         return {
-            content: null,
+            content: "",
             maxHeight: "200px",
             height: "200px",
         }
     },
+
+    computed: {   
+        ...mapState(['session', 'config']),
+    },
+
     mounted() {
-        console.log("fetching file", this.path);
-        fetch(this.$root.apihost+'/download/'+this.$root.session._id+'/'+this.path).then(res=>res.text()).then(data=>{
+        //console.log("fetching file", this.path);
+        fetch(this.config.apihost+'/download/'+this.session._id+'/'+this.path).then(res=>res.text()).then(data=>{
             this.content = convert.toHtml(data);
         });
 
@@ -34,8 +44,7 @@ export default {
             this.height = "400px";
         }
     },
-}
-
+});
 
 </script>
 <style scoped>
