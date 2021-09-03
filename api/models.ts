@@ -8,9 +8,13 @@ export function connect(cb) {
     console.debug("connecting to mongo");
     mongoose.connect(config.mongodb, {
         readPreference: 'nearest',
+        writeConcern: {
+            w: 'majority', //isn't this the default?
+        },
+        readConcernLevel: 'majority',//prevents read to grab stale data from secondary
         useNewUrlParser: true,
         useUnifiedTopology: true,
-        auto_reconnect: true, //isn't this the default?
+        //auto_reconnect: true, //isn't this the default?
     }, err=>{
         if(err) return cb(err);
         console.log("connected to mongo");
