@@ -1270,8 +1270,8 @@ def modify_objects_info(dataset_list):
                          and x["session"] == unique_subj_ses[1]]
 
         # sort scan protocol
-        scan_protocol = sorted(scan_protocol, key=itemgetter("series_idx",
-                                                   "nifti_path"))
+        scan_protocol = sorted(scan_protocol, key=itemgetter("AcquisitionTime",
+                                                    "series_idx"))
 
         section_id = 1
         objects_data = []
