@@ -265,7 +265,7 @@ def generate_dataset_list(uploaded_files_list):
                   or ".bval" in x
                   or ".bvec" in x]
 
-    print("Determining unique acquisitions in list")
+    print("Determining unique acquisitions in dataset")
     print("------------------------------------------")
     for index, json_file in enumerate(json_list):
         json_data = open(json_file)
@@ -537,11 +537,11 @@ def determine_subj_ses_IDs(dataset_list):
 def determine_unique_series(dataset_list):
     """
     From the dataset_list, lump the individual acquisitions into unique series.
-    Unique data is determined from 4 dicom header values: SeriesDescription,
-    EchoTime, ImageType, and MultibandAccelerationFactor. If EchoTime values
-    differ slightly (+/- 1) and other values are the same, a unique series ID
-    is not given, since EchoTime is the only dicom header here with continuous
-    values.
+    Unique data is determined from 4 dicom header values: EchoTime,
+    SeriesDescription, ImageType, and MultibandAccelerationFactor. If EchoTime
+    values differ slightly (+/- 1) and other values are the same, a unique
+    series ID is not given, since EchoTime is the only dicom headeh with
+    continuous values.
 
     Parameters
     ----------
@@ -556,7 +556,7 @@ def determine_unique_series(dataset_list):
         dictionaries of acquisitions with a unique series ID.
     """
     dataset_list_unique_series = []
-    series_tuples = []
+    series_checker = []
     series_idx = 0
 
     for index, acquisition_dic in enumerate(dataset_list):
@@ -580,44 +580,36 @@ def determine_unique_series(dataset_list):
                                acquisition_dic["MultibandAccelerationFactor"],
                                1]
 
-        # Find unique series IDs, based on heuristic described above.
-        # First dataset acquisition receives unique series ID
         if index == 0:
             acquisition_dic["series_idx"] = 0
             dataset_list_unique_series.append(acquisition_dic)
 
-        elif tuple(heuristic_items) not in [y[:-1] for y in series_tuples]:
-            echo_time = heuristic_items[0]
-            remainder = heuristic_items[1:]
-            if tuple(remainder) in [y[1:-1] for y in series_tuples]:
-                common_series_index = [y[1:-1] for y in series_tuples].index(tuple(remainder))
+        # unique acquisition, make unique series ID
+        elif heuristic_items not in [x[:-1] for x in series_checker]:
+            # But first, check if EchoTimes are essentially the same (i.e. +- 0.5)
+            if heuristic_items[1:] in [x[1:-1] for x in series_checker]:
+                echo_time = heuristic_items[0]
+                common_series_index = [x[1:-1] for x in series_checker].index(heuristic_items[1:])
 
-                # If EchoTime is within +/- 1 and other heuristic values are
-                # the same, given the same series ID. Otherwise, give a new
-                # unique series ID.
-                if not series_tuples[common_series_index][0]-1 <= echo_time <= series_tuples[common_series_index][0]+1:
-                    heuristic_items[-1] = 0
+                if series_checker[common_series_index][0] - 0.5 <= echo_time <= series_checker[common_series_index][0] + 0.5:
+                    common_series_idx = series_checker[common_series_index][-1]
+                    acquisition_dic["series_idx"] = common_series_idx
+                else:
                     series_idx += 1
                     acquisition_dic["series_idx"] = series_idx
                     dataset_list_unique_series.append(acquisition_dic)
-                else:
-                    acquisition_dic["series_idx"] = series_tuples[common_series_index][-1]
-            # Acquisition heuristic information is unique, therefore a unique
-            # series ID is given.
+
             else:
                 series_idx += 1
                 acquisition_dic["series_idx"] = series_idx
                 dataset_list_unique_series.append(acquisition_dic)
 
-        # Heursitic information for acquisition matches heuristic information
-        # from a previous acquisition, so both should have the same series ID.
         else:
-            common_index = [y[1:-1] for y
-                            in series_tuples].index(tuple(heuristic_items[1:]))
-            acquisition_dic["series_idx"] = series_tuples[common_index][-1]
+            common_series_index = [x[:-1] for x in series_checker].index(heuristic_items)
+            common_series_idx = series_checker[common_series_index][-1]
+            acquisition_dic["series_idx"] = common_series_idx
 
-        tup = tuple(heuristic_items + [series_idx])
-        series_tuples.append(tup)
+        series_checker.append(heuristic_items + [acquisition_dic["series_idx"]])
 
     return dataset_list, dataset_list_unique_series
 
@@ -1162,14 +1154,19 @@ def identify_series_info(dataset_list_unique_series):
         else:
             pass
 
-        # Set non-normalized anatomicals to exclude.
+        # Set non-normalized (i.e. poor contrast) anatomicals to exclude, but
+        # only if the dataset does not include normalized anatomicals.
         if "anat" in unique_dic["br_type"] and not any(x in ["DERIVED", "NORM"] for x in unique_dic["ImageType"]):
-            unique_dic["br_type"] = "exclude"
-            unique_dic["error"] = " ".join("Acquisition is a poor resolution {} \
-                (non-normalized); Please check to see if this {} acquisition \
-                should be converted to BIDS. Otherwise, this object will not \
-                be included in the BIDS output".format(unique_dic["br_type"], unique_dic["br_type"]).split())
-            unique_dic["message"] = unique_dic["error"]
+            anat_list = [[x['br_type'], x['ImageType']] for x in dataset_list_unique_series]
+            anat_list = [x for x in anat_list if 'anat' in x[0] and ('NORM' in x[1] or 'DERIVED' in x[1])]
+
+            if len(anat_list):
+                unique_dic["error"] = " ".join("Acquisition is a poor contrast {} \
+                    (non-normalized); Please check to see if this {} acquisition \
+                    should be converted to BIDS. Otherwise, this object will not \
+                    be included in the BIDS output".format(unique_dic["br_type"], unique_dic["br_type"]).split())
+                unique_dic["message"] = unique_dic["error"]
+                unique_dic["br_type"] = "exclude"
 
 
         # Combine info above into dictionary, which will be displayed to user
@@ -1272,11 +1269,16 @@ def modify_objects_info(dataset_list):
                          if x["subject"] == unique_subj_ses[0]
                          and x["session"] == unique_subj_ses[1]]
 
+        # sort scan protocol
+        scan_protocol = sorted(scan_protocol, key=itemgetter("AcquisitionTime",
+                                                    "series_idx"))
+
         section_id = 1
         objects_data = []
 
         # Peruse scan protocol to check for potential issues and add some
         # additional information.
+
         for p, protocol in enumerate(scan_protocol):
             previous_message = scan_protocol[p-1]["message"]
 
@@ -1312,7 +1314,6 @@ def modify_objects_info(dataset_list):
             else:
                 protocol["error"] = []
 
-            # index = series_seriesID_list.index(protocol["series_idx"])
             objects_entities = {"subject": "",
                                 "session": "",
                                 "run": "",
@@ -1382,6 +1383,7 @@ def modify_objects_info(dataset_list):
                                 "section_ID": protocol["section_ID"]},
                             "paths": protocol["paths"]}
             objects_data.append(objects_info)
+
 
         objects_list.append(objects_data)
 
