@@ -55,6 +55,7 @@ function handle_uploaded(session) {
     return __awaiter(this, void 0, void 0, function* () {
         let workdir = config.workdir + "/" + session._id;
         session.pre_begin_date = new Date();
+        session.pre_end_date = undefined;
         session.status = "preprocessing";
         yield handle(session, "./preprocess.sh", "preprocess", cb => {
             //monitoring callback
@@ -94,11 +95,16 @@ function handle_uploaded(session) {
 }
 function handle_finalized(session) {
     return __awaiter(this, void 0, void 0, function* () {
+        console.log("handling finalized request!-----------------------");
+        session.finalize_begin_date = new Date();
+        session.finalize_end_date = undefined;
         session.status = "bidsing";
+        console.dir(session);
         yield handle(session, "./bids.sh", "bids", cb => {
             //monitor cb
         }, cb => {
             //finish cb
+            session.finalize_finish_date = new Date();
             session.status = "finished";
             cb();
         });
@@ -106,12 +112,17 @@ function handle_finalized(session) {
 }
 function handle_deface(session) {
     return __awaiter(this, void 0, void 0, function* () {
+        console.log("handling deface request!-----------------------");
+        session.deface_begin_date = new Date();
+        session.deface_end_date = undefined;
         session.status = "defacing";
+        console.dir(session);
         yield handle(session, "./deface.sh", "deface", cb => {
             //monitor cb - nothing special to do yet
             cb();
         }, cb => {
             //finish cb
+            session.deface_finish_date = new Date();
             session.status = "defaced";
             cb();
         });

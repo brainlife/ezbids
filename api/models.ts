@@ -39,6 +39,12 @@ var sessionSchema = mongoose.Schema({
     pre_begin_date: Date, //when preprocessing is started
     pre_finish_date: Date, //when preprocessing is finished
 
+    deface_begin_date: Date, 
+    deface_finish_date: Date, 
+
+    finalize_begin_date: Date, 
+    finalize_finish_date: Date,
+
     status: String, //just message to show to the user
     //created
     //uploaded (waiting to be preprocessed)

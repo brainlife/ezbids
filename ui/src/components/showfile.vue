@@ -33,13 +33,11 @@ export default defineComponent({
     },
 
     mounted() {
-        //console.log("fetching file", this.path);
-        fetch(this.config.apihost+'/download/'+this.session._id+'/'+this.path).then(res=>res.text()).then(data=>{
+        fetch(this.config.apihost+'/download/'+this.session._id+'/'+this.path+"?t="+new Date().getTime()).then(res=>res.text()).then(data=>{
             this.content = convert.toHtml(data);
         });
 
         if(this.tall) {
-            console.log("using tall");
             this.maxHeight = "400px";
             this.height = "400px";
         }

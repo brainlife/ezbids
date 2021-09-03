@@ -72,6 +72,7 @@ router.post('/session/:session_id/canceldeface', (req, res, next) => {
             session.status_msg = "requested to cancel defacing";
             //handler should set the status when the job is killed so this shouldn't 
             //be necessary.. but right not kill() doesn't work.. so 
+            session.deface_begin_date = undefined;
             session.status = "analyzed";
             session.save().then(() => {
                 res.send("ok");
@@ -94,6 +95,8 @@ router.post('/session/:session_id/resetdeface', (req, res, next) => {
             }
             session.status = "analyzed";
             session.status_msg = "reset defacing";
+            session.deface_begin_date = undefined;
+            session.deface_finish_date = undefined;
             session.save().then(() => {
                 res.send("ok");
             });

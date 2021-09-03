@@ -9,50 +9,68 @@ import Subject from './Subject.vue'
 import Participant from './Participant.vue'
 import Series from './Series.vue'
 import Objects from './Objects.vue'
+import Deface from './Deface.vue'
+import Finalize from './Finalize.vue'
 
 import { IObject } from './store'
 
 export default defineComponent({
     components: {
-        /*
-        Upload: defineAsyncComponent(()=>import('./Upload.vue')),
-        Description: defineAsyncComponent(()=>import('./Description.vue')),
-        */
        Upload,
        Description,
        Subject,
        Participant,
        Series,
        Objects,
+       Deface,
+       Finalize,
     },
 
     data() {
         return {
             page: "upload", //initial page
-            //reloadT: null as number|null,
             pages: ["upload", "description", "subject", "participant", "series", "object", "deface", "finalize"], //page order
         }
     },
     async created() {
+
+        this.$store.commit("reset");
         //console.log("App mounted");
         if(location.hash) {     
             await this.$store.dispatch("reload", location.hash.substring(1));
+            this.mapObjects();
+            this.$store.commit("organizeObjects");
+            this.$store.dispatch("loadDefaceStatus");
         }
 
         console.log("checking session every 5 seconds");
-        /*this.reloadT =*/ window.setInterval(()=>{
-            //console.log("store interval");
-            if(this.session._id) {
+        window.setInterval(async ()=>{
+            if(this.session) {
+                console.log(this.session);
                 switch(this.session.status) {
                 case "analyzed":
+                case "finished":
                     console.log(new Date());
                     console.log("no need to reload session/ezbids with state:", this.session.status);
                     break;
-                default:
+                case "defacing":
+                    console.log("loading deface log")
+                    this.$store.dispatch("loadDefaceStatus");
                     this.$store.dispatch("loadSession", this.session._id);
-                    console.log("--------ezbids")
-                    console.dir(this.ezbids.notLoaded);
-                    if(this.ezbids.notLoaded) this.$store.dispatch("loadEzbids");
+                    break;
+                default:
+                    //deface
+                    //defaced
+                    this.$store.dispatch("loadSession", this.session._id);
+                }
+
+                if(this.ezbids.notLoaded) {
+                    console.log("loading ezbids for the first time"); //on page reload, above if(location.hash) block takes care of loading it
+                    await this.$store.dispatch("loadEzbids");
+                    /*
+                    this.mapObjects();
+                    this.$store.commit("organizeObjects");
+                    */
                 }
             }
         }, 5000)
@@ -65,8 +83,12 @@ export default defineComponent({
         backLabel(): string|null {
             switch(this.page) {
             case "upload":
-                    if (this.session.pre_finish_date) return "Re-Upload";
+                /*
+                    if (this.session.pre_finish_date || this.session.status == "failed") return "Re-Upload";
                     return null;
+                */
+               if(this.session) return "Re-Upload";
+               return null;
             default:
                     return "Back";
             }
@@ -75,7 +97,7 @@ export default defineComponent({
         nextLabel() : string|null {
             switch(this.page) {
             case "upload":
-                return (this.session.pre_finish_date?"Next":null);
+                return (this.session && this.session.pre_finish_date?"Next":null);
             case "finalize":
                     return null;
             default:
@@ -90,12 +112,12 @@ export default defineComponent({
             this.$store.commit("organizeObjects");
             
             // @ts-ignore
-            this.$refs[this.page].isValid((valid:boolean)=>{
-                if(valid) {
+            this.$refs[this.page].isValid((err:string)=>{
+                if(err) {
+                    this.$notify({ title: 'Failed', message: err});
+                } else {
                     const idx = this.pages.indexOf(this.page);
                     this.page = this.pages[idx+1];    
-                } else {
-                    alert('please make sure all fields are valid');
                 }
             });
         },
@@ -103,7 +125,9 @@ export default defineComponent({
         back() {
             const idx = this.pages.indexOf(this.page);
             if(idx == 0) {
-                this.$store.commit("reset");
+                //this.$store.commit("reset");
+                document.location.hash = "";
+                document.location.reload();
             } else {
                 this.page = this.pages[idx-1];
             }
@@ -163,7 +187,6 @@ export default defineComponent({
                                                                                                                         
             o._entities = e; 
         },
-        
     }
 });
 
@@ -204,21 +227,14 @@ export default defineComponent({
         <Objects v-if="page == 'object'" ref="object" 
             @mapObjects="mapObjects"
             @updateObject="updateObject"/>       
+        <Deface v-if="page == 'deface'" ref="deface"/>
+        <Finalize v-if="page == 'finalize'" ref="finalize"/>
 
-        <!--
-        <deface v-if="deface == 'deface'"/>
-        <finalize v-if="finalize == 'finalize'"/>
-        -->
         <br>
         <div class="page-action">
-            <el-button v-if="backLabel" type="secondary" @click="back">{{backLabel}}</el-button>
+            <el-button v-if="backLabel" type="info" @click="back">{{backLabel}}</el-button>
             <el-button v-if="nextLabel" type="primary" @click="next" style="float: right;">{{nextLabel}}</el-button>
         </div>
-        <!--
-        <footer>
-            footer
-        </footer>
-        -->
     </section>
 </div>
 </template>
@@ -237,6 +253,9 @@ body {
 p {
     line-height: 175%;
 }
+a {
+    color: inherit;
+}
 
 .el-table td.el-table__cell {
     vertical-align: top;
@@ -244,6 +263,14 @@ p {
 .el-textarea__inner {
     font-size: 90% !important;
 }
+.el-checkbox {
+    height: inherit !important;
+}
+pre {
+    font-size: 85%;
+    white-space: pre-wrap;
+}
+
 </style>
 
 <style scoped>
@@ -271,12 +298,18 @@ aside ul {
 aside ul li {
     padding: 10px;
 }
+/*
 aside ul li:hover {
     cursor: pointer;
     background-color: #0001;
 }
+*/
 aside ul li.active {
-    background-color: #ddd;
+    background-color: rgb(103, 194, 58);
+    color: white;
+}
+.menu-footer {
+    padding: 10px;
 }
 section {
     margin-left: 200px;

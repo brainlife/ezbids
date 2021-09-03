@@ -48,6 +48,8 @@ async function handle_uploaded(session) {
     let workdir = config.workdir+"/"+session._id;
 
     session.pre_begin_date = new Date();
+    session.pre_end_date = undefined;
+
     session.status = "preprocessing"; 
     await handle(session, "./preprocess.sh", "preprocess", cb=>{
         //monitoring callback
@@ -85,23 +87,37 @@ async function handle_uploaded(session) {
 }
 
 async function handle_finalized(session) {
+    console.log("handling finalized request!-----------------------");
+
+    session.finalize_begin_date = new Date();
+    session.finalize_end_date = undefined;
     session.status = "bidsing";
+    console.dir(session);
+
     await handle(session, "./bids.sh", "bids", cb=>{
         //monitor cb
     }, cb=>{
         //finish cb
+        session.finalize_finish_date = new Date();
         session.status = "finished";
         cb();
     });
 }
 
 async function handle_deface(session) {
+    console.log("handling deface request!-----------------------");
+
+    session.deface_begin_date = new Date();
+    session.deface_end_date = undefined;
     session.status = "defacing";
+    console.dir(session);
+
     await handle(session, "./deface.sh", "deface", cb=>{
         //monitor cb - nothing special to do yet
         cb();
     }, cb=>{
         //finish cb
+        session.deface_finish_date = new Date();
         session.status = "defaced";
         cb();
     });
