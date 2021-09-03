@@ -440,6 +440,7 @@ def generate_dataset_list(uploaded_files_list):
     # SeriesNumber, and json_path.
     dataset_list = sorted(dataset_list, key=itemgetter("subject",
                                                        "AcquisitionDate",
+                                                       "AcquisitionTime",
                                                        "SeriesNumber",
                                                        "json_path"))
 
