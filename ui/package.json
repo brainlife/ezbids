@@ -3,10 +3,12 @@
   "version": "0.2.0",
   "scripts": {
     "dev": "vite",
-    "build": "vue-tsc --noEmit && vite build",
+    "build": "vue-tsc --noEmit && vite build --base=/ezbids/",
     "serve": "vite preview",
-    "deploy": "ssh -t hayashis@test.brainlife.io \"sudo su - -c 'cd /root/docker/ezbids && ./update-ui.sh'\"",          
-    "deploy-prod": "ssh -t -J hayashis@brainlife.io ubuntu@ezbids \"sudo su - -c 'cd /root/docker/ezbids && ./update.sh'\""
+    "deploy-broken": "ssh -t hayashis@test.brainlife.io \"sudo su - -c 'cd /root/docker/ezbids && ./update-ui.sh'\"",          
+    "deploy-prod-broken": "ssh -t -J hayashis@brainlife.io ubuntu@ezbids \"sudo su - -c 'cd /root/docker/ezbids && ./update.sh'\"",
+    "deploy": "rsync -av dist/ hayashis@test.brainlife.io:/usr/local/static/ezbids/ui/dist",
+    "deploy-prod": "todo"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.36",
