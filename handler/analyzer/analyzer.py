@@ -502,15 +502,17 @@ def determine_subj_ses_IDs(dataset_list):
         if len(subject_indices):
             sessions_info = []
 
+        for index, subj_index in enumerate(subject_indices):
+
+
             if len(subject_indices) > 1:
                 session_id = str(index+1)
             else:
                 session_id = ""
 
-            for index, subj_index in enumerate(subject_indices):
-                sessions_info.append({"AcquisitionDate": subject_ids_info_mod[subj_index]["AcquisitionDate"],
-                                      "session": session_id,
-                                      "exclude": False})
+            sessions_info.append({"AcquisitionDate": subject_ids_info_mod[subj_index]["AcquisitionDate"],
+                                  "session": session_id,
+                                  "exclude": False})
             # Apply the session information to the correct subject dictionaries
             subj_dictionary = [x for x in subject_ids_info
                                if x["subject"] == subj_id][0]
