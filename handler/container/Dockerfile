@@ -1,13 +1,38 @@
 #FROM ubuntu:20.04
+#FROM brainlife/fsl-mini:6.0.3
 FROM neurodebian:nd20.04-non-free
 
 ENV DEBIAN_FRONTEND noninteractive
+RUN apt update
 
-RUN apt update && apt install -y parallel nodejs python3 python3-pip tree curl unzip git jq
+RUN apt install -y parallel python3 python3-pip tree curl unzip git jq
 
 RUN apt-get update && apt-get upgrade -y && \
     apt-get install -y build-essential pkg-config cmake git pigz && \
     apt-get clean -y && apt-get autoclean -y && apt-get autoremove -y
+
+#install fsl6
+##https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation/Linux
+RUN apt update && apt install -y wget python libgl-dev jq python-numpy
+
+#install fsl, but get rid of src 
+RUN wget https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py && \
+      python fslinstaller.py -d /usr/local/fsl -V 6.0.4 && rm -rf /usr/local/fsl/src
+
+ENV FSLDIR=/usr/local/fsl
+ENV PATH=$PATH:$FSLDIR/bin
+ENV LD_LIBRARY_PATH=$FSLDIR/lib
+
+RUN . $FSLDIR/etc/fslconf/fsl.sh
+
+ENV FSLOUTPUTTYPE=NIFTI_GZ
+
+#make sure fslpython is properly installed
+RUN which imcp
+
+RUN apt install -y curl
+RUN curl -fsSL https://deb.nodesource.com/setup_14.x | bash -
+RUN apt install -y nodejs
 
 # Get dcm2niix from github and compile
 RUN cd /tmp && \
@@ -27,35 +52,12 @@ COPY ROBEXv12.linux64.tar.gz /
 RUN tar -xzf /ROBEXv12.linux64.tar.gz
 ENV PATH=$PATH:/ROBEX
 
-#install fsl6
-#https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation/Linux
-RUN apt update && apt install -y wget python libgl-dev jq python-numpy
-
-#install fsl, but get rid of src 
-RUN wget https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py && \
-      python fslinstaller.py -d /usr/local/fsl -V 6.0.4 && rm -rf /usr/local/fsl/src
-
-ENV FSLDIR=/usr/local/fsl
-ENV PATH=$PATH:$FSLDIR/bin
-ENV LD_LIBRARY_PATH=$FSLDIR/lib
-
-RUN . $FSLDIR/etc/fslconf/fsl.sh
-
-ENV FSLOUTPUTTYPE=NIFTI_GZ
-
-#make sure fslpython is properly installed
-RUN which imcp
-
-#ADD fsl5 /usr/local/fsl5
-#ENV PATH=/usr/local/fsl5:$PATH
-
 #install pydeface
 RUN pip3 install pydeface
 
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
 #install bids-validator
-RUN apt-get install -y npm 
 RUN npm install -g bids-validator@1.7.2
 
 RUN apt-get install -y rename 
