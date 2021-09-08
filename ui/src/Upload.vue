@@ -174,7 +174,9 @@ export default defineComponent({
             //only allow certain files                                                                                  
             for(let i = 0;i < this.files.length;++i) {                                                                  
                 let file = this.files[i];                                                                               
-                if( file.path.endsWith(".dcm") ||                                                                       
+                if( file.path.endsWith(".dcm") ||                                                                        
+                    file.path.endsWith(".IMA")
+                    ||
                     file.path.endsWith(".json") ||                                                                      
                     file.path.endsWith(".nii.gz") ||                                                                    
                     file.path.endsWith(".nii") ||                                                                       
