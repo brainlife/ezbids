@@ -744,9 +744,13 @@ def identify_series_info(dataset_list_unique_series):
         # Localizers
         if any(x in sd for x in localizer_keys) or sd == "tfl":
             unique_dic["error"] = "Acquisition appears to be a localizer"
-            unique_dic["message"] = " ".join("Acquisition is believed to be a localizer \
-                because '{}' is in the SeriesDescription. Please modify if \
-                incorrect.".format([x for x in localizer_keys if re.findall(x, sd)][0]).split())
+            try:
+                unique_dic["message"] = " ".join("Acquisition is believed to be a localizer \
+                    because '{}' is in the SeriesDescription. Please modify if \
+                    incorrect.".format([x for x in localizer_keys if re.findall(x, sd)][0]).split())
+            except:
+                 unique_dic["message"] = " ".join("Acquisition is believed to \
+                    be a localizer because the SeriesDescription is 'tfl'. Please modify if incorrect.".split())
             unique_dic["br_type"] = "exclude"
 
         # Arterial Spin Labeling (ASL)
