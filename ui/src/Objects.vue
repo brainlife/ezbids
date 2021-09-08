@@ -175,7 +175,7 @@ import { mapState, mapGetters, } from 'vuex'
 import { defineComponent } from 'vue'                                                                                                                                                  
 import datatype from './components/datatype.vue' 
 
-import { IObject, Session, Subject, OrganizedSession } from './store'
+import { IObject, Subject, OrganizedSession } from './store'
 
 import { prettyBytes } from './filters'
 

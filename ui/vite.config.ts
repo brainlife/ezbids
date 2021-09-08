@@ -20,5 +20,8 @@ const vueI18nPlugin = {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [vue(), /*vueI18nPlugin*/]
+  plugins: [vue(), /*vueI18nPlugin*/],
+  build: {
+    sourcemap: true,
+  }
 })

@@ -327,8 +327,6 @@ export default defineComponent({
                 headers: {'Content-Type': 'application/json'},                                                          
             });                                                                                                         
                                                                                                                         
-            window.location.hash = this.session._id;                                                                     
-                                                                                                                        
             //construct a good dataset description from the file paths      
             const f = this.files[0];
             if(f) {

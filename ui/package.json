@@ -3,9 +3,10 @@
   "version": "0.2.0",
   "scripts": {
     "dev": "vite",
+    "dev-dist": "NODE_ENV=development lite-server --baseDir=/ezbids/ dist",
     "build": "vue-tsc --noEmit && vite build --base=/ezbids/",
     "serve": "vite preview",
-    "deploy-broken": "ssh -t hayashis@test.brainlife.io \"sudo su - -c 'cd /root/docker/ezbids && ./update-ui.sh'\"",          
+    "deploy-broken": "ssh -t hayashis@test.brainlife.io \"sudo su - -c 'cd /root/docker/ezbids && ./update-ui.sh'\"",
     "deploy-prod-broken": "ssh -t -J hayashis@brainlife.io ubuntu@ezbids \"sudo su - -c 'cd /root/docker/ezbids && ./update.sh'\"",
     "deploy": "rsync -av dist/ hayashis@test.brainlife.io:/usr/local/static/ezbids/ui/dist",
     "deploy-prod": "todo"
@@ -15,22 +16,22 @@
     "@fortawesome/free-brands-svg-icons": "^5.15.4",
     "@fortawesome/free-solid-svg-icons": "^5.15.4",
     "@fortawesome/vue-fontawesome": "^3.0.0-4",
-    "axios": "^0.21.1",
-    "element-plus": "^1.1.0-beta.7",
+    "axios": "^0.21.4",
+    "element-plus": "^1.1.0-beta.9",
     "numeral": "^2.0.6",
-    "vue": "^3.2.6",
+    "vue": "^3.2.10",
     "vue-gtag-next": "^1.14.0",
     "vue-router": "^4.0.11",
     "vuex": "^4.0.2"
   },
   "devDependencies": {
-    "@types/node": "^16.7.6",
+    "@types/node": "^16.9.0",
     "@types/vue-router": "^2.0.0",
-    "@vitejs/plugin-vue": "^1.6.0",
-    "@vue/compiler-sfc": "^3.0.5",
+    "@vitejs/plugin-vue": "^1.6.2",
+    "@vue/compiler-sfc": "^3.2.10",
     "ansi-to-html": "^0.7.1",
     "typescript": "^4.3.2",
-    "vite": "^2.5.1",
+    "vite": "^2.5.6",
     "vue-tsc": "^0.3.0"
   }
 }

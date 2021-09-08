@@ -3,6 +3,7 @@
     <p>You can optionally store metadata/phenotypical data for each subject/participants on this datasets within your BIDS dataset.</p>
     <h5>Phenotype Columns</h5>
     <p>Define phenotypical keys stored for this study (optional).</p>
+    
     <el-form>
         <div v-for="(column, key) in ezbids.participantsColumn" :key="key" class="columnEditor">
             <el-button type="danger" style="float: right;" icon="el-icon-delete" @click="remove(key)" size="mini"/>
@@ -31,12 +32,13 @@
         </p>
 
     </el-form>
-
+    
     <br clear="both">
 
     <h5>phenotype.tsv</h5>
     <p>Enter phenotypical data associated with each participants.</p>
     <div style="width: 100%">
+        <!--
         <el-table :data="ezbids.subjects" size="mini">
             <el-table-column label="subject" width="200">
                 <template #default="scope">
@@ -45,27 +47,31 @@
             </el-table-column>
             <el-table-column v-for="(column, key) in ezbids.participantsColumn" :key="key" :label="key">
                 <template #default="scope">
+                    accessing scrope.row.phenotype[key] somehow crashes vue on dist build
                     <el-input v-model="scope.row.phenotype[key]" size="mini"/>
                 </template>
             </el-table-column>
         </el-table>
+        -->
+        <table class="phenotype">
+        <thead>
+        <tr>
+            <th>Subject</th>
+            <th v-for="(column, key) in ezbids.participantsColumn" :key="key">
+                {{key}}
+            </th>
+        </tr>
+        </thead>
+        <tbody>
+            <tr v-for="subject in ezbids.subjects" :key="subject.subject">
+                <th>{{subject.subject}}</th>
+                <td v-for="(column, key) in ezbids.participantsColumn" :key="key">
+                    <el-input v-model="subject.phenotype[key]" size="mini"/>
+                </td>
+            </tr>
+        </tbody>
+        </table>
     </div>
-
-    <!--
-    <br>
-    <br>
-    <br>
-    <br>
-    <div class="page-action">
-        <el-button @click="back">Back</el-button>
-        <el-button type="primary" @click="next" style="float: right;">Next</el-button>
-    </div>
-    <br>
-    -->
-    
-    <!--
-    <pre>{{ezbids.participantsColumn}}</pre>
-    -->
 </div>
 </template>
 
@@ -73,7 +79,6 @@
 
 import { mapState } from 'vuex'
 import { defineComponent } from 'vue'
-import { t } from 'element-plus/lib/locale';
 
 export default defineComponent({
     data() {
@@ -96,30 +101,24 @@ export default defineComponent({
     },
     */
 
+    mounted() {
+
+    },
+
     methods: {
         addNewColumn() {
             if(!this.newcolumn) return;
-            /*
-            this.$set(this.ezbids.participantsColumn, this.newcolumn,  {
-                LongName: "",
-                Description: "",
-                Units: "",
-                Levels: {},
-            });
-            */
-           this.ezbids.participantsColumn[this.newcolumn] = {
+            this.ezbids.participantsColumn[this.newcolumn] = {
                 LongName: "",
                 Description: "",
                 Units: "",
                 Levels: {},   
-           }
+            }
             this.newcolumn = "";
         },
 
         remove(key: string|number|symbol) {
-            console.log("removing", key);
             delete this.ezbids.participantsColumn[key];
-            //this.$forceUpdate();
         },
 
         //TODO
@@ -128,25 +127,11 @@ export default defineComponent({
         },
 
         isValid(cb: (v?: string)=>void) {
+            console.log("validaging participant");
             this.validate();
             //TODO
             cb();
         }
-
-        /*
-        next() {
-            if(this.validate()) {
-                this.$root.changePage("series");
-            } else {
-                alert('Please correct all issues');
-                return false;
-            }
-        },
-
-        back() {
-            this.$root.changePage("subject");
-        },
-        */
     },
 });
 </script>
@@ -162,5 +147,18 @@ export default defineComponent({
     margin-right: 10px;
     margin-bottom: 10px;
     margin-top: 0;
+}
+table.phenotype {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 90%;
+}
+table.phenotype thead {
+    background-color: #eee;
+    color: #666;
+}
+table.phenotype td,
+table.phenotype th {
+    padding: 5px 10px;
 }
 </style>

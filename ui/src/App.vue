@@ -7,7 +7,7 @@ import Upload from './Upload.vue'
 import Description from './Description.vue'
 import Subject from './Subject.vue'
 import Participant from './Participant.vue'
-import Series from './Series.vue'
+import SeriesPage from './SeriesPage.vue'
 import Objects from './Objects.vue'
 import Deface from './Deface.vue'
 import Finalize from './Finalize.vue'
@@ -20,7 +20,7 @@ export default defineComponent({
        Description,
        Subject,
        Participant,
-       Series,
+       SeriesPage,
        Objects,
        Deface,
        Finalize,
@@ -29,7 +29,7 @@ export default defineComponent({
     data() {
         return {
             page: "upload", //initial page
-            pages: ["upload", "description", "subject", "participant", "series", "object", "deface", "finalize"], //page order
+            pages: ["upload", "description", "subject", "participant", "seriespage", "object", "deface", "finalize"], //page order
         }
     },
     async created() {
@@ -99,9 +99,9 @@ export default defineComponent({
             case "upload":
                 return (this.session && this.session.pre_finish_date?"Next":null);
             case "finalize":
-                    return null;
+                return null;
             default:
-                    return "Next";
+                return "Next";
             }
         },
     },
@@ -111,15 +111,19 @@ export default defineComponent({
             this.mapObjects();
             this.$store.commit("organizeObjects");
             
+            console.log("accessing", this.page, this.$refs);
+            
             // @ts-ignore
             this.$refs[this.page].isValid((err:string)=>{
                 if(err) {
                     this.$notify({ title: 'Failed', message: err});
                 } else {
                     const idx = this.pages.indexOf(this.page);
-                    this.page = this.pages[idx+1];    
+                    //if(idx == 3) this.page = "seriespage";
+                    this.page = this.pages[idx+1];
                 }
             });
+              
         },
 
         back() {
@@ -201,7 +205,7 @@ export default defineComponent({
             <li :class="{active: page == 'description'}">BIDS Description</li>
             <li :class="{active: page == 'subject'}">Subjects/Sessions</li>
             <li :class="{active: page == 'participant'}">Participants Info</li>
-            <li :class="{active: page == 'series'}">Series Mapping</li>
+            <li :class="{active: page == 'seriespage'}">Series Mapping</li>
             <li :class="{active: page == 'object'}">Object Adjustment</li>
             <li :class="{active: page == 'deface'}">Deface</li>
             <li :class="{active: page == 'finalize'}">Finalize</li>
@@ -223,7 +227,7 @@ export default defineComponent({
         <Description v-if="page == 'description'" ref="description"/>
         <Subject v-if="page == 'subject'" ref="subject"/>
         <Participant v-if="page == 'participant'" ref="participant"/>
-        <Series v-if="page == 'series'" ref="series"/>
+        <SeriesPage v-if="page == 'seriespage'" ref="seriespage"/>
         <Objects v-if="page == 'object'" ref="object" 
             @mapObjects="mapObjects"
             @updateObject="updateObject"/>       
@@ -231,7 +235,7 @@ export default defineComponent({
         <Finalize v-if="page == 'finalize'" ref="finalize"/>
 
         <br>
-        <div class="page-action">
+        <div class="page-action" v-if="session">
             <el-button v-if="backLabel" type="info" @click="back">{{backLabel}}</el-button>
             <el-button v-if="nextLabel" type="primary" @click="next" style="float: right;">{{nextLabel}}</el-button>
         </div>

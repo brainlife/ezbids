@@ -279,6 +279,7 @@ const store = createStore({
         setSession(state, session) {
             console.log("setting session", session);
             state.session = session;
+	        if(session._id) window.location.hash = session._id;                                                                     
         },
 
         reset(state) {
