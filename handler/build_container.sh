@@ -4,4 +4,4 @@ set -e
 
 docker build -t brainlife/ezbids-handler container
 docker tag brainlife/ezbids-handler brainlife/ezbids-handler:3.4
-docker push brainlife/ezbids-handler
+#docker push brainlife/ezbids-handler

@@ -429,7 +429,7 @@ export default defineComponent({
         <div v-if="['preprocessing', 'uploaded'].includes(session.status)">
             <h3 v-if="session.dicomDone === undefined"> Inflating... </h3>
             <div v-else-if="session.dicomDone < session.dicomCount">
-                <h3>Converting dicoms to nifti ...</h3>
+                <h3>Converting DICOMS to nifti ...</h3>
                 <el-progress status="success"
                     :text-inside="true" 
                     :stroke-width="24" 

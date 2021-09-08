@@ -11,7 +11,7 @@
     </div>
     -->
 
-    <div v-if="submitting || (session.finalize_begin_date && !session.finalize_finish_date)">
+    <div v-if="session.status == 'finalized' || (session.finalize_begin_date && !session.finalize_finish_date)">
         <h3>Converting to BIDS...</h3>
         <p><small><i>{{session.status_msg}}</i></small></p>
     </div>
