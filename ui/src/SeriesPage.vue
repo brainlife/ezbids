@@ -79,7 +79,7 @@
                         {{ss.SeriesDescription}}</small></el-tag>&nbsp;
                         <el-tag type="info" size="mini"><small>EchoTime: {{ss.EchoTime}}</small></el-tag>&nbsp;
                         <el-tag type="info" size="mini"><small>ImageType: {{ss.ImageType}}</small></el-tag>&nbsp;
-                        <el-tag type="info" size="mini"><small>MultibandAccelerationFactor: {{ss.MultibandAccelerationFactor}}</small></el-tag>&nbsp;
+                        <el-tag type="info" size="mini"><small>RepetitionTime: {{ss.RepetitionTime}}</small></el-tag>&nbsp;
                     </p>
                 </el-form-item>
             </el-form>
