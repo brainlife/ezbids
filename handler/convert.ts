@@ -51,7 +51,7 @@ info.subjects.forEach(subject=>{
     }
     tsv.push(tsvrec);
 });
-let tsvf = fs.openSync(root+"/"+datasetName+"/participants.tsv", "w");
+let tsvf = fs.openSync(root+"/bids/"+datasetName+"/participants.tsv", "w");
 for(let rec of tsv) {
     fs.writeSync(tsvf, rec.join("\t")+"\n");
 }

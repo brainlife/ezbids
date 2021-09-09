@@ -9,10 +9,10 @@ if (!root)
 const json = fs.readFileSync(root + "/finalized.json");
 const info = JSON.parse(json);
 const datasetName = info.datasetDescription.Name;
-mkdirp.sync(root + "/" + datasetName);
-fs.writeFileSync(root + "/" + datasetName + "/finalized.json", JSON.stringify(info, null, 4)); //copy the finalized.json
-fs.writeFileSync(root + "/" + datasetName + "/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
-fs.writeFileSync(root + "/" + datasetName + "/.bidsignore", `
+mkdirp.sync(root + "/bids/" + datasetName);
+fs.writeFileSync(root + "/bids/" + datasetName + "/finalized.json", JSON.stringify(info, null, 4)); //copy the finalized.json
+fs.writeFileSync(root + "/bids/" + datasetName + "/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
+fs.writeFileSync(root + "/bids/" + datasetName + "/.bidsignore", `
 **/excluded
 **/*_MP2RAGE.*
 finalized.json
@@ -23,8 +23,8 @@ info.readme += `
 This dataset was converted from DICOM to BIDS using ezBIDS (https://brainlife.io/ezbids)
 
 `;
-fs.writeFileSync(root + "/" + datasetName + "/README", info.readme);
-fs.writeFileSync(root + "/" + datasetName + "/participants.json", JSON.stringify(info.participantsColumn, null, 4));
+fs.writeFileSync(root + "/bids/" + datasetName + "/README", info.readme);
+fs.writeFileSync(root + "/bids/" + datasetName + "/participants.json", JSON.stringify(info.participantsColumn, null, 4));
 //convert participants.json to tsv
 console.log("outputting participants.json/tsv");
 let keys = ["participant_id"];
@@ -45,7 +45,7 @@ info.subjects.forEach(subject => {
     }
     tsv.push(tsvrec);
 });
-let tsvf = fs.openSync(root + "/" + datasetName + "/participants.tsv", "w");
+let tsvf = fs.openSync(root + "/bids/" + datasetName + "/participants.tsv", "w");
 for (let rec of tsv) {
     fs.writeSync(tsvf, rec.join("\t") + "\n");
 }
@@ -69,7 +69,7 @@ async.forEach(info.objects, (o, next_o) => {
     }
     const name = tokens.join("_");
     function composePath(derivatives) {
-        let path = datasetName;
+        let path = "bids/"+datasetName;
         console.log(path)
         console.log("")
         if (derivatives)
