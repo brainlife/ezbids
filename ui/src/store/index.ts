@@ -48,7 +48,7 @@ export interface Series {
     SeriesDescription: string;
     EchoTime: number;
     ImageType: [string];
-    MultibandAccelerationFactor: string;
+    RepetitionTime: number;
     
     error: string;
     message: string;

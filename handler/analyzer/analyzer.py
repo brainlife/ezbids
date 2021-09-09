@@ -28,7 +28,8 @@ from PIL import Image
 plt.style.use("dark_background")
 warnings.filterwarnings("ignore")
 
-DATA_DIR = sys.argv[1]
+# DATA_DIR = sys.argv[1]
+DATA_DIR = '/media/data/ezbids/dicoms/OpenScience'
 os.chdir(DATA_DIR)
 
 ######## Functions ########
