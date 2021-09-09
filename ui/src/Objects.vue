@@ -3,7 +3,7 @@
     <div class="bids-structure">
         <div v-for="(o_sub, sub) in ezbids._organized" :key="sub" style="font-size: 90%; margin-bottom: 10px">
             <span v-if="sub != ''" class="hierarchy">
-                <i class="el-icon-user-solid"/> 
+                <i class="el-icon-user-solid" style="margin-right: 2px;"/> 
                 <!--<small>sub</small> -->{{sub}} 
                 &nbsp;
                 &nbsp;
@@ -12,9 +12,10 @@
                 </el-checkbox>
             </span>
             <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}">
-                <span class="hierarchy"><i class="el-icon-time"/> 
+                <span v-if="ses != ''" class="hierarchy">
+	   	            <i class="el-icon-time" style="margin-right: 2px;"/>
                     <!--<small v-if="ses">ses</small> -->{{ses}} 
-                    <small>{{o_ses.AcquisitionDate}}</small>
+                    <small style="opacity: 0.5;">{{o_ses.AcquisitionDate}}</small>
                     &nbsp;
                     &nbsp;
                     <el-checkbox :value="o_ses.exclude" @change="excludeSession(sub.toString(), ses.toString(), $event)">
@@ -42,7 +43,6 @@
                 </div>
             </div>
         </div>
-        <!--<pre v-if="config.debug">{{ezbids._organized}}</pre>-->
         <br>
         <br>
         <br>
@@ -175,7 +175,7 @@ import { mapState, mapGetters, } from 'vuex'
 import { defineComponent } from 'vue'                                                                                                                                                  
 import datatype from './components/datatype.vue' 
 
-import { IObject, Subject, OrganizedSession } from './store'
+import { IObject, Subject, Session, OrganizedSession } from './store'
 
 import { prettyBytes } from './filters'
 
@@ -239,18 +239,14 @@ export default defineComponent({
         },
 
         //subject needs to be an object 
-        findSessionFromString(subject: Subject, session: string) {
-            /*
-            if(!subject) return null;
-            if(!subject.sess) {
-                console.log("no sessions", subject);
-            }
-            */
-            return subject.sessions.find(s=>s.session == session);
+        findSessionFromString(sub: string, ses: string) {
+            const subject = this.findSubjectFromString(sub);
+            return subject.sessions.find((s:Session)=>s.session == ses);
         },
 
         excludeSubject(sub: string, b: boolean) {
             const subject = this.findSubjectFromString(sub);
+            console.dir(sub, subject);
             subject.exclude = b;
 
             this.$emit("mapObjects");
@@ -258,15 +254,14 @@ export default defineComponent({
         },
 
         isExcluded(o: IObject) {
-            //this.$emit("updateObject", o);//apply parent exclude flags (creates infinite loop)
             if(o.exclude) return true;
             if(o._type == "exclude") return true;
             return o._exclude; 
         },
 
         excludeSession(sub: string, ses: string, b: boolean) {
-            const subject = this.findSubjectFromString(sub);
-            const session = this.findSessionFromString(subject, ses);
+            //const subject = this.findSubjectFromString(sub);
+            const session = this.findSessionFromString(sub, ses);
             if(session) session.exclude = b;
 
             this.$emit("mapObjects");

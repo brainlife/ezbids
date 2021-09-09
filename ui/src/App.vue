@@ -67,10 +67,6 @@ export default defineComponent({
                 if(this.ezbids.notLoaded) {
                     console.log("loading ezbids for the first time"); //on page reload, above if(location.hash) block takes care of loading it
                     await this.$store.dispatch("loadEzbids");
-                    /*
-                    this.mapObjects();
-                    this.$store.commit("organizeObjects");
-                    */
                 }
             }
         }, 5000)
@@ -179,6 +175,8 @@ export default defineComponent({
             }                                                                                                           
                                                                                                                         
             const session = this.findSession(subject, o.AcquisitionDate);                                                         
+	console.log("session excluded?");
+	console.dir(session);
             if(session.exclude) o._exclude = true;                                                                      
                                                                                                                         
             //if ses is not set, use session mapping as default                                                         

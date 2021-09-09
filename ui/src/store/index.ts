@@ -410,8 +410,8 @@ const store = createStore({
             state.ezbids.objects.forEach((o, idx)=>{                                                                               
                 o.idx = idx; //reindex                                                                                     
                                                                                                                             
-                let sub = "sub-"+o._entities.subject;                                                                             
-                let ses = "ses-"+o._entities.session||"";                                                                         
+                let sub = /*"sub-"+*/o._entities.subject;                                                                             
+                let ses = o._entities.session;//?("ses-"+o._entities.session):"";                                                                         
                 if(!state.ezbids._organized[sub]) state.ezbids._organized[sub] = {                                                                     
                     sess: {},                                                                                              
                     objects: []                                                                                            

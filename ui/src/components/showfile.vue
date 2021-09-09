@@ -33,7 +33,7 @@ export default defineComponent({
     },
 
     mounted() {
-        fetch(this.config.apihost+'/download/'+this.session._id+'/'+this.path+"?t="+new Date().getTime()).then(res=>res.text()).then(data=>{
+        fetch(this.config.apihost+'/download/'+this.session._id+'/'+this.path/*+"?t="+new Date().getTime()*/).then(res=>res.text()).then(data=>{
             this.content = convert.toHtml(data);
         });
 
