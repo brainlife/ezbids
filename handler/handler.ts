@@ -14,6 +14,11 @@ models.connect(err=>{
     run();
 });
 
+const root = process.argv[2];
+const json = fs.readFileSync(root+"/finalized.json");
+const info = JSON.parse(json);
+const datasetName = info.datasetDescription.Name;
+
 function run() {
     models.Session.find({
         //TODO- why don't we just look for "uploaded" session?
@@ -94,7 +99,7 @@ async function handle_finalized(session) {
     session.status = "bidsing";
     console.dir(session);
 
-    await handle(session, "./bids.sh", "bids", cb=>{
+    await handle(session, "./bids.sh", datasetName, cb=>{
         //monitor cb
     }, cb=>{
         //finish cb

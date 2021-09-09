@@ -9,8 +9,11 @@ if [ -z $1 ]; then
 fi
 root=$1
 
-#TODO - validate $root?
-rm -rf $root/bids
+datasetName=`jq -r '.datasetDescription.Name' $root/finalized.json`
+
+rootDir=$root/$datasetName
+
+rm -rf $rootDir
 
 #echo "making deface list"
 #./make_deface_list.py $root
@@ -32,9 +35,10 @@ rm -rf $root/bids
 echo "converting output to bids"
 ./convert.js $root
 
+
 echo "output bids directory structure"
-tree $root/bids > $root/tree.log
+tree $rootDir > $root/tree.log
 
 echo "running bids validator"
-bids-validator $root/bids > $root/validator.log || true
+bids-validator $rootDir > $root/validator.log || true
 

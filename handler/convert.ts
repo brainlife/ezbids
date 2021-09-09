@@ -20,7 +20,7 @@ fs.writeFileSync(root+"/bids/.bidsignore", `
 =======
 const datasetName = info.datasetDescription.Name;
 
-mkdirp.sync(root + "/" + datasetName);
+mkdirp.sync(root+"/"+datasetName);
 fs.writeFileSync(root+"/"+datasetName+"/finalized.json", JSON.stringify(info, null, 4)); //copy the finalized.json
 fs.writeFileSync(root+"/"+datasetName+"/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
 fs.writeFileSync(root+"/"+datasetName+"/.bidsignore", `
@@ -33,7 +33,7 @@ finalized.json
 info.readme += `
 ## ezbids
 
-This dataset was converted from DICOM to BIDS using ezbids (https://brainlife.io/ezbids)
+This dataset was converted from DICOM to BIDS using ezBIDS (https://brainlife.io/ezbids)
 
 `;
 fs.writeFileSync(root+"/"+datasetName+"/README", info.readme);
