@@ -8,7 +8,7 @@ if (!root)
     throw "please specify root directory";
 const json = fs.readFileSync(root + "/finalized.json");
 const info = JSON.parse(json);
-const datasetName = info.datasetDescription.Name
+const datasetName = info.datasetDescription.Name;
 mkdirp.sync(root + "/" + datasetName);
 fs.writeFileSync(root + "/" + datasetName + "/finalized.json", JSON.stringify(info, null, 4)); //copy the finalized.json
 fs.writeFileSync(root + "/" + datasetName + "/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
@@ -70,6 +70,8 @@ async.forEach(info.objects, (o, next_o) => {
     const name = tokens.join("_");
     function composePath(derivatives) {
         let path = datasetName;
+        console.log(path)
+        console.log("")
         if (derivatives)
             path += "/derivatives/" + derivatives;
         path += "/sub-" + o._entities.subject;
