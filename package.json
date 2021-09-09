@@ -25,7 +25,8 @@
     "mkdirp": "^1.0.4",
     "mongoose": "^6.0.4",
     "multer": "^1.4.3",
-    "nocache": "^2.1.0"
+    "nocache": "^2.1.0",
+    "node-pty": "^0.10.1"
   },
   "devDependencies": {
     "@types/cors": "^2.8.12",

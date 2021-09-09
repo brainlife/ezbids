@@ -11,6 +11,7 @@ const json = fs.readFileSync(root+"/finalized.json");
 
 const info = JSON.parse(json);
 
+console.log("creating bids output directory", root+"/bids");
 mkdirp.sync(root+"/bids");
 fs.writeFileSync(root+"/bids/finalized.json", JSON.stringify(info, null, 4)); //copy the finalized.json
 fs.writeFileSync(root+"/bids/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
