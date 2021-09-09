@@ -8,23 +8,13 @@ const root = process.argv[2];
 if(!root) throw "please specify root directory";
 
 const json = fs.readFileSync(root+"/finalized.json");
-
 const info = JSON.parse(json);
-
-<<<<<<< HEAD
-console.log("creating bids output directory", root+"/bids");
-mkdirp.sync(root+"/bids");
-fs.writeFileSync(root+"/bids/finalized.json", JSON.stringify(info, null, 4)); //copy the finalized.json
-fs.writeFileSync(root+"/bids/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
-fs.writeFileSync(root+"/bids/.bidsignore", `
-=======
 const datasetName = info.datasetDescription.Name;
 
-mkdirp.sync(root+"/"+datasetName);
-fs.writeFileSync(root+"/"+datasetName+"/finalized.json", JSON.stringify(info, null, 4)); //copy the finalized.json
-fs.writeFileSync(root+"/"+datasetName+"/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
-fs.writeFileSync(root+"/"+datasetName+"/.bidsignore", `
->>>>>>> 4f2722551152692021da63ab73e8193fe4523175
+mkdirp.sync(root+"/bids/"+datasetName);
+fs.writeFileSync(root+"/bids/"+datasetName+"/finalized.json", JSON.stringify(info, null, 4)); //copy the finalized.json
+fs.writeFileSync(root+"/bids/"+datasetName+"/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
+fs.writeFileSync(root+"/bids/"+datasetName+"/.bidsignore", `
 **/excluded
 **/*_MP2RAGE.*
 finalized.json
@@ -36,8 +26,8 @@ info.readme += `
 This dataset was converted from DICOM to BIDS using ezBIDS (https://brainlife.io/ezbids)
 
 `;
-fs.writeFileSync(root+"/"+datasetName+"/README", info.readme);
-fs.writeFileSync(root+"/"+datasetName+"/participants.json", JSON.stringify(info.participantsColumn, null, 4));
+fs.writeFileSync(root+"/bids/"+datasetName+"/README", info.readme);
+fs.writeFileSync(root+"/bids/"+datasetName+"/participants.json", JSON.stringify(info.participantsColumn, null, 4));
 
 //convert participants.json to tsv
 console.log("outputting participants.json/tsv");
@@ -59,7 +49,7 @@ info.subjects.forEach(subject=>{
     }
     tsv.push(tsvrec);
 });
-let tsvf = fs.openSync(root+"/"+datasetName+"/participants.tsv", "w");
+let tsvf = fs.openSync(root+"/bids/"+datasetName+"/participants.tsv", "w");
 for(let rec of tsv) {
     fs.writeSync(tsvf, rec.join("\t")+"\n");
 }
@@ -79,14 +69,17 @@ async.forEach(info.objects, (o, next_o)=>{
 
     //construct basename
     let tokens = [];
-    for(let k in o._entities) {
+    //for(let k in o._entities) {
+    for(let k in info.entityMappings) {
         const sk = info.entityMappings[k];
-        if(o._entities[k]) tokens.push(sk+"-"+o._entities[k]); 
+        if(o._entities[k]) {
+	    tokens.push(sk+"-"+o._entities[k]); 
+	}
     }
     const name = tokens.join("_");
 
     function composePath(derivatives) {
-        let path = datasetName;
+        let path = "bids/"+datasetName;
         if(derivatives) path += "/derivatives/"+derivatives;
         path += "/sub-"+o._entities.subject;
         if(o._entities.session) path += "/ses-"+o._entities.session;
@@ -234,7 +227,8 @@ async.forEach(info.objects, (o, next_o)=>{
                         if(io._entities.session) path += "ses-"+io._entities.session+"/";
                         path += iomodality+"/";
                         let tokens = [];
-                        for(let k in io._entities) {
+                        //for(let k in io._entities) {
+                        for(let k in info.entityMappings) {
                             const sk = info.entityMappings[k];
                             if(io._entities[k]) tokens.push(sk+"-"+io._entities[k]); 
                         }

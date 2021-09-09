@@ -163,7 +163,7 @@ export default defineComponent({
         },
 
         download() {
-            document.location.href = this.config.apihost+'/download/'+this.session._id+'/bids';
+            document.location.href = this.config.apihost+'/download/'+this.session._id+'/bids/'+this.ezbids.datasetDescription.Name;
         },
 
         downloadSubjectMapping() {

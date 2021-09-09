@@ -322,15 +322,17 @@ const store = createStore({
             state.ezbids.series.forEach((s:Series)=>{
                 s.validationErrors = [];
 
+		/*
                 //for legacy reason.                                                                                
                 delete s.entities.sub;                                                                         
                 delete s.entities.ses;                                                                         
+	        */
                                                                                                                     
                 delete s.entities.subject;                                                                     
                 delete s.entities.session;                                                                     
                                                                                                                     
                 //we shouldn't have to do this soon                                                                 
-                //if(s.png_objects_indices) s['object_indices'] = s.png_objects_indices;                                                                                                   
+                //if(s.png_objects_indices) s['object_indices'] = s.png_objects_indices;
             });
 
             state.ezbids.subjects.forEach((s:Subject)=>{

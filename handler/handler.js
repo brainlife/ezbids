@@ -99,7 +99,6 @@ function handle_finalized(session) {
         session.finalize_begin_date = new Date();
         session.finalize_end_date = undefined;
         session.status = "bidsing";
-        console.dir(session);
         yield handle(session, "./bids.sh", "bids", cb => {
             //monitor cb
         }, cb => {
@@ -116,7 +115,6 @@ function handle_deface(session) {
         session.deface_begin_date = new Date();
         session.deface_end_date = undefined;
         session.status = "defacing";
-        console.dir(session);
         yield handle(session, "./deface.sh", "deface", cb => {
             //monitor cb - nothing special to do yet
             cb();
@@ -141,14 +139,15 @@ function handle(session, script, name, cb_monitor, cb_finish) {
                 const errout = fs.openSync(workdir + "/" + name + ".err", "w");
                 let lasterr = "";
                 p.stdout.on('data', data => {
-                    fs.writeSync(logout, data);
                     let out = data.toString("utf8").trim();
                     console.log(out);
                     session.status_msg = out.substring(out.length - 1000);
+                    fs.writeSync(logout, data);
                 });
                 p.stderr.on('data', data => {
-                    console.log(data.toString("utf8"));
-                    lasterr = data.toString("utf8");
+                    let out = data.toString("utf8").trim();
+                    console.log(out);
+                    lasterr = out;
                     fs.writeSync(errout, data);
                 });
                 p.on('close', code => {

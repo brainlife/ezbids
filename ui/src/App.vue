@@ -152,18 +152,15 @@ export default defineComponent({
         //but.. we want to preserve the information set on object itself, so let's stored flatten information on _entities instead of
         //directly applying them to entities.
         mapObject(o: IObject) {
-            //console.log("mapping", o);
-
             o._exclude = o.exclude;                                                                                        
-                                                                                                                             
-            const series = this.$store.state.ezbids.series[o.series_idx];                                                                       
-            o._SeriesDescription = series.SeriesDescription.replace('_RR', ""); //helps in objects view
+            const series = this.$store.state.ezbids.series[o.series_idx];    
+	    o._SeriesDescription = series.SeriesDescription.replace('_RR', ""); //helps in objects view
             o._type = series.type;                                                                                         
             o._forType = series.forType;                                                                                   
             if(o.type) o._type = o.type; //object level override                                                           
                                                                                                                            
             //clone bids entity for this _type to preserve proper key ordering                                                               
-            const e = Object.assign({}, this.getBIDSEntities(o._type));                                                                          
+            const e = Object.assign({}, this.getBIDSEntities(o._type));
             for(let k in e) {                                                                                              
                 e[k] = series.entities[k];                                                                                 
             }                                                                                                              
