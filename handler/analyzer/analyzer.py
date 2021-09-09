@@ -375,12 +375,6 @@ def generate_dataset_list(uploaded_files_list):
         else:
             echo_time = 0
 
-        # Find MultibandAccerationFactor
-        if "MultibandAccelerationFactor" in json_data:
-            multiband_acceleration_factor = json_data["MultibandAccelerationFactor"]
-        else:
-            multiband_acceleration_factor = "N/A"
-
         # get the nibabel nifti image info
         image = nib.load(json_file[:-4] + "nii.gz")
 
@@ -412,7 +406,6 @@ def generate_dataset_list(uploaded_files_list):
             "RepetitionTime": repetition_time,
             "EchoNumber": echo_number,
             "EchoTime": echo_time,
-            "MultibandAccelerationFactor": multiband_acceleration_factor,
             "DataType": "",
             "ModalityLabel": "",
             "series_idx": 0,
@@ -537,11 +530,10 @@ def determine_subj_ses_IDs(dataset_list):
 def determine_unique_series(dataset_list):
     """
     From the dataset_list, lump the individual acquisitions into unique series.
-    Unique data is determined from 4 dicom header values: EchoTime,
-    SeriesDescription, ImageType, and MultibandAccelerationFactor. If EchoTime
-    values differ slightly (+/- 1) and other values are the same, a unique
-    series ID is not given, since EchoTime is the only dicom headeh with
-    continuous values.
+    Unique data is determined from 4 dicom header values: SeriesDescription
+    EchoTime, ImageType, and RepetitionTime. If EchoTime values differ
+    slightly (+/- 1) and other values are the same, a unique series ID is not
+    given, since EchoTime is the only dicom headeh with continuous values.
 
     Parameters
     ----------
@@ -571,13 +563,13 @@ def determine_unique_series(dataset_list):
             heuristic_items = [acquisition_dic["EchoTime"],
                                modified_sd,
                                acquisition_dic["ImageType"],
-                               acquisition_dic["MultibandAccelerationFactor"],
+                               acquisition_dic["RepetitionTime"],
                                1]
         else:
             heuristic_items = [acquisition_dic["EchoTime"],
                                acquisition_dic["SeriesDescription"],
                                acquisition_dic["ImageType"],
-                               acquisition_dic["MultibandAccelerationFactor"],
+                               acquisition_dic["RepetitionTime"],
                                1]
 
         if index == 0:
@@ -1164,7 +1156,7 @@ def identify_series_info(dataset_list_unique_series):
                        "series_idx": unique_dic["series_idx"],
                        "EchoTime": unique_dic["EchoTime"],
                        "ImageType": unique_dic["ImageType"],
-                       "MultibandAccelerationFactor": unique_dic["MultibandAccelerationFactor"],
+                       "RepetitionTime": unique_dic["RepetitionTime"],
                        "entities": series_entities,
                        "type": unique_dic["br_type"],
                        "forType": unique_dic["forType"],
