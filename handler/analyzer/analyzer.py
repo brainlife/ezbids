@@ -1158,21 +1158,6 @@ def identify_series_info(dataset_list_unique_series):
         else:
             pass
 
-        # Set non-normalized (i.e. poor contrast) anatomicals to exclude, but
-        # only if the dataset does not include normalized anatomicals.
-        if "anat" in unique_dic["br_type"] and not any(x in ["DERIVED", "NORM"] for x in unique_dic["ImageType"]):
-            anat_list = [[x['br_type'], x['ImageType']] for x in dataset_list_unique_series]
-            anat_list = [x for x in anat_list if 'anat' in x[0] and ('NORM' in x[1] or 'DERIVED' in x[1])]
-
-            if len(anat_list):
-                unique_dic["error"] = " ".join("Acquisition is a poor contrast {} \
-                    (non-normalized); Please check to see if this {} acquisition \
-                    should be converted to BIDS. Otherwise, this object will not \
-                    be included in the BIDS output".format(unique_dic["br_type"], unique_dic["br_type"]).split())
-                unique_dic["message"] = unique_dic["error"]
-                unique_dic["br_type"] = "exclude"
-
-
         # Combine info above into dictionary, which will be displayed to user
         # through the UI.
         series_info = {"SeriesDescription": unique_dic["SeriesDescription"],
@@ -1193,6 +1178,23 @@ def identify_series_info(dataset_list_unique_series):
               determined to be {}".format(unique_dic["nifti_path"], unique_dic["SeriesDescription"], unique_dic["br_type"]).split()))
         print("")
         print("")
+
+
+    # Set non-normalized (i.e. poor contrast) anatomicals to exclude, but
+    # only if the dataset does not include normalized anatomicals.
+    anat_list = [[x['type'], x['ImageType']] for x in unique_series_list if x['type'] == "anat/T1w"]
+    anat_list = [x for x in anat_list if 'NORM' in x[1] or 'DERIVED' in x[1]]
+
+    for unique in unique_series_list:
+        if unique["type"] == "anat/T1w" and not any(x in ["DERIVED", "NORM"] for x in unique["ImageType"]):
+            if len(anat_list):
+                unique["error"] = " ".join("Acquisition is a poor contrast {} \
+                    (non-normalized); Please check to see if this {} acquisition \
+                    should be converted to BIDS. Otherwise, this object will not \
+                    be included in the BIDS output".format(unique["type"], unique["type"]).split())
+                unique["message"] = unique["error"]
+                unique["type"] = "exclude"
+
 
     """
     Check sbref acquisitions to see that their corresponding func or dwi
@@ -1216,6 +1218,7 @@ def identify_series_info(dataset_list_unique_series):
                     an anatomical or field map acquisition. BIDS currently does \
                     not support sbref for these acquisitions, therefore this \
                     sbref will be excluded. Please modify if incorrect".split())
+
 
     # If series_entities items contain periods (not allowed in BIDS) then
     # replace them with "p".
