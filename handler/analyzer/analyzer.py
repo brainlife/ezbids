@@ -375,12 +375,6 @@ def generate_dataset_list(uploaded_files_list):
         else:
             echo_time = 0
 
-        # Find MultibandAccerationFactor
-        if "MultibandAccelerationFactor" in json_data:
-            multiband_acceleration_factor = json_data["MultibandAccelerationFactor"]
-        else:
-            multiband_acceleration_factor = "N/A"
-
         # get the nibabel nifti image info
         image = nib.load(json_file[:-4] + "nii.gz")
 
@@ -412,7 +406,6 @@ def generate_dataset_list(uploaded_files_list):
             "RepetitionTime": repetition_time,
             "EchoNumber": echo_number,
             "EchoTime": echo_time,
-            "MultibandAccelerationFactor": multiband_acceleration_factor,
             "DataType": "",
             "ModalityLabel": "",
             "series_idx": 0,
@@ -537,11 +530,10 @@ def determine_subj_ses_IDs(dataset_list):
 def determine_unique_series(dataset_list):
     """
     From the dataset_list, lump the individual acquisitions into unique series.
-    Unique data is determined from 4 dicom header values: EchoTime,
-    SeriesDescription, ImageType, and MultibandAccelerationFactor. If EchoTime
-    values differ slightly (+/- 1) and other values are the same, a unique
-    series ID is not given, since EchoTime is the only dicom headeh with
-    continuous values.
+    Unique data is determined from 4 dicom header values: SeriesDescription
+    EchoTime, ImageType, and RepetitionTime. If EchoTime values differ
+    slightly (+/- 1) and other values are the same, a unique series ID is not
+    given, since EchoTime is the only dicom headeh with continuous values.
 
     Parameters
     ----------
@@ -571,13 +563,13 @@ def determine_unique_series(dataset_list):
             heuristic_items = [acquisition_dic["EchoTime"],
                                modified_sd,
                                acquisition_dic["ImageType"],
-                               acquisition_dic["MultibandAccelerationFactor"],
+                               acquisition_dic["RepetitionTime"],
                                1]
         else:
             heuristic_items = [acquisition_dic["EchoTime"],
                                acquisition_dic["SeriesDescription"],
                                acquisition_dic["ImageType"],
-                               acquisition_dic["MultibandAccelerationFactor"],
+                               acquisition_dic["RepetitionTime"],
                                1]
 
         if index == 0:
@@ -744,9 +736,13 @@ def identify_series_info(dataset_list_unique_series):
         # Localizers
         if any(x in sd for x in localizer_keys) or sd == "tfl":
             unique_dic["error"] = "Acquisition appears to be a localizer"
-            unique_dic["message"] = " ".join("Acquisition is believed to be a localizer \
-                because '{}' is in the SeriesDescription. Please modify if \
-                incorrect.".format([x for x in localizer_keys if re.findall(x, sd)][0]).split())
+            try:
+                unique_dic["message"] = " ".join("Acquisition is believed to be a localizer \
+                    because '{}' is in the SeriesDescription. Please modify if \
+                    incorrect.".format([x for x in localizer_keys if re.findall(x, sd)][0]).split())
+            except:
+                 unique_dic["message"] = " ".join("Acquisition is believed to \
+                    be a localizer because the SeriesDescription is 'tfl'. Please modify if incorrect.".split())
             unique_dic["br_type"] = "exclude"
 
         # Arterial Spin Labeling (ASL)
@@ -1154,28 +1150,13 @@ def identify_series_info(dataset_list_unique_series):
         else:
             pass
 
-        # Set non-normalized (i.e. poor contrast) anatomicals to exclude, but
-        # only if the dataset does not include normalized anatomicals.
-        if "anat" in unique_dic["br_type"] and not any(x in ["DERIVED", "NORM"] for x in unique_dic["ImageType"]):
-            anat_list = [[x['br_type'], x['ImageType']] for x in dataset_list_unique_series]
-            anat_list = [x for x in anat_list if 'anat' in x[0] and ('NORM' in x[1] or 'DERIVED' in x[1])]
-
-            if len(anat_list):
-                unique_dic["error"] = " ".join("Acquisition is a poor contrast {} \
-                    (non-normalized); Please check to see if this {} acquisition \
-                    should be converted to BIDS. Otherwise, this object will not \
-                    be included in the BIDS output".format(unique_dic["br_type"], unique_dic["br_type"]).split())
-                unique_dic["message"] = unique_dic["error"]
-                unique_dic["br_type"] = "exclude"
-
-
         # Combine info above into dictionary, which will be displayed to user
         # through the UI.
         series_info = {"SeriesDescription": unique_dic["SeriesDescription"],
                        "series_idx": unique_dic["series_idx"],
                        "EchoTime": unique_dic["EchoTime"],
                        "ImageType": unique_dic["ImageType"],
-                       "MultibandAccelerationFactor": unique_dic["MultibandAccelerationFactor"],
+                       "RepetitionTime": unique_dic["RepetitionTime"],
                        "entities": series_entities,
                        "type": unique_dic["br_type"],
                        "forType": unique_dic["forType"],
@@ -1189,6 +1170,23 @@ def identify_series_info(dataset_list_unique_series):
               determined to be {}".format(unique_dic["nifti_path"], unique_dic["SeriesDescription"], unique_dic["br_type"]).split()))
         print("")
         print("")
+
+
+    # Set non-normalized (i.e. poor contrast) anatomicals to exclude, but
+    # only if the dataset does not include normalized anatomicals.
+    anat_list = [[x['type'], x['ImageType']] for x in unique_series_list if x['type'] == "anat/T1w"]
+    anat_list = [x for x in anat_list if 'NORM' in x[1] or 'DERIVED' in x[1]]
+
+    for unique in unique_series_list:
+        if unique["type"] == "anat/T1w" and not any(x in ["DERIVED", "NORM"] for x in unique["ImageType"]):
+            if len(anat_list):
+                unique["error"] = " ".join("Acquisition is a poor contrast {} \
+                    (non-normalized); Please check to see if this {} acquisition \
+                    should be converted to BIDS. Otherwise, this object will not \
+                    be included in the BIDS output".format(unique["type"], unique["type"]).split())
+                unique["message"] = unique["error"]
+                unique["type"] = "exclude"
+
 
     """
     Check sbref acquisitions to see that their corresponding func or dwi
@@ -1212,6 +1210,7 @@ def identify_series_info(dataset_list_unique_series):
                     an anatomical or field map acquisition. BIDS currently does \
                     not support sbref for these acquisitions, therefore this \
                     sbref will be excluded. Please modify if incorrect".split())
+
 
     # If series_entities items contain periods (not allowed in BIDS) then
     # replace them with "p".
