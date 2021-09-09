@@ -11,7 +11,7 @@ root=$1
 
 datasetName=`jq -r '.datasetDescription.Name' $root/finalized.json`
 
-rootDir=$root/$datasetName
+rootDir=$root/bids/$datasetName
 
 rm -rf $rootDir
 
