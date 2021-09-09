@@ -11,10 +11,9 @@ root=$1
 
 datasetName=`jq -r '.datasetDescription.Name' $root/finalized.json`
 
+rootDir=$root/$datasetName
 
-#TODO - validate $root?
-# rm -rf $root/bids
-rm -rf $root/datasetName
+rm -rf $rootDir
 
 #echo "making deface list"
 #./make_deface_list.py $root
@@ -38,8 +37,8 @@ echo "converting output to bids"
 
 
 echo "output bids directory structure"
-tree $root/$datasetName > $root/tree.log
+tree $rootDir > $root/tree.log
 
 echo "running bids validator"
-bids-validator $root/$datasetName > $root/validator.log || true
+bids-validator $rootDir > $root/validator.log || true
 
