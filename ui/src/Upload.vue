@@ -258,7 +258,7 @@ export default defineComponent({
                 axios.post(this.config.apihost+'/upload-multi/'+this.session._id, data, {                          
                     onUploadProgress: evt=>{                         
                         //count++;
-                        //if(count % 5 == 0) batch.evt = evt;                                                                       
+                        batch.evt = evt;                                                                       
                     }                                                                                                   
                 }).then(res=>{                                                                                          
                     let msg = res.data;                                                                                 
@@ -399,8 +399,8 @@ export default defineComponent({
                     <b style="text-transform: uppercase;">{{batch.status}}</b> 
                     batch {{(idx+1).toString()}}. {{batch.fileidx.length}} files 
                     <span> ({{formatNumber(batch.size/(1024*1024))}} MB) </span>
-                    <div style="height: 20px" v-if="batch.evt.total">
-                        <el-progress
+                    <div style="height: 20px">
+                        <el-progress v-if="batch.evt.total"
                             :status="batchStatus(batch)"
                             :text-inside="true" :stroke-width="15"
                             :percentage="parseFloat(((batch.evt.loaded/batch.evt.total)*100).toFixed(1))"/>

@@ -23,7 +23,7 @@
     <div v-if="!ss" style="margin-left: 450px; padding: 20px; background-color: #eee;">
         <p>Please update how you'd like to map each dicom SeriesDescription to BIDS datatype/entities.</p>
         <p>The information you specify here will be applied to all subjects that uses matching SeriesDescription. You can also override this information later for each subject.</p>
-       <div style="background-color: white; padding: 10px; color: #666;">
+        <div style="background-color: white; padding: 10px; color: #666;">
             <i class="el-icon-back"/> Please select a series to view/edit
         </div>
     </div>
