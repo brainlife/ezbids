@@ -150,7 +150,7 @@ export default defineComponent({
         mapObject(o: IObject) {
             o._exclude = o.exclude;                                                                                        
             const series = this.$store.state.ezbids.series[o.series_idx];    
-	    o._SeriesDescription = series.SeriesDescription.replace('_RR', ""); //helps in objects view
+	        o._SeriesDescription = series.SeriesDescription.replace('_RR', ""); //helps in objects view
             o._type = series.type;                                                                                         
             o._forType = series.forType;                                                                                   
             if(o.type) o._type = o.type; //object level override                                                           
@@ -175,8 +175,6 @@ export default defineComponent({
             }                                                                                                           
                                                                                                                         
             const session = this.findSession(subject, o.AcquisitionDate);                                                         
-	console.log("session excluded?");
-	console.dir(session);
             if(session.exclude) o._exclude = true;                                                                      
                                                                                                                         
             //if ses is not set, use session mapping as default                                                         

@@ -6,10 +6,9 @@
     "dev-dist": "NODE_ENV=development lite-server --baseDir=/ezbids/ dist",
     "build": "vue-tsc --noEmit && vite build --base=/ezbids/",
     "serve": "vite preview",
-    "deploy-broken": "ssh -t hayashis@test.brainlife.io \"sudo su - -c 'cd /root/docker/ezbids && ./update-ui.sh'\"",
-    "deploy-prod-broken": "ssh -t -J hayashis@brainlife.io ubuntu@ezbids \"sudo su - -c 'cd /root/docker/ezbids && ./update.sh'\"",
-    "deploy": "rsync -av dist/ hayashis@test.brainlife.io:/usr/local/static/ezbids/ui/dist",
-    "deploy-prod": "todo"
+    "deploy": "ssh -t hayashis@test.brainlife.io \"sudo su - -c 'cd /root/docker/ezbids && ./update-ui.sh'\"",
+    "deploy-prod": "ssh -t -J hayashis@brainlife.io ubuntu@ezbids \"sudo su - -c 'cd /root/docker/ezbids && ./update.sh'\"",
+    "deploy-rsync": "rsync -av dist/ hayashis@test.brainlife.io:/usr/local/static/ezbids/ui/dist"
   },
   "dependencies": {
     "@fortawesome/fontawesome-svg-core": "^1.2.36",

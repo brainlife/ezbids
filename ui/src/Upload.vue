@@ -34,13 +34,6 @@ export default defineComponent({
     },
 
     computed: {
-        /*
-        ...mapState({
-            session: 'session',
-            config: 'config',
-            ezbids: 'ezbids',
-        }),
-        */
         ...mapState(['session', 'config', 'ezbids']),
 
         ignoredFiles() {
@@ -54,15 +47,8 @@ export default defineComponent({
     },
     
     methods: {
-        //...mapActions(['resetSession']),
 
         formatNumber,
-
-        /*
-        reset() {
-            this.$store.commit('resetSession');
-        },
-        */
 
         toggleObject(idx) {                                                                                             
             let pos = this.opened.indexOf(idx);                                                                         
@@ -264,13 +250,15 @@ export default defineComponent({
             }                                                                                                           
                                                                                                                         
             //prepare a batch                                                                                           
-            let batch = {fileidx, evt: null, status: "uploading", size: batchSize};                      
+            let batch = {fileidx, evt: {}, status: "uploading", size: batchSize};                      
             this.batches.push(batch);                                                                                   
                                                                                                                         
-            function doSend() {                                                                                         
+            function doSend() {             
+                //let count = 0;                                                                            
                 axios.post(this.config.apihost+'/upload-multi/'+this.session._id, data, {                          
-                    onUploadProgress: evt=>{                                                                                                     
-                        batch.evt = evt; //we get tons of update... debounce it?                                                                           
+                    onUploadProgress: evt=>{                         
+                        //count++;
+                        //if(count % 5 == 0) batch.evt = evt;                                                                       
                     }                                                                                                   
                 }).then(res=>{                                                                                          
                     let msg = res.data;                                                                                 
@@ -408,11 +396,11 @@ export default defineComponent({
             </p>
             <div v-for="(batch, idx) in batches" :key="idx">
                 <div v-if="batch.status != 'done'" class="batch-stat">
+                    <b style="text-transform: uppercase;">{{batch.status}}</b> 
                     batch {{(idx+1).toString()}}. {{batch.fileidx.length}} files 
                     <span> ({{formatNumber(batch.size/(1024*1024))}} MB) </span>
-                    <b style="text-transform: uppercase;">{{batch.status}}</b> 
-                    <div style="height: 20px">
-                        <el-progress v-if="batch.evt && batch.evt.total > 0"
+                    <div style="height: 20px" v-if="batch.evt.total">
+                        <el-progress
                             :status="batchStatus(batch)"
                             :text-inside="true" :stroke-width="15"
                             :percentage="parseFloat(((batch.evt.loaded/batch.evt.total)*100).toFixed(1))"/>
@@ -438,7 +426,7 @@ export default defineComponent({
             </div>
             <h3 v-else>Analyzing...</h3>
             <pre class="status">{{session.status_msg}}</pre>
-            <small>* Depending on the size of your dataset, this process might take several hours. You can shutdown your computer while we process your data (please record/bookmark the URL for this page to come back to it)</small>
+            <small>* Depending on the size of your dataset, this process might take several hours. You can shutdown your computer while we process your data (please bookmark the URL for this page to come back to it)</small>
 
             <!--
             <div class="page-action">
@@ -460,7 +448,7 @@ export default defineComponent({
 
         <div v-if="session.pre_finish_date">
             <div v-if="ezbids.notLoaded">
-                <h3>Loading analysis results..</h3>
+                <h3>Loading analysis results ...</h3>
             </div>
 
             <div v-if="!ezbids.notLoaded && ezbids.objects.length">

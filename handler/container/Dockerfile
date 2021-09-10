@@ -58,6 +58,6 @@ RUN pip3 install pydeface
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
 #install bids-validator
-RUN npm install -g bids-validator@1.7.2
+RUN npm install -g bids-validator@1.8.2
 
 RUN apt-get install -y rename 
