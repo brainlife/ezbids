@@ -417,7 +417,7 @@ def generate_dataset_list(uploaded_files_list):
             "forType": "",
             "error": None,
             "section_ID": 1,
-            "message": [],
+            "message": None,
             "br_type": "",
             "nifti_path": [x for x in nifti_paths_for_json if ".nii.gz" in x][0],
             'nibabel_image': image,
@@ -1284,7 +1284,7 @@ def modify_objects_info(dataset_list):
             # Update section_id information
             if p == 0:
                 protocol["section_ID"] = section_id
-            elif "localizer" in protocol["message"] and "localizer" not in previous_message:
+            elif protocol['message'] and "localizer" in protocol["message"] and "localizer" not in previous_message:
                 section_id += 1
                 protocol["section_ID"] = section_id
             else:
