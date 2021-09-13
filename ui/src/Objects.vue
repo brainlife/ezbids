@@ -346,9 +346,9 @@ export default defineComponent({
             let entities_requirement = this.getBIDSEntities(o._type);
 
             o.validationErrors = [];
-            if(!this.isExcluded(o)) {
-                o.validationErrors = validateEntities(o.entities);
-            }
+            if(this.isExcluded(o)) return;
+            
+            o.validationErrors = validateEntities(o.entities);
 
             if(o._type.startsWith("func/")) {
                 if(entities_requirement['task'] && !o.entities.task && !series.entities.task) {

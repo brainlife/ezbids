@@ -80,7 +80,6 @@ export default defineComponent({
         },     
 
         selectit(e/*: Event*/) {   
-
             const target = e.target/* as HTMLInputElement*/;
             this.files = target.files/* as FileList*/;
 
@@ -147,7 +146,7 @@ export default defineComponent({
                     // @ts-ignore (we add path variable to store the fullpath)                                                               
                     file.path = entry.fullPath.substring(1); //remove / prefix                                          
                     this.files.push(file);                                                                              
-                } else if (entry.isDirectory) {                                                                         
+                } else if (entry.isDirectory) {                                                                     
                     queue.push(...await readAllDirectoryEntries(entry.createReader()));                                 
                 }                                                                                                       
             }                                                                                                           
@@ -159,10 +158,11 @@ export default defineComponent({
                                                                                                                         
             //only allow certain files                                                                                  
             for(let i = 0;i < this.files.length;++i) {                                                                  
-                let file = this.files[i];                                                                               
+                let file = this.files[i];     
+                let accept = false;                                                                          
                 if( file.path.endsWith(".dcm") ||                                                                        
-                    file.path.endsWith(".IMA")
-                    ||
+                    file.path.endsWith(".IMA") ||
+
                     file.path.endsWith(".json") ||                                                                      
                     file.path.endsWith(".nii.gz") ||                                                                    
                     file.path.endsWith(".nii") ||                                                                       
@@ -183,12 +183,19 @@ export default defineComponent({
                     //dicom files doesn't have any file extensions..                                                    
                     !file.path.includes(".")) {                                                                         
                                                                                                                         
-                    //accept these files!                                                                               
-                } else {                                                                                                
+                    accept = true;                                                                           
+                }          
+                
+                if(file.path.includes("/.")) {
+                    //console.log("hidden files", file.path);
+                    accept = false;
+                }
+                
+                if(!accept) {
                     console.log("ignoring", file.path);                                                                 
                     file.ignore = true;                                                                                 
-                    this.ignoreCount++;                                                                                 
-                }                                                                                                       
+                    this.ignoreCount++;   
+                }
             } 
 
             //calculate total file size                                                                                 
