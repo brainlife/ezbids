@@ -345,7 +345,10 @@ def generate_dataset_list(uploaded_files_list):
         if subject != "NA":
             if "sub_" in subject or "sub-" in subject:
                 split = subject.split("sub")[-1][1:]
-                subject = split[0:re.search(r"[^A-Za-z0-9]+", split).start()]
+                if re.search(r"[^A-Za-z0-9]+", split) == None:
+                    subject = split
+                else:
+                    subject = split[0:re.search(r"[^A-Za-z0-9]+", split).start()]
             else:
                 subject = re.sub("[^A-Za-z0-9]+", "", subject)
 
