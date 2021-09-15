@@ -342,7 +342,14 @@ export default defineComponent({
         }, 
 
         dump() {
-            //TODO - dump current state?
+            var element = document.createElement('a');
+            element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(JSON.stringify(this.ezbids, null, 4)));
+            element.setAttribute('download', "root.json");
+            element.style.display = 'none';
+            document.body.appendChild(element);
+            element.click();
+            document.body.removeChild(element);
+
         },
     },
 });
