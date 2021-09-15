@@ -725,7 +725,7 @@ def identify_series_info(dataset_list_unique_series):
         dwi_keys = ["dti", "dwi", "dmri"]
         func_keys = ["bold", "func", "fmri", "epi", "mri", "task", "rest"]
         func_rest_keys = ["rest", "rsfmri", "fcmri"]
-        t1w_keys = ["t1w", "tfl3d", "mprage", "spgr", "tflmgh"]
+        t1w_keys = ["t1w", "tfl3d", "mprage", "spgr", "tflmgh", "t1mpr"]
         t2w_keys = ["t2w", "t2"]
         additional_anat_keys = ["t2starw", "inplanet1", "inplanet2", "pdt2", "pdw"]
         anat_parametric_keys = ["pdt2map", "t2starmap", "r2starmap",
