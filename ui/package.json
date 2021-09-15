@@ -7,7 +7,7 @@
     "build": "vue-tsc --noEmit && vite build --base=/ezbids/",
     "serve": "vite preview",
     "deploy": "ssh -t hayashis@test.brainlife.io \"sudo su - -c 'cd /root/docker/ezbids && ./update-ui.sh'\"",
-    "deploy-prod": "ssh -t -J hayashis@brainlife.io ubuntu@ezbids \"sudo su - -c 'cd /root/docker/ezbids && ./update.sh'\"",
+    "deploy-prod": "ssh -t -J hayashis@brainlife.io ubuntu@ezbids \"sudo su - -c 'cd /root/docker/ezbids && ./update-ui.sh'\"",
     "deploy-rsync": "rsync -av dist/ hayashis@test.brainlife.io:/usr/local/static/ezbids/ui/dist"
   },
   "dependencies": {
@@ -29,6 +29,7 @@
     "@vitejs/plugin-vue": "^1.6.2",
     "@vue/compiler-sfc": "^3.2.10",
     "ansi-to-html": "^0.7.1",
+    "sass": "^1.41.0",
     "typescript": "^4.3.2",
     "vite": "^2.5.6",
     "vue-tsc": "^0.3.0"
