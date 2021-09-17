@@ -23,14 +23,16 @@ export interface DatasetDescription {
     DatasetDOI: string;                                                                                       
 }
 
+export interface PatientInfo {
+    PatientID: string;
+    PatientName: string;
+}
 export interface Subject {
     exclude: boolean;
 
-    //primary keys
-    PatientID: string;
-    PatientName: string;
-
+    PatientInfo: PatientInfo[];
     PatientBirthDate: string;
+
     phenotype: any;
 
     subject: string; //subject name mapped to this subject
@@ -264,6 +266,7 @@ loadDatatype("func", funcDatatype, "Functional");
 
 import fmapDatatype from '../assets/schema/datatypes/fmap.json'
 import { DEFAULT_ECDH_CURVE } from 'tls';
+import { TRAP_FOCUS_HANDLER } from 'element-plus/lib/directives/trap-focus';
 loadDatatype("fmap", fmapDatatype, "Field Map");
 
 const store = createStore({
@@ -500,7 +503,7 @@ const store = createStore({
 
     getters: {
         //from "anat/t1w", return entities object {subject: required, session: optional, etc..}
-        getBIDSEntities: (state)=>(type: string)=>{
+        getBIDSEntities: (state)=>(type: string) =>{
             if(!type) return {};                                                                                        
             const modality = type.split("/")[0];                                                                        
             const suffix = type.split("/")[1];                                                                          
@@ -513,30 +516,40 @@ const store = createStore({
         },
         
         //find a session inside sub hierarchy
-        findSession: (state)=>(sub: Subject, acquisitionDate: string)=>{                                                                                              
-            let session = sub.sessions.find(s=>s.AcquisitionDate == acquisitionDate);                                    
-            return session;                                                                                                
+        findSession: (state)=>(sub: Subject, acquisitionDate: string) : (Session|undefined)=>{                                                                                              
+            return sub.sessions.find(s=>s.AcquisitionDate == acquisitionDate);                                                                                                                                 
         },   
         
-        findSubject: (state)=>(o: IObject)=>{                                                                                              
-            let subject = state.ezbids.subjects.find(s=>{                                                                       
+        findSubject: (state)=>(o: IObject): (Subject|undefined) =>{           
+            //does this still happen?
+            if(!o.PatientName && o.PatientID && o.PatientBirthDate) {
+                console.error("none of the patient identifying fields are set.. can't find this object");      
+                console.dir(o);  
+                return undefined;
+            }                    
+
+            return state.ezbids.subjects.find(s=>{     
+                //see if any of the PatientInfo matches this object's
+                let match = s.PatientInfo.find(info=>{
+                    if(o.PatientName && info.PatientName != o.PatientName) return false;
+                    if(o.PatientID && info.PatientID != o.PatientID) return false;
+                    return true;
+                });     
+                return !!match;
+                /*                                                             
                 if(o.PatientName) {                                                                                     
-                    if(s.PatientName == o.PatientName) return true;                                                     
-                    return false;                                                                                       
+                    return (s.PatientName == o.PatientName);                                                                          
                 }                                                                                                       
                 if(o.PatientID) {                                                                                       
-                    if(s.PatientID == o.PatientID) return true;                                                         
-                    return false;                                                                                       
+                    return (s.PatientID == o.PatientID);                                                                 
                 }                                                                                                       
                 if(o.PatientBirthDate) {                                                                                
-                    if(s.PatientBirthDate == o.PatientBirthDate) return true;                                           
-                    return false;                                                                                       
+                    return (s.PatientBirthDate == o.PatientBirthDate);                                                   
                 }                                                                                                       
-                console.error("none of the patient idenfitying fields are set.. can't find this object");      
-                console.dir(o);         
-                return false;                                                                                           
-            });                                                                                                         
-            return subject;                                                                                  
+                console.error("none of the patient identifying fields are set.. can't find this object");      
+                console.dir(o);      
+                */                                                                                            
+            });                                                                                                                                                                                       
         },  
 
         getURL: (state)=>(path: string)=>{

@@ -21,8 +21,10 @@
             <template #default="scope">
                 <i class="el-icon-right" style="float: right; font-size: 150%; font-weight: bold;"/>
                 <div>
-                    <b>PatientID</b> {{scope.row.PatientID}}<br>
-                    <b>PatientName</b> {{scope.row.PatientName}}<br>
+                    <p v-for="(info, idx) in scope.row.PatientInfo" :key="idx" style="border-bottom: 1px solid #0003; margin-top: 0px">
+                        <b>PatientID</b> {{info.PatientID}}<br>
+                        <b>PatientName</b> {{info.PatientName}}<br>
+                    </p>
                     <b>PatientBirthDate</b> {{scope.row.PatientBirthDate||'(not set)'}}<br>
                 </div>
             </template>
@@ -59,25 +61,11 @@
                 </el-table>
   
                 <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in scope.row.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
-
-
             </template>
         </el-table-column>
     </el-table>
 
     <pre>{{ezbids.subjects}}</pre>
-
-    <!--
-    <pre v-if="config.debug">{{ezbids.subjects}}</pre>
-
-    <br>
-    <br>
-    <br>
-    <div class="page-action">
-        <el-button @click="back">Back</el-button>
-        <el-button type="primary" @click="next" style="float: right;">Next</el-button>
-    </div>
-    -->
 </div>
 </template>
 
@@ -118,35 +106,19 @@ export default defineComponent({
             case "num":
                 this.ezbids.subjects.forEach((s:Subject)=>{
                     s.subject = sub.toString().padStart(2, '0');
-                    /*
-                    this.$store.commit("updateSubject", {
-                        s,
-                        subject: sub.toString().padStart(2, '0')
-                    });
-                    */
                     sub++;
                 });
                 break;
             case "pid":
                 this.ezbids.subjects.forEach((s:Subject)=>{
-                    s.subject = s.PatientID.replace(/[^0-9a-zA-Z]/g, '');
-                    /*
-                    this.$store.commit("updateSubject", {
-                        s,
-                        subject: s.PatientID.replace(/[^0-9a-zA-Z]/g, '')
-                    });
-                    */
+                    const firstInfo = s.PatientInfo[0]; //TODO - should I concatenate all PatientInfo?
+                    s.subject = firstInfo.PatientID.replace(/[^0-9a-zA-Z]/g, '');
                 });
                 break;
             case "pname":
                 this.ezbids.subjects.forEach((s:Subject)=>{
-                    /*
-                    this.$store.commit("updateSubject", {
-                        s,
-                        subject: s.PatientName.replace(/[^0-9a-zA-Z]/g, '')
-                    });
-                    */
-                   s.subject = s.PatientName.replace(/[^0-9a-zA-Z]/g, '');
+                    const firstInfo = s.PatientInfo[0]; //TODO - should I concatenate all PatientInfo?
+                    s.subject = firstInfo.PatientName.replace(/[^0-9a-zA-Z]/g, '');
                 });
                 break;
             }        
@@ -183,25 +155,6 @@ export default defineComponent({
             });
             return cb(err);
         },
-
-        /*
-        next() {
-            let valid = true;
-            this.ezbids.subjects.forEach(s=>{
-                if(s.validationErrors.length > 0) valid = false;
-            });
-            if(valid) {
-                this.ezbids.changePage("participant");
-            } else {
-                alert('Please correct all issues');
-                return false;
-            }
-        },
-
-        back() {
-            this.$root.changePage("description");
-        },
-        */
     },
 });
 

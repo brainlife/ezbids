@@ -38,21 +38,6 @@
     <h5>phenotype.tsv</h5>
     <p>Enter phenotypical data associated with each participants.</p>
     <div style="width: 100%">
-        <!--
-        <el-table :data="ezbids.subjects" size="mini">
-            <el-table-column label="subject" width="200">
-                <template #default="scope">
-                    {{scope.row.subject}} <small>({{scope.row.PatientID||scope.row.PatientName}})</small>
-                </template>
-            </el-table-column>
-            <el-table-column v-for="(column, key) in ezbids.participantsColumn" :key="key" :label="key">
-                <template #default="scope">
-                    accessing scrope.row.phenotype[key] somehow crashes vue on dist build
-                    <el-input v-model="scope.row.phenotype[key]" size="mini"/>
-                </template>
-            </el-table-column>
-        </el-table>
-        -->
         <table class="phenotype">
         <thead>
         <tr>
