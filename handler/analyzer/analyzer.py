@@ -331,8 +331,8 @@ def generate_dataset_list(uploaded_files_list):
         else:
             patient_sex = "N/A"
 
-        # Select subject_id to display to ezBIDS users.
-        # Precedence order: PatientName > PatientID > PatientBirthDate
+        # Select subject ID (and session ID if applicable) to display to ezBIDS users.
+        # Subject ID precedence order: PatientName > PatientID > PatientBirthDate
         if patient_name:
             subject = patient_name
         elif patient_id:
@@ -341,6 +341,14 @@ def generate_dataset_list(uploaded_files_list):
             subject = patient_birth_date
         else:
             subject = "NA"
+
+        session = ""
+        if "ses_" in subject or "ses-" in subject:
+            split = subject.split("ses")[-1][1:]
+            if re.search(r"[^A-Za-z0-9]+", split) == None:
+                session = split
+            else:
+                session = split[0:re.search(r"[^A-Za-z0-9]+", split).start()]
 
         if subject != "NA":
             if "sub_" in subject or "sub-" in subject:
@@ -399,7 +407,7 @@ def generate_dataset_list(uploaded_files_list):
             "PatientSex": patient_sex,
             "PatientAge": "N/A",
             "subject": subject,
-            "session": "",
+            "session": session,
             "SeriesNumber": json_data["SeriesNumber"],
             "AcquisitionDate": acquisition_date,
             "AcquisitionTime": acquisition_time,
@@ -466,10 +474,13 @@ def determine_subj_ses_IDs(dataset_list):
     """
     # Curate subject_id information
     subject_ids_info = list({"subject":x["subject"],
-                             "PatientID":x["PatientID"],
                              "PatientName":x["PatientName"],
+                             "PatientID":x["PatientID"],
+                             "PatientInfo":[],
                              "PatientBirthDate":x["PatientBirthDate"],
                              "AcquisitionDate":x["AcquisitionDate"],
+                             "AcquisitionTime":x["AcquisitionTime"],
+                             "session":x["session"],
                              "phenotype":{
                                  "sex":x["PatientSex"],
                                  "age":x["PatientAge"]},
@@ -477,10 +488,16 @@ def determine_subj_ses_IDs(dataset_list):
                              "sessions": [],
                              "validationErrors": []} for x in dataset_list)
 
+    # Sort by subject, AcquisitionDate, and AcquisitionTime
+    subject_ids_info = sorted(subject_ids_info, key=itemgetter("subject",
+                                                   "AcquisitionDate",
+                                                   "AcquisitionTime"))
     # Create modified list of dictionary with unique subject and Acquisition
     # values
-    subject_ids_info_mod = list({(v["subject"], v["AcquisitionDate"]):v
-                                 for v in subject_ids_info}.values())
+    subject_ids_info_mod = list({(v["subject"], v["PatientName"],
+                                  v["PatientID"], v["session"],
+                                  v["AcquisitionDate"]):v for v in
+                                 subject_ids_info}.values())
 
     # Create list of dictionaries with unique subject values. This list of
     # dictionaries will be used by ezBIDS UI.
@@ -496,30 +513,46 @@ def determine_subj_ses_IDs(dataset_list):
                            if dictionary["subject"] == subj_id]
 
         if len(subject_indices):
+            participant_name_id = []
             sessions_info = []
 
         for index, subj_index in enumerate(subject_indices):
 
+            participant_name_id.append({"PatientName": subject_ids_info_mod[subj_index]["PatientName"],
+                                        "PatientID": subject_ids_info_mod[subj_index]["PatientID"]})
 
+            # For session ID, either use what was previously determined, or go
+            # by numeric chronological order
             if len(subject_indices) > 1:
-                session_id = str(index+1)
+                if subject_ids_info_mod[subj_index]['session'] == "":
+                    session_id = str(index+1)
+                else:
+                    session_id = subject_ids_info_mod[subj_index]['session']
             else:
                 session_id = ""
 
+            # Append session information to list
             sessions_info.append({"AcquisitionDate": subject_ids_info_mod[subj_index]["AcquisitionDate"],
+                                  "AcquisitionTime": subject_ids_info_mod[subj_index]["AcquisitionTime"],
                                   "session": session_id,
                                   "exclude": False})
             # Apply the session information to the correct subject dictionaries
             subj_dictionary = [x for x in subject_ids_info
                                if x["subject"] == subj_id][0]
 
+            # Turn PatientInfo and sessions lists into key values
+            subj_dictionary["PatientInfo"] = participant_name_id
             subj_dictionary["sessions"] = sessions_info
 
-    # Remove AcquisitionDate key from dictionaries (info contained in sessions)
+    # Remove AcquisitionDate key from dictionaries due to redundancy
     for dic in subject_ids_info:
         del dic["AcquisitionDate"]
+        del dic["AcquisitionTime"]
+        del dic["PatientName"]
+        del dic["PatientID"]
+        del dic["session"]
 
-    # Add the session ID to the dataset_list dictionaries
+    # Add the session ID to the dataset_list dictionaries (i.e. each acquisition)
     for acquisition_dic in dataset_list:
         for subject_dic in subject_ids_info:
             if subject_dic["subject"] == acquisition_dic["subject"] and len(subject_dic["sessions"]) > 1:
@@ -535,8 +568,8 @@ def determine_unique_series(dataset_list):
     From the dataset_list, lump the individual acquisitions into unique series.
     Unique data is determined from 4 dicom header values: SeriesDescription
     EchoTime, ImageType, and RepetitionTime. If EchoTime values differ
-    slightly (+/- 1) and other values are the same, a unique series ID is not
-    given, since EchoTime is the only dicom headeh with continuous values.
+    slightly (+/- 1 ms) and other values are the same, a unique series ID is not
+    given, since EchoTime is a continuous variable.
 
     Parameters
     ----------
@@ -586,6 +619,8 @@ def determine_unique_series(dataset_list):
                 echo_time = heuristic_items[0]
                 common_series_index = [x[1:-1] for x in series_checker].index(heuristic_items[1:])
 
+                # Add slight EchoTime measurement error tolerance.
+                # See https://github.com/rordenlab/dcm2niix/issues/543
                 if series_checker[common_series_index][0] - 0.5 <= echo_time <= series_checker[common_series_index][0] + 0.5:
                     common_series_idx = series_checker[common_series_index][-1]
                     acquisition_dic["series_idx"] = common_series_idx
@@ -1287,7 +1322,7 @@ def modify_objects_info(dataset_list):
             # Update section_id information
             if p == 0:
                 protocol["section_ID"] = section_id
-            elif protocol['message'] and "localizer" in protocol["message"] and "localizer" not in previous_message:
+            elif protocol['message'] and "localizer" in protocol["message"] and (previous_message == None or "localizer" not in previous_message):
                 section_id += 1
                 protocol["section_ID"] = section_id
             else:
