@@ -519,8 +519,8 @@ def determine_subj_ses_IDs(dataset_list):
         for index, subj_index in enumerate(subject_indices):
 
             participant_name_id.append({"PatientName": subject_ids_info_mod[subj_index]["PatientName"],
-                                        "PatientID": subject_ids_info_mod[subj_index]["PatientID"]})
-
+                                        "PatientID": subject_ids_info_mod[subj_index]["PatientID"],
+                                        "PatientBirthDate": subject_ids_info_mod[subj_index]["PatientBirthDate"]})
             # For session ID, either use what was previously determined, or go
             # by numeric chronological order
             if len(subject_indices) > 1:
@@ -544,8 +544,9 @@ def determine_subj_ses_IDs(dataset_list):
             subj_dictionary["PatientInfo"] = participant_name_id
             subj_dictionary["sessions"] = sessions_info
 
-    # Remove AcquisitionDate key from dictionaries due to redundancy
+    # Remove redundant keys from dictionary
     for dic in subject_ids_info:
+        del dic["PatientBirthDate"]
         del dic["AcquisitionDate"]
         del dic["AcquisitionTime"]
         del dic["PatientName"]
