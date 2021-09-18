@@ -4,7 +4,7 @@
         <div v-for="(o_sub, sub) in ezbids._organized" :key="sub" style="font-size: 90%; margin-bottom: 10px">
             <span v-if="sub != ''" class="hierarchy">
                 <i class="el-icon-user-solid" style="margin-right: 2px;"/> 
-                <!--<small>sub</small> -->{{sub}} 
+                <small>sub-</small><b>{{sub}}</b> 
                 &nbsp;
                 &nbsp;
                 <el-checkbox :value="o_sub.exclude" @change="excludeSubject(sub.toString(), $event)">
@@ -12,9 +12,10 @@
                 </el-checkbox>
             </span>
             <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}">
-                <span v-if="ses != ''" class="hierarchy">
+                <span v-if="ses" class="hierarchy">
 	   	            <i class="el-icon-time" style="margin-right: 2px;"/>
-                    <!--<small v-if="ses">ses</small> -->{{ses}} 
+                    <small>ses-</small><b>{{ses}}</b>
+                    &nbsp;
                     <small style="opacity: 0.5;">{{o_ses.AcquisitionDate}}</small>
                     &nbsp;
                     &nbsp;
@@ -156,16 +157,6 @@
         <br>
         <br>
     </div><!--object-->
-
-    <!--
-    <el-form>
-        <el-form-item class="page-action">
-            <el-button @click="back">Back</el-button>
-            <el-button type="primary" @click="next" style="float: right;" :disabled="!!totalIssues">Next </el-button>
-            <span style="padding: 0 10px; float: right;" v-if="totalIssues"><b>{{totalIssues}}</b> issues remaining</span>
-        </el-form-item>
-    </el-form>
-    -->
 </div>
 </template>
 

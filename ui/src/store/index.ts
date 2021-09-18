@@ -26,12 +26,12 @@ export interface DatasetDescription {
 export interface PatientInfo {
     PatientID: string;
     PatientName: string;
+    PatientBirthDate: string;
 }
 export interface Subject {
     exclude: boolean;
 
     PatientInfo: PatientInfo[];
-    PatientBirthDate: string;
 
     phenotype: any;
 
@@ -533,22 +533,10 @@ const store = createStore({
                 let match = s.PatientInfo.find(info=>{
                     if(o.PatientName && info.PatientName != o.PatientName) return false;
                     if(o.PatientID && info.PatientID != o.PatientID) return false;
+                    if(o.PatientBirthDate && info.PatientBirthDate != o.PatientBirthDate) return false;
                     return true;
                 });     
-                return !!match;
-                /*                                                             
-                if(o.PatientName) {                                                                                     
-                    return (s.PatientName == o.PatientName);                                                                          
-                }                                                                                                       
-                if(o.PatientID) {                                                                                       
-                    return (s.PatientID == o.PatientID);                                                                 
-                }                                                                                                       
-                if(o.PatientBirthDate) {                                                                                
-                    return (s.PatientBirthDate == o.PatientBirthDate);                                                   
-                }                                                                                                       
-                console.error("none of the patient identifying fields are set.. can't find this object");      
-                console.dir(o);      
-                */                                                                                            
+                return !!match;                                                                                           
             });                                                                                                                                                                                       
         },  
 

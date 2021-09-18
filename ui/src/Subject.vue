@@ -20,12 +20,12 @@
         <el-table-column label="DICOM Patient" width="330px">
             <template #default="scope">
                 <i class="el-icon-right" style="float: right; font-size: 150%; font-weight: bold;"/>
-                <div>
-                    <p v-for="(info, idx) in scope.row.PatientInfo" :key="idx" style="border-bottom: 1px solid #0003; margin-top: 0px">
-                        <b>PatientID</b> {{info.PatientID}}<br>
-                        <b>PatientName</b> {{info.PatientName}}<br>
-                    </p>
-                    <b>PatientBirthDate</b> {{scope.row.PatientBirthDate||'(not set)'}}<br>
+                <div class="patient-info">
+                <p v-for="(info, idx) in scope.row.PatientInfo" :key="idx">
+                    <b>PatientID</b> {{info.PatientID}}<br>
+                    <b>PatientName</b> {{info.PatientName}}<br>
+                    <b>PatientBirthDate</b> {{info.PatientBirthDate||'(not set)'}}<br>
+                </p>
                 </div>
             </template>
         </el-table-column>
@@ -160,3 +160,16 @@ export default defineComponent({
 
 </script>
 
+
+<style lang="scss" scoped>
+.patient-info {
+    p {
+        margin-top: 0px;
+        margin-bottom: 5px;
+    }
+    p:not(:first-child) {
+        border-top: 1px solid #0001;  
+        padding-top: 5px;  
+    }
+}
+</style>
