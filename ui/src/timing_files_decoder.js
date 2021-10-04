@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path')
 var XLSX = require('xlsx');
 const study = '' // Need to get this value from ezBIDS UI
-const $rootDir = ('/media/data/ezbids/fMRI_behavioral_timing_files/' + study)
+const $rootDir = '' // Need to get value from ezBIDS UI
 
 const findTimingFiles = function (rootDir, timingFiles) {
 	// inspired by https://coderrocketfuel.com/article/recursively-list-all-the-files-in-a-directory-using-node-js
