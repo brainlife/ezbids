@@ -906,9 +906,12 @@ def DataType_ModalityLabel_identification(dataset_list_unique_series):
                 func/cbv because '{}' is in the SeriesDescription \
                 (but not 'sbref'). Please modify if incorrect".format([x for x in func_cbv_keys if re.findall(x, sd)][0]).split())
 
-        elif (any(x in sd for x in func_keys) or any(x in sd for x in func_rest_keys)) and "sbref" not in sd:
+        elif any(x in sd for x in func_keys + func_rest_keys) and "sbref" not in sd:
             unique_dic["DataType"] = "func"
             unique_dic["ModalityLabel"] = "bold"
+            unique_dic["message"] = " ".join("Acquisition is believed to be \
+                func/bold because '{}' is in the SeriesDescription \
+                (but not 'sbref'). Please modify if incorrect".format([x for x in func_keys + func_rest_keys if re.findall(x, sd)][0]).split())
 
         # Single band reference (sbref) for func or dwi
         elif "sbref" in sd:
@@ -924,17 +927,16 @@ def DataType_ModalityLabel_identification(dataset_list_unique_series):
                 unique_dic["message"] = " ".join("Acquisition is believed to be \
                     func/sbref because 'sbref' is in the SeriesDescription".split())
 
-
         elif any(x in sd for x in additional_anat_keys):
             unique_dic["DataType"] = "anat"
             if "DERIVED" and "UNI" in unique_dic["ImageType"]:
                 modality_label = "UNI"
             else:
                 modality_label = [x for x in additional_anat_keys if re.findall(x, sd)][0]
-            unique_dic["ModalityLabel"] = modality_label.upper()
-            unique_dic["message"] = " ".join("Acquisition is believed to be \
-                anat/{}, because '{}' in in the SeriesDescription. Please modify \
-                if incorrect.".format(modality_label.upper(), modality_label).split())
+                unique_dic["ModalityLabel"] = modality_label.upper()
+                unique_dic["message"] = " ".join("Acquisition is believed to be \
+                    anat/{}, because '{}' in in the SeriesDescription. Please modify \
+                    if incorrect.".format(modality_label.upper(), modality_label).split())
 
         # T1w
         elif any(x in sd for x in t1w_keys):
@@ -1368,8 +1370,7 @@ def modify_objects_info(dataset_list):
                          and x["session"] == unique_subj_ses[1]]
 
         # sort scan protocol
-        scan_protocol = sorted(scan_protocol, key=itemgetter("ModifiedTime",
-                                                             "series_idx"))
+        sorted(scan_protocol, key=itemgetter("ModifiedTime","series_idx"))
 
         section_id = 1
         objects_data = []
