@@ -32,7 +32,7 @@ export function fmapQA($root) {
             sectionIDs.forEach(s=> {
                 let section = sessions[session].objects.filter(e=>e.analysisResults.section_ID == s && !e._exclude)
 
-                let funcObjs = section.filter(e=>e._type == 'func/bold')
+                let funcObjs = section.filter(e=>e._type == 'func/bold' || e._type == 'func/sbref')
                 let dwiObjs = section.filter(e=>e._type == 'dwi/dwi')
                 let fmapSpinEchoFuncObjs = section.filter(e=>e._type.startsWith('fmap/epi') && e._forType == 'func/bold')
                 let fmapSpinEchoDwiObjs = section.filter(e=>e._type.startsWith('fmap/epi') && e._forType == 'dwi/dwi')
@@ -270,7 +270,7 @@ export function setIntendedFor($root) {
             sectionIDs.forEach(s=> {
                 let section = sessions[session].objects.filter(e=>e.analysisResults.section_ID == s && !e._exclude)
 
-                let funcObjs = section.filter(e=>e._type == 'func/bold' && !e._exclude)
+                let funcObjs = section.filter(e=>e._type == 'func/bold' || e._type == 'func/sbref' && !e._exclude)
                 let dwiObjs = section.filter(e=>e._type == 'dwi/dwi' && !e._exclude)
                 let fmapFuncObjs = section.filter(e=>e._type.startsWith('fmap') && e._forType == 'func/bold' && !e._exclude)
                 let fmapDwiObjs = section.filter(e=>e._type.startsWith('fmap') && e._forType == 'dwi/dwi' && !e._exclude)
