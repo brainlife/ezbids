@@ -930,13 +930,21 @@ def DataType_ModalityLabel_identification(dataset_list_unique_series):
         elif any(x in sd for x in additional_anat_keys):
             unique_dic["DataType"] = "anat"
             if "DERIVED" and "UNI" in unique_dic["ImageType"]:
-                modality_label = "UNI"
+                unique_dic["ModalityLabel"] = "UNIT1"
             else:
                 modality_label = [x for x in additional_anat_keys if re.findall(x, sd)][0]
                 unique_dic["ModalityLabel"] = modality_label.upper()
                 unique_dic["message"] = " ".join("Acquisition is believed to be \
                     anat/{}, because '{}' in in the SeriesDescription. Please modify \
                     if incorrect.".format(modality_label.upper(), modality_label).split())
+
+        # UNIT1 (part of mp2rage acquisitions)
+        elif "DERIVED" and "UNI" in unique_dic["ImageType"]:
+            unique_dic["DataType"] = "anat"
+            unique_dic["ModalityLabel"] = "UNIT1"
+            unique_dic["message"] = " ".join("Acquisition is believed to be anat/UNIT1 \
+                because 'DERIVED' and 'UNI' are in the ImageType Please modify \
+                if incorrect".split())
 
         # T1w
         elif any(x in sd for x in t1w_keys):
@@ -954,7 +962,7 @@ def DataType_ModalityLabel_identification(dataset_list_unique_series):
                 because '{}' is in the SeriesDescription. Please modify if \
                 incorrect".format([x for x in flair_keys if re.findall(x, sd)][0]).split())
 
-        # T2w (acquisitions typically have EchoTime > 100ms)
+        # T2w (typically have EchoTime > 100ms)
         elif any(x in sd for x in t2w_keys) and unique_dic["EchoTime"] > 100:
             unique_dic["DataType"] = "anat"
             unique_dic["ModalityLabel"] = "T2w"
