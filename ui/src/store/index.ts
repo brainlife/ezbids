@@ -80,6 +80,8 @@ export interface IObject {
         path?: string;
         name?: string;
         headers?: any; //for nifti
+        
+        events?: any; //for event
     }];
 
     series_idx: number;
@@ -248,7 +250,7 @@ function loadDatatype(modality: string, datatype: BIDSSchemaEntities[], label: s
         group.suffixes.forEach((suffix:string)=>{
             state.bidsSchema.datatypes[modality].options.push({
                 value: modality+"/"+suffix, 
-                label: suffix,
+                label: suffix, //bold, cbv, sbred, events, etc..
                 entities: group.entities,   //["subject", "session", etc..]
             });
         });
@@ -280,13 +282,11 @@ const store = createStore({
         */
 
         setSession(state, session) {
-            console.log("setting session", session);
             state.session = session;
 	        if(session._id) window.location.hash = session._id;                                                                     
         },
 
         reset(state) {
-            console.log("resetting");
             state.session = null;
             state.ezbids = {
                 notLoaded: true,
@@ -428,6 +428,10 @@ const store = createStore({
                 state.ezbids._organized[sub].sess[ses].objects.push(o);
             });                                                                                                            
         },
+
+        addObject(state, o) {
+            state.ezbids.objects.push(o);
+        },
     },
     
     actions: {
@@ -463,18 +467,10 @@ const store = createStore({
                 const conf = await res.json();
                 conf.notLoaded = false;
                 context.commit("updateEzbids", conf);
-                //context.dispatch("mapObjects");
             } else {
                 console.log("no ezbids.json yet");
             }
         },
-        /*
-        mapObjects(context) {
-            context.state.ezbids.objects.forEach((o:IObject)=>{
-                this.commit("mapObject", o);
-            });
-        },
-        */
 
         loadDefaceStatus(context) {
             if(!context.state.session) return;

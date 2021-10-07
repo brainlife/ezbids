@@ -170,7 +170,7 @@ import { IObject, Subject, Session, OrganizedSession } from './store'
 
 import { prettyBytes } from './filters'
 
-import { validateEntities, funcQA, fmapQA, setRun, updateErrors, setIntendedFor } from './lib'
+import { validateEntities, funcQA, fmapQA, setRun, updateErrors, setIntendedFor } from './libUnsafe'
 
 interface Section {
     [key: string]: IObject[];

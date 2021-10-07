@@ -131,7 +131,7 @@ import { prettyBytes } from './filters'
 
 import { Series } from './store'
 
-import { validateEntities } from './lib'
+import { validateEntities } from './libUnsafe'
 
 export default defineComponent({
 

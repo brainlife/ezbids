@@ -9,6 +9,7 @@ import Subject from './Subject.vue'
 import Participant from './Participant.vue'
 import SeriesPage from './SeriesPage.vue'
 import Objects from './Objects.vue'
+import Events from './Events.vue'
 import Deface from './Deface.vue'
 import Finalize from './Finalize.vue'
 
@@ -21,6 +22,7 @@ export default defineComponent({
        Subject,
        Participant,
        SeriesPage,
+       Events,
        Objects,
        Deface,
        Finalize,
@@ -28,14 +30,26 @@ export default defineComponent({
 
     data() {
         return {
-            page: "upload", //initial page
-            pages: ["upload", "description", "subject", "participant", "seriespage", "object", "deface", "finalize"], //page order
+            //initial page
+            page: "upload", 
+            
+            //page order
+            pages: [
+                "upload", 
+                "description", 
+                "subject", 
+                "participant", 
+                "seriespage", 
+                "event", 
+                "object", 
+                "deface", 
+                "finalize",
+            ], 
         }
     },
     async created() {
 
         this.$store.commit("reset");
-        //console.log("App mounted");
         if(location.hash) {     
             await this.$store.dispatch("reload", location.hash.substring(1));
             this.mapObjects();
@@ -46,12 +60,12 @@ export default defineComponent({
         console.log("checking session every 5 seconds");
         window.setInterval(async ()=>{
             if(this.session) {
-                console.log(this.session);
+                //console.log(this.session);
                 switch(this.session.status) {
                 case "analyzed":
                 case "finished":
-                    console.log(new Date());
-                    console.log("no need to reload session/ezbids with state:", this.session.status);
+                    //console.log(new Date());
+                    //console.log("no need to reload session/ezbids with state:", this.session.status);
                     break;
                 case "defacing":
                     console.log("loading deface log")
@@ -149,15 +163,18 @@ export default defineComponent({
         //directly applying them to entities.
         mapObject(o: IObject) {
             o._exclude = o.exclude;                                                                                        
-            const series = this.$store.state.ezbids.series[o.series_idx];    
-	        o._SeriesDescription = series.SeriesDescription.replace('_RR', ""); //helps in objects view
-            o._type = series.type;                                                                                         
-            o._forType = series.forType;                                                                                   
+            const series = this.$store.state.ezbids.series[o.series_idx]; 
+            if(series) {   
+                //func/events doesn't have any series
+                o._SeriesDescription = series.SeriesDescription.replace('_RR', ""); //helps in objects view
+                o._type = series.type;                                                                                         
+                o._forType = series.forType; 
+            }                                                                                  
             if(o.type) o._type = o.type; //object level override                                                           
                                                                                                                            
             //clone bids entity for this _type to preserve proper key ordering                                                               
             const e = Object.assign({}, this.getBIDSEntities(o._type));
-            for(let k in e) {                                                                                              
+            if(series) for(let k in e) {                                                                                              
                 e[k] = series.entities[k];                                                                                 
             }                                                                                                              
                                                                                                                            
@@ -199,6 +216,7 @@ export default defineComponent({
             <li :class="{active: page == 'subject'}">Subjects/Sessions</li>
             <li :class="{active: page == 'participant'}">Participants Info</li>
             <li :class="{active: page == 'seriespage'}">Series Mapping</li>
+            <li :class="{active: page == 'event'}">Events</li>
             <li :class="{active: page == 'object'}">Object Adjustment</li>
             <li :class="{active: page == 'deface'}">Deface</li>
             <li :class="{active: page == 'finalize'}">Finalize</li>
@@ -221,6 +239,8 @@ export default defineComponent({
         <Subject v-if="page == 'subject'" ref="subject"/>
         <Participant v-if="page == 'participant'" ref="participant"/>
         <SeriesPage v-if="page == 'seriespage'" ref="seriespage"/>
+        <Events v-if="page == 'event'" ref="event"
+            @mapObjects="mapObjects"/>
         <Objects v-if="page == 'object'" ref="object" 
             @mapObjects="mapObjects"
             @updateObject="updateObject"/>       

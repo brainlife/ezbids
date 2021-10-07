@@ -24,7 +24,7 @@
     "vuex": "^4.0.2"
   },
   "devDependencies": {
-    "@types/node": "^16.9.0",
+    "@types/node": "^16.10.3",
     "@types/vue-router": "^2.0.0",
     "@vitejs/plugin-vue": "^1.6.2",
     "@vue/compiler-sfc": "^3.2.10",
