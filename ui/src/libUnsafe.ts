@@ -303,6 +303,7 @@ export function validateEntities(entities/*: Series*/) {
 //this function receives files (an array of object containing fullpath and data. data is the actual file content of the file)
 //to filter out files by file extensions, please edit Events.vue
 export function createEventObjects(ezbids, files) {
+    console.log("creating event objects");
     /* example for ezbids
     {
         datasetDescription: {
@@ -354,17 +355,23 @@ export function createEventObjects(ezbids, files) {
         
         //TODO - for each file, find the most likely subject/session/task using the number of files (to guess if they are session/run specific)
         //as well as path / data 
+        /*
         const subject = {
             "PatientName": "OpenSciJan22",
             "PatientID": "10462@thwjames/OpenScience",
             "PatientBirthDate": "19910101",
         }
+        */
+        
+        //just pick a subject rarndomly for this sample
+        const subject = ezbids.subjects[0].PatientInfo[0];
         const session = null;
 
         //register new event object using the info we gathered above
         const object = Object.assign({
             //"series_idx": 5, //DO I need to create a series to store this object?\
             type: "func/events",
+            series_idx: null,
 
             "AcquisitionDate": "2020-01-22",
 
@@ -399,12 +406,17 @@ export function createEventObjects(ezbids, files) {
             ],
 
             //these aren't used, but I believe we have to initialize it
-            "analysisResults": {},
+            "analysisResults": {
+                section_ID: 1, //TODO we do need to set this so that this event object goes to the right section
+            },
             "paths": [],
             "validationErrors": [],
         }, subject, session); //we need to set subject / session specific fields that we figured out earlier
         eventObjects.push(object);
     });
+
+    console.log("created objects");
+    console.dir(eventObjects);
     return eventObjects;
 }
 

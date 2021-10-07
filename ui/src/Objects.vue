@@ -298,7 +298,7 @@ export default defineComponent({
             return cb(err);
         },
 
-        getDefault(o: IObject, entity: string) {
+        getDefault(o: IObject, entity: string) : string {
             if(entity == "subject") {
                 //default subject name only comes from subject
                 const subject = this.findSubject(o);
@@ -311,12 +311,14 @@ export default defineComponent({
             } else {
                 //all other entity default should come from series
                 const series = this.ezbids.series[o.series_idx];
+                if(!series) return "no-series";
                 return series.entities[entity];
             }
         },
 
         intendedForLabel(o: IObject) {
             const series = this.ezbids.series[o.series_idx];
+            if(!series) return "no-series";
             let l = "#"+series.series_idx+" ";
             l += o._type;
             for(let k in o._entities) {
@@ -334,6 +336,8 @@ export default defineComponent({
 
             //make sure all required entities are set
             const series = this.ezbids.series[o.series_idx];
+            if(!series) return; //can't validate without series
+
             let entities_requirement = this.getBIDSEntities(o._type);
 
             o.validationErrors = [];

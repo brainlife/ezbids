@@ -29,6 +29,7 @@ export default defineComponent({
             let ents = {} as any;
 
             let series = this.ezbids.series[this.series_idx];
+            if(!series) return {};
             for(let key in series.entities) {
                 if(series.entities[key] == "") continue;
                 ents[key] = series.entities[key];
