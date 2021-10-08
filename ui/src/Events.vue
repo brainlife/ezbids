@@ -54,7 +54,7 @@
     <div v-if="files.length == 0">        
         <p>If you'd like to include task events/timing data with your BIDS datasets, you can upload them here.</p>         
         <p>We will do our best to guess which event object should go where, but please check them once you get to the Object Adjustment page.</p>                                                                                        
-        <el-button @click="open">Select Directory</el-button>                                                           
+        <el-button @click="open">Select Directory</el-button>                                                        
     </div>                      
     <div v-if="files.length">
         <h3>Column Mapping</h3>
@@ -280,31 +280,6 @@ export default defineComponent({
             columnKeys: [] as string[],
             sampleValues: {} as {[key: string]: string[]},
 
-            columns: {
-                onset: null, //will be set to column name in event
-                onsetUnit: "mm", 
-                
-                duration: null,
-                durationUnit: "mm",
-
-                sample: null,
-                sampleUnit: "mm",
-
-                trialType: null,
-
-                responseTime: null,
-                responseTimeUnit: "mm",
-
-                value: null,
-
-                HED: null,
-            },
-
-            trialTypes: {
-                longName: "Event category",
-                desc: "Indicator of type of action that is expected",
-                levels: {} as {[key: string]: string}, //description for each trialType values
-            },
         }
     },
 
@@ -316,6 +291,12 @@ export default defineComponent({
         ...mapState(['ezbids', 'config', 'bidsSchema']),
         ...mapGetters(['getBIDSEntities', 'getURL', 'findSubject', 'findSession']),
 
+        columns() {
+            return this.$store.state.events.columns;
+        },
+        trialTypes() {
+            return this.$store.state.events.trialTypes;
+        },
         /*
         eventObjects() {
             // @ts-ignore

@@ -173,15 +173,16 @@ export default defineComponent({
             if(o.type) o._type = o.type; //object level override                                                           
                                                                                                                            
             //clone bids entity for this _type to preserve proper key ordering                                                               
-            const e = Object.assign({}, this.getBIDSEntities(o._type));
-            if(series) for(let k in e) {                                                                                              
-                e[k] = series.entities[k];                                                                                 
+            const e = Object.assign({}, this.getBIDSEntities(o._type));    
+            for(let k in e) {     
+                if(series) e[k] = series.entities[k];       
+                else e[k] = ""; //no series, no default entity values                                                                          
             }                                                                                                              
                                                                                                                            
             //apply overrides from the object                                                                           
             for(let k in o.entities) {                                                                                  
                 if(o.entities[k]) e[k] = o.entities[k];                                                                 
-            }                                                                                                           
+            }                                                                                
                                                                                                                         
             const subject = this.findSubject(o);                                                              
             if(subject.exclude) o._exclude = true;                                                                     
@@ -191,7 +192,7 @@ export default defineComponent({
                 e.subject = subject.subject;                                                                            
             }                                                                                                           
                                                                                                                         
-            const session = this.findSession(subject, o.AcquisitionDate);                                                         
+            const session = this.findSession(subject, o.AcquisitionDate);                                                       
             if(session.exclude) o._exclude = true;                                                                      
                                                                                                                         
             //if ses is not set, use session mapping as default                                                         

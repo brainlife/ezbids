@@ -98,10 +98,10 @@ export interface IObject {
     AcquisitionDate: string;
     pngPath: string;
     analysisResults: {
-        NumVolumes: number;
         errors: string[];
-        filesize: number;
         section_ID: number;
+        NumVolumes?: number;
+        filesize?: number;
     };
 
     paths: [string];
@@ -196,6 +196,7 @@ const state = {
     session: null as ISession|null,
 
     //current state of the session
+    //WATCH OUT - this gets wiped out when we load ezbids.json from analyzer
     ezbids: {
         notLoaded: true,
 
@@ -236,6 +237,34 @@ const state = {
         _organized: {} as OrganizedSubjects, //above things are organized into subs/ses/run/object hierarchy for quick access
 
         defacingMethod: "",
+
+    },
+
+    events: {
+        columns: {
+            onset: null, //will be set to column name in event
+            onsetUnit: "mm", 
+            
+            duration: null,
+            durationUnit: "mm",
+
+            sample: null,
+            sampleUnit: "mm",
+
+            trialType: null,
+
+            responseTime: null,
+            responseTimeUnit: "mm",
+
+            value: null,
+
+            HED: null,
+        },
+        trialTypes: {
+            longName: "Event category",
+            desc: "Indicator of type of action that is expected",
+            levels: {} as {[key: string]: string}, //description for each trialType values
+        },
     },
 
     //currentPage: null,                                                                                          
@@ -323,40 +352,19 @@ const store = createStore({
             Object.assign(state.ezbids, ezbids);
 
             state.ezbids.series.forEach((s:Series)=>{
-                s.validationErrors = [];
-
-		/*
-                //for legacy reason.                                                                                
-                delete s.entities.sub;                                                                         
-                delete s.entities.ses;                                                                         
-	        */
-                                                                                                                    
+                s.validationErrors = []; 
+                //TODO what is this for?                                                                                                                  
                 delete s.entities.subject;                                                                     
                 delete s.entities.session;                                                                     
-                                                                                                                    
-                //we shouldn't have to do this soon                                                                 
-                //if(s.png_objects_indices) s['object_indices'] = s.png_objects_indices;
             });
 
             state.ezbids.subjects.forEach((s:Subject)=>{
                 s.validationErrors = [];
-                s.exclude = !!(s.exclude);
-                /*
-                //migrate from old structure (just stick the whole thing in for now)                                
-                if(conf.sessions) {                                                                                 
-                    Vue.set(subject, 'sessions', conf.sessions);                                                    
-                }                                                                                                   
-                */           
-                /*
-                s.sessions.forEach(session=>{                                                                 
-                    s.exclude = !!(session.exclude);                                           
-                });
-                */   
+                s.exclude = !!(s.exclude);  
             });
             state.ezbids.objects.forEach((o:IObject)=>{
                 o.exclude == !!(o.exclude);
                 o.validationErrors = [];
-
                 o.items.forEach(item=>{                                                                        
                     if(item.sidecar) {                                                                                                                                                                            
                         //anonymize..                                                                               
@@ -366,14 +374,6 @@ const store = createStore({
                         item['sidecar_json'] = JSON.stringify(sidecar, null, 4);                            
                     }                                                                                               
                 });                                                                                                 
-                                                                                     
-                /*
-                if(o.series_id !== undefined) {                                                                
-                    o.series_idx = o.series_id;                                                           
-                    delete o.series_id;                                                                        
-                }    
-                delete object.SeriesNumber; //should be removed from analyzer soon   
-                */
             });
         },
 

@@ -93,12 +93,17 @@ async.forEach(info.objects, (o, next_o)=>{
 
         //setup directory
         let fullpath = root+"/"+path+"/"+name+"_"+filename;
-        //console.log(item.name, fullpath);
+
         if(item.name == "json") {
             //we create sidecar from sidecar object (edited by the user)
-            fs.writeFileSync(fullpath, JSON.stringify(item.sidecar, null, 4));
+            item.content = JSON.stringify(item.sidecar, null, 4);
+        }
+
+        if(item.content) {
+            //if item has content to write, then use it instead of normal file
+            fs.writeFileSync(fullpath, item.content);
         } else{
-            //assume to be normal files
+            //otherwise, assume to be normal files (link from the source)
             try {
                 fs.lstatSync(fullpath);
                 fs.unlinkSync(fullpath);
@@ -168,19 +173,45 @@ async.forEach(info.objects, (o, next_o)=>{
             - sbref
 
         */
-        o.items.forEach(item=>{
-            switch(item.name) {
-            case "nii.gz":
-                handleItem(item, suffix+".nii.gz");
-                break;
-            case "json":
-                item.sidecar.TaskName = o._entities.task;
-                handleItem(item, suffix+".json");
-                break;
-            default:
-                console.error("unknown func item name", item.name);
-            }
-        });
+        if(suffix == "events") {
+            //we handle events a bit differently.. we need to generate events.tsv from items content
+            const tsv = o.items.find(o=>o.name == "tsv");
+            const sidecar = o.items.find(o=>o.name == "json");
+            console.log("handling events");
+
+            console.log("tsv");
+            console.dir(tsv);
+            console.log("sidecar");
+            console.dir(sidecar);
+            console.log("info.events");
+            console.dir(info);
+
+            tsv.content = "onset\tduration\ttrial_type\tresponse_time";
+            tsv.events.forEach(event=>{
+                tsv.content += ""; 
+            });
+
+            //now save
+            handleItem(tsv, "event.tsv");
+            sidecar.sidecar.TaskName = o._entities.task;
+            handleItem(sidecar, "event.json");
+        } else {
+
+            //normal func stuff..
+            o.items.forEach(item=>{
+                switch(item.name) {
+                case "nii.gz":
+                    handleItem(item, suffix+".nii.gz");
+                    break;
+                case "json":
+                    item.sidecar.TaskName = o._entities.task;
+                    handleItem(item, suffix+".json");
+                    break;
+                default:
+                    console.error("unknown func item name", item.name);
+                }
+            });
+        }
         break;
     case "fmap": 
         /*

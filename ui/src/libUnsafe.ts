@@ -303,7 +303,6 @@ export function validateEntities(entities/*: Series*/) {
 //this function receives files (an array of object containing fullpath and data. data is the actual file content of the file)
 //to filter out files by file extensions, please edit Events.vue
 export function createEventObjects(ezbids, files) {
-    console.log("creating event objects");
     /* example for ezbids
     {
         datasetDescription: {
@@ -363,9 +362,14 @@ export function createEventObjects(ezbids, files) {
         }
         */
         
-        //just pick a subject rarndomly for this sample
+        //just pick a subject/session rarndomly for this sample
         const subject = ezbids.subjects[0].PatientInfo[0];
-        const session = null;
+        //console.log("subject chosen");
+        //console.dir(subject);
+
+        const session =  ezbids.subjects[0].sessions[0];
+        //console.log("session chosen");
+        //console.dir(session);
 
         //register new event object using the info we gathered above
         const object = Object.assign({
@@ -373,36 +377,10 @@ export function createEventObjects(ezbids, files) {
             type: "func/events",
             series_idx: null,
 
-            "AcquisitionDate": "2020-01-22",
-
-            //any overrides
-            "entities": {
-              "subject": "",
-              "task": "",
+            entities: {
+              "task": "smt", //task is the only required entity
             },
             "items": [
-              {
-                "name": "json",
-                "sidecar": {
-                    //we are going to let user enter this on the next step
-                    //so we don't have to set it here
-                    /*
-                    "trial_type": {
-                        "LongName": "Event category",
-                        "Description": "Indicator of type of action that is expected",
-                        "Levels": {
-                            "go": "A red square is displayed to indicate starting",
-                            "stop": "A blue square is displayed to indicate stopping",
-                        }
-                    }
-                    */
-                },
-              },
-              {
-                "name": "tsv",
-                events, //events object parsed earlier
-                "path": file.path, //let's use the original file path as "path" - although it's not..
-              }
             ],
 
             //these aren't used, but I believe we have to initialize it
@@ -412,11 +390,27 @@ export function createEventObjects(ezbids, files) {
             "paths": [],
             "validationErrors": [],
         }, subject, session); //we need to set subject / session specific fields that we figured out earlier
+
+        //event object also need some item info!
+        object.items.push({
+            "name": "tsv",
+            events, //here goes the content of the event object parsed earlier
+            "path": file.path, //let's use the original file path as "path" - although it's not..
+        });
+
+        const sidecar = {};
+
+        object.items.push({
+            "name": "json",
+            sidecar,
+            sidecar_json: JSON.stringify(sidecar),
+        });
+
         eventObjects.push(object);
     });
 
-    console.log("created objects");
-    console.dir(eventObjects);
+    //console.log("created objects");
+    //console.dir(eventObjects);
     return eventObjects;
 }
 

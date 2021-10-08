@@ -108,7 +108,7 @@ export default defineComponent({
     },
 
     computed: {
-        ...mapState(['ezbids', 'config', 'bidsSchema', 'session']),
+        ...mapState(['ezbids', 'config', 'bidsSchema', 'session', 'events']),
         ...mapGetters(['getBIDSEntities', 'getURL', 'findSubject', 'findSession']),
     },
 
@@ -148,7 +148,8 @@ export default defineComponent({
                     participantsColumn: this.ezbids.participantsColumn,                                                        
                     subjects: this.ezbids.subjects, //for phenotype                                                            
                     objects: this.ezbids.objects,                                                                                                                                    
-                    entityMappings,                                                                                     
+                    entityMappings,  
+                    events: this.events,                                                                                
                 }),                                                                                                     
             }).then(res=>res.text()).then(status=>{                                                                     
                    if(cb) cb((status=="ok")?null:status);                                                                                                       

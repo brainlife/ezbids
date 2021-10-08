@@ -28,13 +28,16 @@ export default defineComponent({
         sessionEntities() {
             let ents = {} as any;
 
+            //set with series default first
             let series = this.ezbids.series[this.series_idx];
-            if(!series) return {};
-            for(let key in series.entities) {
-                if(series.entities[key] == "") continue;
-                ents[key] = series.entities[key];
+            if(series) {
+                for(let key in series.entities) {
+                    if(series.entities[key] == "") continue;
+                    ents[key] = series.entities[key];
+                }
             }
             
+            //then add overrides
             for(let key in this.entities) {
                 if(key == "subject") continue; 
                 if(key == "session") continue; 

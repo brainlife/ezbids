@@ -136,7 +136,7 @@
                     </div>
                 </div>
 
-                <div style="margin-top: 5px; padding: 5px; background-color: #f0f0f0;">
+                <div style="margin-top: 5px; padding: 5px; background-color: #f0f0f0;" v-if="so.analysisResults.filesize">
                     <el-form-item label="Volumes">
                         {{so.analysisResults.NumVolumes}}
                     </el-form-item>
@@ -237,7 +237,6 @@ export default defineComponent({
 
         excludeSubject(sub: string, b: boolean) {
             const subject = this.findSubjectFromString(sub);
-            console.dir(sub, subject);
             subject.exclude = b;
 
             this.$emit("mapObjects");
@@ -311,7 +310,7 @@ export default defineComponent({
             } else {
                 //all other entity default should come from series
                 const series = this.ezbids.series[o.series_idx];
-                if(!series) return "no-series";
+                if(!series) return ""; //no series. no default..
                 return series.entities[entity];
             }
         },
@@ -335,8 +334,7 @@ export default defineComponent({
             //console.log("validaing", o);
 
             //make sure all required entities are set
-            const series = this.ezbids.series[o.series_idx];
-            if(!series) return; //can't validate without series
+            //if(!series) return; //can't validate without series
 
             let entities_requirement = this.getBIDSEntities(o._type);
 
@@ -346,7 +344,8 @@ export default defineComponent({
             o.validationErrors = validateEntities(o.entities);
 
             if(o._type.startsWith("func/")) {
-                if(entities_requirement['task'] && !o.entities.task && !series.entities.task) {
+                const series = this.ezbids.series[o.series_idx];
+                if(entities_requirement['task'] && !o.entities.task && !series?.entities.task) {
                     o.validationErrors.push("Task Name is required for func/bold but not set in series nor overridden.");
                 }
             }
@@ -428,7 +427,7 @@ export default defineComponent({
 .hierarchy {
     padding: 3px;
     display: block;
-    line-height: 100%;
+    line-height: 150%;
 }
 .hierarchy-item {
     padding: 2px;
