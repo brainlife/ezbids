@@ -36,7 +36,7 @@ RUN apt install -y nodejs
 
 # Get dcm2niix from github and compile
 RUN cd /tmp && \
-    git clone https://github.com/rordenlab/dcm2niix.git -b v1.0.20201102 && \
+    git clone https://github.com/rordenlab/dcm2niix.git -b v1.0.20211006 && \
     cd dcm2niix && mkdir build && cd build && \
     cmake -DBATCH_VERSION=ON -DUSE_OPENJPEG=ON .. && \
     make && make install
