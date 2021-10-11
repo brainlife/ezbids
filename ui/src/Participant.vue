@@ -1,9 +1,10 @@
 <template>
 <div style="padding: 20px">
-    <p>You can optionally store metadata/phenotypical data for each subject/participants on this datasets within your BIDS dataset.</p>
+    <p>You can store metadata/phenotypical data for each subject/participants on this datasets in the BIDS dataset.</p>
+    <p>Please skip this step if you do not need to store any phenotypical data.</p>
     <h5>Phenotype Columns</h5>
-    <p>Define phenotypical keys stored for this study (optional).</p>
-    
+    <small>Define phenotypical keys stored for this study (optional).</small>
+    <br><br>
     <el-form>
         <div v-for="(column, key) in ezbids.participantsColumn" :key="key" class="columnEditor">
             <el-button type="danger" style="float: right;" icon="el-icon-delete" @click="remove(key)" size="mini"/>
@@ -36,7 +37,8 @@
     <br clear="both">
 
     <h5>phenotype.tsv</h5>
-    <p>Enter phenotypical data associated with each participants.</p>
+    <small>Enter phenotypical data associated with each participants.</small>
+    <br><br>
     <div style="width: 100%">
         <table class="phenotype">
         <thead>

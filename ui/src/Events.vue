@@ -53,7 +53,7 @@
     -->
     <div v-if="files.length == 0">        
         <p>If you'd like to include task events/timing data with your BIDS datasets, you can upload them here.</p>         
-        <p>We will do our best to guess which event object should go where, but please check them once you get to the Object Adjustment page.</p>                                                                                        
+        <p>Please skip this step if you do not have events data.</p>                                                                                   
         <el-button @click="open">Select Directory</el-button>                                                        
     </div>                      
     <div v-if="files.length">

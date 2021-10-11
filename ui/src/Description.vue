@@ -96,7 +96,7 @@ export default defineComponent({
 
 <template>
 <div style="padding: 20px;">
-    <p>A BIDS dataset allows you to store "dataset description". Please populate as much information as much as possible.</p>
+    <p>Please enter as much information you like to include in the <b>dataset_description.json</b></p>
     <br>
     <el-form label-width="150px" ref="descForm" :model="dd" :rules="rules">
         <el-form-item label="Dataset Name" prop="Name">

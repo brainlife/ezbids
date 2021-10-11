@@ -58,10 +58,12 @@ fs.closeSync(tsvf);
 //handle each objects
 console.log("outputting objects");
 async.forEach(info.objects, (o, next_o)=>{
+    /*
     if(o._exclude) {
         o._type = "excluded/obj"+o.idx;
         o._entities.description = o._SeriesDescription; //inject seriesdesc to filename
     }
+    */
 
     let typeTokens = o._type.split("/");
     let modality = typeTokens[0]; //func, dwi, anat, etc.. (or exclude)
@@ -73,9 +75,16 @@ async.forEach(info.objects, (o, next_o)=>{
     for(let k in info.entityMappings) {
         const sk = info.entityMappings[k];
         if(o._entities[k]) {
-	    tokens.push(sk+"-"+o._entities[k]); 
-	}
+            tokens.push(sk+"-"+o._entities[k]); 
+        }
     }
+
+    if(o._exclude) {
+        //excluded object doesn't have to be validated, so some of the item might collide..
+        //let's prevent it by setting some artificial tag
+        tokens.push("ezbids-"+o.idx);
+    }
+
     const name = tokens.join("_");
 
     function composePath(derivatives) {
@@ -83,7 +92,12 @@ async.forEach(info.objects, (o, next_o)=>{
         if(derivatives) path += "/derivatives/"+derivatives;
         path += "/sub-"+o._entities.subject;
         if(o._entities.session) path += "/ses-"+o._entities.session;
-        path += "/"+modality; 
+        if(o._exclude) {
+            path += "/excluded";
+        } else {
+            path += "/"+modality; 
+        }
+
         return path;
     }
 
@@ -184,17 +198,31 @@ async.forEach(info.objects, (o, next_o)=>{
             console.log("sidecar");
             console.dir(sidecar);
             console.log("info.events");
-            console.dir(info);
+            console.dir(info.events);
 
+            const columns = info.events.columns;
             tsv.content = "onset\tduration\ttrial_type\tresponse_time";
             tsv.events.forEach(event=>{
-                tsv.content += ""; 
+                //pull the right columns (TODO apply unit conversion)
+                const onset = event[columns.onset];
+                const duration = event[columns.duration];
+                const trialType = event[columns.trialType];
+                const responseTime = event[columns.responseTime];
+                tsv.content += `${onset}\t${duration}\t${trialType}\t${responseTime}\n`;
             });
+            console.log(tsv.content);
+
+            //add stuff to sidecar
+            //sidecar.sidecar.TaskName = o._entities.task;
+            sidecar.sidecar.trial_type = {
+                LongName: info.events.trialTypes.longName,
+                Description: info.events.trialTypes.desc,
+                Levels: info.events.trialTypes.levels,
+            }
 
             //now save
-            handleItem(tsv, "event.tsv");
-            sidecar.sidecar.TaskName = o._entities.task;
-            handleItem(sidecar, "event.json");
+            handleItem(tsv, "events.tsv");
+            handleItem(sidecar, "events.json");
         } else {
 
             //normal func stuff..
@@ -300,14 +328,6 @@ async.forEach(info.objects, (o, next_o)=>{
         if(!o.items.find(item=>item.name == "bvec")) {
             console.log("bvec is missing.. assuming that this is b0, and setup empty bvec/bval");
             const path = composePath(false);
-
-            //construct dummy bvec
-            /*
-            const ones = [];
-            for(let j = 0;j < o.analysisResults.NumVolumes; ++j) {
-                ones.push(1);
-            }
-            */
             const zeros = [];
             for(let j = 0;j < o.analysisResults.NumVolumes; ++j) {
                 zeros.push(0);
@@ -320,6 +340,7 @@ async.forEach(info.objects, (o, next_o)=>{
         }
 
         break;
+    /*
     case "excluded":
         o.items.forEach((item, idx)=>{
             //sub-OpenSciJan22_desc-localizer_obj5-0.json
@@ -327,6 +348,7 @@ async.forEach(info.objects, (o, next_o)=>{
             handleItem(item, suffix+"-"+idx+"."+item.name);
         });
         break;
+    */
     default:
         console.error("unknown datatype:"+o._type);
     }
