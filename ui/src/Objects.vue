@@ -28,7 +28,7 @@
                         <span style="float: right; top: -7px; position: relative; background-color: white; font-size: 70%; color: #999; padding: 0 10px; margin-right: 10px;">section {{sectionId}}</span>
                     </div>
                     <div v-for="o in section" :key="o.idx" class="clickable hierarchy-item" :class="{selected: so === o, exclude: isExcluded(o)}" @click="select(o, o_ses)">
-                        <el-tag type="info" size="mini" v-if="o.series_idx">#{{o.series_idx}}</el-tag>&nbsp;<datatype :type="o._type" :series_idx="o.series_idx" :entities="o.entities"/> 
+                        <el-tag type="info" size="mini" v-if="o.series_idx !== null">#{{o.series_idx}}</el-tag>&nbsp;<datatype :type="o._type" :series_idx="o.series_idx" :entities="o.entities"/> 
                         <small v-if="o._type == 'exclude'">&nbsp;({{o._SeriesDescription}})</small>
                         
                         <span v-if="!isExcluded(o)">
@@ -398,7 +398,7 @@ export default defineComponent({
 });
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .bids-structure {
     font-size: 90%;
     position: fixed;
@@ -432,6 +432,11 @@ export default defineComponent({
 .hierarchy-item {
     padding: 2px;
     min-height: 20px;
+
+    &.exclude {
+        opacity: 1;
+        color: #0003;
+    }
 }
 .clickable {
     transition: background-color 0.3s;
