@@ -41,6 +41,9 @@ RUN cd /tmp && \
     cmake -DBATCH_VERSION=ON -DUSE_OPENJPEG=ON .. && \
     make && make install
 
+# Get bids-specification from github
+RUN cd && git clone https://github.com/bids-standard/bids-specification
+
 #tensorflow2 needs pip>19
 #RUN pip3 install --upgrade pip
 
