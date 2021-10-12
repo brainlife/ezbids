@@ -61,3 +61,5 @@ RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 RUN npm install -g bids-validator@1.8.2
 
 RUN apt-get install -y rename 
+
+WORKDIR /app/handler
