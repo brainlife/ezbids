@@ -132,8 +132,7 @@ async.forEach(info.objects, (o, next_o)=>{
         }
     }
 
-    switch(modality) {
-    case "anat":
+    function handleAnat() {
         /*
         - suffixes:
             - T1w
@@ -177,8 +176,9 @@ async.forEach(info.objects, (o, next_o)=>{
                 console.error("unknown anat item name", item.name);
             }
         });
-        break;
-    case "func":
+    }
+
+    function handleFunc() {
         /*
         - suffixes:
             - bold
@@ -201,14 +201,34 @@ async.forEach(info.objects, (o, next_o)=>{
             console.dir(info.events);
 
             const columns = info.events.columns;
-            tsv.content = "onset\tduration\ttrial_type\tresponse_time";
+
+            //compose headers
+            const headers = [];
+            if(columns.onset) headers.push("onset");
+            if(columns.duration) headers.push("duration");
+            if(columns.sample) headers.push("sample");
+            if(columns.trialType) headers.push("trial_type");
+            if(columns.responseTime) headers.push("response_time");
+            if(columns.value) headers.push("value"); //??
+            if(columns.HED) headers.push("HED"); 
+            tsv.content = headers.join("\t")+"\n";
+
+            function fixUnit(v, unit) {
+                if(unit == "mm") return v/100; //convert to cm
+                return v; //assume cm..
+            }
+
+            //emit all values
             tsv.events.forEach(event=>{
-                //pull the right columns (TODO apply unit conversion)
-                const onset = event[columns.onset];
-                const duration = event[columns.duration];
-                const trialType = event[columns.trialType];
-                const responseTime = event[columns.responseTime];
-                tsv.content += `${onset}\t${duration}\t${trialType}\t${responseTime}\n`;
+                const values = [];
+                if(columns.onset) values.push(fixUnit(event[columns.onset], columns.onsetUnit));
+                if(columns.duration) values.push(fixUnit(event[columns.duration], columns.durationUnit));
+                if(columns.sample) values.push(event[columns.sample]);
+                if(columns.trialType) values.push(event[columns.trialType]);
+                if(columns.responseTime) values.push(fixUnit(event[columns.responseTime], columns.responseTimeUnit));
+                if(columns.value) values.push(event[columns.value]);
+                if(columns.HED) values.push(event[columns.HED]);
+                tsv.content += values.join("\t")+"\n";
             });
             console.log(tsv.content);
 
@@ -240,8 +260,9 @@ async.forEach(info.objects, (o, next_o)=>{
                 }
             });
         }
-        break;
-    case "fmap": 
+    }
+
+    function handleFmap() {
         /*
         - suffixes:
             - phasediff
@@ -304,8 +325,9 @@ async.forEach(info.objects, (o, next_o)=>{
                 console.error("unknown fmap item name", item.name);
             }
         });
-        break;
-    case "dwi":
+    }
+
+    function handleDwi() {
         o.items.forEach(item=>{
             switch(item.name) {
             case "nii.gz":
@@ -338,7 +360,21 @@ async.forEach(info.objects, (o, next_o)=>{
             const bval = zeros.join(" ")+"\n";
             fs.writeFileSync(root+"/"+path+"/"+name+"_dwi.bval", bval);
         }
+    }
 
+    //now handle different modality
+    switch(modality) {
+    case "anat":
+        handleAnat();
+        break;
+    case "func":
+        handleFunc();
+        break;
+    case "fmap": 
+        handleFmap();
+        break;
+    case "dwi":
+        handleDwi();
         break;
     /*
     case "excluded":
@@ -352,7 +388,6 @@ async.forEach(info.objects, (o, next_o)=>{
     default:
         console.error("unknown datatype:"+o._type);
     }
-
     next_o();
 });
 

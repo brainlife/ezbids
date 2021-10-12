@@ -112,11 +112,13 @@
                 <el-select v-model="columns.sample" size="small" clearable placeholder="Select column">
                     <el-option v-for="(key, idx) in columnKeys" :key="idx" :label="key" :value="key"/>
                 </el-select>
+                <!--
                 &nbsp;
                 <el-select v-model="columns.sampleUnit" size="small" clearable>
                     <el-option label="mm" value="mm"/>
                     <el-option label="cm" value="cm"/>
                 </el-select> 
+                -->
                 
                 <pre v-if="columns.sample">samples: {{sampleValues[columns.sample].join("|")}}</pre>
 

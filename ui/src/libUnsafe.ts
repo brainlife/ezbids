@@ -344,13 +344,20 @@ export function createEventObjects(ezbids, files) {
         
         //TODO - for each files, parse the content according to the file type, 
         const fileExt = file.path.split(".").pop();
+        console.log("event file detected", file.path, fileExt);
 
         //TODO convert parsed object into an array of json dictionary
-        const events = [
-            {header1: "h1-value1", header2: "h2-value2", header3: "h3-value3"},
-            {header1: "h1-value2", header2: "h2-value2", header3: "h3-value3"},
-            {header1: "h2-value3", header2: "h2-value2", header3: "h3-value3"},
-        ]
+        const events = [];
+        switch(fileExt) {
+        case "tsv":
+            events.push({header1: 1, header2: 2, header3: 3});    
+            break;
+        default:
+            //TODO..
+            events.push({header1: "h1-value1", header2: "h2-value2", header3: "h3-value3"});    
+            events.push({header1: "h1-value2", header2: "h2-value2", header3: "h3-value3"});
+            events.push({header1: "h2-value3", header2: "h2-value2", header3: "h3-value3"});
+        }
         
         //TODO - for each file, find the most likely subject/session/task using the number of files (to guess if they are session/run specific)
         //as well as path / data 
@@ -436,8 +443,7 @@ export function mapEventColumns(events) {
         duration: "header2",
         durationUnit: "mm",
 
-        duration: "header3",
-        sampleUnit: "mm",
+        sample: "header3",
 
         trialType: null,
 

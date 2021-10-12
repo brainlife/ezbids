@@ -243,18 +243,18 @@ const state = {
     events: {
         columns: {
             onset: null, //will be set to column name in event
-            onsetUnit: "mm", 
+            onsetUnit: "cm", 
             
             duration: null,
-            durationUnit: "mm",
+            durationUnit: "cm",
 
             sample: null,
-            sampleUnit: "mm",
+            //sampleUnit: "mm",
 
             trialType: null,
 
             responseTime: null,
-            responseTimeUnit: "mm",
+            responseTimeUnit: "cm",
 
             value: null,
 
