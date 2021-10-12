@@ -44,7 +44,7 @@ RUN cd /tmp && \
 #tensorflow2 needs pip>19
 #RUN pip3 install --upgrade pip
 
-RUN pip3 install numpy nibabel pandas matplotlib yaml #need it before I can install quickshear
+RUN pip3 install numpy nibabel pandas matplotlib pyyaml #need it before I can install quickshear
 RUN pip3 install quickshear
 
 #install ROBEX
