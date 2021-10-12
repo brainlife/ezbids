@@ -2,8 +2,8 @@
 """
 Created on Fri Jun 26 08:37:56 2020
 
-This code represents ezBIDS's attempt to determine BIDS information (DataType,
-ModalityLabel, entitiy labels [acq, run, dir, etc]) based on dcm2niix output.
+This code represents ezBIDS's attempt to determine BIDS information (datatype,
+suffix, entitiy labels [acq, run, dir, etc]) based on dcm2niix output.
 This information is then displayed in the ezBIDS UI, where users can made
 edits/modifications as they see fit, before finalizing their data into a
 BIDS-compliant dataset.
@@ -12,6 +12,8 @@ BIDS-compliant dataset.
 """
 
 from __future__ import division
+import yaml
+import time
 import os
 import sys
 import re
@@ -29,7 +31,17 @@ from PIL import Image
 plt.style.use("dark_background")
 warnings.filterwarnings("ignore")
 
+
+
 DATA_DIR = sys.argv[1]
+
+datatypes_yaml = yaml.load(open("../bids-specification/src/schema/objects/datatypes.yaml"))
+entities_yaml = yaml.load(open("../bids-specification/src/schema/objects/entities.yaml"))
+suffixes_yaml = yaml.load(open("../bids-specification/src/schema/objects/suffixes.yaml"))
+datatype_suffix_rules = "../bids-specification/src/schema/rules/datatypes"
+
+start_time = time.time()
+analyzer_dir = os.getcwd()
 os.chdir(DATA_DIR)
 
 ######## Functions ########
@@ -431,8 +443,8 @@ def generate_dataset_list(uploaded_files_list):
             "RepetitionTime": repetition_time,
             "EchoNumber": echo_number,
             "EchoTime": echo_time,
-            "DataType": "",
-            "ModalityLabel": "",
+            "datatype": "",
+            "suffix": "",
             "series_idx": 0,
             "direction": ped,
             "TaskName": "",
@@ -663,9 +675,9 @@ def determine_unique_series(dataset_list):
     return dataset_list, dataset_list_unique_series
 
 
-def DataType_ModalityLabel_identification(dataset_list_unique_series):
+def datatype_suffix_identification(dataset_list_unique_series):
     """
-    Uses metadata to try to determine the identity (i.e. DataType and ModalityLabel)
+    Uses metadata to try to determine the identity (i.e. datatype and suffix)
     of each unique acquisition in uploaded dataset.
 
     Parameters
@@ -676,8 +688,25 @@ def DataType_ModalityLabel_identification(dataset_list_unique_series):
     Returns
     -------
     dataset_list_unique_series : list
-        updated input list
+        updated input list of dictionaries
     """
+
+    """ Schema datatype and suffix labels are helpful, but typically
+    researhcers label their imaging protocols in less standardized ways.
+    ezBIDS will attempt to determine datatype and suffix labels based on
+    common keys/labels. """
+    localizer_keys = ["localizer", "scout"]
+    angio_keys = ["angio"]
+    se_mag_phase_fmap_keys = ["fmap", "fieldmap", "spinecho", "sefmri", "semri"]
+    flair_keys = ["t2spacedafl"]
+    dwi_derived_keys = ["trace", "fa", "adc"]
+    dwi_keys = ["dti", "dmri"]
+    func_keys = ["func", "fmri", "mri", "task", "rest"]
+    t1w_keys = ["tfl3d", "mprage", "spgr", "tflmgh", "t1mpr"]
+    t2w_keys = ["t2"]
+    tb1tfl_keys = ["tflb1map"]
+    tb1rfm_keys = ["rfmap"]
+
     for index, unique_dic in enumerate(dataset_list_unique_series):
 
         sd = unique_dic["SeriesDescription"]
@@ -686,385 +715,338 @@ def DataType_ModalityLabel_identification(dataset_list_unique_series):
         non-alphanumeric characters and make everything lowercase."""
         sd = re.sub("[^A-Za-z0-9]+", "", sd).lower()
 
-        # Keys for helping determine acquisition types, based on SeriesDescription
-        localizer_keys = ["localizer", "scout"]
-        asl_keys = ["asl", "m0scan"]
-        angio_keys = ["angio"]
-        se_mag_phase_fmap_keys = ["fmap", "fieldmap", "spinecho", "sefmri", "semri"]
-        flair_keys = ["flair", "t2spacedafl"]
-        dwi_derived_keys = ["trace", "fa", "adc"]
-        dwi_keys = ["dti", "dwi", "dmri"]
-        func_keys = ["bold", "func", "fmri", "epi", "mri", "task", "rest"]
-        func_rest_keys = ["rest", "rsfmri", "fcmri"]
-        func_cbv_keys = ["cbv"]
-        t1w_keys = ["t1w", "tfl3d", "mprage", "spgr", "tflmgh", "t1mpr"]
-        t2w_keys = ["t2w", "t2"]
-        additional_anat_keys = ["megre", "mese", "vfa", "irt1", "mp2rage", "mpm",
-                                "mts", "mtr"]
-        additional_anat_nonparametric_keys = ["t2starw", "inplanet1", "inplanet2",
-                                              "pdt2", "pdw"]
-        anat_parametric_keys = ["pdt2map", "t2starmap", "r2starmap", "mwfmap",
-                                "mtvmap", "chimap", "tb1map", "pdmap", "mtrmap",
-                                "mtsat", "t1rho", "rb1map", "s0map", "m0map",
-                                "t1map", "r1map", "t2map", "r2map"]
+        # Try checking based on BIDS schema keys/labels
+        for datatype in datatypes_yaml:
+            if datatype in sd:
+                unique_dic["datatype"] = datatype
 
-        # Localizer(s)
-        # if any(x in sd for x in localizer_keys) or sd == "tfl":
-        if any(x in sd for x in localizer_keys) or "_i0000" in unique_dic["paths"][0]:
-            unique_dic["type"] = "exclude"
-            unique_dic["error"] = "Acquisition appears to be a localizer"
-            unique_dic["message"] = " ".join("Acquisition is believed to be a \
-                localizer. Please modify if incorrect.".split())
+            rule = yaml.load(open(os.path.join(analyzer_dir, datatype_suffix_rules, datatype) + ".yaml"))
 
-        # Arterial Spin Labeling (ASL) perfusion data
-        elif any(x in sd for x in asl_keys):
-            unique_dic["type"] = "exclude"
-            unique_dic["DataType"] = "asl"
-            unique_dic["ModalityLabel"] = "asl"
-            unique_dic["error"] = " ".join("Acqusition appears to be ASL, which is \
-                currently not supported by ezBIDS at this time, but will be \
-                in the future".split())
-            unique_dic["message"] = " ".join("Acquisition is believed to be asl/asl \
-                because '{}' is in the SeriesDescription. Please modify if \
-                incorrect. Currently, ezBIDS does not support ASL conversion \
-                to BIDS".format([x for x in asl_keys if re.findall(x, sd)][0]).split())
+            suffixes = [x for y in [x["suffixes"] for x in rule] for x in y]
+            unhelpful_suffixes = ["fieldmap", "beh", "epi"]
 
-        # Angiography
-        elif any(x in sd for x in angio_keys):
-            unique_dic["type"] = "exclude"
-            unique_dic["DataType"] = "anat"
-            unique_dic["ModalityLabel"] = "angio"
-            unique_dic["error"] = " ".join("Acqusition appears to be an Angiography \
-                acquisition, which is currently not supported by ezBIDS at \
-                this time, but will be in the future".split())
-            unique_dic["message"] = " ".join("Acquisition is believed to be anat/angio \
-                because '{}' is in the SeriesDescription. Please modify if \
-                incorrect. Currently, ezBIDS does not support Angiography \
-                conversion to BIDS".format([x for x in angio_keys if re.findall(x, sd)][0]).split())
+            # Remove deprecated suffixes
+            deprecated_suffixes = ["T2star", "FLASH", "PD"]
+            suffixes = [x for x in suffixes if x not in deprecated_suffixes and x not in unhelpful_suffixes]
 
-        # Magnitude/Phase[diff] and Spin Echo (SE) field maps
-        elif any(x in sd for x in se_mag_phase_fmap_keys):
-            unique_dic["DataType"] = "fmap"
-            unique_dic["forType"] = "func/bold"
+            if any(x.lower() in sd for x in suffixes):
+                unique_dic["datatype"] = datatype
+                unique_dic["suffix"] = [x for x in suffixes if re.findall(x.lower(), sd)][-1]
+                unique_dic["message"] = " ".join("Acquisition is believed to \
+                    be {}/{} because '{}' is in the SeriesDescription. Please \
+                    modify if incorrect.".format(unique_dic["datatype"], unique_dic["suffix"], unique_dic["suffix"]).split())
 
-            if "EchoNumber" in unique_dic["sidecar"]:
-                if any(x in unique_dic["json_path"] for x in ["_real.", "_imaginary."]):
-                    unique_dic["error"] = " ".join("Acquisition appears to be a \
-                        real or imaginary field map that needs to be manually \
-                        adjusted to magnitude and phase (ezBIDS currently does not \
-                        have this functionality). This acqusition will not be \
-                        converted".split())
-                    unique_dic["message"] = unique_dic["error"]
-                    unique_dic["type"] = "exclude"
-                elif unique_dic["EchoNumber"] == 1 and "_e1_ph" not in unique_dic["json_path"]:
-                    unique_dic["ModalityLabel"] = "magnitude1"
-                    unique_dic["message"] = " ".join("Acquisition is believed to be \
-                        fmap/magnitude1 because '{}' is in SeriesDescription, \
-                        EchoNumber == 1 in metadata, and the phrase '_e1_ph' \
-                        is not in the filename. Please modify if \
-                        incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, sd)][0]).split())
-                elif unique_dic["EchoNumber"] == 1 and "_e1_ph" in unique_dic["json_path"]:
-                    unique_dic["ModalityLabel"] = "phase1"
-                    unique_dic["message"] = " ".join("Acquisition is believed to \
-                        be fmap/phase1 because '{}' is in SeriesDescription, \
-                        EchoNumber == 1 in metadata, and the phrase '_e1_ph' is in \
-                        the filename. Please modify if incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, sd)][0]).split())
-                elif unique_dic["EchoNumber"] == 2 and "_e2_ph" not in unique_dic["json_path"]:
-                    unique_dic["ModalityLabel"] = "magnitude2"
-                    unique_dic["message"] = " ".join("Acquisition is believed to be \
-                        fmap/magnitude2 because '{}' is in SeriesDescription, \
-                        EchoNumber == 2 in metadata, and the phrase '_e2_ph' is \
-                        not in the filename. Please modify if incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, sd)][0]).split())
-                elif unique_dic["EchoNumber"] == 2 and "_e2_ph" in unique_dic["json_path"] and "_e1_ph" in dataset_list_unique_series[index-2]["json_path"]:
-                    unique_dic["ModalityLabel"] = "phase2"
-                    unique_dic["message"] = " ".join("Acquisition is believed to be \
-                        fmap/phase2 because '{}' is in SeriesDescription, \
-                        EchoNumber == 2 in metadata, and the phrase '_e2_ph' \
-                        is in the filename and '_e1_ph' the one two before. \
-                        Please modify if incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, sd)][0]).split())
-                elif unique_dic["EchoNumber"] == 2 and "_e2_ph" in unique_dic["json_path"] and "_e1_ph" not in dataset_list_unique_series[index-2]["json_path"]:
-                    unique_dic["ModalityLabel"] = "phasediff"
-                    unique_dic["message"] = " ".join("Acquisition is believed to be \
-                        fmap/phasediff because 'fmap' or 'fieldmap' is in \
-                        SeriesDescription, EchoNumber == 2 in metadata, and \
-                        the subjectstring '_e2_ph' is in the filename but \
-                        '_e1_ph' not found in the acquisition two before. \
-                        Please modify if incorrect".split())
-                else:
-                    unique_dic["error"] = " ".join("Acquisition appears to be some form \
-                        of fieldmap with an EchoNumber, however, unable to \
-                        determine if it is a magnitude, phase, or phasediff. \
-                        Please modify if acquisition is desired for BIDS \
-                        conversion, otherwise the acqusition will not be \
-                        converted".split())
-                    unique_dic["message"] = unique_dic["error"]
-                    unique_dic["type"] = "exclude"
+            # Instances where users specify both mp2rage and UNI[T1] together, default to UNIT1
+            if "DERIVED" and "UNI" in unique_dic["ImageType"]:
+                unique_dic["datatype"] = "anat"
+                unique_dic["suffix"] = "UNIT1"
+                unique_dic["message"] = " ".join("Acquisition is believed to be anat/UNIT1 \
+                    because 'DERIVED' and 'UNI' are in the ImageType Please modify \
+                    if incorrect".split())
 
-            # Spin echo field maps (for func)
-            else:
-                unique_dic["ModalityLabel"] = "epi"
-                unique_dic["message"] = " ".join("Acquisition is believed to be fmap/epi \
-                    because '{}' is in SeriesDescription, and does not contain \
-                    metadata info associated with magnitude/phasediff acquisitions.\
-                    Please modify if incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, sd)][0]).split())
+            """ Oftentimes, magnitude/phase[diff] acquisitions are called "gre-field-mapping",
+            so shouldn't receive the fieldmap suffix """
+            if "grefieldmap" in sd:
+                unique_dic["datatype"] = ""
+                unique_dic["suffix"] = ""
 
-        # spin echo field maps (for dwi)
-        elif "DIFFUSION" in unique_dic["ImageType"] and "b0" in sd:
-            unique_dic["DataType"] = "fmap"
-            unique_dic["ModalityLabel"] = "epi"
-            unique_dic["forType"] = "dwi/dwi"
-            unique_dic["message"] = " ".join("Acquisition appears to be a fmap/epi meant \
-                for dwi/dwi, as 'DIFFUSION' is in ImageType, and 'b0' is in \
-                the SeriesDescription. Please modify if incorrect".split())
+        """ If no luck with BIDS schema keys/labels, try using common keys in
+        SeriesDescription """
+        if not unique_dic["datatype"] or not unique_dic["suffix"]:
+            # Localizer(s)
+            if any(x in sd for x in localizer_keys) or "_i0000" in unique_dic["paths"][0]:
+                unique_dic["type"] = "exclude"
+                unique_dic["error"] = "Acquisition appears to be a localizer"
+                unique_dic["message"] = " ".join("Acquisition is believed to be a \
+                    localizer and will therefore not be converted to BIDS. Please \
+                    modify if incorrect.".split())
 
-        elif not any(".bvec" in x for x in unique_dic["paths"]) and "DIFFUSION" in unique_dic["ImageType"]:
-            unique_dic["error"] = " ".join("Acquisitions has 'DIFFUSION' label in the \
-                ImageType; however, there are no corresponding bval/bvec \
-                files. This may or may not be dwi/dwi. Please modify if \
-                incorrect.".split())
-            unique_dic["message"] = unique_dic["error"]
-            unique_dic["type"] = "exclude"
+            # Angiography
+            elif any(x in sd for x in angio_keys):
+                unique_dic["type"] = "exclude"
+                unique_dic["datatype"] = "anat"
+                unique_dic["suffix"] = "angio"
+                unique_dic["error"] = " ".join("Acqusition appears to be an Angiography \
+                    acquisition, which is currently not supported by ezBIDS at \
+                    this time, but will be in the future".split())
+                unique_dic["message"] = " ".join("Acquisition is believed to be anat/angio \
+                    because '{}' is in the SeriesDescription. Please modify if \
+                    incorrect. Currently, ezBIDS does not support Angiography \
+                    conversion to BIDS".format([x for x in angio_keys if re.findall(x, sd)][0]).split())
 
-        elif any(".bvec" in x for x in unique_dic["paths"]):
-            if "DIFFUSION" not in unique_dic["ImageType"]:
-                if unique_dic["NumVolumes"] < 2:
-                    if any(x in sd for x in flair_keys):
-                        unique_dic["DataType"] = "anat"
-                        unique_dic["ModalityLabel"] = "FLAIR"
+            # TB1TFL field maps
+            elif any(x in sd for x in tb1tfl_keys):
+                unique_dic["datatype"] = "fmap"
+                unique_dic["suffix"] = "TB1TFL"
+                unique_dic["message"] = " ".join("Acquisition is believed to be a \
+                    TB1TFL field map because 'tflb1map' is in the SeriesDescription. \
+                    Please modify if incorrect".split())
+
+            # TB1RFM field maps
+            elif any(x in sd for x in tb1rfm_keys):
+                unique_dic["datatype"] = "fmap"
+                unique_dic["suffix"] = "TB1RFM"
+                unique_dic["message"] = " ".join("Acquisition is believed to be a \
+                    TB1RFM field map because 'rfmap' is in the SeriesDescription. \
+                    Please modify if incorrect".split())
+
+            # Magnitude/Phase[diff] and Spin Echo (SE) field maps
+            elif any(x in sd for x in se_mag_phase_fmap_keys):
+                unique_dic["datatype"] = "fmap"
+                unique_dic["forType"] = "func/bold"
+
+                if "EchoNumber" in unique_dic["sidecar"]:
+                    if unique_dic["EchoNumber"] == 1 and "_e1_ph" not in unique_dic["json_path"]:
+                        unique_dic["suffix"] = "magnitude1"
                         unique_dic["message"] = " ".join("Acquisition is believed to be \
-                            anat/FLAIR because '{}' is in the \
-                            SeriesDescription. Please modify if incorrect".format([x for x in flair_keys if re.findall(x, sd)][0]).split())
-                    elif "t2w" in sd:
-                        unique_dic["DataType"] = "anat"
-                        unique_dic["ModalityLabel"] = "T2w"
+                            fmap/magnitude1 because '{}' is in SeriesDescription, \
+                            EchoNumber == 1 in metadata, and the phrase '_e1_ph' \
+                            is not in the filename. Please modify if \
+                            incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, sd)][0]).split())
+                    elif unique_dic["EchoNumber"] == 1 and "_e1_ph" in unique_dic["json_path"]:
+                        unique_dic["suffix"] = "phase1"
+                        unique_dic["message"] = " ".join("Acquisition is believed to \
+                            be fmap/phase1 because '{}' is in SeriesDescription, \
+                            EchoNumber == 1 in metadata, and the phrase '_e1_ph' is in \
+                            the filename. Please modify if incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, sd)][0]).split())
+                    elif unique_dic["EchoNumber"] == 2 and "_e2_ph" not in unique_dic["json_path"]:
+                        unique_dic["suffix"] = "magnitude2"
                         unique_dic["message"] = " ".join("Acquisition is believed to be \
-                            anat/T2w because 't2w' is in the \
-                            SeriesDescription. Please modify if incorrect".split())
+                            fmap/magnitude2 because '{}' is in SeriesDescription, \
+                            EchoNumber == 2 in metadata, and the phrase '_e2_ph' is \
+                            not in the filename. Please modify if incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, sd)][0]).split())
+                    elif unique_dic["EchoNumber"] == 2 and "_e2_ph" in unique_dic["json_path"] and "_e1_ph" in dataset_list_unique_series[index-2]["json_path"]:
+                        unique_dic["suffix"] = "phase2"
+                        unique_dic["message"] = " ".join("Acquisition is believed to be \
+                            fmap/phase2 because '{}' is in SeriesDescription, \
+                            EchoNumber == 2 in metadata, and the phrase '_e2_ph' \
+                            is in the filename and '_e1_ph' the one two before. \
+                            Please modify if incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, sd)][0]).split())
+                    elif unique_dic["EchoNumber"] == 2 and "_e2_ph" in unique_dic["json_path"] and "_e1_ph" not in dataset_list_unique_series[index-2]["json_path"]:
+                        unique_dic["suffix"] = "phasediff"
+                        unique_dic["message"] = " ".join("Acquisition is believed to be \
+                            fmap/phasediff because 'fmap' or 'fieldmap' is in \
+                            SeriesDescription, EchoNumber == 2 in metadata, and \
+                            the subjectstring '_e2_ph' is in the filename but \
+                            '_e1_ph' not found in the acquisition two before. \
+                            Please modify if incorrect".split())
                     else:
-                        unique_dic["error"] = " ".join("Acquisition has bval and bvec \
-                            files but does not appear to be dwi/dwi because \
-                            'DIFUSSION' is not in ImageType and contains less \
-                            than 2 volumes. Please modify if incorrect, \
-                            otherwise will not convert to BIDS".split())
+                        unique_dic["error"] = " ".join("Acquisition appears to be some form \
+                            of fieldmap with an EchoNumber, however, unable to \
+                            determine if it is a magnitude, phase, or phasediff. \
+                            Please modify if acquisition is desired for BIDS \
+                            conversion, otherwise the acqusition will not be \
+                            converted".split())
                         unique_dic["message"] = unique_dic["error"]
                         unique_dic["type"] = "exclude"
+
+                # Spin echo field maps (for func)
                 else:
-                    unique_dic["DataType"] = "dwi"
-                    unique_dic["ModalityLabel"] = "dwi"
-                    unique_dic["message"] = " ".join("Acquisition appears to be dwi/dwi \
-                        because although 'DIFUSSION' is not in ImageType, the \
-                        acquisition has bval and bvec files and has {} \
-                        volumes. Please modify if incorrect".format(unique_dic["NumVolumes"]).split())
-            else:
-                """Low b-values will default to fmap/epi, intended to be used
-                on dwi/dwi data."""
-                bval = np.loadtxt([x for x in unique_dic["paths"] if "bval" in x][0])
-                if np.max(bval) <= 50:
-                    unique_dic["DataType"] = "fmap"
-                    unique_dic["ModalityLabel"] = "epi"
-                    unique_dic["forType"] = "dwi/dwi"
-                    unique_dic["message"] = " ".join("Acquisition appears to be \
-                        fmap/epi meant for dwi/dwi, as there are bval & bvec \
-                        files, but with low b-values. Please modify if \
-                        incorrect".split())
+                    unique_dic["suffix"] = "epi"
+                    unique_dic["message"] = " ".join("Acquisition is believed to be fmap/epi \
+                        because '{}' is in SeriesDescription, and does not contain \
+                        metadata info associated with magnitude/phasediff acquisitions.\
+                        Please modify if incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, sd)][0]).split())
 
-                # elif any(x in sd for x in dwi_derived_keys) and not any(x in sd for x in dwi_keys):
-                elif any(x in sd for x in dwi_derived_keys):
-                    unique_dic["error"] = " ".join("Acquisition appears to be a TRACE, \
-                        FA, or ADC, which are unsupported by ezBIDS and will \
-                        therefore not be converted".split())
-                    unique_dic["message"] = " ".join("Acquisition is believed to be \
-                        TRACE, FA, or ADC because there are bval & bvec files \
-                        with the same SeriesNumber, and '{}' are in the \
-                        SeriesDescription. Please modify if \
-                        incorrect".format([x for x in dwi_derived_keys if re.findall(x, sd)][0]).split())
-                    unique_dic["type"] = "exclude"
-                else:
-                    unique_dic["DataType"] = "dwi"
-                    unique_dic["ModalityLabel"] = "dwi"
-                    unique_dic["message"] = " ".join("Acquisition is believed to be \
-                        dwi/dwi because there are bval & bvec files with the \
-                        same SeriesNumber, 'DIFFUSION' is in the ImageType, \
-                        and it does not appear to be derived dwi data. Please \
-                        modify if incorrect".split())
+            # spin echo field maps (for dwi)
+            elif "DIFFUSION" in unique_dic["ImageType"] and "b0" in sd:
+                unique_dic["datatype"] = "fmap"
+                unique_dic["suffix"] = "epi"
+                unique_dic["forType"] = "dwi/dwi"
+                unique_dic["message"] = " ".join("Acquisition appears to be a fmap/epi meant \
+                    for dwi/dwi, as 'DIFFUSION' is in ImageType, and 'b0' is in \
+                    the SeriesDescription. Please modify if incorrect".split())
 
-        # DWI derivatives or other non-BIDS diffusion offshoots
-        elif any(x in sd for x in dwi_derived_keys) and any(x in sd for x in dwi_keys):
-            unique_dic["error"] = " ".join("Acquisition appears to be a TRACE, FA, or \
-                ADC, which are unsupported by ezBIDS and will therefore not \
-                be converted".split())
-            unique_dic["message"] = " ".join("Acquisition is believed to be dwi-derived \
-                (TRACE, FA, ADC), which are not supported by BIDS and will not \
-                be converted. Please modify if incorrect".split())
-            unique_dic["type"] = "exclude"
-
-        # Functional cbv and bold
-        elif any(x in sd for x in func_cbv_keys):
-            unique_dic["DataType"] = "func"
-            unique_dic["ModalityLabel"] = "cbv"
-            unique_dic["message"] = " ".join("Acquisition is believed to be \
-                func/cbv because '{}' is in the SeriesDescription \
-                (but not 'sbref'). Please modify if incorrect".format([x for x in func_cbv_keys if re.findall(x, sd)][0]).split())
-
-        elif any(x in sd for x in func_keys + func_rest_keys) and "sbref" not in sd:
-            unique_dic["DataType"] = "func"
-            unique_dic["ModalityLabel"] = "bold"
-            unique_dic["message"] = " ".join("Acquisition is believed to be \
-                func/bold because '{}' is in the SeriesDescription \
-                (but not 'sbref'). Please modify if incorrect".format([x for x in func_keys + func_rest_keys if re.findall(x, sd)][0]).split())
-
-        # Single band reference (sbref) for func or dwi
-        elif "sbref" in sd:
-            unique_dic["ModalityLabel"] = "sbref"
-
-            if "DIFFUSION" in unique_dic["ImageType"]:
-                unique_dic["DataType"] = "dwi"
-                unique_dic["message"] = " ".join("Acquisition is believed to be \
-                    dwi/sbref because 'DIFFUSION is in the ImageType and 'sbref' \
-                    is in the SeriesDescription".split())
-            else:
-                unique_dic["DataType"] = "func"
-                unique_dic["message"] = " ".join("Acquisition is believed to be \
-                    func/sbref because 'sbref' is in the SeriesDescription".split())
-
-        elif any(x in sd for x in additional_anat_keys):
-            unique_dic["DataType"] = "anat"
-            if "DERIVED" and "UNI" in unique_dic["ImageType"]:
-                unique_dic["ModalityLabel"] = "UNIT1"
-            else:
-                modality_label = [x for x in additional_anat_keys if re.findall(x, sd)][0]
-                unique_dic["ModalityLabel"] = modality_label.upper()
-                unique_dic["message"] = " ".join("Acquisition is believed to be \
-                    anat/{}, because '{}' in in the SeriesDescription. Please modify \
-                    if incorrect.".format(modality_label.upper(), modality_label).split())
-
-        # UNIT1 (part of mp2rage acquisitions)
-        elif "DERIVED" and "UNI" in unique_dic["ImageType"]:
-            unique_dic["DataType"] = "anat"
-            unique_dic["ModalityLabel"] = "UNIT1"
-            unique_dic["message"] = " ".join("Acquisition is believed to be anat/UNIT1 \
-                because 'DERIVED' and 'UNI' are in the ImageType Please modify \
-                if incorrect".split())
-
-        # T1w
-        elif any(x in sd for x in t1w_keys):
-            unique_dic["DataType"] = "anat"
-            unique_dic["ModalityLabel"] = "T1w"
-            unique_dic["message"] = " ".join("Acquisition is believed to be anat/T1w \
-                because '{}' is in the SeriesDescription. Please modify if \
-                incorrect".format([x for x in t1w_keys if re.findall(x, sd)][0]).split())
-
-        # FLAIR
-        elif any(x in sd for x in flair_keys):
-            unique_dic["DataType"] = "anat"
-            unique_dic["ModalityLabel"] = "FLAIR"
-            unique_dic["message"] = " ".join("Acquisition is believed to be anat/FLAIR \
-                because '{}' is in the SeriesDescription. Please modify if \
-                incorrect".format([x for x in flair_keys if re.findall(x, sd)][0]).split())
-
-        # T2w (typically have EchoTime > 100ms)
-        elif any(x in sd for x in t2w_keys) and unique_dic["EchoTime"] > 100:
-            unique_dic["DataType"] = "anat"
-            unique_dic["ModalityLabel"] = "T2w"
-            unique_dic["message"] = " ".join("Acquisition is believed to be anat/T2w \
-                because '{}' is in the SeriesDescription and EchoTime > 100ms. \
-                Please modify if incorrect".format([x for x in t2w_keys if re.findall(x, sd)][0]).split())
-
-        # Additional anatomical non-parametric acquisitions
-        elif any(x in sd for x in additional_anat_nonparametric_keys):
-            unique_dic["DataType"] = "anat"
-            if "t2starw" in sd:
-                unique_dic["ModalityLabel"] = "T2starw"
-                unique_dic["message"] = " ".join("Acquisition is believed to be \
-                    anat/T2starw because 'T2starw' is in the SeriesDescription. \
-                    Please modify if incorrect".split())
-            elif "inplanet1" in sd:
-                unique_dic["ModalityLabel"] = "inplaneT1"
-                unique_dic["message"] = " ".join("Acquisition is believed to be \
-                    anat/inplaneT1 because 'inplaneT1' is in the SeriesDescription. \
-                    Please modify if incorrect".split())
-            elif "inplanet2" in sd:
-                unique_dic["ModalityLabel"] = "inplaneT2"
-                unique_dic["message"] = " ".join("Acquisition is believed to be \
-                    anat/inplaneT2 because 'inplaneT2' is in the SeriesDescription.\
-                    Please modify if incorrect".split())
-            elif "pdt2" in sd:
-                unique_dic["ModalityLabel"] = "PDT2"
-                unique_dic["message"] = " ".join("Acquisition is believed to be \
-                    anat/PDT2 because 'PDT2' is in the SeriesDescription. \
-                    Please modify if incorrect".split())
-            elif "pdw" in sd:
-                unique_dic["ModalityLabel"] = "PDw"
-                unique_dic["message"] = " ".join("Acquisition is believed to be \
-                    anat/PDw because 'PDw' is in the SeriesDescription. \
-                    Please modify if incorrect".split())
-
-
-        # Anatomical parametric acquisitions
-        elif any(x in sd for x in anat_parametric_keys):
-            unique_dic["DataType"] = "anat"
-
-            if "t2starmap" in sd:
-                unique_dic["ModalityLabel"] = "T2starmap"
-                unique_dic["message"] = " ".join("Acquisition is believed to be \
-                    anat/T2starmap because 't2starmap' is in the SeriesDescription. \
-                    Please modify if incorrect".split())
-            elif "r2starmap" in sd:
-                unique_dic["ModalityLabel"] = "R2starmap"
-                unique_dic["message"] = " ".join("Acquisition is believed to be \
-                    anat/R2starmap because 'R2starmap' is in the SeriesDescription. \
-                    Please modify if incorrect".split())
-            elif "chimap" in sd:
-                unique_dic["ModalityLabel"] = "Chimap"
-                unique_dic["message"] = " ".join("Acquisition is believed to be \
-                    anat/Chimap because 'Chimap' is in the SeriesDescription. \
-                    Please modify if incorrect".split())
-            elif "t1rho" in sd:
-                unique_dic["ModalityLabel"] = "T1rho"
-                unique_dic["message"] = " ".join("Acquisition is believed to be \
-                    anat/T1rho because 'T1rho' is in the SeriesDescription. \
-                    Please modify if incorrect".split())
-            elif "mtsat" in sd:
-                unique_dic["ModalityLabel"] = "MTsat"
-                unique_dic["message"] = " ".join("Acquisition is believed to be \
-                    anat/MTsat because 'MTsat' is in the SeriesDescription. \
-                    Please modify if incorrect".split())
-            else:
-                modality_label = [x for x in anat_parametric_keys if re.findall(x, sd)][0]
-                unique_dic["ModalityLabel"] = modality_label.split("map")[0].upper() + "map"
-                unique_dic["message"] = " ".join("Acquisition is believed to be \
-                    anat/{} because {} is in the SeriesDescription. Please \
-                    modify if incorrect".format(modality_label, modality_label).split())
-
-        else:
-            """Can"t discern info from SeriesDescription, try using ndim and number of
-            volumes to see if this is a func/bold."""
-            test = unique_dic["nibabel_image"]
-            if test.ndim == 4 and not any(x in unique_dic["ImageType"] for x in ["DERIVED", "PERFUSION", "DIFFUSION", "ASL"]):
-                unique_dic["DataType"] = "func"
-                unique_dic["ModalityLabel"] = "bold"
-                if test.shape[3] >= 50:
-                    unique_dic["message"] = " ".join("SeriesDescription did not provide \
-                        adequate information regarding the type of acquisition; however, it is \
-                        believed to be a func/bold because it contains >= 50 \
-                        volumes and is 4D. Please modify if incorrect".split())
-
-            # Assume not BIDS-compliant acquisition, unless user specifies otherwise
-            else:
-                unique_dic["error"] = " ".join("Acquisition cannot be resolved. Please \
-                    determine whether or not this acquisition should be \
-                    converted to BIDS".split())
-                unique_dic["message"] = " ".join("Acquisition is unknown because there \
-                    is not enough adequate information, primarily in the \
-                    SeriesDescription. Please modify if acquisition is desired \
-                    for BIDS conversion, otherwise the acqusition will not be \
-                    converted".split())
+            # DWI
+            elif not any(".bvec" in x for x in unique_dic["paths"]) and "DIFFUSION" in unique_dic["ImageType"]:
+                unique_dic["error"] = " ".join("Acquisitions has 'DIFFUSION' label in the \
+                    ImageType; however, there are no corresponding bval/bvec \
+                    files. This may or may not be dwi/dwi. Please modify if \
+                    incorrect.".split())
+                unique_dic["message"] = unique_dic["error"]
                 unique_dic["type"] = "exclude"
 
-        """ Combine DataType and ModalityLabel to create type variable, which
+            elif any(".bvec" in x for x in unique_dic["paths"]):
+                if "DIFFUSION" not in unique_dic["ImageType"]:
+                    if unique_dic["NumVolumes"] < 2:
+                        if any(x in sd for x in flair_keys):
+                            unique_dic["datatype"] = "anat"
+                            unique_dic["suffix"] = "FLAIR"
+                            unique_dic["message"] = " ".join("Acquisition is believed to be \
+                                anat/FLAIR because '{}' is in the \
+                                SeriesDescription. Please modify if incorrect".format([x for x in flair_keys if re.findall(x, sd)][0]).split())
+                        elif "t2w" in sd:
+                            unique_dic["datatype"] = "anat"
+                            unique_dic["suffix"] = "T2w"
+                            unique_dic["message"] = " ".join("Acquisition is believed to be \
+                                anat/T2w because 't2w' is in the \
+                                SeriesDescription. Please modify if incorrect".split())
+                        else:
+                            unique_dic["error"] = " ".join("Acquisition has bval and bvec \
+                                files but does not appear to be dwi/dwi because \
+                                'DIFUSSION' is not in ImageType and contains less \
+                                than 2 volumes. Please modify if incorrect, \
+                                otherwise will not convert to BIDS".split())
+                            unique_dic["message"] = unique_dic["error"]
+                            unique_dic["type"] = "exclude"
+                    else:
+                        unique_dic["datatype"] = "dwi"
+                        unique_dic["suffix"] = "dwi"
+                        unique_dic["message"] = " ".join("Acquisition appears to be dwi/dwi \
+                            because although 'DIFUSSION' is not in ImageType, the \
+                            acquisition has bval and bvec files and has {} \
+                            volumes. Please modify if incorrect".format(unique_dic["NumVolumes"]).split())
+                else:
+                    """Low b-values will default to fmap/epi, intended to be used
+                    on dwi/dwi data."""
+                    bval = np.loadtxt([x for x in unique_dic["paths"] if "bval" in x][0])
+                    if np.max(bval) <= 50:
+                        unique_dic["datatype"] = "fmap"
+                        unique_dic["suffix"] = "epi"
+                        unique_dic["forType"] = "dwi/dwi"
+                        unique_dic["message"] = " ".join("Acquisition appears to be \
+                            fmap/epi meant for dwi/dwi, as there are bval & bvec \
+                            files, but with low b-values. Please modify if \
+                            incorrect".split())
+
+                    # elif any(x in sd for x in dwi_derived_keys) and not any(x in sd for x in dwi_keys):
+                    elif any(x in sd for x in dwi_derived_keys):
+                        unique_dic["error"] = " ".join("Acquisition appears to be a TRACE, \
+                            FA, or ADC, which are unsupported by ezBIDS and will \
+                            therefore not be converted".split())
+                        unique_dic["message"] = " ".join("Acquisition is believed to be \
+                            TRACE, FA, or ADC because there are bval & bvec files \
+                            with the same SeriesNumber, and '{}' are in the \
+                            SeriesDescription. Please modify if \
+                            incorrect".format([x for x in dwi_derived_keys if re.findall(x, sd)][0]).split())
+                        unique_dic["type"] = "exclude"
+                    else:
+                        unique_dic["datatype"] = "dwi"
+                        unique_dic["suffix"] = "dwi"
+                        unique_dic["message"] = " ".join("Acquisition is believed to be \
+                            dwi/dwi because there are bval & bvec files with the \
+                            same SeriesNumber, 'DIFFUSION' is in the ImageType, \
+                            and it does not appear to be derived dwi data. Please \
+                            modify if incorrect".split())
+
+            # DWI derivatives or other non-BIDS diffusion offshoots
+            elif any(x in sd for x in dwi_derived_keys) and any(x in sd for x in dwi_keys):
+                unique_dic["error"] = " ".join("Acquisition appears to be a TRACE, FA, or \
+                    ADC, which are unsupported by ezBIDS and will therefore not \
+                    be converted".split())
+                unique_dic["message"] = " ".join("Acquisition is believed to be dwi-derived \
+                    (TRACE, FA, ADC), which are not supported by BIDS and will not \
+                    be converted. Please modify if incorrect".split())
+                unique_dic["type"] = "exclude"
+
+            elif any(x in sd for x in func_keys) and "sbref" not in sd:
+                unique_dic["datatype"] = "func"
+                unique_dic["suffix"] = "bold"
+                unique_dic["message"] = " ".join("Acquisition is believed to be \
+                    func/bold because '{}' is in the SeriesDescription \
+                    (but not 'sbref'). Please modify if incorrect".format([x for x in func_keys if re.findall(x, sd)][0]).split())
+
+            # Single band reference (sbref) for func or dwi
+            elif "sbref" in sd:
+                unique_dic["suffix"] = "sbref"
+
+                if "DIFFUSION" in unique_dic["ImageType"]:
+                    unique_dic["datatype"] = "dwi"
+                    unique_dic["message"] = " ".join("Acquisition is believed to be \
+                        dwi/sbref because 'DIFFUSION is in the ImageType and 'sbref' \
+                        is in the SeriesDescription".split())
+                else:
+                    unique_dic["datatype"] = "func"
+                    unique_dic["message"] = " ".join("Acquisition is believed to be \
+                        func/sbref because 'sbref' is in the SeriesDescription".split())
+
+            # UNIT1 (part of mp2rage acquisitions)
+            elif "DERIVED" and "UNI" in unique_dic["ImageType"]:
+                unique_dic["datatype"] = "anat"
+                unique_dic["suffix"] = "UNIT1"
+                unique_dic["message"] = " ".join("Acquisition is believed to be anat/UNIT1 \
+                    because 'DERIVED' and 'UNI' are in the ImageType Please modify \
+                    if incorrect".split())
+
+            # T1w
+            elif any(x in sd for x in t1w_keys):
+                unique_dic["datatype"] = "anat"
+                unique_dic["suffix"] = "T1w"
+                unique_dic["message"] = " ".join("Acquisition is believed to be anat/T1w \
+                    because '{}' is in the SeriesDescription. Please modify if \
+                    incorrect".format([x for x in t1w_keys if re.findall(x, sd)][0]).split())
+
+                """ Set non-normalized (i.e. poor contrast) anat/T1w to exclude, but
+                only if the dataset does not include normalized anat/T1w. """
+                anat_list = [[x["type"], x["ImageType"]] for x in dataset_list_unique_series if x["type"] == "anat/T1w"]
+                anat_list = [x for x in anat_list if 'NORM' in x[1] or 'DERIVED' in x[1]]
+
+                if len(anat_list):
+                    for unique_dic in dataset_list_unique_series:
+                        if unique_dic["type"] == "anat/T1w" and not any(x in ["DERIVED", "NORM"] for x in unique_dic["ImageType"]):
+                            unique_dic["error"] = " ".join("Acquisition is a poor contrast {} \
+                                (non-normalized); Please check to see if this {} acquisition \
+                                should be converted to BIDS. Otherwise, this object will not \
+                                be included in the BIDS output".format(unique_dic["type"], unique_dic["type"]).split())
+                            unique_dic["message"] = unique_dic["error"]
+                            unique_dic["type"] = "exclude"
+
+            # FLAIR
+            elif any(x in sd for x in flair_keys):
+                unique_dic["datatype"] = "anat"
+                unique_dic["suffix"] = "FLAIR"
+                unique_dic["message"] = " ".join("Acquisition is believed to be anat/FLAIR \
+                    because '{}' is in the SeriesDescription. Please modify if \
+                    incorrect".format([x for x in flair_keys if re.findall(x, sd)][0]).split())
+
+            # T2w (typically have EchoTime > 100ms)
+            elif any(x in sd for x in t2w_keys) and unique_dic["EchoTime"] > 100:
+                unique_dic["datatype"] = "anat"
+                unique_dic["suffix"] = "T2w"
+                unique_dic["message"] = " ".join("Acquisition is believed to be anat/T2w \
+                    because '{}' is in the SeriesDescription and EchoTime > 100ms. \
+                    Please modify if incorrect".format([x for x in t2w_keys if re.findall(x, sd)][0]).split())
+
+            else:
+                """Can"t discern info from SeriesDescription, try using ndim and
+                number of volumes to see if this is a func/bold."""
+                test = unique_dic["nibabel_image"]
+                if test.ndim == 4 and not any(x in unique_dic["ImageType"] for x in ["DERIVED", "PERFUSION", "DIFFUSION", "ASL"]):
+                    unique_dic["datatype"] = "func"
+                    unique_dic["suffix"] = "bold"
+                    if test.shape[3] >= 50:
+                        unique_dic["message"] = " ".join("SeriesDescription did not provide \
+                            adequate information regarding the type of acquisition; however, it is \
+                            believed to be a func/bold because it contains >= 50 \
+                            volumes and is 4D. Please modify if incorrect".split())
+
+                # Assume not BIDS-compliant acquisition, unless user specifies otherwise
+                else:
+                    unique_dic["error"] = " ".join("Acquisition cannot be resolved. Please \
+                        determine whether or not this acquisition should be \
+                        converted to BIDS".split())
+                    unique_dic["message"] = " ".join("Acquisition is unknown because there \
+                        is not enough adequate information, primarily in the \
+                        SeriesDescription. Please modify if acquisition is desired \
+                        for BIDS conversion, otherwise the acqusition will not be \
+                        converted".split())
+                    unique_dic["type"] = "exclude"
+
+        """ Combine datatype and suffix to create type variable, which
         is needed for internal brainlife.io storage. """
         if "exclude" not in unique_dic["type"]:
-            unique_dic["type"] = unique_dic["DataType"] + "/" + unique_dic["ModalityLabel"]
+            unique_dic["type"] = unique_dic["datatype"] + "/" + unique_dic["suffix"]
+
+
+        """ Exclude func/bold acqusitions if they contain < 50 volumes """
+        if unique_dic["type"] == "func/bold" and unique_dic["NumVolumes"] < 50:
+            unique_dic["type"] = "exclude"
+            unique_dic["error"] = " ".join("Functional \
+                acquisition contains less than 50 volumes, suggesting a \
+                failure/restart, a test acquisition, or an acquisition \
+                with insufficient data for processing/analyses. Please modify \
+                if incorrect".split())
+            unique_dic["message"] = unique_dic["error"]
 
     return dataset_list_unique_series
 
@@ -1084,248 +1066,100 @@ def entity_labels_identification(dataset_list_unique_series):
     dataset_list_unique_series : list
         updated input list
     """
-    for index, unique_dic in enumerate(dataset_list_unique_series):
-        series_entities = {}
 
+    tb1afi_tr = 1
+    for index, unique_dic in enumerate(dataset_list_unique_series):
+
+        series_entities = {}
         sd = unique_dic["SeriesDescription"]
 
-        """ "sub" entity label, required """
-        if "sub-" in sd:
-            series_entities["subject"] = sd.split("sub-")[-1].split("_")[0]
-        else:
-            series_entities["subject"] = ""
+        for key in entities_yaml:
+            entity = "_" + entities_yaml[key]["entity"] + "-"
+            if entity in sd:
+                series_entities[key] = sd.split(entity)[-1].split("_")[0]
+            else:
+                series_entities[key] = ""
 
-
-        """ "ses" entity label, only required if dealing with multi-session dataset """
-        if "_ses-" in sd:
-            series_entities["session"] = sd.split("_ses-")[-1].split("_")[0]
-        else:
-            series_entities["session"] = ""
-
-        """ "task" entity label, required for func """
+        # Do a more thorough check for certain entities labels
+        # task
         func_rest_keys = ["rest", "rsfmri", "fcmri"]
-
-        if "_task-" in sd:
-            series_entities["task"] = sd.split("_task-")[-1].split("_")[0]
-        elif any(x in re.sub("[^A-Za-z0-9]+", "", sd).lower() for x in func_rest_keys):
+        if any(x in re.sub("[^A-Za-z0-9]+", "", sd).lower() for x in func_rest_keys) and not series_entities["task"]:
             series_entities["task"] = "rest"
-        else:
-           series_entities["task"] = ""
 
+        # dir (required for fmap/epi an highly recommended for dwi/dwi)
+        if any(x in unique_dic["type"] for x in ["fmap/epi", "dwi/dwi"]) and not series_entities["direction"]:
+            series_entities["direction"] = unique_dic["direction"]
 
-        """ "dir" entity label, required for fmap/epi an highly recommended for dwi/dwi """
-        if unique_dic["type"] == "fmap/epi" or unique_dic["type"] == "dwi/dwi":
-            if unique_dic["direction"] != "":
-                series_entities["direction"] = unique_dic["direction"]
-            else:
-                series_entities["direction"] = ""
+        # echo
+        if unique_dic["EchoNumber"] and not any(x in unique_dic["type"] for x in ["fmap/epi", "fmap/magnitude1", "fmap/magnitude2", "fmap/phasediff", "fmap/phase1", "fmap/phase2", "fmap/fieldmap"]):
+            series_entities["echo"] = str(unique_dic["EchoNumber"])
+            # Exclude non-RMS multi-echo anatomical acquisitions
+            if "anat" in unique_dic["type"] and "EchoNumber" in unique_dic["sidecar"] and "MEAN" not in unique_dic["ImageType"]:
+                unique_dic["type"] = "exclude"
+                unique_dic["message"] = " ".join("Acquisition appears to be an \
+                    anatomical multi-echo, but not the combined RMS file. Since this is \
+                    not the combined RMS file, this acquisition will not be set to \
+                    exclude. Please modify if incorrect".split())
 
-
-        """ "acq" entity label. optional but will include if explicitly stated """
-        if "_acq-" in sd:
-            series_entities["acquisition"] = sd.split("_acq-")[-1].split("_")[0]
-        else:
-            series_entities["acquisition"] = ""
-
-
-        """ "ce" entity label, optional, but will include if explicitly stated """
-        if "_ce-" in sd:
-            series_entities["ceagent"] = sd.split("_ce-")[-1].split("_")[0]
-        else:
-            series_entities["ceagent"] = ""
-
-
-        """ "rec" entity label, optional, but will include if explicitly stated """
-        if "_rec-" in sd:
-            series_entities["reconstruction"] = sd.split("_rec-")[-1].split("_")[0]
-        else:
-            series_entities["reconstruction"] = ""
-
-
-        """ "echo" entity label, required for mutli-echo (ME) data (primarily
-        anat and func), anat/MEGRE, and anat/MESE """
-        if "_echo-" in sd:
-            series_entities["echo"] = sd.split("_echo-")[-1].split("_")[0].lstrip("0")
-        else:
-            if unique_dic["EchoNumber"] and "fmap" not in unique_dic["type"]:
-                series_entities["echo"] = unique_dic["EchoNumber"]
-            else:
-                series_entities["echo"] = ""
-
-        """ "run" entity label, optional, but needed to differentiate multiple
-        acquisitions with the same parameters. If not explicitly stated, the run
-        entity labelling is handled by another script later on """
-        if "_run-" in sd:
-            series_entities["run"] = sd.split("_run-")[-1].split("_")[0].lstrip("0")
-        else:
-            series_entities["run"] = ""
-
-
-        """ "part" entity label, optional in all cases, but needed for real/imaginary
-        fmap/epi which typically come from Phillips scanners, for anat/MP2RAGE, and
-        functional bold phase. Possible labels are: mag, phase, real, and imaginary """
-        if "_part-" in sd:
-            series_entities["part"] = sd.split("_part-")[-1].split("_")[0]
-        else:
-            if "REAL" in unique_dic["ImageType"]:
-                series_entities["part"] = "real"
-            elif "IMAGINARY" in unique_dic["ImageType"]:
-                series_entities["part"] = "imag"
-            elif "fmap" not in unique_dic["type"] and "PHASE" in unique_dic['ImageType']:
-                series_entities["part"] = "phase"
-            else:
-                series_entities["part"] = ""
-
-
-        """ "inversion" entity label, for anat/mp2rage and anat/IRT1 """
-        if "_inv-" in sd:
-            series_entities["inversion"] = sd.split("_inv-")[-1].split("_")[0].lstrip("0")
-        else:
-            if any(x in unique_dic["type"] for x in ["anat/MP2RAGE", "anat/IRT1"]):
-                if "InversionTime" in unique_dic["sidecar"]:
-                    inversion_time = unique_dic["sidecar"]["InversionTime"]
-                    regex = re.compile('inv([1-9]*)')
-                    try:
-                        series_entities["inversion"] = regex.findall(re.sub("[^A-Za-z0-9]+", "", sd).lower())[0]
-                    except:
-                        series_entities["inversion"] = ""
-                else:
-                    inversion_time = None
-
-
-        """ "flip" entity label, required for anat/VFA and anat/MPM and anat/MTS """
-        if "_flip-" in sd:
-            series_entities["flip"] = sd.split("_flip-")[-1].split("_")[0].lstrip("0")
-        else:
-            if any(x in unique_dic["type"] for x in ["anat/VFA", "anat/MPM", "anat/MTS"]) and "FlipAngle" in unique_dic["sidecar"]:
-                regex = re.compile('flip([1-9]*)')
-                try:
-                    series_entities["flip"] = regex.findall(re.sub("[^A-Za-z0-9]+", "", sd).lower())[0]
-                except:
-                    series_entities["flip"] = ""
-            else:
+        # flip
+        if any(x in unique_dic["type"] for x in ["anat/VFA", "anat/MPM", "anat/MTS", "fmap/TB1EPI"]) and "FlipAngle" in unique_dic["sidecar"]:
+            regex = re.compile('flip([1-9]*)')
+            try:
+                series_entities["flip"] = regex.findall(re.sub("[^A-Za-z0-9]+", "", sd).lower())[0]
+            except:
                 series_entities["flip"] = ""
 
+        # acq
+        if any(x in unique_dic["type"] for x in ["fmap/TB1TFL", "fmap/TB1RFM"]):
+            if "FLIP ANGLE MAP" in unique_dic["ImageType"]:
+                series_entities["acquisition"] = "fmap"
+            else:
+                series_entities["acquisition"] = "anat"
 
-        """ "mt" entity label, required for anat/MPM, anat/MTS, and anat/MTR"""
-        if "_mt-" in sd:
-            series_entities["mtransfer"] = sd.split("_mt-")[-1].split("_")[0]
-        else:
-            series_entities["mtransfer"] = ""
+        if any(x in unique_dic["type"] for x in ["fmap/TB1AFI"]):
+            series_entities["acquisition"] = "tr" + str(tb1afi_tr)
+            tb1afi_tr += 1
 
+        if any(x in unique_dic["type"] for x in ["fmap/RB1COR"]) and "ReceiveCoilName" in unique_dic["sidecar"]:
+            if "Head" in unique_dic["sidecar"]["ReceiveCoilName"]:
+                series_entities["acquisition"] = "head"
+            elif "Body" in unique_dic["sidecar"]["ReceiveCoilName"]:
+                series_entities["acquisition"] = "body"
+
+        # inversion
+        if any(x in unique_dic["type"] for x in ["anat/MP2RAGE", "anat/IRT1"]) and "InversionTime" in unique_dic["sidecar"]:
+            inversion_time = unique_dic["sidecar"]["InversionTime"]
+            regex = re.compile('inv([1-9]*)')
+            try:
+                series_entities["inversion"] = regex.findall(re.sub("[^A-Za-z0-9]+", "", sd).lower())[0]
+            except:
+                series_entities["inversion"] = ""
+
+        # reconstruction
+        if "wave" in sd:
+            series_entities["reconstruction"] = "wave"
+
+
+        # part
+        if "REAL" in unique_dic["ImageType"]:
+            series_entities["part"] = "real"
+        elif "IMAGINARY" in unique_dic["ImageType"]:
+            series_entities["part"] = "imag"
+        elif "fmap" not in unique_dic["type"] and "PHASE" in unique_dic['ImageType']:
+            series_entities["part"] = "phase"
+
+        # run (strip leading zeros, if any, as this isn't proper by BIDS standards)
+        if series_entities["run"]:
+            series_entities["run"] = series_entities["run"].lstrip("0")
+
+
+        # Replace periods in series entities with "p", if found
+        if len([x for x in series_entities.values() if "." in x]):
+            for key, value in series_entities.items():
+                if "." in value:
+                    series_entities[key] = value.replace(".", "p")
 
         unique_dic["entities"] = series_entities
-
-    return dataset_list_unique_series
-
-
-def seriesQA(dataset_list_unique_series):
-    """
-    Perform QA, which includes 5 checks:
-
-        1). Excluding functional acquisitions that have < 50 volumes, as ezBIDS
-            determines this as an instance of a restart or insuffient data for
-            processing & analyses.
-
-        2). Set non-normalized anat/T1w acquisitions to exclude, unless there
-            aren't any normalized ones. Non-normalized have poorer CNR, and
-            should only be included if normalized isn't found.
-
-        3). Set sbref acquisition to exclude if its corresponding func or dwi
-            has been excluded for whatever reason.
-
-        4). Entity values can't have periods "." in them; replace with "p" if
-            found.
-
-        5). Set multi-echo anatomical acquistions to "exclude" if there is a
-            combined corresponding RMS file.
-
-    Parameters
-    ----------
-    dataset_list_unique_series : list
-        List of dictionaries for each unique acquisition series in dataset.
-
-    Returns
-    -------
-    dataset_list_unique_series : list
-        updated input list
-    """
-
-    """ Remove func/bold acqusitions if they contain < 50 volumes """
-    bad_func_indices = [x["series_idx"] for x in dataset_list_unique_series
-                        if x["type"] == "func/bold" and x["NumVolumes"] < 50]
-
-    if len(bad_func_indices):
-        for idx in bad_func_indices:
-            dataset_list_unique_series[idx]["type"] = "exclude"
-            dataset_list_unique_series[idx]["message"] = " ".join("Functional \
-                acquisition contains less than 50 volumes, suggesting a \
-                failure/restart, a test acquisition, or an acquisition \
-                with insufficient data for processing/analyses. Please modify \
-                if incorrect".split())
-
-
-    """ Set non-normalized (i.e. poor contrast) anat/T1w to exclude, but
-     only if the dataset does not include normalized anat/T1w. """
-    anat_list = [[x["type"], x["ImageType"]] for x in dataset_list_unique_series if x["type"] == "anat/T1w"]
-    anat_list = [x for x in anat_list if 'NORM' in x[1] or 'DERIVED' in x[1]]
-
-    if len(anat_list):
-        for unique_dic in dataset_list_unique_series:
-            if unique_dic["type"] == "anat/T1w" and not any(x in ["DERIVED", "NORM"] for x in unique_dic["ImageType"]):
-                unique_dic["error"] = " ".join("Acquisition is a poor contrast {} \
-                    (non-normalized); Please check to see if this {} acquisition \
-                    should be converted to BIDS. Otherwise, this object will not \
-                    be included in the BIDS output".format(unique_dic["type"], unique_dic["type"]).split())
-                unique_dic["message"] = unique_dic["error"]
-                unique_dic["type"] = "exclude"
-
-    """
-    Check sbref acquisition(s) to see that their corresponding func or dwi
-    acquisitions are not excluded. If so, exclude the sbref as well. Also
-    exclude sbref if they correspond to an anat or fmap file; currently not
-    supported by BIDS. Also replace periods in series entities with p, if found
-    """
-    for unique_dic in dataset_list_unique_series:
-        """If series_entities items contain periods (not allowed in BIDS) then
-        replace them with "p" character"""
-        for key, value in unique_dic["entities"].items():
-            try:
-                if "." in value:
-                    unique_dic["entities"][key] = value.replace(".", "p")
-            except:
-                pass
-
-        # check if sbref need to be excluded or not
-        if "sbref" in unique_dic["type"]:
-            sd = unique_dic["SeriesDescription"]
-            corresponding_file = [y for x, y in enumerate(dataset_list_unique_series)
-                                  if sd[:-6] == dataset_list_unique_series[x]["SeriesDescription"]][0]
-            if corresponding_file["type"] == "exclude":
-                unique_dic["message"] = " ".join("The corresponding file to this sbref is \
-                    excluded, therefore this acquisition will also be excluded. \
-                    Please modify if incorrect".split())
-                unique_dic["type"] = "exclude"
-            if "anat" or "fmap" in corresponding_file["type"]:
-                unique_dic["message"] = " ".join("The corresponding file to this sbref is \
-                    an anatomical or field map acquisition. BIDS currently does \
-                    not support sbref for these acquisitions, therefore this \
-                    sbref will be excluded. Please modify if incorrect".split())
-                unique_dic["type"] = "exclude"
-
-        # Exclude non-RMS multi-echo anatomical acquisitions
-        if "anat" in unique_dic["type"] and "EchoNumber" in unique_dic["sidecar"] and "MEAN" not in unique_dic["ImageType"]:
-            unique_dic["type"] = "exclude"
-            unique_dic["message"] = " ".join("Acquisition appears to be an \
-                anatomical multi-echo, but not the combined RMS file. Since this is \
-                not the combined RMS file,  this acquisition will not be set to \
-                exclude. Please modify if incorrect".split())
-
-
-        print(" ".join("Unique data acquisition file {}, Series Description {}, was \
-            determined to be {}".format(unique_dic["nifti_path"], unique_dic["SeriesDescription"], unique_dic["type"]).split()))
-        print("")
-        print("")
 
     return dataset_list_unique_series
 
@@ -1419,19 +1253,8 @@ def modify_objects_info(dataset_list):
             else:
                 protocol["error"] = []
 
-            objects_entities = {"subject": "",
-                                "session": "",
-                                "run": "",
-                                "task": "",
-                                "direction": "",
-                                "acquisition": "",
-                                "reconstruction": "",
-                                "ceagent": "",
-                                "echo": "",
-                                "inversion": "",
-                                "part": "",
-                                "flip": "",
-                                "mtransfer": ""}
+
+            objects_entities = dict(zip([x for x in entities_yaml], [""]*len([x for x in entities_yaml])))
 
             # Make items list (part of objects list)
             items = []
@@ -1467,12 +1290,6 @@ def modify_objects_info(dataset_list):
             for remove in remove_fields:
                 if remove in protocol["sidecar"]:
                     del protocol["sidecar"][remove]
-
-            """ Provide log output for acquisitions not deemed appropriate for
-            BIDS conversion. """
-            if protocol["exclude"]:
-                print("")
-                print("* {} (sn-{}) not recommended for BIDS conversion: {}".format(protocol["SeriesDescription"], protocol["SeriesNumber"], protocol["error"]))
 
             # Objects-level info for ezBIDS.json
             objects_info = {"series_idx": protocol["series_idx"],
@@ -1569,14 +1386,11 @@ dataset_list, subject_ids_info = determine_subj_ses_IDs(dataset_list)
 # Make a new list containing the dictionaries of only unique dataset acquisitions
 dataset_list, dataset_list_unique_series = determine_unique_series(dataset_list)
 
-# Identify DataType and ModalityLabel information
-dataset_list_unique_series = DataType_ModalityLabel_identification(dataset_list_unique_series)
+# Identify datatype and suffix information
+dataset_list_unique_series = datatype_suffix_identification(dataset_list_unique_series)
 
 # Identify entity label information
 dataset_list_unique_series = entity_labels_identification(dataset_list_unique_series)
-
-# Perform [Series-level] QA
-dataset_list_unique_series = seriesQA(dataset_list_unique_series)
 
 # Port series level information to all other acquistions (i.e. objects level) with same series info
 dataset_list = update_dataset_list(dataset_list, dataset_list_unique_series)
@@ -1585,8 +1399,15 @@ dataset_list = update_dataset_list(dataset_list, dataset_list_unique_series)
 objects_list = modify_objects_info(dataset_list)
 
 # Map unique series IDs to all other acquisitions in dataset that have those parameters
-for s in range(len(dataset_list_unique_series)):
-    dataset_list_unique_series[s]["object_indices"] = [x for x in range(len(objects_list)) if objects_list[x]["series_idx"] == dataset_list_unique_series[s]["series_idx"]]
+for index, unique_dic in enumerate(dataset_list_unique_series):
+    dataset_list_unique_series[index]["object_indices"] = [x for x in range(len(objects_list)) if objects_list[x]["series_idx"] == dataset_list_unique_series[index]["series_idx"]]
+    print(" ".join("Unique data acquisition file {}, \
+        Series Description {}, \
+        was determined to be {}, \
+        with entity labels {} \
+        ".format(unique_dic["nifti_path"], unique_dic["SeriesDescription"], unique_dic["type"], [x for x in unique_dic["entities"].items() if x[-1] != ""]).split()))
+    print("")
+    print("")
 
 # Extract subset of series information to display in ezBIDS UI
 ui_series_info_list = extract_series_info(dataset_list_unique_series)
@@ -1601,3 +1422,5 @@ EZBIDS = {"subjects": subject_ids_info,
 # Write dictionary to ezBIDS.json
 with open("ezBIDS.json", "w") as fp:
     json.dump(EZBIDS, fp, indent=3)
+
+print("--- Analyzer completion time: {} seconds ---".format(time.time() - start_time))

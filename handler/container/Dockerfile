@@ -41,10 +41,13 @@ RUN cd /tmp && \
     cmake -DBATCH_VERSION=ON -DUSE_OPENJPEG=ON .. && \
     make && make install
 
+# Get bids-specification from github
+RUN cd && git clone https://github.com/bids-standard/bids-specification
+
 #tensorflow2 needs pip>19
 #RUN pip3 install --upgrade pip
 
-RUN pip3 install numpy nibabel pandas matplotlib #need it before I can install quickshear
+RUN pip3 install numpy nibabel pandas matplotlib pyyaml #need it before I can install quickshear
 RUN pip3 install quickshear
 
 #install ROBEX
