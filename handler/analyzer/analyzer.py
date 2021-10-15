@@ -31,20 +31,12 @@ from PIL import Image
 plt.style.use("dark_background")
 warnings.filterwarnings("ignore")
 
-
-
 DATA_DIR = sys.argv[1]
-# DATA_DIR = '/media/data/ezbids/dicoms/salo'
 
 datatypes_yaml = yaml.load(open("../bids-specification/src/schema/objects/datatypes.yaml"))
 entities_yaml = yaml.load(open("../bids-specification/src/schema/objects/entities.yaml"))
 suffixes_yaml = yaml.load(open("../bids-specification/src/schema/objects/suffixes.yaml"))
 datatype_suffix_rules = "../bids-specification/src/schema/rules/datatypes"
-
-# datatypes_yaml = yaml.load(open("../../bids-specification/src/schema/objects/datatypes.yaml"))
-# entities_yaml = yaml.load(open("../../bids-specification/src/schema/objects/entities.yaml"))
-# suffixes_yaml = yaml.load(open("../../bids-specification/src/schema/objects/suffixes.yaml"))
-# datatype_suffix_rules = "../../bids-specification/src/schema/rules/datatypes"
 
 start_time = time.time()
 analyzer_dir = os.getcwd()
