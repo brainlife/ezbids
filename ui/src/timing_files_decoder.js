@@ -1,41 +1,13 @@
 #!/usr/bin/env node
 const fs = require('fs');
 const path = require('path')
-var XLSX = require('xlsx');
-const study = '' // Need to get this value from ezBIDS UI
+// var XLSX = require('xlsx');
+// const study = '' // Need to get this value from ezBIDS UI
 const $rootDir = '' // Need to get value from ezBIDS UI
-
-const findTimingFiles = function (rootDir, timingFiles) {
-	// inspired by https://coderrocketfuel.com/article/recursively-list-all-the-files-in-a-directory-using-node-js
-	files = fs.readdirSync(rootDir)
-
-	timingFiles = timingFiles || []
-
-	  files.forEach(function(file) {
-	    if (fs.statSync(rootDir + "/" + file).isDirectory()) {
-	      timingFiles = findTimingFiles(rootDir + "/" + file, timingFiles)
-	    } else {
-	    	file = path.join(rootDir, "/", file)
-	    	// Only accept certain file extensions
-	    	if (file.indexOf('.out') > -1 ||
-	    		file.indexOf('.txt') > -1 ||
-	    		file.indexOf('.csv') > -1 ||
-	    		file.indexOf('.tsv') > -1 ||
-	    		file.indexOf('.xlsx') > -1 ||
-	    		file.indexOf('.xlsm') > -1 ||
-	    		file.indexOf('.xlsb') > -1 ||
-	    		file.indexOf('.xlm') > -1) {
-
-	    		timingFiles.push(file)
-	    	}
-	    }
-	});
-  return timingFiles
-}
 
 
 function find_separator(FileName) {
-	if(FileName.indexOf('.tsv') > -1) {
+	if (FileName.indexOf('.tsv') > -1) {
 		var separator = /[ \t]+/;
 	} else if (FileName.indexOf('.out') > -1 || FileName.indexOf('.csv') > -1)  {
 		var separator = /[ ,]+/;
@@ -144,170 +116,213 @@ function parseExcelWorkbookTimingFiles (data) {
 	return trials[0];
 }
 
-var timingFiles = findTimingFiles($rootDir)
-
-// Read in the current ezBIDS UI information to help perform the mapping.
-// For now, assuming that the timing files and the ezBIDS information are stored in same location.
-const $root = require('./' + study + '/root.json');
-
-var timingInfo = []
-// Load data from each uploaded behavioral timing file
-for (let timingFile of timingFiles) {
-
-	var timingObj = {}
-	timingObj['filePath'] = timingFile
-	
-	// Read timing file(s) data
-	const sep = find_separator(timingFile)
-
-	// Parse the data, depending on the file extension
-	// Excel workbook formats (.xlsx, .xlsm, .xls)
-	if (timingFile.indexOf('.xlsx') > -1 || timingFile.indexOf('.xlsm') > -1 || timingFile.indexOf('.xlsb') > -1 || timingFile.indexOf('.xls') > -1) {
-		var data = XLSX.readFile(timingFile)
-		var timingData = parseExcelWorkbookTimingFiles(data);
-
-	} else {
-		// Not Excel workbook format
-		var data = fs.readFileSync(timingFile, "utf8")
-		const lines = data.trim().split("\n").map(l=>l.trim());
-
-		if (lines[0].indexOf('Header Start') > -1) {
-			// E-prime file format
-			var timingData = parseEprimeTimingFiles(data)
-		} else {
-			// "Regular" file format (e.g. .csv .tsv .txt .out)
-			var timingData = parseTimingFiles(data, sep);
-		}
-	}
-	timingObj['data'] = timingData
-	timingInfo.push(timingObj)
+function mode(arr){
+    return arr.sort((a,b) =>
+          arr.filter(v => v===a).length
+        - arr.filter(v => v===b).length
+    ).pop();
 }
 
+// const ezbids = require('/media/data/ezbids/fMRI_behavioral_timing_files/OpenScience/root.json')
+const ezbids = require('/media/data/ezbids/fMRI_behavioral_timing_files/WML/root.json')
+// const files = require('/media/data/ezbids/fMRI_behavioral_timing_files/OpenScience/files_path.json')
+const files = require('/media/data/ezbids/fMRI_behavioral_timing_files/WML/files_path.json')
 
-/* Extract key mapping information (subject, [session], taskName(s), run numbers associated with each task) 
-from the UI (root.json)
-*/
-rootInfo = []
-for (const sub of $root.subjects) {
-	const subject = sub.subject.replace(/[^0-9a-zA-Z]/g, '')
-	for (const ses of sub.sessions) {
-		var session = ses.session
 
-		const taskNames = Array.from(new Set($root.objects.map(e=>e._entities).filter(e=>e.subject == subject &&
-																	e.session == session &&
-																	e.task != null &&
-																	e.task != "" &&
-																	e.task != "rest").map(e=>e.task)))
+//this function receives files (an array of object containing fullpath and data. data is the actual file content of the file)
+//to filter out files by file extensions, please edit Events.vue
+function createEventObjects(ezbids, files) {
+    /* example for ezbids
+    {
+        datasetDescription: {
+            Name: "Untitled",                                                                                     
+            BIDSVersion: "1.4.0",                                                                                 
+            DatasetType: "raw",                                                                                   
+            License: "",                                                                                       
+            Authors: [],                                                                                                      
+            Acknowledgements: "", 
+            HowToAcknowledge: "", 
+            Funding: [],                                                                                                      
+            EthicsApprovals: [],                                                                                                      
+            ReferencesAndLinks: [],                                                                                                      
+            DatasetDOI: "",  
+        },
+        readme: "edit me",                                                                                          
+        participantsColumn: {}, 
 
-		var numTimeTasks = taskNames.length
-		
-		for (let task of taskNames) {
-			const taskRuns = Array.from(new Set($root.objects.map(e=>e._entities).filter(e=>e.subject == subject &&
-															e.session == session &&
-															e.task == task).map(e=>e.run)))
+        //here lives various things
+        subjects: [],                                                                                               
+        series: [],                                                                                                 
+        objects: [],                                                                                                
 
-			for (let taskRun of taskRuns) {
-				mappingObj = {}
-				mappingObj['subject'] = subject
-				mappingObj['session'] = session
-				mappingObj['numTimeTasks'] = numTimeTasks
-				mappingObj['task'] = task
-				mappingObj['taskRun'] = taskRun
-				rootInfo.push(mappingObj)
-			}
-		}
-	}
+        _organized: {}, //above things are organized into subs/ses/run/object hierarchy for quick access
+    }
+    */
+
+    /* example for files
+    [
+        {path: "/some/event1.tsv", data: "...content of the tsv..."},
+        {path: "/some/event2.tsv", data: "...content of the tsv..."},
+        {path: "/some/sub/event3.tsv", data: "...content of the tsv..."},
+    ]
+    */
+
+    const eventObjects = []; //new event objects to add 
+
+    // Determine number of subjects, sessions, event tasks (i.e. no rest), and event files
+    const numSubjects = ezbids.subjects.map(e=>e.exclude == false).length
+    const numSessions = ezbids.subjects.map(e=>e.sessions).flat().filter(e=>e.exclude == false).length
+    const numTaskRuns = ezbids.objects.map(e=>e._entities).filter(e=>(e.part == "" || e.part == "mag") && (e.task != "" && e.task != "rest" && e.task !== undefined)).length
+    const uniqueTaskLabels = Array.from(new Set(ezbids.objects.map(e=>e._entities).filter(e=>(e.part == "" || e.part == "mag") && (e.task != "" && e.task != "rest" && e.task !== undefined)).map(e=>e.task)))
+    const numEventFiles = files.length
+
+    // Try to determine inheritance level (dataset, subject, session, or individual runs)
+    const occurrences = {"Dataset": 1, "Subject": numSubjects, "Session": numSessions, "Run": numTaskRuns}
+    const closest = Object.values(occurrences).reduce(function(prev, curr) {
+        return Math.abs(curr - numEventFiles) < Math.abs(prev - numEventFiles) ? curr : prev
+    });
+
+    /*
+    Chance that multiple occurrences values could be the same, therefore, default to lowest level.
+    Assumption is that the lower the level, the more common it is.
+    */
+
+    const inheritance_level = Object.keys(occurrences).filter(key=>occurrences[key] == closest).slice(-1)[0]
+
+    // Sort through events file(s) list
+    files.forEach(file=>{
+        
+        const fileExt = file.path.split(".").pop();
+        // console.log("event file detected:", file.path);
+
+        // Parse the data, depending on the file extension (and header information)
+        switch(fileExt) {
+        // Excel workbook formats (.xlsx, .xlsm, .xls)
+        case "xlsx":
+        case "xlsm":
+        case "xls":
+            var data = XLSX.readFile(file.path)
+            var events = parseExcelWorkbookTimingFiles(data)
+            break;
+        default: // Non-Excel formats
+            var data = fs.readFileSync(file.path, "utf8")
+            var lines = data.trim().split("\n").map(l=>l.trim());
+            if (lines[0].indexOf('Header Start') > -1) {
+                // E-prime file format
+                var events = parseEprimeTimingFiles(data)
+            } else {
+                // "Regular" file format (.csv .tsv .txt .out)
+                var sep = find_separator(file.path) // Read timing file(s) data
+                var events = parseTimingFiles(data, sep);
+            }
+        }
+
+        // Determine mapping of event file(s) to subject,session,task,run
+        const subMappingKeys = ["sub", "subid", "subname", "subj", "subjid", "subjname", "subject", "subjectid", "subjectname", "participant", "participantid", "participantname"]
+        const sesMappingKeys = ["ses", "sesid", "sesname", "sess", "sessid", "sessname", "session", "sessionid", "sessionname"]
+        const taskMappingKeys = ["exp", "expid", "expname", "task", "taskid", "taskname", "experiment", "experimentid", "experimentname"]
+        const runMappingKeys = ["run", "runid", "runname"]
+
+        const eventsMappingInfo =   {   
+                                        "subject": {"MappingKeys": subMappingKeys, "value": ""},
+                                        "session": {"MappingKeys": sesMappingKeys, "value": ""},
+                                        "task": {"MappingKeys": taskMappingKeys, "value": ""},
+                                        "run": {"MappingKeys": runMappingKeys, "value": ""}
+                                    }
+
+        // 1st stage: examine header columns of event file(s) to see if helpful information is contained there
+        Object.keys(eventsMappingInfo).forEach(key=>{
+            const match = Object.keys(events[0]).map(item=>item.toLowerCase().replace(/[^0-9a-z]/gi, '')).filter(item=>eventsMappingInfo[key]["MappingKeys"].includes(item))[0]
+            const value = mode(events.map(e=>e[match]))
+            eventsMappingInfo[key]["value"] = value
+        });
+
+        // 2nd stage: examine file path for helpful information
+        Object.keys(eventsMappingInfo).forEach(key=>{
+            if (eventsMappingInfo[key]["value"] == undefined) {
+                if (eventsMappingInfo[key]["MappingKeys"].some(item=>file.path.toLowerCase().includes(item))) {
+                    const substring = eventsMappingInfo[key]["MappingKeys"].filter(item=>file.path.toLowerCase().includes(item)).slice(-1)[0]
+                    eventsMappingInfo[key]["value"] = file.path.split(substring).slice(-1)[0].split(/[^0-9a-z]/).filter(e=>e != "")[0]
+                }
+            }
+        });
+
+        // 3rd stage: set task mapping info if unknown and number of dataset unique task entity labels is 1
+        if (eventsMappingInfo["task"]["value"] == undefined && uniqueTaskLabels.length == 1) {
+            eventsMappingInfo["task"]["value"] = uniqueTaskLabels[0]
+        }
+
+
+        // switch(inheritance_level) {
+        // case "Dataset":
+        //     // Do nothing
+        //     break;
+        // case "Subject":
+        //     console.log('do nothing')
+        //     break;
+        // case "Session":
+        //     console.log('do nothing')
+        //     break;
+        // case "Run":
+        //     console.log('do nothing')
+        //     break;
+
+        // }
+
+        
+        // //just pick a subject/session randomly for this sample
+        // const subject = ezbids.subjects[0].PatientInfo[0];
+        // const session = ezbids.subjects[0].sessions[0];
+
+        // const subject = ezbids.subjects.filter(e=>e.subject == eventsMappingInfo["subject"]["value"]).map(e=>e.subject)
+
+
+        // console.log(file.path)
+        // console.log(subject)
+
+
+        //register new event object using the info we gathered above
+        const object = Object.assign({
+            //"series_idx": 5, //DO I need to create a series to store this object?\
+            type: "func/events",
+            series_idx: null,
+
+            entities: {
+                "subject": eventsMappingInfo["subject"]["value"],
+                "session": eventsMappingInfo["session"]["value"],
+                "task": eventsMappingInfo["task"]["value"],
+                "run": eventsMappingInfo["run"]["value"]
+            },
+            "items": [],
+            //these aren't used, but I believe we have to initialize it
+            "analysisResults": {
+                section_ID: 1, //TODO we do need to set this so that this event object goes to the right section
+            },
+            "paths": [],
+            "validationErrors": [],
+        }, subject, session); //we need to set subject / session specific fields that we figured out earlier
+
+        //event object also need some item info!
+        object.items.push({
+            "name": fileExt,
+            events, //here goes the content of the event object parsed earlier
+            "path": file.path //let's use the original file path as "path" - although it's not..
+        });
+
+        const sidecar = {};
+
+        object.items.push({
+            "name": "json",
+            sidecar,
+            sidecar_json: JSON.stringify(sidecar),
+        });
+
+        eventObjects.push(object);
+    });
+
+    return eventObjects;
 }
 
-/* Try to determine key mapping information (subject, [session], taskName(s), run numbers for each task) 
-from the timing files.
-*/
-for (const [index, element] of timingInfo.entries()) {
-	var data = element.data[0]
+const output = createEventObjects(ezbids, files)
 
-	if (data.hasOwnProperty('subject')) {
-		timingInfo[index]['subject'] = data['subject']
-	} else if (data.hasOwnProperty('participant')) {
-		timingInfo[index]['subject'] = data['participant']
-	} else if (data.hasOwnProperty('participantid')) {
-		timingInfo[index]['subject'] = data['participantid']
-	} else {
-		timingInfo[index]['subject'] = null
-	}
-
-
-	if (data.hasOwnProperty('session')) {
-		timingInfo[index]['session'] = data['session']
-	} else if (data.hasOwnProperty('sessionid')) {
-		timingInfo[index]['session'] = data['sessionid']
-	} else if (data.hasOwnProperty('sesid')) {
-		timingInfo[index]['session'] = data['sesid']
-	} else if (data.hasOwnProperty('ses')) {
-		timingInfo[index]['session'] = data['ses']
-	} else {
-		timingInfo[index]['session'] = null
-	}
-
-
-	if (data.hasOwnProperty('task')) {
-		timingInfo[index]['task'] = data['task']
-	} else {
-		timingInfo[index]['task'] = null
-	}
-
-
-	if (data.hasOwnProperty('run')) {
-		timingInfo[index]['taskRun'] = data['run']
-	} else {
-		timingInfo[index]['taskRun'] = null
-	}
-
-
-	var modifiedFileName = timingInfo[index].filePath
-	/* If any mapping fields are null, check the UI info (root.json) for reference.
-	Use modifiedFileName to remove mapping info substrings if found, 
-	that way they don't overlap with other mapping info checks.
-	*/
-	if (timingInfo[index]['subject'] == null) {
-		if (rootInfo[index].subject != '' && modifiedFileName.indexOf(rootInfo[index].subject) > -1) {
-			timingInfo[index]['subject'] = rootInfo[index].subject
-			var modifiedFileName = modifiedFileName.replace(rootInfo[index].subject, '')
-		} else {
-			timingInfo[index]['subject'] = ''
-		}
-	}
-
-	if (timingInfo[index]['session'] == null) {
-		if (rootInfo[index].session != '' && modifiedFileName.indexOf(rootInfo[index].session) > -1) {
-			timingInfo[index]['session'] = rootInfo[index].session
-			var modifiedFileName = modifiedFileName.replace(rootInfo[index].session, '')
-		} else {
-			timingInfo[index]['session'] = ''
-		}
-	}
-
-	if (timingInfo[index]['task'] == null) {
-		if (rootInfo[index].task != '' && modifiedFileName.toLowerCase().indexOf(rootInfo[index].task) > -1) {
-			timingInfo[index]['task'] = rootInfo[index].task
-			var modifiedFileName = modifiedFileName.replace(rootInfo[index].task, '')
-		} else {
-			/* If there's only one non-rest task for the subject [and session],
-			then use that as the task name
-			*/
-			if (rootInfo[index].numTimeTasks == 1) {
-				timingInfo[index]['task'] = rootInfo[index].task
-			} else {
-				timingInfo[index]['task'] = ''
-			}
-		}
-	}
-
-	if (timingInfo[index]['taskRun'] == null) {
-		if (rootInfo[index].taskRun != '' && modifiedFileName.indexOf(rootInfo[index].taskRun) > -1) {
-			timingInfo[index]['taskRun'] = rootInfo[index].taskRun
-			var modifiedFileName = modifiedFileName.replace(rootInfo[index.task, ''])
-		} else {
-			timingInfo[index]['taskRun'] = ''
-		}
-	}
-}
+console.log(output)
