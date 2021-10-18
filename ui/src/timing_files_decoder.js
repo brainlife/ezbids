@@ -64,16 +64,25 @@ function parseEprimeTimingFiles(data, cb) {
 function parseTimingFiles(data, sep, cb) {
     const lines = data.trim().split(/\r|\n/).map(l=>l.trim().replace(/['"]+/g, ''));
     const trials = [];
-    const headers = lines.shift().split(sep);
+    var headers = lines.shift().split(sep);
+    // var headers = Object.keys(headers).forEach(item=>headers[item] === undefined ? delete headers[item] : {});
     const timing_info = []
 
     lines.forEach(line=>{
         const tokens = line.split(sep);
         const block = {};
         for(let i = 0;i < tokens.length; ++i) {
-            const k = headers[i].toLowerCase();
-            const v = tokens[i];
-            block[k] = v;
+            try {
+                const k = headers[i].toLowerCase();
+                const v = tokens[i];
+                block[k] = v;
+            } catch(err) {
+                const k = headers[i]
+                const v = tokens[i]
+                block[k] = v;
+            }
+
+            
         }
         trials.push(block);
     });
@@ -124,9 +133,11 @@ function mode(arr){
 }
 
 // const ezbids = require('/media/data/ezbids/fMRI_behavioral_timing_files/OpenScience/root.json')
-const ezbids = require('/media/data/ezbids/fMRI_behavioral_timing_files/WML/root.json')
+// const ezbids = require('/media/data/ezbids/fMRI_behavioral_timing_files/WML/root.json')
+const ezbids = require('/media/data/ezbids/fMRI_behavioral_timing_files/R01_HighSchool/root.json')
 // const files = require('/media/data/ezbids/fMRI_behavioral_timing_files/OpenScience/files_path.json')
-const files = require('/media/data/ezbids/fMRI_behavioral_timing_files/WML/files_path.json')
+// const files = require('/media/data/ezbids/fMRI_behavioral_timing_files/WML/files_path.json')
+const files = require('/media/data/ezbids/fMRI_behavioral_timing_files/R01_HighSchool/files_path.json')
 
 
 //this function receives files (an array of object containing fullpath and data. data is the actual file content of the file)
@@ -170,14 +181,21 @@ function createEventObjects(ezbids, files) {
     const eventObjects = []; //new event objects to add 
 
     // Determine number of subjects, sessions, event tasks (i.e. no rest), and event files
-    const numSubjects = ezbids.subjects.map(e=>e.exclude == false).length
-    const numSessions = ezbids.subjects.map(e=>e.sessions).flat().filter(e=>e.exclude == false).length
-    const numTaskRuns = ezbids.objects.map(e=>e._entities).filter(e=>(e.part == "" || e.part == "mag") && (e.task != "" && e.task != "rest" && e.task !== undefined)).length
-    const uniqueTaskLabels = Array.from(new Set(ezbids.objects.map(e=>e._entities).filter(e=>(e.part == "" || e.part == "mag") && (e.task != "" && e.task != "rest" && e.task !== undefined)).map(e=>e.task)))
+    const subjects = Array.from(new Set(ezbids.subjects.filter(e=>e.exclude == false).map(e=>e.subject)))
+    const sessions = Array.from(new Set(ezbids.subjects.map(e=>e.sessions)[0].filter(e=>e.exclude == false).map(e=>e.session)))
+    const tasks = Array.from(new Set(ezbids.objects.map(e=>e._entities).filter(e=>(e.part == "" || e.part == "mag") && (e.task != "" && e.task != "rest" && e.task !== undefined)).map(e=>e.task)))
+    const runs = Array.from(new Set(ezbids.objects.filter(e=>e._entities.task != "" && e._entities.task != "rest" && e._entities.task != undefined).map(e=>e._entities.run)))
+
+    // const numSubjects = ezbids.subjects.map(e=>e.exclude == false).length
+    // const numSessions = ezbids.subjects.map(e=>e.sessions).flat().filter(e=>e.exclude == false).length
+    // const numTaskRuns = ezbids.objects.map(e=>e._entities).filter(e=>(e.part == "" || e.part == "mag") && (e.task != "" && e.task != "rest" && e.task !== undefined)).length
     const numEventFiles = files.length
+    const uniqueSectionIDs = Array.from(new Set(ezbids.objects.map(e=>e.analysisResults.section_ID)))
+
+
 
     // Try to determine inheritance level (dataset, subject, session, or individual runs)
-    const occurrences = {"Dataset": 1, "Subject": numSubjects, "Session": numSessions, "Run": numTaskRuns}
+    const occurrences = {"Dataset": 1, "Subject": subjects.length, "Session": sessions.length, "Run": runs.length}
     const closest = Object.values(occurrences).reduce(function(prev, curr) {
         return Math.abs(curr - numEventFiles) < Math.abs(prev - numEventFiles) ? curr : prev
     });
@@ -191,6 +209,8 @@ function createEventObjects(ezbids, files) {
 
     // Sort through events file(s) list
     files.forEach(file=>{
+
+        // const file.path = file.path.replace(/\ /g, "\ ")
         
         const fileExt = file.path.split(".").pop();
         // console.log("event file detected:", file.path);
@@ -224,32 +244,91 @@ function createEventObjects(ezbids, files) {
         const runMappingKeys = ["run", "runid", "runname"]
 
         const eventsMappingInfo =   {   
-                                        "subject": {"MappingKeys": subMappingKeys, "value": ""},
-                                        "session": {"MappingKeys": sesMappingKeys, "value": ""},
-                                        "task": {"MappingKeys": taskMappingKeys, "value": ""},
-                                        "run": {"MappingKeys": runMappingKeys, "value": ""}
+                                        "subject": {"MappingKeys": subMappingKeys, "ezBIDSvalues": subjects, "eventsValue": ""},
+                                        "session": {"MappingKeys": sesMappingKeys, "ezBIDSvalues": sessions, "eventsValue": ""},
+                                        "task": {"MappingKeys": taskMappingKeys, "ezBIDSvalues": tasks, "eventsValue": ""},
+                                        "run": {"MappingKeys": runMappingKeys, "ezBIDSvalues": runs, "eventsValue": ""}
                                     }
 
-        // 1st stage: examine header columns of event file(s) to see if helpful information is contained there
+
+        var modifiedFilePath = file.path
+
         Object.keys(eventsMappingInfo).forEach(key=>{
+            // 1st stage: examine header columns and data of event file(s) to see if helpful information is contained there
             const match = Object.keys(events[0]).map(item=>item.toLowerCase().replace(/[^0-9a-z]/gi, '')).filter(item=>eventsMappingInfo[key]["MappingKeys"].includes(item))[0]
             const value = mode(events.map(e=>e[match]))
-            eventsMappingInfo[key]["value"] = value
-        });
+            eventsMappingInfo[key]["eventsValue"] = value
 
-        // 2nd stage: examine file path for helpful information
-        Object.keys(eventsMappingInfo).forEach(key=>{
-            if (eventsMappingInfo[key]["value"] == undefined) {
-                if (eventsMappingInfo[key]["MappingKeys"].some(item=>file.path.toLowerCase().includes(item))) {
-                    const substring = eventsMappingInfo[key]["MappingKeys"].filter(item=>file.path.toLowerCase().includes(item)).slice(-1)[0]
-                    eventsMappingInfo[key]["value"] = file.path.split(substring).slice(-1)[0].split(/[^0-9a-z]/).filter(e=>e != "")[0]
-                }
+            if (eventsMappingInfo["task"]["eventsValue"] == undefined) { // Look for task information in events file(s); other information too difficult to discern here
+                eventsMappingInfo["task"]["ezBIDSvalues"].forEach(taskItem=>{
+                    Object.values(mode(events)).forEach(eventsItem=>{
+                        if (eventsItem.toLowerCase().includes(taskItem.toLowerCase())) {
+                            eventsMappingInfo["task"]["eventsValue"] = taskItem
+                        }
+                    });
+                });
             }
+
+            // 2nd stage: examine file.path for helpful information
+            // if (eventsMappingInfo[key]["eventsValue"] == undefined) {
+            //     if (eventsMappingInfo[key]["MappingKeys"].some(item=>file.path.toLowerCase().includes(item))) {
+            //         const substring = eventsMappingInfo[key]["MappingKeys"].filter(item=>file.path.toLowerCase().includes(item)).slice(-1)[0]
+            //         eventsMappingInfo[key]["eventsValue"] = file.path.split(substring).slice(-1)[0].split(/[^0-9a-z]/).filter(e=>e != "")[0]
+            //     }
+            // }
+
+            // if (eventsMappingInfo[key]["eventsValue"] == undefined) {
+            //     var modifiedFilePath = file.path
+
+            //     Object.values(eventsMappingInfo[key]["ezBIDSvalues"]).forEach(value=>{
+            //         console.log(modifiedFilePath)
+            //         if (modifiedFilePath.includes(value)) {
+            //             eventsMappingInfo[key]["eventsValue"] = value
+            //             modifiedFilePath = modifiedFilePath.replace(value, "")
+            //         }
+            //     })
+
+            // }
+
+            // var modifiedFilePath = file.path
+
+            // 2nd stage: examine file.path for helpful information
+            Object.values(eventsMappingInfo[key]["ezBIDSvalues"]).forEach(value=>{
+                if (modifiedFilePath.toLowerCase().replace(/[^0-9a-z]/gi, '').includes(value)) {
+                    modifiedFilePath = modifiedFilePath.replace(value, "")
+                    if (eventsMappingInfo[key]["eventsValue"] == undefined) {
+                        eventsMappingInfo[key]["eventsValue"] = value
+                    }
+                }
+            })
+
+
+            // 3rd stage: if ezBIDSvalues lengths == 1, set those values to the corresponding eventsValue
+            if (eventsMappingInfo[key]["eventsValue"] == undefined && eventsMappingInfo[key]["ezBIDSvalues"].length == 1) {
+                eventsMappingInfo[key]["eventsValue"] = eventsMappingInfo[key]["ezBIDSvalues"][0]
+            }        
         });
 
-        // 3rd stage: set task mapping info if unknown and number of dataset unique task entity labels is 1
-        if (eventsMappingInfo["task"]["value"] == undefined && uniqueTaskLabels.length == 1) {
-            eventsMappingInfo["task"]["value"] = uniqueTaskLabels[0]
+
+        console.log(file.path)
+        console.log(eventsMappingInfo)
+
+
+        
+
+
+
+        
+
+
+
+
+        // Determine section_ID that events object pertains to
+        if (uniqueSectionIDs.length == 1) {
+            section_ID = uniqueSectionIDs[0]
+        } else { // multiple section_IDs; should be able to determine which func/bold the event goes to and use that section_ID
+            section_ID = ""
+
         }
 
 
@@ -273,8 +352,10 @@ function createEventObjects(ezbids, files) {
         // //just pick a subject/session randomly for this sample
         // const subject = ezbids.subjects[0].PatientInfo[0];
         // const session = ezbids.subjects[0].sessions[0];
+        const subject = '01'
+        const session = '01'
 
-        // const subject = ezbids.subjects.filter(e=>e.subject == eventsMappingInfo["subject"]["value"]).map(e=>e.subject)
+        // const subject = ezbids.subjects.filter(e=>e.subject == eventsMappingInfo["subject"]["eventsValue"]).map(e=>e.subject)
 
 
         // console.log(file.path)
@@ -288,15 +369,15 @@ function createEventObjects(ezbids, files) {
             series_idx: null,
 
             entities: {
-                "subject": eventsMappingInfo["subject"]["value"],
-                "session": eventsMappingInfo["session"]["value"],
-                "task": eventsMappingInfo["task"]["value"],
-                "run": eventsMappingInfo["run"]["value"]
+                "subject": eventsMappingInfo["subject"]["eventsValue"],
+                "session": eventsMappingInfo["session"]["eventsValue"],
+                "task": eventsMappingInfo["task"]["eventsValue"],
+                "run": eventsMappingInfo["run"]["eventsValue"]
             },
             "items": [],
             //these aren't used, but I believe we have to initialize it
             "analysisResults": {
-                section_ID: 1, //TODO we do need to set this so that this event object goes to the right section
+                section_ID: section_ID, //TODO we do need to set this so that this event object goes to the right section
             },
             "paths": [],
             "validationErrors": [],
@@ -306,7 +387,7 @@ function createEventObjects(ezbids, files) {
         object.items.push({
             "name": fileExt,
             events, //here goes the content of the event object parsed earlier
-            "path": file.path //let's use the original file path as "path" - although it's not..
+            "path": file.path //let's use the original file.path as "path" - although it's not..
         });
 
         const sidecar = {};
@@ -325,4 +406,4 @@ function createEventObjects(ezbids, files) {
 
 const output = createEventObjects(ezbids, files)
 
-console.log(output)
+// console.log(output)
