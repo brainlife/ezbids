@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 
+import Components from 'unplugin-vue-components/vite'
+import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
+
 /*
 const vueI18nPlugin = {
   name: 'vue-i18n',
@@ -20,7 +23,12 @@ const vueI18nPlugin = {
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [vue(), /*vueI18nPlugin*/],
+  plugins: [
+      vue(), /*vueI18nPlugin*/
+      Components({
+        resolvers: [ElementPlusResolver()],
+      }),
+  ],
   build: {
     sourcemap: true,
   }

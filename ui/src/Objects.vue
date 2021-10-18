@@ -61,79 +61,77 @@
         <div v-if="so && sess">
    
             <el-form label-width="200px">
-                <div :class="{'exclude': isExcluded(so)}">
-                    <el-form-item label="Series Desc">
-                        {{so._SeriesDescription}}
-                    </el-form-item>
-                    <el-form-item>
-                        <el-checkbox v-model="so.exclude" @change="validate(so)">Exclude this object</el-checkbox>
-                    </el-form-item>
+                <el-form-item>
+                    <el-checkbox v-model="so.exclude" @change="validate(so)">Exclude this object</el-checkbox>
+                </el-form-item>
+                <div style="margin-bottom: 5px;" v-if="isExcluded(so)">
+                    <el-alert :closable="false" type="info">This object will be excluded from the BIDS output</el-alert>
+                </div>
+                <el-form-item label="Series Desc" v-if="so.series_idx">
+                    {{so._SeriesDescription}}
+                </el-form-item>
 
-                    <!--messagess-->
-                    <div style="margin-bottom: 5px;" v-if="isExcluded(so)">
-                        <el-alert :closable="false" type="info">This object will be excluded from the BIDS output</el-alert>
-                    </div>
-                    <div style="margin-bottom: 5px;">
-                        <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in so.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
-                     </div>
-                    <div style="margin-bottom: 5px;">
-                        <el-alert show-icon :closable="false" type="warning" v-for="(error, idx) in so.analysisResults.errors" :key="idx" :title="error"/>
-                    </div> 
+                <!--messagess-->
+                <div style="margin-bottom: 5px;">
+                    <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in so.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
+                 </div>
+                <div style="margin-bottom: 5px;">
+                    <el-alert show-icon :closable="false" type="warning" v-for="(error, idx) in so.analysisResults.errors" :key="idx" :title="error"/>
+                </div> 
 
-                    <el-form-item label="Datatype">
-                        <el-select v-model="so.type" clearable :placeholder="so._type" size="small" style="width: 100%" @change="update(so)">
-                            <el-option value="">(Use Series Default)</el-option>
-                            <el-option-group v-for="type in bidsSchema.datatypes" :key="type.label" :label="type.label">
-                                <el-option v-for="subtype in type.options" :key="subtype.value" :value="subtype.value">
-                                    {{type.label}} / {{subtype.label}}
-                                </el-option>
-                            </el-option-group>
+                <el-form-item label="Datatype">
+                    <el-select v-model="so.type" clearable :placeholder="so._type" size="small" style="width: 100%" @change="update(so)">
+                        <el-option value="">(Use Series Default)</el-option>
+                        <el-option-group v-for="type in bidsSchema.datatypes" :key="type.label" :label="type.label">
+                            <el-option v-for="subtype in type.options" :key="subtype.value" :value="subtype.value">
+                                {{type.label}} / {{subtype.label}}
+                            </el-option>
+                        </el-option-group>
+                    </el-select>
+                </el-form-item>
+
+                <div style="width: 350px;">
+                    
+                    <el-form-item v-for="(v, entity) in getBIDSEntities(so._type)" :key="entity" 
+                        :label="bidsSchema.entities[entity].name+(v=='required'?'- *':'-')">
+                        <el-popover width="300" trigger="focus" placement="right-start"
+                            :title="bidsSchema.entities[entity].name" 
+                            :content="bidsSchema.entities[entity].description">
+                            <template #reference>
+                                <el-input v-model="so.entities[entity]" size="small" @blur="update(so)" 
+                                    :placeholder="getDefault(so, entity.toString())" style="width: 200px;"/>
+                            </template>
+                        </el-popover>
+                    </el-form-item>
+                </div>
+
+                <div v-if="so._type.startsWith('fmap/')" class="border-top">
+                    <br>
+                    <el-form-item label="IntendedFor">
+                        <el-select v-model="so.IntendedFor" multiple placeholder="Select Object" style="width: 100%" @change="update(so)">
+                            <el-option v-for="o in sess.objects.filter(o=>!isExcluded(o))" :key="o.idx"
+                                :label="intendedForLabel(o)" :value="o.idx">
+                            </el-option>
                         </el-select>
                     </el-form-item>
+                    <p style="margin-left: 200px;">
+                        <small>* IntendedFor information is used to specify which epi image this fieldmap is intended for. This is an important information required by BIDS specification.</small>
+                    </p>
+                </div>
 
-                    <div style="width: 350px;">
-                        
-                        <el-form-item v-for="(v, entity) in getBIDSEntities(so._type)" :key="entity" 
-                            :label="bidsSchema.entities[entity].name+(v=='required'?'- *':'-')">
-                            <el-popover width="300" trigger="focus" placement="right-start"
-                                :title="bidsSchema.entities[entity].name" 
-                                :content="bidsSchema.entities[entity].description">
-                                <template #reference>
-                                    <el-input v-model="so.entities[entity]" size="small" @blur="update(so)" 
-                                        :placeholder="getDefault(so, entity.toString())" style="width: 200px;"/>
-                                </template>
-                            </el-popover>
-                        </el-form-item>
-                    </div>
-
-                    <div v-if="so._type.startsWith('fmap/')" class="border-top">
-                        <br>
-                        <el-form-item label="IntendedFor">
-                            <el-select v-model="so.IntendedFor" multiple placeholder="Select Object" style="width: 100%" @change="update(so)">
-                                <el-option v-for="o in sess.objects.filter(o=>!isExcluded(o))" :key="o.idx"
-                                    :label="intendedForLabel(o)" :value="o.idx">
-                                </el-option>
-                            </el-select>
-                        </el-form-item>
-                        <p style="margin-left: 200px;">
-                            <small>* IntendedFor information is used to specify which epi image this fieldmap is intended for. This is an important information required by BIDS specification.</small>
-                        </p>
-                    </div>
-
-                    <div v-for="(item, idx) in so.items" :key="idx" class="border-top">
-                        <el-form-item :label="item.name||'noname'">
-                            <el-select v-model="item.path" placeholder="Source path" size="small" style="width: 100%">
-                                <el-option v-for="(path, idx) in so.paths" :key="idx" :label="path" :value="path"/>
-                            </el-select>
-                        </el-form-item>
-                        <el-form-item v-if="item.sidecar" label="sidecar">
-                            <el-input type="textarea" rows="10" v-model="item.sidecar_json" @blur="update(so)"/>
-                        </el-form-item>
-                        <el-form-item v-if="item.headers" label="Nifti Headers (readonly)">
-                            <pre class="headers">{{item.headers}}</pre>
-                        </el-form-item>
-                        <br>
-                    </div>
+                <div v-for="(item, idx) in so.items" :key="idx" class="border-top">
+                    <el-form-item :label="item.name||'noname'">
+                        <el-select v-model="item.path" placeholder="Source path" size="small" style="width: 100%">
+                            <el-option v-for="(path, idx) in so.paths" :key="idx" :label="path" :value="path"/>
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item v-if="item.sidecar" label="sidecar">
+                        <el-input type="textarea" rows="10" v-model="item.sidecar_json" @blur="update(so)"/>
+                    </el-form-item>
+                    <el-form-item v-if="item.headers" label="Nifti Headers (readonly)">
+                        <pre class="headers">{{item.headers}}</pre>
+                    </el-form-item>
+                    <br>
                 </div>
 
                 <div style="margin-top: 5px; padding: 5px; background-color: #f0f0f0;" v-if="so.analysisResults.filesize">
@@ -448,17 +446,11 @@ export default defineComponent({
 .selected {
     background-color: #d9ecff;
 }
-.exclude {
-    opacity: 0.2;
-}
 .left-border {
     margin-left: 8.5px; 
     padding-left: 4px; 
     border-left: 2px solid #3331;
     padding-top: 4px;
-}
-.exclude {
-    opacity: 0.6;
 }
 .sub-title {
     font-size: 85%;

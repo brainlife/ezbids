@@ -56,8 +56,7 @@ for(let rec of tsv) {
 fs.closeSync(tsvf);
 
 //handle each objects
-console.log("outputting objects");
-async.forEach(info.objects, (o, next_o)=>{
+async.forEachOf(info.objects, (o, idx, next_o)=>{
     /*
     if(o._exclude) {
         o._type = "excluded/obj"+o.idx;
@@ -82,7 +81,7 @@ async.forEach(info.objects, (o, next_o)=>{
     if(o._exclude) {
         //excluded object doesn't have to be validated, so some of the item might collide..
         //let's prevent it by setting some artificial tag
-        tokens.push("ezbids-"+o.idx);
+        tokens.push("ezbids-"+idx);
     }
 
     const name = tokens.join("_");
@@ -283,7 +282,6 @@ async.forEach(info.objects, (o, next_o)=>{
                 if(o.IntendedFor) {
                     item.sidecar.IntendedFor = [];
                     for(let idx of o.IntendedFor) {
-                        console.log("intended for", idx);
                         const io = info.objects[idx];
 
                         //this should not happen, but ezBIDS.json could be corrupted..
@@ -298,7 +296,6 @@ async.forEach(info.objects, (o, next_o)=>{
                         //doesn't make sense to intentend for its own object (I don't think this ever happens)
                         //if(io == o) continue;
 
-                        console.log("intended for", io._type);
                         const iomodality = io._type.split("/")[0];
                         const suffix = io._type.split("/")[1];
 
@@ -376,15 +373,14 @@ async.forEach(info.objects, (o, next_o)=>{
     case "dwi":
         handleDwi();
         break;
-    /*
-    case "excluded":
+
+    case "exclude":
         o.items.forEach((item, idx)=>{
             //sub-OpenSciJan22_desc-localizer_obj5-0.json
-            //TODO - whty do I need to add idx?
-            handleItem(item, suffix+"-"+idx+"."+item.name);
+            handleItem(item, "excluded."+item.name);
         });
         break;
-    */
+
     default:
         console.error("unknown datatype:"+o._type);
     }

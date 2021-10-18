@@ -161,15 +161,15 @@ export default defineComponent({
         //apply parent level entities from series / subject on to object.
         //but.. we want to preserve the information set on object itself, so let's stored flatten information on _entities instead of
         //directly applying them to entities.
-        mapObject(o: IObject) {
-            o._exclude = o.exclude;                                                                                        
+        mapObject(o: IObject) {    
+
             const series = this.$store.state.ezbids.series[o.series_idx]; 
             if(series) {   
                 //func/events doesn't have any series
                 o._SeriesDescription = series.SeriesDescription.replace('_RR', ""); //helps in objects view
                 o._type = series.type;                                                                                         
                 o._forType = series.forType; 
-            }                                                                                  
+            }
             if(o.type) o._type = o.type; //object level override                                                           
                                                                                                                            
             //clone bids entity for this _type to preserve proper key ordering                                                               
@@ -183,7 +183,10 @@ export default defineComponent({
             for(let k in o.entities) {                                                                                  
                 if(o.entities[k]) e[k] = o.entities[k];                                                                 
             }                                                                                
-                                                                                                                        
+                                                   
+            o._exclude = o.exclude;
+            if(o._type == "exclude") o._exclude = true;     
+            
             const subject = this.findSubject(o);                                                              
             if(subject.exclude) o._exclude = true;                                                                     
                                                                           
@@ -201,6 +204,8 @@ export default defineComponent({
             }                                                                                                           
                                                                                                                         
             o._entities = e; 
+
+            console.log("mapping", o._exclude);
         },
     }
 });

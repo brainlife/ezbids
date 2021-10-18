@@ -3,8 +3,8 @@ import { createApp } from 'vue'
 import VueGtag from 'vue-gtag-next'
 
 import App from './App.vue'
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
+//import ElementPlus from 'element-plus'
+//import 'element-plus/dist/index.css'
 
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 import { library } from "@fortawesome/fontawesome-svg-core"
@@ -25,7 +25,7 @@ declare module '@vue/runtime-core' {
 
 const app = createApp(App);
 app.use(store)
-app.use(ElementPlus)
+//app.use(ElementPlus)
 app.use(VueGtag, {
     property: {
       id: "UA-118407195-1"
