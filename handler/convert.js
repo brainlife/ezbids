@@ -52,12 +52,10 @@ for (let rec of tsv) {
 fs.closeSync(tsvf);
 //handle each objects
 async.forEachOf(info.objects, (o, idx, next_o) => {
-    /*
-    if(o._exclude) {
-        o._type = "excluded/obj"+o.idx;
+    if (o._type == "exclude" || o._exclude) {
+        o._type = "excluded/obj" + o.idx;
         o._entities.description = o._SeriesDescription; //inject seriesdesc to filename
     }
-    */
     let typeTokens = o._type.split("/");
     let modality = typeTokens[0]; //func, dwi, anat, etc.. (or exclude)
     let suffix = typeTokens[1]; //t1w, bold, or "objN" for exclude)
@@ -83,12 +81,7 @@ async.forEachOf(info.objects, (o, idx, next_o) => {
         path += "/sub-" + o._entities.subject;
         if (o._entities.session)
             path += "/ses-" + o._entities.session;
-        if (o._exclude) {
-            path += "/excluded";
-        }
-        else {
-            path += "/" + modality;
-        }
+        path += "/" + modality;
         return path;
     }
     function handleItem(item, filename, derivatives = null) {
@@ -358,7 +351,7 @@ async.forEachOf(info.objects, (o, idx, next_o) => {
         case "dwi":
             handleDwi();
             break;
-        case "exclude":
+        case "excluded":
             o.items.forEach((item, idx) => {
                 //sub-OpenSciJan22_desc-localizer_obj5-0.json
                 handleItem(item, "excluded." + item.name);

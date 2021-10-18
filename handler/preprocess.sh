@@ -70,8 +70,6 @@ if [ ! -s $root/list ]; then
     exit 1
 fi
 
-echo "here we go!"
-
 echo "running analyzer (should only take a minute)"
 timeout 600 ./analyzer/run.sh $root
 

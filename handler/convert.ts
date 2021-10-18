@@ -57,12 +57,11 @@ fs.closeSync(tsvf);
 
 //handle each objects
 async.forEachOf(info.objects, (o, idx, next_o)=>{
-    /*
-    if(o._exclude) {
+
+    if(o._type == "exclude" || o._exclude) {
         o._type = "excluded/obj"+o.idx;
         o._entities.description = o._SeriesDescription; //inject seriesdesc to filename
     }
-    */
 
     let typeTokens = o._type.split("/");
     let modality = typeTokens[0]; //func, dwi, anat, etc.. (or exclude)
@@ -91,11 +90,7 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
         if(derivatives) path += "/derivatives/"+derivatives;
         path += "/sub-"+o._entities.subject;
         if(o._entities.session) path += "/ses-"+o._entities.session;
-        if(o._exclude) {
-            path += "/excluded";
-        } else {
-            path += "/"+modality; 
-        }
+        path += "/"+modality; 
 
         return path;
     }
@@ -374,7 +369,7 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
         handleDwi();
         break;
 
-    case "exclude":
+    case "excluded":
         o.items.forEach((item, idx)=>{
             //sub-OpenSciJan22_desc-localizer_obj5-0.json
             handleItem(item, "excluded."+item.name);
