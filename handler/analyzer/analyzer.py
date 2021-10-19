@@ -378,11 +378,9 @@ def generate_dataset_list(uploaded_files_list):
         if "AcquisitionDateTime" in json_data:
             acquisition_date = json_data["AcquisitionDateTime"].split("T")[0]
             acquisition_time = json_data["AcquisitionDateTime"].split("T")[-1]
-            modified_time = int(re.sub(r'[^a-zA-Z0-9]', '',  acquisition_time))
         else:
             acquisition_date = "0000-00-00"
             acquisition_time = None
-            modified_time = 0
 
         # Find RepetitionTime
         if "RepetitionTime" in json_data:
@@ -420,6 +418,7 @@ def generate_dataset_list(uploaded_files_list):
         # Relative paths of json and nifti files (per SeriesNumber)
         paths = sorted(nifti_paths_for_json + [json_file])
 
+
         # Organize all from individual SeriesNumber in dictionary
         acquisition_info_directory = {
             "StudyID": study_id,
@@ -433,7 +432,6 @@ def generate_dataset_list(uploaded_files_list):
             "SeriesNumber": json_data["SeriesNumber"],
             "AcquisitionDate": acquisition_date,
             "AcquisitionTime": acquisition_time,
-            "ModifiedTime": modified_time,
             "SeriesDescription": json_data["SeriesDescription"],
             "ProtocolName": json_data["ProtocolName"],
             "ImageType": json_data["ImageType"],
@@ -469,6 +467,8 @@ def generate_dataset_list(uploaded_files_list):
     SeriesNumber, and json_path. """
     dataset_list = sorted(dataset_list, key=itemgetter("subject",
                                                        "AcquisitionDate",
+                                                       "AcquisitionTime",
+                                                       "session",
                                                        "SeriesNumber",
                                                        "json_path"))
 
@@ -505,7 +505,6 @@ def determine_subj_ses_IDs(dataset_list):
                              "PatientBirthDate":x["PatientBirthDate"],
                              "AcquisitionDate":x["AcquisitionDate"],
                              "AcquisitionTime":x["AcquisitionTime"],
-                             "ModifiedTime":x["ModifiedTime"],
                              "session":x["session"],
                              "phenotype":{
                                  "sex":x["PatientSex"],
@@ -514,19 +513,26 @@ def determine_subj_ses_IDs(dataset_list):
                              "sessions": [],
                              "validationErrors": []} for x in dataset_list)
 
-    # Sort by subject, AcquisitionDate, and ModifiedTime
+
+    # Sort by subject, AcquisitionDate, and AcquisitionTime
     subject_ids_info = sorted(subject_ids_info, key=itemgetter("subject",
                                                    "AcquisitionDate",
-                                                   "ModifiedTime"))
+                                                   "AcquisitionTime",
+                                                   "session"))
+
+
     # Create modified list of dictionary with unique subject and Acquisition values
     subject_ids_info_mod = list({(v["subject"], v["PatientName"],
                                   v["PatientID"], v["session"],
                                   v["AcquisitionDate"]):v for v in
                                  subject_ids_info}.values())
 
+
+
     """ Create list of dictionaries with unique subject values. This list of
     dictionaries will be used by ezBIDS UI. """
     subject_ids_info = list({v["subject"]:v for v in subject_ids_info}.values())
+
 
     # Unique subject IDs in dataset
     subj_ids = [x["subject"] for x in subject_ids_info]
@@ -546,6 +552,7 @@ def determine_subj_ses_IDs(dataset_list):
             participant_name_id.append({"PatientName": subject_ids_info_mod[subj_index]["PatientName"],
                                         "PatientID": subject_ids_info_mod[subj_index]["PatientID"],
                                         "PatientBirthDate": subject_ids_info_mod[subj_index]["PatientBirthDate"]})
+
             """ For session ID, either use what was previously determined, or
             go by numeric chronological order """
             if len(subject_indices) > 1:
@@ -577,17 +584,17 @@ def determine_subj_ses_IDs(dataset_list):
         del dic["PatientBirthDate"]
         del dic["AcquisitionDate"]
         del dic["AcquisitionTime"]
-        del dic["ModifiedTime"]
         del dic["PatientName"]
         del dic["PatientID"]
         del dic["session"]
+
 
     # Add the session ID to the dataset_list dictionaries (i.e. each acquisition)
     for acquisition_dic in dataset_list:
         for subject_dic in subject_ids_info:
             if subject_dic["subject"] == acquisition_dic["subject"] and len(subject_dic["sessions"]) > 1:
                 for session in subject_dic["sessions"]:
-                    if acquisition_dic["AcquisitionDate"] == session["AcquisitionDate"]:
+                    if acquisition_dic["AcquisitionDate"] == session["AcquisitionDate"] and acquisition_dic["AcquisitionTime"] == session["AcquisitionTime"] :
                         acquisition_dic["session"] = session["session"]
 
     return dataset_list, subject_ids_info
@@ -1191,7 +1198,7 @@ def modify_objects_info(dataset_list):
                          and x["session"] == unique_subj_ses[1]]
 
         # sort scan protocol
-        sorted(scan_protocol, key=itemgetter("ModifiedTime","series_idx"))
+        sorted(scan_protocol, key=itemgetter("AcquisitionDate", "AcquisitionTime", "series_idx"))
 
         section_id = 1
         objects_data = []
