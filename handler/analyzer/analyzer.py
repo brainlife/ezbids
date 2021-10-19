@@ -38,6 +38,7 @@ entities_yaml = yaml.load(open("../bids-specification/src/schema/objects/entitie
 suffixes_yaml = yaml.load(open("../bids-specification/src/schema/objects/suffixes.yaml"))
 datatype_suffix_rules = "../bids-specification/src/schema/rules/datatypes"
 
+
 start_time = time.time()
 analyzer_dir = os.getcwd()
 os.chdir(DATA_DIR)
@@ -1189,16 +1190,19 @@ def modify_objects_info(dataset_list):
     objects_list = []
 
     # Find unique subject/session pairs in dataset and sort them
-    subj_ses_pairs = [[x["subject"], x["session"]] for x in dataset_list]
+    subj_ses_pairs = [[x["AcquisitionDate"], x["subject"], x["session"]] for x in dataset_list]
     unique_subj_ses_pairs = sorted([list(i) for i in set(tuple(i) for i in subj_ses_pairs)])
 
     for unique_subj_ses in unique_subj_ses_pairs:
         scan_protocol = [x for x in dataset_list
-                         if x["subject"] == unique_subj_ses[0]
-                         and x["session"] == unique_subj_ses[1]]
+                         if x["AcquisitionDate"] == unique_subj_ses[0]
+                         and x["subject"] == unique_subj_ses[1]
+                         and x["session"] == unique_subj_ses[2]
+                        ]
 
-        # sort scan protocol
-        sorted(scan_protocol, key=itemgetter("AcquisitionDate", "AcquisitionTime", "series_idx"))
+        # sort scan protocol by SeriesNumber and AcquisitionTime
+        scan_protocol = sorted(scan_protocol, key=itemgetter("SeriesNumber",
+                                                             "AcquisitionTime"))
 
         section_id = 1
         objects_data = []
@@ -1387,6 +1391,7 @@ objects_list = modify_objects_info(dataset_list)
 # Map unique series IDs to all other acquisitions in dataset that have those parameters
 for index, unique_dic in enumerate(dataset_list_unique_series):
     dataset_list_unique_series[index]["object_indices"] = [x for x in range(len(objects_list)) if objects_list[x]["series_idx"] == dataset_list_unique_series[index]["series_idx"]]
+
     print(" ".join("Unique data acquisition file {}, \
         Series Description {}, \
         was determined to be {}, \
