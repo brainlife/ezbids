@@ -6,20 +6,20 @@ const path = require('path')
 const $rootDir = '' // Need to get value from ezBIDS UI
 
 
-function find_separator(FileName) {
-	if (FileName.indexOf('.tsv') > -1) {
+function find_separator(filePath) {
+	if (filePath.indexOf('.tsv') > -1) {
 		var separator = /[ \t]+/;
-	} else if (FileName.indexOf('.out') > -1 || FileName.indexOf('.csv') > -1)  {
+	} else if (filePath.indexOf('.out') > -1 || filePath.indexOf('.csv') > -1)  {
 		var separator = /[ ,]+/;
-	} else if (FileName.indexOf('.txt') > -1) {
-		const data = fs.readFileSync(FileName, "utf8")
+	} else if (filePath.indexOf('.txt') > -1) {
+		const data = fs.readFileSync(filePath, "utf8")
 		const lines = data.trim().split("\n").map(l=>l.trim());
 		if (lines[0].indexOf(',') > -1) {
 			var separator = /[ ,]+/;
 		} else {
 			var separator = /[ \t]+/;
 		}
-	} else if (FileName.indexOf('.xlsx') > -1) {
+	} else if (filePath.indexOf('.xlsx') > -1) {
 		var separator = /[ ,]+/;
 	}
 
@@ -65,7 +65,6 @@ function parseTimingFiles(data, sep, cb) {
     const lines = data.trim().split(/\r|\n/).map(l=>l.trim().replace(/['"]+/g, ''));
     const trials = [];
     var headers = lines.shift().split(sep);
-    // var headers = Object.keys(headers).forEach(item=>headers[item] === undefined ? delete headers[item] : {});
     const timing_info = []
 
     lines.forEach(line=>{
@@ -133,11 +132,11 @@ function mode(arr){
 }
 
 // const ezbids = require('/media/data/ezbids/fMRI_behavioral_timing_files/OpenScience/root.json')
-// const ezbids = require('/media/data/ezbids/fMRI_behavioral_timing_files/WML/root.json')
-const ezbids = require('/media/data/ezbids/fMRI_behavioral_timing_files/R01_HighSchool/root.json')
+const ezbids = require('/media/data/ezbids/fMRI_behavioral_timing_files/WML/root.json')
+// const ezbids = require('/media/data/ezbids/fMRI_behavioral_timing_files/R01_HighSchool/root.json')
 // const files = require('/media/data/ezbids/fMRI_behavioral_timing_files/OpenScience/files_path.json')
-// const files = require('/media/data/ezbids/fMRI_behavioral_timing_files/WML/files_path.json')
-const files = require('/media/data/ezbids/fMRI_behavioral_timing_files/R01_HighSchool/files_path.json')
+const files = require('/media/data/ezbids/fMRI_behavioral_timing_files/WML/files_path.json')
+// const files = require('/media/data/ezbids/fMRI_behavioral_timing_files/R01_HighSchool/files_path.json')
 
 
 //this function receives files (an array of object containing fullpath and data. data is the actual file content of the file)
@@ -185,13 +184,8 @@ function createEventObjects(ezbids, files) {
     const sessions = Array.from(new Set(ezbids.subjects.map(e=>e.sessions)[0].filter(e=>e.exclude == false).map(e=>e.session)))
     const tasks = Array.from(new Set(ezbids.objects.map(e=>e._entities).filter(e=>(e.part == "" || e.part == "mag") && (e.task != "" && e.task != "rest" && e.task !== undefined)).map(e=>e.task)))
     const runs = Array.from(new Set(ezbids.objects.filter(e=>e._entities.task != "" && e._entities.task != "rest" && e._entities.task != undefined).map(e=>e._entities.run)))
-
-    // const numSubjects = ezbids.subjects.map(e=>e.exclude == false).length
-    // const numSessions = ezbids.subjects.map(e=>e.sessions).flat().filter(e=>e.exclude == false).length
-    // const numTaskRuns = ezbids.objects.map(e=>e._entities).filter(e=>(e.part == "" || e.part == "mag") && (e.task != "" && e.task != "rest" && e.task !== undefined)).length
     const numEventFiles = files.length
     const uniqueSectionIDs = Array.from(new Set(ezbids.objects.map(e=>e.analysisResults.section_ID)))
-
 
 
     // Try to determine inheritance level (dataset, subject, session, or individual runs)
@@ -204,13 +198,12 @@ function createEventObjects(ezbids, files) {
     Chance that multiple occurrences values could be the same, therefore, default to lowest level.
     Assumption is that the lower the level, the more common it is.
     */
-
     const inheritance_level = Object.keys(occurrences).filter(key=>occurrences[key] == closest).slice(-1)[0]
+
+    const regEscape = v=>v.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
 
     // Sort through events file(s) list
     files.forEach(file=>{
-
-        // const file.path = file.path.replace(/\ /g, "\ ")
         
         const fileExt = file.path.split(".").pop();
         // console.log("event file detected:", file.path);
@@ -232,7 +225,7 @@ function createEventObjects(ezbids, files) {
                 var events = parseEprimeTimingFiles(data)
             } else {
                 // "Regular" file format (.csv .tsv .txt .out)
-                var sep = find_separator(file.path) // Read timing file(s) data
+                var sep = find_separator(file.path) // Read events file(s) data
                 var events = parseTimingFiles(data, sep);
             }
         }
@@ -244,10 +237,10 @@ function createEventObjects(ezbids, files) {
         const runMappingKeys = ["run", "runid", "runname"]
 
         const eventsMappingInfo =   {   
-                                        "subject": {"MappingKeys": subMappingKeys, "ezBIDSvalues": subjects, "eventsValue": ""},
-                                        "session": {"MappingKeys": sesMappingKeys, "ezBIDSvalues": sessions, "eventsValue": ""},
-                                        "task": {"MappingKeys": taskMappingKeys, "ezBIDSvalues": tasks, "eventsValue": ""},
-                                        "run": {"MappingKeys": runMappingKeys, "ezBIDSvalues": runs, "eventsValue": ""}
+                                        "subject": {"MappingKeys": subMappingKeys, "ezBIDSvalues": subjects, "eventsValue": "", "detectionMethod": ""},
+                                        "session": {"MappingKeys": sesMappingKeys, "ezBIDSvalues": sessions, "eventsValue": "", "detectionMethod": ""},
+                                        "task": {"MappingKeys": taskMappingKeys, "ezBIDSvalues": tasks, "eventsValue": "", "detectionMethod": ""},
+                                        "run": {"MappingKeys": runMappingKeys, "ezBIDSvalues": runs, "eventsValue": "", "detectionMethod": ""}
                                     }
 
 
@@ -258,70 +251,50 @@ function createEventObjects(ezbids, files) {
             const match = Object.keys(events[0]).map(item=>item.toLowerCase().replace(/[^0-9a-z]/gi, '')).filter(item=>eventsMappingInfo[key]["MappingKeys"].includes(item))[0]
             const value = mode(events.map(e=>e[match]))
             eventsMappingInfo[key]["eventsValue"] = value
-
+            eventsMappingInfo[key]["detectionMethod"] = 1
             if (eventsMappingInfo["task"]["eventsValue"] == undefined) { // Look for task information in events file(s); other information too difficult to discern here
                 eventsMappingInfo["task"]["ezBIDSvalues"].forEach(taskItem=>{
                     Object.values(mode(events)).forEach(eventsItem=>{
                         if (eventsItem.toLowerCase().includes(taskItem.toLowerCase())) {
                             eventsMappingInfo["task"]["eventsValue"] = taskItem
+                            eventsMappingInfo[key]["detectionMethod"] = 1
                         }
                     });
                 });
             }
 
-            // 2nd stage: examine file.path for helpful information
+            // 2nd stage: examine file path for helpful information
             // if (eventsMappingInfo[key]["eventsValue"] == undefined) {
-            //     if (eventsMappingInfo[key]["MappingKeys"].some(item=>file.path.toLowerCase().includes(item))) {
-            //         const substring = eventsMappingInfo[key]["MappingKeys"].filter(item=>file.path.toLowerCase().includes(item)).slice(-1)[0]
-            //         eventsMappingInfo[key]["eventsValue"] = file.path.split(substring).slice(-1)[0].split(/[^0-9a-z]/).filter(e=>e != "")[0]
-            //     }
-            // }
-
-            // if (eventsMappingInfo[key]["eventsValue"] == undefined) {
-            //     var modifiedFilePath = file.path
-
             //     Object.values(eventsMappingInfo[key]["ezBIDSvalues"]).forEach(value=>{
-            //         console.log(modifiedFilePath)
-            //         if (modifiedFilePath.includes(value)) {
-            //             eventsMappingInfo[key]["eventsValue"] = value
+            //         if (value.length > 2 && modifiedFilePath.toLowerCase().replace(/[^0-9a-z]/gi, '').includes(value)) {
             //             modifiedFilePath = modifiedFilePath.replace(value, "")
+            //             if (eventsMappingInfo[key]["eventsValue"] == undefined) {
+            //                 eventsMappingInfo[key]["eventsValue"] = value
+            //             }
             //         }
-            //     })
-
+            //     });
             // }
-
-            // var modifiedFilePath = file.path
-
-            // 2nd stage: examine file.path for helpful information
-            Object.values(eventsMappingInfo[key]["ezBIDSvalues"]).forEach(value=>{
-                if (modifiedFilePath.toLowerCase().replace(/[^0-9a-z]/gi, '').includes(value)) {
-                    modifiedFilePath = modifiedFilePath.replace(value, "")
-                    if (eventsMappingInfo[key]["eventsValue"] == undefined) {
-                        eventsMappingInfo[key]["eventsValue"] = value
+            if (eventsMappingInfo[key]["eventsValue"] == undefined) {
+                Object.values(eventsMappingInfo[key]["MappingKeys"]).forEach(mapping=>{
+                    if (file.path.toLowerCase().split(mapping).slice(-1)[0].split(/[._-]+/)[0] == "") {
+                        eventsMappingInfo[key]["eventsValue"] = file.path.split(new RegExp(regEscape(mapping), "ig")).slice(-1)[0].split(/[._-]+/)[1]
+                        eventsMappingInfo[key]["detectionMethod"] = 2
+                    } else if (isNaN(parseFloat(file.path.toLowerCase().split(mapping).slice(-1)[0])) == false) {
+                        eventsMappingInfo[key]["eventsValue"] = file.path.split(new RegExp(regEscape(mapping), "ig")).slice(-1)[0].split(/[._-]+/)[0]
+                        eventsMappingInfo[key]["detectionMethod"] = 2
                     }
-                }
-            })
-
+                });
+            }
 
             // 3rd stage: if ezBIDSvalues lengths == 1, set those values to the corresponding eventsValue
             if (eventsMappingInfo[key]["eventsValue"] == undefined && eventsMappingInfo[key]["ezBIDSvalues"].length == 1) {
                 eventsMappingInfo[key]["eventsValue"] = eventsMappingInfo[key]["ezBIDSvalues"][0]
-            }        
+                eventsMappingInfo[key]["detectionMethod"] = 3
+            }
         });
 
-
-        console.log(file.path)
-        console.log(eventsMappingInfo)
-
-
-        
-
-
-
-        
-
-
-
+        // console.log(file.path)
+        // console.log(eventsMappingInfo)
 
         // Determine section_ID that events object pertains to
         if (uniqueSectionIDs.length == 1) {
@@ -330,6 +303,21 @@ function createEventObjects(ezbids, files) {
             section_ID = ""
 
         }
+
+        // Determine correspoding series_idx value that event file(s) go to
+        const series_idx = Array.from(new Set(ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo["subject"]["eventsValue"] &&
+                                                                    e._entities.session == eventsMappingInfo["session"]["eventsValue"] &&
+                                                                    e._entities.task == eventsMappingInfo["task"]["eventsValue"] &&
+                                                                    e._entities.run == eventsMappingInfo["run"]["eventsValue"] &&
+                                                                    (e._entities.part == "" || e._entities.part == "mag")
+                                                                    ).map(e=>e.series_idx)))
+
+        if (series_idx.length == 1) {
+            var corr_series_idx = parseInt(series_idx[0]) + 0.5
+        } else {
+            var corr_series_idx = undefined
+        }
+
 
 
         // switch(inheritance_level) {
@@ -349,24 +337,14 @@ function createEventObjects(ezbids, files) {
         // }
 
         
-        // //just pick a subject/session randomly for this sample
-        // const subject = ezbids.subjects[0].PatientInfo[0];
-        // const session = ezbids.subjects[0].sessions[0];
-        const subject = '01'
-        const session = '01'
-
-        // const subject = ezbids.subjects.filter(e=>e.subject == eventsMappingInfo["subject"]["eventsValue"]).map(e=>e.subject)
-
-
-        // console.log(file.path)
-        // console.log(subject)
+        const subject = eventsMappingInfo["subject"]["eventsValue"]
+        const session = eventsMappingInfo["session"]["eventsValue"]
 
 
         //register new event object using the info we gathered above
         const object = Object.assign({
-            //"series_idx": 5, //DO I need to create a series to store this object?\
             type: "func/events",
-            series_idx: null,
+            series_idx: corr_series_idx, // Make func/event series_idx be 0.5 above corresponding func/bold series_idx
 
             entities: {
                 "subject": eventsMappingInfo["subject"]["eventsValue"],
@@ -381,7 +359,7 @@ function createEventObjects(ezbids, files) {
             },
             "paths": [],
             "validationErrors": [],
-        }, subject, session); //we need to set subject / session specific fields that we figured out earlier
+        }, '50', '1'); //we need to set subject / session specific fields that we figured out earlier
 
         //event object also need some item info!
         object.items.push({
@@ -406,4 +384,4 @@ function createEventObjects(ezbids, files) {
 
 const output = createEventObjects(ezbids, files)
 
-// console.log(output)
+console.log(output)
