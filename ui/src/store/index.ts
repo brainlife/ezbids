@@ -51,6 +51,8 @@ export interface Series {
     EchoTime: number;
     ImageType: [string];
     RepetitionTime: string;
+
+    VolumeThreshold?: number; //if set, it overrided the default 50
     
     error: string;
     message: string;
@@ -304,15 +306,9 @@ const store = createStore({
     state,
 
     mutations: {
-        /*
-        setPage(state, page: string) {
-            state.page = page;
-        },
-        */
-
         setSession(state, session) {
             state.session = session;
-	        if(session._id) window.location.hash = session._id;                                                                     
+            if(session._id) window.location.hash = session._id;                                                                     
         },
 
         reset(state) {

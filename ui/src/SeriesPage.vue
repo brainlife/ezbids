@@ -83,6 +83,11 @@
                         {{ss.RepetitionTime}}</small></el-tag>&nbsp;
                     </p>
                 </el-form-item>
+
+                <el-form-item label="Volume Threshold" v-if="ss.type == 'func/bold'">
+                    <small>Auto exclude object with less than specified number of volumnes</small>
+                    <el-input v-model.number="ss.VolumeThreshold" size="small" placeholder="50"/>
+                </el-form-item>
             </el-form>
 
             <p style="border-top: 1px solid #eee; padding: 10px 20px;">
