@@ -648,8 +648,8 @@ def determine_unique_series(dataset_list):
                 echo_time = heuristic_items[0]
                 common_series_index = [x[1:-1] for x in series_checker].index(heuristic_items[1:])
 
-                # Add slight EchoTime measurement error tolerance.
-                # See https://github.com/rordenlab/dcm2niix/issues/543
+                """ Add slight EchoTime measurement error tolerance.
+                See https://github.com/rordenlab/dcm2niix/issues/543 """
                 if series_checker[common_series_index][0] - 0.5 <= echo_time <= series_checker[common_series_index][0] + 0.5:
                     common_series_idx = series_checker[common_series_index][-1]
                     acquisition_dic["series_idx"] = common_series_idx
@@ -739,7 +739,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
                 unique_dic["datatype"] = "anat"
                 unique_dic["suffix"] = "UNIT1"
                 unique_dic["message"] = " ".join("Acquisition is believed to be anat/UNIT1 \
-                    because 'DERIVED' and 'UNI' are in the ImageType Please modify \
+                    because 'DERIVED' and 'UNI' are in the ImageType. Please modify \
                     if incorrect".split())
 
             """ Oftentimes, magnitude/phase[diff] acquisitions are called "gre-field-mapping",
@@ -958,14 +958,6 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     unique_dic["message"] = " ".join("Acquisition is believed to be \
                         func/sbref because 'sbref' is in the SeriesDescription".split())
 
-            # UNIT1 (part of mp2rage acquisitions)
-            elif "DERIVED" and "UNI" in unique_dic["ImageType"]:
-                unique_dic["datatype"] = "anat"
-                unique_dic["suffix"] = "UNIT1"
-                unique_dic["message"] = " ".join("Acquisition is believed to be anat/UNIT1 \
-                    because 'DERIVED' and 'UNI' are in the ImageType Please modify \
-                    if incorrect".split())
-
             # T1w
             elif any(x in sd for x in t1w_keys):
                 unique_dic["datatype"] = "anat"
@@ -974,20 +966,20 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     because '{}' is in the SeriesDescription. Please modify if \
                     incorrect".format([x for x in t1w_keys if re.findall(x, sd)][0]).split())
 
-                """ Set non-normalized (i.e. poor contrast) anat/T1w to exclude, but
-                only if the dataset does not include normalized anat/T1w. """
-                anat_list = [[x["type"], x["ImageType"]] for x in dataset_list_unique_series if x["type"] == "anat/T1w"]
-                anat_list = [x for x in anat_list if 'NORM' in x[1] or 'DERIVED' in x[1]]
+                # """ Set non-normalized (i.e. poor contrast) anat/T1w to exclude, but
+                # only if the dataset does not include normalized anat/T1w. """
+                # anat_list = [[x["type"], x["ImageType"]] for x in dataset_list_unique_series if x["type"] == "anat/T1w"]
+                # anat_list = [x for x in anat_list if 'NORM' in x[1] or 'DERIVED' in x[1]]
 
-                if len(anat_list):
-                    for unique_dic in dataset_list_unique_series:
-                        if unique_dic["type"] == "anat/T1w" and not any(x in ["DERIVED", "NORM"] for x in unique_dic["ImageType"]):
-                            unique_dic["error"] = " ".join("Acquisition is a poor contrast {} \
-                                (non-normalized); Please check to see if this {} acquisition \
-                                should be converted to BIDS. Otherwise, this object will not \
-                                be included in the BIDS output".format(unique_dic["type"], unique_dic["type"]).split())
-                            unique_dic["message"] = unique_dic["error"]
-                            unique_dic["type"] = "exclude"
+                # if len(anat_list):
+                #     for unique_dic in dataset_list_unique_series:
+                #         if unique_dic["type"] == "anat/T1w" and not any(x in ["DERIVED", "NORM"] for x in unique_dic["ImageType"]):
+                #             unique_dic["error"] = " ".join("Acquisition is a poor contrast {} \
+                #                 (non-normalized); Please check to see if this {} acquisition \
+                #                 should be converted to BIDS. Otherwise, this object will not \
+                #                 be included in the BIDS output".format(unique_dic["type"], unique_dic["type"]).split())
+                #             unique_dic["message"] = unique_dic["error"]
+                #             unique_dic["type"] = "exclude"
 
             # FLAIR
             elif any(x in sd for x in flair_keys):
@@ -1045,6 +1037,17 @@ def datatype_suffix_identification(dataset_list_unique_series):
                 with insufficient data for processing/analyses. Please modify \
                 if incorrect".split())
             unique_dic["message"] = unique_dic["error"]
+
+
+        """ For non-normalized anatomical acquisitions, provide message that
+        they may have poor CNR and should consider excluding them from BIDS
+        conversion if a corresponding normalized acquisition is present.
+        """
+        if "anat" in unique_dic["type"] and "NORM" not in unique_dic["ImageType"]:
+            unique_dic["message"] = unique_dic["message"] + " ".join(". This acquisition \
+            appers to be non-normalized, potentially having poor CNR. If there \
+            is a corresponding normalized acquisition, consider excluding this \
+            current one from BIDS conversion".split())
 
     return dataset_list_unique_series
 
@@ -1151,11 +1154,15 @@ def entity_labels_identification(dataset_list_unique_series):
             series_entities["run"] = series_entities["run"].lstrip("0")
 
 
-        # Replace periods in series entities with "p", if found
-        if len([x for x in series_entities.values() if "." in x]):
-            for key, value in series_entities.items():
-                if "." in value:
-                    series_entities[key] = value.replace(".", "p")
+        """ Replace periods in series entities with "p", if found. If other
+        non alpha-numeric characters are found in the entity labels, remove them """
+        for key, value in series_entities.items():
+            if "." in value:
+                series_entities[key] = value.replace(".", "p")
+            elif not value.isalpha():
+                series_entities[key] = re.sub("[^A-Za-z0-9]+", "", value)
+            else:
+                pass
 
         unique_dic["entities"] = series_entities
 
