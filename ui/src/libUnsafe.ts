@@ -1,7 +1,7 @@
 // @ts-nocheck
 
 export function funcQA($root) {
-    // Exclude instances where functional bold acquisitions have less than 50 volumes,
+    // Exclude functional bold acquisitions have less than 50 volumes,
     // which are probably a restart or failure functional acquisition occurrence.
 
     // Loop through all acquisition objects

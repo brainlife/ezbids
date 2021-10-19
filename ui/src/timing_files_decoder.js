@@ -2,8 +2,6 @@
 const fs = require('fs');
 const path = require('path')
 // var XLSX = require('xlsx');
-// const study = '' // Need to get this value from ezBIDS UI
-const $rootDir = '' // Need to get value from ezBIDS UI
 
 
 function find_separator(filePath) {
@@ -26,7 +24,7 @@ function find_separator(filePath) {
 	return separator;
 }
 
-function parseEprimeTimingFiles(data, cb) {
+function parseEprimeEvents(data, cb) {
 	const lines = data.trim().split(/\r|\n/).map(l=>l.trim());
 
 	//parse each line
@@ -61,7 +59,7 @@ function parseEprimeTimingFiles(data, cb) {
 	return timing_info[0]
 }
 
-function parseTimingFiles(data, sep, cb) {
+function parseEvents(data, sep, cb) {
     const lines = data.trim().split(/\r|\n/).map(l=>l.trim().replace(/['"]+/g, ''));
     const trials = [];
     var headers = lines.shift().split(sep);
@@ -80,8 +78,6 @@ function parseTimingFiles(data, sep, cb) {
                 const v = tokens[i]
                 block[k] = v;
             }
-
-            
         }
         trials.push(block);
     });
@@ -90,7 +86,7 @@ function parseTimingFiles(data, sep, cb) {
     return timing_info[0]
 }
 
-function parseExcelWorkbookTimingFiles (data) {
+function parseExcelEvents(data) {
 	// Code from https://stackoverflow.com/questions/30859901/parse-xlsx-with-node-and-create-json
 	var workbook = data;
 	var sheet_name_list = workbook.SheetNames;
@@ -140,13 +136,12 @@ const files = require('/media/data/ezbids/fMRI_behavioral_timing_files/WML/files
 
 
 //this function receives files (an array of object containing fullpath and data. data is the actual file content of the file)
-//to filter out files by file extensions, please edit Events.vue
 function createEventObjects(ezbids, files) {
     /* example for ezbids
     {
         datasetDescription: {
             Name: "Untitled",                                                                                     
-            BIDSVersion: "1.4.0",                                                                                 
+            BIDSVersion: "1.6.0",                                                                                 
             DatasetType: "raw",                                                                                   
             License: "",                                                                                       
             Authors: [],                                                                                                      
@@ -179,7 +174,7 @@ function createEventObjects(ezbids, files) {
 
     const eventObjects = []; //new event objects to add 
 
-    // Determine number of subjects, sessions, event tasks (i.e. no rest), and event files
+    // Identify some terms for decoding purposes
     const subjects = Array.from(new Set(ezbids.subjects.filter(e=>e.exclude == false).map(e=>e.subject)))
     const sessions = Array.from(new Set(ezbids.subjects.map(e=>e.sessions)[0].filter(e=>e.exclude == false).map(e=>e.session)))
     const tasks = Array.from(new Set(ezbids.objects.map(e=>e._entities).filter(e=>(e.part == "" || e.part == "mag") && (e.task != "" && e.task != "rest" && e.task !== undefined)).map(e=>e.task)))
@@ -214,19 +209,19 @@ function createEventObjects(ezbids, files) {
         case "xlsx":
         case "xlsm":
         case "xls":
-            var data = XLSX.readFile(file.path)
-            var events = parseExcelWorkbookTimingFiles(data)
+            // var data = XLSX.readFile(file.path)
+            var events = parseExcelEvents(file.data)
             break;
         default: // Non-Excel formats
             var data = fs.readFileSync(file.path, "utf8")
             var lines = data.trim().split("\n").map(l=>l.trim());
             if (lines[0].indexOf('Header Start') > -1) {
                 // E-prime file format
-                var events = parseEprimeTimingFiles(data)
+                var events = parseEprimeEvents(file.data)
             } else {
                 // "Regular" file format (.csv .tsv .txt .out)
                 var sep = find_separator(file.path) // Read events file(s) data
-                var events = parseTimingFiles(data, sep);
+                var events = parseEvents(file.data, sep);
             }
         }
 
@@ -264,6 +259,7 @@ function createEventObjects(ezbids, files) {
             }
 
             // 2nd stage: examine file path for helpful information
+
             // if (eventsMappingInfo[key]["eventsValue"] == undefined) {
             //     Object.values(eventsMappingInfo[key]["ezBIDSvalues"]).forEach(value=>{
             //         if (value.length > 2 && modifiedFilePath.toLowerCase().replace(/[^0-9a-z]/gi, '').includes(value)) {
@@ -293,15 +289,11 @@ function createEventObjects(ezbids, files) {
             }
         });
 
-        // console.log(file.path)
-        // console.log(eventsMappingInfo)
-
         // Determine section_ID that events object pertains to
         if (uniqueSectionIDs.length == 1) {
             section_ID = uniqueSectionIDs[0]
         } else { // multiple section_IDs; should be able to determine which func/bold the event goes to and use that section_ID
-            section_ID = ""
-
+            section_ID = 1
         }
 
         // Determine correspoding series_idx value that event file(s) go to
@@ -311,14 +303,6 @@ function createEventObjects(ezbids, files) {
                                                                     e._entities.run == eventsMappingInfo["run"]["eventsValue"] &&
                                                                     (e._entities.part == "" || e._entities.part == "mag")
                                                                     ).map(e=>e.series_idx)))
-
-        if (series_idx.length == 1) {
-            var corr_series_idx = parseInt(series_idx[0]) + 0.5
-        } else {
-            var corr_series_idx = undefined
-        }
-
-
 
         // switch(inheritance_level) {
         // case "Dataset":
@@ -336,15 +320,13 @@ function createEventObjects(ezbids, files) {
 
         // }
 
-        
         const subject = eventsMappingInfo["subject"]["eventsValue"]
         const session = eventsMappingInfo["session"]["eventsValue"]
-
 
         //register new event object using the info we gathered above
         const object = Object.assign({
             type: "func/events",
-            series_idx: corr_series_idx, // Make func/event series_idx be 0.5 above corresponding func/bold series_idx
+            series_idx: null, // Make func/event series_idx be 0.5 above corresponding func/bold series_idx
 
             entities: {
                 "subject": eventsMappingInfo["subject"]["eventsValue"],
@@ -359,7 +341,7 @@ function createEventObjects(ezbids, files) {
             },
             "paths": [],
             "validationErrors": [],
-        }, '50', '1'); //we need to set subject / session specific fields that we figured out earlier
+        }, subject, session); //we need to set subject / session specific fields that we figured out earlier
 
         //event object also need some item info!
         object.items.push({
@@ -383,5 +365,3 @@ function createEventObjects(ezbids, files) {
 }
 
 const output = createEventObjects(ezbids, files)
-
-console.log(output)

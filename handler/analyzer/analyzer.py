@@ -449,6 +449,7 @@ def generate_dataset_list(uploaded_files_list):
             "exclude": False,
             "filesize": filesize,
             "NumVolumes": volume_count,
+            "VolumeThreshold": 50,
             "forType": "",
             "error": None,
             "section_ID": 1,
@@ -966,21 +967,6 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     because '{}' is in the SeriesDescription. Please modify if \
                     incorrect".format([x for x in t1w_keys if re.findall(x, sd)][0]).split())
 
-                # """ Set non-normalized (i.e. poor contrast) anat/T1w to exclude, but
-                # only if the dataset does not include normalized anat/T1w. """
-                # anat_list = [[x["type"], x["ImageType"]] for x in dataset_list_unique_series if x["type"] == "anat/T1w"]
-                # anat_list = [x for x in anat_list if 'NORM' in x[1] or 'DERIVED' in x[1]]
-
-                # if len(anat_list):
-                #     for unique_dic in dataset_list_unique_series:
-                #         if unique_dic["type"] == "anat/T1w" and not any(x in ["DERIVED", "NORM"] for x in unique_dic["ImageType"]):
-                #             unique_dic["error"] = " ".join("Acquisition is a poor contrast {} \
-                #                 (non-normalized); Please check to see if this {} acquisition \
-                #                 should be converted to BIDS. Otherwise, this object will not \
-                #                 be included in the BIDS output".format(unique_dic["type"], unique_dic["type"]).split())
-                #             unique_dic["message"] = unique_dic["error"]
-                #             unique_dic["type"] = "exclude"
-
             # FLAIR
             elif any(x in sd for x in flair_keys):
                 unique_dic["datatype"] = "anat"
@@ -1027,24 +1013,12 @@ def datatype_suffix_identification(dataset_list_unique_series):
         if "exclude" not in unique_dic["type"]:
             unique_dic["type"] = unique_dic["datatype"] + "/" + unique_dic["suffix"]
 
-
-        """ Exclude func/bold acqusitions if they contain < 50 volumes """
-        if unique_dic["type"] == "func/bold" and unique_dic["NumVolumes"] < 50:
-            unique_dic["type"] = "exclude"
-            unique_dic["error"] = " ".join("Functional \
-                acquisition contains less than 50 volumes, suggesting a \
-                failure/restart, a test acquisition, or an acquisition \
-                with insufficient data for processing/analyses. Please modify \
-                if incorrect".split())
-            unique_dic["message"] = unique_dic["error"]
-
-
         """ For non-normalized anatomical acquisitions, provide message that
         they may have poor CNR and should consider excluding them from BIDS
         conversion if a corresponding normalized acquisition is present.
         """
         if "anat" in unique_dic["type"] and "NORM" not in unique_dic["ImageType"]:
-            unique_dic["message"] = unique_dic["message"] + " ".join(". This acquisition \
+            unique_dic["message"] = unique_dic["message"] + " ".join(" This acquisition \
             appers to be non-normalized, potentially having poor CNR. If there \
             is a corresponding normalized acquisition, consider excluding this \
             current one from BIDS conversion".split())
