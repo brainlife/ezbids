@@ -1,9 +1,5 @@
 // @ts-nocheck
 
-const fs = require('fs');
-const path = require('path')
-// var XLSX = require('xlsx');
-
 export function funcQA($root) {
     // Exclude functional bold acquisitions have less than 50 volumes,
     // which are probably a restart or failure functional acquisition occurrence.
