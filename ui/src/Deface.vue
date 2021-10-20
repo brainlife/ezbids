@@ -106,6 +106,8 @@ import datatype from './components/datatype.vue'
 
 import { IObject } from './store'
 
+import { ElNotification } from 'element-plus'
+
 export default defineComponent({
     components: {
         datatype,
@@ -163,9 +165,9 @@ export default defineComponent({
                 headers: {'Content-Type': 'application/json; charset=UTF-8'},
             }).then(res=>res.text()).then(status=>{
                 if(status != "ok") {
-                    this.$notify({ title: 'Failed', message: 'Failed to cancel defacing'});
+                    ElNotification({ title: 'Failed', message: 'Failed to cancel defacing'});
                 } else {
-                    this.$notify({ title: 'Success', message: 'Requested to cancel defacing..'});
+                    ElNotification({ title: 'Success', message: 'Requested to cancel defacing..'});
                 }
                 this.$store.dispatch("loadSession", this.session._id);
             });
@@ -177,7 +179,7 @@ export default defineComponent({
                 headers: {'Content-Type': 'application/json; charset=UTF-8'},
             }).then(res=>res.text()).then(status=>{
                 if(status != "ok") {
-                    this.$notify({ title: 'Failed', message: 'Failed to reset defacing'});
+                    ElNotification({ title: 'Failed', message: 'Failed to reset defacing'});
                 }
                 this.getAnatObjects.forEach((anat: IObject)=>{
                     delete anat.defaced;
@@ -208,7 +210,7 @@ export default defineComponent({
                 }),
             }).then(res=>res.text()).then(status=>{
                 if(status != "ok") {
-                    this.$notify({ title: 'Failed', message: 'Failed to submit deface request'});
+                    ElNotification({ title: 'Failed', message: 'Failed to submit deface request'});
                 }
                 this.$store.dispatch("loadSession", this.session._id);
                 //this.$root.pollSession();

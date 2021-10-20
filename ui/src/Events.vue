@@ -54,7 +54,17 @@
     <div v-if="files.length == 0">        
         <p>If you'd like to include task events/timing data with your BIDS datasets, you can upload them here.</p>         
         <p>Please skip this step if you do not have events data.</p>                                                                                   
+        <!--
         <el-button @click="open">Select Directory</el-button>                                                        
+        -->
+        <input type="file"                                                                                      
+            webkitdirectory                                                                                 
+            mozdirectory                                                                                    
+            msdirectory                                                                                     
+            odirectory                                                                                      
+            directory                                                                                       
+            placeholder="Select Directory"
+            @change="open"/>
     </div>                      
     <div v-if="files.length">
         <h3>Column Mapping</h3>
@@ -331,68 +341,9 @@ export default defineComponent({
            //TODO
            cb();
         },
-        /*
-        groupSections(sess: OrganizedSession) {
-            let sections = {} as Section;
-            sess.objects.forEach(o=>{
-                let sectionId = o.analysisResults.section_ID;
-                if(!sections[sectionId]) sections[sectionId] = [];
-                sections[sectionId].push(o);
-            });
-            return sections;
-        },
 
-        isExcluded(o: IObject) {
-            if(o.exclude) return true;
-            if(o._type == "exclude") return true;
-            return o._exclude; 
-        },
-        */
-
-        /*
-
-        //HTML5 drop event doesn't work unless dragover is handled                                                      
-        dragover(e : DragEvent) {                                                                                               
-            e.preventDefault();                                                                                         
-            this.dragging = true;                                                                                       
-        },                                                                                                              
-                                                                                                                        
-        async dropit(e: DragEvent) {   
-            if(!e.dataTransfer?.items) return;
-
-            e.preventDefault();                                                                                         
-            this.dragging = false;                                                                                      
-            this.starting = true;                                                                                   
-            await listDropFiles(e.dataTransfer?.items);                                                             
-            this.analyze();                                                                                              
-        },     
-
-        selectit(e: Event) {  
-            const target = e.target as HTMLInputElement;
-            if(!target.files) return;
-
-            //this.files = target.files as FileList;
-
-            this.starting = true;                                                                                                                                                                                                                                                       
-            this.files = [];
-            for (let i = 0; i < target.files.length; i++) {
-                let file = target.files.item(i);  
-                if(!file) return;                                                               
-                this.files.push({
-                    // @ts-ignore
-                    path: file.webkitRelativePath,
-                    file
-                });                                                             
-            }                                                                                                       
-            this.analyze();                                                                                                                                                                                             
-        },    
-
-        listDropFiles(files : DataTransferItemList | undefined) {
-            console.log("todo list dropfiles");
-        },
-        */
-
-        async open() {
+        async open(event: Event) {
+            /* doesn't work on firefox
             // @ts-ignore
             const rootHandle = await window.showDirectoryPicker();
             if(!rootHandle) {
@@ -402,7 +353,7 @@ export default defineComponent({
 
             const files = [] as IPathAndData[];
             
-            async function readDirectoryRecursively(dirHandle : any/*FileSystemDirectoryHandle*/) {
+            async function readDirectoryRecursively(dirHandle : any) {
                 for await (let handle of dirHandle.values()) {
                     if (handle.kind === "file") {
                         
@@ -424,7 +375,17 @@ export default defineComponent({
             //start reading on root director
             await readDirectoryRecursively(rootHandle);
             this.files = files;
-            //console.dir(files);
+            */
+            const element = event.currentTarget as HTMLInputElement;
+            const files = [] as IPathAndData[];
+            if(!element.files) return;
+            // @ts-ignore
+            for await (let file of element.files) {                                                                       
+                files.push({
+                    path: file.webkitRelativePath,
+                    data: await file.text(),
+                });                                               
+            }    
 
             //remove existing func/events 
             this.ezbids.objects = this.ezbids.objects.filter((o:IObject)=>o._type != "func/events");
@@ -461,20 +422,6 @@ export default defineComponent({
             const columnMappings = mapEventColumns(tsvItem.events);
             Object.assign(this.columns, columnMappings);
         },
-
-        /*
-        readFileContent(file : File) : Promise<string> {
-            return new Promise((resolve, reject)=>{
-                var reader = new FileReader();
-                reader.addEventListener('load', (e:Event)=>{
-                    resolve(reader.result as string);
-                });
-                reader.addEventListener('abort', reject);
-                reader.addEventListener('error', reject);
-                reader.readAsText(file);
-            });
-        },
-        */
     },
 });
 </script>

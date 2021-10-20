@@ -93,6 +93,8 @@ import { mapState, mapGetters, } from 'vuex'
 import { defineComponent } from 'vue'                                                                                                                                                  
 import showfile from './components/showfile.vue' 
 
+import { ElNotification } from 'element-plus'
+
 export default defineComponent({
 
     components: { 
@@ -124,7 +126,7 @@ export default defineComponent({
         finalize() {
             this.submitting = true;
             this.dofinalize((err:string|null)=>{
-                if(err) this.$notify({ title: 'Failed', message: 'Failed to finalize:'+err});
+                if(err) ElNotification({ title: 'Failed', message: 'Failed to finalize:'+err});
                 if(err) console.error(err);
                 this.submitting = false;
                 this.$store.dispatch("loadSession", this.session._id);
@@ -186,7 +188,7 @@ export default defineComponent({
         },
 
         sendOpenneuro() {
-            this.$notify({ title: 'Failed', message: 'This functionality is yet to be implemented'});
+            ElNotification({ title: 'Failed', message: 'This functionality is yet to be implemented'});
         },
 
         /*

@@ -15,6 +15,8 @@ import Finalize from './Finalize.vue'
 
 import { IObject } from './store'
 
+import { ElNotification } from 'element-plus'
+
 export default defineComponent({
     components: {
        Upload,
@@ -126,7 +128,9 @@ export default defineComponent({
             // @ts-ignore
             this.$refs[this.page].isValid((err:string)=>{
                 if(err) {
-                    this.$notify({ title: 'Failed', message: err});
+                    console.log("page invalid");
+                    console.error(err);
+                    ElNotification({ title: 'Failed', message: err});
                 } else {
                     const idx = this.pages.indexOf(this.page);
                     //if(idx == 3) this.page = "seriespage";
@@ -204,8 +208,6 @@ export default defineComponent({
             }                                                                                                           
                                                                                                                         
             o._entities = e; 
-
-            console.log("mapping", o._exclude);
         },
     }
 });

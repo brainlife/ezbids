@@ -366,21 +366,23 @@ export default defineComponent({
             @drop="dropit"                                                                                              
             @dragleave="dragging = false"                                                                               
             @dragover="dragover">                                                                                       
-            <div class="drop-area-backdrop"><b><span style="letter-spacing: -4vh;">ez</span>BIDS</b></div>        
-            <div>                                                                                                    
+            <div class="drop-area-backdrop"><b><span style="letter-spacing: -4vh;">ez</span>BIDS</b></div>    
+            <div>
                 <b>Drag & Drop a DICOM folder here to start</b>                                                         
                 <br>                                                                                                    
                 <br>                                                                                                    
-                or                                                                                                      
+                or        
+                <br>
+                <br>                                                                                             
                 <input type="file"                                                                                      
                         webkitdirectory                                                                                 
                         mozdirectory                                                                                    
                         msdirectory                                                                                     
                         odirectory                                                                                      
                         directory                                                                                       
-                        multiple                                                                                        
-                        @change="selectit"/>                                                                            
-            </div>                                                                                                   
+                        multiple                                                                               
+                        @change="selectit" style="font-size: 80%; width: 400px; background-color: #fff3; padding: 5px;"/>     
+            </div>                                                                                                
         </div>                                                                                                          
                                                                                                                         
         <div v-if="starting">                                                                                           
@@ -519,7 +521,6 @@ export default defineComponent({
 </template>
 
 <style scoped>
-
 .drop-area {
     background-color: #0002;
     color: #999;
@@ -528,10 +529,10 @@ export default defineComponent({
     border-radius: 5px;
     height: 300px;
     box-sizing: border-box;
-    text-align: center;
     font-size: 125%;
     position: relative;
     overflow: hidden;
+    text-align: center;
 }
 .drop-area.dragging {
     background-color: #999;
