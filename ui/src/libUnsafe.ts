@@ -581,9 +581,19 @@ export function createEventObjects(ezbids, files) {
 
         // Determine section_ID that events object pertains to
         if (uniqueSectionIDs.length == 1) {
-            section_ID = uniqueSectionIDs[0]
+            var section_ID = uniqueSectionIDs[0]
         } else { // multiple section_IDs; should be able to determine which func/bold the event goes to and use that section_ID
-            section_ID = 1
+            const correspondingBoldSecID = ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo["subject"]["eventsValue"] &&
+                                                    e._entities.session == eventsMappingInfo["session"]["eventsValue"] &&
+                                                    e._entities.task == eventsMappingInfo["task"]["eventsValue"] &&
+                                                    e._entities.run == eventsMappingInfo["run"]["eventsValue"]
+                                                    ).map(e=>e.analysisResults.section_ID)
+            
+            if (correspondingBoldSecID.length > 0) {
+                var section_ID = correspondingBoldSecID[0]
+            } else {
+                var section_ID = 1
+            }
         }
 
         // Determine correspoding series_idx value that event file(s) go to
