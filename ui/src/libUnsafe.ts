@@ -305,7 +305,7 @@ export function validateEntities(entities/*: Series*/) {
 }
 
 
-function find_separator(filePath, fileData) {
+export function find_separator(filePath, fileData) {
 	if (filePath.indexOf('.tsv') > -1) {
 		var separator = /[ \t]+/;
 	} else if (filePath.indexOf('.out') > -1 || filePath.indexOf('.csv') > -1)  {
@@ -324,7 +324,7 @@ function find_separator(filePath, fileData) {
 	return separator;
 }
 
-function parseEprimeEvents(fileData, cb) {
+export function parseEprimeEvents(fileData, cb) {
 	const lines = fileData.trim().split(/\r|\n/).map(l=>l.trim());
 
 	//parse each line
@@ -359,7 +359,7 @@ function parseEprimeEvents(fileData, cb) {
 	return timing_info[0]
 }
 
-function parseEvents(fileData, sep, cb) {
+export function parseEvents(fileData, sep, cb) {
     const lines = fileData.trim().split(/\r|\n/).map(l=>l.trim().replace(/['"]+/g, ''));
     const trials = [];
     var headers = lines.shift().split(sep);
@@ -386,7 +386,7 @@ function parseEvents(fileData, sep, cb) {
     return timing_info[0]
 }
 
-function parseExcelEvents(fileData) {
+export function parseExcelEvents(fileData) {
 	// Code from https://stackoverflow.com/questions/30859901/parse-xlsx-with-node-and-create-json
 	var workbook = fileData;
 	var sheet_name_list = workbook.SheetNames;
@@ -420,7 +420,7 @@ function parseExcelEvents(fileData) {
 	return trials[0];
 }
 
-function mode(arr){
+export function mode(arr){
     return arr.sort((a,b) =>
           arr.filter(v => v===a).length
         - arr.filter(v => v===b).length
@@ -429,7 +429,7 @@ function mode(arr){
 
 
 //this function receives files (an array of object containing fullpath and data. data is the actual file content of the file)
-function createEventObjects(ezbids, files) {
+export function createEventObjects(ezbids, files) {
     /* example for ezbids
     {
         datasetDescription: {
@@ -661,7 +661,7 @@ function createEventObjects(ezbids, files) {
 
 //this function receives one example event object. we will do our best to map the event keys (columns) and 
 //map them to bids events.tsv column names
-function mapEventColumns(events) {
+export function mapEventColumns(events) {
     /*
     input events object may look like this
     [
