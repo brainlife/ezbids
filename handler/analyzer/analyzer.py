@@ -379,9 +379,11 @@ def generate_dataset_list(uploaded_files_list):
         if "AcquisitionDateTime" in json_data:
             acquisition_date = json_data["AcquisitionDateTime"].split("T")[0]
             acquisition_time = json_data["AcquisitionDateTime"].split("T")[-1]
+            modified_time = "".join([x if len(x) > 1 else "0"+x for x in acquisition_time.replace(".", ":").split(":")]) # Need this!
         else:
             acquisition_date = "0000-00-00"
             acquisition_time = None
+            modified_date_time = "0"
 
         # Find RepetitionTime
         if "RepetitionTime" in json_data:
@@ -419,7 +421,6 @@ def generate_dataset_list(uploaded_files_list):
         # Relative paths of json and nifti files (per SeriesNumber)
         paths = sorted(nifti_paths_for_json + [json_file])
 
-
         # Organize all from individual SeriesNumber in dictionary
         acquisition_info_directory = {
             "StudyID": study_id,
@@ -433,6 +434,7 @@ def generate_dataset_list(uploaded_files_list):
             "SeriesNumber": json_data["SeriesNumber"],
             "AcquisitionDate": acquisition_date,
             "AcquisitionTime": acquisition_time,
+            "ModifiedTime": modified_time,
             "SeriesDescription": json_data["SeriesDescription"],
             "ProtocolName": json_data["ProtocolName"],
             "ImageType": json_data["ImageType"],
@@ -466,13 +468,13 @@ def generate_dataset_list(uploaded_files_list):
 
     """ Sort dataset_list of dictionaries by subject, AcquisitionDate,
     SeriesNumber, and json_path. """
-    dataset_list = sorted(dataset_list, key=itemgetter("subject",
-                                                       "AcquisitionDate",
-                                                       "AcquisitionTime",
-                                                       "session",
+    dataset_list = sorted(dataset_list, key=itemgetter("AcquisitionDate",
+                                                       "subject",
                                                        "SeriesNumber",
+                                                       "ModifiedTime",
                                                        "json_path"))
 
+    print([[x["subject"], x["session"], x["SeriesDescription"]] for x in dataset_list])
     return dataset_list
 
 def determine_subj_ses_IDs(dataset_list):
@@ -506,6 +508,7 @@ def determine_subj_ses_IDs(dataset_list):
                              "PatientBirthDate":x["PatientBirthDate"],
                              "AcquisitionDate":x["AcquisitionDate"],
                              "AcquisitionTime":x["AcquisitionTime"],
+                             "ModifiedTime":x["ModifiedTime"],
                              "session":x["session"],
                              "phenotype":{
                                  "sex":x["PatientSex"],
@@ -515,11 +518,10 @@ def determine_subj_ses_IDs(dataset_list):
                              "validationErrors": []} for x in dataset_list)
 
 
-    # Sort by subject, AcquisitionDate, and AcquisitionTime
+    # Sort by subject, ModifiedTime
     subject_ids_info = sorted(subject_ids_info, key=itemgetter("subject",
                                                    "AcquisitionDate",
-                                                   "AcquisitionTime",
-                                                   "session"))
+                                                   "ModifiedTime"))
 
 
     # Create modified list of dictionary with unique subject and Acquisition values
@@ -585,6 +587,7 @@ def determine_subj_ses_IDs(dataset_list):
         del dic["PatientBirthDate"]
         del dic["AcquisitionDate"]
         del dic["AcquisitionTime"]
+        del dic["ModifiedTime"]
         del dic["PatientName"]
         del dic["PatientID"]
         del dic["session"]
@@ -1202,7 +1205,7 @@ def modify_objects_info(dataset_list):
 
         # sort scan protocol by SeriesNumber and AcquisitionTime
         scan_protocol = sorted(scan_protocol, key=itemgetter("SeriesNumber",
-                                                             "AcquisitionTime"))
+                                                             "ModifiedTime"))
 
         section_id = 1
         objects_data = []
