@@ -305,7 +305,7 @@ export function validateEntities(entities/*: Series*/) {
 }
 
 
-export function find_separator(filePath, fileData) {
+function find_separator(filePath, fileData) {
 	if (filePath.indexOf('.tsv') > -1) {
 		var separator = /[ \t]+/;
 	} else if (filePath.indexOf('.out') > -1 || filePath.indexOf('.csv') > -1)  {
@@ -324,7 +324,7 @@ export function find_separator(filePath, fileData) {
 	return separator;
 }
 
-export function parseEprimeEvents(fileData, cb) {
+function parseEprimeEvents(fileData, cb) {
 	const lines = fileData.trim().split(/\r|\n/).map(l=>l.trim());
 
 	//parse each line
@@ -359,7 +359,7 @@ export function parseEprimeEvents(fileData, cb) {
 	return timing_info[0]
 }
 
-export function parseEvents(fileData, sep, cb) {
+function parseEvents(fileData, sep, cb) {
     const lines = fileData.trim().split(/\r|\n/).map(l=>l.trim().replace(/['"]+/g, ''));
     const trials = [];
     var headers = lines.shift().split(sep);
@@ -386,7 +386,7 @@ export function parseEvents(fileData, sep, cb) {
     return timing_info[0]
 }
 
-export function parseExcelEvents(fileData) {
+function parseExcelEvents(fileData) {
 	// Code from https://stackoverflow.com/questions/30859901/parse-xlsx-with-node-and-create-json
 	var workbook = fileData;
 	var sheet_name_list = workbook.SheetNames;
@@ -420,7 +420,7 @@ export function parseExcelEvents(fileData) {
 	return trials[0];
 }
 
-export function mode(arr){
+function mode(arr){
     return arr.sort((a,b) =>
           arr.filter(v => v===a).length
         - arr.filter(v => v===b).length
