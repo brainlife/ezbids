@@ -11,6 +11,9 @@ import { library } from "@fortawesome/fontawesome-svg-core"
 import { faGithub } from "@fortawesome/free-brands-svg-icons"
 library.add(faGithub);
 
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
+
 import store from './store'
 
 //move to ./types?
@@ -33,4 +36,5 @@ app.use(VueGtag, {
 });
 
 app.component("font-awesome-icon", FontAwesomeIcon)
+app.use(ElementPlus)
 app.mount('#app')
