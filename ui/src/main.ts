@@ -3,16 +3,14 @@ import { createApp } from 'vue'
 import VueGtag from 'vue-gtag-next'
 
 import App from './App.vue'
-//import ElementPlus from 'element-plus'
-//import 'element-plus/dist/index.css'
 
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 import { library } from "@fortawesome/fontawesome-svg-core"
 import { faGithub } from "@fortawesome/free-brands-svg-icons"
 library.add(faGithub);
 
-import ElementPlus from 'element-plus'
-import 'element-plus/dist/index.css'
+//import ElementPlus from 'element-plus'
+//import 'element-plus/dist/index.css'
 
 import store from './store'
 
@@ -36,5 +34,4 @@ app.use(VueGtag, {
 });
 
 app.component("font-awesome-icon", FontAwesomeIcon)
-app.use(ElementPlus)
 app.mount('#app')
