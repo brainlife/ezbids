@@ -1203,27 +1203,27 @@ def modify_objects_info(dataset_list):
                          and x["session"] == unique_subj_ses[2]
                         ]
 
-        # sort scan protocol by SeriesNumber and AcquisitionTime
-        scan_protocol = sorted(scan_protocol, key=itemgetter("SeriesNumber",
-                                                             "ModifiedTime"))
+        # # sort scan protocol by SeriesNumber and ModifiedTime
+        # scan_protocol = sorted(scan_protocol, key=itemgetter("SeriesNumber",
+        #                                                       "ModifiedTime"))
 
-        section_id = 1
+        # section_id = 1
         objects_data = []
 
         """ Peruse scan protocol to check for potential issues and add some
         additional information. """
 
         for p, protocol in enumerate(scan_protocol):
-            previous_message = scan_protocol[p-1]["message"]
+            # previous_message = scan_protocol[p-1]["message"]
 
-            # Update section_id information
-            if p == 0:
-                protocol["section_ID"] = section_id
-            elif protocol["message"] and "localizer" in protocol["message"] and (previous_message == None or "localizer" not in previous_message):
-                section_id += 1
-                protocol["section_ID"] = section_id
-            else:
-                protocol["section_ID"] = section_id
+            # # Update section_id information
+            # if p == 0:
+            #     protocol["section_ID"] = section_id
+            # elif protocol["message"] and "localizer" in protocol["message"] and (previous_message == None or "localizer" not in previous_message):
+            #     section_id += 1
+            #     protocol["section_ID"] = section_id
+            # else:
+            #     protocol["section_ID"] = section_id
 
             image = protocol["nibabel_image"]
             protocol["headers"] = str(image.header).splitlines()[1:]
@@ -1289,6 +1289,7 @@ def modify_objects_info(dataset_list):
                             "PatientName": protocol["PatientName"],
                             "PatientID": protocol["PatientID"],
                             "PatientBirthDate": protocol["PatientBirthDate"],
+                            "AcquisitionDateTime": protocol["AcquisitionDateTime"],
                             "AcquisitionDate": protocol["AcquisitionDate"],
                             "pngPath": "{}.png".format(protocol["nifti_path"][:-7]),
                             "entities": objects_entities,
@@ -1297,7 +1298,7 @@ def modify_objects_info(dataset_list):
                                 "NumVolumes": protocol["NumVolumes"],
                                 "errors": protocol["error"],
                                 "filesize": protocol["filesize"],
-                                "section_ID": protocol["section_ID"]},
+                                "section_ID": 1},
                             "paths": protocol["paths"]}
             objects_data.append(objects_info)
 
@@ -1333,6 +1334,7 @@ def extract_series_info(dataset_list_unique_series):
                           "NumVolumes": unique_dic["NumVolumes"],
                           "nifti_path": unique_dic["nifti_path"],
                           "series_idx": unique_dic["series_idx"],
+                          "AcquisitionDateTime": unique_dic["AcquisitionDateTime"],
                           "entities": unique_dic["entities"],
                           "type": unique_dic["type"],
                           "forType": unique_dic["forType"],
@@ -1394,7 +1396,7 @@ objects_list = modify_objects_info(dataset_list)
 
 # # Map unique series IDs to all other acquisitions in dataset that have those parameters
 for index, unique_dic in enumerate(dataset_list_unique_series):
-#     dataset_list_unique_series[index]["object_indices"] = [x for x in range(len(objects_list)) if objects_list[x]["series_idx"] == dataset_list_unique_series[index]["series_idx"]]
+    # dataset_list_unique_series[index]["object_indices"] = [x for x in range(len(objects_list)) if objects_list[x]["series_idx"] == dataset_list_unique_series[index]["series_idx"]]
 
     print(" ".join("Unique data acquisition file {}, \
         Series Description {}, \
