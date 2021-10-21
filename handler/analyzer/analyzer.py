@@ -432,6 +432,7 @@ def generate_dataset_list(uploaded_files_list):
             "subject": subject,
             "session": session,
             "SeriesNumber": json_data["SeriesNumber"],
+            "AcquisitionDateTime": json_data["AcquisitionDateTime"],
             "AcquisitionDate": acquisition_date,
             "AcquisitionTime": acquisition_time,
             "ModifiedTime": modified_time,
