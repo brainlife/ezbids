@@ -169,8 +169,6 @@ export default defineComponent({
         },
 
         mapObjects() {
-            console.log("mapping objects");
-            console.dir(this.ezbids.objects);
             this.ezbids.objects.forEach(this.mapObject); 
         },
 
