@@ -468,28 +468,31 @@ const store = createStore({
             }
         },
 
-        loadDefaceStatus(context) {
+        async loadDefaceStatus(context) {
             if(!context.state.session) return;
-
-            fetch(context.state.config.apihost+'/download/'+context.state.session._id+'/deface.finished').then(res=>res.text()).then(data=>{
-                if(!data) return;
-                let idxs = data.trim().split("\n").map(v=>parseInt(v));
+     
+            const finished = await fetch(context.state.config.apihost+'/download/'+context.state.session._id+'/deface.finished');
+            if(finished.status == 200) {
+                const finishedText = await finished.text();
+                const idxs = finishedText.trim().split("\n").filter(v=>!!v).map(v=>parseInt(v));
                 idxs.forEach(idx=>{
                     let o = context.state.ezbids.objects.find(o=>o.idx == idx);
                     if(!o) console.error("can't find", idx);
                     else o.defaced = true;
                 });
-            }).catch(console.error);
+            } else console.log("couldn't load deface.finished - mayber not yet defaced");
 
-            fetch(context.state.config.apihost+'/download/'+context.state.session._id+'/deface.failed').then(res=>res.text()).then(data=>{
-                if(!data) return;
-                let idxs = data.trim().split("\n").map(v=>parseInt(v));
+
+            const failed = await fetch(context.state.config.apihost+'/download/'+context.state.session._id+'/deface.failed');
+            if(failed.status == 200) {
+                const failedText = await failed.text();
+                const idxs = failedText.trim().split("\n").filter(v=>!!v).map(v=>parseInt(v));
                 idxs.forEach(idx=>{
                     let o = context.state.ezbids.objects.find(o=>o.idx === idx);
                     if(!o) console.error("can't find", idx);
                     else o.defaceFailed = true;
                 });
-            }).catch(console.error);   
+            } else console.log("couldn't load deface.finished - maybe not yet defaced");
         }
     },
 
