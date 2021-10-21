@@ -17,6 +17,8 @@ import { IObject } from './store'
 
 import { ElNotification } from 'element-plus'
 
+import { funcQA, fmapQA, setRun, updateErrors, setIntendedFor } from './libUnsafe'
+
 export default defineComponent({
     components: {
        Upload,
@@ -123,8 +125,6 @@ export default defineComponent({
             this.mapObjects();
             this.$store.commit("organizeObjects");
             
-            console.log("accessing", this.page, this.$refs);
-            
             // @ts-ignore
             this.$refs[this.page].isValid((err:string)=>{
                 if(err) {
@@ -133,8 +133,18 @@ export default defineComponent({
                     ElNotification({ title: 'Failed', message: err});
                 } else {
                     const idx = this.pages.indexOf(this.page);
-                    //if(idx == 3) this.page = "seriespage";
                     this.page = this.pages[idx+1];
+
+                    switch(this.page) {
+                    case "event":
+                        funcQA(this.ezbids); 
+                        fmapQA(this.ezbids); 
+                        setRun(this.ezbids); 
+                        updateErrors(this.ezbids);
+                        setIntendedFor(this.ezbids);
+                        this.mapObjects();
+                        break;
+                    }
                 }
             });
               
@@ -159,6 +169,8 @@ export default defineComponent({
         },
 
         mapObjects() {
+            console.log("mapping objects");
+            console.dir(this.ezbids.objects);
             this.ezbids.objects.forEach(this.mapObject); 
         },
 

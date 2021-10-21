@@ -168,7 +168,7 @@ import { IObject, Subject, Session, OrganizedSession } from './store'
 
 import { prettyBytes } from './filters'
 
-import { validateEntities, funcQA, fmapQA, setRun, updateErrors, setIntendedFor } from './libUnsafe'
+import { validateEntities, } from './libUnsafe'
 
 interface Section {
     [key: string]: IObject[];
@@ -186,22 +186,11 @@ export default defineComponent({
         }
     },
 
+    /*
     mounted() {
-        console.log("mounting object...");
-        //assume mapObject/organizeObjects are already done
-
-        //TODO - I really don't like these here.. 
-        funcQA(this.ezbids);
-        fmapQA(this.ezbids);
-        setRun(this.ezbids);
-        updateErrors(this.ezbids);
-        setIntendedFor(this.ezbids);
-
-        this.$emit("mapObjects");
-        this.validateAll();
-
         console.log("object mount completed");
-   },
+    },
+    */
 
     computed: {
         ...mapState(['ezbids', 'config', 'bidsSchema']),
