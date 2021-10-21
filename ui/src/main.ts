@@ -29,7 +29,7 @@ app.use(store)
 //app.use(ElementPlus)
 app.use(VueGtag, {
     property: {
-      id: "UA-118407195-1"
+      id: "G-J5H19RMNCT"
     }
 });
 
