@@ -186,11 +186,12 @@ export default defineComponent({
         }
     },
 
-    /*
+    
     mounted() {
         console.log("object mount completed");
+        this.validateAll();
     },
-    */
+    
 
     computed: {
         ...mapState(['ezbids', 'config', 'bidsSchema']),
@@ -229,6 +230,14 @@ export default defineComponent({
             this.$emit("mapObjects");
             this.validateAll();
         },
+
+        /*
+        excludeObject(o: IObject, b: boolean) {
+            o.exclude = b;
+            console.log("flag is now", o.exclude);
+            this.validate(o);
+        },
+        */
 
         isExcluded(o: IObject) {
             if(o.exclude) return true;

@@ -2,7 +2,7 @@
 <div style="padding: 20px;">
 
     <div class="series-list">
-        <div v-for="(s, series_idx) in ezbids.series" :key="s.series_idx" 
+        <div v-for="(s, series_idx) in ezbids.series" :key="series_idx" 
             class="series-item" 
             :class="{'selected': ss === s}" 
             @click="ss = s">
@@ -11,7 +11,7 @@
             <datatype :type="s.type" :series_idx="series_idx" :entities="s.entities" :class="{excluded: s.type == 'exclude'}"/>
             <small style="opacity: 0.7;">({{s.SeriesDescription}})</small>
             &nbsp;
-            <el-tag type="info" effect="plain" size="mini" title="Number of objects">{{s.object_indices.length}} objs</el-tag>
+            <el-tag type="info" effect="plain" size="mini" title="Number of objects">{{getObjectsFromSeries(s).length}} objs</el-tag> 
             &nbsp;
             <el-badge v-if="s.validationErrors.length > 0" type="danger" :value="s.validationErrors.length" style="margin-left: 5px;">
                 <small/>
@@ -93,27 +93,27 @@
             <p style="border-top: 1px solid #eee; padding: 10px 20px;">
                 <small>The following objects belongs to this series.</small>
             </p>
-            <div v-for="object_idx in ss.object_indices" :key="object_idx" class="object">
+            <div v-for="object in getObjectsFromSeries(ss)" :key="object.idx" class="object">
                 <i class="el-icon-caret-right"/>&nbsp;
-                <div v-for="(v, k) in ezbids.objects[object_idx]._entities" :key="object_idx+'.'+k.toString()" style="display: inline-block; font-size: 85%;">
+                <div v-for="(v, k) in object._entities" :key="object.idx+'.'+k.toString()" style="display: inline-block; font-size: 85%;">
                     <span v-if="v" style="margin-right: 10px;">
                         {{k}}-<b>{{v}}</b>
                     </span>
                 </div>
                 <div style="float: right">
-                    <el-tag size="mini" type="info">filesize: {{prettyBytes(ezbids.objects[object_idx].analysisResults.filesize)}}</el-tag>&nbsp;
-                    <el-tag size="mini" type="info">volumes: {{ezbids.objects[object_idx].analysisResults.NumVolumes}}</el-tag>&nbsp;
+                    <el-tag size="mini" type="info">filesize: {{prettyBytes(ezbids.objects[object.idx].analysisResults.filesize)}}</el-tag>&nbsp;
+                    <el-tag size="mini" type="info">volumes: {{ezbids.objects[object.idx].analysisResults.NumVolumes}}</el-tag>&nbsp;
                 </div>
                 <div style="margin-left: 25px">
-                    <p v-if="ezbids.objects[object_idx].pngPath">
+                    <p v-if="ezbids.objects[object.idx].pngPath">
                         <small><b>Preview</b></small>
-                        <a :href="getURL(ezbids.objects[object_idx].pngPath)">
-                            <img style="width: 100%" :src="getURL(ezbids.objects[object_idx].pngPath)"/>
+                        <a :href="getURL(ezbids.objects[object.idx].pngPath)">
+                            <img style="width: 100%" :src="getURL(ezbids.objects[object.idx].pngPath)"/>
                         </a>
                     </p>
 
                     <small><b>Files</b></small>
-                    <div v-for="(item, idx) in ezbids.objects[object_idx].items" :key="idx">
+                    <div v-for="(item, idx) in ezbids.objects[object.idx].items" :key="idx">
                         <pre>{{item.path}}</pre>
                         <showfile v-if="['json', 'bval', 'bvec'].includes(item.path.split('.').pop())" :path="item.path"/>
                     </div>
@@ -134,7 +134,7 @@ import datatype from './components/datatype.vue'
 
 import { prettyBytes } from './filters'
 
-import { Series } from './store'
+import { Series, IObject } from './store'
 
 import { validateEntities } from './libUnsafe'
 
@@ -165,10 +165,14 @@ export default defineComponent({
         console.log("done mounting series");
     },
     
-
     methods: {
         
         prettyBytes,
+
+        getObjectsFromSeries(series: Series): IObject[] {
+            const idx = this.ezbids.series.indexOf(series);
+            return (this.ezbids.objects as IObject[]).filter(object=>object.series_idx == idx);
+        },
 
         getSomeEntities(type: string): any {
             let entities = this.getBIDSEntities(type);

@@ -56,7 +56,7 @@ export interface Series {
     
     error: string;
     message: string;
-    object_indices: [ number ];
+    //object_indices: [ number ];
 }
 
 export interface Session {
@@ -98,6 +98,9 @@ export interface IObject {
     PatientBirthDate: string;
 
     AcquisitionDate: string;
+
+    AcquisitionDateTime: string; //ISO only used to sort objects
+
     pngPath: string;
     analysisResults: {
         errors: string[];
@@ -359,7 +362,7 @@ const store = createStore({
                 s.exclude = !!(s.exclude);  
             });
             state.ezbids.objects.forEach((o:IObject)=>{
-                o.exclude == !!(o.exclude);
+                o.exclude = !!(o.exclude);
                 o.validationErrors = [];
                 o.items.forEach(item=>{                                                                        
                     if(item.sidecar) {                                                                                                                                                                            
@@ -391,13 +394,13 @@ const store = createStore({
                 const bsub = b._entities.subject;                                                                            
                 const ases = a._entities.session||"";                                                                        
                 const bses = b._entities.session||"";                                                                        
-                const adate = a.AcquisitionDate;                                                                             
-                const bdate = b.AcquisitionDate;                                                                             
+                const adatetime = a.AcquisitionDateTime;                                                                             
+                const bdatetime = b.AcquisitionDateTime;                                                                             
                                                                                                                             
                 //sort by sub / ses / acq date                                                                             
                 if(asub == bsub) {                                                                                         
                     if(ases == bses)     
-                        return adate < bdate;                                                                              
+                        return adatetime < bdatetime;                                                                              
                     else                                                                                                   
                         return ases.localeCompare(bses);                                                                   
                 } else                                                                                                     
