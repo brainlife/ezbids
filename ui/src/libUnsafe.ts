@@ -620,8 +620,15 @@ export function createEventObjects(ezbids, files) {
 
         // }
 
-        const subject = eventsMappingInfo["subject"]["eventsValue"]
-        const session = eventsMappingInfo["session"]["eventsValue"]
+        const subjectInfo = ezbids.subjects.filter(e=>e.subject == eventsMappingInfo["subject"]["eventsValue"])
+        var sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == eventsMappingInfo["subject"]["eventsValue"])
+        if (sessionInfo.length == 0) {
+            var sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == "")
+        }
+
+        // Indexing the first (any only value) but will need to filter this out better for multi-session data
+        const subject = subjectInfo[0].PatientInfo[0]
+        const session = sessionInfo[0]
 
         //register new event object using the info we gathered above
         const object = Object.assign({
