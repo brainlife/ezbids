@@ -308,24 +308,23 @@ export function validateEntities(entities/*: Series*/) {
 }
 
 
-export function find_separator(filePath, fileData) {
+function find_separator(filePath, fileData) {
 	if (filePath.indexOf('.tsv') > -1) {
-		return /[ \t]+/;
+		var separator = /[ \t]+/;
 	} else if (filePath.indexOf('.out') > -1 || filePath.indexOf('.csv') > -1)  {
-		return /[ ,]+/;
+		var separator = /[ ,]+/;
 	} else if (filePath.indexOf('.txt') > -1) {
 		const data = fileData
 		const lines = data.trim().split("\n").map(l=>l.trim());
 		if (lines[0].indexOf(',') > -1) {
-			return /[ ,]+/;
+			var separator = /[ ,]+/;
 		} else {
-			return /[ \t]+/;
+			var separator = /[ \t]+/;
 		}
 	} else if (filePath.indexOf('.xlsx') > -1) {
-		return /[ ,]+/;
+		var separator = /[ ,]+/;
 	}
-    
-	throw "unknown file extension";
+	return separator;
 }
 
 function parseEprimeEvents(fileData, cb) {
@@ -366,7 +365,7 @@ function parseEprimeEvents(fileData, cb) {
 function parseEvents(fileData, sep, cb) {
     const lines = fileData.trim().split(/\r|\n/).map(l=>l.trim().replace(/['"]+/g, ''));
     const trials = [];
-    let headers = lines.shift().split(sep);
+    var headers = lines.shift().split(sep);
     const timing_info = []
 
     lines.forEach(line=>{
@@ -392,19 +391,19 @@ function parseEvents(fileData, sep, cb) {
 
 function parseExcelEvents(fileData) {
 	// Code from https://stackoverflow.com/questions/30859901/parse-xlsx-with-node-and-create-json
-	let workbook = fileData;
-	let sheet_name_list = workbook.SheetNames;
-	let trials = []
+	var workbook = fileData;
+	var sheet_name_list = workbook.SheetNames;
+	var trials = []
 	sheet_name_list.forEach(function(y) {
-	    let worksheet = workbook.Sheets[y];
-	    let headers = {};
-	    let data = [];
+	    var worksheet = workbook.Sheets[y];
+	    var headers = {};
+	    var data = [];
 	    for(z in worksheet) {
 	        if(z[0] === '!') continue;
 	        //parse out the column, row, and value
-	        let col = z.substring(0,1);
-	        let row = parseInt(z.substring(1));
-	        let value = worksheet[z].v;
+	        var col = z.substring(0,1);
+	        var row = parseInt(z.substring(1));
+	        var value = worksheet[z].v;
 
 	        //store header names
 	        if(row == 1) {
@@ -434,7 +433,6 @@ function mode(arr){
 
 //this function receives files (an array of object containing fullpath and data. data is the actual file content of the file)
 export function createEventObjects(ezbids, files) {
-
     //console.log("dumping input parameters to build a test case");
     //console.dir({ezbids,files});
 
@@ -503,27 +501,27 @@ export function createEventObjects(ezbids, files) {
         
         const fileExt = file.path.split(".").pop();
         console.log("event file detected:", file.path);
-        
+
         // Parse the data, depending on the file extension (and header information)
-        let events;
         switch(fileExt) {
         // Excel workbook formats (.xlsx, .xlsm, .xls)
         case "xlsx":
         case "xlsm":
         case "xls":
-            // let data = XLSX.readFile(file.path)
-            events = parseExcelEvents(file.data)
+            // var data = XLSX.readFile(file.path)
+            var events = parseExcelEvents(file.data)
             break;
         default: // Non-Excel formats
-            const data = file.data
-            const lines = data.trim().split("\n").map(l=>l.trim());
+            var data = file.data
+            console.log(data)
+            var lines = data.trim().split("\n").map(l=>l.trim());
             if (lines[0].indexOf('Header Start') > -1) {
                 // E-prime file format
-                events = parseEprimeEvents(file.data)
+                var events = parseEprimeEvents(file.data)
             } else {
                 // "Regular" file format (.csv .tsv .txt .out)
-                const sep = find_separator(file.path, file.data) // Read events file(s) data
-                events = parseEvents(file.data, sep);
+                var sep = find_separator(file.path, file.data) // Read events file(s) data
+                var events = parseEvents(file.data, sep);
             }
         }
 
@@ -541,7 +539,7 @@ export function createEventObjects(ezbids, files) {
                                     }
 
 
-        let modifiedFilePath = file.path
+        var modifiedFilePath = file.path
 
         Object.keys(eventsMappingInfo).forEach(key=>{
             // 1st stage: examine header columns and data of event file(s) to see if helpful information is contained there
@@ -591,10 +589,9 @@ export function createEventObjects(ezbids, files) {
             }
         });
 
-        let section_ID;
         // Determine section_ID that events object pertains to
         if (uniqueSectionIDs.length == 1) {
-            section_ID = uniqueSectionIDs[0]
+            var section_ID = uniqueSectionIDs[0]
         } else { // multiple section_IDs; should be able to determine which func/bold the event goes to and use that section_ID
             const correspondingBoldSecID = ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo["subject"]["eventsValue"] &&
                                                     e._entities.session == eventsMappingInfo["session"]["eventsValue"] &&
@@ -603,9 +600,9 @@ export function createEventObjects(ezbids, files) {
                                                     ).map(e=>e.analysisResults.section_ID)
             
             if (correspondingBoldSecID.length > 0) {
-                section_ID = correspondingBoldSecID[0]
+                var section_ID = correspondingBoldSecID[0]
             } else {
-                section_ID = 1
+                var section_ID = 1
             }
         }
 
@@ -633,11 +630,10 @@ export function createEventObjects(ezbids, files) {
 
         // }
 
-
         const subjectInfo = ezbids.subjects.filter(e=>e.subject == eventsMappingInfo["subject"]["eventsValue"])
-        let sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == eventsMappingInfo["subject"]["eventsValue"])
+        var sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == eventsMappingInfo["subject"]["eventsValue"])
         if (sessionInfo.length == 0) {
-            let sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == "")
+            var sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == "")
         }
 
         // Indexing the first (any only value) but will need to filter this out better for multi-session data
@@ -658,7 +654,7 @@ export function createEventObjects(ezbids, files) {
             "items": [],
             //these aren't used, but I believe we have to initialize it
             "analysisResults": {
-                "section_ID": section_ID //TODO we do need to set this so that this event object goes to the right section
+                section_ID: section_ID, //TODO we do need to set this so that this event object goes to the right section
             },
             "paths": [],
             "validationErrors": [],
