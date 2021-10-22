@@ -436,7 +436,7 @@ function mode(arr){
 export function createEventObjects(ezbids, files) {
 
     //console.log("dumping input parameters to build a test case");
-    //console.dir({ezbids,files});
+    //console.dir(JSON.stringify({ezbids,files}, null, 4));
 
     /* example for ezbids
     {
@@ -635,14 +635,16 @@ export function createEventObjects(ezbids, files) {
 
 
         const subjectInfo = ezbids.subjects.filter(e=>e.subject == eventsMappingInfo["subject"]["eventsValue"])
-        let sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == eventsMappingInfo["subject"]["eventsValue"])
+        let sessionInfo;
+        sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == eventsMappingInfo["subject"]["eventsValue"])
         if (sessionInfo.length == 0) {
-            let sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == "")
+            sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == "")
         }
 
         // Indexing the first (any only value) but will need to filter this out better for multi-session data
         const subject = subjectInfo[0].PatientInfo[0]
         const session = sessionInfo[0]
+
 
         //register new event object using the info we gathered above
         const object = Object.assign({
