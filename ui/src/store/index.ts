@@ -395,15 +395,22 @@ const store = createStore({
                 const ases = a._entities.session||"";                                                                        
                 const bses = b._entities.session||"";                                                                        
                 const adatetime = a.AcquisitionDateTime;                                                                             
-                const bdatetime = b.AcquisitionDateTime;                                                                             
+                const bdatetime = b.AcquisitionDateTime;    
+                const aseriesnum = a.SeriesNumber;
+                const bseriesnum = b.SeriesNumber;                                                                         
                                                                                                                             
                 //sort by sub / ses / acq date                                                                             
                 if(asub == bsub) {                                                                                         
-                    if(ases == bses)     
+                    if(ases == bses)
+                        if(adatetime == bdatetime)
+                            return aseriesnum < bseriesnum;
+                        else 
+                            return adatetime.localeCompare(bdatetime);
+                    else if(ases == bses && adatetime != bdatetime)
                         return adatetime < bdatetime;                                                                              
-                    else                                                                                                   
-                        return ases.localeCompare(bses);                                                                   
-                } else                                                                                                     
+                    else                                                                                           
+                        return ases.localeCompare(bses);  
+                } else                                                                                             
                     return asub.localeCompare(bsub);                                                                       
             });                                                                                                            
                     

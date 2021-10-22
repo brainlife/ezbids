@@ -1032,8 +1032,9 @@ def datatype_suffix_identification(dataset_list_unique_series):
         if "anat" in unique_dic["type"] and "NORM" not in unique_dic["ImageType"]:
             unique_dic["message"] = unique_dic["message"] + " ".join(" This acquisition \
             appers to be non-normalized, potentially having poor CNR. If there \
-            is a corresponding normalized acquisition, consider excluding this \
-            current one from BIDS conversion".split())
+            is a corresponding normalized acquisition ('NORM' in ImageType \
+            metadata field), consider excluding this current one from BIDS \
+            conversion".split())
 
     return dataset_list_unique_series
 
