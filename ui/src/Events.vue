@@ -393,7 +393,6 @@ export default defineComponent({
             //create new event objects
             const eventObjects = createEventObjects(this.ezbids, files);
             eventObjects.forEach(object=>{
-                console.log("object...")
                 console.debug(object);
                 this.$store.commit("addObject", object);
             });
