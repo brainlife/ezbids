@@ -14,7 +14,7 @@ datasetName=`jq -r '.datasetDescription.Name' $root/finalized.json`
 rootDir=$root/bids/$datasetName
 
 #clean up from previous run
-rm -rf $rootDir
+rm -rf $root/bids
 
 echo "converting output to bids"
 ./convert.js $root
