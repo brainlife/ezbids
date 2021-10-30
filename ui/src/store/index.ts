@@ -48,6 +48,7 @@ export interface Series {
     forType: string;
 
     SeriesDescription: string;
+    SeriesNumber: string; //used to sort object by it
     EchoTime: number;
     ImageType: [string];
     RepetitionTime: string;
