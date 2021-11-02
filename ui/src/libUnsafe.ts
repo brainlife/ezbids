@@ -609,6 +609,8 @@ export function createEventObjects(ezbids, files) {
             }
         }
 
+        console.log(section_ID)
+
         // Determine correspoding series_idx value that event file(s) go to
         const series_idx = Array.from(new Set(ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
                                                                     e._entities.session == eventsMappingInfo.session.eventsValue &&

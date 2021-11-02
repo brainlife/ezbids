@@ -545,16 +545,16 @@ export function createEventObjects(ezbids, files) {
 
         Object.keys(eventsMappingInfo).forEach(key=>{
             // 1st stage: examine header columns and data of event file(s) to see if helpful information is contained there
-            const match = Object.keys(events[0]).map(item=>item.toLowerCase().replace(/[^0-9a-z]/gi, '')).filter(item=>eventsMappingInfo[key]["MappingKeys"].includes(item))[0]
+            const match = Object.keys(events[0]).map(item=>item.toLowerCase().replace(/[^0-9a-z]/gi, '')).filter(item=>eventsMappingInfo[key].MappingKeys.includes(item))[0]
             const value = mode(events.map(e=>e[match]))
-            eventsMappingInfo[key]["eventsValue"] = value
-            eventsMappingInfo[key]["detectionMethod"] = 1
-            if (eventsMappingInfo["task"]["eventsValue"] == undefined) { // Look for task information in events file(s); other information too difficult to discern here
-                eventsMappingInfo["task"]["ezBIDSvalues"].forEach(taskItem=>{
+            eventsMappingInfo[key].eventsValue = value
+            eventsMappingInfo[key].detectionMethod = 1
+            if (eventsMappingInfo.task.eventsValue == undefined) { // Look for task information in events file(s); other information too difficult to discern here
+                eventsMappingInfo.task.ezBIDSvalues.forEach(taskItem=>{
                     Object.values(mode(events)).forEach(eventsItem=>{
                         if (eventsItem.toLowerCase().includes(taskItem.toLowerCase())) {
-                            eventsMappingInfo["task"]["eventsValue"] = taskItem
-                            eventsMappingInfo[key]["detectionMethod"] = 1
+                            eventsMappingInfo.task.eventsValue = taskItem
+                            eventsMappingInfo[key].detectionMethod = 1
                         }
                     });
                 });
@@ -572,34 +572,35 @@ export function createEventObjects(ezbids, files) {
             //         }
             //     });
             // }
-            if (eventsMappingInfo[key]["eventsValue"] == undefined) {
-                Object.values(eventsMappingInfo[key]["MappingKeys"]).forEach(mapping=>{
+            if (eventsMappingInfo[key].eventsValue == undefined) {
+                Object.values(eventsMappingInfo[key].MappingKeys).forEach(mapping=>{
                     if (file.path.toLowerCase().split(mapping).slice(-1)[0].split(/[._-]+/)[0] == "") {
-                        eventsMappingInfo[key]["eventsValue"] = file.path.split(new RegExp(regEscape(mapping), "ig")).slice(-1)[0].split(/[._-]+/)[1]
-                        eventsMappingInfo[key]["detectionMethod"] = 2
+                        eventsMappingInfo[key].eventsValue = file.path.split(new RegExp(regEscape(mapping), "ig")).slice(-1)[0].split(/[._-]+/)[1]
+                        eventsMappingInfo[key].detectionMethod = 2
                     } else if (isNaN(parseFloat(file.path.toLowerCase().split(mapping).slice(-1)[0])) == false) {
-                        eventsMappingInfo[key]["eventsValue"] = file.path.split(new RegExp(regEscape(mapping), "ig")).slice(-1)[0].split(/[._-]+/)[0]
-                        eventsMappingInfo[key]["detectionMethod"] = 2
+                        eventsMappingInfo[key].eventsValue = file.path.split(new RegExp(regEscape(mapping), "ig")).slice(-1)[0].split(/[._-]+/)[0]
+                        eventsMappingInfo[key].detectionMethod = 2
                     }
                 });
             }
 
             // 3rd stage: if ezBIDSvalues lengths == 1, set those values to the corresponding eventsValue
-            if (eventsMappingInfo[key]["eventsValue"] == undefined && eventsMappingInfo[key]["ezBIDSvalues"].length == 1) {
-                eventsMappingInfo[key]["eventsValue"] = eventsMappingInfo[key]["ezBIDSvalues"][0]
-                eventsMappingInfo[key]["detectionMethod"] = 3
+            if (eventsMappingInfo[key].eventsValue == undefined && eventsMappingInfo[key].ezBIDSvalues.length == 1) {
+                eventsMappingInfo[key].eventsValue = eventsMappingInfo[key].ezBIDSvalues[0]
+                eventsMappingInfo[key].detectionMethod = 3
             }
         });
 
         let section_ID;
         // Determine section_ID that events object pertains to
         if (uniqueSectionIDs.length == 1) {
+            console.log('lklklk')
             section_ID = uniqueSectionIDs[0]
         } else { // multiple section_IDs; should be able to determine which func/bold the event goes to and use that section_ID
-            const correspondingBoldSecID = ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo["subject"]["eventsValue"] &&
-                                                    e._entities.session == eventsMappingInfo["session"]["eventsValue"] &&
-                                                    e._entities.task == eventsMappingInfo["task"]["eventsValue"] &&
-                                                    e._entities.run == eventsMappingInfo["run"]["eventsValue"]
+            const correspondingBoldSecID = ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
+                                                    e._entities.session == eventsMappingInfo.session.eventsValue &&
+                                                    e._entities.task == eventsMappingInfo.task.eventsValue &&
+                                                    e._entities.run == eventsMappingInfo.run.eventsValue
                                                     ).map(e=>e.analysisResults.section_ID)
             
             if (correspondingBoldSecID.length > 0) {
@@ -609,11 +610,13 @@ export function createEventObjects(ezbids, files) {
             }
         }
 
+        console.log(section_ID)
+
         // Determine correspoding series_idx value that event file(s) go to
-        const series_idx = Array.from(new Set(ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo["subject"]["eventsValue"] &&
-                                                                    e._entities.session == eventsMappingInfo["session"]["eventsValue"] &&
-                                                                    e._entities.task == eventsMappingInfo["task"]["eventsValue"] &&
-                                                                    e._entities.run == eventsMappingInfo["run"]["eventsValue"] &&
+        const series_idx = Array.from(new Set(ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
+                                                                    e._entities.session == eventsMappingInfo.session.eventsValue &&
+                                                                    e._entities.task == eventsMappingInfo.task.eventsValue &&
+                                                                    e._entities.run == eventsMappingInfo.run.eventsValue &&
                                                                     (e._entities.part == "" || e._entities.part == "mag")
                                                                     ).map(e=>e.series_idx)))
 
@@ -634,9 +637,9 @@ export function createEventObjects(ezbids, files) {
         // }
 
 
-        const subjectInfo = ezbids.subjects.filter(e=>e.subject == eventsMappingInfo["subject"]["eventsValue"])
+        const subjectInfo = ezbids.subjects.filter(e=>e.subject == eventsMappingInfo.subject.eventsValue)
         let sessionInfo;
-        sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == eventsMappingInfo["subject"]["eventsValue"])
+        sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == eventsMappingInfo.subject.eventsValue)
         if (sessionInfo.length == 0) {
             sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == "")
         }
@@ -645,8 +648,6 @@ export function createEventObjects(ezbids, files) {
         const subject = subjectInfo[0].PatientInfo[0]
         const session = sessionInfo[0]
 
-        console.log(session)
-
 
         //register new event object using the info we gathered above
         const object = Object.assign({
@@ -654,10 +655,10 @@ export function createEventObjects(ezbids, files) {
             series_idx: null, // Make func/event series_idx be 0.5 above corresponding func/bold series_idx
 
             entities: {
-                "subject": eventsMappingInfo["subject"]["eventsValue"],
-                "session": eventsMappingInfo["session"]["eventsValue"],
-                "task": eventsMappingInfo["task"]["eventsValue"],
-                "run": eventsMappingInfo["run"]["eventsValue"]
+                "subject": eventsMappingInfo.subject.eventsValue,
+                "session": eventsMappingInfo.session.eventsValue,
+                "task": eventsMappingInfo.task.eventsValue,
+                "run": eventsMappingInfo.run.eventsValue
             },
             "items": [],
             //these aren't used, but I believe we have to initialize it
