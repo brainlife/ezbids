@@ -51,7 +51,7 @@
         <br>
     </div>
     -->
-    <div v-if="files.length == 0">        
+    <div v-if="!loaded">
         <p>If you'd like to include task events/timing data with your BIDS datasets, you can upload them here.</p>         
         <p>Please skip this step if you do not have events data.</p>                                                                                   
         <!--
@@ -66,7 +66,7 @@
             placeholder="Select Directory"
             @change="open"/>
     </div>                      
-    <div v-if="files.length">
+    <div v-if="loaded">
         <h3>Column Mapping</h3>
         <p>Please correct the column mappings.</p>
 
@@ -239,7 +239,6 @@
         <h3>Trial Types</h3>
 
         <h3>Debug</h3>
-        <pre>{{files}}</pre>
         <pre>{{columns}}</pre>
         <pre>{{trialTypes}}</pre>
     </div>                                                                             
@@ -287,10 +286,12 @@ export default defineComponent({
             dragging: false,                                                                                            
             starting: false, //wait for browser to handle all files     
 
-            files: [] as IPathAndData[],
+            //files: [] as IPathAndData[],
 
-            columnKeys: [] as string[],
+            columnKeys: null as string[]|null,
             sampleValues: {} as {[key: string]: string[]},
+
+            loaded: false,
 
         }
     },
@@ -343,39 +344,6 @@ export default defineComponent({
         },
 
         async open(event: Event) {
-            /* doesn't work on firefox
-            // @ts-ignore
-            const rootHandle = await window.showDirectoryPicker();
-            if(!rootHandle) {
-                //user canceled or failed to open
-                return;
-            }
-
-            const files = [] as IPathAndData[];
-            
-            async function readDirectoryRecursively(dirHandle : any) {
-                for await (let handle of dirHandle.values()) {
-                    if (handle.kind === "file") {
-                        
-                        //only allow certain file types
-                        const ext = handle.name.split(".").pop();
-                        if(!['out','txt','csv','tsv','xlsx','xlsm','xlsb','xlm'].includes(ext)) return;
-
-                        const file = await handle.getFile();
-                        const relpaths = await rootHandle.resolve(handle);
-                        const fileData = await file.text();   
-                        files.push({path: relpaths.join("/"), data: fileData})
-                    }
-                    if (handle.kind === "directory") {
-                        await readDirectoryRecursively(handle);
-                    }
-                }
-            }
-
-            //start reading on root director
-            await readDirectoryRecursively(rootHandle);
-            this.files = files;
-            */
             const element = event.currentTarget as HTMLInputElement;
             const files = [] as IPathAndData[];
             if(!element.files) return;
@@ -390,40 +358,46 @@ export default defineComponent({
             //remove existing func/events 
             this.ezbids.objects = this.ezbids.objects.filter((o:IObject)=>o._type != "func/events");
 
-            //create new event objects
-            const eventObjects = createEventObjects(this.ezbids, files);
-            eventObjects.forEach(object=>{
-                console.debug(object);
-                this.$store.commit("addObject", object);
-            });
-            
-            //console.log(eventObjects)
+            try {
 
-            this.$emit("mapObjects");
-            //this.$store.commit("organizeObjects"); //necessary?
-
-            //enumerate all possible column headers (from the 1st example)
-            const example = this.ezbids.objects.find((o:IObject)=>o._type == "func/events");
-            if(!example) return; //no event file uploaded
-            const tsvItem = eventObjects[0].items.find((i: any) => i.name == "csv" || i.name == "out" || i.name == "txt" || i.name == "tsv" || i.name == "xlsx" || i.name == "xlsm" || i.name == "xlsb" || i.name == "xlm")
-            if(!tsvItem) return; //should never happen
-
-            const firstEvent = tsvItem.events[0];
-            this.columnKeys = Object.keys(firstEvent);
-
-
-            //construct samples
-            this.columnKeys.forEach(key=>{
-                const samples = [] as string[];
-                tsvItem.events.forEach((rec:any)=>{
-                    //limit number of samples under 30 values.. and unique
-                    if(!samples.includes(rec[key]) && samples.length < 30) samples.push(rec[key]);
+                //create new event objects
+                const eventObjects = createEventObjects(this.ezbids, files);
+                eventObjects.forEach(object=>{
+                    console.debug(object);
+                    this.$store.commit("addObject", object);
                 });
-                this.sampleValues[key] = samples;
-            })
+                
+                this.$emit("mapObjects");
+                //this.$store.commit("organizeObjects"); //necessary?
 
-            const columnMappings = mapEventColumns(tsvItem.events);
-            Object.assign(this.columns, columnMappings);
+                //enumerate all possible column headers (from the 1st example)
+                const example = this.ezbids.objects.find((o:IObject)=>o._type == "func/events");
+                if(!example) return; //no event file uploaded
+                const tsvItem = eventObjects[0].items.find((i: any) => i.name == "csv" || i.name == "out" || i.name == "txt" || i.name == "tsv" || i.name == "xlsx" || i.name == "xlsm" || i.name == "xlsb" || i.name == "xlm")
+                if(!tsvItem) return; //should never happen
+
+                const firstEvent = tsvItem.events[0];
+                this.columnKeys = Object.keys(firstEvent);
+
+                //construct samples
+                this.columnKeys.forEach(key=>{
+                    const samples = [] as string[];
+                    tsvItem.events.forEach((rec:any)=>{
+                        //limit number of samples under 30 values.. and unique
+                        if(!samples.includes(rec[key]) && samples.length < 30) samples.push(rec[key]);
+                    });
+                    this.sampleValues[key] = samples;
+                })
+
+                const columnMappings = mapEventColumns(tsvItem.events);
+                Object.assign(this.columns, columnMappings);
+
+                console.log("successfully processed event files");
+                this.loaded = true;
+            } catch (err){
+                console.error(err);
+                alert("failed to parse/map event files: "+err);
+            }
         },
     },
 });
