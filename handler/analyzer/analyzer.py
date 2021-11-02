@@ -1293,6 +1293,7 @@ def modify_objects_info(dataset_list):
                             "PatientBirthDate": protocol["PatientBirthDate"],
                             "AcquisitionDateTime": protocol["AcquisitionDateTime"],
                             "AcquisitionDate": protocol["AcquisitionDate"],
+                            "SeriesNumber": protocol["SeriesNumber"],
                             "pngPath": "{}.png".format(protocol["nifti_path"][:-7]),
                             "entities": objects_entities,
                             "items": items,
@@ -1330,7 +1331,6 @@ def extract_series_info(dataset_list_unique_series):
     ui_series_info_list = []
     for unique_dic in dataset_list_unique_series:
         ui_series_info = {"SeriesDescription": unique_dic["SeriesDescription"],
-                          "SeriesNumber": unique_dic["SeriesNumber"],
                           "EchoTime": unique_dic["EchoTime"],
                           "ImageType": unique_dic["ImageType"],
                           "RepetitionTime": unique_dic["RepetitionTime"],
