@@ -420,6 +420,30 @@ def generate_dataset_list(uploaded_files_list):
         except:
             volume_count = 1
 
+        # Find SeriesNumber
+        if "SeriesNumber" in json_data:
+            series_number = json_data["SeriesNumber"]
+        else:
+            series_number = 0
+        
+        # Find SeriesDescription
+        if "SeriesDescription" in json_data:
+            series_description = json_data["SeriesDescription"]
+        else:
+            series_description = "N/A"
+    
+        # Find ProtocolName
+        if "ProtocolName" in json_data:
+            protocol_name = json_data["ProtocolName"]
+        else:
+            protocol_name = "N/A"
+        
+        # Find ImageType
+        if "ImageType" in json_data:
+            image_type = json_data["ImageType"]
+        else:
+            image_type = []
+
         # Relative paths of json and nifti files (per SeriesNumber)
         paths = sorted(nifti_paths_for_json + [json_file])
 
@@ -433,14 +457,14 @@ def generate_dataset_list(uploaded_files_list):
             "PatientAge": "N/A",
             "subject": subject,
             "session": session,
-            "SeriesNumber": json_data["SeriesNumber"],
+            "SeriesNumber": series_number,
             "AcquisitionDateTime": acquisition_date_time,
             "AcquisitionDate": acquisition_date,
             "AcquisitionTime": acquisition_time,
             "ModifiedTime": modified_time,
-            "SeriesDescription": json_data["SeriesDescription"],
-            "ProtocolName": json_data["ProtocolName"],
-            "ImageType": json_data["ImageType"],
+            "SeriesDescription": series_description,
+            "ProtocolName": protocol_name,
+            "ImageType": image_type,
             "Dimensionality": dim,
             "RepetitionTime": repetition_time,
             "EchoNumber": echo_number,
