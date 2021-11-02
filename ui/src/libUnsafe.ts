@@ -8,12 +8,16 @@
 // }
 
 export function funcQA($root) {
-    // Exclude functional bold acquisitions have less than 50 volumes,
-    // which are probably a restart or failure functional acquisition occurrence.
+    /*
+    Exclude functional bold acquisitions have less than the specified volume threshold from
+    Series level. If not set, default is 50 volumes because a func with <50 probably
+    indicates a restart or failure functional acquisition occurrence.
+    */
 
     // Loop through all acquisition objects
     for (const obj in $root.objects) {
         if (!obj._exclude && obj._type == 'func/bold' && obj.analysisResults.NumVolumes < 50) {
+            console.log('cooooollll')
             obj.exclude = true
             obj.analysisResults.errors = ['Functional acquisition contains less than 50 volumes, a possible indiciation of a failed/restarted run. Please check to see if you want to keep this, otherwise, this acquisitions will be excluded from BIDS conversion']
         }
