@@ -1,11 +1,11 @@
 // @ts-nocheck
 
-export function doStuff($root, param) {
-    //do XYZ.. return 123...
+// export function doStuff($root, param) {
+//     //do XYZ.. return 123...
 
-    console.log($root);
-    conosle.log(params);
-}
+//     console.log($root);
+//     conosle.log(params);
+// }
 
 export function funcQA($root) {
     // Exclude functional bold acquisitions have less than 50 volumes,
@@ -609,7 +609,7 @@ export function createEventObjects(ezbids, files) {
             }
         }
 
-        console.log(section_ID)
+        // console.log(section_ID)
 
         // Determine correspoding series_idx value that event file(s) go to
         const series_idx = Array.from(new Set(ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
@@ -726,20 +726,22 @@ export function mapEventColumns(events) {
     */
 
     //we only have to return things that we found out.. (leave other things not set)
+   const columns = Object.values(Object.keys(events[0]))
+
     return {
-       onset: "header1",
+       onset: columns[0],
        onsetUnit: "sec",
 
-       duration: "header2",
+       duration: columns[0],
        durationUnit: "sec",
 
-       sample: "header3",
+       sample: columns[0],
        sampleUnit: "samples",
 
-       trial_type: null,
+       trialType: null,
 
        response_time: null,
-       response_timeUnit: "sec",
+       responseTimeUnit: "sec",
 
        values: null,
 

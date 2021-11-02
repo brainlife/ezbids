@@ -396,6 +396,8 @@ export default defineComponent({
                 console.debug(object);
                 this.$store.commit("addObject", object);
             });
+            
+            //console.log(eventObjects)
 
             this.$emit("mapObjects");
             //this.$store.commit("organizeObjects"); //necessary?
@@ -403,11 +405,12 @@ export default defineComponent({
             //enumerate all possible column headers (from the 1st example)
             const example = this.ezbids.objects.find((o:IObject)=>o._type == "func/events");
             if(!example) return; //no event file uploaded
-            const tsvItem = (example as IObject).items.find(i=>i.name == "tsv");
+            const tsvItem = eventObjects[0].items.find(i=>i.name == "csv" || i.name == "out" || i.name == "txt" || i.name == "tsv" || i.name == "xlsx" || i.name == "xlsm" || i.name == "xlsb" || i.name == "xlm")
             if(!tsvItem) return; //should never happen
 
             const firstEvent = tsvItem.events[0];
             this.columnKeys = Object.keys(firstEvent);
+
 
             //construct samples
             this.columnKeys.forEach(key=>{

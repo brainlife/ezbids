@@ -240,7 +240,7 @@ const state = {
         //here lives various things
         subjects: [] as Subject[],                                                                                               
         series: [] as Series[],                                                                                                 
-        objects: [] as IObject[],                                                                                                
+        objects: [] as IObject[], 
 
         _organized: {} as OrganizedSubjects, //above things are organized into subs/ses/run/object hierarchy for quick access
 
@@ -251,10 +251,10 @@ const state = {
     events: {
         columns: {
             onset: null, //will be set to column name in event
-            onsetUnit: "cm", 
+            onsetUnit: "sec", 
             
             duration: null,
-            durationUnit: "cm",
+            durationUnit: "sec",
 
             sample: null,
             //sampleUnit: "mm",
@@ -262,7 +262,7 @@ const state = {
             trialType: null,
 
             responseTime: null,
-            responseTimeUnit: "cm",
+            responseTimeUnit: "sec",
 
             value: null,
 
@@ -397,8 +397,10 @@ const store = createStore({
                 const bsub = b._entities.subject;                                                                            
                 const ases = a._entities.session||"";                                                                        
                 const bses = b._entities.session||"";                                                                        
-                const adatetime = a.AcquisitionDateTime;                                                                             
+                const adatetime = a.AcquisitionDateTime;     
                 const bdatetime = b.AcquisitionDateTime;    
+                // console.log(bdatetime)
+                // console.log(adatetime.localeCompare(bdatetime))
                 const aseriesnum = a.SeriesNumber;
                 const bseriesnum = b.SeriesNumber;                                                                         
                                                                                                                             
@@ -407,8 +409,9 @@ const store = createStore({
                     if(ases == bses)
                         if(adatetime == bdatetime)
                             return aseriesnum < bseriesnum;
-                        else 
-                            return adatetime.localeCompare(bdatetime);
+                        // else 
+                            // console.log(adatetime, bdatetime);
+                            // return adatetime.localeCompare(bdatetime);
                     else if(ases == bses && adatetime != bdatetime)
                         return adatetime < bdatetime;                                                                              
                     else                                                                                           
