@@ -102,6 +102,8 @@ export interface IObject {
 
     AcquisitionDateTime: string; //ISO only used to sort objects
 
+    SeriesNumber: string;
+
     pngPath: string;
     analysisResults: {
         errors: string[];
