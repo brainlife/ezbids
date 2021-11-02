@@ -170,7 +170,6 @@ export default defineComponent({
         prettyBytes,
 
         getObjectsFromSeries(series: Series): IObject[] {
-            console.log(this.ezbids.series)
             const idx = this.ezbids.series.indexOf(series);
             return (this.ezbids.objects as IObject[]).filter(object=>object.series_idx == idx);
         },

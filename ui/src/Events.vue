@@ -79,8 +79,8 @@
                 </el-select>
                 &nbsp;
                 <el-select v-model="columns.onsetUnit" size="small" clearable>
-                    <el-option label="mm" value="mm"/>
-                    <el-option label="cm" value="cm"/>
+                    <el-option label="millisecond" value="ms"/>
+                    <el-option label="microsecond" value="us"/>
                 </el-select> 
 
                 <pre v-if="columns.onset">samples: {{sampleValues[columns.onset].join("|")}}</pre>
@@ -102,8 +102,8 @@
                 </el-select>
                 &nbsp;
                 <el-select v-model="columns.durationUnit" size="small" clearable>
-                    <el-option label="mm" value="mm"/>
-                    <el-option label="cm" value="cm"/>
+                    <el-option label="millisecond" value="ms"/>
+                    <el-option label="microsecond" value="us"/>
                 </el-select> 
                 
                 <pre v-if="columns.duration">samples: {{sampleValues[columns.duration].join("|")}}</pre>
@@ -125,8 +125,8 @@
                 <!--
                 &nbsp;
                 <el-select v-model="columns.sampleUnit" size="small" clearable>
-                    <el-option label="mm" value="mm"/>
-                    <el-option label="cm" value="cm"/>
+                    <el-option label="millisecond" value="ms"/>
+                    <el-option label="microsecond" value="us"/>
                 </el-select> 
                 -->
                 
@@ -148,8 +148,8 @@
                 </el-select>
                 &nbsp;
                 <el-select v-model="columns.responseTimeUnit" size="small" clearable>
-                    <el-option label="mm" value="mm"/>
-                    <el-option label="cm" value="cm"/>
+                    <el-option label="millisecond" value="ms"/>
+                    <el-option label="microsecond" value="us"/>
                 </el-select> 
                 
                 <pre v-if="columns.responseTime">samples: {{sampleValues[columns.responseTime].join("|")}}</pre>
