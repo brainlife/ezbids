@@ -131,6 +131,9 @@
                     <el-form-item v-if="item.headers" label="Nifti Headers (readonly)">
                         <pre class="headers">{{item.headers}}</pre>
                     </el-form-item>
+                    <el-form-item v-if="item.eventsTSV" label="event.tsv">
+                        <pre>{{item.eventsTSV}}</pre>
+                    </el-form-item>
                     <br>
                 </div>
 
@@ -186,13 +189,11 @@ export default defineComponent({
         }
     },
 
-    
     mounted() {
         console.log("object mount completed");
         this.validateAll();
     },
     
-
     computed: {
         ...mapState(['ezbids', 'config', 'bidsSchema']),
         ...mapGetters(['getBIDSEntities', 'getURL', 'findSubject', 'findSession']),

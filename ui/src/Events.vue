@@ -1,6 +1,6 @@
 <template>
 <div style="padding: 20px">
-    <div v-if="!loaded">
+    <div v-if="!events.loaded">
         <p>If you'd like to include task events/timing data with your BIDS datasets, you can upload them here.</p>         
         <p>Please skip this step if you do not have events data.</p>                                                                                   
         <!--
@@ -15,7 +15,7 @@
             placeholder="Select Directory"
             @change="open"/>
     </div>                      
-    <div v-if="loaded">
+    <div v-if="events.loaded">
         <h3>Column Mapping</h3>
         <p>Please correct the column mappings.</p>
 
@@ -31,7 +31,7 @@
                     </el-option>
                 </el-select>
                 -->
-                <columnSelecter v-model="columns.onset" :columnKeys="columnKeys" :sampleValues="sampleValues"/>
+                <columnSelecter v-model="columns.onset" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
                 &nbsp;
                 <el-select v-model="columns.onsetUnit" size="small" clearable>
                     <el-option label="millisecond" value="ms"/>
@@ -50,7 +50,7 @@
         <tr>
             <th>Duration*</th>
             <td>
-                <columnSelecter v-model="columns.duration" :columnKeys="columnKeys" :sampleValues="sampleValues"/>
+                <columnSelecter v-model="columns.duration" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
                 &nbsp;
                 <el-select v-model="columns.durationUnit" size="small" clearable>
                     <el-option label="millisecond" value="ms"/>
@@ -68,7 +68,7 @@
         <tr>
             <th>Sample</th>
             <td>
-                <columnSelecter v-model="columns.sample" :columnKeys="columnKeys" :sampleValues="sampleValues"/>
+                <columnSelecter v-model="columns.sample" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
 
                 <p>
                     Onset of the event according to the sampling scheme of the recorded modality (that is, referring to the raw data file 
@@ -81,7 +81,7 @@
         <tr>
             <th>Response Time</th>
             <td>
-                <columnSelecter v-model="columns.responseTime" :columnKeys="columnKeys" :sampleValues="sampleValues"/>
+                <columnSelecter v-model="columns.responseTime" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
                 &nbsp;
                 <el-select v-model="columns.responseTimeUnit" size="small" clearable>
                     <el-option label="millisecond" value="ms"/>
@@ -99,7 +99,7 @@
         <tr>
             <th>Trial Type</th>
             <td>
-                <columnSelecter v-model="columns.trialType" :columnKeys="columnKeys" :sampleValues="sampleValues"/>
+                <columnSelecter v-model="columns.trialType" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
 
                 <p>
                     Primary categorisation of each trial to identify them as instances of the experimental conditions. 
@@ -120,7 +120,7 @@
 
                     <span>Levels</span>
                     <!--TODO - I need to let user edit the values themselves and add/remove them-->
-                    <div v-for="value in sampleValues[columns.trialType]" :key="value" style="margin-top: 3px;">
+                    <div v-for="value in events.sampleValues[columns.trialType]" :key="value" style="margin-top: 3px;">
                         <el-input v-model="trialTypes.levels[value]" placeholder="desc" size="small">
                             <template #prepend>{{value}}</template>
                         </el-input>
@@ -133,7 +133,7 @@
         <tr>
             <th>Value</th>
             <td>
-                <columnSelecter v-model="columns.value" :columnKeys="columnKeys" :sampleValues="sampleValues"/>
+                <columnSelecter v-model="columns.value" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
             
                 <p>
                     Marker value associated with the event (for example, the value of a TTL trigger that was recorded at the onset of the event).
@@ -145,7 +145,7 @@
         <tr>
             <th>HED</th>
             <td>
-                <columnSelecter v-model="columns.HED" :columnKeys="columnKeys" :sampleValues="sampleValues"/>
+                <columnSelecter v-model="columns.HED" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
                 
                 <p>
                     Hierarchical Event Descriptor (HED) Tag. See <a href="https://bids-specification.readthedocs.io/en/stable/99-appendices/03-hed.html">BIDS Specification / Appendix 3</a>
@@ -210,10 +210,9 @@ export default defineComponent({
 
             //files: [] as IPathAndData[],
 
-            columnKeys: null as string[]|null,
-            sampleValues: {} as {[key: string]: string[]},
-
-            loaded: false,
+            //columnKeys: null as string[]|null,
+            //sampleValues: {} as {[key: string]: string[]},
+            //loaded: false,
 
         }
     },
@@ -223,7 +222,7 @@ export default defineComponent({
     },
 
     computed: {
-        ...mapState(['ezbids', 'config', 'bidsSchema']),
+        ...mapState(['ezbids', 'config', 'bidsSchema', 'events']),
         ...mapGetters(['getBIDSEntities', 'getURL', 'findSubject', 'findSession']),
 
         columns() {
@@ -299,25 +298,25 @@ export default defineComponent({
                 if(!tsvItem) return; //should never happen
 
                 const firstEvent = tsvItem.events[0];
-                this.columnKeys = Object.keys(firstEvent);
+                this.ezbids.columnKeys = Object.keys(firstEvent);
 
                 //construct samples
-                this.columnKeys.forEach(key=>{
+                this.ezbids.columnKeys.forEach((key:string)=>{
                     const samples = [] as string[];
                     tsvItem.events.forEach((rec:any)=>{
                         //limit number of samples under 30 values.. and unique
                         if(!samples.includes(rec[key]) && samples.length < 30) samples.push(rec[key]);
                     });
-                    this.sampleValues[key] = samples;
+                    this.events.sampleValues[key] = samples;
                 })
                 console.log("sample values");
-                console.dir(this.sampleValues);
+                console.dir(this.events.sampleValues);
 
                 const columnMappings = mapEventColumns(tsvItem.events);
                 Object.assign(this.columns, columnMappings);
 
                 console.log("successfully processed event files");
-                this.loaded = true;
+                this.events.loaded = true;
             } catch (err){
                 console.error(err);
                 alert("failed to parse/map event files: "+err);

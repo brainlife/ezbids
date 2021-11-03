@@ -2,13 +2,6 @@
 import { createStore } from 'vuex'
 
 import bidsEntities from '../assets/schema/entities.json'
-
-/*
-interface Session {
-    _id: string;
-}
-*/
-
 export interface DatasetDescription {
     Name: string;    
     BIDSVersion: string;    
@@ -84,7 +77,8 @@ export interface IObject {
         name?: string;
         headers?: any; //for nifti
         
-        events?: any; //for event
+        events?: any; //for event (contains object parsed by createEventObjects)
+        eventsTSV?: string;
     }];
 
     series_idx: number;
@@ -245,7 +239,6 @@ const state = {
         _organized: {} as OrganizedSubjects, //above things are organized into subs/ses/run/object hierarchy for quick access
 
         defacingMethod: "",
-
     },
 
     events: {
@@ -268,11 +261,16 @@ const state = {
 
             HED: null,
         },
+
         trialTypes: {
             longName: "Event category",
             desc: "Indicator of type of action that is expected",
             levels: {} as {[key: string]: string}, //description for each trialType values
         },
+
+        columnKeys: null as string[]|null,
+        sampleValues: {} as {[key: string]: string[]},
+        loaded: false,
     },
 
     //currentPage: null,                                                                                          
@@ -280,6 +278,8 @@ const state = {
 
     //page: "upload", //currently opened page (see App.vue for list of pages)
 }
+export type IEzbids = typeof state.ezbids;
+export type IEvents = typeof state.events;
 
 function loadDatatype(modality: string, datatype: BIDSSchemaEntities[], label: string) {
     state.bidsSchema.datatypes[modality] = { label, options: [] };
@@ -344,9 +344,16 @@ const store = createStore({
                 objects: [],                                                                                                
         
                 _organized: {}, //above things are organized into subs/ses/run/object hierarchy for quick access
+
+                //for defacing page
                 defacingMethod: "",
-                
             };
+
+            Object.assign(state.events, {
+                columnKeys: null,
+                sampleValues: {},
+                loaded: false,
+            });
         },
 
         updateEzbids(state, ezbids) {
