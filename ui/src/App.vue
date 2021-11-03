@@ -17,7 +17,7 @@ import { IObject } from './store'
 
 import { ElNotification } from 'element-plus'
 
-import { funcQA, fmapQA, setRun, updateErrors, setIntendedFor } from './libUnsafe'
+import { setSectionIDs, funcQA, fmapQA, setRun, updateErrors, setIntendedFor } from './libUnsafe'
 
 export default defineComponent({
     components: {
@@ -137,6 +137,7 @@ export default defineComponent({
 
                     switch(this.page) {
                     case "event":
+                        setSectionIDs(this.ezbids);
                         funcQA(this.ezbids); 
                         fmapQA(this.ezbids); 
                         setRun(this.ezbids); 

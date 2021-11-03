@@ -1,5 +1,7 @@
 // @ts-nocheck
 
+import { prependListener } from "process"
+
 // export function doStuff($root, param) {
 //     //do XYZ.. return 123...
 
@@ -7,22 +9,80 @@
 //     conosle.log(params);
 // }
 
-export function funcQA($root) {
+export function setSectionIDs($root) {
     /*
-    Exclude functional bold acquisitions have less than the specified volume threshold from
-    Series level. If not set, default is 50 volumes because a func with <50 probably
-    indicates a restart or failure functional acquisition occurrence.
+    Set a section_ID value for each acquisition, beginning with a value of 1. Each time
+    a non-adjacent localizer is detected, the section_ID value is increased by 1. The
+    section_ID value helps for determining fmap IntendedFor mapping, where field maps
+    cannot be applied to acquisitions from different sections. A section is ezBIDS jargin
+    for each time participant comes out and then re-enters scanner.
     */
 
-    // Loop through all acquisition objects
-    for (const obj in $root.objects) {
-        if (!obj._exclude && obj._type == 'func/bold' && obj.analysisResults.NumVolumes < 50) {
-            console.log('cooooollll')
-            obj.exclude = true
-            obj.analysisResults.errors = ['Functional acquisition contains less than 50 volumes, a possible indiciation of a failed/restarted run. Please check to see if you want to keep this, otherwise, this acquisitions will be excluded from BIDS conversion']
+    for (const subject in $root._organized) {
+    
+        const sessions = $root._organized[subject].sess
+        for (const session in sessions) {
+
+            let protocol = sessions[session].objects
+            let sectionID = 1
+
+            protocol.forEach(obj=> {
+                let message = $root.series[protocol[obj.idx].series_idx].message
+
+                let previousMessage = ""
+                if (obj.idx == 0) {
+                    previousMessage = ""
+                } else {
+                    previousMessage = $root.series[protocol[obj.idx - 1].series_idx].message
+                }
+
+                if (obj.idx != 0 && message.includes("localizer") && (previousMessage == "" || !previousMessage.includes("localizer"))) {
+                    sectionID++;
+                    obj.analysisResults.section_ID = sectionID
+                } else {
+                    obj.analysisResults.section_ID = sectionID
+                }
+            })
         }
     }
 }
+
+export function funcQA($root) {
+    /*
+    Exclude functional bold acquisitions have less than the specified volume threshold from
+    Series level. If unspecified, default is 50 volumes because a func/bold with < 50 probably
+    indicates a restart or failure.
+    */
+    $root.series.forEach(s=> {
+        if (s.type == "func/bold") {
+            let series_idx = s.series_idx
+            let VolumeThreshold = s.VolumeThreshold
+
+            $root.objects.forEach(o=> {
+                if (o.series_idx == series_idx) {
+                    o.exclude = false
+                    if (o.analysisResults.NumVolumes < VolumeThreshold) {
+                        o.exclude = true
+                        o.analysisResults.errors = [`Functional bold acquisition contains less than ${VolumeThreshold} volumes, a possible indication of a failed/restarted run. Please check to see if you want to keep this acquisition, otherwise this acquisition will be excluded from BIDS conversion.`]
+                    }
+                }
+            })
+        }
+    })
+    //If func/bold acquisition is excluded, make sure that corresponding func/sbref is also excluded as well
+    $root.objects.forEach(o=> {
+        if (o._type == "func/bold" && o.exclude == true) {
+            let funcBoldEntities = o._entities
+            let badFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && JSON.stringify(e._entities) === JSON.stringify(funcBoldEntities)).map(e=>e.idx)
+            badFuncSBRef.forEach(bad=> {
+                $root.objects[bad].exclude = true
+                $root.objects[bad].analysisResults.errors = ["Functional sbref has a corresponding functional bold that has been set to exclude from BIDS conversion. Therefore, this sbref will also be set to exclude from BIDS conversion."]
+            })
+        }
+    })
+}
+
+
 
 export function fmapQA($root) {
     // Assesses fieldmaps for improper PEDs (for spin-echo field maps),

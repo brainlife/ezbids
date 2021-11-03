@@ -477,7 +477,6 @@ def generate_dataset_list(uploaded_files_list):
             "exclude": False,
             "filesize": filesize,
             "NumVolumes": volume_count,
-            "VolumeThreshold": 50,
             "forType": "",
             "error": None,
             "section_ID": 1,
@@ -1355,12 +1354,10 @@ def extract_series_info(dataset_list_unique_series):
     ui_series_info_list = []
     for unique_dic in dataset_list_unique_series:
         ui_series_info = {"SeriesDescription": unique_dic["SeriesDescription"],
-                          "SeriesNumber": unique_dic["SeriesNumber"],
                           "EchoTime": unique_dic["EchoTime"],
                           "ImageType": unique_dic["ImageType"],
                           "RepetitionTime": unique_dic["RepetitionTime"],
                           "NumVolumes": unique_dic["NumVolumes"],
-                          "VolumeThreshold": unique_dic["VolumeThreshold"],
                           "nifti_path": unique_dic["nifti_path"],
                           "series_idx": unique_dic["series_idx"],
                           "AcquisitionDateTime": unique_dic["AcquisitionDateTime"],
