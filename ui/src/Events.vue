@@ -1,56 +1,5 @@
 <template>
 <div style="padding: 20px">
-    <!--
-    <div class="bids-structure">
-        <div v-for="(o_sub, sub) in ezbids._organized" :key="sub" style="font-size: 90%; margin-bottom: 10px">
-            <span v-if="sub != ''" class="hierarchy">
-                <i class="el-icon-user-solid" style="margin-right: 2px;"/> 
-                <small>sub-</small><b>{{sub}}</b> 
-                &nbsp;
-                &nbsp;
-                <el-checkbox :value="o_sub.exclude" @change="excludeSubject(sub.toString(), $event)">
-                    <small>Exclude this subject</small>
-                </el-checkbox>
-            </span>
-            <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}">
-                <span v-if="ses" class="hierarchy">
-	   	            <i class="el-icon-time" style="margin-right: 2px;"/>
-                    <small>ses-</small><b>{{ses}}</b>
-                    &nbsp;
-                    <small style="opacity: 0.5;">{{o_ses.AcquisitionDate}}</small>
-                    &nbsp;
-                    &nbsp;
-                    <el-checkbox :value="o_ses.exclude" @change="excludeSession(sub.toString(), ses.toString(), $event)">
-                        <small>Exclude this session</small>
-                    </el-checkbox>
-                </span>
-                <div v-for="(section, sectionId) in groupSections(o_ses)" :key="sectionId" style="position: relative;">
-                    <div v-if="section.length > 1" style="border-top: 1px dotted #bbb; width: 100%; margin: 9px 0;">
-                        <span style="float: right; top: -7px; position: relative; background-color: white; font-size: 70%; color: #999; padding: 0 10px; margin-right: 10px;">section {{sectionId}}</span>
-                    </div>
-                    <div v-for="o in section" :key="o.idx" class="clickable hierarchy-item" :class="{selected: so === o, exclude: isExcluded(o)}" @click="select(o, o_ses)">
-                        <el-tag type="info" size="mini">#{{o.series_idx}}</el-tag>&nbsp;<datatype :type="o._type" :series_idx="o.series_idx" :entities="o.entities"/> 
-                        <small v-if="o._type == 'exclude'">&nbsp;({{o._SeriesDescription}})</small>
-                        
-                        <span v-if="!isExcluded(o)">
-            
-                            <el-badge v-if="o.validationErrors.length > 0" type="danger" 
-                                :value="o.validationErrors.length" style="margin-left: 5px;"/>
-
-
-                            <el-badge v-if="o._type != 'exclude' && o.analysisResults && o.analysisResults.errors && o.analysisResults.errors.length > 0" type="warning"
-                                :value="o.analysisResults.errors.length" style="margin-left: 5px"/>
-                        </span>
-                    </div>
-                </div>
-            </div>
-        </div>
-        <br>
-        <br>
-        <br>
-        <br>
-    </div>
-    -->
     <div v-if="!loaded">
         <p>If you'd like to include task events/timing data with your BIDS datasets, you can upload them here.</p>         
         <p>Please skip this step if you do not have events data.</p>                                                                                   
@@ -74,17 +23,21 @@
         <tr>
             <th>Onset*</th>
             <td>
+                <!--
                 <el-select v-model="columns.onset" size="small" clearable placeholder="Select column">
-                    <el-option v-for="(key, idx) in columnKeys" :key="idx" :label="key" :value="key"/>
+                    <el-option v-for="(key, idx) in columnKeys" :key="idx" :label="key" :value="key">
+                        <div style="display: inline-block; min-width: 100px">{{key}}</div>
+                        <small>{{composeSampleValue(key)}}</small>
+                    </el-option>
                 </el-select>
+                -->
+                <columnSelecter v-model="columns.onset" :columnKeys="columnKeys" :sampleValues="sampleValues"/>
                 &nbsp;
                 <el-select v-model="columns.onsetUnit" size="small" clearable>
                     <el-option label="millisecond" value="ms"/>
                     <el-option label="microsecond" value="us"/>
                 </el-select> 
 
-                <pre v-if="columns.onset">samples: {{sampleValues[columns.onset].join("|")}}</pre>
-                
                 <p>
                     Onset of the event measured from the beginning of the acquisition of the first volume in the corresponding task imaging data file. 
                     If any acquired scans have been discarded before forming the imaging data file, ensure that a time of 0 corresponds to the first 
@@ -97,17 +50,13 @@
         <tr>
             <th>Duration*</th>
             <td>
-                <el-select v-model="columns.duration" size="small" clearable placeholder="Select column">
-                    <el-option v-for="(key, idx) in columnKeys" :key="idx" :label="key" :value="key"/>
-                </el-select>
+                <columnSelecter v-model="columns.duration" :columnKeys="columnKeys" :sampleValues="sampleValues"/>
                 &nbsp;
                 <el-select v-model="columns.durationUnit" size="small" clearable>
                     <el-option label="millisecond" value="ms"/>
                     <el-option label="microsecond" value="us"/>
                 </el-select> 
                 
-                <pre v-if="columns.duration">samples: {{sampleValues[columns.duration].join("|")}}</pre>
-
                 <p>
                     Duration of the event (measured from onset). Must always be either zero or positive. A "duration" value of zero implies that 
                     the delta function or event is so short as to be effectively modeled as an impulse.
@@ -119,18 +68,7 @@
         <tr>
             <th>Sample</th>
             <td>
-                <el-select v-model="columns.sample" size="small" clearable placeholder="Select column">
-                    <el-option v-for="(key, idx) in columnKeys" :key="idx" :label="key" :value="key"/>
-                </el-select>
-                <!--
-                &nbsp;
-                <el-select v-model="columns.sampleUnit" size="small" clearable>
-                    <el-option label="millisecond" value="ms"/>
-                    <el-option label="microsecond" value="us"/>
-                </el-select> 
-                -->
-                
-                <pre v-if="columns.sample">samples: {{sampleValues[columns.sample].join("|")}}</pre>
+                <columnSelecter v-model="columns.sample" :columnKeys="columnKeys" :sampleValues="sampleValues"/>
 
                 <p>
                     Onset of the event according to the sampling scheme of the recorded modality (that is, referring to the raw data file 
@@ -143,17 +81,13 @@
         <tr>
             <th>Response Time</th>
             <td>
-                <el-select v-model="columns.responseTime" size="small" clearable placeholder="Select column">
-                    <el-option v-for="(key, idx) in columnKeys" :key="idx" :label="key" :value="key"/>
-                </el-select>
+                <columnSelecter v-model="columns.responseTime" :columnKeys="columnKeys" :sampleValues="sampleValues"/>
                 &nbsp;
                 <el-select v-model="columns.responseTimeUnit" size="small" clearable>
                     <el-option label="millisecond" value="ms"/>
                     <el-option label="microsecond" value="us"/>
                 </el-select> 
                 
-                <pre v-if="columns.responseTime">samples: {{sampleValues[columns.responseTime].join("|")}}</pre>
-
                 <p>
                     Response time measured in seconds. A negative response time can be used to represent preemptive responses and "n/a" 
                     denotes a missed response.
@@ -165,13 +99,7 @@
         <tr>
             <th>Trial Type</th>
             <td>
-                <el-select v-model="columns.trialType" size="small" clearable placeholder="Select column">
-                    <el-option v-for="(key, idx) in columnKeys" :key="idx" :label="key" :value="key"/>
-                </el-select>
-                
-                <!--
-                <pre v-if="columns.trialType">samples: {{sampleValues[columns.trialType].join("|")}}</pre>
-                -->
+                <columnSelecter v-model="columns.trialType" :columnKeys="columnKeys" :sampleValues="sampleValues"/>
 
                 <p>
                     Primary categorisation of each trial to identify them as instances of the experimental conditions. 
@@ -205,12 +133,8 @@
         <tr>
             <th>Value</th>
             <td>
-                <el-select v-model="columns.value" size="small" clearable placeholder="Select column">
-                    <el-option v-for="(key, idx) in columnKeys" :key="idx" :label="key" :value="key"/>
-                </el-select>
+                <columnSelecter v-model="columns.value" :columnKeys="columnKeys" :sampleValues="sampleValues"/>
             
-                <pre v-if="columns.value">samples: {{sampleValues[columns.value].join("|")}}</pre>
-
                 <p>
                     Marker value associated with the event (for example, the value of a TTL trigger that was recorded at the onset of the event).
                 </p>
@@ -221,12 +145,8 @@
         <tr>
             <th>HED</th>
             <td>
-                <el-select v-model="columns.HED" size="small" clearable placeholder="Select column">
-                    <el-option v-for="(key, idx) in columnKeys" :key="idx" :label="key" :value="key"/>
-                </el-select>
+                <columnSelecter v-model="columns.HED" :columnKeys="columnKeys" :sampleValues="sampleValues"/>
                 
-                <pre v-if="columns.value">samples: {{sampleValues[columns.value].join("|")}}</pre>
-
                 <p>
                     Hierarchical Event Descriptor (HED) Tag. See <a href="https://bids-specification.readthedocs.io/en/stable/99-appendices/03-hed.html">BIDS Specification / Appendix 3</a>
                 </p>
@@ -250,6 +170,7 @@
 import { mapState, mapGetters, } from 'vuex'
 import { defineComponent } from 'vue'                                                                                                                                                  
 import datatype from './components/datatype.vue' 
+import columnSelecter from './components/columnselecter.vue'
 
 import { IObject, Subject, Session, OrganizedSession } from './store'
 
@@ -279,6 +200,7 @@ interface Column {
 export default defineComponent({
     components: {
         datatype,
+        columnSelecter,
     },
 
     data() {
@@ -319,8 +241,8 @@ export default defineComponent({
     },
     
     methods: {
-        
         isValid(cb: (v?: string)=>void) {
+
             /*
             this.$emit("mapObjects");
             this.validateAll();
@@ -388,6 +310,8 @@ export default defineComponent({
                     });
                     this.sampleValues[key] = samples;
                 })
+                console.log("sample values");
+                console.dir(this.sampleValues);
 
                 const columnMappings = mapEventColumns(tsvItem.events);
                 Object.assign(this.columns, columnMappings);

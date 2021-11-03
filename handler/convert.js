@@ -195,9 +195,12 @@ async.forEachOf(info.objects, (o, idx, next_o) => {
                 headers.push("HED");
             tsv.content = headers.join("\t") + "\n";
             function fixUnit(v, unit) {
-                if (unit == "mm")
-                    return v / 100; //convert to cm
-                return v; //assume cm..
+                switch (unit) {
+                    case "ms": return v / 1000;
+                    case "us": return v / 1000000;
+                    default:
+                        return v;
+                }
             }
             //emit all values
             tsv.events.forEach(event => {
