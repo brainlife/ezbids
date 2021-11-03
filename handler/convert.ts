@@ -222,7 +222,8 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
                 if(columns.responseTime) values.push(fixUnit(event[columns.responseTime], columns.responseTimeUnit));
                 if(columns.value) values.push(event[columns.value]);
                 if(columns.HED) values.push(event[columns.HED]);
-                tsv.content += values.join("\t")+"\n";
+                //tsv.content += values.join("\t")+"\n";
+                tsv.content += values.map(v=>(v|'empty')).join("\t")+"\n";
             });
             console.log(tsv.content);
 

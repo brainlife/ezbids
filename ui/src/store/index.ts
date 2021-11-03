@@ -399,8 +399,6 @@ const store = createStore({
                 const bses = b._entities.session||"";                                                                        
                 const adatetime = a.AcquisitionDateTime;     
                 const bdatetime = b.AcquisitionDateTime;    
-                // console.log(bdatetime)
-                // console.log(adatetime.localeCompare(bdatetime))
                 const aseriesnum = a.SeriesNumber;
                 const bseriesnum = b.SeriesNumber;                                                                         
                                                                                                                             
