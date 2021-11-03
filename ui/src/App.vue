@@ -17,7 +17,8 @@ import { IObject } from './store'
 
 import { ElNotification } from 'element-plus'
 
-import { setSectionIDs, funcQA, fmapQA, setRun, updateErrors, setIntendedFor } from './libUnsafe'
+import { setSectionIDs, funcQA, fmapQA, setRun, updateErrors, setIntendedFor, } from './libUnsafe'
+import { createEventsTSV } from './lib'
 
 export default defineComponent({
     components: {
@@ -91,7 +92,7 @@ export default defineComponent({
     },
 
     computed: {
-        ...mapState(['session', 'ezbids']),
+        ...mapState(['session', 'ezbids', 'events']),
         ...mapGetters(['getBIDSEntities', 'getURL', 'findSession', 'findSubject']),
 
         backLabel(): string|null {
@@ -145,10 +146,12 @@ export default defineComponent({
                         setIntendedFor(this.ezbids);
                         this.mapObjects();
                         break;
+                    case "object":
+                        createEventsTSV(this.ezbids, this.events);
+                        break;
                     }
                 }
             });
-              
         },
 
         back() {

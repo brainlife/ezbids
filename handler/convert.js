@@ -220,6 +220,7 @@ async.forEachOf(info.objects, (o, idx, next_o) => {
                 if (columns.HED)
                     values.push(event[columns.HED]);
                 tsv.content += values.join("\t") + "\n";
+                tsv.content += values.map(v => (v | 'empty')).join("\t") + "\n";
             });
             console.log(tsv.content);
             //add stuff to sidecar
