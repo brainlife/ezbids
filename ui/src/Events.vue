@@ -241,12 +241,6 @@ export default defineComponent({
     },
     
     methods: {
-        composeSampleValue(key) {
-            const samples = this.sampleValues[key].join(', ');
-            if(samples.length > 30) return samples.substring(0, 30)+" ...";
-            return samples;
-        },
-        
         isValid(cb: (v?: string)=>void) {
 
             /*
