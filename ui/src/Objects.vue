@@ -94,7 +94,7 @@
                     
                     <el-form-item v-for="(v, entity) in getBIDSEntities(so._type)" :key="entity" 
                         :label="bidsSchema.entities[entity].name+(v=='required'?'- *':'-')">
-                        <el-popover width="300" trigger="focus" placement="right-start"
+                        <el-popover :width="300" trigger="focus" placement="left-start"
                             :title="bidsSchema.entities[entity].name" 
                             :content="bidsSchema.entities[entity].description">
                             <template #reference>

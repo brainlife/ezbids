@@ -183,7 +183,7 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
         */
         if(suffix == "events") {
             //we handle events a bit differently.. we need to generate events.tsv from items content
-            const tsv = o.items.find(o=>o.name == "tsv");
+            const tsv = o.items.find(o=>!!o.events);
             const sidecar = o.items.find(o=>o.name == "json");
             console.log("handling events");
 

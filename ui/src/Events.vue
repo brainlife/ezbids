@@ -221,7 +221,7 @@
         <tr>
             <th>HED</th>
             <td>
-                <el-select v-model="columns.value" size="small" clearable placeholder="Select column">
+                <el-select v-model="columns.HED" size="small" clearable placeholder="Select column">
                     <el-option v-for="(key, idx) in columnKeys" :key="idx" :label="key" :value="key"/>
                 </el-select>
                 
