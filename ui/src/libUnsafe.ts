@@ -69,6 +69,7 @@ export function funcQA($root) {
             })
         }
     })
+
     //If func/bold acquisition is excluded, make sure that corresponding func/sbref is also excluded as well
     $root.objects.forEach(o=> {
         if (o._type == "func/bold" && o.exclude == true) {
@@ -77,6 +78,20 @@ export function funcQA($root) {
             badFuncSBRef.forEach(bad=> {
                 $root.objects[bad].exclude = true
                 $root.objects[bad].analysisResults.errors = ["Functional sbref has a corresponding functional bold that has been set to exclude from BIDS conversion. Therefore, this sbref will also be set to exclude from BIDS conversion."]
+            })
+        }
+    })
+
+    //Exclude func/sbref if its PhaseEncodingDirection is different from the corresponding func/bold PhaseEncodingDirection
+    $root.objects.forEach(o=> {
+        if (o._type == "func/bold") {
+            let boldEntities = o._entities
+            let boldPED = o.items[0].sidecar.PhaseEncodingDirection
+            let badSBRef = $root.objects.filter(e=>e._type == "func/sbref" && JSON.stringify(e._entities) === JSON.stringify(boldEntities) &&
+                                                e.items[0].sidecar.PhaseEncodingDirection != boldPED).map(e=>e.idx) 
+            badSBRef.forEach(bad=> {
+                $root.objects[bad].exclude = true
+                $root.objects[bad].analysisResults.errors = ["Functional sbref has a different PhaseEncodingDirection than its corresponding functional bold. This is a data error, therefore this sbref will be set to exclude from BIDS conversion."]
             })
         }
     })
