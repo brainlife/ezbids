@@ -1404,9 +1404,8 @@ dataset_list = update_dataset_list(dataset_list, dataset_list_unique_series)
 # Apply a few other changes to the objects level
 objects_list = modify_objects_info(dataset_list)
 
-# # Map unique series IDs to all other acquisitions in dataset that have those parameters
+# Map unique series IDs to all other acquisitions in dataset that have those parameters
 for index, unique_dic in enumerate(dataset_list_unique_series):
-    # dataset_list_unique_series[index]["object_indices"] = [x for x in range(len(objects_list)) if objects_list[x]["series_idx"] == dataset_list_unique_series[index]["series_idx"]]
 
     print(" ".join("Unique data acquisition file {}, \
         Series Description {}, \
