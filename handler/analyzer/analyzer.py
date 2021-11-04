@@ -380,7 +380,6 @@ def generate_dataset_list(uploaded_files_list):
             acquisition_date_time = json_data["AcquisitionDateTime"]
             acquisition_date = json_data["AcquisitionDateTime"].split("T")[0]
             acquisition_time = json_data["AcquisitionDateTime"].split("T")[-1]
-            modified_time = "".join([x if len(x) > 1 else "0"+x for x in acquisition_time.replace(".", ":").split(":")]) # Need this!
         else:
             acquisition_date_time = "0000-00-00T14:42:55.465000"
             acquisition_date = "0000-00-00"
@@ -407,12 +406,6 @@ def generate_dataset_list(uploaded_files_list):
 
         # get the nibabel nifti image info
         image = nib.load(json_file[:-4] + "nii.gz")
-
-        # determine dimensionality of acquisition
-        try:
-            dim = image.ndim
-        except:
-            dim = None
 
         # Find how many volumes are in corresponding nifti file
         try:
@@ -461,11 +454,9 @@ def generate_dataset_list(uploaded_files_list):
             "AcquisitionDateTime": acquisition_date_time,
             "AcquisitionDate": acquisition_date,
             "AcquisitionTime": acquisition_time,
-            "ModifiedTime": modified_time,
             "SeriesDescription": series_description,
             "ProtocolName": protocol_name,
             "ImageType": image_type,
-            "Dimensionality": dim,
             "RepetitionTime": repetition_time,
             "EchoNumber": echo_number,
             "EchoTime": echo_time,
