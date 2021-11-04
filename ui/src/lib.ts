@@ -20,7 +20,7 @@ export function createEventsTSV(ezbids : IEzbids, events : IEvents) {
             if(columns.HED) headers.push("HED");
             tsv.content = headers.join("\t\t")+"\n";
 
-            function fixUnit(v, unit) {
+            function fixUnit(v: any, unit: any) {
                 switch(unit) {
                 case "ms": return (v/1000).toFixed(3);
                 default:
@@ -39,7 +39,7 @@ export function createEventsTSV(ezbids : IEzbids, events : IEvents) {
                 if(columns.value) values.push(event[columns.value]);
                 if(columns.HED) values.push(event[columns.HED]);
                 tsv.content += values.join("\t\t")+"\n";
-                // tsv.content += values.map(v=>(v|'empty')).join("\t\t")+"\n";
+                tsv.content += values.map(v=>(v|'empty')).join("\t\t")+"\n";
             });
 
             item.eventsTSV = tsv.content
