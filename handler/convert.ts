@@ -182,8 +182,8 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
         */
         if(suffix == "events") {
             //we handle events a bit differently.. we need to generate events.tsv from items content
-            const tsv = o.items.find(o=>!!o.events);
-            const sidecar = o.items.find(o=>o.name == "json");
+            const events = o.items.find(o=>!!o.eventsBIDS);
+            /*
             console.log("handling events");
 
             console.log("tsv");
@@ -229,8 +229,20 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
                 tsv.content += values.map(v=>(v|'empty')).join("\t")+"\n";
             });
             console.log(tsv.content);
+            */
+            //convert eventsBIDS to tsv.content
+            const headers = ["onset", "duration", "sample", "trial_type", "response_time", "value", "HED"];
+            events.content = headers.join("\t")+"\n";
+            events.eventsBIDS.forEach(rec=>{
+                const row = [];
+                headers.forEach(key=>{
+                    row.push(rec[key]||"null");
+                });
+                events.content += row.join("\t")+"\n";
+            });
 
             //add stuff to sidecar
+            const sidecar = o.items.find(o=>o.name == "json");
             //sidecar.sidecar.TaskName = o._entities.task;
             sidecar.sidecar.trial_type = {
                 LongName: info.events.trialTypes.longName,
@@ -239,7 +251,7 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
             }
 
             //now save
-            handleItem(tsv, "events.tsv");
+            handleItem(events, "events.tsv");
             handleItem(sidecar, "events.json");
         } else {
 

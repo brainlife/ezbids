@@ -184,7 +184,7 @@ export default defineComponent({
         },
 
         sendBrainlife() {
-            window.open("../projects#ezbids:"+this.session._id, "_brainlife");
+            window.open("../projects#ezbids:"+this.session._id, "_brainlife."+this.session._id);
         },
 
         sendOpenneuro() {
