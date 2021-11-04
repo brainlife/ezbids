@@ -59,6 +59,17 @@ export interface Session {
     session: string; //empty string if not session map
 }
 
+//https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/05-task-events.html
+export interface IBIDSEvent {
+    onset: number;
+    duration: number;
+    sample?: number;
+    trial_type?: string,
+    response_time?: number;
+    value?: string|number;
+    HEAD?: string;
+}
+
 export interface IObject {
     idx: number; //set by organizeObjects after re-sorting
 
@@ -78,7 +89,7 @@ export interface IObject {
         headers?: any; //for nifti
         
         events?: any; //for event (contains object parsed by createEventObjects)
-        eventsBIDS?: any;
+        eventsBIDS?: IBIDSEvent[];
     }];
 
     series_idx: number;

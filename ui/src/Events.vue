@@ -2,7 +2,7 @@
 <div style="padding: 20px">
     <div v-if="!events.loaded">
         <p>If you'd like to include task events/timing data with your BIDS datasets, you can upload them here.</p>         
-        <p>Please skip this step if you do not have events data.</p>                                                                                   
+        <p>Please skip this step if you do not have events data.</p>                                                                              
         <!--
         <el-button @click="open">Select Directory</el-button>                                                        
         -->
@@ -16,6 +16,7 @@
             @change="open"/>
     </div>                      
     <div v-if="events.loaded">
+        <el-button type="warning" @click="reset" style="float: right;">Reset</el-button>     
         <h3>Column Mapping</h3>
         <p>Please correct the column mappings.</p>
 
@@ -153,8 +154,6 @@
 
         </table>
 
-        <h3>Trial Types</h3>
-
         <h3>Debug</h3>
         <pre>{{columns}}</pre>
         <pre>{{trialTypes}}</pre>
@@ -237,28 +236,19 @@ export default defineComponent({
     },
     
     methods: {
-        isValid(cb: (v?: string)=>void) {
-
-            /*
-            this.$emit("mapObjects");
-            this.validateAll();
-
+        isValid(cb: (err?: string)=>void) {
             let err = undefined;
-            this.ezbids.objects.forEach((o:IObject)=>{
-                if(o.validationErrors.length > 0) err = "Please correct all issues.";
-            });
-
-            //make sure there is at least 1 object to output
-            let one = this.ezbids.objects.find((o:IObject)=>!o._exclude);
-            if(!one) {
-                err = "All objects are excluded. Please update so that there is at least 1 object to output to BIDS";
+            if(this.events.loaded) {
+                if(!this.columns.onset) err = "Please specify onset column";
+                if(!this.columns.duration) err = "Please specify duration column";
             }
+            cb(err);
+        },
 
-            return cb(err);
-            */
-
-           //TODO
-           cb();
+        reset() {
+            //remove existing func/events 
+            this.ezbids.objects = this.ezbids.objects.filter((o:IObject)=>o._type != "func/events");
+            this.events.loaded = false;
         },
 
         async open(event: Event) {
@@ -273,8 +263,7 @@ export default defineComponent({
                 });                                               
             }    
 
-            //remove existing func/events 
-            this.ezbids.objects = this.ezbids.objects.filter((o:IObject)=>o._type != "func/events");
+            this.reset();
 
             try {
 

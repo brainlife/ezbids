@@ -31,6 +31,7 @@ export default defineComponent({
        Objects,
        Deface,
        Finalize,
+       ElNotification,
     },
 
     data() {

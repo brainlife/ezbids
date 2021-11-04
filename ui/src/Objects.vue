@@ -131,14 +131,16 @@
                     <el-form-item v-if="item.headers" label="Nifti Headers (readonly)">
                         <pre class="headers">{{item.headers}}</pre>
                     </el-form-item>
-                    <el-form-item v-if="item.eventsBIDS" label="event.tsv">
-                        <table id="events" class="table table-striped table-bordered" width="100%">
-                            <tbody>
-                                <tr v-for="data in item.eventsBIDS">
-                                    <td> {{ data }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                    <el-form-item v-if="item.eventsBIDS" label="eventsBIDS">
+                        <el-table :data="item.eventsBIDS" size="mini" border style="width: 100%">
+                            <el-table-column prop="onset" label="onset" />
+                            <el-table-column prop="duration" label="duration" />
+                            <el-table-column v-if="events.columns.sample" prop="sample" label="sample" />
+                            <el-table-column v-if="events.columns.trialType" prop="trial_type" label="trial_type" />
+                            <el-table-column v-if="events.columns.responseTime" prop="response_time" label="response_time" />
+                            <el-table-column v-if="events.columns.value" prop="value" label="value" />
+                            <el-table-column v-if="events.columns.HED" prop="HED" label="HED" />
+                        </el-table>
                     </el-form-item>
                     <br>
                 </div>
@@ -201,7 +203,7 @@ export default defineComponent({
     },
     
     computed: {
-        ...mapState(['ezbids', 'config', 'bidsSchema']),
+        ...mapState(['ezbids', 'config', 'bidsSchema', 'events']),
         ...mapGetters(['getBIDSEntities', 'getURL', 'findSubject', 'findSession']),
 
         totalIssues() {
@@ -282,7 +284,7 @@ export default defineComponent({
             this.$emit("updateObject", o);
         },
 
-        isValid(cb: (v?: string)=>void) {
+        isValid(cb: (err?: string)=>void) {
             this.$emit("mapObjects");
             this.validateAll();
 
