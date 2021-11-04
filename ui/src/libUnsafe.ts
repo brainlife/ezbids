@@ -814,7 +814,7 @@ export function mapEventColumns(events) {
        duration: columns[0],
        durationUnit: "sec",
 
-       sample: columns[0],
+       sample: null,
        sampleUnit: "samples",
 
        trialType: null,

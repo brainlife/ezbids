@@ -177,7 +177,6 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
         - suffixes:
             - bold
             - cbv
-            - phase
             - sbref
 
         */

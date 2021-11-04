@@ -35,7 +35,6 @@
                 &nbsp;
                 <el-select v-model="columns.onsetUnit" size="small" clearable>
                     <el-option label="millisecond" value="ms"/>
-                    <el-option label="microsecond" value="us"/>
                 </el-select> 
 
                 <p>
@@ -54,7 +53,6 @@
                 &nbsp;
                 <el-select v-model="columns.durationUnit" size="small" clearable>
                     <el-option label="millisecond" value="ms"/>
-                    <el-option label="microsecond" value="us"/>
                 </el-select> 
                 
                 <p>
@@ -85,7 +83,6 @@
                 &nbsp;
                 <el-select v-model="columns.responseTimeUnit" size="small" clearable>
                     <el-option label="millisecond" value="ms"/>
-                    <el-option label="microsecond" value="us"/>
                 </el-select> 
                 
                 <p>
