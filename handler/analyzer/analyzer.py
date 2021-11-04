@@ -382,7 +382,7 @@ def generate_dataset_list(uploaded_files_list):
             acquisition_time = json_data["AcquisitionDateTime"].split("T")[-1]
             modified_time = "".join([x if len(x) > 1 else "0"+x for x in acquisition_time.replace(".", ":").split(":")]) # Need this!
         else:
-            acquisition_date_time = "0000-00-00T14:42:55.465000"
+            acquisition_date_time = "0000-00-00T00:00:00.000000"
             acquisition_date = "0000-00-00"
             acquisition_time = None
             modified_time = "0"
@@ -1288,7 +1288,7 @@ def modify_objects_info(dataset_list):
                              "AccessionNumber",
                              "PatientBirthDate",
                              "PatientSex",
-                             "PatientWeight"]
+                             "PatientWeight"]  
 
             for remove in remove_fields:
                 if remove in protocol["sidecar"]:
