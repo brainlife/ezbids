@@ -380,11 +380,12 @@ def generate_dataset_list(uploaded_files_list):
             acquisition_date_time = json_data["AcquisitionDateTime"]
             acquisition_date = json_data["AcquisitionDateTime"].split("T")[0]
             acquisition_time = json_data["AcquisitionDateTime"].split("T")[-1]
+            modified_time = "".join([x if len(x) > 1 else "0"+x for x in acquisition_time.replace(".", ":").split(":")]) # Need this!
         else:
             acquisition_date_time = "0000-00-00T14:42:55.465000"
             acquisition_date = "0000-00-00"
             acquisition_time = None
-            modified_date_time = "0"
+            modified_time = "0"
 
         # Find RepetitionTime
         if "RepetitionTime" in json_data:
@@ -406,6 +407,12 @@ def generate_dataset_list(uploaded_files_list):
 
         # get the nibabel nifti image info
         image = nib.load(json_file[:-4] + "nii.gz")
+
+        # determine dimensionality of acquisition
+        try:
+            dim = image.ndim
+        except:
+            dim = None
 
         # Find how many volumes are in corresponding nifti file
         try:
@@ -454,9 +461,11 @@ def generate_dataset_list(uploaded_files_list):
             "AcquisitionDateTime": acquisition_date_time,
             "AcquisitionDate": acquisition_date,
             "AcquisitionTime": acquisition_time,
+            "ModifiedTime": modified_time,
             "SeriesDescription": series_description,
             "ProtocolName": protocol_name,
             "ImageType": image_type,
+            "Dimensionality": dim,
             "RepetitionTime": repetition_time,
             "EchoNumber": echo_number,
             "EchoTime": echo_time,
@@ -1220,28 +1229,12 @@ def modify_objects_info(dataset_list):
                          and x["session"] == unique_subj_ses[2]
                         ]
 
-        # # sort scan protocol by SeriesNumber and ModifiedTime
-        # scan_protocol = sorted(scan_protocol, key=itemgetter("SeriesNumber",
-        #                                                       "ModifiedTime"))
-
-        # section_id = 1
         objects_data = []
 
         """ Peruse scan protocol to check for potential issues and add some
         additional information. """
 
         for p, protocol in enumerate(scan_protocol):
-            # previous_message = scan_protocol[p-1]["message"]
-
-            # # Update section_id information
-            # if p == 0:
-            #     protocol["section_ID"] = section_id
-            # elif protocol["message"] and "localizer" in protocol["message"] and (previous_message == None or "localizer" not in previous_message):
-            #     section_id += 1
-            #     protocol["section_ID"] = section_id
-            # else:
-            #     protocol["section_ID"] = section_id
-
             image = protocol["nibabel_image"]
             protocol["headers"] = str(image.header).splitlines()[1:]
 
