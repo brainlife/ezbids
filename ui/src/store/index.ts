@@ -78,7 +78,7 @@ export interface IObject {
         headers?: any; //for nifti
         
         events?: any; //for event (contains object parsed by createEventObjects)
-        eventsTSV?: string;
+        eventsBIDS?: string;
     }];
 
     series_idx: number;

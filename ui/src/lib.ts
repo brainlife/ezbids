@@ -5,7 +5,7 @@ export function createEventsTSV(ezbids : IEzbids, events : IEvents) {
         object.items.filter(i=>!!i.events).forEach(item=>{
             const tsv = item.events
             const sidecar = object.items.find(o=>o.name == "json");
-            item.eventsTSV = "hello";
+            item.eventsBIDS = "hello";
             console.log("handling events")
 
             const columns = events.columns
@@ -42,7 +42,7 @@ export function createEventsTSV(ezbids : IEzbids, events : IEvents) {
                 // tsv.content += values.map(v=>(v|'empty')).join("\t\t")+"\n"; //causes error
             });
 
-            item.eventsTSV = tsv.content
+            item.eventsBIDS = tsv.content
 
         });
     });

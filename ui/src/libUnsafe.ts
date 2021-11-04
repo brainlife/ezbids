@@ -623,6 +623,7 @@ export function createEventObjects(ezbids, files) {
         let modifiedFilePath = file.path
 
         Object.keys(eventsMappingInfo).forEach(key=>{
+
             // 1st stage: examine header columns and data of event file(s) to see if helpful information is contained there
             const match = Object.keys(events[0]).map(item=>item.toLowerCase().replace(/[^0-9a-z]/gi, '')).filter(item=>eventsMappingInfo[key].MappingKeys.includes(item))[0]
             const value = mode(events.map(e=>e[match]))
@@ -640,17 +641,6 @@ export function createEventObjects(ezbids, files) {
             }
 
             // 2nd stage: examine file path for helpful information
-
-            // if (eventsMappingInfo[key]["eventsValue"] == undefined) {
-            //     Object.values(eventsMappingInfo[key]["ezBIDSvalues"]).forEach(value=>{
-            //         if (value.length > 2 && modifiedFilePath.toLowerCase().replace(/[^0-9a-z]/gi, '').includes(value)) {
-            //             modifiedFilePath = modifiedFilePath.replace(value, "")
-            //             if (eventsMappingInfo[key]["eventsValue"] == undefined) {
-            //                 eventsMappingInfo[key]["eventsValue"] = value
-            //             }
-            //         }
-            //     });
-            // }
             if (eventsMappingInfo[key].eventsValue == undefined) {
                 Object.values(eventsMappingInfo[key].MappingKeys).forEach(mapping=>{
                     if (file.path.toLowerCase().split(mapping).slice(-1)[0].split(/[._-]+/)[0] == "") {
@@ -668,10 +658,28 @@ export function createEventObjects(ezbids, files) {
                 eventsMappingInfo[key].eventsValue = eventsMappingInfo[key].ezBIDSvalues[0]
                 eventsMappingInfo[key].detectionMethod = 3
             }
+
+            //Sanity checks
+            Object.keys(eventsMappingInfo).forEach(key=>{
+                /* 1). if a mismatch exists between any key's ezBIDSvalue and eventsValue, and the length of 
+                ezBIDSvalues == 1, then the ezBIDSvalue takes precedence because that's what the user has explicitly specified 
+                on ezBIDS.
+                */
+                if (!eventsMappingInfo[key].ezBIDSvalues.includes(eventsMappingInfo[key].eventsValue) && eventsMappingInfo[key].ezBIDSvalues.length == 1) {
+                    eventsMappingInfo[key].eventsValue = eventsMappingInfo[key].ezBIDSvalues[0]
+                }
+
+                //2). ignore zero-padding in subject, session, and run eventsValue if the zero-padded value doesn't exist in corresponding ezBIDSvalues
+                if (key != "task") {
+                    if (!eventsMappingInfo[key].ezBIDSvalues.includes(eventsMappingInfo[key].eventsValue) && eventsMappingInfo[key].ezBIDSvalues.includes(eventsMappingInfo[key].eventsValue.replace(/^0+/, ''))) {
+                        eventsMappingInfo[key].eventsValue = eventsMappingInfo[key].eventsValue.replace(/^0+/, '')
+                    }
+                }
+            })
         });
 
-        let section_ID;
         // Determine section_ID that events object pertains to
+        let section_ID;
         if (uniqueSectionIDs.length == 1) {
             section_ID = uniqueSectionIDs[0]
         } else { // multiple section_IDs; should be able to determine which func/bold the event goes to and use that section_ID
@@ -687,8 +695,6 @@ export function createEventObjects(ezbids, files) {
                 section_ID = 1
             }
         }
-
-        // console.log(section_ID)
 
         // Determine correspoding series_idx value that event file(s) go to
         const series_idx = Array.from(new Set(ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
@@ -717,6 +723,7 @@ export function createEventObjects(ezbids, files) {
 
         const subjectInfo = ezbids.subjects.filter(e=>e.subject == eventsMappingInfo.subject.eventsValue)
         let sessionInfo;
+
         sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == eventsMappingInfo.subject.eventsValue)
         if (sessionInfo.length == 0) {
             sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == "")
@@ -725,7 +732,6 @@ export function createEventObjects(ezbids, files) {
         // Indexing the first (any only value) but will need to filter this out better for multi-session data
         const subject = subjectInfo[0].PatientInfo[0]
         const session = sessionInfo[0]
-
 
         //register new event object using the info we gathered above
         const object = Object.assign({
@@ -769,8 +775,10 @@ export function createEventObjects(ezbids, files) {
 }
 
 
-//this function receives one example event object. we will do our best to map the event keys (columns) and 
-//map them to bids events.tsv column names
+/*
+this function receives one example event object. we will do our best to map the event keys (columns) and 
+map them to bids events.tsv column names.
+*/
 export function mapEventColumns(events) {
     /*
     input events object may look like this
@@ -808,10 +816,10 @@ export function mapEventColumns(events) {
    const columns = Object.values(Object.keys(events[0]))
 
     return {
-       onset: columns[0],
+       onset: null,
        onsetUnit: "sec",
 
-       duration: columns[0],
+       duration: null,
        durationUnit: "sec",
 
        sample: null,
