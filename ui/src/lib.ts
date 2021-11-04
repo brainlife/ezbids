@@ -39,7 +39,7 @@ export function createEventsTSV(ezbids : IEzbids, events : IEvents) {
                 if(columns.value) values.push(event[columns.value]);
                 if(columns.HED) values.push(event[columns.HED]);
                 tsv.content += values.join("\t\t")+"\n";
-                tsv.content += values.map(v=>(v|'empty')).join("\t\t")+"\n";
+                // tsv.content += values.map(v=>(v|'empty')).join("\t\t")+"\n"; //causes error
             });
 
             item.eventsTSV = tsv.content
