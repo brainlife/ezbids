@@ -131,8 +131,14 @@
                     <el-form-item v-if="item.headers" label="Nifti Headers (readonly)">
                         <pre class="headers">{{item.headers}}</pre>
                     </el-form-item>
-                    <el-form-item v-if="item.eventsTSV" label="event.tsv">
-                        <pre>{{item.eventsTSV}}</pre>
+                    <el-form-item v-if="item.eventsBIDS" label="event.tsv">
+                        <table id="events" class="table table-striped table-bordered" width="100%">
+                            <tbody>
+                                <tr v-for="data in item.eventsBIDS">
+                                    <td> {{ data }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
                     </el-form-item>
                     <br>
                 </div>

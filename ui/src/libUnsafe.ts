@@ -442,7 +442,7 @@ function parseEprimeEvents(fileData, cb) {
 	return timing_info[0]
 }
 
-function parseEvents(fileData, sep, cb) {
+ export function parseEvents(fileData, sep) {
     const lines = fileData.trim().split(/\r|\n/).map(l=>l.trim().replace(/['"]+/g, ''));
     const trials = [];
     let headers = lines.shift().split(sep);

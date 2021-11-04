@@ -191,7 +191,7 @@ interface TrialType {
 
 interface Column {
     key: string,
-    unit: string|null, //mm, cm, etc..
+    unit: string|null, //sec, millisecond, etc..
 }
 
 export default defineComponent({
