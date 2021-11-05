@@ -382,8 +382,11 @@ def generate_dataset_list(uploaded_files_list):
             acquisition_time = json_data["AcquisitionDateTime"].split("T")[-1]
             modified_time = "".join([x if len(x) > 1 else "0"+x for x in acquisition_time.replace(".", ":").split(":")]) # Need this!
         else:
+            rand_date = "".join(np.random.randint(8, size=8).astype(str))
+            rand_date = rand_date[:4] + "-" + rand_date[4:6] + "-" + rand_date[6:]
+
             acquisition_date_time = "0000-00-00T00:00:00.000000"
-            acquisition_date = "0000-00-00"
+            acquisition_date = rand_date
             acquisition_time = None
             modified_time = "0"
 
@@ -425,19 +428,19 @@ def generate_dataset_list(uploaded_files_list):
             series_number = json_data["SeriesNumber"]
         else:
             series_number = 0
-        
+
         # Find SeriesDescription
         if "SeriesDescription" in json_data:
             series_description = json_data["SeriesDescription"]
         else:
             series_description = "N/A"
-    
+
         # Find ProtocolName
         if "ProtocolName" in json_data:
             protocol_name = json_data["ProtocolName"]
         else:
             protocol_name = "N/A"
-        
+
         # Find ImageType
         if "ImageType" in json_data:
             image_type = json_data["ImageType"]
@@ -1288,7 +1291,7 @@ def modify_objects_info(dataset_list):
                              "AccessionNumber",
                              "PatientBirthDate",
                              "PatientSex",
-                             "PatientWeight"]  
+                             "PatientWeight"]
 
             for remove in remove_fields:
                 if remove in protocol["sidecar"]:

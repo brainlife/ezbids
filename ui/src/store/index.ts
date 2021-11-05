@@ -325,6 +325,7 @@ const store = createStore({
     mutations: {
         setSession(state, session) {
             state.session = session;
+            console.log(state.session)
             if(session._id) window.location.hash = session._id;                                                                     
         },
 
@@ -373,24 +374,32 @@ const store = createStore({
 
             state.ezbids.series.forEach((s:Series)=>{
                 s.validationErrors = []; 
-                //TODO what is this for?                                                                                                                  
+                //TODO what is this for?
                 delete s.entities.subject;                                                                     
                 delete s.entities.session;                                                                     
             });
 
             state.ezbids.subjects.forEach((s:Subject)=>{
                 s.validationErrors = [];
-                s.exclude = !!(s.exclude);  
+                s.exclude = !!(s.exclude); 
             });
+
             state.ezbids.objects.forEach((o:IObject)=>{
                 o.exclude = !!(o.exclude);
                 o.validationErrors = [];
                 o.items.forEach(item=>{                                                                        
                     if(item.sidecar) {                                                                                                                                                                            
                         //anonymize..                                                                               
-                        let sidecar = Object.assign({}, item.sidecar);                                              
+                        let sidecar = Object.assign({}, item.sidecar);
+
                         delete sidecar.PatientName;                                                                 
-                        delete sidecar.PatientID;                                                                                                                                                     
+                        delete sidecar.PatientID;  
+                        delete sidecar.SeriesInstanceUID;
+                        delete sidecar.StudyInstanceUID;
+                        delete sidecar.ReferringPhysicianName;
+                        delete sidecar.AccessionNumber;
+                        delete sidecar.PatientWeight;
+
                         item['sidecar_json'] = JSON.stringify(sidecar, null, 4);                            
                     }                                                                                               
                 });                                                                                                 
@@ -412,10 +421,10 @@ const store = createStore({
             //sort object by subject/session                                                                               
             state.ezbids.objects.sort((a,b)=>{                                                                                     
                 const asub = a._entities.subject;                                                                            
-                const bsub = b._entities.subject;                                                                            
-                const ases = a._entities.session||"";                                                                        
-                const bses = b._entities.session||"";                                                                        
-                const adatetime = a.AcquisitionDateTime;     
+                const bsub = b._entities.subject;  
+                const ases = a._entities.session||"";
+                const bses = b._entities.session||""; 
+                const adatetime = a.AcquisitionDateTime;   
                 const bdatetime = b.AcquisitionDateTime;    
                 const aseriesnum = a.SeriesNumber;
                 const bseriesnum = b.SeriesNumber;                                                                         
@@ -425,9 +434,6 @@ const store = createStore({
                     if(ases == bses)
                         if(adatetime == bdatetime)
                             return aseriesnum < bseriesnum;
-                        // else 
-                            // console.log(adatetime, bdatetime);
-                            // return adatetime.localeCompare(bdatetime);
                     else if(ases == bses && adatetime != bdatetime)
                         return adatetime < bdatetime;                                                                              
                     else                                                                                           
@@ -543,7 +549,8 @@ const store = createStore({
         },
         
         //find a session inside sub hierarchy
-        findSession: (state)=>(sub: Subject, acquisitionDate: string) : (Session|undefined)=>{                                                                                              
+        findSession: (state)=>(sub: Subject, acquisitionDate: string) : (Session|undefined)=>{ 
+            console.log(sub.sessions.find(s=>s.AcquisitionDate == acquisitionDate))                                                                                             
             return sub.sessions.find(s=>s.AcquisitionDate == acquisitionDate);                                                                                                                                 
         },   
         
