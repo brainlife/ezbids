@@ -38,7 +38,6 @@ entities_yaml = yaml.load(open("../bids-specification/src/schema/objects/entitie
 suffixes_yaml = yaml.load(open("../bids-specification/src/schema/objects/suffixes.yaml"))
 datatype_suffix_rules = "../bids-specification/src/schema/rules/datatypes"
 
-
 start_time = time.time()
 analyzer_dir = os.getcwd()
 os.chdir(DATA_DIR)
@@ -600,16 +599,18 @@ def determine_subj_ses_IDs(dataset_list):
             # Remove subject acquisitions with same AcquisiitonDate, must be different
             AcquisitionDate_list.append(subject_ids_info_mod[subj_index]["AcquisitionDate"])
 
-            if len([x for x in AcquisitionDate_list if x == subject_ids_info_mod[subj_index]["AcquisitionDate"]]) > 1 and session_id != "":
-                modifiedAcquisitionDate = subject_ids_info_mod[subj_index]["AcquisitionDate"] + "." + subject_ids_info_mod[subj_index]["session"]
-            else:
-                modifiedAcquisitionDate = subject_ids_info_mod[subj_index]["AcquisitionDate"]
+            # if len([x for x in AcquisitionDate_list if x == subject_ids_info_mod[subj_index]["AcquisitionDate"]]) > 1 and session_id != "":
+            #     modifiedAcquisitionDate = subject_ids_info_mod[subj_index]["AcquisitionDate"] + "." + subject_ids_info_mod[subj_index]["session"]
+            # else:
+            #     modifiedAcquisitionDate = subject_ids_info_mod[subj_index]["AcquisitionDate"]
 
+            # modifiedAcquisitionDate_list.append(modifiedAcquisitionDate)
+
+            modifiedAcquisitionDate = subject_ids_info_mod[subj_index]["AcquisitionDate"] + "." + subject_ids_info_mod[subj_index]["session"]
             modifiedAcquisitionDate_list.append(modifiedAcquisitionDate)
 
-
             # Append session information to list (unique AcquisitionDate values only)
-            if len([x for x in modifiedAcquisitionDate_list if x == modifiedAcquisitionDate]) ==  1:
+            if len([x for x in modifiedAcquisitionDate_list if x == modifiedAcquisitionDate]) == 1:
                 sessions_info.append({"AcquisitionDate": modifiedAcquisitionDate,
                                       "AcquisitionTime": subject_ids_info_mod[subj_index]["AcquisitionTime"],
                                       "session": session_id,
@@ -622,6 +623,7 @@ def determine_subj_ses_IDs(dataset_list):
             subj_dictionary["PatientInfo"] = participant_name_id
             subj_dictionary["sessions"] = sessions_info
 
+
     # Remove redundant keys from dictionary
     for dic in subject_ids_info:
         del dic["PatientBirthDate"]
@@ -632,13 +634,26 @@ def determine_subj_ses_IDs(dataset_list):
         del dic["PatientID"]
         del dic["session"]
 
-    # Add the session ID to the dataset_list dictionaries (i.e. each acquisition)
+
+
     for acquisition_dic in dataset_list:
         for subject_dic in subject_ids_info:
             if subject_dic["subject"] == acquisition_dic["subject"] and len(subject_dic["sessions"]) > 1:
                 for session in subject_dic["sessions"]:
-                    if acquisition_dic["AcquisitionDate"] == session["AcquisitionDate"] and acquisition_dic["AcquisitionTime"] == session["AcquisitionTime"] :
+                    if acquisition_dic["session"] == session["session"]:
+                        acquisition_dic["AcquisitionDate"] = session["AcquisitionDate"]
+                    elif acquisition_dic["AcquisitionDate"] == session["AcquisitionDate"] and acquisition_dic["AcquisitionTime"] == session["AcquisitionTime"]:
                         acquisition_dic["session"] = session["session"]
+                    else:
+                        pass
+
+    # # Add the session ID to the dataset_list dictionaries (i.e. each acquisition)
+    # for acquisition_dic in dataset_list:
+    #     for subject_dic in subject_ids_info:
+    #         if subject_dic["subject"] == acquisition_dic["subject"] and len(subject_dic["sessions"]) > 1:
+    #             for session in subject_dic["sessions"]:
+    #                 if acquisition_dic["AcquisitionDate"] == session["AcquisitionDate"] and acquisition_dic["AcquisitionTime"] == session["AcquisitionTime"]:
+    #                     acquisition_dic["session"] = session["session"]
 
 
     return dataset_list, subject_ids_info
