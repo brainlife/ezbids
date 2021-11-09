@@ -24,9 +24,11 @@ export function setSectionIDs($root) {
         for (const session in sessions) {
 
             let protocol = sessions[session].objects
+            console.log(protocol.length)
             let sectionID = 1
 
             protocol.forEach(obj=> {
+                console.log(obj.idx)
                 let message = $root.series[protocol[obj.idx].series_idx].message
 
                 let previousMessage = ""

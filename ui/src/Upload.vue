@@ -106,7 +106,7 @@ export default defineComponent({
                 while (readEntries.length > 0) {                                                                        
                     entries.push(...readEntries);                                                                       
                     readEntries = await readEntriesPromise(directoryReader);                                            
-                }                                                                                                       
+                }   
                 return entries;                                                                                         
             }                                                                                                           
                                                                                                                         

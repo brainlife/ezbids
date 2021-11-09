@@ -78,7 +78,7 @@ export interface IObject {
     
     entities: any; //entities set for this object only
     _entities: any; //"prototypical"(flattened) entities from parent objects (subject / series).. see mapObject()
-
+    
     validationErrors: string[]; //right?
     items: [{
         sidecar: any;
@@ -373,24 +373,32 @@ const store = createStore({
 
             state.ezbids.series.forEach((s:Series)=>{
                 s.validationErrors = []; 
-                //TODO what is this for?                                                                                                                  
+                //TODO what is this for?
                 delete s.entities.subject;                                                                     
                 delete s.entities.session;                                                                     
             });
 
             state.ezbids.subjects.forEach((s:Subject)=>{
                 s.validationErrors = [];
-                s.exclude = !!(s.exclude);  
+                s.exclude = !!(s.exclude); 
             });
+
             state.ezbids.objects.forEach((o:IObject)=>{
                 o.exclude = !!(o.exclude);
                 o.validationErrors = [];
-                o.items.forEach(item=>{                                                                        
+                o.items.forEach(item=>{    
                     if(item.sidecar) {                                                                                                                                                                            
                         //anonymize..                                                                               
-                        let sidecar = Object.assign({}, item.sidecar);                                              
+                        let sidecar = Object.assign({}, item.sidecar);
+
                         delete sidecar.PatientName;                                                                 
-                        delete sidecar.PatientID;                                                                                                                                                     
+                        delete sidecar.PatientID;  
+                        delete sidecar.SeriesInstanceUID;
+                        delete sidecar.StudyInstanceUID;
+                        delete sidecar.ReferringPhysicianName;
+                        delete sidecar.AccessionNumber;
+                        delete sidecar.PatientWeight;
+
                         item['sidecar_json'] = JSON.stringify(sidecar, null, 4);                            
                     }                                                                                               
                 });                                                                                                 
@@ -410,12 +418,12 @@ const store = createStore({
             //mapObjects() must be called before calling this action (for _entities)
             
             //sort object by subject/session                                                                               
-            state.ezbids.objects.sort((a,b)=>{                                                                                     
+            state.ezbids.objects.sort((a,b)=>{   
                 const asub = a._entities.subject;                                                                            
-                const bsub = b._entities.subject;                                                                            
-                const ases = a._entities.session||"";                                                                        
-                const bses = b._entities.session||"";                                                                        
-                const adatetime = a.AcquisitionDateTime;     
+                const bsub = b._entities.subject;  
+                const ases = a._entities.session||"";
+                const bses = b._entities.session||""; 
+                const adatetime = a.AcquisitionDateTime;   
                 const bdatetime = b.AcquisitionDateTime;    
                 const aseriesnum = a.SeriesNumber;
                 const bseriesnum = b.SeriesNumber;                                                                         
@@ -425,9 +433,6 @@ const store = createStore({
                     if(ases == bses)
                         if(adatetime == bdatetime)
                             return aseriesnum < bseriesnum;
-                        // else 
-                            // console.log(adatetime, bdatetime);
-                            // return adatetime.localeCompare(bdatetime);
                     else if(ases == bses && adatetime != bdatetime)
                         return adatetime < bdatetime;                                                                              
                     else                                                                                           
@@ -438,21 +443,21 @@ const store = createStore({
                     
             //re-index and organize 
             state.ezbids._organized = {};      
-            state.ezbids.objects.forEach((o, idx)=>{                                                                               
+            state.ezbids.objects.forEach((o, idx)=>{    
                 o.idx = idx; //reindex                                                                                     
                                                                                                                             
                 let sub = /*"sub-"+*/o._entities.subject;                                                                             
-                let ses = o._entities.session;//?("ses-"+o._entities.session):"";                                                                         
+                let ses = o._entities.session;//?("ses-"+o._entities.session):"";                                                                        
                 if(!state.ezbids._organized[sub]) state.ezbids._organized[sub] = {                                                                     
                     sess: {},                                                                                              
                     objects: []                                                                                            
                 };                                                                                                         
                 //this.subs[sub].objects.push(o);                                                                          
                                                                                                                             
-                if(!state.ezbids._organized[sub].sess[ses]) state.ezbids._organized[sub].sess[ses] = {                                                 
-                    AcquisitionDate: o.AcquisitionDate,                                                                    
+                if(!state.ezbids._organized[sub].sess[ses]) state.ezbids._organized[sub].sess[ses] = {     
+                    AcquisitionDate: o.AcquisitionDate,
                     objects: []                                                                                            
-                };                                                                                                         
+                };   
                 state.ezbids._organized[sub].sess[ses].objects.push(o);
             });                                                                                                            
         },
