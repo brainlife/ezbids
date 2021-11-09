@@ -157,7 +157,6 @@ interface BIDSDatatypes {
 export interface OrganizedSession {
     objects: IObject[], //all object under this subject/session
     AcquisitionDate: string, //TODO.. should be Date?
-    session: string,
 }
 
 export interface OrganizedSubject {
