@@ -15,7 +15,9 @@ import Finalize from './Finalize.vue'
 
 import { IObject } from './store'
 
+//https://github.com/element-plus/element-plus/issues/436#issuecomment-961386582
 import { ElNotification } from 'element-plus'
+//import 'element-plus/es/components/notification/style/css'
 
 import { setSectionIDs, funcQA, fmapQA, setRun, updateErrors, setIntendedFor, } from './libUnsafe'
 import { createEventsTSV } from './lib'

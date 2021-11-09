@@ -156,16 +156,19 @@ router.get('/download/:session_id/*', (req, res, next) => {
     });
 });
 router.post('/upload-multi/:session_id', upload.any(), (req, res, next) => {
-    console.log("upload-multi called");
     //when a single file is uploaded paths becomes just a string. convert it to an array of 1
     let paths = req.body["paths"];
     if (!Array.isArray(paths))
         paths = [paths];
+    //same for mtimes
+    let mtimes = req.body["mtimes"];
+    if (!Array.isArray(mtimes))
+        mtimes = [mtimes];
     models.Session.findById(req.params.session_id).then((session) => __awaiter(void 0, void 0, void 0, function* () {
         let idx = -1;
         async.eachSeries(req.files, (file, next_file) => {
             idx++;
-            let src_path = file.path;
+            const src_path = file.path;
             /* //file
 11|ezbids- | {
 11|ezbids- |   fieldname: 'files',
@@ -179,20 +182,18 @@ router.post('/upload-multi/:session_id', upload.any(), (req, res, next) => {
 11|ezbids- | }
             */
             //let dirty_path = config.workdir+"/"+req.params.session_id+"/"+req.body.path;
-            let dirty_path = config.workdir + "/" + req.params.session_id + "/" + paths[idx];
-            let dest_path = path.resolve(dirty_path);
+            const dirty_path = config.workdir + "/" + req.params.session_id + "/" + paths[idx];
+            const dest_path = path.resolve(dirty_path);
+            const mtime = mtimes[idx] / 1000; //browser uses msec.. filesystem uses sec since epoch
             if (!dest_path.startsWith(config.workdir))
                 return next_file("invalid path:", dest_path);
-            let destdir = path.dirname(dest_path);
+            const destdir = path.dirname(dest_path);
             //move the file over to workdir
-            mkdirp(destdir).then(err => {
-                console.log("renaming", src_path, dest_path);
-                fs.rename(src_path, dest_path, err => {
-                    if (err)
-                        return next_file(err);
-                    next_file();
-                });
-            });
+            const made = mkdirp.sync(destdir);
+            fs.renameSync(src_path, dest_path);
+            if (mtime)
+                fs.utimesSync(dest_path, mtime, mtime);
+            next_file();
         }, err => {
             if (err)
                 return next(err);

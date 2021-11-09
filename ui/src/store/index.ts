@@ -105,7 +105,7 @@ export interface IObject {
 
     AcquisitionDate: string;
 
-    AcquisitionDateTime: string; //ISO only used to sort objects
+    AcquisitionDateTime: string; //ISO - only used to sort objects
 
     SeriesNumber: string;
 
@@ -543,8 +543,8 @@ const store = createStore({
         },
         
         //find a session inside sub hierarchy
-        findSession: (state)=>(sub: Subject, acquisitionDate: string) : (Session|undefined)=>{                                                                                              
-            return sub.sessions.find(s=>s.AcquisitionDate == acquisitionDate);                                                                                                                                 
+        findSession: (state)=>(sub: Subject, acquisitionDate: string) : (Session|undefined)=>{ 
+            return sub.sessions.find(s=>s.AcquisitionDate == acquisitionDate);
         },   
         
         findSubject: (state)=>(o: IObject): (Subject|undefined) =>{           

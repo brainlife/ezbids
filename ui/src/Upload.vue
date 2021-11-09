@@ -155,7 +155,7 @@ export default defineComponent({
         async upload() {                                                                                                
             this.starting = false;                                                                                      
             this.doneUploading = false;                                                                                 
-                                                                                                                        
+
             //only allow certain files                                                                                  
             for(let i = 0;i < this.files.length;++i) {                                                                  
                 let file = this.files[i];     
@@ -202,7 +202,6 @@ export default defineComponent({
             this.total_size = 0;                                                                                        
             for(let i = 0;i < this.files.length;++i) {                                                                  
                 let file = this.files[i];                                                                               
-                //if(file.ignore) continue;                                                                             
                 this.total_size += file.size;                                                                           
             }                                                                                                           
             
@@ -248,7 +247,10 @@ export default defineComponent({
                 file.uploading = true;                                                                                  
                 fileidx.push(i);                                                                                        
                 data.append("files", file);                                                                             
-                data.append("paths", file.path); //file doesn't contains the real path to store files to..              
+
+                //file doesn't contains the real path and lastModifiedDate. I need to pass this separately
+                data.append("paths", file.path); 
+                data.append("mtimes", file.lastModified); 
             }
 
             if(fileidx.length == 0) {                                                                                   
@@ -388,6 +390,21 @@ export default defineComponent({
         <div v-if="starting">                                                                                           
             <h3>Initializing..</h3>                                                                                     
         </div>                                                                                                          
+        <ul style="line-height: 200%;">
+            <li>Please upload <b>non-anonymized</b> data so that we can properly identify the subject/session hierarchy. If you anonymize all data will be considered to belong to a single subject and single session.</li>
+            <li>ezBIDS will anonymize and remove any subject identifying information (and optionally deface all anatomy data) before converting to BIDS.</li>
+            <li>ezBIDS runs on a secure VM running on Jetstream cloud; HIPAA aligned cloud computing infrastructure.</li>
+            <li>The data you upload can only be accessed through the unique URL with your session ID; all data will be purged from our system within 5 days.</li>
+        </ul>
+
+        
+        <br>
+        <br>
+        <br>
+        <center>
+            <iframe width="560" height="315" src="https://www.youtube.com/embed/mY3_bmt_e80" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+        </center>
+
     </div> 
 
     <div v-if="session">
