@@ -31,7 +31,6 @@ export default defineComponent({
        Objects,
        Deface,
        Finalize,
-       ElNotification,
     },
 
     data() {
@@ -206,17 +205,17 @@ export default defineComponent({
             o._exclude = o.exclude;
             if(o._type == "exclude") o._exclude = true;     
             
-            const subject = this.findSubject(o);                                                              
+            const subject = this.findSubject(o);    
             if(subject.exclude) o._exclude = true;                                                                     
                                                                           
             //if sub is not set, use subject mapping as default                                                         
             if(!o.entities.subject) {                                                                                   
                 e.subject = subject.subject;                                                                            
             }                                                                                                           
-                                                                                                                        
-            const session = this.findSession(subject, o.AcquisitionDate);                                                       
+
+            const session = this.findSession(subject, o.AcquisitionDate);  
             if(session.exclude) o._exclude = true;                                                                      
-                                                                                                                        
+
             //if ses is not set, use session mapping as default                                                         
             if(!o.entities.session) {                                                                                   
                 e.session = session.session;                                                                            

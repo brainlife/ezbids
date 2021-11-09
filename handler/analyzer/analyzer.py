@@ -314,17 +314,21 @@ def generate_dataset_list(uploaded_files_list):
         else:
             study_id = ""
 
-        # Find subject_id from json, since some files contain
-        # neither PatientName nor PatientID
+        """
+        Find subject_id from json, since some files contain neither
+        PatientName nor PatientID
+        """
         if "PatientName" in json_data:
             patient_name = json_data["PatientName"]
         else:
-            patient_name = os.path.dirname(json_file)
+            # patient_name = os.path.dirname(json_file)
+            patient_name = "NA"
 
         if "PatientID" in json_data:
             patient_id = json_data["PatientID"]
         else:
-            patient_id = os.path.basename(json_file)
+            # patient_id = os.path.basename(json_file)
+            patient_id = "NA"
 
         # Find PatientBirthDate
         if "PatientBirthDate" in json_data:
@@ -340,10 +344,12 @@ def generate_dataset_list(uploaded_files_list):
         else:
             patient_sex = "N/A"
 
-        # Select subject ID (and session ID if applicable) to display.
-        # Subject ID precedence order: PatientName > PatientID > PatientBirthDate
-        if any(x in json_file for x in ["/sub-", "/sub_"]):
-            subject = re.compile(r"/sub-|/sub_").split(json_file)[-1].split("/")[0]
+        """
+        Select subject ID (and session ID if applicable) to display.
+        Subject ID precedence order: PatientName > PatientID > PatientBirthDate
+        """
+        if any(x in json_file for x in ["sub-", "sub_"]):
+            subject = re.split("[^a-zA-Z0-9]+", re.compile(r"sub-|sub_").split(json_file)[-1])[0]
         else:
             if patient_name:
                 subject = patient_name
@@ -355,8 +361,8 @@ def generate_dataset_list(uploaded_files_list):
                 subject = "NA"
 
         session = ""
-        if any(x in json_file for x in ["/ses-", "/ses_"]):
-            session = re.compile(r"/ses-|/ses_").split(json_file)[-1].split("/")[0]
+        if any(x in json_file for x in ["ses-", "ses_"]):
+            session = re.split("[^a-zA-Z0-9]+", re.compile(r"ses-|ses_").split(json_file)[-1])[0]
         else:
             if any(x in subject for x in ["ses-", "ses_"]):
                 split = subject.split("ses")[-1][1:]
@@ -375,6 +381,7 @@ def generate_dataset_list(uploaded_files_list):
             else:
                 subject = re.sub("[^A-Za-z0-9]+", "", subject)
 
+
         # Find Acquisition Date & Time
         if "AcquisitionDateTime" in json_data:
             acquisition_date_time = json_data["AcquisitionDateTime"]
@@ -382,11 +389,9 @@ def generate_dataset_list(uploaded_files_list):
             acquisition_time = json_data["AcquisitionDateTime"].split("T")[-1]
             modified_time = "".join([x if len(x) > 1 else "0"+x for x in acquisition_time.replace(".", ":").split(":")]) # Need this!
         else:
-            rand_date = "".join(np.random.randint(8, size=8).astype(str))
-            rand_date = rand_date[:4] + "-" + rand_date[4:6] + "-" + rand_date[6:]
 
             acquisition_date_time = "0000-00-00T00:00:00.000000"
-            acquisition_date = rand_date
+            acquisition_date = "0000-00-00"
             acquisition_time = None
             modified_time = "0"
 
@@ -410,12 +415,6 @@ def generate_dataset_list(uploaded_files_list):
 
         # get the nibabel nifti image info
         image = nib.load(json_file[:-4] + "nii.gz")
-
-        # determine dimensionality of acquisition
-        try:
-            dim = image.ndim
-        except:
-            dim = None
 
         # Find how many volumes are in corresponding nifti file
         try:
@@ -468,7 +467,6 @@ def generate_dataset_list(uploaded_files_list):
             "SeriesDescription": series_description,
             "ProtocolName": protocol_name,
             "ImageType": image_type,
-            "Dimensionality": dim,
             "RepetitionTime": repetition_time,
             "EchoNumber": echo_number,
             "EchoTime": echo_time,
@@ -559,7 +557,6 @@ def determine_subj_ses_IDs(dataset_list):
                                  subject_ids_info}.values())
 
 
-
     """ Create list of dictionaries with unique subject values. This list of
     dictionaries will be used by ezBIDS UI. """
     subject_ids_info = list({v["subject"]:v for v in subject_ids_info}.values())
@@ -577,6 +574,8 @@ def determine_subj_ses_IDs(dataset_list):
         if len(subject_indices):
             participant_name_id = []
             sessions_info = []
+            modifiedAcquisitionDate_list = []
+            AcquisitionDate_list = []
 
         for index, subj_index in enumerate(subject_indices):
 
@@ -597,11 +596,24 @@ def determine_subj_ses_IDs(dataset_list):
                 else:
                     session_id = ""
 
-            # Append session information to list
-            sessions_info.append({"AcquisitionDate": subject_ids_info_mod[subj_index]["AcquisitionDate"],
-                                  "AcquisitionTime": subject_ids_info_mod[subj_index]["AcquisitionTime"],
-                                  "session": session_id,
-                                  "exclude": False})
+
+            # Remove subject acquisitions with same AcquisiitonDate, must be different
+            AcquisitionDate_list.append(subject_ids_info_mod[subj_index]["AcquisitionDate"])
+
+            if len([x for x in AcquisitionDate_list if x == subject_ids_info_mod[subj_index]["AcquisitionDate"]]) > 1 and session_id != "":
+                modifiedAcquisitionDate = subject_ids_info_mod[subj_index]["AcquisitionDate"] + "." + subject_ids_info_mod[subj_index]["session"]
+            else:
+                modifiedAcquisitionDate = subject_ids_info_mod[subj_index]["AcquisitionDate"]
+
+            modifiedAcquisitionDate_list.append(modifiedAcquisitionDate)
+
+
+            # Append session information to list (unique AcquisitionDate values only)
+            if len([x for x in modifiedAcquisitionDate_list if x == modifiedAcquisitionDate]) ==  1:
+                sessions_info.append({"AcquisitionDate": modifiedAcquisitionDate,
+                                      "AcquisitionTime": subject_ids_info_mod[subj_index]["AcquisitionTime"],
+                                      "session": session_id,
+                                      "exclude": False})
             # Apply the session information to the correct subject dictionaries
             subj_dictionary = [x for x in subject_ids_info
                                if x["subject"] == subj_id][0]
@@ -620,7 +632,6 @@ def determine_subj_ses_IDs(dataset_list):
         del dic["PatientID"]
         del dic["session"]
 
-
     # Add the session ID to the dataset_list dictionaries (i.e. each acquisition)
     for acquisition_dic in dataset_list:
         for subject_dic in subject_ids_info:
@@ -628,6 +639,7 @@ def determine_subj_ses_IDs(dataset_list):
                 for session in subject_dic["sessions"]:
                     if acquisition_dic["AcquisitionDate"] == session["AcquisitionDate"] and acquisition_dic["AcquisitionTime"] == session["AcquisitionTime"] :
                         acquisition_dic["session"] = session["session"]
+
 
     return dataset_list, subject_ids_info
 

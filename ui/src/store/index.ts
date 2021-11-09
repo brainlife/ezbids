@@ -78,7 +78,7 @@ export interface IObject {
     
     entities: any; //entities set for this object only
     _entities: any; //"prototypical"(flattened) entities from parent objects (subject / series).. see mapObject()
-
+    
     validationErrors: string[]; //right?
     items: [{
         sidecar: any;
@@ -104,6 +104,7 @@ export interface IObject {
     PatientBirthDate: string;
 
     AcquisitionDate: string;
+    session: string;
 
     AcquisitionDateTime: string; //ISO only used to sort objects
 
@@ -157,6 +158,7 @@ interface BIDSDatatypes {
 export interface OrganizedSession {
     objects: IObject[], //all object under this subject/session
     AcquisitionDate: string, //TODO.. should be Date?
+    session: string,
 }
 
 export interface OrganizedSubject {
@@ -325,7 +327,6 @@ const store = createStore({
     mutations: {
         setSession(state, session) {
             state.session = session;
-            console.log(state.session)
             if(session._id) window.location.hash = session._id;                                                                     
         },
 
@@ -387,7 +388,7 @@ const store = createStore({
             state.ezbids.objects.forEach((o:IObject)=>{
                 o.exclude = !!(o.exclude);
                 o.validationErrors = [];
-                o.items.forEach(item=>{                                                                        
+                o.items.forEach(item=>{    
                     if(item.sidecar) {                                                                                                                                                                            
                         //anonymize..                                                                               
                         let sidecar = Object.assign({}, item.sidecar);
@@ -419,7 +420,7 @@ const store = createStore({
             //mapObjects() must be called before calling this action (for _entities)
             
             //sort object by subject/session                                                                               
-            state.ezbids.objects.sort((a,b)=>{                                                                                     
+            state.ezbids.objects.sort((a,b)=>{   
                 const asub = a._entities.subject;                                                                            
                 const bsub = b._entities.subject;  
                 const ases = a._entities.session||"";
@@ -444,21 +445,22 @@ const store = createStore({
                     
             //re-index and organize 
             state.ezbids._organized = {};      
-            state.ezbids.objects.forEach((o, idx)=>{                                                                               
+            state.ezbids.objects.forEach((o, idx)=>{    
                 o.idx = idx; //reindex                                                                                     
                                                                                                                             
                 let sub = /*"sub-"+*/o._entities.subject;                                                                             
-                let ses = o._entities.session;//?("ses-"+o._entities.session):"";                                                                         
+                let ses = o._entities.session;//?("ses-"+o._entities.session):"";                                                                        
                 if(!state.ezbids._organized[sub]) state.ezbids._organized[sub] = {                                                                     
                     sess: {},                                                                                              
                     objects: []                                                                                            
                 };                                                                                                         
                 //this.subs[sub].objects.push(o);                                                                          
                                                                                                                             
-                if(!state.ezbids._organized[sub].sess[ses]) state.ezbids._organized[sub].sess[ses] = {                                                 
-                    AcquisitionDate: o.AcquisitionDate,                                                                    
+                if(!state.ezbids._organized[sub].sess[ses]) state.ezbids._organized[sub].sess[ses] = {     
+                    AcquisitionDate: o.AcquisitionDate,
+                    session: o.session,                                                                    
                     objects: []                                                                                            
-                };                                                                                                         
+                };   
                 state.ezbids._organized[sub].sess[ses].objects.push(o);
             });                                                                                                            
         },
@@ -550,8 +552,7 @@ const store = createStore({
         
         //find a session inside sub hierarchy
         findSession: (state)=>(sub: Subject, acquisitionDate: string) : (Session|undefined)=>{ 
-            console.log(sub.sessions.find(s=>s.AcquisitionDate == acquisitionDate))                                                                                             
-            return sub.sessions.find(s=>s.AcquisitionDate == acquisitionDate);                                                                                                                                 
+            return sub.sessions.find(s=>s.AcquisitionDate == acquisitionDate)
         },   
         
         findSubject: (state)=>(o: IObject): (Subject|undefined) =>{           
