@@ -104,7 +104,6 @@ export interface IObject {
     PatientBirthDate: string;
 
     AcquisitionDate: string;
-    session: string;
 
     AcquisitionDateTime: string; //ISO only used to sort objects
 
@@ -458,7 +457,6 @@ const store = createStore({
                                                                                                                             
                 if(!state.ezbids._organized[sub].sess[ses]) state.ezbids._organized[sub].sess[ses] = {     
                     AcquisitionDate: o.AcquisitionDate,
-                    session: o.session,                                                                    
                     objects: []                                                                                            
                 };   
                 state.ezbids._organized[sub].sess[ses].objects.push(o);
@@ -552,7 +550,7 @@ const store = createStore({
         
         //find a session inside sub hierarchy
         findSession: (state)=>(sub: Subject, acquisitionDate: string) : (Session|undefined)=>{ 
-            return sub.sessions.find(s=>s.AcquisitionDate == acquisitionDate)
+            return sub.sessions.find(s=>s.AcquisitionDate == acquisitionDate);
         },   
         
         findSubject: (state)=>(o: IObject): (Subject|undefined) =>{           
