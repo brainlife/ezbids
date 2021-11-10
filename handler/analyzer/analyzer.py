@@ -38,6 +38,7 @@ entities_yaml = yaml.load(open("../bids-specification/src/schema/objects/entitie
 suffixes_yaml = yaml.load(open("../bids-specification/src/schema/objects/suffixes.yaml"))
 datatype_suffix_rules = "../bids-specification/src/schema/rules/datatypes"
 
+
 start_time = time.time()
 analyzer_dir = os.getcwd()
 os.chdir(DATA_DIR)
@@ -320,7 +321,7 @@ def generate_dataset_list(uploaded_files_list):
         if "PatientName" in json_data:
             patient_name = json_data["PatientName"]
         else:
-            patient_name = os.path.dirname(json_file)
+            patient_name = "NA"
 
         if "PatientID" in json_data:
             patient_id = json_data["PatientID"]
@@ -342,12 +343,17 @@ def generate_dataset_list(uploaded_files_list):
             patient_sex = "N/A"
 
         """
-        Select subject ID (and session ID if applicable) to display.
-        Subject ID precedence order: PatientName > PatientID > PatientBirthDate
+        Select subject ID to display.
+        Subject ID precedence order if explicit subject ID (i.e. ReproIn) is not
+        found is: PatientName > PatientID > PatientBirthDate
         """
-        if any(x in json_file for x in ["sub-", "sub_"]):
-            subject = re.split("[^a-zA-Z0-9]+", re.compile(r"sub-|sub_").split(json_file)[-1])[0]
-        else:
+        subject = "NA"
+        for value in [json_file, patient_name, patient_id]:
+            if any(x in value.lower() for x in ["sub-", "subject-", "sub_", "subject_"]):
+                subject = re.split("[^a-zA-Z0-9]+", re.compile(r"sub-|subject-|sub_|subject_", re.IGNORECASE).split(value)[-1])[0]
+                break
+
+        if subject == "NA":
             if patient_name:
                 subject = patient_name
             elif patient_id:
@@ -355,29 +361,15 @@ def generate_dataset_list(uploaded_files_list):
             elif patient_birth_date:
                 subject = patient_birth_date
             else:
-                subject = "NA"
+                pass
 
+
+        # Select session ID to display, if applicable
         session = ""
-        if any(x in json_file for x in ["ses-", "ses_"]):
-            session = re.split("[^a-zA-Z0-9]+", re.compile(r"ses-|ses_").split(json_file)[-1])[0]
-        else:
-            if any(x in subject for x in ["ses-", "ses_"]):
-                split = subject.split("ses")[-1][1:]
-                if re.search(r"[^A-Za-z0-9]+", split) == None:
-                    session = split
-                else:
-                    session = split[0:re.search(r"[^A-Za-z0-9]+", split).start()]
-
-        if subject != "NA":
-            if "sub_" in subject or "sub-" in subject:
-                split = subject.split("sub")[-1][1:]
-                if re.search(r"[^A-Za-z0-9]+", split) == None:
-                    subject = split
-                else:
-                    subject = split[0:re.search(r"[^A-Za-z0-9]+", split).start()]
-            else:
-                subject = re.sub("[^A-Za-z0-9]+", "", subject)
-
+        for value in [json_file, patient_name, patient_id]:
+            if any(x in value.lower() for x in ["ses-", "session-", "ses_", "session_"]):
+                session = re.split("[^a-zA-Z0-9]+", re.compile(r"ses-|session-|ses_|session_", re.IGNORECASE).split(value)[-1])[0]
+                break
 
         # Find Acquisition Date & Time
         if "AcquisitionDateTime" in json_data:
@@ -594,9 +586,15 @@ def determine_subj_ses_IDs(dataset_list):
                     session_id = ""
 
 
-            # Remove subject acquisitions with same AcquisiitonDate, must be different
+
+            # Remove subject acquisitions with same AcquisiitonDate; must be different
             AcquisitionDate_list.append(subject_ids_info_mod[subj_index]["AcquisitionDate"])
 
+            # if len([x for x in AcquisitionDate_list if x == AcquisitionDate]) == 1:
+
+
+            modifiedAcquisitionDate = subject_ids_info_mod[subj_index]["AcquisitionDate"]
+            # if session_id != "":
             modifiedAcquisitionDate = subject_ids_info_mod[subj_index]["AcquisitionDate"] + "." + str(AcqDateCounter)
             AcqDateCounter += 1
 
@@ -612,7 +610,7 @@ def determine_subj_ses_IDs(dataset_list):
             subj_dictionary = [x for x in subject_ids_info
                                if x["subject"] == subj_id][0]
 
-            # Turn PatientInfo and sessions lists into key values
+            # Convert PatientInfo and sessions lists into key values
             subj_dictionary["PatientInfo"] = participant_name_id
             subj_dictionary["sessions"] = sessions_info
 
@@ -642,13 +640,13 @@ def determine_subj_ses_IDs(dataset_list):
                 else:
                     for session in subject_dic["sessions"]:
                         if session["session"] != "" or "0000-00-00" in session["AcquisitionDate"]:
+                        # if session["session"] != "":
                             if acquisition_dic["session"] == session["session"]:
                                 acquisition_dic["AcquisitionDate"] = session["AcquisitionDate"]
                             elif acquisition_dic["AcquisitionDate"] == session["AcquisitionDate"] and acquisition_dic["AcquisitionTime"] == session["AcquisitionTime"]:
                                 acquisition_dic["session"] = session["session"]
                             else:
                                 pass
-
 
     return dataset_list, subject_ids_info
 
