@@ -95,7 +95,7 @@ export default defineComponent({
 
     computed: {
         ...mapState(['session', 'ezbids', 'events']),
-        ...mapGetters(['getBIDSEntities', 'getURL', 'findSession', 'findSubject']),
+        ...mapGetters(['getBIDSEntities', 'findSession', 'findSubject']),
 
         backLabel(): string|null {
             switch(this.page) {
@@ -215,7 +215,7 @@ export default defineComponent({
                 e.subject = subject.subject;                                                                            
             }                                                                                                           
 
-            const session = this.findSession(subject, o.AcquisitionDate);  
+            const session = this.findSession(subject, o);  
             if(session.exclude) o._exclude = true;                                                                      
 
             //if ses is not set, use session mapping as default                                                         

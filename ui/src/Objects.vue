@@ -310,7 +310,7 @@ export default defineComponent({
             } else if(entity == "session") {
                 //default session name only comes from session
                 const subject = this.findSubject(o);
-                const session = this.findSession(subject, o.AcquisitionDate);
+                const session = this.findSession(subject, o);
                 return session.session;
             } else {
                 //all other entity default should come from series

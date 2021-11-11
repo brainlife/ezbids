@@ -219,7 +219,7 @@ export default defineComponent({
 
     computed: {
         ...mapState(['ezbids', 'config', 'bidsSchema', 'events']),
-        ...mapGetters(['getBIDSEntities', 'getURL', 'findSubject', 'findSession']),
+        ...mapGetters(['getBIDSEntities', 'getURL', 'findSubject']),
 
         columns() {
             return this.$store.state.events.columns;

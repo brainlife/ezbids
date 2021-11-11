@@ -93,16 +93,20 @@ export interface IObject {
     }];
 
     series_idx: number;
+    subject_idx: number;
+    session_idx: number;
+
     _SeriesDescription: string; //copied from series for quick ref 
     type: string; //override
     _type: string; 
     _forType: string;
 
-    //primary keys
+    //primary keys for subject (TODO now that we are using subject_idx, do we still need this?)
     PatientName: string;
     PatientID: string;
     PatientBirthDate: string;
 
+    //primary key for session (TODO now that we are using session_idx, do we still need this?)
     AcquisitionDate: string;
 
     AcquisitionDateTime: string; //ISO - only used to sort objects
@@ -559,18 +563,21 @@ const store = createStore({
         },
         
         //find a session inside sub hierarchy
-        findSession: (state)=>(sub: Subject, acquisitionDate: string) : (Session|undefined)=>{ 
-            return sub.sessions.find(s=>s.AcquisitionDate == acquisitionDate);
+        findSession: (state)=>(sub: Subject, o: IObject) : (Session|undefined)=>{ 
+            if(o.session_idx) return sub.session[o.session_idx];
+            return sub.sessions.find(s=>s.AcquisitionDate == o.AcquisitionDate); //will be deprecasted
         },   
         
         findSubject: (state)=>(o: IObject): (Subject|undefined) =>{           
+            if(o.subject_idx) return state.ezbids.subjects[o.subject_idx];
+
+            //rest is deprecated now that we use subject_idx to find subject
             //does this still happen?
             if(!o.PatientName && o.PatientID && o.PatientBirthDate) {
                 console.error("none of the patient identifying fields are set.. can't find this object");      
                 console.dir(o);  
                 return undefined;
             }                    
-
             return state.ezbids.subjects.find(s=>{     
                 //see if any of the PatientInfo matches this object's
                 let match = s.PatientInfo.find(info=>{

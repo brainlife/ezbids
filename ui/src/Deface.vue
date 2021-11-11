@@ -121,7 +121,7 @@ export default defineComponent({
 
     computed: {
         ...mapState(['ezbids', 'config', 'session', 'bidsSchema']),
-        ...mapGetters(['getBIDSEntities', 'getURL', 'findSubject', 'findSession', 'getAnatObjects']),
+        ...mapGetters(['getBIDSEntities', 'getURL', 'getAnatObjects']),
         
         isDefacing() {
             // @ts-ignore
