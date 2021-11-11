@@ -1390,44 +1390,44 @@ dataset_list = generate_dataset_list(uploaded_files_list)
 # Determine subject (and session) information
 dataset_list, subject_ids_info = determine_subj_ses_IDs(dataset_list)
 
-# # Make a new list containing the dictionaries of only unique dataset acquisitions
-# dataset_list, dataset_list_unique_series = determine_unique_series(dataset_list)
+# Make a new list containing the dictionaries of only unique dataset acquisitions
+dataset_list, dataset_list_unique_series = determine_unique_series(dataset_list)
 
-# # Identify datatype and suffix information
-# dataset_list_unique_series = datatype_suffix_identification(dataset_list_unique_series)
+# Identify datatype and suffix information
+dataset_list_unique_series = datatype_suffix_identification(dataset_list_unique_series)
 
-# # Identify entity label information
-# dataset_list_unique_series = entity_labels_identification(dataset_list_unique_series)
+# Identify entity label information
+dataset_list_unique_series = entity_labels_identification(dataset_list_unique_series)
 
-# # Port series level information to all other acquistions (i.e. objects level) with same series info
-# dataset_list = update_dataset_list(dataset_list, dataset_list_unique_series)
+# Port series level information to all other acquistions (i.e. objects level) with same series info
+dataset_list = update_dataset_list(dataset_list, dataset_list_unique_series)
 
-# # Apply a few other changes to the objects level
-# objects_list = modify_objects_info(dataset_list)
+# Apply a few other changes to the objects level
+objects_list = modify_objects_info(dataset_list)
 
-# # Map unique series IDs to all other acquisitions in dataset that have those parameters
-# for index, unique_dic in enumerate(dataset_list_unique_series):
+# Map unique series IDs to all other acquisitions in dataset that have those parameters
+for index, unique_dic in enumerate(dataset_list_unique_series):
 
-#     print(" ".join("Unique data acquisition file {}, \
-#         Series Description {}, \
-#         was determined to be {}, \
-#         with entity labels {} \
-#         ".format(unique_dic["nifti_path"], unique_dic["SeriesDescription"], unique_dic["type"], [x for x in unique_dic["entities"].items() if x[-1] != ""]).split()))
-#     print("")
-#     print("")
+    print(" ".join("Unique data acquisition file {}, \
+        Series Description {}, \
+        was determined to be {}, \
+        with entity labels {} \
+        ".format(unique_dic["nifti_path"], unique_dic["SeriesDescription"], unique_dic["type"], [x for x in unique_dic["entities"].items() if x[-1] != ""]).split()))
+    print("")
+    print("")
 
-# # Extract subset of series information to display in ezBIDS UI
-# ui_series_info_list = extract_series_info(dataset_list_unique_series)
+# Extract subset of series information to display in ezBIDS UI
+ui_series_info_list = extract_series_info(dataset_list_unique_series)
 
-# # Convert information to dictionary
-# EZBIDS = {"subjects": subject_ids_info,
-#           "participantsColumn": PARTICIPANTS_COLUMN,
-#           "series": ui_series_info_list,
-#           "objects": objects_list
-#           }
+# Convert information to dictionary
+EZBIDS = {"subjects": subject_ids_info,
+          "participantsColumn": PARTICIPANTS_COLUMN,
+          "series": ui_series_info_list,
+          "objects": objects_list
+          }
 
-# # Write dictionary to ezBIDS.json
-# with open("ezBIDS.json", "w") as fp:
-#     json.dump(EZBIDS, fp, indent=3)
+# Write dictionary to ezBIDS.json
+with open("ezBIDS.json", "w") as fp:
+    json.dump(EZBIDS, fp, indent=3)
 
-# print("--- Analyzer completion time: {} seconds ---".format(time.time() - start_time))
+print("--- Analyzer completion time: {} seconds ---".format(time.time() - start_time))
