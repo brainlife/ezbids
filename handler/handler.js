@@ -74,22 +74,27 @@ function handle_uploaded(session) {
             cb();
         }, cb => {
             //finish callback
-            session.status = "analyzed";
-            session.status_msg = "successfully run preprocess.sh";
-            session.pre_finish_date = new Date();
-            fs.readFile(workdir + "/ezBIDS.json", "utf8", (err, data) => {
+            fs.readFile(workdir + "/ezBIDS.json", "utf8", (err, data) => __awaiter(this, void 0, void 0, function* () {
                 if (err)
-                    cb(err);
-                let ezbids = new models.ezBIDS({
-                    _session_id: session._id,
-                    original: JSON.parse(data),
-                });
-                ezbids.save().then(() => {
-                    session.save().then(() => {
-                        cb();
-                    }).catch(cb);
-                }).catch(cb);
-            });
+                    return cb(err);
+                try {
+                    //try parsing the json!
+                    const json = JSON.parse(data);
+                    const ezbids = new models.ezBIDS({
+                        _session_id: session._id,
+                        original: JSON.parse(data),
+                    });
+                    yield ezbids.save();
+                    session.status = "analyzed";
+                    session.status_msg = "successfully run preprocess.sh";
+                    session.pre_finish_date = new Date();
+                }
+                catch (err) {
+                    return cb(err);
+                }
+                yield session.save();
+                cb();
+            }));
         });
     });
 }
@@ -164,7 +169,12 @@ function handle(session, script, name, cb_monitor, cb_finish) {
                     }
                     else {
                         session.status_msg = "successfully run " + name;
-                        cb_finish(() => {
+                        cb_finish(err => {
+                            if (err) {
+                                session.status = "failed";
+                                session.status_msg = err;
+                                console.error(err);
+                            }
                             session.save().then(resolve).catch(reject);
                         });
                     }

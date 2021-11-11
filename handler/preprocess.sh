@@ -1,7 +1,5 @@
 #!/bin/bash
 
-#module load pigz
-
 set -e
 set -x
 
@@ -74,5 +72,3 @@ echo "running analyzer (should only take a minute)"
 timeout 600 ./analyzer/run.sh $root
 
 echo "done preprocessing"
-
-

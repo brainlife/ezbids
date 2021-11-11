@@ -364,47 +364,44 @@ export default defineComponent({
             Welcome to <b><span style="letter-spacing: -2px; opacity: 0.5">ez</span>BIDS</b> - an online DICOM to BIDS conversion / organizing tool. 
         </p>                                                                                                            
                                                                                                                         
-        <div class="drop-area" :class="{dragging}" v-if="!starting"                                                     
-            @drop="dropit"                                                                                              
-            @dragleave="dragging = false"                                                                               
-            @dragover="dragover">                                                                                       
-            <div class="drop-area-backdrop"><b><span style="letter-spacing: -4vh;">ez</span>BIDS</b></div>    
-            <div>
-                <b>Drag & Drop a DICOM folder here to start</b>                                                         
-                <br>                                                                                                    
-                <br>                                                                                                    
-                or        
-                <br>
-                <br>                                                                                             
-                <input type="file"                                                                                      
-                        webkitdirectory                                                                                 
-                        mozdirectory                                                                                    
-                        msdirectory                                                                                     
-                        odirectory                                                                                      
-                        directory                                                                                       
-                        multiple                                                                               
-                        @change="selectit" style="font-size: 80%; width: 400px; background-color: #fff3; padding: 5px;"/>     
-            </div>                                                                                                
+        <div v-if="!starting">
+            <div class="drop-area" :class="{dragging}"
+                @drop="dropit"                                                                                              
+                @dragleave="dragging = false"                                                                               
+                @dragover="dragover">                                                                                       
+                <div class="drop-area-backdrop"><b><span style="letter-spacing: -4vh;">ez</span>BIDS</b></div>    
+                <div>
+                    <b>Drag & Drop a DICOM folder here to start</b>                                                         
+                    <br>                                                                                                    
+                    <br>                                                                                                    
+                    or        
+                    <br>
+                    <br>                                                                                             
+                    <input type="file"                                                                                      
+                            webkitdirectory                                                                                 
+                            mozdirectory                                                                                    
+                            msdirectory                                                                                     
+                            odirectory                                                                                      
+                            directory                                                                                       
+                            multiple                                                                               
+                            @change="selectit" style="font-size: 80%; width: 400px; background-color: #fff3; padding: 5px;"/>     
+                </div>                                                                                                
+            </div>
+            <ul style="line-height: 200%;">
+                <li>Please upload <b>non-anonymized</b> data so that we can properly identify the subject/session hierarchy. If you anonymize, your data might accidently be considered to belong to a single subject and single session.</li>
+                <li>ezBIDS will anonymize and remove any subject identifying information (and optionally deface all anatomy data) before converting to BIDS.</li>
+                <li>ezBIDS runs on a secure VM running on Jetstream cloud; HIPAA aligned cloud computing infrastructure.</li>
+                <li>The data you upload can only be accessed through the unique URL with your session ID; all data will be purged from our system within 5 days.</li>
+            </ul>
+            <br>
+            <br>
+            <br>
+            <iframe width="560" height="315" src="https://www.youtube.com/embed/mY3_bmt_e80" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
         </div>                                                                                                          
                                                                                                                         
         <div v-if="starting">                                                                                           
             <h3>Initializing..</h3>                                                                                     
         </div>                                                                                                          
-        <ul style="line-height: 200%;">
-            <li>Please upload <b>non-anonymized</b> data so that we can properly identify the subject/session hierarchy. If you anonymize, your data might accidently be considered to belong to a single subject and single session.</li>
-            <li>ezBIDS will anonymize and remove any subject identifying information (and optionally deface all anatomy data) before converting to BIDS.</li>
-            <li>ezBIDS runs on a secure VM running on Jetstream cloud; HIPAA aligned cloud computing infrastructure.</li>
-            <li>The data you upload can only be accessed through the unique URL with your session ID; all data will be purged from our system within 5 days.</li>
-        </ul>
-
-        
-        <br>
-        <br>
-        <br>
-        <center>
-            <iframe width="560" height="315" src="https://www.youtube.com/embed/mY3_bmt_e80" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-        </center>
-
     </div> 
 
     <div v-if="session">

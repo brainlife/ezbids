@@ -506,8 +506,7 @@ const store = createStore({
         async loadEzbids(context) {
             if(!context.state.session || !context.state.session.pre_finish_date) return;
 
-            console.log("loading ezbids json");
-            const res = await fetch(context.state.config.apihost+'/download/'+context.state.session._id+'/ezBIDS.json')
+            const res = await fetch(context.state.config.apihost+'/download/'+context.state.session._id+'/ezBIDS.json');
             if(res.status == 200) {
                 const conf = await res.json();
                 conf.notLoaded = false;
