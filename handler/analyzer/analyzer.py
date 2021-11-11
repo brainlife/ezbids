@@ -353,17 +353,16 @@ def generate_dataset_list(uploaded_files_list):
                 break
 
         if subject == "NA":
-            if patient_name:
+            if patient_name != "NA":
                 subject = patient_name
-            elif patient_id:
+            elif patient_id != "NA":
                 subject = patient_id
-            elif patient_birth_date:
+            elif patient_birth_date != "00000000":
                 subject = patient_birth_date
             elif json_file.count("/") - 1 == 1: # only one level, so assume that level is the subject ID
                 subject = json_file.split("/")[1]
             else:
                 pass
-
 
         # Select session ID to display, if applicable
         session = ""
@@ -371,6 +370,7 @@ def generate_dataset_list(uploaded_files_list):
             if any(x in value.lower() for x in ["ses-", "session-", "ses_", "session_"]):
                 session = re.split("[^a-zA-Z0-9]+", re.compile(r"ses-|session-|ses_|session_", re.IGNORECASE).split(value)[-1])[0]
                 break
+
 
         # Find Acquisition Date & Time
         if "AcquisitionDateTime" in json_data:
@@ -518,14 +518,14 @@ def determine_subj_ses_IDs(dataset_list):
         information
 
     """
+    acq_dates_list = []
+    acq_date_counter = 1
     for sub in np.unique([x["subject"] for x in dataset_list]):
         sub_dics_list = [x for x in dataset_list if x["subject"] == sub]
 
         sessions = np.unique([x["session"] for x in sub_dics_list])
 
         if len(sessions) > 1 or (len(sessions) == 1 and sessions[0] != ""): # Ensure sessions don't have same Acquisition Date (e.g. scanned on same day)
-            acq_dates_list = []
-            acq_date_counter = 1
             for ses in sessions:
                 ses_dics_list = [x for x in sub_dics_list if x["session"] == ses]
 
@@ -1390,44 +1390,44 @@ dataset_list = generate_dataset_list(uploaded_files_list)
 # Determine subject (and session) information
 dataset_list, subject_ids_info = determine_subj_ses_IDs(dataset_list)
 
-# Make a new list containing the dictionaries of only unique dataset acquisitions
-dataset_list, dataset_list_unique_series = determine_unique_series(dataset_list)
+# # Make a new list containing the dictionaries of only unique dataset acquisitions
+# dataset_list, dataset_list_unique_series = determine_unique_series(dataset_list)
 
-# Identify datatype and suffix information
-dataset_list_unique_series = datatype_suffix_identification(dataset_list_unique_series)
+# # Identify datatype and suffix information
+# dataset_list_unique_series = datatype_suffix_identification(dataset_list_unique_series)
 
-# Identify entity label information
-dataset_list_unique_series = entity_labels_identification(dataset_list_unique_series)
+# # Identify entity label information
+# dataset_list_unique_series = entity_labels_identification(dataset_list_unique_series)
 
-# Port series level information to all other acquistions (i.e. objects level) with same series info
-dataset_list = update_dataset_list(dataset_list, dataset_list_unique_series)
+# # Port series level information to all other acquistions (i.e. objects level) with same series info
+# dataset_list = update_dataset_list(dataset_list, dataset_list_unique_series)
 
-# Apply a few other changes to the objects level
-objects_list = modify_objects_info(dataset_list)
+# # Apply a few other changes to the objects level
+# objects_list = modify_objects_info(dataset_list)
 
-# Map unique series IDs to all other acquisitions in dataset that have those parameters
-for index, unique_dic in enumerate(dataset_list_unique_series):
+# # Map unique series IDs to all other acquisitions in dataset that have those parameters
+# for index, unique_dic in enumerate(dataset_list_unique_series):
 
-    print(" ".join("Unique data acquisition file {}, \
-        Series Description {}, \
-        was determined to be {}, \
-        with entity labels {} \
-        ".format(unique_dic["nifti_path"], unique_dic["SeriesDescription"], unique_dic["type"], [x for x in unique_dic["entities"].items() if x[-1] != ""]).split()))
-    print("")
-    print("")
+#     print(" ".join("Unique data acquisition file {}, \
+#         Series Description {}, \
+#         was determined to be {}, \
+#         with entity labels {} \
+#         ".format(unique_dic["nifti_path"], unique_dic["SeriesDescription"], unique_dic["type"], [x for x in unique_dic["entities"].items() if x[-1] != ""]).split()))
+#     print("")
+#     print("")
 
-# Extract subset of series information to display in ezBIDS UI
-ui_series_info_list = extract_series_info(dataset_list_unique_series)
+# # Extract subset of series information to display in ezBIDS UI
+# ui_series_info_list = extract_series_info(dataset_list_unique_series)
 
-# Convert information to dictionary
-EZBIDS = {"subjects": subject_ids_info,
-          "participantsColumn": PARTICIPANTS_COLUMN,
-          "series": ui_series_info_list,
-          "objects": objects_list
-          }
+# # Convert information to dictionary
+# EZBIDS = {"subjects": subject_ids_info,
+#           "participantsColumn": PARTICIPANTS_COLUMN,
+#           "series": ui_series_info_list,
+#           "objects": objects_list
+#           }
 
-# Write dictionary to ezBIDS.json
-with open("ezBIDS.json", "w") as fp:
-    json.dump(EZBIDS, fp, indent=3)
+# # Write dictionary to ezBIDS.json
+# with open("ezBIDS.json", "w") as fp:
+#     json.dump(EZBIDS, fp, indent=3)
 
-print("--- Analyzer completion time: {} seconds ---".format(time.time() - start_time))
+# print("--- Analyzer completion time: {} seconds ---".format(time.time() - start_time))
