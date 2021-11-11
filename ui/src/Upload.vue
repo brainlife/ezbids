@@ -391,7 +391,7 @@ export default defineComponent({
             <h3>Initializing..</h3>                                                                                     
         </div>                                                                                                          
         <ul style="line-height: 200%;">
-            <li>Please upload <b>non-anonymized</b> data so that we can properly identify the subject/session hierarchy. If you anonymize your data might accidently be considered to belong to a single subject and single session.</li>
+            <li>Please upload <b>non-anonymized</b> data so that we can properly identify the subject/session hierarchy. If you anonymize, your data might accidently be considered to belong to a single subject and single session.</li>
             <li>ezBIDS will anonymize and remove any subject identifying information (and optionally deface all anatomy data) before converting to BIDS.</li>
             <li>ezBIDS runs on a secure VM running on Jetstream cloud; HIPAA aligned cloud computing infrastructure.</li>
             <li>The data you upload can only be accessed through the unique URL with your session ID; all data will be purged from our system within 5 days.</li>

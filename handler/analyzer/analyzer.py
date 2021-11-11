@@ -38,7 +38,6 @@ entities_yaml = yaml.load(open("../bids-specification/src/schema/objects/entitie
 suffixes_yaml = yaml.load(open("../bids-specification/src/schema/objects/suffixes.yaml"))
 datatype_suffix_rules = "../bids-specification/src/schema/rules/datatypes"
 
-
 start_time = time.time()
 analyzer_dir = os.getcwd()
 os.chdir(DATA_DIR)
@@ -360,6 +359,8 @@ def generate_dataset_list(uploaded_files_list):
                 subject = patient_id
             elif patient_birth_date:
                 subject = patient_birth_date
+            elif json_file.count("/") - 1 == 1: # only one level, so assume that level is the subject ID
+                subject = json_file.split("/")[1]
             else:
                 pass
 
@@ -382,6 +383,9 @@ def generate_dataset_list(uploaded_files_list):
             acquisition_date = "0000-00-00"
             acquisition_time = None
             modified_time = "0"
+
+        if "AcquisitionTime" in json_data:
+            acquisition_time = json_data["AcquisitionTime"]
 
         # Find RepetitionTime
         if "RepetitionTime" in json_data:
@@ -484,10 +488,10 @@ def generate_dataset_list(uploaded_files_list):
     """ Sort dataset_list of dictionaries by subject, AcquisitionDate,
     SeriesNumber, and json_path. """
     dataset_list = sorted(dataset_list, key=itemgetter("AcquisitionDate",
-                                                       "subject",
-                                                       "SeriesNumber",
-                                                       "ModifiedTime",
-                                                       "json_path"))
+                                                        "subject",
+                                                        "SeriesNumber",
+                                                        "ModifiedTime",
+                                                        "json_path"))
 
     return dataset_list
 
@@ -514,6 +518,36 @@ def determine_subj_ses_IDs(dataset_list):
         information
 
     """
+    for sub in np.unique([x["subject"] for x in dataset_list]):
+        sub_dics_list = [x for x in dataset_list if x["subject"] == sub]
+
+        sessions = np.unique([x["session"] for x in sub_dics_list])
+
+        if len(sessions) > 1 or (len(sessions) == 1 and sessions[0] != ""): # Ensure sessions don't have same Acquisition Date (e.g. scanned on same day)
+            acq_dates_list = []
+            acq_date_counter = 1
+            for ses in sessions:
+                ses_dics_list = [x for x in sub_dics_list if x["session"] == ses]
+
+                acq_date = np.unique([x["AcquisitionDate"] for x in ses_dics_list])[0]
+
+                if acq_date in acq_dates_list:
+                    acq_date = acq_date + "." + str(acq_date_counter)
+                    acq_date_counter += 1
+
+                    for x in ses_dics_list:
+                        x["AcquisitionDate"] = acq_date
+
+                acq_dates_list.append(acq_date)
+        else:
+            acq_dates = sorted(np.unique([x["AcquisitionDate"] for x in sub_dics_list]))
+            if len(acq_dates) > 1:
+                session_id = 1
+                for date in acq_dates:
+                    for x in [x for x in sub_dics_list if x["AcquisitionDate"] == date]:
+                        x["session"] = session_id
+                    session_id += 1
+
     # Curate subject_id information
     subject_ids_info = list({"subject":x["subject"],
                              "PatientName":x["PatientName"],
@@ -532,17 +566,17 @@ def determine_subj_ses_IDs(dataset_list):
                              "validationErrors": []} for x in dataset_list)
 
 
-    # Sort by subject, ModifiedTime
-    subject_ids_info = sorted(subject_ids_info, key=itemgetter("subject",
-                                                   "AcquisitionDate",
-                                                   "ModifiedTime"))
+    # Sort by subject, AcquisitionDate, and ModifiedTime (2021-01-01 --> 20210101)
+    subject_ids_info = sorted(subject_ids_info, key=itemgetter("AcquisitionDate",
+                                                               "subject",
+                                                               "ModifiedTime"))
 
 
     # Create modified list of dictionary with unique subject and Acquisition values
-    subject_ids_info_mod = list({(v["subject"], v["PatientName"],
-                                  v["PatientID"], v["session"],
-                                  v["AcquisitionDate"]):v for v in
-                                 subject_ids_info}.values())
+    # This helps us know how many unique subject/session pairs there are
+    subject_ids_info_mod = list({(v["subject"], v["session"], v["AcquisitionDate"]):v
+                                 for v in subject_ids_info}.values())
+
 
 
     """ Create list of dictionaries with unique subject values. This list of
@@ -553,8 +587,7 @@ def determine_subj_ses_IDs(dataset_list):
     # Unique subject IDs in dataset
     subj_ids = [x["subject"] for x in subject_ids_info]
 
-    # Determine and apply session ID value if possible
-    AcqDateCounter = 1
+
     for subj_id in subj_ids:
         subject_indices = [index for index, dictionary
                            in enumerate(subject_ids_info_mod)
@@ -563,8 +596,6 @@ def determine_subj_ses_IDs(dataset_list):
         if len(subject_indices):
             participant_name_id = []
             sessions_info = []
-            modifiedAcquisitionDate_list = []
-            AcquisitionDate_list = []
 
         for index, subj_index in enumerate(subject_indices):
 
@@ -572,40 +603,11 @@ def determine_subj_ses_IDs(dataset_list):
                                         "PatientID": subject_ids_info_mod[subj_index]["PatientID"],
                                         "PatientBirthDate": subject_ids_info_mod[subj_index]["PatientBirthDate"]})
 
-            """ For session ID, either use what was previously determined, or
-            go by numeric chronological order """
-            if len(subject_indices) > 1:
-                if subject_ids_info_mod[subj_index]["session"] == "":
-                    session_id = str(index+1)
-                else:
-                    session_id = subject_ids_info_mod[subj_index]["session"]
-            else:
-                if subject_ids_info_mod[subj_index]["session"] != "":
-                    session_id = subject_ids_info_mod[subj_index]["session"]
-                else:
-                    session_id = ""
 
-
-
-            # Remove subject acquisitions with same AcquisiitonDate; must be different
-            AcquisitionDate_list.append(subject_ids_info_mod[subj_index]["AcquisitionDate"])
-
-            # if len([x for x in AcquisitionDate_list if x == AcquisitionDate]) == 1:
-
-
-            modifiedAcquisitionDate = subject_ids_info_mod[subj_index]["AcquisitionDate"]
-            # if session_id != "":
-            modifiedAcquisitionDate = subject_ids_info_mod[subj_index]["AcquisitionDate"] + "." + str(AcqDateCounter)
-            AcqDateCounter += 1
-
-            modifiedAcquisitionDate_list.append(modifiedAcquisitionDate)
-
-            # Append session information to list (unique AcquisitionDate values only)
-            if len([x for x in modifiedAcquisitionDate_list if x == modifiedAcquisitionDate]) == 1:
-                sessions_info.append({"AcquisitionDate": modifiedAcquisitionDate,
-                                      "AcquisitionTime": subject_ids_info_mod[subj_index]["AcquisitionTime"],
-                                      "session": session_id,
-                                      "exclude": False})
+            sessions_info.append({"AcquisitionDate": subject_ids_info_mod[subj_index]["AcquisitionDate"],
+                                  "AcquisitionTime": subject_ids_info_mod[subj_index]["AcquisitionTime"],
+                                  "session": subject_ids_info_mod[subj_index]["session"],
+                                  "exclude": False})
             # Apply the session information to the correct subject dictionaries
             subj_dictionary = [x for x in subject_ids_info
                                if x["subject"] == subj_id][0]
@@ -624,29 +626,6 @@ def determine_subj_ses_IDs(dataset_list):
         del dic["PatientName"]
         del dic["PatientID"]
         del dic["session"]
-
-
-    for acquisition_dic in dataset_list:
-        for subject_dic in subject_ids_info:
-            if subject_dic["subject"] == acquisition_dic["subject"]:
-                if len(subject_dic["sessions"]) > 1:
-                    for session in subject_dic["sessions"]:
-                        if acquisition_dic["session"] == session["session"]:
-                            acquisition_dic["AcquisitionDate"] = session["AcquisitionDate"]
-                        elif acquisition_dic["AcquisitionDate"] == session["AcquisitionDate"] and acquisition_dic["AcquisitionTime"] == session["AcquisitionTime"]:
-                            acquisition_dic["session"] = session["session"]
-                        else:
-                            pass
-                else:
-                    for session in subject_dic["sessions"]:
-                        if session["session"] != "" or "0000-00-00" in session["AcquisitionDate"]:
-                        # if session["session"] != "":
-                            if acquisition_dic["session"] == session["session"]:
-                                acquisition_dic["AcquisitionDate"] = session["AcquisitionDate"]
-                            elif acquisition_dic["AcquisitionDate"] == session["AcquisitionDate"] and acquisition_dic["AcquisitionTime"] == session["AcquisitionTime"]:
-                                acquisition_dic["session"] = session["session"]
-                            else:
-                                pass
 
     return dataset_list, subject_ids_info
 

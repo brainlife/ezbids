@@ -391,13 +391,25 @@ const store = createStore({
                         //anonymize..                                                                               
                         let sidecar = Object.assign({}, item.sidecar);
 
-                        delete sidecar.PatientName;                                                                 
-                        delete sidecar.PatientID;  
+                        // delete sidecar.PatientName;                                                                 
+                        // delete sidecar.PatientID;  
+                        // delete sidecar.SeriesInstanceUID;
+                        // delete sidecar.StudyInstanceUID;
+                        // delete sidecar.ReferringPhysicianName;
+                        // delete sidecar.AccessionNumber;
+                        // delete sidecar.PatientWeight;
+
                         delete sidecar.SeriesInstanceUID;
                         delete sidecar.StudyInstanceUID;
                         delete sidecar.ReferringPhysicianName;
+                        delete sidecar.StudyID;
+                        delete sidecar.PatientName;
+                        delete sidecar.PatientID;
                         delete sidecar.AccessionNumber;
+                        delete sidecar.PatientBirthDate;
+                        delete sidecar.PatientSex;
                         delete sidecar.PatientWeight;
+                        delete sidecar.AcquisitionDateTime;
 
                         item['sidecar_json'] = JSON.stringify(sidecar, null, 4);                            
                     }                                                                                               
