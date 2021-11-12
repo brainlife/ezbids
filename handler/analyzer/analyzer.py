@@ -465,6 +465,8 @@ def generate_dataset_list(uploaded_files_list):
             "datatype": "",
             "suffix": "",
             "series_idx": 0,
+            "subject_idx": 0,
+            "session_idx": 0,
             "direction": ped,
             "TaskName": "",
             "exclude": False,
@@ -520,14 +522,22 @@ def determine_subj_ses_IDs(dataset_list):
     """
     acq_dates_list = []
     acq_date_counter = 1
+    subject_idx_counter = 0
     for sub in np.unique([x["subject"] for x in dataset_list]):
         sub_dics_list = [x for x in dataset_list if x["subject"] == sub]
+        for x in sub_dics_list:
+            x["subject_idx"] = subject_idx_counter
+        subject_idx_counter += 1
 
         sessions = np.unique([x["session"] for x in sub_dics_list])
+        session_idx_counter = 0
 
         if len(sessions) > 1 or (len(sessions) == 1 and sessions[0] != ""): # Ensure sessions don't have same Acquisition Date (e.g. scanned on same day)
             for ses in sessions:
                 ses_dics_list = [x for x in sub_dics_list if x["session"] == ses]
+                for x in ses_dics_list:
+                    x["session_idx"] = session_idx_counter
+                session_idx_counter += 1
 
                 acq_date = np.unique([x["AcquisitionDate"] for x in ses_dics_list])[0]
 
@@ -546,7 +556,9 @@ def determine_subj_ses_IDs(dataset_list):
                 for date in acq_dates:
                     for x in [x for x in sub_dics_list if x["AcquisitionDate"] == date]:
                         x["session"] = session_id
+                        x["session_idx"] = session_idx_counter
                     session_id += 1
+                    session_idx_counter += 1
 
     # Curate subject_id information
     subject_ids_info = list({"subject":x["subject"],
@@ -593,6 +605,7 @@ def determine_subj_ses_IDs(dataset_list):
                            in enumerate(subject_ids_info_mod)
                            if dictionary["subject"] == subj_id]
 
+
         if len(subject_indices):
             participant_name_id = []
             sessions_info = []
@@ -601,13 +614,15 @@ def determine_subj_ses_IDs(dataset_list):
 
             participant_name_id.append({"PatientName": subject_ids_info_mod[subj_index]["PatientName"],
                                         "PatientID": subject_ids_info_mod[subj_index]["PatientID"],
-                                        "PatientBirthDate": subject_ids_info_mod[subj_index]["PatientBirthDate"]})
-
+                                        "PatientBirthDate": subject_ids_info_mod[subj_index]["PatientBirthDate"],
+                                        })
 
             sessions_info.append({"AcquisitionDate": subject_ids_info_mod[subj_index]["AcquisitionDate"],
                                   "AcquisitionTime": subject_ids_info_mod[subj_index]["AcquisitionTime"],
                                   "session": subject_ids_info_mod[subj_index]["session"],
-                                  "exclude": False})
+                                  "exclude": False
+                                  })
+
             # Apply the session information to the correct subject dictionaries
             subj_dictionary = [x for x in subject_ids_info
                                if x["subject"] == subj_id][0]
@@ -1278,8 +1293,10 @@ def modify_objects_info(dataset_list):
                                   "name":"nii.gz",
                                   "headers":protocol["headers"]})
 
-            """ Remove identifying metadata information. Equivalent to dcm2niix
-            option -ba y """
+            """
+            Remove identifying metadata information. Equivalent to dcm2niix option -ba y
+            From https://github.com/rordenlab/dcm2niix/issues/557
+            """
             remove_fields = ["SeriesInstanceUID",
                              "StudyInstanceUID",
                              "ReferringPhysicianName",
@@ -1289,7 +1306,8 @@ def modify_objects_info(dataset_list):
                              "AccessionNumber",
                              "PatientBirthDate",
                              "PatientSex",
-                             "PatientWeight"]
+                             "PatientWeight",
+                             "AcquisitionDateTime"]
 
             for remove in remove_fields:
                 if remove in protocol["sidecar"]:
@@ -1302,6 +1320,8 @@ def modify_objects_info(dataset_list):
                             "PatientBirthDate": protocol["PatientBirthDate"],
                             "AcquisitionDateTime": protocol["AcquisitionDateTime"],
                             "AcquisitionDate": protocol["AcquisitionDate"],
+                            "subject_idx": protocol["subject_idx"],
+                            "session_idx": protocol["session_idx"],
                             "pngPath": "{}.png".format(protocol["nifti_path"][:-7]),
                             "entities": objects_entities,
                             "items": items,
