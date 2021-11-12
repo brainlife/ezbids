@@ -564,7 +564,7 @@ const store = createStore({
         
         //find a session inside sub hierarchy
         findSession: (state)=>(sub: Subject, o: IObject) : (Session|undefined)=>{ 
-            if(o.session_idx) return sub.session[o.session_idx];
+            if(o.session_idx) return sub.sessions[o.session_idx];
             return sub.sessions.find(s=>s.AcquisitionDate == o.AcquisitionDate); //will be deprecasted
         },   
         
