@@ -2,9 +2,9 @@
 """
 Created on Fri Jun 26 08:37:56 2020
 
-This code represents ezBIDS's attempt to determine BIDS information (datatype,
-suffix, entitiy labels [acq, run, dir, etc]) based on dcm2niix output.
-This information is then displayed in the ezBIDS UI, where users can made
+This code represents ezBIDS's attempt to determine BIDS information (subject/session mapping,
+datatype, suffix, entitiy labels [acq, run, dir, etc]) based on dcm2niix output.
+This information is then displayed in the ezBIDS UI, where users can make
 edits/modifications as they see fit, before finalizing their data into a
 BIDS-compliant dataset.
 
@@ -334,12 +334,10 @@ def generate_dataset_list(uploaded_files_list):
             patient_birth_date = "00000000"
 
         # Find PatientSex
+        patient_sex = "N/A"
         if "PatientSex" in json_data:
-            patient_sex = json_data["PatientSex"]
-            if patient_sex not in ["M", "F"]:
-                patient_sex = "N/A"
-        else:
-            patient_sex = "N/A"
+            if json_data["PatientSex"] in ["M", "F"]:
+                patient_sex = json_data["PatientSex"]
 
         """
         Select subject ID to display.
@@ -371,6 +369,9 @@ def generate_dataset_list(uploaded_files_list):
                 session = re.split("[^a-zA-Z0-9]+", re.compile(r"ses-|session-|ses_|session_", re.IGNORECASE).split(value)[-1])[0]
                 break
 
+        # Remove non-alphanumeric characters from subject (and session) ID(s)
+        subject = re.sub("[^A-Za-z0-9]+", "", subject)
+        session = re.sub("[^A-Za-z0-9]+", "", session)
 
         # Find Acquisition Date & Time
         if "AcquisitionDateTime" in json_data:
@@ -465,6 +466,8 @@ def generate_dataset_list(uploaded_files_list):
             "datatype": "",
             "suffix": "",
             "series_idx": 0,
+            "subject_idx": 0,
+            "session_idx": 0,
             "direction": ped,
             "TaskName": "",
             "exclude": False,
@@ -485,10 +488,10 @@ def generate_dataset_list(uploaded_files_list):
         }
         dataset_list.append(acquisition_info_directory)
 
-    """ Sort dataset_list of dictionaries by subject, AcquisitionDate,
-    SeriesNumber, and json_path. """
+    # Sort dataset_list of dictionaries
     dataset_list = sorted(dataset_list, key=itemgetter("AcquisitionDate",
                                                         "subject",
+                                                        "session",
                                                         "SeriesNumber",
                                                         "ModifiedTime",
                                                         "json_path"))
@@ -518,116 +521,97 @@ def determine_subj_ses_IDs(dataset_list):
         information
 
     """
-    acq_dates_list = []
-    acq_date_counter = 1
+    date_counter = 1
+    subject_idx_counter = 0
+    subjects_information = []
+    # Determine unique subjects from uploaded dataset
     for sub in np.unique([x["subject"] for x in dataset_list]):
         sub_dics_list = [x for x in dataset_list if x["subject"] == sub]
 
-        sessions = np.unique([x["session"] for x in sub_dics_list])
+        # Organize phenotype (sex, age) information
+        phenotype_info = list({"sex":x["PatientSex"],"age":x["PatientAge"]} for x in sub_dics_list)[0]
 
-        if len(sessions) > 1 or (len(sessions) == 1 and sessions[0] != ""): # Ensure sessions don't have same Acquisition Date (e.g. scanned on same day)
-            for ses in sessions:
-                ses_dics_list = [x for x in sub_dics_list if x["session"] == ses]
+        # Give each subject a unique subject_idx value
+        for x in sub_dics_list:
+            x["subject_idx"] = subject_idx_counter
+        subject_idx_counter += 1
 
-                acq_date = np.unique([x["AcquisitionDate"] for x in ses_dics_list])[0]
+        # Determine all unique sessions (if applicable) per subject
+        unique_ses_date_times = []
+        session_idx_counter = 0
+        ses_dates = list(set([(x["session"], x["AcquisitionDate"]) for x in sub_dics_list]))
 
-                if acq_date in acq_dates_list:
-                    acq_date = acq_date + "." + str(acq_date_counter)
-                    acq_date_counter += 1
+        # Session information includes the following metadata: session, AcquisitionDate, and AcquisitionTime
+        for ses_date in ses_dates:
+            ses_date = list(ses_date)
+            date_time = [x["AcquisitionTime"] for x in sub_dics_list if x["session"] == ses_date[0] and x["AcquisitionDate"] == ses_date[1]][0]
+            ses_date.append(date_time)
+            dic = {"session": ses_date[0], "AcquisitionDate": ses_date[1], "AcquisitionTime": ses_date[2], "exclude": "false", "session_idx": 0}
+            unique_ses_date_times.append(dic)
 
-                    for x in ses_dics_list:
-                        x["AcquisitionDate"] = acq_date
-
-                acq_dates_list.append(acq_date)
+        # Sorting method is determined by whether or not the uploaded data is anonymized
+        if unique_ses_date_times[0]["AcquisitionDate"] != "0000-00-00":
+            unique_ses_date_times = sorted(unique_ses_date_times, key=itemgetter("AcquisitionDate",
+                                                                                 "AcquisitionTime",
+                                                                                 "session"))
         else:
-            acq_dates = sorted(np.unique([x["AcquisitionDate"] for x in sub_dics_list]))
-            if len(acq_dates) > 1:
-                session_id = 1
-                for date in acq_dates:
-                    for x in [x for x in sub_dics_list if x["AcquisitionDate"] == date]:
-                        x["session"] = session_id
-                    session_id += 1
-
-    # Curate subject_id information
-    subject_ids_info = list({"subject":x["subject"],
-                             "PatientName":x["PatientName"],
-                             "PatientID":x["PatientID"],
-                             "PatientInfo":[],
-                             "PatientBirthDate":x["PatientBirthDate"],
-                             "AcquisitionDate":x["AcquisitionDate"],
-                             "AcquisitionTime":x["AcquisitionTime"],
-                             "ModifiedTime":x["ModifiedTime"],
-                             "session":x["session"],
-                             "phenotype":{
-                                 "sex":x["PatientSex"],
-                                 "age":x["PatientAge"]},
-                             "exclude": False,
-                             "sessions": [],
-                             "validationErrors": []} for x in dataset_list)
+            unique_ses_date_times = sorted(unique_ses_date_times, key=itemgetter("session"))
 
 
-    # Sort by subject, AcquisitionDate, and ModifiedTime (2021-01-01 --> 20210101)
-    subject_ids_info = sorted(subject_ids_info, key=itemgetter("AcquisitionDate",
-                                                               "subject",
-                                                               "ModifiedTime"))
+        # For each session per subject, give a unique session_idx value
+        for dic in unique_ses_date_times:
+            dic["session_idx"] = session_idx_counter
+            session_idx_counter += 1
 
+        # Pair patient information (PatientName, PatientID, PatientBirthDate) with corresponding session information
+        patient_info = []
+        for ses_info in unique_ses_date_times:
+            patient_dic = {
+                            "PatientName": [x["PatientName"] for x in sub_dics_list if x["session"] == ses_info["session"] and x["AcquisitionDate"] == ses_info["AcquisitionDate"]][0],
+                            "PatientID": [x["PatientID"] for x in sub_dics_list if x["session"] == ses_info["session"] and x["AcquisitionDate"] == ses_info["AcquisitionDate"]][0],
+                            "PatientBirthDate": [x["PatientName"] for x in sub_dics_list if x["session"] == ses_info["session"] and x["AcquisitionDate"] == ses_info["AcquisitionDate"]][0]
+                           }
+            patient_info.append(patient_dic)
 
-    # Create modified list of dictionary with unique subject and Acquisition values
-    # This helps us know how many unique subject/session pairs there are
-    subject_ids_info_mod = list({(v["subject"], v["session"], v["AcquisitionDate"]):v
-                                 for v in subject_ids_info}.values())
+        """
+        See if multiple sessions occurred on same day, meaning same AcquisitionDate
+        If so, modify the AcquisitionDate value(s) so that each are unique, since
+        ezBIDS only cares about AcquisitionDate. Modification entails appending
+        a '.<value>' to the end of the AcquisitionDate value (e.g. '2021-01-01.1')
+        """
+        unique_ses_dates = [[x["session"], x["AcquisitionDate"]] for x in unique_ses_date_times]
+        for ses_date in unique_ses_dates:
+            unique_dates_dics_list = [x for x in unique_ses_date_times if x["AcquisitionDate"] == ses_date[1]]
+            if len(unique_dates_dics_list) > 1:
+                for date_dic in unique_dates_dics_list:
+                    date_dic["AcquisitionDate"] = ses_date[1] + "." + str(date_counter)
+                    date_counter += 1
 
+        # update dataset_list with updated AcquisitionDate and session_idx info
+        for sub_ses_map_dic in unique_ses_date_times:
+            for data_dic in dataset_list:
+                if (data_dic["subject"] == sub
+                and data_dic["session"] == sub_ses_map_dic["session"]
+                and data_dic["AcquisitionDate"] == sub_ses_map_dic["AcquisitionDate"].split(".")[0]):
+                    data_dic["AcquisitionDate"] = sub_ses_map_dic["AcquisitionDate"]
+                    data_dic["session_idx"] = sub_ses_map_dic["session_idx"]
 
+        """
+        Using all the information gathered above, build the subject/session
+        information in format that ezBIDS can understand.
+        """
+        subject_ids_info = {
+                            "subject": sub,
+                            "PatientInfo": patient_info,
+                            "phenotype": phenotype_info,
+                            "exclude": False,
+                            "sessions": [{k: v for k, v in d.items() if k != "session_idx" and k != "AcquisitionTime"} for d in unique_ses_date_times],
+                            "validationErrors": []
+                            }
 
-    """ Create list of dictionaries with unique subject values. This list of
-    dictionaries will be used by ezBIDS UI. """
-    subject_ids_info = list({v["subject"]:v for v in subject_ids_info}.values())
+        subjects_information.append(subject_ids_info)
 
-
-    # Unique subject IDs in dataset
-    subj_ids = [x["subject"] for x in subject_ids_info]
-
-
-    for subj_id in subj_ids:
-        subject_indices = [index for index, dictionary
-                           in enumerate(subject_ids_info_mod)
-                           if dictionary["subject"] == subj_id]
-
-        if len(subject_indices):
-            participant_name_id = []
-            sessions_info = []
-
-        for index, subj_index in enumerate(subject_indices):
-
-            participant_name_id.append({"PatientName": subject_ids_info_mod[subj_index]["PatientName"],
-                                        "PatientID": subject_ids_info_mod[subj_index]["PatientID"],
-                                        "PatientBirthDate": subject_ids_info_mod[subj_index]["PatientBirthDate"]})
-
-
-            sessions_info.append({"AcquisitionDate": subject_ids_info_mod[subj_index]["AcquisitionDate"],
-                                  "AcquisitionTime": subject_ids_info_mod[subj_index]["AcquisitionTime"],
-                                  "session": subject_ids_info_mod[subj_index]["session"],
-                                  "exclude": False})
-            # Apply the session information to the correct subject dictionaries
-            subj_dictionary = [x for x in subject_ids_info
-                               if x["subject"] == subj_id][0]
-
-            # Convert PatientInfo and sessions lists into key values
-            subj_dictionary["PatientInfo"] = participant_name_id
-            subj_dictionary["sessions"] = sessions_info
-
-
-    # Remove redundant keys from dictionary
-    for dic in subject_ids_info:
-        del dic["PatientBirthDate"]
-        del dic["AcquisitionDate"]
-        del dic["AcquisitionTime"]
-        del dic["ModifiedTime"]
-        del dic["PatientName"]
-        del dic["PatientID"]
-        del dic["session"]
-
-    return dataset_list, subject_ids_info
+    return dataset_list, subjects_information
 
 
 def determine_unique_series(dataset_list):
@@ -1278,8 +1262,10 @@ def modify_objects_info(dataset_list):
                                   "name":"nii.gz",
                                   "headers":protocol["headers"]})
 
-            """ Remove identifying metadata information. Equivalent to dcm2niix
-            option -ba y """
+            """
+            Remove identifying metadata information. Equivalent to dcm2niix option -ba y
+            From https://github.com/rordenlab/dcm2niix/issues/557
+            """
             remove_fields = ["SeriesInstanceUID",
                              "StudyInstanceUID",
                              "ReferringPhysicianName",
@@ -1289,7 +1275,8 @@ def modify_objects_info(dataset_list):
                              "AccessionNumber",
                              "PatientBirthDate",
                              "PatientSex",
-                             "PatientWeight"]
+                             "PatientWeight",
+                             "AcquisitionDateTime"]
 
             for remove in remove_fields:
                 if remove in protocol["sidecar"]:
@@ -1302,6 +1289,8 @@ def modify_objects_info(dataset_list):
                             "PatientBirthDate": protocol["PatientBirthDate"],
                             "AcquisitionDateTime": protocol["AcquisitionDateTime"],
                             "AcquisitionDate": protocol["AcquisitionDate"],
+                            "subject_idx": protocol["subject_idx"],
+                            "session_idx": protocol["session_idx"],
                             "pngPath": "{}.png".format(protocol["nifti_path"][:-7]),
                             "entities": objects_entities,
                             "items": items,
@@ -1388,7 +1377,7 @@ uploaded_files_list = modify_uploaded_dataset_list(uploaded_json_list)
 dataset_list = generate_dataset_list(uploaded_files_list)
 
 # Determine subject (and session) information
-dataset_list, subject_ids_info = determine_subj_ses_IDs(dataset_list)
+dataset_list, subjects_information = determine_subj_ses_IDs(dataset_list)
 
 # Make a new list containing the dictionaries of only unique dataset acquisitions
 dataset_list, dataset_list_unique_series = determine_unique_series(dataset_list)
@@ -1416,11 +1405,11 @@ for index, unique_dic in enumerate(dataset_list_unique_series):
     print("")
     print("")
 
-# Extract subset of series information to display in ezBIDS UI
+# Extract important series information to display in ezBIDS UI
 ui_series_info_list = extract_series_info(dataset_list_unique_series)
 
 # Convert information to dictionary
-EZBIDS = {"subjects": subject_ids_info,
+EZBIDS = {"subjects": subjects_information,
           "participantsColumn": PARTICIPANTS_COLUMN,
           "series": ui_series_info_list,
           "objects": objects_list
