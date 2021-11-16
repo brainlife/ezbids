@@ -378,12 +378,10 @@ def generate_dataset_list(uploaded_files_list):
             acquisition_date_time = json_data["AcquisitionDateTime"]
             acquisition_date = json_data["AcquisitionDateTime"].split("T")[0]
             acquisition_time = json_data["AcquisitionDateTime"].split("T")[-1]
-            modified_time = "".join([x if len(x) > 1 else "0"+x for x in acquisition_time.replace(".", ":").split(":")]) # Need this!
         else:
             acquisition_date_time = "0000-00-00T00:00:00.000000"
             acquisition_date = "0000-00-00"
             acquisition_time = None
-            modified_time = "0"
 
         if "AcquisitionTime" in json_data:
             acquisition_time = json_data["AcquisitionTime"]
@@ -456,7 +454,6 @@ def generate_dataset_list(uploaded_files_list):
             "AcquisitionDateTime": acquisition_date_time,
             "AcquisitionDate": acquisition_date,
             "AcquisitionTime": acquisition_time,
-            "ModifiedTime": modified_time,
             "SeriesDescription": series_description,
             "ProtocolName": protocol_name,
             "ImageType": image_type,
@@ -492,8 +489,7 @@ def generate_dataset_list(uploaded_files_list):
     dataset_list = sorted(dataset_list, key=itemgetter("AcquisitionDate",
                                                         "subject",
                                                         "session",
-                                                        "SeriesNumber",
-                                                        "ModifiedTime",
+                                                        "AcquisitionTime",
                                                         "json_path"))
 
     return dataset_list
@@ -546,7 +542,7 @@ def determine_subj_ses_IDs(dataset_list):
             ses_date = list(ses_date)
             date_time = [x["AcquisitionTime"] for x in sub_dics_list if x["session"] == ses_date[0] and x["AcquisitionDate"] == ses_date[1]][0]
             ses_date.append(date_time)
-            dic = {"session": ses_date[0], "AcquisitionDate": ses_date[1], "AcquisitionTime": ses_date[2], "exclude": "false", "session_idx": 0}
+            dic = {"session": ses_date[0], "AcquisitionDate": ses_date[1], "AcquisitionTime": ses_date[2], "exclude": False, "session_idx": 0}
             unique_ses_date_times.append(dic)
 
         # Sorting method is determined by whether or not the uploaded data is anonymized
