@@ -570,7 +570,7 @@ export default defineComponent({
 pre.status {
     background-color: #666;
     color: white;
-    height: 200px;
+    height: 300px;
     overflow: auto;
     padding: 10px;
     margin-top: 0;

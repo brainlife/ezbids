@@ -223,10 +223,7 @@ const state = {
             BIDSVersion: "",                                                                                 
             DatasetType: "",                                                                                   
             License: "",                                                                                       
-            Authors: [                                                                                            
-                "Soichi Hayashi",                                                                                   
-                "Dan Levitas"                                                                                       
-            ],                                                                                                      
+            Authors: [],                                                                                                      
             Acknowledgements: "", //"Special thanks to Korbinian Brodmann for help in formatting this dataset in BIDS. We tha  nk Alan Lloyd Hodgkin and Andrew Huxley for helpful comments and discussions about the experiment and manuscript; Hermann Ludwig He  lmholtz for administrative support; and Claudius Galenus for providing data for the medial-to-lateral index analysis.",
             HowToAcknowledge: "", //"Please cite this paper: https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
             Funding: [                                                                                            
@@ -287,11 +284,6 @@ const state = {
         sampleValues: {} as {[key: string]: string[]},
         loaded: false,
     },
-
-    //currentPage: null,                                                                                          
-    //reload_t: null, 
-
-    //page: "upload", //currently opened page (see App.vue for list of pages)
 }
 export type IEzbids = typeof state.ezbids;
 export type IEvents = typeof state.events;
@@ -372,7 +364,6 @@ const store = createStore({
         },
 
         updateEzbids(state, ezbids) {
-            //console.log("setting ezbids", ezbids);
             Object.assign(state.ezbids, ezbids);
 
             state.ezbids.series.forEach((s:Series)=>{
@@ -394,14 +385,6 @@ const store = createStore({
                     if(item.sidecar) {                                                                                                                                                                            
                         //anonymize..                                                                               
                         let sidecar = Object.assign({}, item.sidecar);
-
-                        // delete sidecar.PatientName;                                                                 
-                        // delete sidecar.PatientID;  
-                        // delete sidecar.SeriesInstanceUID;
-                        // delete sidecar.StudyInstanceUID;
-                        // delete sidecar.ReferringPhysicianName;
-                        // delete sidecar.AccessionNumber;
-                        // delete sidecar.PatientWeight;
 
                         delete sidecar.SeriesInstanceUID;
                         delete sidecar.StudyInstanceUID;
@@ -484,11 +467,6 @@ const store = createStore({
     },
     
     actions: {
-        /*
-        resetSession({commit}) {
-            commit('setSession', null)
-        }
-        */
         async reload(context, id) {
             context.commit("reset");
             context.commit("setSession", {
@@ -564,13 +542,13 @@ const store = createStore({
         
         //find a session inside sub hierarchy
         findSession: (state)=>(sub: Subject, o: IObject) : (Session|undefined)=>{ 
-            if(o.session_idx) return sub.sessions[o.session_idx];
-            return sub.sessions.find(s=>s.AcquisitionDate == o.AcquisitionDate); //will be deprecasted
+            return sub.sessions[o.session_idx];
+            //return sub.sessions.find(s=>s.AcquisitionDate == o.AcquisitionDate); //will be deprecasted
         },   
         
-        findSubject: (state)=>(o: IObject): (Subject|undefined) =>{           
-            if(o.subject_idx) return state.ezbids.subjects[o.subject_idx];
-
+        findSubject: (state)=>(o: IObject): (Subject|undefined) =>{       
+            return state.ezbids.subjects[o.subject_idx];
+            /*
             //rest is deprecated now that we use subject_idx to find subject
             //does this still happen?
             if(!o.PatientName && o.PatientID && o.PatientBirthDate) {
@@ -587,7 +565,8 @@ const store = createStore({
                     return true;
                 });     
                 return !!match;                                                                                           
-            });                                                                                                                                                                                       
+            });    
+            */                                                                                                                                                                                   
         },  
 
         getURL: (state)=>(path: string)=>{

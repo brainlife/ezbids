@@ -15,7 +15,6 @@ export default defineComponent({
     props: [ 'type', 'series_idx', 'entities' ],
     data() {
         return {
-            something: "whatever", 
         }
     },
     

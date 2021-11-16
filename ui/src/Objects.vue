@@ -6,7 +6,6 @@
                 <i class="el-icon-user-solid" style="margin-right: 2px;"/> 
                 <small>sub-</small><b>{{sub}}</b> 
                 &nbsp;
-                &nbsp;
                 <el-checkbox :value="o_sub.exclude" @change="excludeSubject(sub.toString(), $event)">
                     <small>Exclude this subject</small>
                 </el-checkbox>
@@ -25,10 +24,11 @@
                 </span>
                 <div v-for="(section, sectionId) in groupSections(o_ses)" :key="sectionId" style="position: relative;">
                     <div v-if="section.length > 1" style="border-top: 1px dotted #bbb; width: 100%; margin: 9px 0;">
-                        <span style="float: right; top: -7px; position: relative; background-color: white; font-size: 70%; color: #999; padding: 0 10px; margin-right: 10px;">section {{sectionId}}</span>
+                        <span class="section-divider">section {{sectionId}}</span>
                     </div>
                     <div v-for="o in section" :key="o.idx" class="clickable hierarchy-item" :class="{selected: so === o, exclude: isExcluded(o)}" @click="select(o, o_ses)">
-                        <el-tag type="info" size="mini" v-if="o.series_idx !== null">#{{o.series_idx}}</el-tag>&nbsp;<datatype :type="o._type" :series_idx="o.series_idx" :entities="o.entities"/> 
+                        <el-tag type="info" size="mini" v-if="o.series_idx !== null" :title="'Series#'+o.series_idx+' '+o._SeriesDescription">#{{o.series_idx}}</el-tag>&nbsp;
+                        <datatype :type="o._type" :series_idx="o.series_idx" :entities="o.entities"/> 
                         <small v-if="o._type == 'exclude'">&nbsp;({{o._SeriesDescription}})</small>
                         
                         <span v-if="!isExcluded(o)">
@@ -143,6 +143,10 @@
                         </el-table>
                     </el-form-item>
                     <br>
+
+                    <!--
+                    <niivue v-if="item.path?.endsWith('.nii.gz')" :url="getURL(item.path)"/>
+                    -->
                 </div>
 
                 <div style="margin-top: 5px; padding: 5px; background-color: #f0f0f0;" v-if="so.analysisResults.filesize">
@@ -152,11 +156,14 @@
                     <el-form-item label="File Size">
                         {{prettyBytes(so.analysisResults.filesize)}}
                     </el-form-item>
+
+                    <!--will be obsoleted by niivue-->
                     <div v-if="so.pngPath">
                         <a :href="getURL(so.pngPath)">
                             <img style="width: 100%" :src="getURL(so.pngPath)"/>
                         </a>
                     </div>
+                    
                 </div>
             </el-form>
 
@@ -180,6 +187,8 @@ import { IObject, Subject, Session, OrganizedSession } from './store'
 import { prettyBytes } from './filters'
 
 import { validateEntities, } from './libUnsafe'
+
+import niivue from './components/niivue.vue'
 
 interface Section {
     [key: string]: IObject[];
@@ -249,6 +258,7 @@ export default defineComponent({
         */
 
         isExcluded(o: IObject) {
+            console.log(o);
             if(o.exclude) return true;
             if(o._type == "exclude") return true;
             return o._exclude; 
@@ -469,7 +479,6 @@ export default defineComponent({
     padding-top: 2px; 
     margin-top: 2px;
 }
-
 pre.headers {
     height: 200px;
     overflow: auto;
@@ -485,6 +494,17 @@ pre.headers {
 .el-form-item {
     margin-bottom: 0;
     padding-right: 30px;
+}
+
+.section-divider {
+    float: right; 
+    top: -7px; 
+    position: relative; 
+    background-color: white; 
+    font-size: 70%; 
+    color: #999; 
+    padding: 0 10px; 
+    margin-right: 10px;
 }
 </style>
 

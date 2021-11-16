@@ -203,7 +203,7 @@ export default defineComponent({
             for(let k in o.entities) {                                                                                  
                 if(o.entities[k]) e[k] = o.entities[k];                                                                 
             }                                                                                
-                                                   
+                                
             o._exclude = o.exclude;
             if(o._type == "exclude") o._exclude = true;     
             
@@ -224,6 +224,8 @@ export default defineComponent({
             }                                                                                                           
                                                                                                                         
             o._entities = e; 
+
+            console.log("final excluee", o._exclude);
         },
     }
 });
