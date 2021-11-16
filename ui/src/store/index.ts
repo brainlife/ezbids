@@ -258,7 +258,9 @@ const state = {
             onset: null, //will be set to column name in event
             onsetUnit: "sec", 
             
+            durationLogic: "eq",
             duration: null,
+            duration2: null, //used in case durationLogic is "subtract" or "add"
             durationUnit: "sec",
 
             sample: null,
@@ -373,9 +375,17 @@ const store = createStore({
                 delete s.entities.session;                                                                     
             });
 
-            state.ezbids.subjects.forEach((s:Subject)=>{
+            state.ezbids.subjects.forEach(s=>{
                 s.validationErrors = [];
                 s.exclude = !!(s.exclude); 
+
+                //I've mentioned this to Dan but until he patches analyzer, we need to fix the boolean type.
+                s.sessions.forEach(ses=>{
+                    // @ts-ignore
+                    if(ses.exclude === "false") ses.exclude = false;
+                    // @ts-ignore
+                    if(ses.exclude === "true") ses.exclude = true;
+                })
             });
 
             state.ezbids.objects.forEach((o:IObject)=>{
@@ -413,7 +423,6 @@ const store = createStore({
         },
 
         organizeObjects(state) {   
-            console.log("organizing objects");
             //mapObjects() must be called before calling this action (for _entities)
             
             //sort object by subject/session                                                                               

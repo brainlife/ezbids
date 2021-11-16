@@ -100,14 +100,19 @@ export default defineComponent({
         backLabel(): string|null {
             switch(this.page) {
             case "upload":
-                /*
-                    if (this.session.pre_finish_date || this.session.status == "failed") return "Re-Upload";
-                    return null;
-                */
                if(this.session) return "Re-Upload";
                return null;
             default:
                     return "Back";
+            }
+        },
+
+        backButtonType() : string {
+            switch(this.page) {
+            case "upload":
+                return "warning";
+            default:
+                return "info";
             }
         },
 
@@ -224,8 +229,6 @@ export default defineComponent({
             }                                                                                                           
                                                                                                                         
             o._entities = e; 
-
-            console.log("final excluee", o._exclude);
         },
     }
 });
@@ -275,7 +278,7 @@ export default defineComponent({
 
         <br>
         <div class="page-action" v-if="session">
-            <el-button v-if="backLabel" type="info" @click="back">{{backLabel}}</el-button>
+            <el-button v-if="backLabel" :type="backButtonType" @click="back">{{backLabel}}</el-button>
             <el-button v-if="nextLabel" type="primary" @click="next" style="float: right;">{{nextLabel}}</el-button>
         </div>
     </section>

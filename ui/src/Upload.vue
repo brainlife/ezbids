@@ -407,7 +407,7 @@ export default defineComponent({
     <div v-if="session">
         <div v-if="session.status == 'created'">
             <h3>Uploading ...</h3>
-            <el-alert>Please do not close/refresh this page until all files are uploaded.</el-alert>
+            <p>Please do not close/refresh this page until all files are uploaded.</p>
             <br>
             <div v-if="failed.length > 0">
                 <el-alert type="error">Permanently failed to upload some files</el-alert>
@@ -498,13 +498,6 @@ export default defineComponent({
             <div v-if="!ezbids.notLoaded && !ezbids.objects.length">
                <el-alert type="error">We couldn't find any objects. Please upload data that contains at least 1 object.</el-alert>
             </div>
-
-            <!--
-            <div class="page-action">
-                <el-button type="secondary" @click="reset">Re-Upload</el-button>
-                <el-button type="primary" @click="next" style="float: right;">Next</el-button>
-            </div>
-            -->
         </div>
 
         <br>

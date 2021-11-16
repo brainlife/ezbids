@@ -27,7 +27,7 @@
                         <span class="section-divider">section {{sectionId}}</span>
                     </div>
                     <div v-for="o in section" :key="o.idx" class="clickable hierarchy-item" :class="{selected: so === o, exclude: isExcluded(o)}" @click="select(o, o_ses)">
-                        <el-tag type="info" size="mini" v-if="o.series_idx !== null" :title="'Series#'+o.series_idx+' '+o._SeriesDescription">#{{o.series_idx}}</el-tag>&nbsp;
+                        <el-tag type="info" size="mini" v-if="o.series_idx !== undefined" :title="'Series#'+o.series_idx+' '+o._SeriesDescription">#{{o.series_idx}}</el-tag>&nbsp;
                         <datatype :type="o._type" :series_idx="o.series_idx" :entities="o.entities"/> 
                         <small v-if="o._type == 'exclude'">&nbsp;({{o._SeriesDescription}})</small>
                         
@@ -217,8 +217,6 @@ export default defineComponent({
 
         totalIssues() {
             let count = 0;
-
-            console.log("totalIssues");
             this.ezbids.objects.forEach((o:IObject)=>{
                 if(this.isExcluded(o)) return;
                 count += o.validationErrors.length;
@@ -249,16 +247,7 @@ export default defineComponent({
             this.validateAll();
         },
 
-        /*
-        excludeObject(o: IObject, b: boolean) {
-            o.exclude = b;
-            console.log("flag is now", o.exclude);
-            this.validate(o);
-        },
-        */
-
         isExcluded(o: IObject) {
-            console.log(o);
             if(o.exclude) return true;
             if(o._type == "exclude") return true;
             return o._exclude; 

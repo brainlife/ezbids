@@ -160,9 +160,7 @@ export default defineComponent({
     },
 
     mounted() {
-        console.log("mounting series")
         this.validateAll();
-        console.log("done mounting series");
     },
     
     methods: {
@@ -211,7 +209,6 @@ export default defineComponent({
         },
 
         isValid(cb: (v?: string)=>void) {
-            console.log("series page validation");
             this.validateAll();
 
             let err = undefined;

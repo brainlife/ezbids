@@ -40,7 +40,6 @@ export default defineComponent({
 
     },
     mounted() {
-        console.log("mounted Description");
     },
 
     computed: {
@@ -54,11 +53,7 @@ export default defineComponent({
                 this.$store.commit("setEzbidsReadme", v);
             },
         },
-       /*
-       ...mapState({
-           dd: state=>state.ezbids.DatasetDescription,
-       })
-       */
+
         dd: {
             get(): DatasetDescription {
                 return this.ezbids.datasetDescription;
@@ -67,19 +62,8 @@ export default defineComponent({
                 console.error("form doesn't set .. only get", v);
             }
         },
-        /*
-        Name: {
-            get(): string {
-                return this.ezbids.datasetDescription.Name;
-            },
-            set(v: string) {
-                this.$store.commit('updateDDName', v);
-            }
-        },
-        */
     },
     methods: {
-        //...mapActions(['resetSession']),
 
         formatNumber,      
 

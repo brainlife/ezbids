@@ -1,14 +1,5 @@
 // @ts-nocheck
 
-import { prependListener } from "process"
-
-// export function doStuff($root, param) {
-//     //do XYZ.. return 123...
-
-//     console.log($root);
-//     conosle.log(params);
-// }
-
 export function setSectionIDs($root) {
     /*
     Set a section_ID value for each acquisition, beginning with a value of 1. Each time
@@ -24,11 +15,9 @@ export function setSectionIDs($root) {
         for (const session in sessions) {
 
             let protocol = sessions[session].objects
-            console.log(protocol.length)
             let sectionID = 1
 
             protocol.forEach(obj=> {
-                console.log(obj.idx)
                 let message = $root.series[protocol[obj.idx].series_idx].message
 
                 let previousMessage = ""
@@ -515,45 +504,6 @@ function mode(arr){
 
 //this function receives files (an array of object containing fullpath and data. data is the actual file content of the file)
 export function createEventObjects(ezbids, files) {
-
-    //console.log("dumping input parameters to build a test case");
-    //console.dir(JSON.stringify({ezbids,files}, null, 4));
-
-    /* example for ezbids
-    {
-        datasetDescription: {
-            Name: "Untitled",                                                                                     
-            BIDSVersion: "1.6.0",                                                                                 
-            DatasetType: "raw",                                                                                   
-            License: "",                                                                                       
-            Authors: [],                                                                                                      
-            Acknowledgements: "", 
-            HowToAcknowledge: "", 
-            Funding: [],                                                                                                      
-            EthicsApprovals: [],                                                                                                      
-            ReferencesAndLinks: [],                                                                                                      
-            DatasetDOI: "",  
-        },
-        readme: "edit me",                                                                                          
-        participantsColumn: {}, 
-
-        //here lives various things
-        subjects: [],                                                                                               
-        series: [],                                                                                                 
-        objects: [],                                                                                                
-
-        _organized: {}, //above things are organized into subs/ses/run/object hierarchy for quick access
-    }
-    */
-
-    /* example for files
-    [
-        {path: "/some/event1.tsv", data: "...content of the tsv..."},
-        {path: "/some/event2.tsv", data: "...content of the tsv..."},
-        {path: "/some/sub/event3.tsv", data: "...content of the tsv..."},
-    ]
-    */
-
     const eventObjects = []; //new event objects to add 
 
     // Identify some terms for decoding purposes
@@ -581,9 +531,7 @@ export function createEventObjects(ezbids, files) {
 
     // Sort through events file(s) list
     files.forEach(file=>{
-        
         const fileExt = file.path.split(".").pop();
-        console.log("event file detected:", file.path);
         
         // Parse the data, depending on the file extension (and header information)
         let events;
@@ -622,7 +570,7 @@ export function createEventObjects(ezbids, files) {
                                     }
 
 
-        let modifiedFilePath = file.path
+        //let modifiedFilePath = file.path
 
         Object.keys(eventsMappingInfo).forEach(key=>{
 
@@ -672,7 +620,7 @@ export function createEventObjects(ezbids, files) {
                 }
 
                 //2). ignore zero-padding in subject, session, and run eventsValue if the zero-padded value doesn't exist in corresponding ezBIDSvalues
-                if (key != "task") {
+                if (key != "task" && eventsMappingInfo[key].eventsValue) {
                     if (!eventsMappingInfo[key].ezBIDSvalues.includes(eventsMappingInfo[key].eventsValue) && eventsMappingInfo[key].ezBIDSvalues.includes(eventsMappingInfo[key].eventsValue.replace(/^0+/, ''))) {
                         eventsMappingInfo[key].eventsValue = eventsMappingInfo[key].eventsValue.replace(/^0+/, '')
                     }
@@ -706,23 +654,6 @@ export function createEventObjects(ezbids, files) {
                                                                     (e._entities.part == "" || e._entities.part == "mag")
                                                                     ).map(e=>e.series_idx)))
 
-        // switch(inheritance_level) {
-        // case "Dataset":
-        //     // Do nothing
-        //     break;
-        // case "Subject":
-        //     console.log('do nothing')
-        //     break;
-        // case "Session":
-        //     console.log('do nothing')
-        //     break;
-        // case "Run":
-        //     console.log('do nothing')
-        //     break;
-
-        // }
-
-
         const subjectInfo = ezbids.subjects.filter(e=>e.subject == eventsMappingInfo.subject.eventsValue)
         let sessionInfo;
 
@@ -732,13 +663,16 @@ export function createEventObjects(ezbids, files) {
         }
 
         // Indexing the first (any only value) but will need to filter this out better for multi-session data
-        const subject = subjectInfo[0].PatientInfo[0]
-        const session = sessionInfo[0]
+        const subject = subjectInfo[0];
+        const session = sessionInfo[0];
+        const patientInfo = subject.PatientInfo[0];
 
         //register new event object using the info we gathered above
         const object = Object.assign({
             type: "func/events",
-            series_idx: null, // Make func/event series_idx be 0.5 above corresponding func/bold series_idx
+            //series_idx: null, 
+            subject_idx: ezbids.subjects.indexOf(subject),
+            session_idx: subject.sessions.indexOf(session),
 
             entities: {
                 "subject": eventsMappingInfo.subject.eventsValue,
@@ -753,7 +687,7 @@ export function createEventObjects(ezbids, files) {
             },
             "paths": [],
             "validationErrors": [],
-        }, subject, session); //we need to set subject / session specific fields that we figured out earlier
+        }, patientInfo, session); //we need to set subject / session specific fields that we figured out earlier
 
         //event object also need some item info!
         object.items.push({
@@ -782,40 +716,8 @@ this function receives one example event object. we will do our best to map the 
 map them to bids events.tsv column names.
 */
 export function mapEventColumns(events) {
-    /*
-    input events object may look like this
-    [
-        {header1: "value1", header2: "value2", header3: "value3"},
-        {header1: "value1", header2: "value2", header3: "value3"},
-        {header1: "value1", header2: "value2", header3: "value3"},
-    ]
-    */
-   
-    //TODO - return a mapping object that sets various bids events.json column name with the name of the columns from the events inputs
-    //you can also set Units (if we know)
-    /*
-    return {
-        onset: "header1", 
-        onsetUnit: "mm", 
-        
-        duration: "header2",
-        durationUnit: "mm",
-
-        sample: "header3",
-
-        trialType: null,
-
-        responseTime: null,
-        responseTimeUnit: "mm",
-
-        value: null,
-
-        HEAD: null,
-    }
-    */
-
     //we only have to return things that we found out.. (leave other things not set)
-   const columns = Object.values(Object.keys(events[0]))
+    const columns = Object.values(Object.keys(events[0]))
 
     return {
        onset: null,

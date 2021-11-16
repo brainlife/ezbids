@@ -50,7 +50,18 @@
         <tr>
             <th>Duration*</th>
             <td>
+                <el-select v-model="columns.durationLogic" size="small" clearable style="width: 100px;">
+                    <el-option label="=" value="eq"/>
+                    <el-option label="Subtract" value="subtract"/>
+                    <el-option label="Add" value="add"/>
+                </el-select> 
+                &nbsp;
                 <columnSelecter v-model="columns.duration" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
+                <span v-if="columns.durationLogic == 'subtract'">&nbsp;-&nbsp;</span>
+                <span v-if="columns.durationLogic == 'add'">&nbsp;+&nbsp;</span>
+                <div v-if="['subtract', 'add'].includes(columns.durationLogic)" style="display: inline">
+                    <columnSelecter v-model="columns.duration2" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
+                </div>
                 &nbsp;
                 <el-select v-model="columns.durationUnit" size="small" clearable>
                     <el-option label="millisecond" value="ms"/>
@@ -168,9 +179,8 @@ import { defineComponent } from 'vue'
 import datatype from './components/datatype.vue' 
 import columnSelecter from './components/columnselecter.vue'
 
-import { IObject, Subject, Session, OrganizedSession } from './store'
+import { IObject } from './store'
 
-import { prettyBytes } from './filters'
 import { createEventObjects, mapEventColumns } from './libUnsafe'
 
 interface Section {
@@ -241,6 +251,7 @@ export default defineComponent({
             if(this.events.loaded) {
                 if(!this.columns.onset) err = "Please specify onset column";
                 if(!this.columns.duration) err = "Please specify duration column";
+                if(!this.columns.durationLogic) err = "Please specify duration logic";
             }
             cb(err);
         },
@@ -295,8 +306,6 @@ export default defineComponent({
                     });
                     this.events.sampleValues[key] = samples;
                 })
-                console.log("sample values");
-                console.dir(this.events.sampleValues);
 
                 const columnMappings = mapEventColumns(tsvItem.events);
                 Object.assign(this.columns, columnMappings);
