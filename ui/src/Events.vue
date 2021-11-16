@@ -24,24 +24,27 @@
         <tr>
             <th>Onset*</th>
             <td>
-                <!--
-                <el-select v-model="columns.onset" size="small" clearable placeholder="Select column">
-                    <el-option v-for="(key, idx) in columnKeys" :key="idx" :label="key" :value="key">
-                        <div style="display: inline-block; min-width: 100px">{{key}}</div>
-                        <small>{{composeSampleValue(key)}}</small>
-                    </el-option>
-                </el-select>
-                -->
-                <columnSelecter v-model="columns.onset" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
+                <el-select v-model="columns.onsetLogic" size="small" clearable style="width: 100px;">
+                    <el-option label="=" value="eq"/>
+                    <el-option label="Subtract" value="subtract"/>
+                    <el-option label="Add" value="add"/>
+                </el-select> 
                 &nbsp;
-                <el-select v-model="columns.onsetUnit" size="small" clearable>
+                <columnSelecter v-model="columns.onset" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
+                <span v-if="columns.onsetLogic == 'subtract'">&nbsp;-&nbsp;</span>
+                <span v-if="columns.onsetLogic == 'add'">&nbsp;+&nbsp;</span>
+                <div v-if="['subtract', 'add'].includes(columns.onsetLogic)" style="display: inline">
+                    <columnSelecter v-model="columns.onset2" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
+                </div>
+                &nbsp;
+                <el-select v-model="columns.onsetUnit" size="small" clearable style="width: 120px">
                     <el-option label="millisecond" value="ms"/>
                 </el-select> 
 
                 <p>
                     Onset of the event measured from the beginning of the acquisition of the first volume in the corresponding task imaging data file. 
                     If any acquired scans have been discarded before forming the imaging data file, ensure that a time of 0 corresponds to the first 
-                    image stored. In other words negative numbers in "onset" are allowed5.
+                    image stored. In other words negative numbers in "onset" are allowed.
                 </p>
                 <br>
             </td>
@@ -63,7 +66,7 @@
                     <columnSelecter v-model="columns.duration2" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
                 </div>
                 &nbsp;
-                <el-select v-model="columns.durationUnit" size="small" clearable>
+                <el-select v-model="columns.durationUnit" size="small" clearable style="width: 120px">
                     <el-option label="millisecond" value="ms"/>
                 </el-select> 
                 
@@ -78,8 +81,19 @@
         <tr>
             <th>Sample</th>
             <td>
+                <el-select v-model="columns.sampleLogic" size="small" clearable style="width: 100px;">
+                    <el-option label="=" value="eq"/>
+                    <el-option label="Subtract" value="subtract"/>
+                    <el-option label="Add" value="add"/>
+                </el-select> 
+                &nbsp;
                 <columnSelecter v-model="columns.sample" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
-
+                <span v-if="columns.sampleLogic == 'subtract'">&nbsp;-&nbsp;</span>
+                <span v-if="columns.sampleLogic == 'add'">&nbsp;+&nbsp;</span>
+                <div v-if="['subtract', 'add'].includes(columns.sampleLogic)" style="display: inline">
+                    <columnSelecter v-model="columns.sample2" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
+                </div>
+                &nbsp;
                 <p>
                     Onset of the event according to the sampling scheme of the recorded modality (that is, referring to the raw data file 
                     that the events.tsv file accompanies).
@@ -91,9 +105,20 @@
         <tr>
             <th>Response Time</th>
             <td>
-                <columnSelecter v-model="columns.responseTime" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
+                <el-select v-model="columns.responseTimeLogic" size="small" clearable style="width: 100px;">
+                    <el-option label="=" value="eq"/>
+                    <el-option label="Subtract" value="subtract"/>
+                    <el-option label="Add" value="add"/>
+                </el-select> 
                 &nbsp;
-                <el-select v-model="columns.responseTimeUnit" size="small" clearable>
+                <columnSelecter v-model="columns.responseTime" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
+                <span v-if="columns.responseTimeLogic == 'subtract'">&nbsp;-&nbsp;</span>
+                <span v-if="columns.responseTimeLogic == 'add'">&nbsp;+&nbsp;</span>
+                <div v-if="['subtract', 'add'].includes(columns.responseTimeLogic)" style="display: inline">
+                    <columnSelecter v-model="columns.responseTime2" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
+                </div>
+                &nbsp;
+                <el-select v-model="columns.responseTimeUnit" size="small" clearable style="width: 120px">
                     <el-option label="millisecond" value="ms"/>
                 </el-select> 
                 

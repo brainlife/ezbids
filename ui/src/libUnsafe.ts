@@ -720,22 +720,33 @@ export function mapEventColumns(events) {
     const columns = Object.values(Object.keys(events[0]))
 
     return {
-       onset: null,
-       onsetUnit: "sec",
+        
+        //type definitions are in store/index
+        
+        onsetLogic: "eq",
+        onset: null,
+        onset2: null,
+        onsetUnit: "sec",
 
-       duration: null,
-       durationUnit: "sec",
+        durationLogic: "eq",
+        duration: null,
+        duration2: null,
+        durationUnit: "sec",
 
-       sample: null,
-       sampleUnit: "samples",
+        sampleLogic: "eq",
+        sample: null,
+        sample2: null,
+        sampleUnit: "samples",
 
-       trialType: null,
+        trialType: null,
 
-       response_time: null,
-       responseTimeUnit: "sec",
+        responseTimeLogic: null,
+        responseTime: null,
+        responseTime2: null,
+        responseTimeUnit: "sec",
 
-       values: null,
+        values: null,
 
-       HED: null
+        HED: null
     }
 }

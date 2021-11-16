@@ -18,8 +18,22 @@ export function createEventsTSV(ezbids : IEzbids, events : IEvents) {
             //emit all values
             item.events.forEach((event: any)=>{
                 
-                // @ts-ignore
-                let onset = fixUnit(event[events.columns.onset], events.columns.onsetUnit);
+                //compute onset
+                let onset = null;
+                switch(events.columns.onsetLogic) {
+                case "add":
+                    // @ts-ignore
+                    onset = parseFloat(event[events.columns.onset]) + parseFloat(event[events.columns.onset2]);
+                    break;
+                case "subtract":
+                    // @ts-ignore
+                    onset = parseFloat(event[events.columns.onset]) - parseFloat(event[events.columns.onset2]);
+                    break;
+                default:
+                    // @ts-ignore
+                    onset = parseFloat(event[events.columns.onset]);
+                }
+                onset = fixUnit(onset, events.columns.onsetUnit);
 
                 //compute duration
                 let duration = null;
@@ -31,22 +45,52 @@ export function createEventsTSV(ezbids : IEzbids, events : IEvents) {
                 case "subtract":
                     // @ts-ignore
                     duration = parseFloat(event[events.columns.duration]) - parseFloat(event[events.columns.duration2]);
-                    console.log(event, events.columns.duration, events.columns.duration2);
                     break;
                 default:
                     // @ts-ignore
                     duration = parseFloat(event[events.columns.duration]);
                 }
-                duration = fixUnit(duration, events.columns.durationUnit)
+                duration = fixUnit(duration, events.columns.durationUnit);
+
                 const rec : IBIDSEvent = {
                     onset,
                     duration,
                 };
 
                 //rest is optional
-                if(events.columns.sample) rec.sample = event[events.columns.sample];
+                if(events.columns.sample) {
+                    switch(events.columns.sampleLogic) {
+                        case "add":
+                            // @ts-ignore
+                            rec.sample = parseFloat(event[events.columns.sample]) + parseFloat(event[events.columns.sample2]);
+                            break;
+                        case "subtract":
+                            // @ts-ignore
+                            rec.sample = parseFloat(event[events.columns.sample]) - parseFloat(event[events.columns.sample2]);
+                            break;
+                        default:
+                            rec.sample = parseFloat(event[events.columns.sample]);
+                    }
+                }
+                if(events.columns.responseTime) {
+                    let responseTime = null;
+                    switch(events.columns.responseTimeLogic) {
+                    case "add":
+                        // @ts-ignore
+                        responseTime = parseFloat(event[events.columns.responseTime]) + parseFloat(event[events.columns.responseTime2]);
+                        break;
+                    case "subtract":
+                        // @ts-ignore
+                        responseTime = parseFloat(event[events.columns.responseTime]) - parseFloat(event[events.columns.responseTime2]);
+                        break;
+                    default:
+                        // @ts-ignore
+                        responseTime = parseFloat(event[events.columns.responseTime]);
+                    }
+                    rec.response_time = fixUnit(responseTime, events.columns.responseTimeUnit);
+                }
+
                 if(events.columns.trialType) rec.trial_type = event[events.columns.trialType];
-                if(events.columns.responseTime) rec.response_time = fixUnit(event[events.columns.responseTime], events.columns.responseTimeUnit);
                 if(events.columns.value) rec.value = event[events.columns.value];
                 if(events.columns.HED) rec.HEAD = event[events.columns.HED];
 
