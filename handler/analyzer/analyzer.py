@@ -43,6 +43,63 @@ analyzer_dir = os.getcwd()
 os.chdir(DATA_DIR)
 
 ######## Functions ########
+def create_DWIshell_screenshots(nifti_path, nibabel_nifti_obj, bval_path):
+    """
+    Generates PNG screenshot of each unique DWI shell (e.g. unique b-value(s))
+
+    Parameters
+    ----------
+    nifti_path: str
+        location of nifti file
+
+    nibabel_nifti_obj : nibabel.nifti1.Nifti1Image
+        result of nib.load(nifti_file_path)
+
+    bval_path: str
+        location of corresponding bval file
+
+
+    Returns
+    -------
+    pngPaths: list
+        list of screenshots, each screenshot pertains to unique bval
+    """
+    pngPaths = []
+    image = nibabel_nifti_obj
+    bvals = [floor(float(x)) for x in pd.read_csv(bval_path, delim_whitespace=True).columns.tolist()]
+    modified_bvals = [round(x, -2) for x in bvals]
+    unique_bvals = np.unique(modified_bvals).tolist()
+
+    for bval in unique_bvals:
+        object_img_array = image.dataobj[..., modified_bvals.index(bval)]
+
+        slice_x = object_img_array[floor(object_img_array.shape[0]/2), :, :]
+        slice_y = object_img_array[:, floor(object_img_array.shape[1]/2), :]
+        slice_z = object_img_array[:, :, floor(object_img_array.shape[2]/2)]
+
+        fig, axes = plt.subplots(1, 3, figsize=(9, 3))
+        for index, slices in enumerate([slice_x, slice_y, slice_z]):
+            axes[index].imshow(slices.T, cmap="gray", origin="lower", aspect="auto")
+            axes[index].axis("off")
+        plt.tight_layout(pad=0, w_pad=0, h_pad=0)
+
+        fig.canvas.draw()
+
+        w,h = fig.canvas.get_width_height()
+        buf = np.fromstring(fig.canvas.tostring_argb(), dtype=np.uint8)
+        buf.shape = (w,h,4)
+
+        buf = np.roll(buf,3,axis=2)
+
+        w,h,d = buf.shape
+        png = Image.frombytes("RGBA", (w,h), buf.tostring())
+        png.save("{}_shell-{}.png".format(nifti_path[:-7], bval))
+
+        pngPaths.append("{}_shell-{}.png".format(nifti_path[:-7], bval))
+
+    return pngPaths
+
+
 def create_screenshots(nifti_path, nibabel_nifti_obj, num_volumes):
     """
     Generates PNG screenshot of each acquisition
@@ -58,9 +115,11 @@ def create_screenshots(nifti_path, nibabel_nifti_obj, num_volumes):
     num_volumes: int
         number of volumes in the nifti file
 
+
     Returns
     -------
-    None
+    pngPaths: list
+        list of 1, containing file path of screenshot
     """
     image = nibabel_nifti_obj
     object_img_array = image.dataobj
@@ -91,6 +150,8 @@ def create_screenshots(nifti_path, nibabel_nifti_obj, num_volumes):
     w,h,d = buf.shape
     png = Image.frombytes("RGBA", (w,h), buf.tostring())
     png.save("{}.png".format(nifti_path[:-7]))
+
+    return ["{}.png".format(nifti_path[:-7])]
 
 
 def correct_pe(pe_direction, ornt):
@@ -1216,6 +1277,7 @@ def modify_objects_info(dataset_list):
         additional information. """
 
         for p, protocol in enumerate(scan_protocol):
+            pngPaths = []
             image = protocol["nibabel_image"]
             protocol["headers"] = str(image.header).splitlines()[1:]
 
@@ -1230,7 +1292,17 @@ def modify_objects_info(dataset_list):
                 protocol["type"] = "exclude"
             else:
                 # Generate screenshot of every acquisition in dataset
-                create_screenshots(protocol["nifti_path"], image, protocol["NumVolumes"])
+                pngPaths.append(create_screenshots(protocol["nifti_path"], image, protocol["NumVolumes"]))
+
+                # Generate screenshot(s) of every unique dwi/dwi shell (e.g. b-value(s))
+                if protocol["type"] == "dwi/dwi":
+                    try:
+                        bval_path = [x for x in protocol["paths"] if ".bval" in x][0]
+                        pngPaths.append(create_DWIshell_screenshots(protocol["nifti_path"], image, bval_path))
+                    except:
+                        print("Could not generate unique DWI shell screenshots for {}".format(protocol["nifti_path"]))
+
+            pngPaths = [item for sublist in pngPaths for item in sublist] # flatten list of lists
 
             if protocol["error"]:
                 protocol["error"] = [protocol["error"]]
@@ -1287,7 +1359,7 @@ def modify_objects_info(dataset_list):
                             "AcquisitionDate": protocol["AcquisitionDate"],
                             "subject_idx": protocol["subject_idx"],
                             "session_idx": protocol["session_idx"],
-                            "pngPath": "{}.png".format(protocol["nifti_path"][:-7]),
+                            "pngPaths": pngPaths,
                             "entities": objects_entities,
                             "items": items,
                             "analysisResults": {
