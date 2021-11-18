@@ -436,14 +436,38 @@ const store = createStore({
             
             //sort object by subject/session                                                                               
             state.ezbids.objects.sort((a,b)=>{   
+                // const asub = a._entities.subject;                                                                            
+                // const bsub = b._entities.subject;  
+                // const ases = a._entities.session||"";
+                // const bses = b._entities.session||""; 
+                // const adatetime = a.AcquisitionDateTime;   
+                // const bdatetime = b.AcquisitionDateTime;    
+                // const aseriesnum = a.SeriesNumber;
+                // const bseriesnum = b.SeriesNumber;    
+                // console.log(a)                                                                     
+                                                                                                                            
+                // //sort by sub / ses / acq date                                                                             
+                // if(asub == bsub) {                                                                                         
+                //     if(ases == bses)
+                //         if(adatetime == bdatetime)
+                //             return aseriesnum < bseriesnum;
+                //     else if(ases == bses && adatetime != bdatetime)
+                //         return adatetime < bdatetime;                                                                              
+                //     else                                                                                           
+                //         return ases.localeCompare(bses);  
+                // } else                                                                                             
+                //     return asub.localeCompare(bsub);       
                 const asub = a._entities.subject;                                                                            
                 const bsub = b._entities.subject;  
                 const ases = a._entities.session||"";
                 const bses = b._entities.session||""; 
-                const adatetime = a.AcquisitionDateTime;   
-                const bdatetime = b.AcquisitionDateTime;    
+                const adate = a.AcquisitionDate;   
+                const bdate = b.AcquisitionDate;   
+                const atime = a.AcquisitionDate;
+                const btime = b.AcquisitionTime;
                 const aseriesnum = a.SeriesNumber;
-                const bseriesnum = b.SeriesNumber;                                                                         
+                const bseriesnum = b.SeriesNumber;    
+                console.log(a)                                                                     
                                                                                                                             
                 //sort by sub / ses / acq date                                                                             
                 if(asub == bsub) {                                                                                         
@@ -455,13 +479,13 @@ const store = createStore({
                     else                                                                                           
                         return ases.localeCompare(bses);  
                 } else                                                                                             
-                    return asub.localeCompare(bsub);                                                                       
+                    return asub.localeCompare(bsub);    
             });                                                                                                            
                     
             //re-index and organize 
-            state.ezbids._organized = {};      
+            state.ezbids._organized = {};   
             state.ezbids.objects.forEach((o, idx)=>{    
-                o.idx = idx; //reindex                                                                                     
+                o.idx = idx; //reindex       
                                                                                                                             
                 let sub = /*"sub-"+*/o._entities.subject;                                                                             
                 let ses = o._entities.session;//?("ses-"+o._entities.session):"";                                                                        

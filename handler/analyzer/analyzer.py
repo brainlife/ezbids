@@ -533,7 +533,7 @@ def generate_dataset_list(uploaded_files_list):
             "NumVolumes": volume_count,
             "forType": "",
             "error": None,
-            "section_ID": 1,
+            "section_idx": 1,
             "message": None,
             "type": "",
             "nifti_path": [x for x in nifti_paths_for_json if ".nii.gz" in x][0],
@@ -1260,16 +1260,14 @@ def modify_objects_info(dataset_list):
     """
     objects_list = []
 
-    # Find unique subject/session pairs in dataset and sort them
-    subj_ses_pairs = [[x["AcquisitionDate"], x["subject"], x["session"]] for x in dataset_list]
+    # Find unique subject/session idx pairs in dataset and sort them
+    subj_ses_pairs = [[x["subject_idx"], x["session_idx"]] for x in dataset_list]
     unique_subj_ses_pairs = sorted([list(i) for i in set(tuple(i) for i in subj_ses_pairs)])
 
     for unique_subj_ses in unique_subj_ses_pairs:
         scan_protocol = [x for x in dataset_list
-                         if x["AcquisitionDate"] == unique_subj_ses[0]
-                         and x["subject"] == unique_subj_ses[1]
-                         and x["session"] == unique_subj_ses[2]
-                        ]
+                         if x["subject_idx"] == unique_subj_ses[0]
+                         and x["session_idx"] == unique_subj_ses[1]]
 
         objects_data = []
 
@@ -1330,35 +1328,14 @@ def modify_objects_info(dataset_list):
                                   "name":"nii.gz",
                                   "headers":protocol["headers"]})
 
-            """
-            Remove identifying metadata information. Equivalent to dcm2niix option -ba y
-            From https://github.com/rordenlab/dcm2niix/issues/557
-            """
-            remove_fields = ["SeriesInstanceUID",
-                             "StudyInstanceUID",
-                             "ReferringPhysicianName",
-                             "StudyID",
-                             "PatientName",
-                             "PatientID",
-                             "AccessionNumber",
-                             "PatientBirthDate",
-                             "PatientSex",
-                             "PatientWeight",
-                             "AcquisitionDateTime"]
-
-            for remove in remove_fields:
-                if remove in protocol["sidecar"]:
-                    del protocol["sidecar"][remove]
 
             # Objects-level info for ezBIDS.json
             objects_info = {"series_idx": protocol["series_idx"],
-                            "PatientName": protocol["PatientName"],
-                            "PatientID": protocol["PatientID"],
-                            "PatientBirthDate": protocol["PatientBirthDate"],
-                            "AcquisitionDateTime": protocol["AcquisitionDateTime"],
-                            "AcquisitionDate": protocol["AcquisitionDate"],
                             "subject_idx": protocol["subject_idx"],
                             "session_idx": protocol["session_idx"],
+                            "AcquisitionDate": protocol["AcquisitionDate"],
+                            "AcquisitionTime": protocol["AcquisitionTime"],
+                            "SeriesNumber": protocol["SeriesNumber"],
                             "pngPaths": pngPaths,
                             "entities": objects_entities,
                             "items": items,
@@ -1366,7 +1343,7 @@ def modify_objects_info(dataset_list):
                                 "NumVolumes": protocol["NumVolumes"],
                                 "errors": protocol["error"],
                                 "filesize": protocol["filesize"],
-                                "section_ID": 1},
+                                "section_idx": 1},
                             "paths": protocol["paths"]}
             objects_data.append(objects_info)
 
