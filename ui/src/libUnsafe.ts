@@ -740,7 +740,7 @@ export function mapEventColumns(events) {
 
         trialType: null,
 
-        responseTimeLogic: null,
+        responseTimeLogic: "eq",
         responseTime: null,
         responseTime2: null,
         responseTimeUnit: "sec",

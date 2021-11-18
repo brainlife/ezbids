@@ -101,15 +101,17 @@ export interface IObject {
     _type: string; 
     _forType: string;
 
+    /*
     //primary keys for subject (TODO now that we are using subject_idx, do we still need this?)
     PatientName: string;
     PatientID: string;
     PatientBirthDate: string;
+    */
 
-    //primary key for session (TODO now that we are using session_idx, do we still need this?)
+    //primary key for session - but we want to keep these for sotring purpose
     AcquisitionDate: string;
-
-    AcquisitionDateTime: string; //ISO - only used to sort objects
+    //AcquisitionDateTime: string; //ISO - only used to sort objects
+    AcquisitionTime: string;
 
     SeriesNumber: string;
 

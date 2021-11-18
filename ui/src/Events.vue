@@ -24,7 +24,7 @@
         <tr>
             <th>Onset*</th>
             <td>
-                <el-select v-model="columns.onsetLogic" size="small" clearable style="width: 100px;">
+                <el-select v-model="columns.onsetLogic" size="small" style="width: 100px;">
                     <el-option label="=" value="eq"/>
                     <el-option label="Subtract" value="subtract"/>
                     <el-option label="Add" value="add"/>
@@ -37,7 +37,7 @@
                     <columnSelecter v-model="columns.onset2" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
                 </div>
                 &nbsp;
-                <el-select v-model="columns.onsetUnit" size="small" clearable style="width: 120px">
+                <el-select v-model="columns.onsetUnit" size="small" style="width: 120px">
                     <el-option label="millisecond" value="ms"/>
                 </el-select> 
 
@@ -53,7 +53,7 @@
         <tr>
             <th>Duration*</th>
             <td>
-                <el-select v-model="columns.durationLogic" size="small" clearable style="width: 100px;">
+                <el-select v-model="columns.durationLogic" size="small" style="width: 100px;">
                     <el-option label="=" value="eq"/>
                     <el-option label="Subtract" value="subtract"/>
                     <el-option label="Add" value="add"/>
@@ -66,7 +66,7 @@
                     <columnSelecter v-model="columns.duration2" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
                 </div>
                 &nbsp;
-                <el-select v-model="columns.durationUnit" size="small" clearable style="width: 120px">
+                <el-select v-model="columns.durationUnit" size="small" style="width: 120px">
                     <el-option label="millisecond" value="ms"/>
                 </el-select> 
                 
@@ -81,7 +81,7 @@
         <tr>
             <th>Sample</th>
             <td>
-                <el-select v-model="columns.sampleLogic" size="small" clearable style="width: 100px;">
+                <el-select v-model="columns.sampleLogic" size="small" style="width: 100px;">
                     <el-option label="=" value="eq"/>
                     <el-option label="Subtract" value="subtract"/>
                     <el-option label="Add" value="add"/>
@@ -105,7 +105,7 @@
         <tr>
             <th>Response Time</th>
             <td>
-                <el-select v-model="columns.responseTimeLogic" size="small" clearable style="width: 100px;">
+                <el-select v-model="columns.responseTimeLogic" size="small" style="width: 100px;">
                     <el-option label="=" value="eq"/>
                     <el-option label="Subtract" value="subtract"/>
                     <el-option label="Add" value="add"/>
@@ -118,7 +118,7 @@
                     <columnSelecter v-model="columns.responseTime2" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
                 </div>
                 &nbsp;
-                <el-select v-model="columns.responseTimeUnit" size="small" clearable style="width: 120px">
+                <el-select v-model="columns.responseTimeUnit" size="small" style="width: 120px">
                     <el-option label="millisecond" value="ms"/>
                 </el-select> 
                 
@@ -190,9 +190,14 @@
 
         </table>
 
+        <!--
         <h3>Debug</h3>
         <pre>{{columns}}</pre>
         <pre>{{trialTypes}}</pre>
+        -->
+        <br>
+        <br>
+        <br>
     </div>                                                                             
 </div>
 </template>
@@ -236,15 +241,8 @@ export default defineComponent({
 
     data() {
         return {
-            dragging: false,                                                                                            
+            dragging: false,
             starting: false, //wait for browser to handle all files     
-
-            //files: [] as IPathAndData[],
-
-            //columnKeys: null as string[]|null,
-            //sampleValues: {} as {[key: string]: string[]},
-            //loaded: false,
-
         }
     },
 
@@ -262,12 +260,6 @@ export default defineComponent({
         trialTypes() {
             return this.$store.state.events.trialTypes;
         },
-        /*
-        eventObjects() {
-            // @ts-ignore
-            return this.ezbids.objects.filter(o=>o._type == "func/bold"); //TODO - switch to func/event once done with debugging
-        }
-        */
     },
     
     methods: {
@@ -275,8 +267,11 @@ export default defineComponent({
             let err = undefined;
             if(this.events.loaded) {
                 if(!this.columns.onset) err = "Please specify onset column";
+                if(this.columns.onsetLogic != "eq" && !this.columns.onset2) err = "Please specify 2nd operand for onset";
+
                 if(!this.columns.duration) err = "Please specify duration column";
-                if(!this.columns.durationLogic) err = "Please specify duration logic";
+                if(this.columns.durationLogic != "eq" && !this.columns.duration2) err = "Please specify 2nd operand for duration";
+
             }
             cb(err);
         },
@@ -291,6 +286,7 @@ export default defineComponent({
             const element = event.currentTarget as HTMLInputElement;
             const files = [] as IPathAndData[];
             if(!element.files) return;
+
             // @ts-ignore
             for await (let file of element.files) {                                                                       
                 files.push({
@@ -306,12 +302,10 @@ export default defineComponent({
                 //create new event objects
                 const eventObjects = createEventObjects(this.ezbids, files);
                 eventObjects.forEach(object=>{
-                    console.debug(object);
                     this.$store.commit("addObject", object);
                 });
                 
                 this.$emit("mapObjects");
-                //this.$store.commit("organizeObjects"); //necessary?
 
                 //enumerate all possible column headers (from the 1st example)
                 const example = this.ezbids.objects.find((o:IObject)=>o._type == "func/events");
