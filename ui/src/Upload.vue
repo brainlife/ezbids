@@ -406,9 +406,10 @@ export default defineComponent({
 
     <div v-if="session">
         <div v-if="session.status == 'created'">
-            <h3>Uploading ...</h3>
-            <p>Please do not close/refresh this page until all files are uploaded.</p>
-            <br>
+            <p>
+                <h3>Uploading ...</h3>
+                <small>Please do not close/refresh this page until all files are uploaded.</small>
+            </p>
             <div v-if="failed.length > 0">
                 <el-alert type="error">Permanently failed to upload some files</el-alert>
                 <pre type="info" v-for="idx in failed" :key="idx" style="font-size: 80%;">{{files[idx].path}}</pre>
@@ -437,11 +438,6 @@ export default defineComponent({
                     </div>
                 </div>
             </div>
-            <!--
-            <div class="page-action">
-                <el-button type="secondary" @click="reset">Cancel</el-button>
-            </div>
-            -->
         </div>
 
         <div v-if="['preprocessing', 'uploaded'].includes(session.status)">
@@ -457,23 +453,12 @@ export default defineComponent({
             <h3 v-else>Analyzing...</h3>
             <pre class="status">{{session.status_msg}}</pre>
             <small>* Depending on the size of your dataset, this process might take several hours. You can shutdown your computer while we process your data (please bookmark the URL for this page to come back to it)</small>
-
-            <!--
-            <div class="page-action">
-                <el-button type="secondary" @click="reset">Cancel</el-button>
-            </div>
-            -->
         </div>
 
         <div v-if="session.status == 'failed'">
             <el-alert type="error">ezBIDS failed.. Please check the Debug logs and contact ezBIDS team.</el-alert>
             <br>
             <pre class="status">{{session.status_msg}}</pre>
-            <!--
-            <div class="page-action">
-                <el-button type="secondary" @click="reset">Re-Upload</el-button>
-            </div>
-            -->
         </div>
 
         <div v-if="session.pre_finish_date">

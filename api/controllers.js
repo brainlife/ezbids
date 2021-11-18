@@ -142,7 +142,7 @@ router.get('/download/:session_id/*', (req, res, next) => {
         else if (stats.isDirectory()) {
             res.setHeader('Content-disposition', 'attachment; filename=' + path.basename(fullpath) + ".zip");
             const archive = archiver('zip', {
-                zlib: { level: 9 }
+                zlib: { level: 0 }
             });
             archive.directory(fullpath, 'bids');
             archive.finalize();
