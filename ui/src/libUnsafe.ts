@@ -494,13 +494,13 @@ function parseExcelEvents(fileData) {
 	return trials[0];
 }
 
-function mode(arr){
+//TODO - add link to the stackoverflow that this came from
+function findMostCommonValue(arr){
     return arr.sort((a,b) =>
           arr.filter(v => v===a).length
         - arr.filter(v => v===b).length
     ).pop();
 }
-
 
 //this function receives files (an array of object containing fullpath and data. data is the actual file content of the file)
 export function createEventObjects(ezbids, files) {
@@ -513,7 +513,6 @@ export function createEventObjects(ezbids, files) {
     const runs = Array.from(new Set(ezbids.objects.filter(e=>e._entities.task != "" && e._entities.task != "rest" && e._entities.task != undefined).map(e=>e._entities.run)))
     const numEventFiles = files.length
     const uniqueSectionIDs = Array.from(new Set(ezbids.objects.map(e=>e.analysisResults.section_ID)))
-
 
     // Try to determine inheritance level (dataset, subject, session, or individual runs)
     const occurrences = {"Dataset": 1, "Subject": subjects.length, "Session": sessions.length, "Run": runs.length}
@@ -556,57 +555,79 @@ export function createEventObjects(ezbids, files) {
             }
         }
 
-        // Determine mapping of event file(s) to subject,session,task,run
-        const subMappingKeys = ["sub", "subid", "subname", "subj", "subjid", "subjname", "subject", "subjectid", "subjectname", "participant", "participantid", "participantname"]
-        const sesMappingKeys = ["ses", "sesid", "sesname", "sess", "sessid", "sessname", "session", "sessionid", "sessionname"]
-        const taskMappingKeys = ["exp", "expid", "expname", "task", "taskid", "taskname", "experiment", "experimentid", "experimentname"]
-        const runMappingKeys = ["run", "runid", "runname"]
-
         const eventsMappingInfo =   {   
-                                        "subject": {"MappingKeys": subMappingKeys, "ezBIDSvalues": subjects, "eventsValue": "", "detectionMethod": ""},
-                                        "session": {"MappingKeys": sesMappingKeys, "ezBIDSvalues": sessions, "eventsValue": "", "detectionMethod": ""},
-                                        "task": {"MappingKeys": taskMappingKeys, "ezBIDSvalues": tasks, "eventsValue": "", "detectionMethod": ""},
-                                        "run": {"MappingKeys": runMappingKeys, "ezBIDSvalues": runs, "eventsValue": "", "detectionMethod": ""}
-                                    }
-
-
-        //let modifiedFilePath = file.path
-
-        Object.keys(eventsMappingInfo).forEach(key=>{
-
-            // 1st stage: examine header columns and data of event file(s) to see if helpful information is contained there
-            const match = Object.keys(events[0]).map(item=>item.toLowerCase().replace(/[^0-9a-z]/gi, '')).filter(item=>eventsMappingInfo[key].MappingKeys.includes(item))[0]
-            const value = mode(events.map(e=>e[match]))
-            eventsMappingInfo[key].eventsValue = value
-            eventsMappingInfo[key].detectionMethod = 1
-            if (eventsMappingInfo.task.eventsValue == undefined) { // Look for task information in events file(s); other information too difficult to discern here
-                eventsMappingInfo.task.ezBIDSvalues.forEach(taskItem=>{
-                    Object.values(mode(events)).forEach(eventsItem=>{
-                        if (eventsItem.toLowerCase().includes(taskItem.toLowerCase())) {
-                            eventsMappingInfo.task.eventsValue = taskItem
-                            eventsMappingInfo[key].detectionMethod = 1
-                        }
-                    });
-                });
+            subject: {
+                MappingKeys: [
+                    "sub", "subid", "subname", 
+                    "subj", "subjid", "subjname", 
+                    "subject", "subjectid", "subjectname", 
+                    "participant", "participantid", "participantname"
+                ], 
+                ezBIDSvalues: subjects, 
+                eventsValue: null,
+                detectionMethod: null,
+            },
+            session: {
+                MappingKeys: [
+                    "ses", "sesid", "sesname", 
+                    "sess", "sessid", "sessname", 
+                    "session", "sessionid", "sessionname"
+                ], 
+                ezBIDSvalues: sessions, 
+                eventsValue: null, 
+                detectionMethod: null,
+            },
+            task: {
+                MappingKeys: [
+                    "exp", "expid", "expname", 
+                    "task", "taskid", "taskname", 
+                    "experiment", "experimentid", "experimentname"
+                ], 
+                ezBIDSvalues: tasks, 
+                eventsValue: null, 
+                detectionMethod: null,
+            },
+            run: {
+                MappingKeys: ["run", "runid", "runname"], 
+                ezBIDSvalues: runs, 
+                eventsValue: null, 
+                detectionMethod: null,
+            }
+        }                        
+        
+        const keys = Object.keys(events[0]); //picking the first object as a sample
+        for(const entity in eventsMappingInfo) {
+            const info = eventsMappingInfo[entity];
+        
+            // 1st stage: examine header columns and data of event file(s) to 
+            // see if helpful information is contained there
+            const matchingKey = keys.find(key=>{
+                const safeKey = key.toLowerCase().replace(/[^0-9a-z]/gi, '');
+                info.MappingKeys.includes(safeKey);
+            });
+            if(matchingKey) {
+                const matchingValues = events.map(e=>e[matchingKey]);
+                info.eventsValue = findMostCommonValue(matchingValues);
+                info.detectionMethod = "column name match";
             }
 
             // 2nd stage: examine file path for helpful information
-            if (eventsMappingInfo[key].eventsValue == undefined) {
-                Object.values(eventsMappingInfo[key].MappingKeys).forEach(mapping=>{
+            if (info.eventsValue == undefined) {
+                Object.values(info.MappingKeys).forEach(mapping=>{
                     if (file.path.toLowerCase().split(mapping).slice(-1)[0].split(/[._-]+/)[0] == "") {
-                        eventsMappingInfo[key].eventsValue = file.path.split(new RegExp(regEscape(mapping), "ig")).slice(-1)[0].split(/[._-]+/)[1]
-                        eventsMappingInfo[key].detectionMethod = 2
+                        info.eventsValue = file.path.split(new RegExp(regEscape(mapping), "ig")).slice(-1)[0].split(/[._-]+/)[1]
+                        info.detectionMethod = 2
                     } else if (isNaN(parseFloat(file.path.toLowerCase().split(mapping).slice(-1)[0])) == false) {
-                        eventsMappingInfo[key].eventsValue = file.path.split(new RegExp(regEscape(mapping), "ig")).slice(-1)[0].split(/[._-]+/)[0]
-                        eventsMappingInfo[key].detectionMethod = 2
+                        info.eventsValue = file.path.split(new RegExp(regEscape(mapping), "ig")).slice(-1)[0].split(/[._-]+/)[0]
+                        info.detectionMethod = 2
                     }
                 });
             }
 
             // 3rd stage: if ezBIDSvalues lengths == 1, set those values to the corresponding eventsValue
-            if (eventsMappingInfo[key].eventsValue == undefined && eventsMappingInfo[key].ezBIDSvalues.length == 1) {
-                eventsMappingInfo[key].eventsValue = eventsMappingInfo[key].ezBIDSvalues[0]
-                eventsMappingInfo[key].detectionMethod = 3
+            if (info.eventsValue == undefined && info.ezBIDSvalues.length == 1) {
+                info.eventsValue = info.ezBIDSvalues[0]
+                info.detectionMethod = 3
             }
 
             //Sanity checks
@@ -615,18 +636,31 @@ export function createEventObjects(ezbids, files) {
                 ezBIDSvalues == 1, then the ezBIDSvalue takes precedence because that's what the user has explicitly specified 
                 on ezBIDS.
                 */
-                if (!eventsMappingInfo[key].ezBIDSvalues.includes(eventsMappingInfo[key].eventsValue) && eventsMappingInfo[key].ezBIDSvalues.length == 1) {
-                    eventsMappingInfo[key].eventsValue = eventsMappingInfo[key].ezBIDSvalues[0]
+                if (!info.ezBIDSvalues.includes(info.eventsValue) && info.ezBIDSvalues.length == 1) {
+                    info.eventsValue = info.ezBIDSvalues[0]
                 }
 
                 //2). ignore zero-padding in subject, session, and run eventsValue if the zero-padded value doesn't exist in corresponding ezBIDSvalues
-                if (key != "task" && eventsMappingInfo[key].eventsValue) {
-                    if (!eventsMappingInfo[key].ezBIDSvalues.includes(eventsMappingInfo[key].eventsValue) && eventsMappingInfo[key].ezBIDSvalues.includes(eventsMappingInfo[key].eventsValue.replace(/^0+/, ''))) {
-                        eventsMappingInfo[key].eventsValue = eventsMappingInfo[key].eventsValue.replace(/^0+/, '')
+                if (key != "task" && info.eventsValue) {
+                    if (!info.ezBIDSvalues.includes(info.eventsValue) && info.ezBIDSvalues.includes(info.eventsValue.replace(/^0+/, ''))) {
+                        info.eventsValue = info.eventsValue.replace(/^0+/, '')
                     }
                 }
             })
-        });
+        }
+
+        //if we couldn't find task eventValue, look for task names used in ezbids in event files valued (not just column name)
+        if (!eventsMappingInfo.task.eventsValue) { 
+            const taskNames = eventsMappingInfo.task.ezBIDSvalues.map(v=>v.toLowerCase());
+            events.forEach(event=>{
+                for(const key in event) {
+                    if(taskNames.includes(event[key])) {
+                        eventsMappingInfo.task.eventsValue = event[key];
+                        info.detectionMethod = "found a column that contains ezbids task name"
+                    }
+                }
+            });
+        }
 
         // Determine section_ID that events object pertains to
         let section_ID;
@@ -634,10 +668,10 @@ export function createEventObjects(ezbids, files) {
             section_ID = uniqueSectionIDs[0]
         } else { // multiple section_IDs; should be able to determine which func/bold the event goes to and use that section_ID
             const correspondingBoldSecID = ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
-                                                    e._entities.session == eventsMappingInfo.session.eventsValue &&
-                                                    e._entities.task == eventsMappingInfo.task.eventsValue &&
-                                                    e._entities.run == eventsMappingInfo.run.eventsValue
-                                                    ).map(e=>e.analysisResults.section_ID)
+                e._entities.session == eventsMappingInfo.session.eventsValue &&
+                e._entities.task == eventsMappingInfo.task.eventsValue &&
+                e._entities.run == eventsMappingInfo.run.eventsValue
+                ).map(e=>e.analysisResults.section_ID)
             
             if (correspondingBoldSecID.length > 0) {
                 section_ID = correspondingBoldSecID[0]
@@ -648,11 +682,11 @@ export function createEventObjects(ezbids, files) {
 
         // Determine correspoding series_idx value that event file(s) go to
         const series_idx = Array.from(new Set(ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
-                                                                    e._entities.session == eventsMappingInfo.session.eventsValue &&
-                                                                    e._entities.task == eventsMappingInfo.task.eventsValue &&
-                                                                    e._entities.run == eventsMappingInfo.run.eventsValue &&
-                                                                    (e._entities.part == "" || e._entities.part == "mag")
-                                                                    ).map(e=>e.series_idx)))
+            e._entities.session == eventsMappingInfo.session.eventsValue &&
+            e._entities.task == eventsMappingInfo.task.eventsValue &&
+            e._entities.run == eventsMappingInfo.run.eventsValue &&
+            (e._entities.part == "" || e._entities.part == "mag")
+            ).map(e=>e.series_idx)))
 
         const subjectInfo = ezbids.subjects.filter(e=>e.subject == eventsMappingInfo.subject.eventsValue)
         let sessionInfo;
