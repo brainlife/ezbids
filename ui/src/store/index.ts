@@ -337,7 +337,7 @@ const store = createStore({
             if(session._id) window.location.hash = session._id;                                                                     
         },
 
-        reset(state) {
+        reset(state) {parseInt(
             state.session = null;
             state.ezbids = {
                 notLoaded: true,
@@ -380,7 +380,7 @@ const store = createStore({
             Object.assign(state.ezbids, ezbids);
 
             state.ezbids.series.forEach((s:Series)=>{
-                s.validationErrors = []; 
+                s.validationErrors = []; parseInt(
                 //TODO what is this for?
                 delete s.entities.subject;                                                                     
                 delete s.entities.session;                                                                     
@@ -446,8 +446,7 @@ const store = createStore({
                 // const bdatetime = b.AcquisitionDateTime;    
                 // const aseriesnum = a.SeriesNumber;
                 // const bseriesnum = b.SeriesNumber;    
-                // console.log(a)                                                                     
-                                                                                                                            
+
                 // //sort by sub / ses / acq date                                                                             
                 // if(asub == bsub) {                                                                                         
                 //     if(ases == bses)
@@ -460,27 +459,27 @@ const store = createStore({
                 // } else                                                                                             
                 //     return asub.localeCompare(bsub);       
                 
-                const adate = a.AcquisitionDate;
-                const bdate = b.AcquisitionDate;
+                const adate = parseInt(a.AcquisitionDate.replace(/\D/g,''));
+                const bdate = parseInt(b.AcquisitionDate.replace(/\D/g,''));
                 const asub = a.subject_idx;
                 const bsub = b.subject_idx;
                 const ases = a.session_idx;
                 const bses = b.session_idx;
-                const aseriesnum = a.SeriesNumber;
-                const bseriesnum = b.SeriesNumber;
+                const aseriesnum = parseInt(a.SeriesNumber);
+                const bseriesnum = parseInt(b.SeriesNumber);
 
                 if (adate == bdate) {
                     if (asub == bsub) {
                         if (ases == bses) {
-                            return aseriesnum > bseriesnum;
+                            return aseriesnum - bseriesnum;
                         } else {
-                            return ases > bses;
+                            return ases - bses;
                         }
                     } else {
-                        return asub > bsub;
+                        return asub - bsub;
                     }
                 } else {
-                    return adate > bdate;
+                    return adate - bdate;
                 }
             });  
             
