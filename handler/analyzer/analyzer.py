@@ -20,6 +20,7 @@ import re
 import json
 import warnings
 from operator import itemgetter
+from urllib.request import urlopen
 from math import floor
 import pandas as pd
 import numpy as np
@@ -31,6 +32,7 @@ from PIL import Image
 plt.style.use("dark_background")
 warnings.filterwarnings("ignore")
 
+
 DATA_DIR = sys.argv[1]
 
 datatypes_yaml = yaml.load(open("../bids-specification/src/schema/objects/datatypes.yaml"))
@@ -38,11 +40,40 @@ entities_yaml = yaml.load(open("../bids-specification/src/schema/objects/entitie
 suffixes_yaml = yaml.load(open("../bids-specification/src/schema/objects/suffixes.yaml"))
 datatype_suffix_rules = "../bids-specification/src/schema/rules/datatypes"
 
+cog_atlas_url = "http://cognitiveatlas.org/api/v-alpha/task"
+
 start_time = time.time()
 analyzer_dir = os.getcwd()
 os.chdir(DATA_DIR)
 
 ######## Functions ########
+def cog_atlas_tasks(url):
+    """
+    Generates a list of all possible task names from the Cognitive Atlas API
+    task url.
+
+    Parameters
+    ----------
+    url : string
+        web url of the Cognitive Atlas API task page.
+
+    Returns
+    -------
+    tasks : list
+        list of all possible task names. Each task name has spaces, "task", and
+        "test" removed, to make it easier to search the SeriesDescription
+        fields for a matching task name.
+
+    """
+    url_contents = urlopen(url)
+    data = json.load(url_contents)
+    tasks = [re.sub("[^A-Za-z0-9]+", "", re.split(" task| test", x["name"])[0]) for x in data] # Remove non-alphanumeric terms and "task", "test" substrings
+    tasks = [x for x in tasks if len(x) > 0] # Remove empty task name terms
+    tasks = sorted(tasks, key=str.casefold) # sort alphabetically, but don't care about case
+
+    return tasks
+
+
 def create_DWIshell_screenshots(nifti_path, nibabel_nifti_obj, bval_path):
     """
     Generates PNG screenshot of each unique DWI shell (e.g. unique b-value(s))
@@ -1127,6 +1158,9 @@ def entity_labels_identification(dataset_list_unique_series):
         series_entities = {}
         sd = unique_dic["SeriesDescription"]
 
+        """ Check to see if entity labels can be determined from ReproIn naming
+        convention
+        """
         for key in entities_yaml:
             entity = "_" + entities_yaml[key]["entity"] + "-"
             if entity in sd:
@@ -1134,11 +1168,17 @@ def entity_labels_identification(dataset_list_unique_series):
             else:
                 series_entities[key] = ""
 
-        # Do a more thorough check for certain entities labels
+        """ If ReproIn naming convention isn't detected, do a more thorough
+        check for certain entities labels
+        """
         # task
         func_rest_keys = ["rest", "rsfmri", "fcmri"]
         if any(x in re.sub("[^A-Za-z0-9]+", "", sd).lower() for x in func_rest_keys) and not series_entities["task"]:
             series_entities["task"] = "rest"
+        else:
+            match_index = [x for x,y in enumerate(re.search(x, sd, re.IGNORECASE) for x in cog_atlas_tasks) if y != None]
+            if len(match_index) == 1:
+                series_entities["task"] = cog_atlas_tasks[match_index[0]]
 
         # dir (required for fmap/epi an highly recommended for dwi/dwi)
         if any(x in unique_dic["type"] for x in ["fmap/epi", "dwi/dwi"]) and not series_entities["direction"]:
@@ -1413,6 +1453,9 @@ PARTICIPANTS_COLUMN = {"sex": {"LongName": "gender",
                                "Units": "years"
                                }
                        }
+
+# Generate list of all possible Cognitive Atlas task terms
+cog_atlas_tasks = cog_atlas_tasks(cog_atlas_url)
 
 # Load dataframe containing all uploaded files
 uploaded_json_list = pd.read_csv("list", header=None, sep="\n").to_numpy().flatten().tolist()

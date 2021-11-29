@@ -2,11 +2,11 @@
 
 export function setSectionIDs($root) {
     /*
-    Set a section_ID value for each acquisition, beginning with a value of 1. Each time
+    Set a section_ID value for each acquisition, beginning with a value of 1. A section is 
+    ezBIDS jargin for each time participant comes out and then re-enters scanner. Each time
     a non-adjacent localizer is detected, the section_ID value is increased by 1. The
     section_ID value helps for determining fmap IntendedFor mapping, where field maps
-    cannot be applied to acquisitions from different sections. A section is ezBIDS jargin
-    for each time participant comes out and then re-enters scanner.
+    cannot be applied to acquisitions from different sections. 
     */
 
     for (const subject in $root._organized) {
@@ -16,23 +16,26 @@ export function setSectionIDs($root) {
 
             let protocol = sessions[session].objects
             let sectionID = 1
+            let obj_idx = 0
 
             protocol.forEach(obj=> {
-                let message = $root.series[protocol[obj.idx].series_idx].message
+                let message = $root.series[protocol[obj_idx].series_idx].message
 
                 let previousMessage = ""
-                if (obj.idx == 0) {
+                if (obj_idx == 0) {
                     previousMessage = ""
                 } else {
-                    previousMessage = $root.series[protocol[obj.idx - 1].series_idx].message
+                    previousMessage = $root.series[protocol[obj_idx - 1].series_idx].message
                 }
 
-                if (obj.idx != 0 && message.includes("localizer") && (previousMessage == "" || !previousMessage.includes("localizer"))) {
+                if (obj_idx != 0 && message.includes("localizer") && (previousMessage == "" || !previousMessage.includes("localizer"))) {
                     sectionID++;
                     obj.analysisResults.section_ID = sectionID
                 } else {
                     obj.analysisResults.section_ID = sectionID
                 }
+
+                obj_idx++
             })
         }
     }

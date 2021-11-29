@@ -459,30 +459,32 @@ const store = createStore({
                 //         return ases.localeCompare(bses);  
                 // } else                                                                                             
                 //     return asub.localeCompare(bsub);       
-                const asub = a._entities.subject;                                                                            
-                const bsub = b._entities.subject;  
-                const ases = a._entities.session||"";
-                const bses = b._entities.session||""; 
-                const adate = a.AcquisitionDate;   
-                const bdate = b.AcquisitionDate;   
-                const atime = a.AcquisitionTime;
-                const btime = b.AcquisitionTime;
+                
+                const adate = a.AcquisitionDate;
+                const bdate = b.AcquisitionDate;
+                const asub = a.subject_idx;
+                const bsub = b.subject_idx;
+                const ases = a.session_idx;
+                const bses = b.session_idx;
                 const aseriesnum = a.SeriesNumber;
-                const bseriesnum = b.SeriesNumber;    
-                console.log(a)                                                                     
-                                                                                                                            
-                //sort by sub / ses / acq date                                                                             
-                if(asub == bsub) {                                                                                         
-                    if(ases == bses)
-                        if(adatetime == bdatetime)
-                            return aseriesnum < bseriesnum;
-                    else if(ases == bses && adatetime != bdatetime)
-                        return adatetime < bdatetime;                                                                              
-                    else                                                                                           
-                        return ases.localeCompare(bses);  
-                } else                                                                                             
-                    return asub.localeCompare(bsub);    
-            });                                                                                                            
+                const bseriesnum = b.SeriesNumber;
+
+                if (adate == bdate) {
+                    if (asub == bsub) {
+                        if (ases == bses) {
+                            return aseriesnum > bseriesnum;
+                        } else {
+                            return ases > bses;
+                        }
+                    } else {
+                        return asub > bsub;
+                    }
+                } else {
+                    return adate > bdate;
+                }
+            });  
+            
+                                                                                                               
                     
             //re-index and organize 
             state.ezbids._organized = {};   
