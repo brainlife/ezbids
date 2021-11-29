@@ -39,7 +39,7 @@
                 <el-input v-model.trim="scope.row.subject" size="small" @change="validate(scope.row)">
                     <template #prepend>sub-</template>
                 </el-input>
-                
+
                 <el-table :data="scope.row.sessions" size="mini" :show-header="false">
                     <el-table-column :span="16">
                         <template #default="sessionScope">
@@ -60,7 +60,7 @@
                         </template>
                     </el-table-column>
                 </el-table>
-  
+
                 <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in scope.row.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
             </template>
         </el-table-column>

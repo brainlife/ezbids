@@ -213,6 +213,7 @@ const state = {
     },
 
     session: null as ISession|null,
+    page: "upload",
 
     //current state of the session
     //WATCH OUT - this gets wiped out when we load ezbids.json from analyzer
@@ -337,32 +338,36 @@ const store = createStore({
             if(session._id) window.location.hash = session._id;                                                                     
         },
 
+        setPage(state, page) {
+            state.page = page;
+        },
+
         reset(state) {
             state.session = null;
+            state.page = "upload"; //current page
             state.ezbids = {
                 notLoaded: true,
-                 
                 datasetDescription: {
-                    Name: "Untitled",                                                                                     
-                    BIDSVersion: "1.6.0",                                                                                 
-                    DatasetType: "raw",                                                                                   
-                    License: "",                                                                                       
-                    Authors: [],                                                                                                      
+                    Name: "Untitled",
+                    BIDSVersion: "1.6.0",
+                    DatasetType: "raw",
+                    License: "",
+                    Authors: [],
                     Acknowledgements: "", 
                     HowToAcknowledge: "", 
-                    Funding: [],                                                                                                      
-                    EthicsApprovals: [],                                                                                                      
-                    ReferencesAndLinks: [],                                                                                                      
-                    DatasetDOI: "",  
+                    Funding: [],
+                    EthicsApprovals: [],
+                    ReferencesAndLinks: [],
+                    DatasetDOI: "",
                 },
-                readme: "edit me",                                                                                          
+                readme: "edit me",
                 participantsColumn: {}, 
-        
+
                 //here lives various things
-                subjects: [],                                                                                               
-                series: [],                                                                                                 
-                objects: [],                                                                                                
-        
+                subjects: [],
+                series: [],
+                objects: [],
+
                 _organized: {}, //above things are organized into subs/ses/run/object hierarchy for quick access
 
                 //for defacing page
@@ -378,7 +383,6 @@ const store = createStore({
 
         updateEzbids(state, ezbids) {
             Object.assign(state.ezbids, ezbids);
-
             state.ezbids.series.forEach((s:Series)=>{
                 s.validationErrors = [];
                 //TODO what is this for?
@@ -404,7 +408,6 @@ const store = createStore({
                 o.validationErrors = [];
                 o.items.forEach(item=>{    
                     if(item.sidecar) {                                                                                                                                                                            
-                        //anonymize..                                                                               
                         let sidecar = Object.assign({}, item.sidecar);
 
                         delete sidecar.SeriesInstanceUID;
@@ -425,6 +428,10 @@ const store = createStore({
             });
         },
 
+        updateEvents(state, events) {
+            Object.assign(state.events, events);
+        },
+
         setEzbidsReadme(state, v) {
             state.ezbids.readme = v;
         },
@@ -435,30 +442,9 @@ const store = createStore({
 
         organizeObjects(state) {   
             //mapObjects() must be called before calling this action (for _entities)
-            
-            //sort object by subject/session                                                                               
-            state.ezbids.objects.sort((a,b)=>{   
-                // const asub = a._entities.subject;                                                                            
-                // const bsub = b._entities.subject;  
-                // const ases = a._entities.session||"";
-                // const bses = b._entities.session||""; 
-                // const adatetime = a.AcquisitionDateTime;   
-                // const bdatetime = b.AcquisitionDateTime;    
-                // const aseriesnum = a.SeriesNumber;
-                // const bseriesnum = b.SeriesNumber;    
 
-                // //sort by sub / ses / acq date                                                                             
-                // if(asub == bsub) {                                                                                         
-                //     if(ases == bses)
-                //         if(adatetime == bdatetime)
-                //             return aseriesnum < bseriesnum;
-                //     else if(ases == bses && adatetime != bdatetime)
-                //         return adatetime < bdatetime;                                                                              
-                //     else                                                                                           
-                //         return ases.localeCompare(bses);  
-                // } else                                                                                             
-                //     return asub.localeCompare(bsub);       
-                
+            //sort object by subject/session
+            state.ezbids.objects.sort((a,b)=>{
                 const adate = parseInt(a.AcquisitionDate.replace(/\D/g,''));
                 const bdate = parseInt(b.AcquisitionDate.replace(/\D/g,''));
                 const asub = a.subject_idx;
@@ -484,11 +470,14 @@ const store = createStore({
             });  
             
                                                                                                                
+            console.log("re-indexing");
                     
             //re-index and organize 
             state.ezbids._organized = {};   
             state.ezbids.objects.forEach((o, idx)=>{    
                 o.idx = idx; //reindex       
+
+                console.log(o);
                                                                                                                             
                 let sub = /*"sub-"+*/o._entities.subject;                                                                             
                 let ses = o._entities.session;//?("ses-"+o._entities.session):"";                                                                        
@@ -496,7 +485,6 @@ const store = createStore({
                     sess: {},                                                                                              
                     objects: []                                                                                            
                 };                                                                                                         
-                //this.subs[sub].objects.push(o);                                                                          
                                                                                                                             
                 if(!state.ezbids._organized[sub].sess[ses]) state.ezbids._organized[sub].sess[ses] = {     
                     AcquisitionDate: o.AcquisitionDate,
@@ -519,6 +507,7 @@ const store = createStore({
             });  
             await context.dispatch("loadSession");
             await context.dispatch("loadEzbids"); //might not yet exist
+            await context.dispatch("loadEzbidsUpdated"); //might not yet exist
         },
 
         async loadSession(context) {
@@ -532,7 +521,6 @@ const store = createStore({
 
         async loadEzbids(context) {
             if(!context.state.session || !context.state.session.pre_finish_date) return;
-
             const res = await fetch(context.state.config.apihost+'/download/'+context.state.session._id+'/ezBIDS.json');
             if(res.status == 200) {
                 const conf = await res.json();
@@ -540,6 +528,19 @@ const store = createStore({
                 context.commit("updateEzbids", conf);
             } else {
                 console.log("no ezbids.json yet");
+            }
+        },
+
+        async loadEzbidsUpdated(context) {
+            if(!context.state.session || !context.state.session.pre_finish_date) return;
+            const res = await fetch(context.state.config.apihost+'/session/'+context.state.session._id+'/updated');
+            if(res.status == 200) {
+                const updated = await res.json();
+                context.commit("updateEzbids", updated);
+                context.commit("updateEvents", updated.events);
+                context.commit("setPage", "finalize");
+            } else {
+                console.log("ezbids not yet finalized");
             }
         },
 
@@ -556,7 +557,6 @@ const store = createStore({
                     else o.defaced = true;
                 });
             } else console.log("couldn't load deface.finished - mayber not yet defaced");
-
 
             const failed = await fetch(context.state.config.apihost+'/download/'+context.state.session._id+'/deface.failed');
             if(failed.status == 200) {

@@ -1,5 +1,6 @@
 <script lang="ts">
 
+
 import { defineComponent, defineAsyncComponent } from 'vue'
 import { mapState, mapGetters } from 'vuex'
 
@@ -37,9 +38,6 @@ export default defineComponent({
 
     data() {
         return {
-            //initial page
-            page: "upload", 
-            
             //page order
             pages: [
                 "upload", 
@@ -51,31 +49,27 @@ export default defineComponent({
                 "object", 
                 "deface", 
                 "finalize",
-            ], 
+            ],
         }
     },
+
     async created() {
 
         this.$store.commit("reset");
-        if(location.hash) {     
+        if(location.hash) {
             await this.$store.dispatch("reload", location.hash.substring(1));
             this.mapObjects();
             this.$store.commit("organizeObjects");
             this.$store.dispatch("loadDefaceStatus");
         }
 
-        console.log("checking session every 5 seconds");
         window.setInterval(async ()=>{
             if(this.session) {
-                //console.log(this.session);
                 switch(this.session.status) {
                 case "analyzed":
                 case "finished":
-                    //console.log(new Date());
-                    //console.log("no need to reload session/ezbids with state:", this.session.status);
                     break;
                 case "defacing":
-                    console.log("loading deface log")
                     this.$store.dispatch("loadDefaceStatus");
                     this.$store.dispatch("loadSession", this.session._id);
                     break;
@@ -86,7 +80,7 @@ export default defineComponent({
                 }
 
                 if(this.ezbids.notLoaded) {
-                    console.log("loading ezbids for the first time"); //on page reload, above if(location.hash) block takes care of loading it
+                    //console.log("loading ezbids for the first time"); //on page reload, above if(location.hash) block takes care of loading it
                     await this.$store.dispatch("loadEzbids");
                 }
             }
@@ -94,7 +88,7 @@ export default defineComponent({
     },
 
     computed: {
-        ...mapState(['session', 'ezbids', 'events']),
+        ...mapState(['session', 'ezbids', 'events', 'page']),
         ...mapGetters(['getBIDSEntities', 'findSession', 'findSubject']),
 
         backLabel(): string|null {
@@ -141,8 +135,7 @@ export default defineComponent({
                     ElNotification({ title: 'Failed', message: err});
                 } else {
                     const idx = this.pages.indexOf(this.page);
-                    this.page = this.pages[idx+1];
-
+                    this.$store.commit("setPage", this.pages[idx+1]);
                     switch(this.page) {
                     case "event":
                         setSectionIDs(this.ezbids);
@@ -168,7 +161,7 @@ export default defineComponent({
                 document.location.hash = "";
                 document.location.reload();
             } else {
-                this.page = this.pages[idx-1];
+                this.$store.commit("setPage", this.pages[idx-1]);
             }
         },
         
