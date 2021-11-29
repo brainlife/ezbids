@@ -337,7 +337,7 @@ const store = createStore({
             if(session._id) window.location.hash = session._id;                                                                     
         },
 
-        reset(state) {parseInt(
+        reset(state) {
             state.session = null;
             state.ezbids = {
                 notLoaded: true,
