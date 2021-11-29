@@ -380,7 +380,7 @@ const store = createStore({
             Object.assign(state.ezbids, ezbids);
 
             state.ezbids.series.forEach((s:Series)=>{
-                s.validationErrors = []; parseInt(
+                s.validationErrors = [];
                 //TODO what is this for?
                 delete s.entities.subject;                                                                     
                 delete s.entities.session;                                                                     
