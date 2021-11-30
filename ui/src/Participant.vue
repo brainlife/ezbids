@@ -7,7 +7,9 @@
     <br><br>
     <el-form>
         <div v-for="(column, key) in ezbids.participantsColumn" :key="key" class="columnEditor">
-            <el-button type="danger" style="float: right;" icon="el-icon-delete" @click="remove(key)" size="mini"/>
+            <span style="float: right">
+                <el-button type="danger" @click="remove(key)" size="mini"><Remove style="width: 16px;"/></el-button>
+            </span>
             <b>{{key}}</b>
             <br>
             <br clear="both">
@@ -67,7 +69,13 @@
 import { mapState } from 'vuex'
 import { defineComponent } from 'vue'
 
+//element-plus icons are bad .. replace it with fontawesome
+import { Remove } from '@element-plus/icons/lib'
+
 export default defineComponent({
+    components: {
+        Remove,
+    }, 
     data() {
         return {
             newcolumn: "",

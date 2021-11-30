@@ -468,24 +468,21 @@ const store = createStore({
                     return adate - bdate;
                 }
             });  
-            
-                                                                                                               
-            console.log("re-indexing");
-                    
+            console.log("sorted---------------");
+            state.ezbids.objects.forEach((o, idx)=>console.log(idx, o._entities.subject, o._entities.session));
+
             //re-index and organize 
             state.ezbids._organized = {};   
+            console.log("org------------------------------");
             state.ezbids.objects.forEach((o, idx)=>{    
                 o.idx = idx; //reindex       
-
-                console.log(o);
-                                                                                                                            
                 let sub = /*"sub-"+*/o._entities.subject;                                                                             
                 let ses = o._entities.session;//?("ses-"+o._entities.session):"";                                                                        
                 if(!state.ezbids._organized[sub]) state.ezbids._organized[sub] = {                                                                     
                     sess: {},                                                                                              
                     objects: []                                                                                            
                 };                                                                                                         
-                                                                                                                            
+
                 if(!state.ezbids._organized[sub].sess[ses]) state.ezbids._organized[sub].sess[ses] = {     
                     AcquisitionDate: o.AcquisitionDate,
                     objects: []                                                                                            

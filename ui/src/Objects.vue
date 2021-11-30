@@ -158,12 +158,12 @@
                     </el-form-item>
 
                     <!--will be obsoleted by niivue-->
-                    <div v-if="so.pngPath">
-                        <a :href="getURL(so.pngPath)">
-                            <img style="width: 100%" :src="getURL(so.pngPath)"/>
+                    <div v-for="(path, idx) in so.pngPaths" :key="idx">
+                        <pre style="margin-bottom: 0">{{path}}</pre>
+                        <a :href="getURL(path)">
+                            <img style="width: 100%" :src="getURL(path)"/>
                         </a>
                     </div>
-                    
                 </div>
             </el-form>
 

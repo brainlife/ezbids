@@ -149,6 +149,14 @@ export default defineComponent({
                     case "object":
                         createEventsTSV(this.ezbids, this.events);
                         break;
+                    /*
+                    case "finalize":
+                        console.log("running finalize", this.page);
+                        console.dir(this.$refs[this.page]);
+                        this.$refs[this.page].rerun();
+                        this.$refs[this.page].finalize();
+                        break;
+                    */
                     }
                 }
             });
