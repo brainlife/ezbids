@@ -113,7 +113,7 @@ export default defineComponent({
         nextLabel() : string|null {
             switch(this.page) {
             case "upload":
-                return (this.session && this.session.pre_finish_date?"Next":null);
+                return (this.session && this.session.pre_finish_date && !this.ezbids.notLoaded)?"Next":null;
             case "finalize":
                 return null;
             default:

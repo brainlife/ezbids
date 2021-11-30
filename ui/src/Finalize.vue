@@ -96,12 +96,9 @@ export default defineComponent({
     },
 
     mounted() {
-        //I don't think user knows they have to rerun finalize step to update bids structure after they go back and do other things..
-        //let's just force it
-        /*
+        //TODO - update this to do this on demand
         this.rerun(); 
         this.finalize();
-        */
     },
 
     methods: {

@@ -2,7 +2,7 @@
 <div style="padding: 20px;">
     <el-form v-if="getAnatObjects.length && !isDefacing">
         <p>
-            If you'd like to deface all anatomical images, please select a defacing method and click <b>Run Deface</b> button. 
+            If you'd like to deface all anatomical images, please select a defacing method and click <b>Run Deface</b> button.
         </p>
         <p>
             Otherwise, you can skip this page.
@@ -76,7 +76,7 @@
                 </div>
                 <el-tag type="info" size="mini">#{{anat.series_idx}}</el-tag>
                 &nbsp;
-                <datatype :type="anat._type" :series_idx="anat.series_idx" :entities="anat.entities"/> 
+                <datatype :type="anat._type" :series_idx="anat.series_idx" :entities="anat.entities"/>
             </td>
             <td width="40%">
                 <el-radio v-model="anat.defaceSelection" label="original">Use Original</el-radio>
@@ -101,8 +101,8 @@
 <script lang="ts">
 
 import { mapState, mapGetters, } from 'vuex'
-import { defineComponent } from 'vue'                                                                                                                                                  
-import datatype from './components/datatype.vue' 
+import { defineComponent } from 'vue'
+import datatype from './components/datatype.vue'
 
 import { IObject } from './store'
 
@@ -122,7 +122,7 @@ export default defineComponent({
     computed: {
         ...mapState(['ezbids', 'config', 'session', 'bidsSchema']),
         ...mapGetters(['getBIDSEntities', 'getURL', 'getAnatObjects']),
-        
+
         isDefacing() {
             // @ts-ignore
             return ["deface", "defacing"].includes(this.session.status);
@@ -135,7 +135,7 @@ export default defineComponent({
             if(!o.defaceSelection) o.defaceSelection = "defaced";
         });
     },
-    
+
     methods: {
         changeMethod() {
             if(this.ezbids.defacingMethod) {
@@ -147,7 +147,7 @@ export default defineComponent({
                 console.log("switching to original for all anat");
                 this.getAnatObjects.forEach((o:IObject)=>{
                     o.defaceSelection = "original";
-                });   
+                });
             }
         },
 
@@ -161,7 +161,7 @@ export default defineComponent({
 
         cancel() {
             fetch(this.config.apihost+'/session/'+this.session._id+'/canceldeface', {
-                method: "POST", 
+                method: "POST",
                 headers: {'Content-Type': 'application/json; charset=UTF-8'},
             }).then(res=>res.text()).then(status=>{
                 if(status != "ok") {
@@ -175,7 +175,7 @@ export default defineComponent({
 
         reset() {
             fetch(this.config.apihost+'/session/'+this.session._id+'/resetdeface', {
-                method: "POST", 
+                method: "POST",
                 headers: {'Content-Type': 'application/json; charset=UTF-8'},
             }).then(res=>res.text()).then(status=>{
                 if(status != "ok") {
@@ -184,7 +184,7 @@ export default defineComponent({
                 this.getAnatObjects.forEach((anat: IObject)=>{
                     delete anat.defaced;
                     delete anat.defaceFailed;
-                    anat.defaceSelection = "defaced"; 
+                    anat.defaceSelection = "defaced";
                 });
                 this.$store.dispatch("loadSession", this.session._id);
             });
@@ -202,7 +202,7 @@ export default defineComponent({
 
             console.log("sending deface reque3st", list);
             fetch(this.config.apihost+'/session/'+this.session._id+'/deface', {
-                method: "POST", 
+                method: "POST",
                 headers: {'Content-Type': 'application/json; charset=UTF-8'},
                 body: JSON.stringify({
                     list,
@@ -214,7 +214,7 @@ export default defineComponent({
                 }
                 this.$store.dispatch("loadSession", this.session._id);
                 //this.$root.pollSession();
-            }); 
+            });
         },
 
         isValid(cb: (v?: string)=>void) {

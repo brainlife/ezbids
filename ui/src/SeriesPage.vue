@@ -2,16 +2,16 @@
 <div style="padding: 20px;">
 
     <div class="series-list">
-        <div v-for="(s, series_idx) in ezbids.series" :key="series_idx" 
-            class="series-item" 
-            :class="{'selected': ss === s}" 
+        <div v-for="(s, series_idx) in ezbids.series" :key="series_idx"
+            class="series-item"
+            :class="{'selected': ss === s}"
             @click="ss = s">
             <el-tag type="info" size="mini" title="Series index">#{{series_idx}}</el-tag>
             &nbsp;
             <datatype :type="s.type" :series_idx="series_idx" :entities="s.entities" :class="{excluded: s.type == 'exclude'}"/>
             <small style="opacity: 0.7;">({{s.SeriesDescription}})</small>
             &nbsp;
-            <el-tag type="info" effect="plain" size="mini" title="Number of objects">{{getObjectsFromSeries(s).length}} objs</el-tag> 
+            <el-tag type="info" effect="plain" size="mini" title="Number of objects">{{getObjectsFromSeries(s).length}} objs</el-tag>
             &nbsp;
             <el-badge v-if="s.validationErrors.length > 0" type="danger" :value="s.validationErrors.length" style="margin-left: 5px;">
                 <small/>
@@ -58,12 +58,12 @@
                         <small style="position: relative; top: -8px;">* Datatype that this fmap is intended for. Used to help assining correct IntendedFor field</small>
                     </el-form-item>
                 </div>
-            
+
                 <div v-if="ss.type">
-                    <el-form-item v-for="(v, entity) in getSomeEntities(ss.type)" :key="entity" 
+                    <el-form-item v-for="(v, entity) in getSomeEntities(ss.type)" :key="entity"
                         :label="entity.toString()+'-'+(v=='required'?' *':'')" style="width: 350px">
                         <el-popover v-if="bidsSchema.entities[entity]" :width="350" trigger="focus" placement="left-start"
-                            :title="bidsSchema.entities[entity].name" 
+                            :title="bidsSchema.entities[entity].name"
                             :content="bidsSchema.entities[entity].description">
                             <template #reference>
                                 <el-input v-model="ss.entities[entity]" size="small" :required="v == 'required'" @change="validate(ss)"/>
@@ -74,12 +74,12 @@
 
                 <el-form-item label="Common Metadata">
                     <small>All objects under this series contain the following common metadata.</small>
-                    <p style="margin-top: 0; margin-bottom: 0;"> 
-                        <el-tag type="info" size="mini"><small>SeriesDescription: 
+                    <p style="margin-top: 0; margin-bottom: 0;">
+                        <el-tag type="info" size="mini"><small>SeriesDescription:
                         {{ss.SeriesDescription}}</small></el-tag>&nbsp;
                         <el-tag type="info" size="mini"><small>EchoTime: {{ss.EchoTime}}</small></el-tag>&nbsp;
                         <el-tag type="info" size="mini"><small>ImageType: {{ss.ImageType}}</small></el-tag>&nbsp;
-                        <el-tag type="info" size="mini"><small>RepetitionTime: 
+                        <el-tag type="info" size="mini"><small>RepetitionTime:
                         {{ss.RepetitionTime}}</small></el-tag>&nbsp;
                     </p>
                 </el-form-item>
@@ -129,8 +129,8 @@
 import { mapState, mapGetters, } from 'vuex'
 import { defineComponent } from 'vue'
 
-import showfile from './components/showfile.vue'                                                                                                                                                     
-import datatype from './components/datatype.vue'   
+import showfile from './components/showfile.vue'
+import datatype from './components/datatype.vue'
 
 import { prettyBytes } from './filters'
 
@@ -140,12 +140,12 @@ import { validateEntities } from './libUnsafe'
 
 export default defineComponent({
 
-    
+
     components: {
         datatype,
         showfile,
     },
-    
+
 
     data() {
         return {
@@ -153,7 +153,7 @@ export default defineComponent({
             ss: null as Series|null, //selected series
         }
     },
-    
+
     computed: {
         ...mapState(['ezbids', 'bidsSchema', 'config']),
         ...mapGetters(['getBIDSEntities', 'getURL']), //doesn't work with ts?
@@ -162,9 +162,9 @@ export default defineComponent({
     mounted() {
         this.validateAll();
     },
-    
+
     methods: {
-        
+
         prettyBytes,
 
         getObjectsFromSeries(series: Series): IObject[] {
@@ -184,7 +184,7 @@ export default defineComponent({
 
         toggleInfo(entity: string) {
             this.showInfo[entity] = !this.showInfo[entity];
-        },   
+        },
 
         validateAll() {
             this.ezbids.series.forEach(this.validate);

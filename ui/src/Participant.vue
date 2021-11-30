@@ -70,6 +70,7 @@ import { mapState } from 'vuex'
 import { defineComponent } from 'vue'
 
 //element-plus icons are bad .. replace it with fontawesome
+// @ts-ignore
 import { Remove } from '@element-plus/icons/lib'
 
 export default defineComponent({
