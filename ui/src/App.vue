@@ -20,7 +20,7 @@ import { IObject } from './store'
 import { ElNotification } from 'element-plus'
 //import 'element-plus/es/components/notification/style/css'
 
-import { setSectionIDs, funcQA, fmapQA, setRun, updateErrors, setIntendedFor, } from './libUnsafe'
+import { setSectionIDs, funcQA, fmapQA, setRun, updateErrors, setIntendedFor } from './libUnsafe'
 import { createEventsTSV } from './lib'
 
 export default defineComponent({
@@ -40,14 +40,14 @@ export default defineComponent({
         return {
             //page order
             pages: [
-                "upload", 
-                "description", 
-                "subject", 
-                "participant", 
-                "seriespage", 
-                "event", 
-                "object", 
-                "deface", 
+                "upload",
+                "description",
+                "subject",
+                "participant",
+                "seriespage",
+                "event",
+                "object",
+                "deface",
                 "finalize",
             ],
         }
@@ -126,7 +126,7 @@ export default defineComponent({
         next() {
             this.mapObjects();
             this.$store.commit("organizeObjects");
-            
+
             // @ts-ignore
             this.$refs[this.page].isValid((err:string)=>{
                 if(err) {
@@ -139,9 +139,9 @@ export default defineComponent({
                     switch(this.page) {
                     case "event":
                         setSectionIDs(this.ezbids);
-                        funcQA(this.ezbids); 
-                        fmapQA(this.ezbids); 
-                        setRun(this.ezbids); 
+                        funcQA(this.ezbids);
+                        fmapQA(this.ezbids);
+                        setRun(this.ezbids);
                         updateErrors(this.ezbids);
                         setIntendedFor(this.ezbids);
                         this.mapObjects();
@@ -164,64 +164,64 @@ export default defineComponent({
                 this.$store.commit("setPage", this.pages[idx-1]);
             }
         },
-        
+
         updateObject(o: IObject) {
             this.mapObject(o);
             // @ts-ignore
             this.$refs.object.validateAll(); //I need to validate the entire list.. so I can detect collision
-            this.$store.commit("organizeObjects"); 
+            this.$store.commit("organizeObjects");
         },
 
         mapObjects() {
-            this.ezbids.objects.forEach(this.mapObject); 
+            this.ezbids.objects.forEach(this.mapObject);
         },
 
         //apply parent level entities from series / subject on to object.
         //but.. we want to preserve the information set on object itself, so let's stored flatten information on _entities instead of
         //directly applying them to entities.
-        mapObject(o: IObject) {    
+        mapObject(o: IObject) {
 
-            const series = this.$store.state.ezbids.series[o.series_idx]; 
-            if(series) {   
+            const series = this.$store.state.ezbids.series[o.series_idx];
+            if(series) {
                 //func/events doesn't have any series
                 o._SeriesDescription = series.SeriesDescription.replace('_RR', ""); //helps in objects view
-                o._type = series.type;                                                                                         
-                o._forType = series.forType; 
+                o._type = series.type;
+                o._forType = series.forType;
             }
-            if(o.type) o._type = o.type; //object level override                                                           
-                                                                                                                           
-            //clone bids entity for this _type to preserve proper key ordering                                                               
-            const e = Object.assign({}, this.getBIDSEntities(o._type));    
-            for(let k in e) {     
-                if(series) e[k] = series.entities[k];       
-                else e[k] = ""; //no series, no default entity values                                                                          
-            }                                                                                                              
-                                                                                                                           
-            //apply overrides from the object                                                                           
-            for(let k in o.entities) {                                                                                  
-                if(o.entities[k]) e[k] = o.entities[k];                                                                 
-            }                                                                                
-                                
+            if(o.type) o._type = o.type; //object level override
+
+            //clone bids entity for this _type to preserve proper key ordering
+            const e = Object.assign({}, this.getBIDSEntities(o._type));
+            for(let k in e) {
+                if(series) e[k] = series.entities[k];
+                else e[k] = ""; //no series, no default entity values
+            }
+
+            //apply overrides from the object
+            for(let k in o.entities) {
+                if(o.entities[k]) e[k] = o.entities[k];
+            }
+
             o._exclude = o.exclude;
-            if(o._type == "exclude") o._exclude = true;     
-            
-            const subject = this.findSubject(o);    
-            if(subject.exclude) o._exclude = true;                                                                     
-                                                                          
-            //if sub is not set, use subject mapping as default                                                         
-            if(!o.entities.subject) {                                                                                   
-                e.subject = subject.subject;                                                                            
-            }                                                                                                           
+            if(o._type == "exclude") o._exclude = true;
 
-            const session = this.findSession(subject, o);  
-            if(session.exclude) o._exclude = true;                                                                      
+            const subject = this.findSubject(o);
+            if(subject.exclude) o._exclude = true;
 
-            //if ses is not set, use session mapping as default                                                         
-            if(!o.entities.session) {                                                                                   
-                e.session = session.session;                                                                            
-            }                                                                                                           
-                                                                                                                        
-            o._entities = e; 
+            //if sub is not set, use subject mapping as default
+            if(!o.entities.subject) {
+                e.subject = subject.subject;
+            }
+
+            const session = this.findSession(subject, o);
+            if(session.exclude) o._exclude = true;
+
+            //if ses is not set, use session mapping as default
+            if(!o.entities.session) {
+                e.session = session.session;
+            }
+
+            o._entities = e;
         },
     }
 });
@@ -263,9 +263,9 @@ export default defineComponent({
         <SeriesPage v-if="page == 'seriespage'" ref="seriespage"/>
         <Events v-if="page == 'event'" ref="event"
             @mapObjects="mapObjects"/>
-        <Objects v-if="page == 'object'" ref="object" 
+        <Objects v-if="page == 'object'" ref="object"
             @mapObjects="mapObjects"
-            @updateObject="updateObject"/>       
+            @updateObject="updateObject"/>
         <Deface v-if="page == 'deface'" ref="deface"/>
         <Finalize v-if="page == 'finalize'" ref="finalize"/>
 

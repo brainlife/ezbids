@@ -1,16 +1,17 @@
 // @ts-nocheck
 
+
 export function setSectionIDs($root) {
     /*
-    Set a section_ID value for each acquisition, beginning with a value of 1. A section is 
+    Set a section_ID value for each acquisition, beginning with a value of 1. A section is
     ezBIDS jargin for each time participant comes out and then re-enters scanner. Each time
     a non-adjacent localizer is detected, the section_ID value is increased by 1. The
     section_ID value helps for determining fmap IntendedFor mapping, where field maps
-    cannot be applied to acquisitions from different sections. 
+    cannot be applied to acquisitions from different sections.
     */
 
     for (const subject in $root._organized) {
-    
+
         const sessions = $root._organized[subject].sess
         for (const session in sessions) {
 
@@ -82,7 +83,7 @@ export function funcQA($root) {
             let boldEntities = o._entities
             let boldPED = o.items[0].sidecar.PhaseEncodingDirection
             let badSBRef = $root.objects.filter(e=>e._type == "func/sbref" && JSON.stringify(e._entities) === JSON.stringify(boldEntities) &&
-                                                e.items[0].sidecar.PhaseEncodingDirection != boldPED).map(e=>e.idx) 
+                                                e.items[0].sidecar.PhaseEncodingDirection != boldPED).map(e=>e.idx)
             badSBRef.forEach(bad=> {
                 $root.objects[bad].exclude = true
                 $root.objects[bad].analysisResults.errors = ["Functional sbref has a different PhaseEncodingDirection than its corresponding functional bold. This is a data error, therefore this sbref will be set to exclude from BIDS conversion."]
@@ -99,7 +100,7 @@ export function fmapQA($root) {
 
     // Loop through subjects
     for (const subject in $root._organized) {
-        
+
         // Loop through sessions
         const sessions = $root._organized[subject].sess
         for (const session in sessions) {
@@ -129,7 +130,7 @@ export function fmapQA($root) {
                 }
 
                 let fmapMagPhasediffObjs = section.filter(function (e) {
-                    return e._type.startsWith('fmap/magnitude1') || 
+                    return e._type.startsWith('fmap/magnitude1') ||
                     e._type.startsWith('fmap/magnitude2') ||
                     e._type.includes('phasediff')
                 });
@@ -189,7 +190,7 @@ export function fmapQA($root) {
                             });
                         }
                     }
-   
+
                     // Remove magnitudes & phasediff if less than 3
                     if (fmapMagPhasediffObjs.length < 3) {
                         fmapMagPhasediffObjs.forEach(obj=> {
@@ -277,19 +278,17 @@ export function fmapQA($root) {
                         obj.exclude = true
                         obj.analysisResults.errors = ['Multiple spin echo field maps (meant for dwi/dwi) detected in section; only selecting last one for BIDS conversion. The other fmap acquisition(s) in this section will not be included in the BIDS output']
                     });
-                } 
-            });           
+                }
+            });
         }
-    }     
+    }
 }
-
-
 export function setRun($root) {
     // Set run entity label if not already specified at Series level
 
     // Loop through subjects
     for (const subject in $root._organized) {
-        
+
         // Loop through sessions
         const sessions = $root._organized[subject].sess
         for (const session in sessions) {
@@ -317,7 +316,7 @@ export function updateErrors($root) {
     // or the identification was incorrect to begin with
 
     for (const subject in $root._organized) {
-        
+
         const sessions = $root._organized[subject].sess
         for (const session in sessions) {
 
@@ -355,7 +354,7 @@ export function setIntendedFor($root) {
                 let fmapFuncObjs = section.filter(e=>e._type.startsWith('fmap') && e._forType == 'func/bold' && !e._exclude)
                 let fmapDwiObjs = section.filter(e=>e._type.startsWith('fmap') && e._forType == 'dwi/dwi' && !e._exclude)
 
-                // Assign IntendedFor information 
+                // Assign IntendedFor information
                 fmapFuncObjs.forEach(obj=> {
                     obj.IntendedFor = funcObjs.map(e=>e.idx)
                 });
@@ -368,16 +367,99 @@ export function setIntendedFor($root) {
     }
 }
 
-export function validateEntities(entities/*: Series*/) {     
-    const errors = [];                                                                                      
-    //validate entity (only alpha numeric values)                                                               
-    for(const k in entities) {                                                                                
-        const v = entities[k];                                                                                
-        if(v && !/^[a-zA-Z0-9]*$/.test(v)) {                                                                    
-            errors.push("Entity:"+k+" contains non-alphanumeric character");                        
-        }                                                                                                       
-    }                 
-    return errors;                                                                                          
+function findMostCommonValue(arr){
+    /* Function comes from https://stackoverflow.com/a/20762713
+
+    This function acts as a mode (i.e. finds the most common value
+    in an array).
+    */
+
+    return arr.sort((a,b) =>
+          arr.filter(v => v===a).length
+        - arr.filter(v => v===b).length
+    ).pop();
+}
+
+function deepEqual(object1, object2) {
+    /*
+    Function comes from https://dmitripavlutin.com/how-to-compare-objects-in-javascript/#4-deep-equality
+
+    Determines whether two arrays are identical or not.
+    */
+    const keys1 = Object.keys(object1);
+    const keys2 = Object.keys(object2);
+    if(keys1.length !== keys2.length) {
+      return false;
+    }
+    for(const key of keys1) {
+        const val1 = object1[key];
+        const val2 = object2[key];
+        const areObjects = isObject(val1) && isObject(val2);
+        if(areObjects && !deepEqual(val1, val2) || !areObjects && val1 !== val2) {
+            return false;
+        }
+    }
+    return true;
+}
+
+function isObject(object) {
+    /*
+    Function comes from https://dmitripavlutin.com/how-to-compare-objects-in-javascript/#4-deep-equality
+
+    This function determines whether or not something is an object.
+    */
+    return object != null && typeof object === 'object';
+}
+
+export function validateEntities(entities/*: Series*/) {
+    const errors = [];
+    //validate entity (only alpha numeric values)
+    for(const k in entities) {
+        const v = entities[k];
+        if(v && !/^[a-zA-Z0-9]*$/.test(v)) {
+            errors.push("Entity:"+k+" contains non-alphanumeric character");
+        }
+    }
+    return errors;
+}
+
+export function validateSeries($root) {
+    /*
+    Series items with unique series_id values may still contain the same DateType, suffix, and
+    entities. This is a problem if uncorrected, because there will then be conflict(s) during
+    Objects mapping. A validation error will therefore be generated if the conditions above are
+    met.
+    */
+
+    let seriesItemsList = [] //contains series info (type, entities) from all series
+    let duplicateSeriesInfoList = [] //contains series info if it appears more than once in seriesItemsList
+
+    $root.series.forEach(s=>{
+        console.log(s)
+        // let info = {"type": s.type, "entities": s.entities}
+        // seriesItemsList.push(info)
+    });
+
+    let seriesItemsList_indices = Array.from(Array(seriesItemsList.length).keys())
+
+    // Do through each series info pairing option to check for matches
+    for(const [ser_idx, element] of seriesItemsList.entries()) {
+        let remaining_indices = seriesItemsList_indices.filter(i=> i !== ser_idx)
+
+        for(const remain_idx in remaining_indices) {
+            if(ser_idx != remain_idx) {
+                if(deepEqual(seriesItemsList[ser_idx], seriesItemsList[remain_idx]) == true && !duplicateSeriesInfoList.includes(JSON.stringify(seriesItemsList[ser_idx]))) {
+                    duplicateSeriesInfoList.push(JSON.stringify(seriesItemsList[ser_idx]))
+                }
+            }
+        }
+    }
+    // Convert JSON string back to JS object(s)
+    for(const [dup_idx, value] of duplicateSeriesInfoList.entries()) {
+        duplicateSeriesInfoList[dup_idx] = JSON.parse(duplicateSeriesInfoList[dup_idx])
+    }
+
+    return duplicateSeriesInfoList
 }
 
 
@@ -397,7 +479,7 @@ export function find_separator(filePath, fileData) {
 	} else if (filePath.indexOf('.xlsx') > -1) {
 		return /[ ,]+/;
 	}
-    
+
 	throw "unknown file extension";
 }
 
@@ -416,7 +498,7 @@ function parseEprimeEvents(fileData, cb) {
 	        break;
 	    case "*** Header End ***":
 	        headers = block;
-	        break;   
+	        break;
 	    case "*** LogFrame Start ***":
 	        block = {};
 	        break;
@@ -497,17 +579,9 @@ function parseExcelEvents(fileData) {
 	return trials[0];
 }
 
-//TODO - add link to the stackoverflow that this came from
-function findMostCommonValue(arr){
-    return arr.sort((a,b) =>
-          arr.filter(v => v===a).length
-        - arr.filter(v => v===b).length
-    ).pop();
-}
-
 //this function receives files (an array of object containing fullpath and data. data is the actual file content of the file)
 export function createEventObjects(ezbids, files) {
-    const eventObjects = []; //new event objects to add 
+    const eventObjects = []; //new event objects to add
 
     // Identify some terms for decoding purposes
     const subjects = Array.from(new Set(ezbids.subjects.filter(e=>e.exclude == false).map(e=>e.subject)))
@@ -534,7 +608,7 @@ export function createEventObjects(ezbids, files) {
     // Sort through events file(s) list
     files.forEach(file=>{
         const fileExt = file.path.split(".").pop();
-        
+
         // Parse the data, depending on the file extension (and header information)
         let events;
         switch(fileExt) {
@@ -558,51 +632,51 @@ export function createEventObjects(ezbids, files) {
             }
         }
 
-        const eventsMappingInfo =   {   
+        const eventsMappingInfo =   {
             subject: {
                 MappingKeys: [
-                    "sub", "subid", "subname", 
-                    "subj", "subjid", "subjname", 
-                    "subject", "subjectid", "subjectname", 
+                    "sub", "subid", "subname",
+                    "subj", "subjid", "subjname",
+                    "subject", "subjectid", "subjectname",
                     "participant", "participantid", "participantname"
-                ], 
-                ezBIDSvalues: subjects, 
+                ],
+                ezBIDSvalues: subjects,
                 eventsValue: null,
                 detectionMethod: null,
             },
             session: {
                 MappingKeys: [
-                    "ses", "sesid", "sesname", 
-                    "sess", "sessid", "sessname", 
+                    "ses", "sesid", "sesname",
+                    "sess", "sessid", "sessname",
                     "session", "sessionid", "sessionname"
-                ], 
-                ezBIDSvalues: sessions, 
-                eventsValue: null, 
+                ],
+                ezBIDSvalues: sessions,
+                eventsValue: null,
                 detectionMethod: null,
             },
             task: {
                 MappingKeys: [
-                    "exp", "expid", "expname", 
-                    "task", "taskid", "taskname", 
+                    "exp", "expid", "expname",
+                    "task", "taskid", "taskname",
                     "experiment", "experimentid", "experimentname"
-                ], 
-                ezBIDSvalues: tasks, 
-                eventsValue: null, 
+                ],
+                ezBIDSvalues: tasks,
+                eventsValue: null,
                 detectionMethod: null,
             },
             run: {
-                MappingKeys: ["run", "runid", "runname"], 
-                ezBIDSvalues: runs, 
-                eventsValue: null, 
+                MappingKeys: ["run", "runid", "runname"],
+                ezBIDSvalues: runs,
+                eventsValue: null,
                 detectionMethod: null,
             }
-        }                        
-        
+        }
+
         const keys = Object.keys(events[0]); //picking the first object as a sample
         for(const entity in eventsMappingInfo) {
             const info = eventsMappingInfo[entity];
-        
-            // 1st stage: examine header columns and data of event file(s) to 
+
+            // 1st stage: examine header columns and data of event file(s) to
             // see if helpful information is contained there
             const matchingKey = keys.find(key=>{
                 const safeKey = key.toLowerCase().replace(/[^0-9a-z]/gi, '');
@@ -635,8 +709,8 @@ export function createEventObjects(ezbids, files) {
 
             //Sanity checks
             Object.keys(eventsMappingInfo).forEach(key=>{
-                /* 1). if a mismatch exists between any key's ezBIDSvalue and eventsValue, and the length of 
-                ezBIDSvalues == 1, then the ezBIDSvalue takes precedence because that's what the user has explicitly specified 
+                /* 1). if a mismatch exists between any key's ezBIDSvalue and eventsValue, and the length of
+                ezBIDSvalues == 1, then the ezBIDSvalue takes precedence because that's what the user has explicitly specified
                 on ezBIDS.
                 */
                 if (!info.ezBIDSvalues.includes(info.eventsValue) && info.ezBIDSvalues.length == 1) {
@@ -653,7 +727,7 @@ export function createEventObjects(ezbids, files) {
         }
 
         //if we couldn't find task eventValue, look for task names used in ezbids in event files valued (not just column name)
-        if (!eventsMappingInfo.task.eventsValue) { 
+        if (!eventsMappingInfo.task.eventsValue) {
             const taskNames = eventsMappingInfo.task.ezBIDSvalues.map(v=>v.toLowerCase());
             events.forEach(event=>{
                 for(const key in event) {
@@ -675,7 +749,7 @@ export function createEventObjects(ezbids, files) {
                 e._entities.task == eventsMappingInfo.task.eventsValue &&
                 e._entities.run == eventsMappingInfo.run.eventsValue
                 ).map(e=>e.analysisResults.section_ID)
-            
+
             if (correspondingBoldSecID.length > 0) {
                 section_ID = correspondingBoldSecID[0]
             } else {
@@ -707,7 +781,7 @@ export function createEventObjects(ezbids, files) {
         //register new event object using the info we gathered above
         const object = Object.assign({
             type: "func/events",
-            //series_idx: null, 
+            //series_idx: null,
             subject_idx: ezbids.subjects.indexOf(subject),
             session_idx: subject.sessions.indexOf(session),
 
@@ -749,7 +823,7 @@ export function createEventObjects(ezbids, files) {
 
 
 /*
-this function receives one example event object. we will do our best to map the event keys (columns) and 
+this function receives one example event object. we will do our best to map the event keys (columns) and
 map them to bids events.tsv column names.
 */
 export function mapEventColumns(events) {
@@ -757,9 +831,9 @@ export function mapEventColumns(events) {
     const columns = Object.values(Object.keys(events[0]))
 
     return {
-        
+
         //type definitions are in store/index
-        
+
         onsetLogic: "eq",
         onset: null,
         onset2: null,
