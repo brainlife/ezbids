@@ -3,17 +3,17 @@ import { createStore } from 'vuex'
 
 import bidsEntities from '../assets/schema/entities.json'
 export interface DatasetDescription {
-    Name: string;    
-    BIDSVersion: string;    
-    DatasetType: string;                                                                                   
-    License: string;      
-    Authors: string[]; 
+    Name: string;
+    BIDSVersion: string;
+    DatasetType: string;
+    License: string;
+    Authors: string[];
     Acknowledgements: string;
     HowToAcknowledge: string;
-    Funding: string[];               
-    EthicsApprovals: string[];                     
+    Funding: string[];
+    EthicsApprovals: string[];
     ReferencesAndLinks: string[];
-    DatasetDOI: string;                                                                                       
+    DatasetDOI: string;
 }
 
 export interface PatientInfo {
@@ -37,7 +37,7 @@ export interface Subject {
 export interface Series {
     entities: any;
     validationErrors: string[];
-    type: string; 
+    type: string;
     forType: string;
 
     SeriesDescription: string;
@@ -47,7 +47,7 @@ export interface Series {
     RepetitionTime: string;
 
     VolumeThreshold?: number; //if set, it overrided the default 50
-    
+
     error: string;
     message: string;
     //object_indices: [ number ];
@@ -75,10 +75,10 @@ export interface IObject {
 
     exclude: boolean;
     _exclude: boolean; //set if it's excluded on parent level
-    
+
     entities: any; //entities set for this object only
     _entities: any; //"prototypical"(flattened) entities from parent objects (subject / series).. see mapObject()
-    
+
     validationErrors: string[]; //right?
     items: [{
         sidecar: any;
@@ -87,7 +87,7 @@ export interface IObject {
         path?: string;
         name?: string;
         headers?: any; //for nifti
-        
+
         events?: any; //for event (contains object parsed by createEventObjects)
         eventsBIDS?: IBIDSEvent[];
     }];
@@ -96,9 +96,9 @@ export interface IObject {
     subject_idx: number;
     session_idx: number;
 
-    _SeriesDescription: string; //copied from series for quick ref 
+    _SeriesDescription: string; //copied from series for quick ref
     type: string; //override
-    _type: string; 
+    _type: string;
     _forType: string;
 
     /*
@@ -129,7 +129,7 @@ export interface IObject {
 
     defaced?: boolean;
     defaceFailed?: boolean;
-    defaceSelection: "original" | "defaced" 
+    defaceSelection: "original" | "defaced"
 }
 
 interface BIDSSchemaEntities {
@@ -143,7 +143,7 @@ interface BIDSEntities {
         name: string;
         entity: string;
         format: string;
-        description: string;      
+        description: string;
     }
 }
 
@@ -169,7 +169,7 @@ export interface OrganizedSubject {
     objects: IObject[], //all objects under this subject
     sess: {
         [key: string]: OrganizedSession;
-    } 
+    }
 }
 
 export interface OrganizedSubjects {
@@ -192,7 +192,7 @@ export interface ISession {
 
     pre_begin_date?: string; //"2021-08-27T21:24:46.914Z"
     pre_finish_date?: string; //"2021-08-27T21:25:25.405Z"
-    
+
     deface_begin_date?: string;
     deface_finish_date?: string;
 
@@ -220,35 +220,35 @@ const state = {
         notLoaded: true,
 
         //pretty much straight out of bids/dataset_description.json
-        datasetDescription: {                                                                                       
-            Name: "",                                                                                     
-            BIDSVersion: "",                                                                                 
-            DatasetType: "",                                                                                   
-            License: "",                                                                                       
-            Authors: [],                                                                                                      
+        datasetDescription: {
+            Name: "",
+            BIDSVersion: "",
+            DatasetType: "",
+            License: "",
+            Authors: [],
             Acknowledgements: "", //"Special thanks to Korbinian Brodmann for help in formatting this dataset in BIDS. We tha  nk Alan Lloyd Hodgkin and Andrew Huxley for helpful comments and discussions about the experiment and manuscript; Hermann Ludwig He  lmholtz for administrative support; and Claudius Galenus for providing data for the medial-to-lateral index analysis.",
             HowToAcknowledge: "", //"Please cite this paper: https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
-            Funding: [                                                                                            
-                //"National Institute of Neuroscience Grant F378236MFH1",                                           
-                //"National Institute of Neuroscience Grant 5RMZ0023106"                                            
-            ],                                                                                                      
-            EthicsApprovals: [                                                                                    
-                //"Army Human Research Protections Office (Protocol ARL-20098-10051, ARL 12-040, and ARL 12-041)"   
-            ],                                                                                                      
-            ReferencesAndLinks: [                                                                                 
-                //"https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",                                            
-                //"http://doi.org/1920.8/jndata.2015.7"                                                             
-            ],                                                                                                      
-            DatasetDOI: "", //"10.0.2.3/dfjj.10"                                                                  
-        } as DatasetDescription,                                                                                                          
+            Funding: [
+                //"National Institute of Neuroscience Grant F378236MFH1",
+                //"National Institute of Neuroscience Grant 5RMZ0023106"
+            ],
+            EthicsApprovals: [
+                //"Army Human Research Protections Office (Protocol ARL-20098-10051, ARL 12-040, and ARL 12-041)"
+            ],
+            ReferencesAndLinks: [
+                //"https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
+                //"http://doi.org/1920.8/jndata.2015.7"
+            ],
+            DatasetDOI: "", //"10.0.2.3/dfjj.10"
+        } as DatasetDescription,
 
-        readme: "edit me",                                                                                          
-        participantsColumn: {}, 
+        readme: "edit me",
+        participantsColumn: {},
 
         //here lives various things
-        subjects: [] as Subject[],                                                                                               
-        series: [] as Series[],                                                                                                 
-        objects: [] as IObject[], 
+        subjects: [] as Subject[],
+        series: [] as Series[],
+        objects: [] as IObject[],
 
         _organized: {} as OrganizedSubjects, //above things are organized into subs/ses/run/object hierarchy for quick access
 
@@ -257,14 +257,14 @@ const state = {
 
     events: {
         columns: {
-            //these are just for typescript definitions. 
+            //these are just for typescript definitions.
             //real initial values should come from mapEventColumns()
 
             onsetLogic: "",
             onset: null, //will be set to column name in event
             onset2: null, //will be set to column name in event
-            onsetUnit: "sec", 
-            
+            onsetUnit: "sec",
+
             durationLogic: "",
             duration: null,
             duration2: null, //used in case durationLogic is "subtract" or "add"
@@ -306,7 +306,7 @@ function loadDatatype(modality: string, datatype: BIDSSchemaEntities[], label: s
     datatype.forEach(group=>{
         group.suffixes.forEach((suffix:string)=>{
             state.bidsSchema.datatypes[modality].options.push({
-                value: modality+"/"+suffix, 
+                value: modality+"/"+suffix,
                 label: suffix, //bold, cbv, sbred, events, etc..
                 entities: group.entities,   //["subject", "session", etc..]
             });
@@ -334,35 +334,35 @@ const store = createStore({
     mutations: {
         setSession(state, session) {
             state.session = session;
-            if(session._id) window.location.hash = session._id;                                                                     
+            if(session._id) window.location.hash = session._id;
         },
 
         reset(state) {
             state.session = null;
             state.ezbids = {
                 notLoaded: true,
-                 
+
                 datasetDescription: {
-                    Name: "Untitled",                                                                                     
-                    BIDSVersion: "1.6.0",                                                                                 
-                    DatasetType: "raw",                                                                                   
-                    License: "",                                                                                       
-                    Authors: [],                                                                                                      
-                    Acknowledgements: "", 
-                    HowToAcknowledge: "", 
-                    Funding: [],                                                                                                      
-                    EthicsApprovals: [],                                                                                                      
-                    ReferencesAndLinks: [],                                                                                                      
-                    DatasetDOI: "",  
+                    Name: "Untitled",
+                    BIDSVersion: "1.6.0",
+                    DatasetType: "raw",
+                    License: "",
+                    Authors: [],
+                    Acknowledgements: "",
+                    HowToAcknowledge: "",
+                    Funding: [],
+                    EthicsApprovals: [],
+                    ReferencesAndLinks: [],
+                    DatasetDOI: "",
                 },
-                readme: "edit me",                                                                                          
-                participantsColumn: {}, 
-        
+                readme: "edit me",
+                participantsColumn: {},
+
                 //here lives various things
-                subjects: [],                                                                                               
-                series: [],                                                                                                 
-                objects: [],                                                                                                
-        
+                subjects: [],
+                series: [],
+                objects: [],
+
                 _organized: {}, //above things are organized into subs/ses/run/object hierarchy for quick access
 
                 //for defacing page
@@ -382,29 +382,21 @@ const store = createStore({
             state.ezbids.series.forEach((s:Series)=>{
                 s.validationErrors = [];
                 //TODO what is this for?
-                delete s.entities.subject;                                                                     
-                delete s.entities.session;                                                                     
+                delete s.entities.subject;
+                delete s.entities.session;
             });
 
             state.ezbids.subjects.forEach(s=>{
                 s.validationErrors = [];
-                s.exclude = !!(s.exclude); 
-
-                //I've mentioned this to Dan but until he patches analyzer, we need to fix the boolean type.
-                s.sessions.forEach(ses=>{
-                    // @ts-ignore
-                    if(ses.exclude === "false") ses.exclude = false;
-                    // @ts-ignore
-                    if(ses.exclude === "true") ses.exclude = true;
-                })
+                s.exclude = !!(s.exclude);
             });
 
             state.ezbids.objects.forEach((o:IObject)=>{
                 o.exclude = !!(o.exclude);
                 o.validationErrors = [];
-                o.items.forEach(item=>{    
-                    if(item.sidecar) {                                                                                                                                                                            
-                        //anonymize..                                                                               
+                o.items.forEach(item=>{
+                    if(item.sidecar) {
+                        //anonymize..
                         let sidecar = Object.assign({}, item.sidecar);
 
                         delete sidecar.SeriesInstanceUID;
@@ -419,9 +411,9 @@ const store = createStore({
                         delete sidecar.PatientWeight;
                         delete sidecar.AcquisitionDateTime;
 
-                        item['sidecar_json'] = JSON.stringify(sidecar, null, 4);                            
-                    }                                                                                               
-                });                                                                                                 
+                        item['sidecar_json'] = JSON.stringify(sidecar, null, 4);
+                    }
+                });
             });
         },
 
@@ -433,101 +425,68 @@ const store = createStore({
             state.ezbids.datasetDescription.Name = v;
         },
 
-        organizeObjects(state) {   
+        organizeObjects(state) {
             //mapObjects() must be called before calling this action (for _entities)
-            
-            //sort object by subject/session                                                                               
-            state.ezbids.objects.sort((a,b)=>{   
-                // const asub = a._entities.subject;                                                                            
-                // const bsub = b._entities.subject;  
-                // const ases = a._entities.session||"";
-                // const bses = b._entities.session||""; 
-                // const adatetime = a.AcquisitionDateTime;   
-                // const bdatetime = b.AcquisitionDateTime;    
-                // const aseriesnum = a.SeriesNumber;
-                // const bseriesnum = b.SeriesNumber;    
+            state.ezbids.objects.sort((a,b)=>{
 
-                // //sort by sub / ses / acq date                                                                             
-                // if(asub == bsub) {                                                                                         
-                //     if(ases == bses)
-                //         if(adatetime == bdatetime)
-                //             return aseriesnum < bseriesnum;
-                //     else if(ases == bses && adatetime != bdatetime)
-                //         return adatetime < bdatetime;                                                                              
-                //     else                                                                                           
-                //         return ases.localeCompare(bses);  
-                // } else                                                                                             
-                //     return asub.localeCompare(bsub);       
-                
-                const adate = parseInt(a.AcquisitionDate.replace(/\D/g,''));
-                const bdate = parseInt(b.AcquisitionDate.replace(/\D/g,''));
+                // const adate = parseInt(a.AcquisitionDate.replace(/\D/g,''));
+                // const bdate = parseInt(b.AcquisitionDate.replace(/\D/g,''));
                 const asub = a.subject_idx;
                 const bsub = b.subject_idx;
                 const ases = a.session_idx;
                 const bses = b.session_idx;
                 const aseriesnum = parseInt(a.SeriesNumber);
                 const bseriesnum = parseInt(b.SeriesNumber);
+                const ajsonpath = a.pngPaths[0];
+                const bjsonpath = b.pngPaths[0];
 
-                if (adate == bdate) {
-                    if (asub == bsub) {
-                        if (ases == bses) {
-                            return aseriesnum - bseriesnum;
-                        } else {
-                            return ases - bses;
-                        }
-                    } else {
-                        return asub - bsub;
-                    }
-                } else {
-                    return adate - bdate;
-                }
-            });  
-            
-                                                                                                               
-                    
-            //re-index and organize 
-            state.ezbids._organized = {};   
-            state.ezbids.objects.forEach((o, idx)=>{    
-                o.idx = idx; //reindex       
-                                                                                                                            
-                let sub = /*"sub-"+*/o._entities.subject;                                                                             
-                let ses = o._entities.session;//?("ses-"+o._entities.session):"";                                                                        
-                if(!state.ezbids._organized[sub]) state.ezbids._organized[sub] = {                                                                     
-                    sess: {},                                                                                              
-                    objects: []                                                                                            
-                };                                                                                                         
-                //this.subs[sub].objects.push(o);                                                                          
-                                                                                                                            
-                if(!state.ezbids._organized[sub].sess[ses]) state.ezbids._organized[sub].sess[ses] = {     
+                return (asub - bsub || ases - bses || aseriesnum - bseriesnum  || ajsonpath - bjsonpath)
+            });
+
+            //re-index and organize
+            state.ezbids._organized = {};
+            state.ezbids.objects.forEach((o, idx)=>{
+                o.idx = idx; //reindex
+
+                let sub = /*"sub-"+*/o._entities.subject;
+                let ses = o._entities.session;//?("ses-"+o._entities.session):"";
+
+                if(!state.ezbids._organized[sub]) state.ezbids._organized[sub] = {
+                    sess: {},
+                    objects: []
+                };
+                //this.subs[sub].objects.push(o);
+                if(!state.ezbids._organized[sub].sess[ses]) state.ezbids._organized[sub].sess[ses] = {
                     AcquisitionDate: o.AcquisitionDate,
-                    objects: []                                                                                            
-                };   
+                    objects: []
+                };
                 state.ezbids._organized[sub].sess[ses].objects.push(o);
-            });                                                                                                            
+            });
         },
+
 
         addObject(state, o) {
             state.ezbids.objects.push(o);
         },
     },
-    
+
     actions: {
         async reload(context, id) {
             context.commit("reset");
             context.commit("setSession", {
                 _id: id,
-            });  
+            });
             await context.dispatch("loadSession");
             await context.dispatch("loadEzbids"); //might not yet exist
         },
 
         async loadSession(context) {
             if(!context.state.session) return;
-            const res = await fetch(context.state.config.apihost+'/session/'+context.state.session._id, {     
-                method: "GET",    
-                headers: { 'Content-Type': 'application/json' },    
-            });    
-            context.commit("setSession", await res.json());  
+            const res = await fetch(context.state.config.apihost+'/session/'+context.state.session._id, {
+                method: "GET",
+                headers: { 'Content-Type': 'application/json' },
+            });
+            context.commit("setSession", await res.json());
         },
 
         async loadEzbids(context) {
@@ -545,7 +504,7 @@ const store = createStore({
 
         async loadDefaceStatus(context) {
             if(!context.state.session) return;
-     
+
             const finished = await fetch(context.state.config.apihost+'/download/'+context.state.session._id+'/deface.finished');
             if(finished.status == 200) {
                 const finishedText = await finished.text();
@@ -574,45 +533,45 @@ const store = createStore({
     getters: {
         //from "anat/t1w", return entities object {subject: required, session: optional, etc..}
         getBIDSEntities: (state)=>(type: string) =>{
-            if(!type) return {};                                                                                        
-            const modality = type.split("/")[0];                                                                        
-            const suffix = type.split("/")[1];                                                                          
-            let datatype = state.bidsSchema.datatypes[modality];                                                               
-            if(!datatype) return {};                                                                                    
-            
-            //find the option that contains our suffix      
+            if(!type) return {};
+            const modality = type.split("/")[0];
+            const suffix = type.split("/")[1];
+            let datatype = state.bidsSchema.datatypes[modality];
+            if(!datatype) return {};
+
+            //find the option that contains our suffix
             const option = datatype.options.find(option=>option.value == type);
             return option?.entities;
         },
-        
+
         //find a session inside sub hierarchy
-        findSession: (state)=>(sub: Subject, o: IObject) : (Session|undefined)=>{ 
+        findSession: (state)=>(sub: Subject, o: IObject) : (Session|undefined)=>{
             return sub.sessions[o.session_idx];
             //return sub.sessions.find(s=>s.AcquisitionDate == o.AcquisitionDate); //will be deprecasted
-        },   
-        
-        findSubject: (state)=>(o: IObject): (Subject|undefined) =>{       
+        },
+
+        findSubject: (state)=>(o: IObject): (Subject|undefined) =>{
             return state.ezbids.subjects[o.subject_idx];
             /*
             //rest is deprecated now that we use subject_idx to find subject
             //does this still happen?
             if(!o.PatientName && o.PatientID && o.PatientBirthDate) {
-                console.error("none of the patient identifying fields are set.. can't find this object");      
-                console.dir(o);  
+                console.error("none of the patient identifying fields are set.. can't find this object");
+                console.dir(o);
                 return undefined;
-            }                    
-            return state.ezbids.subjects.find(s=>{     
+            }
+            return state.ezbids.subjects.find(s=>{
                 //see if any of the PatientInfo matches this object's
                 let match = s.PatientInfo.find(info=>{
                     if(o.PatientName && info.PatientName != o.PatientName) return false;
                     if(o.PatientID && info.PatientID != o.PatientID) return false;
                     if(o.PatientBirthDate && info.PatientBirthDate != o.PatientBirthDate) return false;
                     return true;
-                });     
-                return !!match;                                                                                           
-            });    
-            */                                                                                                                                                                                   
-        },  
+                });
+                return !!match;
+            });
+            */
+        },
 
         getURL: (state)=>(path: string)=>{
             if(!state.session) return null;

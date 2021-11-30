@@ -285,7 +285,7 @@ export function fmapQA($root) {
 
 
 export function setRun($root) {
-    // Set run label if not already specified at Series level
+    // Set run entity label if not already specified at Series level
 
     // Loop through subjects
     for (const subject in $root._organized) {
@@ -303,7 +303,7 @@ export function setRun($root) {
                 if (seriesObjects.length > 1) {
                     seriesObjects.forEach(obj=>{
                         obj.entities.run = run.toString()
-                        run = run + 1
+                        run++
                     });
                 }
             });
