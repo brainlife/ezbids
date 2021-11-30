@@ -1,24 +1,24 @@
 <template>
 <div style="padding: 20px">
     <div class="bids-structure">
-        <div v-for="(o_sub, sub) in ezbids._organized" :key="sub" style="font-size: 90%; margin-bottom: 10px">
-            <span v-if="sub != ''" class="hierarchy">
+        <div v-for="o_sub in ezbids._organized" :key="o_sub.sub" style="font-size: 90%; margin-bottom: 10px">
+            <span v-if="o_sub.sub != ''" class="hierarchy">
                 <i class="el-icon-user-solid" style="margin-right: 2px;"/>
-                <small>sub-</small><b>{{sub}}</b>
+                <small>sub-</small><b>{{o_sub.sub}}</b>
                 &nbsp;
-                <el-checkbox :value="o_sub.exclude" @change="excludeSubject(sub.toString(), $event)">
+                <el-checkbox :value="o_sub.exclude" @change="excludeSubject(o_sub.sub.toString(), $event)">
                     <small>Exclude this subject</small>
                 </el-checkbox>
             </span>
-            <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}">
-                <span v-if="ses" class="hierarchy">
+            <div v-for="o_ses in o_sub.sess" :key="o_ses.ses" :class="{'left-border': o_ses.ses != ''}">
+                <span v-if="o_ses.ses" class="hierarchy">
                     <i class="el-icon-time" style="margin-right: 2px;"/>
-                    <small>ses-</small><b>{{ses}}</b>
+                    <small>ses-</small><b>{{o_ses.ses}}</b>
                     &nbsp;
                     <small style="opacity: 0.5;">{{o_ses.AcquisitionDate}}</small>
                     &nbsp;
                     &nbsp;
-                    <el-checkbox :value="o_ses.exclude" @change="excludeSession(sub.toString(), ses.toString(), $event)">
+                    <el-checkbox :value="o_ses.exclude" @change="excludeSession(o_sub.sub.toString(), o_ses.ses.toString(), $event)">
                         <small>Exclude this session</small>
                     </el-checkbox>
                 </span>
@@ -158,12 +158,12 @@
                     </el-form-item>
 
                     <!--will be obsoleted by niivue-->
-                    <div v-if="so.pngPaths[0]">
-                        <a :href="getURL(so.pngPaths[0])">
-                            <img style="width: 100%" :src="getURL(so.pngPaths[0])"/>
+                    <div v-for="(path, idx) in so.pngPaths" :key="idx">
+                        <pre style="margin-bottom: 0">{{path}}</pre>
+                        <a :href="getURL(path)">
+                            <img style="width: 100%" :src="getURL(path)"/>
                         </a>
                     </div>
-
                 </div>
             </el-form>
 

@@ -10,36 +10,31 @@ export function setSectionIDs($root) {
     cannot be applied to acquisitions from different sections.
     */
 
-    for (const subject in $root._organized) {
-
-        const sessions = $root._organized[subject].sess
-        for (const session in sessions) {
-
-            let protocol = sessions[session].objects
+    //for (const subject in $root._organized) {
+    $root._organized.forEach(subGroup=>{
+        const subject = subGroup.sub;
+        //const sessions = $root._organized[subject].sess
+        //for (const session in sessions) {
+        subGroup.sess.forEach(sesGroup=>{
+            let protocol = sesGroup.objects
             let sectionID = 1
             let obj_idx = 0
-
             protocol.forEach(obj=> {
                 let message = $root.series[protocol[obj_idx].series_idx].message
 
                 let previousMessage = ""
-                if (obj_idx == 0) {
-                    previousMessage = ""
-                } else {
-                    previousMessage = $root.series[protocol[obj_idx - 1].series_idx].message
-                }
-
+                if (obj_idx == 0) previousMessage = "";
+                else previousMessage = $root.series[protocol[obj_idx - 1].series_idx].message
                 if (obj_idx != 0 && message.includes("localizer") && (previousMessage == "" || !previousMessage.includes("localizer"))) {
                     sectionID++;
                     obj.analysisResults.section_ID = sectionID
                 } else {
                     obj.analysisResults.section_ID = sectionID
                 }
-
                 obj_idx++
             })
-        }
-    }
+        });
+    });
 }
 
 export function funcQA($root) {
@@ -98,20 +93,16 @@ export function fmapQA($root) {
     // Assesses fieldmaps for improper PEDs (for spin-echo field maps),
     // and excludes extra fieldmaps in section
 
-    // Loop through subjects
-    for (const subject in $root._organized) {
-
-        // Loop through sessions
-        const sessions = $root._organized[subject].sess
-        for (const session in sessions) {
+    $root._organized.forEach(subGroup=>{
+        subGroup.sess.forEach(sesGroup=>{
 
             // Determine unique sectionIDs
-            let allSectionIDs = sessions[session].objects.map(e=>e.analysisResults.section_ID)
+            let allSectionIDs = sesGroup.objects.map(e=>e.analysisResults.section_ID)
             let sectionIDs = Array.from(new Set(allSectionIDs))
 
             // Loop through sections (no excluded acquisitions included)
             sectionIDs.forEach(s=> {
-                let section = sessions[session].objects.filter(e=>e.analysisResults.section_ID == s && !e._exclude)
+                let section = sesGroup.objects.filter(e=>e.analysisResults.section_ID == s && !e._exclude)
 
                 let funcObjs = section.filter(e=>e._type == 'func/bold' || e._type == 'func/sbref')
                 let dwiObjs = section.filter(e=>e._type == 'dwi/dwi')
@@ -278,26 +269,29 @@ export function fmapQA($root) {
                         obj.exclude = true
                         obj.analysisResults.errors = ['Multiple spin echo field maps (meant for dwi/dwi) detected in section; only selecting last one for BIDS conversion. The other fmap acquisition(s) in this section will not be included in the BIDS output']
                     });
-                }
-            });
-        }
-    }
+                } 
+            });           
+        });
+    });
 }
 export function setRun($root) {
     // Set run entity label if not already specified at Series level
 
     // Loop through subjects
-    for (const subject in $root._organized) {
 
+    //for (const subject in $root._organized) {
+    $root._organized.forEach(subGroup=>{
+        
         // Loop through sessions
-        const sessions = $root._organized[subject].sess
-        for (const session in sessions) {
+        //const sessions = subGroup.sess
+        //for (const session in sessions) {
+        subGroup.sess.forEach(sesGroup=>{
             // Determine series_idx values
-            let allSeriesIndices = sessions[session].objects.map(e=>e.series_idx)
+            let allSeriesIndices = sesGroup.objects.map(e=>e.series_idx)
             let uniqueSeriesIndices = Array.from(new Set(allSeriesIndices))
 
             uniqueSeriesIndices.forEach(si=>{
-                let seriesObjects = sessions[session].objects.filter(e=>e.series_idx == si && !e._exclude)
+                let seriesObjects = sesGroup.objects.filter(e=>e.series_idx == si && !e._exclude)
                 let run = 1
                 if (seriesObjects.length > 1) {
                     seriesObjects.forEach(obj=>{
@@ -306,8 +300,8 @@ export function setRun($root) {
                     });
                 }
             });
-        }
-    }
+        });
+    });
 }
 
 export function updateErrors($root) {
@@ -315,39 +309,33 @@ export function updateErrors($root) {
     // that need to be removed, since user is aware and wants the acquisition(s) anyway,
     // or the identification was incorrect to begin with
 
-    for (const subject in $root._organized) {
-
-        const sessions = $root._organized[subject].sess
-        for (const session in sessions) {
-
-            let allObjects = sessions[session].objects
-
-            allObjects.forEach(obj=>{
-                if (!obj.exclude) {
-                    obj.analysisResults.errors = []
-                }
+    //for (const subject in $root._organized) {
+    $root._organized.forEach(subGroup=>{
+        //const sessions = $root._organized[subject].sess
+        //for (const session in sessions) {
+        subGroup.sess.forEach(sesGroup=>{
+            sesGroup.objects.filter(o=>!o.exclude).forEach(obj=>{
+                obj.analysisResults.errors = []
             });
-        }
-    }
+        });
+    });
 }
 
 export function setIntendedFor($root) {
     // Apply fmap intendedFor mapping
 
     // Loop through subjects
-    for (const subject in $root._organized) {
+    //for (const subject in $root._organized) {
+    $root._organized.forEach(subGroup=>{
 
-        // Loop through sessions
-        const sessions = $root._organized[subject].sess
-        for (const session in sessions) {
-
+        subGroup.sess.forEach(sesGroup=>{
             // Determine unique sectionIDs
-            let allSectionIDs = sessions[session].objects.map(e=>e.analysisResults.section_ID)
+            let allSectionIDs = sesGroup.objects.map(e=>e.analysisResults.section_ID)
             let sectionIDs = Array.from(new Set(allSectionIDs))
 
             // Loop through sections (no excluded acquisitions included)
             sectionIDs.forEach(s=> {
-                let section = sessions[session].objects.filter(e=>e.analysisResults.section_ID == s && !e._exclude)
+                let section = sesGroup.objects.filter(e=>e.analysisResults.section_ID == s && !e._exclude)
 
                 let funcObjs = section.filter(e=>e._type == 'func/bold' || e._type == 'func/sbref' && !e._exclude)
                 let dwiObjs = section.filter(e=>e._type == 'dwi/dwi' && !e._exclude)
@@ -363,8 +351,8 @@ export function setIntendedFor($root) {
                     obj.IntendedFor = dwiObjs.map(e=>e.idx)
                 });
             });
-        }
-    }
+        });
+    });
 }
 
 function findMostCommonValue(arr){

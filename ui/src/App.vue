@@ -113,7 +113,7 @@ export default defineComponent({
         nextLabel() : string|null {
             switch(this.page) {
             case "upload":
-                return (this.session && this.session.pre_finish_date?"Next":null);
+                return (this.session && this.session.pre_finish_date && !this.ezbids.notLoaded)?"Next":null;
             case "finalize":
                 return null;
             default:
@@ -149,6 +149,14 @@ export default defineComponent({
                     case "object":
                         createEventsTSV(this.ezbids, this.events);
                         break;
+                    /*
+                    case "finalize":
+                        console.log("running finalize", this.page);
+                        console.dir(this.$refs[this.page]);
+                        this.$refs[this.page].rerun();
+                        this.$refs[this.page].finalize();
+                        break;
+                    */
                     }
                 }
             });

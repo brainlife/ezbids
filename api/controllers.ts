@@ -130,6 +130,7 @@ router.post('/session/:session_id/finalize', (req, res, next)=>{
 router.get('/session/:session_id/updated', (req, res, next)=>{
     models.ezBIDS.findOne({_session_id: req.params.session_id}).then(ezbids=>{
         if(!ezbids) return next("no such session or ezbids not finalized");
+        if(!ezbids.updated) return next("not yet finalized");
         res.json(ezbids.updated); 
     });
 });

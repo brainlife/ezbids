@@ -115,7 +115,7 @@ export interface IObject {
 
     SeriesNumber: string;
 
-    pngPaths: string;
+    pngPaths: string[];
     analysisResults: {
         errors: string[];
         section_ID: number;
@@ -161,19 +161,15 @@ interface BIDSDatatypes {
 }
 
 export interface OrganizedSession {
+    sess: string,
     objects: IObject[], //all object under this subject/session
     AcquisitionDate: string, //TODO.. should be Date?
 }
 
 export interface OrganizedSubject {
-    objects: IObject[], //all objects under this subject
-    sess: {
-        [key: string]: OrganizedSession;
-    }
-}
-
-export interface OrganizedSubjects {
-    [key: string]: OrganizedSubject;
+    sub: string,
+    //objects: IObject[], //all objects under this subject
+    sess: OrganizedSession[],
 }
 
 export interface ISession {
@@ -251,7 +247,7 @@ const state = {
         series: [] as Series[],
         objects: [] as IObject[],
 
-        _organized: {} as OrganizedSubjects, //above things are organized into subs/ses/run/object hierarchy for quick access
+        _organized: [] as OrganizedSubject[], //above things are organized into subs/ses/run/object hierarchy for quick access
 
         defacingMethod: "",
     },
@@ -454,25 +450,34 @@ const store = createStore({
             });
 
             //re-index and organize
-            state.ezbids._organized = {};
+            state.ezbids._organized = [];
             state.ezbids.objects.forEach((o, idx)=>{
                 o.idx = idx; //reindex
 
                 let sub = /*"sub-"+*/o._entities.subject;
                 let ses = o._entities.session;//?("ses-"+o._entities.session):"";
-                if(!state.ezbids._organized[sub]) state.ezbids._organized[sub] = {
-                    sess: {},
-                    objects: []
-                };
 
-                if(!state.ezbids._organized[sub].sess[ses]) state.ezbids._organized[sub].sess[ses] = {
-                    AcquisitionDate: o.AcquisitionDate,
-                    objects: []
-                };
-                state.ezbids._organized[sub].sess[ses].objects.push(o);
+                let subGroup = state.ezbids._organized.find(s=>s.sub == sub);
+                if(!subGroup) {
+                    subGroup = {
+                        sub,
+                        sess: []
+                    }
+                    state.ezbids._organized.push(subGroup);
+                }
+
+                let sesGroup = subGroup.sess.find(s=>s.ses == ses);
+                if(!sesGroup) {
+                    sesGroup = {
+                        ses,
+                        AcquisitionDate: o.AcquisitionDate,
+                        objects: [],
+                    }
+                    subGroup.sess.push(sesGroup);
+                }
+                sesGroup.objects.push(o);
             });
         },
-
 
         addObject(state, o) {
             state.ezbids.objects.push(o);

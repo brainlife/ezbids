@@ -105,10 +105,10 @@
                     <el-tag size="mini" type="info">volumes: {{ezbids.objects[object.idx].analysisResults.NumVolumes}}</el-tag>&nbsp;
                 </div>
                 <div style="margin-left: 25px">
-                    <p v-if="ezbids.objects[object.idx].pngPaths[0]">
-                        <small><b>Preview</b></small>
-                        <a :href="getURL(ezbids.objects[object.idx].pngPaths[0])">
-                            <img style="width: 100%" :src="getURL(ezbids.objects[object.idx].pngPaths[0])"/>
+                    <p v-for="(path, idx) in ezbids.objects[object.idx].pngPaths" :key="idx">
+                        <pre style="margin-bottom: 0">{{path}}</pre>
+                        <a :href="getURL(path)">
+                            <img style="width: 100%" :src="getURL(path)"/>
                         </a>
                     </p>
 
