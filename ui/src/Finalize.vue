@@ -1,20 +1,8 @@
 <template>
 <div style="padding: 20px;">
-    <!--
-    <div v-if="!session.finalize_begin_date && !submitting && session.status != 'finalized'">
-        <p>Your data is ready to be converted to BIDS!</p>
-        <el-form>
-            <el-form-item>
-                <el-button @click="finalize" type="primary">Finalize</el-button>
-            </el-form-item>
-        </el-form>
-    </div>
-    -->
-
     <div v-if="session.status == 'analyzed'">
         <h3>Finalizing ...</h3>
     </div>
-
 
     <div v-if="session.status == 'finalized' || (session.finalize_begin_date && !session.finalize_finish_date)">
         <h3>Converting to BIDS ...</h3>
@@ -29,7 +17,6 @@
             Please download the BIDS formatted data to your local computer, or send the data to other cloud resources.
             </p>
             <p>
-                <!--<el-button @click="rerun" type="success" style="float: right" size="small">Rerun Finalize Step</el-button>-->
                 <el-button @click="download" type="primary">Download BIDS</el-button>
                 <el-button @click="sendBrainlife">Send to <b>brainlife.io</b></el-button>
                 <el-button @click="sendOpenneuro">Send to <b>OpenNeuro</b></el-button>
@@ -78,12 +65,6 @@
     </el-collapse>
     <br>
     <br>
-
-    <!--
-    <div class="page-action">
-        <el-button type="secondary" @click="back">Back</el-button>
-    </div>
-    -->
 </div>
 </template>
 
@@ -144,15 +125,21 @@ export default defineComponent({
             fetch(this.config.apihost+'/session/'+this.session._id+'/finalize', {                                              
                 method: "POST",                                                                                         
                 headers: {'Content-Type': 'application/json; charset=UTF-8'},                                           
-                body: JSON.stringify({                                                                                  
-                    datasetDescription: this.ezbids.datasetDescription,                                                        
-                    readme: this.ezbids.readme,                                                                                
-                    participantsColumn: this.ezbids.participantsColumn,                                                        
-                    subjects: this.ezbids.subjects, //for phenotype                                                            
-                    objects: this.ezbids.objects,                                                                                                                                    
-                    entityMappings,  
-                    events: this.events,                                                                                
-                }),                                                                                                     
+                body: JSON.stringify({
+                    //basically we just need everything except _organized
+                    datasetDescription: this.ezbids.datasetDescription,
+                    readme: this.ezbids.readme,
+                    participantsColumn: this.ezbids.participantsColumn,
+                    subjects: this.ezbids.subjects,
+                    series: this.ezbids.series,
+                    objects: this.ezbids.objects,
+                    defacingMethod: this.ezbids.defacingMethod,
+
+                    events: this.events,
+
+                    //information to help with the finalize step 
+                    entityMappings,
+                }),
             }).then(res=>res.text()).then(status=>{                                                                     
                    if(cb) cb((status=="ok")?null:status);                                                                                                       
             });  
@@ -190,27 +177,6 @@ export default defineComponent({
         sendOpenneuro() {
             ElNotification({ title: 'Failed', message: 'This functionality is yet to be implemented'});
         },
-
-        /*
-        logChange() {
-            if(this.activeLogs.includes("out")) {
-                if(!this.out) fetch(this.$root.apihost+'/download/'+this.$root.session._id+'/bids.log').then(res=>res.text()).then(data=>{
-                        this.stdout = data;
-                });
-            } else this.out = "";
-
-            if(this.activeLogs.includes("err")) {
-                if(!this.err) fetch(this.$root.apihost+'/download/'+this.$root.session._id+'/bids.err').then(res=>res.text()).then(data=>{
-                        this.stderr = data;
-                });
-            } else this.err = "";
-        },
-        */
-        /*
-        back() {
-            this.$root.changePage("deface");
-        },
-        */
     },
 });
 </script>

@@ -12,7 +12,7 @@
             </span>
             <div v-for="(o_ses, ses) in o_sub.sess" :key="ses" :class="{'left-border': ses != ''}">
                 <span v-if="ses" class="hierarchy">
-	   	            <i class="el-icon-time" style="margin-right: 2px;"/>
+                    <i class="el-icon-time" style="margin-right: 2px;"/>
                     <small>ses-</small><b>{{ses}}</b>
                     &nbsp;
                     <small style="opacity: 0.5;">{{o_ses.AcquisitionDate}}</small>
@@ -30,7 +30,7 @@
                         <el-tag type="info" size="mini" v-if="o.series_idx !== undefined" :title="'Series#'+o.series_idx+' '+o._SeriesDescription">#{{o.series_idx}}</el-tag>&nbsp;
                         <datatype :type="o._type" :series_idx="o.series_idx" :entities="o.entities"/> 
                         <small v-if="o._type == 'exclude'">&nbsp;({{o._SeriesDescription}})</small>
-                        
+
                         <span v-if="!isExcluded(o)">
                             <!--show validation error as "error"-->
                             <el-badge v-if="o.validationErrors.length > 0" type="danger" 
