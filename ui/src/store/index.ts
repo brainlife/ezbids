@@ -115,7 +115,7 @@ export interface IObject {
 
     SeriesNumber: string;
 
-    pngPath: string;
+    pngPaths: string;
     analysisResults: {
         errors: string[];
         section_ID: number;
@@ -356,8 +356,6 @@ const store = createStore({
                     Authors: [],
                     Acknowledgements: "",
                     HowToAcknowledge: "",
-                    Acknowledgements: "", 
-                    HowToAcknowledge: "", 
                     Funding: [],
                     EthicsApprovals: [],
                     ReferencesAndLinks: [],
@@ -403,7 +401,7 @@ const store = createStore({
                 o.validationErrors = [];
                 o.items.forEach(item=>{
                     if(item.sidecar) {
-                        //anonymize..                                                                                                                                                                     
+                        //anonymize..
                         let sidecar = Object.assign({}, item.sidecar);
 
                         delete sidecar.SeriesInstanceUID;
@@ -452,21 +450,21 @@ const store = createStore({
                 const ajsonpath = a.pngPaths[0];
                 const bjsonpath = b.pngPaths[0];
 
-                return (asub - bsub || ases - bses || aseriesnum - bseriesnum  || ajsonpath - bjsonpath)
+                return (asub - bsub || ases - bses || aseriesnum - bseriesnum || ajsonpath.localeCompare(bjsonpath))
             });
-                    
+
             //re-index and organize
             state.ezbids._organized = {};
             state.ezbids.objects.forEach((o, idx)=>{
-                o.idx = idx; //reindex 
-                                                                                                                            
-                let sub = /*"sub-"+*/o._entities.subject;                                                                         
-                let ses = o._entities.session;//?("ses-"+o._entities.session):"";                                                                      
-                if(!state.ezbids._organized[sub]) state.ezbids._organized[sub] = {                                                                   
-                    sess: {},                                                                                
-                    objects: []                                                                                 
-                };                                                                                                 
-                                                                                                                            
+                o.idx = idx; //reindex
+
+                let sub = /*"sub-"+*/o._entities.subject;
+                let ses = o._entities.session;//?("ses-"+o._entities.session):"";
+                if(!state.ezbids._organized[sub]) state.ezbids._organized[sub] = {
+                    sess: {},
+                    objects: []
+                };
+
                 if(!state.ezbids._organized[sub].sess[ses]) state.ezbids._organized[sub].sess[ses] = {
                     AcquisitionDate: o.AcquisitionDate,
                     objects: []
