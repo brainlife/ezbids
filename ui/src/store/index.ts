@@ -437,20 +437,20 @@ const store = createStore({
         organizeObjects(state) {
             //mapObjects() must be called before calling this action (for _entities)
 
-            //sort object by subject/session
+            //sort object by subject / session / series # / json path
             state.ezbids.objects.sort((a,b)=>{
                 // const adate = parseInt(a.AcquisitionDate.replace(/\D/g,''));
                 // const bdate = parseInt(b.AcquisitionDate.replace(/\D/g,''));
-                const asub = a.subject_idx;
-                const bsub = b.subject_idx;
-                const ases = a.session_idx;
-                const bses = b.session_idx;
+                const asub_idx = a.subject_idx;
+                const bsub_idx = b.subject_idx;
+                const ases_idx = a.session_idx;
+                const bses_idx = b.session_idx;
                 const aseriesnum = parseInt(a.SeriesNumber);
                 const bseriesnum = parseInt(b.SeriesNumber);
                 const ajsonpath = a.pngPaths[0];
                 const bjsonpath = b.pngPaths[0];
 
-                return (asub - bsub || ases - bses || aseriesnum - bseriesnum || ajsonpath.localeCompare(bjsonpath))
+                return (asub_idx - bsub_idx || ases_idx - bses_idx || aseriesnum - bseriesnum || ajsonpath.localeCompare(bjsonpath))
             });
 
             //re-index and organize

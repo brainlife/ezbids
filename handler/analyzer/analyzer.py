@@ -554,9 +554,9 @@ def generate_dataset_list(uploaded_files_list):
             "EchoTime": echo_time,
             "datatype": "",
             "suffix": "",
-            "series_idx": 0,
             "subject_idx": 0,
             "session_idx": 0,
+            "series_idx": 0,
             "direction": ped,
             "TaskName": "",
             "exclude": False,
@@ -1372,9 +1372,9 @@ def modify_objects_info(dataset_list):
 
 
             # Objects-level info for ezBIDS.json
-            objects_info = {"series_idx": protocol["series_idx"],
-                            "subject_idx": protocol["subject_idx"],
+            objects_info = {"subject_idx": protocol["subject_idx"],
                             "session_idx": protocol["session_idx"],
+                            "series_idx": protocol["series_idx"],
                             "AcquisitionDate": protocol["AcquisitionDate"],
                             "AcquisitionTime": protocol["AcquisitionTime"],
                             "SeriesNumber": protocol["SeriesNumber"],
