@@ -3,8 +3,8 @@
     <div class="bids-structure">
         <div v-for="(o_sub, sub) in ezbids._organized" :key="sub" style="font-size: 90%; margin-bottom: 10px">
             <span v-if="sub != ''" class="hierarchy">
-                <i class="el-icon-user-solid" style="margin-right: 2px;"/> 
-                <small>sub-</small><b>{{sub}}</b> 
+                <i class="el-icon-user-solid" style="margin-right: 2px;"/>
+                <small>sub-</small><b>{{sub}}</b>
                 &nbsp;
                 <el-checkbox :value="o_sub.exclude" @change="excludeSubject(sub.toString(), $event)">
                     <small>Exclude this subject</small>
@@ -28,12 +28,12 @@
                     </div>
                     <div v-for="o in section" :key="o.idx" class="clickable hierarchy-item" :class="{selected: so === o, exclude: isExcluded(o)}" @click="select(o, o_ses)">
                         <el-tag type="info" size="mini" v-if="o.series_idx !== undefined" :title="'Series#'+o.series_idx+' '+o._SeriesDescription">#{{o.series_idx}}</el-tag>&nbsp;
-                        <datatype :type="o._type" :series_idx="o.series_idx" :entities="o.entities"/> 
+                        <datatype :type="o._type" :series_idx="o.series_idx" :entities="o.entities"/>
                         <small v-if="o._type == 'exclude'">&nbsp;({{o._SeriesDescription}})</small>
 
                         <span v-if="!isExcluded(o)">
                             <!--show validation error as "error"-->
-                            <el-badge v-if="o.validationErrors.length > 0" type="danger" 
+                            <el-badge v-if="o.validationErrors.length > 0" type="danger"
                                 :value="o.validationErrors.length" style="margin-left: 5px;"/>
 
                             <!-- show "QC errors" as warnings-->
@@ -59,7 +59,7 @@
     </div>
     <div class="object" ref="object-detail">
         <div v-if="so && sess">
-   
+
             <el-form label-width="200px">
                 <el-form-item>
                     <el-checkbox v-model="so.exclude" @change="validate(so)">Exclude this object</el-checkbox>
@@ -77,7 +77,7 @@
                  </div>
                 <div style="margin-bottom: 5px;">
                     <el-alert show-icon :closable="false" type="warning" v-for="(error, idx) in so.analysisResults.errors" :key="idx" :title="error"/>
-                </div> 
+                </div>
 
                 <el-form-item label="Datatype">
                     <el-select v-model="so.type" clearable :placeholder="so._type" size="small" style="width: 100%" @change="update(so)">
@@ -91,14 +91,14 @@
                 </el-form-item>
 
                 <div style="width: 350px;">
-                    
-                    <el-form-item v-for="(v, entity) in getBIDSEntities(so._type)" :key="entity" 
+
+                    <el-form-item v-for="(v, entity) in getBIDSEntities(so._type)" :key="entity"
                         :label="bidsSchema.entities[entity].name+(v=='required'?'- *':'-')">
                         <el-popover :width="300" trigger="focus" placement="left-start"
-                            :title="bidsSchema.entities[entity].name" 
+                            :title="bidsSchema.entities[entity].name"
                             :content="bidsSchema.entities[entity].description">
                             <template #reference>
-                                <el-input v-model="so.entities[entity]" size="small" @blur="update(so)" 
+                                <el-input v-model="so.entities[entity]" size="small" @blur="update(so)"
                                     :placeholder="getDefault(so, entity.toString())" style="width: 200px;"/>
                             </template>
                         </el-popover>
@@ -158,12 +158,12 @@
                     </el-form-item>
 
                     <!--will be obsoleted by niivue-->
-                    <div v-if="so.pngPath">
-                        <a :href="getURL(so.pngPath)">
-                            <img style="width: 100%" :src="getURL(so.pngPath)"/>
+                    <div v-if="so.pngPaths[0]">
+                        <a :href="getURL(so.pngPaths[0])">
+                            <img style="width: 100%" :src="getURL(so.pngPaths[0])"/>
                         </a>
                     </div>
-                    
+
                 </div>
             </el-form>
 
@@ -179,8 +179,8 @@
 <script lang="ts">
 
 import { mapState, mapGetters, } from 'vuex'
-import { defineComponent } from 'vue'                                                                                                                                                  
-import datatype from './components/datatype.vue' 
+import { defineComponent } from 'vue'
+import datatype from './components/datatype.vue'
 
 import { IObject, Subject, Session, OrganizedSession } from './store'
 
@@ -210,7 +210,7 @@ export default defineComponent({
         console.log("object mount completed");
         this.validateAll();
     },
-    
+
     computed: {
         ...mapState(['ezbids', 'config', 'bidsSchema', 'events']),
         ...mapGetters(['getBIDSEntities', 'getURL', 'findSubject', 'findSession']),
@@ -224,7 +224,7 @@ export default defineComponent({
             return count;
         },
     },
-    
+
     methods: {
 
         prettyBytes,
@@ -233,7 +233,7 @@ export default defineComponent({
             return this.ezbids.subjects.find((s:Subject)=>s.subject == sub);
         },
 
-        //subject needs to be an object 
+        //subject needs to be an object
         findSessionFromString(sub: string, ses: string) {
             const subject = this.findSubjectFromString(sub);
             return subject.sessions.find((s:Session)=>s.session == ses);
@@ -250,7 +250,7 @@ export default defineComponent({
         isExcluded(o: IObject) {
             if(o.exclude) return true;
             if(o._type == "exclude") return true;
-            return o._exclude; 
+            return o._exclude;
         },
 
         excludeSession(sub: string, ses: string, b: boolean) {
@@ -344,7 +344,7 @@ export default defineComponent({
 
             o.validationErrors = [];
             if(this.isExcluded(o)) return;
-            
+
             o.validationErrors = validateEntities(o.entities);
 
             if(o._type.startsWith("func/")) {
@@ -453,8 +453,8 @@ export default defineComponent({
     background-color: #d9ecff;
 }
 .left-border {
-    margin-left: 8.5px; 
-    padding-left: 4px; 
+    margin-left: 8.5px;
+    padding-left: 4px;
     border-left: 2px solid #3331;
     padding-top: 4px;
 }
@@ -465,7 +465,7 @@ export default defineComponent({
 
 .border-top {
     border-top: 1px solid #f6f6f6;
-    padding-top: 2px; 
+    padding-top: 2px;
     margin-top: 2px;
 }
 pre.headers {
@@ -486,13 +486,13 @@ pre.headers {
 }
 
 .section-divider {
-    float: right; 
-    top: -7px; 
-    position: relative; 
-    background-color: white; 
-    font-size: 70%; 
-    color: #999; 
-    padding: 0 10px; 
+    float: right;
+    top: -7px;
+    position: relative;
+    background-color: white;
+    font-size: 70%;
+    color: #999;
+    padding: 0 10px;
     margin-right: 10px;
 }
 </style>

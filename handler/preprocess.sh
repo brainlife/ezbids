@@ -16,9 +16,10 @@ echo "replace file path that contains space"
 find $root -depth -name "* *" -execdir rename 's/ /_/g' "{}" \;
 
 # If there are .nii files, compress them to .nii.gz
+echo "Making sure all NIfTI files are in .nii.gz format"
 touch $root/nii_files
 find $root -name "*.nii" > $root/nii_files
-[ -s $root/nii_files ] && gzip $(cat $root/nii_files) 
+[ -s $root/nii_files ] && gzip $(cat $root/nii_files)
 
 echo "processing $root"
 
@@ -39,7 +40,7 @@ function d2n {
 
     echo "----------------------- $path ------------------------"
     timeout 3600 dcm2niix --progress y -v 1 -ba n -z o -f 'time-%t-sn-%s' $path
-    ret=$? 
+    ret=$?
     echo "dcm2niix returned $ret"
 
     if [ $ret -eq 2 ]; then

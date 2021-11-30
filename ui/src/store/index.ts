@@ -469,6 +469,7 @@ const store = createStore({
                     AcquisitionDate: o.AcquisitionDate,
                     objects: []
                 };
+                console.log(sub, ses)
                 state.ezbids._organized[sub].sess[ses].objects.push(o);
             });
         },
