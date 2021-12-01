@@ -269,8 +269,8 @@ export function fmapQA($root) {
                         obj.exclude = true
                         obj.analysisResults.errors = ['Multiple spin echo field maps (meant for dwi/dwi) detected in section; only selecting last one for BIDS conversion. The other fmap acquisition(s) in this section will not be included in the BIDS output']
                     });
-                } 
-            });           
+                }
+            });
         });
     });
 }
@@ -281,7 +281,7 @@ export function setRun($root) {
 
     //for (const subject in $root._organized) {
     $root._organized.forEach(subGroup=>{
-        
+
         // Loop through sessions
         //const sessions = subGroup.sess
         //for (const session in sessions) {
@@ -368,7 +368,7 @@ function findMostCommonValue(arr){
     ).pop();
 }
 
-function deepEqual(object1, object2) {
+export function deepEqual(object1, object2) {
     /*
     Function comes from https://dmitripavlutin.com/how-to-compare-objects-in-javascript/#4-deep-equality
 
@@ -390,7 +390,7 @@ function deepEqual(object1, object2) {
     return true;
 }
 
-function isObject(object) {
+export function isObject(object) {
     /*
     Function comes from https://dmitripavlutin.com/how-to-compare-objects-in-javascript/#4-deep-equality
 
