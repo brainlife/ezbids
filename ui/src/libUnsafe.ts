@@ -423,9 +423,8 @@ export function validateSeries($root) {
     let duplicateSeriesInfoList = [] //contains series info if it appears more than once in seriesItemsList
 
     $root.series.forEach(s=>{
-        console.log(s)
-        // let info = {"type": s.type, "entities": s.entities}
-        // seriesItemsList.push(info)
+        let info = {"type": s.type, "entities": s.entities}
+        seriesItemsList.push(info)
     });
 
     let seriesItemsList_indices = Array.from(Array(seriesItemsList.length).keys())

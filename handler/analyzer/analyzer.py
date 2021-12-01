@@ -39,6 +39,7 @@ datatypes_yaml = yaml.load(open("../bids-specification/src/schema/objects/dataty
 entities_yaml = yaml.load(open("../bids-specification/src/schema/objects/entities.yaml"))
 suffixes_yaml = yaml.load(open("../bids-specification/src/schema/objects/suffixes.yaml"))
 datatype_suffix_rules = "../bids-specification/src/schema/rules/datatypes"
+entity_ordering_file = "../bids-specification/src/schema/rules/entities.yaml"
 
 cog_atlas_url = "http://cognitiveatlas.org/api/v-alpha/task"
 
@@ -1139,7 +1140,8 @@ def datatype_suffix_identification(dataset_list_unique_series):
 def entity_labels_identification(dataset_list_unique_series):
     """
     Function to determine acquisition entity label information (e.g. dir-, echo-)
-    based on acquisition metadata.
+    based on acquisition metadata. Entities are then sorted in accordance with
+    BIDS specification ordering.
 
     Parameters
     ----------
@@ -1151,6 +1153,7 @@ def entity_labels_identification(dataset_list_unique_series):
     dataset_list_unique_series : list
         updated input list
     """
+    entity_ordering = yaml.load(open(os.path.join(analyzer_dir, entity_ordering_file)))
 
     tb1afi_tr = 1
     for index, unique_dic in enumerate(dataset_list_unique_series):
@@ -1259,6 +1262,9 @@ def entity_labels_identification(dataset_list_unique_series):
             else:
                 pass
 
+        # Order the entities labels according to the BIDS specification
+        series_entities = dict(sorted(series_entities.items(), key=lambda pair: entity_ordering.index(pair[0])))
+
         unique_dic["entities"] = series_entities
 
     return dataset_list_unique_series
@@ -1301,6 +1307,8 @@ def modify_objects_info(dataset_list):
         List of dictionaries of all dataset acquisitions
     """
     objects_list = []
+
+    entity_ordering = yaml.load(open(os.path.join(analyzer_dir, entity_ordering_file)))
 
     # Find unique subject/session idx pairs in dataset and sort them
     subj_ses_pairs = [[x["subject_idx"], x["session_idx"]] for x in dataset_list]
@@ -1351,6 +1359,8 @@ def modify_objects_info(dataset_list):
 
 
             objects_entities = dict(zip([x for x in entities_yaml], [""]*len([x for x in entities_yaml])))
+            # Re-order entities to what BIDS expects
+            objects_entities = dict(sorted(objects_entities.items(), key=lambda pair: entity_ordering.index(pair[0])))
 
             # Make items list (part of objects list)
             items = []
