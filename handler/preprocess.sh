@@ -40,25 +40,25 @@ function d2n {
 
     echo "----------------------- $path ------------------------"
     timeout 3600 dcm2niix --progress y -v 1 -ba n -z o -f 'time-%t-sn-%s' $path
-    ret=$?
-    echo "dcm2niix returned $ret"
-
-    if [ $ret -eq 2 ]; then
-        #probably empty directory?
-        echo "skipping directory with no DICOM image"
-        return
-    fi
-    if [ $ret -ne 0 ]; then
-        echo "dcm2niix returned $ret"
-        return $ret
-    fi
 
     #all good
     echo $path >> dcm2niix.done
 }
 
 export -f d2n
-cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n {}
+cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n {} 2>> $root/dcm2niix_output
+grep -B 1 --group-separator=$'\n\n\n\n' 'Error' $root/dcm2niix_output > $root/dcm2niix_error_log.txt # Get the dcm2niix error, and line above the error. Line above should contain the path of the DICOM folder causing the issue
+rm -rf $root/dcm2niix_output # Don't need this anymore
+
+
+# Stop ezBIDS if dcm2niix produced any errors
+if grep -q Error "$root/dcm2niix_error_log.txt"; then
+    echo "FATAL: dcm2niix error(s) detected. This suggests something wrong with you data. ezBIDS will abort until this can be resolved."
+    echo "Please post a new issue to the dcm2niix Issues page (https://github.com/rordenlab/dcm2niix/issues) for assistance in this matter, with the contents of the error log (dcm2niix_error_log.txt)."
+    echo "Once resolved, please re-upload your data."
+    exit 1
+fi
+
 
 #find products
 (cd $root && find . -type f \( -name "*.json" \) > list)
