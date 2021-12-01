@@ -48,15 +48,12 @@ function d2n {
 export -f d2n
 cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n {} 2>> $root/dcm2niix_output
 grep -B 1 --group-separator=$'\n\n\n\n' 'Error' $root/dcm2niix_output > $root/dcm2niix_error_log.txt # Get the dcm2niix error, and line above the error. Line above should contain the path of the DICOM folder causing the issue
-rm -rf $root/dcm2niix_output # Don't need this anymore
 
 
 # Stop ezBIDS if dcm2niix produced any errors
 if grep -q Error "$root/dcm2niix_error_log.txt"; then
-    echo "FATAL: dcm2niix error(s) detected. This suggests something wrong with you data. ezBIDS will abort until this can be resolved."
+    echo "WARNING: dcm2niix error(s) detected. This suggests some of your data contains issues. ezBIDS will process the rest of your data."
     echo "Please post a new issue to the dcm2niix Issues page (https://github.com/rordenlab/dcm2niix/issues) for assistance in this matter, with the contents of the error log (dcm2niix_error_log.txt)."
-    echo "Once resolved, please re-upload your data."
-    exit 1
 fi
 
 
