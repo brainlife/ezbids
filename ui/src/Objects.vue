@@ -143,7 +143,6 @@
                             <el-table-column v-if="events.columns.HED" prop="HED" label="HED" />
                         </el-table>
                     </el-form-item>
-
                     <br>
                 </div>
 
@@ -153,7 +152,7 @@
                         &nbsp;&nbsp;
                         File Size: <b>{{prettyBytes(so.analysisResults.filesize)}}</b>
                     </p>
-                    <div v-for="(item, itemIdx) in ezbids.objects[object.idx].items" :key="itemIdx">
+                    <div v-for="(item, itemIdx) in ezbids.objects[so.idx].items" :key="itemIdx">
                         <div v-if="item.pngPaths">
                             <p v-for="(path, idx) in item.pngPaths" :key="idx">
                                 <pre style="margin-bottom: 0">{{path}}</pre>
@@ -385,9 +384,8 @@ export default defineComponent({
                 }
                 if(same) {
                     const sameseries = this.ezbids.series[same.series_idx];
-                    o.validationErrors.push("This object looks exactly like another object with Series #"+sameseries.series_idx+". We can not convert this object to BIDS as they will overwrite each other. Please set entities such as 'run' to make them all unique.");
-                   console.log("---same detected");
-                   break;
+                    o.validationErrors.push("This object looks exactly like another object with Series #"+sameseries.series_idx+". We can not convert this object to BIDS as they will overwrite each other. Please set entities such as 'run' to make them all unique (across sections).");
+                    break;
                 }
             }
         },

@@ -196,15 +196,15 @@ export default defineComponent({
 
         submit() {
             const list = this.getAnatObjects.map((o:IObject)=>{
-                return {idx: o.idx, path: o.paths.find(p=>p.endsWith(".nii.gz"))};
+                return {idx: o.idx, path: o.items.find(i=>i.path?.endsWith(".nii.gz"))?.path};
             });
+            console.log("list", list);
 
             //reset current status for all stats (in case it's ran previously)
             this.getAnatObjects.forEach((o:IObject)=>{
                 delete o.defaced;
             });
 
-            console.log("sending deface reque3st", list);
             fetch(this.config.apihost+'/session/'+this.session._id+'/deface', {
                 method: "POST",
                 headers: {'Content-Type': 'application/json; charset=UTF-8'},
