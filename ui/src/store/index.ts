@@ -76,7 +76,7 @@ export interface IObjectItem {
 
     path?: string;
     name?: string;
-    pngPaths?: any; //array of png file paths
+    pngPaths?: string[]; //array of png file paths
     headers?: any; //for nifti
 
     events?: any; //for event (contains object parsed by createEventObjects)
@@ -117,7 +117,6 @@ export interface IObject {
 
     SeriesNumber: string;
 
-    pngPaths: string[];
     analysisResults: {
         errors: string[];
         section_ID: number;
@@ -235,7 +234,7 @@ const state = {
                 //"Army Human Research Protections Office (Protocol ARL-20098-10051, ARL 12-040, and ARL 12-041)"
             ],
             ReferencesAndLinks: [
-                //"https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
+                //"https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",items
                 //"http://doi.org/1920.8/jndata.2015.7"
             ],
             DatasetDOI: "", //"10.0.2.3/dfjj.10"
@@ -277,7 +276,7 @@ const state = {
             trialType: null,
 
             responseTimeLogic: "",
-            responseTime: null,
+            responseTime: null,items
             responseTime2: null,
             responseTimeUnit: "sec",
 
