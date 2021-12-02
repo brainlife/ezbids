@@ -21,6 +21,7 @@ export interface PatientInfo {
     PatientName: string;
     PatientBirthDate: string;
 }
+
 export interface Subject {
     exclude: boolean;
 
@@ -29,14 +30,19 @@ export interface Subject {
     phenotype: any;
 
     subject: string; //subject name mapped to this subject
+
     validationErrors: string[];
+    validationWarnings: string[];
 
     sessions: Session[];
 }
 
 export interface Series {
     entities: any;
+
     validationErrors: string[];
+    validationWarnings: string[];
+
     type: string;
     forType: string;
 
@@ -92,6 +98,8 @@ export interface IObject {
     _entities: any; //"prototypical"(flattened) entities from parent objects (subject / series).. see mapObject()
 
     validationErrors: string[]; //right?
+    validationWarnings: string[]; //right?
+
     items: [IObjectItem];
 
     series_idx: number;
@@ -383,6 +391,7 @@ const store = createStore({
             Object.assign(state.ezbids, ezbids);
             state.ezbids.series.forEach((s:Series)=>{
                 s.validationErrors = [];
+                s.validationWarnings = [];
                 //TODO what is this for?
                 delete s.entities.subject;
                 delete s.entities.session;
@@ -390,12 +399,14 @@ const store = createStore({
 
             state.ezbids.subjects.forEach(s=>{
                 s.validationErrors = [];
+                s.validationWarnings = [];
                 s.exclude = !!(s.exclude);
             });
 
             state.ezbids.objects.forEach((o:IObject)=>{
                 o.exclude = !!(o.exclude);
                 o.validationErrors = [];
+                o.validationWarnings = [];
                 o.items.forEach(item=>{
                     if(item.sidecar) {
                         //anonymize..

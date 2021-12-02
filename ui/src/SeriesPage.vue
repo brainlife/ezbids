@@ -16,6 +16,9 @@
             <el-badge v-if="s.validationErrors.length > 0" type="danger" :value="s.validationErrors.length" style="margin-left: 5px;">
                 <small/>
             </el-badge>
+            <el-badge v-if="s.validationWarnings.length > 0" type="warning" :value="s.validationWarnings.length" style="margin-left: 5px;">
+                <small/>
+            </el-badge>
         </div>
         <pre v-if="config.debug">{{ezbids.series}}</pre>
     </div>
@@ -31,9 +34,10 @@
         <div v-if="ss">
             <h5>BIDS Datatype / Entities</h5>
             <el-form label-width="150px">
-                <el-alert v-if="ss.message" :title="ss.message" type="warning"/>
+                <el-alert v-if="ss.message" :title="ss.message" type="warning" style="margin-bottom: 4px;"/>
                 <div style="margin-bottom: 10px;">
                     <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in ss.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
+                    <el-alert show-icon :closable="false" type="warning" v-for="(warn, idx) in ss.validationWarnings" :key="idx" :title="warn" style="margin-bottom: 4px;"/>
                 </div>
 
                 <el-form-item label="Datatype">
@@ -136,7 +140,7 @@ import { prettyBytes } from './filters'
 
 import { Series, IObject } from './store'
 
-import { validateEntities } from './libUnsafe'
+import { validateEntities, validateSeries } from './libUnsafe'
 
 export default defineComponent({
 
@@ -193,8 +197,14 @@ export default defineComponent({
             if(!s) return;
 
             s.validationErrors = [];
+            s.validationWarnings = [];
             if(s.type != "exclude") {
                 s.validationErrors = validateEntities(s.entities);
+            }
+
+            //run series specific validation
+            if(s.type != "exclude") {
+                validateSeries(s, this.ezbids);
             }
 
             let entities = this.getBIDSEntities(s.type);

@@ -491,7 +491,7 @@ export default defineComponent({
                 <ul style="list-style: none; padding-left: 0;">
                     <li><a :href="config.apihost+'/download/'+session._id+'/preprocess.log'">preprocess.log</a></li>
                     <li><a :href="config.apihost+'/download/'+session._id+'/preprocess.err'">preprocess.err</a></li>
-                    <li><a :href="config.apihost+'/download/'+session._id+'/dcm2niix_error_log.txt'">dcm2niix_error_log.txt</a></li>
+                    <li><a :href="config.apihost+'/download/'+session._id+'/dcm2niix_error'">dcm2niix_error</a></li>
                     <li><a :href="config.apihost+'/download/'+session._id+'/list'">list</a></li>
                     <li><a :href="config.apihost+'/download/'+session._id+'/ezBIDS.json'">ezBIDS.json</a></li>
                 </ul>

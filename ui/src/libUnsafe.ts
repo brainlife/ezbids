@@ -411,13 +411,19 @@ export function validateEntities(entities/*: Series*/) {
     return errors;
 }
 
-export function validateSeries($root) {
+
+//TODO - update this to return {errors: [], warnings: []} 
+export function validateSeries(s, ezbids) {
     /*
     Series items with unique series_id values may still contain the same DateType, suffix, and
     entities. This is a problem if uncorrected, because there will then be conflict(s) during
     Objects mapping. A validation error will therefore be generated if the conditions above are
     met.
     */
+
+    s.validationWarnings.push("exmple error...");
+
+    /*
 
     let seriesItemsList = [] //contains series info (type, entities) from all series
     let duplicateSeriesInfoList = [] //contains series info if it appears more than once in seriesItemsList
@@ -447,6 +453,7 @@ export function validateSeries($root) {
     }
 
     return duplicateSeriesInfoList
+    */
 }
 
 
