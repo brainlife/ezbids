@@ -91,6 +91,8 @@ export interface IObjectItem {
 export interface IObject {
     idx: number; //set by organizeObjects after re-sorting
 
+    ModifiedSeriesNumber: string;
+
     exclude: boolean;
     _exclude: boolean; //set if it's excluded on parent level
 
@@ -232,7 +234,7 @@ const state = {
             DatasetType: "",
             License: "",
             Authors: [],
-            Acknowledgements: "", //"Special thanks to Korbinian Brodmann for help in formatting this dataset in BIDS. We tha  nk Alan Lloyd Hodgkin and Andrew Huxley for helpful comments and discussions about the experiment and manuscript; Hermann Ludwig He  lmholtz for administrative support; and Claudius Galenus for providing data for the medial-to-lateral index analysis.",
+            Acknowledgements: "", //"Special thanks to Korbinian Brodmann for help in formatting this dataset in BIDS. We thank Alan Lloyd Hodgkin and Andrew Huxley for helpful comments and discussions about the experiment and manuscript; Hermann Ludwig He  lmholtz for administrative support; and Claudius Galenus for providing data for the medial-to-lateral index analysis.",
             HowToAcknowledge: "", //"Please cite this paper: https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
             Funding: [
                 //"National Institute of Neuroscience Grant F378236MFH1",
@@ -453,12 +455,13 @@ const store = createStore({
                 const bsub_idx = b.subject_idx;
                 const ases_idx = a.session_idx;
                 const bses_idx = b.session_idx;
-                const aseriesnum = parseInt(a.SeriesNumber);
-                const bseriesnum = parseInt(b.SeriesNumber);
+                const amodseriesnum = a.ModifiedSeriesNumber);
+                const bmodseriesnum = b.ModifiedSeriesNumber);
                 const apath = a.items[0].path;
                 const bpath = b.items[0].path;
+                console.log(apath)
 
-                return (asub_idx - bsub_idx || ases_idx - bses_idx || aseriesnum - bseriesnum || apath.localeCompare(bpath))
+                return (asub_idx - bsub_idx || ases_idx - bses_idx || amodseriesnum.localeComapre(bmodseriesnum) || apath.localeCompare(bpath))
             });
 
             //re-index and organize

@@ -512,6 +512,12 @@ def generate_dataset_list(uploaded_files_list):
         else:
             series_number = 0
 
+        # Modified SeriesNumber, which zero pads integers < 10. Helpful later for sorting purposes
+        if series_number < 10:
+            mod_series_number = '0' + str(series_number)
+        else:
+            mod_series_number = str(series_number)
+
         # Find SeriesDescription
         if "SeriesDescription" in json_data:
             series_description = json_data["SeriesDescription"]
@@ -544,6 +550,7 @@ def generate_dataset_list(uploaded_files_list):
             "subject": subject,
             "session": session,
             "SeriesNumber": series_number,
+            "ModifiedSeriesNumber": mod_series_number,
             "AcquisitionDateTime": acquisition_date_time,
             "AcquisitionDate": acquisition_date,
             "AcquisitionTime": acquisition_time,
@@ -581,7 +588,7 @@ def generate_dataset_list(uploaded_files_list):
     dataset_list = sorted(dataset_list, key=itemgetter("AcquisitionDate",
                                                         "subject",
                                                         "session",
-                                                        "SeriesNumber",
+                                                        "ModifiedSeriesNumber",
                                                         "json_path"))
 
     return dataset_list
@@ -1389,6 +1396,7 @@ def modify_objects_info(dataset_list):
                             "AcquisitionDate": protocol["AcquisitionDate"],
                             "AcquisitionTime": protocol["AcquisitionTime"],
                             "SeriesNumber": protocol["SeriesNumber"],
+                            "ModifiedSeriesNumber": protocol["ModifiedSeriesNumber"],
                             "entities": objects_entities,
                             "items": items,
                             "analysisResults": {

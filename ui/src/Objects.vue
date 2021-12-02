@@ -153,11 +153,15 @@
                         &nbsp;&nbsp;
                         File Size: <b>{{prettyBytes(so.analysisResults.filesize)}}</b>
                     </p>
-                    <div v-for="(path, idx) in so.items.pop().pngPaths" :key="idx">
-                        <pre style="margin-bottom: 0">{{path}}</pre>
-                        <a :href="getURL(path)">
-                            <img style="width: 100%" :src="getURL(path)"/>
-                        </a>
+                    <div v-for="(item, itemIdx) in ezbids.objects[object.idx].items" :key="itemIdx">
+                        <div v-if="item.pngPaths">
+                            <p v-for="(path, idx) in item.pngPaths" :key="idx">
+                                <pre style="margin-bottom: 0">{{path}}</pre>
+                                <a :href="getURL(path)">
+                                    <img style="width: 100%" :src="getURL(path)"/>
+                                </a>
+                            </p>
+                        </div>
                     </div>
                 </div>
             </el-form>
