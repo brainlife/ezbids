@@ -559,5 +559,6 @@ pre.status {
     padding: 10px;
     margin-top: 0;
     margin-bottom: 5px;
+    border-radius: 5px;
 }
 </style>
