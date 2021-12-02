@@ -1114,12 +1114,14 @@ def datatype_suffix_identification(dataset_list_unique_series):
                             believed to be a func/bold because it contains >= 50 \
                             volumes and is 4D. Please modify if incorrect".split())
                     else:
+                        unique_dic["type"] = "exclude"
                         unique_dic["message"] = " ".join("SeriesDescription did not provide \
                             adequate information regarding the type of acquisition; however, it is \
                             believed to be a func/bold because it is 4D. However, \
                             it contains less than 50 volumes, potentially suggesting \
                             a failure/restart, or is some other type of data. This will be \
                             excluded from BIDS conversion. Please modify if incorrect".split())
+
 
                 # Assume not BIDS-compliant acquisition, unless user specifies otherwise
                 else:
