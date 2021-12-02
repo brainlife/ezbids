@@ -132,7 +132,7 @@ export interface IObject {
         filesize?: number;
     };
 
-    paths: [string];
+    //paths: [string]; //??
 
     IntendedFor?: number[]; //for fmap/ to store which object id the object is intended for
 
@@ -455,10 +455,10 @@ const store = createStore({
                 const bses_idx = b.session_idx;
                 const aseriesnum = parseInt(a.SeriesNumber);
                 const bseriesnum = parseInt(b.SeriesNumber);
-                const ajsonpath = a.pngPaths[0];
-                const bjsonpath = b.pngPaths[0];
+                const apath = a.items[0].path;
+                const bpath = b.items[0].path;
 
-                return (asub_idx - bsub_idx || ases_idx - bses_idx || aseriesnum - bseriesnum || ajsonpath.localeCompare(bjsonpath))
+                return (asub_idx - bsub_idx || ases_idx - bses_idx || aseriesnum - bseriesnum || apath.localeCompare(bpath))
             });
 
             //re-index and organize
