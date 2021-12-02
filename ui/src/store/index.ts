@@ -76,6 +76,7 @@ export interface IObjectItem {
 
     path?: string;
     name?: string;
+    pngPaths?: any; //array of png file paths
     headers?: any; //for nifti
 
     events?: any; //for event (contains object parsed by createEventObjects)
@@ -324,6 +325,7 @@ loadDatatype("func", funcDatatype, "Functional");
 import fmapDatatype from '../assets/schema/datatypes/fmap.json'
 import { DEFAULT_ECDH_CURVE } from 'tls';
 import { TRAP_FOCUS_HANDLER } from 'element-plus/lib/directives/trap-focus';
+import { ListenOptions } from 'net';
 loadDatatype("fmap", fmapDatatype, "Field Map");
 
 const store = createStore({
