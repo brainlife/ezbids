@@ -455,13 +455,12 @@ const store = createStore({
                 const bsub_idx = b.subject_idx;
                 const ases_idx = a.session_idx;
                 const bses_idx = b.session_idx;
-                const amodseriesnum = a.ModifiedSeriesNumber);
-                const bmodseriesnum = b.ModifiedSeriesNumber);
+                const amodseriesnum = a.ModifiedSeriesNumber;
+                const bmodseriesnum = b.ModifiedSeriesNumber;
                 const apath = a.items[0].path;
                 const bpath = b.items[0].path;
-                console.log(apath)
 
-                return (asub_idx - bsub_idx || ases_idx - bses_idx || amodseriesnum.localeComapre(bmodseriesnum) || apath.localeCompare(bpath))
+                return (asub_idx - bsub_idx || ases_idx - bses_idx || amodseriesnum.localeCompare(bmodseriesnum) || apath.localeCompare(bpath))
             });
 
             //re-index and organize
