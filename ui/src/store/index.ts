@@ -284,7 +284,7 @@ const state = {
             trialType: null,
 
             responseTimeLogic: "",
-            responseTime: null,items
+            responseTime: null,
             responseTime2: null,
             responseTimeUnit: "sec",
 
