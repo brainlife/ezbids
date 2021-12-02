@@ -578,7 +578,6 @@ def generate_dataset_list(uploaded_files_list):
             "nifti_path": [x for x in nifti_paths_for_json if ".nii.gz" in x][0],
             'nibabel_image': image,
             "json_path": json_file,
-            "paths": paths,
             "headers": "",
             "sidecar":json_data
         }
@@ -1412,8 +1411,8 @@ def modify_objects_info(dataset_list):
                                 "NumVolumes": protocol["NumVolumes"],
                                 "errors": protocol["error"],
                                 "filesize": protocol["filesize"],
-                                "section_idx": 1},
-                            "paths": protocol["paths"]}
+                                "section_idx": 1}
+                            }
             objects_data.append(objects_info)
 
         objects_list.append(objects_data)
