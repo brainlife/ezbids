@@ -913,7 +913,8 @@ def datatype_suffix_identification(dataset_list_unique_series):
                 if "EchoNumber" in unique_dic["sidecar"]:
                     if unique_dic["EchoNumber"] == 1 and "_e1_ph" not in unique_dic["json_path"]:
                         unique_dic["suffix"] = "magnitude1"
-                        unique_dic["message"] = " ".join("Acquisition is believed to be \
+                        unique_dic["message"] = " ".joincontains >= 50 \
+                            volumes and is 4D("Acquisition is believed to be \
                             fmap/magnitude1 because '{}' is in SeriesDescription, \
                             EchoNumber == 1 in metadata, and the phrase '_e1_ph' \
                             is not in the filename. Please modify if \
@@ -952,7 +953,8 @@ def datatype_suffix_identification(dataset_list_unique_series):
                             Please modify if acquisition is desired for BIDS \
                             conversion, otherwise the acqusition will not be \
                             converted".split())
-                        unique_dic["message"] = unique_dic["error"]
+                        unique_dic["message"] = unique_dcontains >= 50 \
+                            volumes and is 4Dic["error"]
                         unique_dic["type"] = "exclude"
 
                 # Spin echo field maps (for func)
@@ -1111,6 +1113,13 @@ def datatype_suffix_identification(dataset_list_unique_series):
                             adequate information regarding the type of acquisition; however, it is \
                             believed to be a func/bold because it contains >= 50 \
                             volumes and is 4D. Please modify if incorrect".split())
+                    else:
+                        unique_dic["message"] = " ".join("SeriesDescription did not provide \
+                            adequate information regarding the type of acquisition; however, it is \
+                            believed to be a func/bold because it is 4D. However, \
+                            it contains less than 50 volumes, potentially suggesting \
+                            a failure/restart, or is some other type of data. This will be \
+                            excluded from BIDS conversion. Please modify if incorrect".split())
 
                 # Assume not BIDS-compliant acquisition, unless user specifies otherwise
                 else:
