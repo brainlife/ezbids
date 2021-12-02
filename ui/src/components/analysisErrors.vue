@@ -2,7 +2,7 @@
 <div class="analysisError" v-if="errors">
     <h3>dcm2niix Errors</h3>
     <p>
-        We were not able to convert all DICOM files due to the following issues. Please submit an issue at <a href="https://github.com/rordenlab/dcm2niix/issues" target="rordenlagb/dcm2niix">https://github.com/rordenlab/dcm2niix/issues</a>
+        We were not able to convert all DICOM files due to the following issues. Please submit an issue at <a href="https://github.com/rordenlab/dcm2niix/issues" target="rordenlagb/dcm2niix">https://github.com/rordenlab/dcm2niix/issues</a>. You can send your input DICOM files to dcm2niix team via a shared Google Drive folder.
     </p>
     <pre class="errors">{{errors}}</pre>
     <p>
@@ -58,9 +58,13 @@ export default defineComponent({
     padding: 10px;
     border-radius: 5px;
     color: var(--el-color-error);
+    background-color: #fee;
 }
 pre {
     background-color: #333;
+    color: white;
+    margin-left: -10px;
+    margin-right: -10px;
     max-height: 300px;
     overflow: auto;
     padding: 10px;
