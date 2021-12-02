@@ -913,8 +913,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
                 if "EchoNumber" in unique_dic["sidecar"]:
                     if unique_dic["EchoNumber"] == 1 and "_e1_ph" not in unique_dic["json_path"]:
                         unique_dic["suffix"] = "magnitude1"
-                        unique_dic["message"] = " ".joincontains >= 50 \
-                            volumes and is 4D("Acquisition is believed to be \
+                        unique_dic["message"] = " ".join("Acquisition is believed to be \
                             fmap/magnitude1 because '{}' is in SeriesDescription, \
                             EchoNumber == 1 in metadata, and the phrase '_e1_ph' \
                             is not in the filename. Please modify if \
