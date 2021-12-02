@@ -124,7 +124,6 @@
                         <el-select v-model="item.path" placeholder="Source path" size="small" style="width: 100%">
                             <el-option v-for="(path, idx) in so.paths" :key="idx" :label="path" :value="path"/>
                         </el-select>
-                        <el-button type="info" v-if="item.path?.endsWith('.nii.gz')" @click="niivueItem = item">View in niivue</el-button>
                     </el-form-item>
                     <el-form-item v-if="item.sidecar" label="sidecar">
                         <el-input type="textarea" rows="10" v-model="item.sidecar_json" @blur="update(so)"/>
@@ -143,16 +142,22 @@
                             <el-table-column v-if="events.columns.HED" prop="HED" label="HED" />
                         </el-table>
                     </el-form-item>
-
                     <br>
+
+                    <!--
+                    <niivue v-if="item.path?.endsWith('.nii.gz')" :url="getURL(item.path)"/>
+                    -->
                 </div>
 
                 <div style="margin-top: 5px; padding: 5px; background-color: #f0f0f0;" v-if="so.analysisResults.filesize">
-                    <p style="font-size: 90%">
-                        Volumes: <b>{{so.analysisResults.NumVolumes}}</b>
-                        &nbsp;&nbsp;
-                        File Size: <b>{{prettyBytes(so.analysisResults.filesize)}}</b>
-                    </p>
+                    <el-form-item label="Volumes">
+                        {{so.analysisResults.NumVolumes}}
+                    </el-form-item>
+                    <el-form-item label="File Size">
+                        {{prettyBytes(so.analysisResults.filesize)}}
+                    </el-form-item>
+
+                    <!--will be obsoleted by niivue-->
                     <div v-for="(path, idx) in so.pngPaths" :key="idx">
                         <pre style="margin-bottom: 0">{{path}}</pre>
                         <a :href="getURL(path)">
@@ -168,8 +173,6 @@
         <br>
         <br>
     </div><!--object-->
-
-    <niivue :item="niivueItem" @close="niivueItem = undefined"/>
 </div>
 </template>
 
@@ -179,11 +182,13 @@ import { mapState, mapGetters, } from 'vuex'
 import { defineComponent } from 'vue'
 import datatype from './components/datatype.vue'
 
-import { IObject, Subject, Session, OrganizedSession, IObjectItem } from './store'
+import { IObject, Subject, Session, OrganizedSession } from './store'
 
 import { prettyBytes } from './filters'
 
 import { validateEntities, } from './libUnsafe'
+
+import niivue from './components/niivue.vue'
 
 interface Section {
     [key: string]: IObject[];
@@ -192,15 +197,12 @@ interface Section {
 export default defineComponent({
     components: {
         datatype,
-        niivue: ()=>import('./components/niivue.vue'),
     },
 
     data() {
         return {
             so: null as IObject|null, //selected object
             sess: null as OrganizedSession|null, //selected session for IntendedFor handling
-
-            niivueItem: undefined as IObjectItem|undefined,
         }
     },
 

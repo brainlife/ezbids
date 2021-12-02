@@ -70,17 +70,6 @@ export interface IBIDSEvent {
     HEAD?: string;
 }
 
-export interface IObjectItem {
-    sidecar: any;
-    sidecar_json: string;
-
-    path?: string;
-    name?: string;
-    headers?: any; //for nifti
-
-    events?: any; //for event (contains object parsed by createEventObjects)
-    eventsBIDS?: IBIDSEvent[];
-}
 export interface IObject {
     idx: number; //set by organizeObjects after re-sorting
 
@@ -91,7 +80,17 @@ export interface IObject {
     _entities: any; //"prototypical"(flattened) entities from parent objects (subject / series).. see mapObject()
 
     validationErrors: string[]; //right?
-    items: [IObjectItem];
+    items: [{
+        sidecar: any;
+        sidecar_json: string;
+
+        path?: string;
+        name?: string;
+        headers?: any; //for nifti
+
+        events?: any; //for event (contains object parsed by createEventObjects)
+        eventsBIDS?: IBIDSEvent[];
+    }];
 
     series_idx: number;
     subject_idx: number;
@@ -366,7 +365,7 @@ const store = createStore({
                 series: [],
                 objects: [],
 
-                _organized: [], //above things are organized into subs/ses/run/object hierarchy for quick access
+                _organized: {}, //above things are organized into subs/ses/run/object hierarchy for quick access
 
                 //for defacing page
                 defacingMethod: "",
@@ -456,7 +455,7 @@ const store = createStore({
                 o.idx = idx; //reindex
 
                 let sub = /*"sub-"+*/o._entities.subject;
-                let sess = o._entities.session;//?("ses-"+o._entities.session):"";
+                let ses = o._entities.session;//?("ses-"+o._entities.session):"";
 
                 let subGroup = state.ezbids._organized.find(s=>s.sub == sub);
                 if(!subGroup) {
@@ -467,10 +466,10 @@ const store = createStore({
                     state.ezbids._organized.push(subGroup);
                 }
 
-                let sesGroup = subGroup.sess.find(s=>s.sess == sess);
+                let sesGroup = subGroup.sess.find(s=>s.ses == ses);
                 if(!sesGroup) {
                     sesGroup = {
-                        sess,
+                        ses,
                         AcquisitionDate: o.AcquisitionDate,
                         objects: [],
                     }
@@ -600,9 +599,8 @@ const store = createStore({
             */
         },
 
-        getURL: (state)=>(path: string|undefined)=>{
-            if(!path) return undefined;
-            if(!state.session) return undefined;
+        getURL: (state)=>(path: string)=>{
+            if(!state.session) return null;
             return state.config.apihost+"/download/"+state.session._id+"/"+path;
         },
 

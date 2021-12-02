@@ -136,15 +136,16 @@ import { prettyBytes } from './filters'
 
 import { Series, IObject } from './store'
 
-import { validateEntities } from './libUnsafe'
+import { validateEntities, deepEqual, isObject, validateSeries } from './libUnsafe'
 
 export default defineComponent({
+
 
     components: {
         datatype,
         showfile,
-        niivue: ()=>import('./components/niivue.vue'),
     },
+
 
     data() {
         return {
