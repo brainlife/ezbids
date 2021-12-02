@@ -1244,7 +1244,7 @@ def entity_labels_identification(dataset_list_unique_series):
         elif "fmap" not in unique_dic["type"] and "PHASE" in unique_dic['ImageType']:
             series_entities["part"] = "phase"
         else:
-            series_entities["part"] = "mag"
+            pass
 
         # run (strip leading zeros, if any, as this isn't proper by BIDS standards)
         if series_entities["run"]:
