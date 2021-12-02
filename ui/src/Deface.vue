@@ -80,9 +80,13 @@
             </td>
             <td width="40%">
                 <el-radio v-model="anat.defaceSelection" label="original">Use Original</el-radio>
-                <a :href="getURL(anat.items.pop().pngPaths[0])">
-                    <img style="width: 100%" :src="getURL(anat.items.pop().pngPaths[0])"/>
-                </a>
+                <div v-for="(item, itemIdx) in anat.items" :key="itemIdx">
+                    <div v-if="item.pngPaths">
+                        <a :href="getURL(item.pngPaths[0])">
+                            <img style="width: 100%" :src="getURL(item.pngPaths[0])"/>
+                        </a>
+                    </div>
+                </div>
             </td>
             <td width="40%">
                 <el-radio v-model="anat.defaceSelection" label="defaced">Use Defaced (when finish defacing)</el-radio>
