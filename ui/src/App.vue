@@ -164,9 +164,10 @@ export default defineComponent({
         back() {
             const idx = this.pages.indexOf(this.page);
             if(idx == 0) {
-                //this.$store.commit("reset");
-                document.location.hash = "";
-                document.location.reload();
+                if(confirm("Do you really want to start over?")) {
+                    document.location.hash = "";
+                    document.location.reload();
+                }
             } else {
                 this.$store.commit("setPage", this.pages[idx-1]);
             }
@@ -299,7 +300,7 @@ body {
     -moz-osx-font-smoothing: grayscale;
     */
     font-family: 'Merriweather Sans',Georgia,sans-serif;
-    font-size: 15px;
+    font-size: 14px;
     color: #333;
 }
 p {

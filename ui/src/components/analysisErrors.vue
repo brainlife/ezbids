@@ -1,9 +1,12 @@
 <template>
-<div>
-    <p v-if="errors">
-        <h3>dcm2niix Errors</h3>
-        <small>We were not able to convert all DICOM files due to the following issues. Please submit issue ticket at <a href="https://github.com/rordenlab/dcm2niix/issues" target="rordenlagb/dcm2niix">https://github.com/rordenlab/dcm2niix/issues</a>You can proceed with ezBIDS process with the other successfully converted data.</small>
-        <pre class="errors">{{errors}}</pre>
+<div class="analysisError" v-if="errors">
+    <h3>dcm2niix Errors</h3>
+    <p>
+        We were not able to convert all DICOM files due to the following issues. Please submit an issue at <a href="https://github.com/rordenlab/dcm2niix/issues" target="rordenlagb/dcm2niix">https://github.com/rordenlab/dcm2niix/issues</a>. You can send your input DICOM files to dcm2niix team via a shared Google Drive folder.
+    </p>
+    <pre class="errors">{{errors}}</pre>
+    <p>
+        You can proceed with ezBIDS process with the other successfully converted data.
     </p>
 </div>
 </template>
@@ -50,13 +53,27 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
+.analysisError {
+    border: 3px solid var(--el-color-error);
+    padding: 10px;
+    border-radius: 5px;
+    color: var(--el-color-error);
+    background-color: #fee;
+}
 pre {
     background-color: #333;
-    color: var(--el-color-error);
-    height: 300px;
+    color: white;
+    margin-left: -10px;
+    margin-right: -10px;
+    max-height: 300px;
     overflow: auto;
     padding: 10px;
     margin-top: 0;
     margin-bottom: 5px;
+}
+h3 {
+}
+p {
+margin-bottom: 10px;
 }
 </style>

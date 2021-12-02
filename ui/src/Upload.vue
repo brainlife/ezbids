@@ -470,7 +470,7 @@ export default defineComponent({
             </div>
 
             <div v-if="!ezbids.notLoaded && ezbids.objects.length">
-                <p>Analysis complete!</p>
+                <h2>Analysis complete!</h2>
                 <analysisErrors/>
                 <h3>Object List <small>({{ezbids.objects.length}})</small></h3>
                 <p><small>We have identified the following objects that can be organized into BIDS structure.</small></p>
