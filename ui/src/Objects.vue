@@ -249,7 +249,26 @@ export default defineComponent({
             this.validateAll();
         },
 
-        isExcluded(o: IObject) {
+        isExcluded(o: IObject) {//make sure no 2 objects are exactly alike
+            for(let o2 of this.ezbids.objects) {
+                if(o.idx == o2.idx) continue;
+                if(this.isExcluded(o2)) continue;
+                if(o._type != o2._type) continue;
+
+                let same = o2;
+                for(let k in o._entities) {
+                    if(o._entities[k] != o2._entities[k]) {
+                        same = undefined;
+                        break;
+                    }
+                }
+                if(same) {
+                    const sameseries = this.ezbids.series[same.series_idx];
+                    o.validationErrors.push("This object looks exactly like another object with Series #"+sameseries.series_idx+". We can not convert this object to BIDS as they will overwrite each other. Please set entities such as 'run' to make them all unique.");
+                   console.log("---same detected");
+                   break;
+                }
+            }
             if(o.exclude) return true;
             if(o._type == "exclude") return true;
             return o._exclude;
@@ -288,7 +307,26 @@ export default defineComponent({
         isValid(cb: (err?: string)=>void) {
             this.$emit("mapObjects");
             this.validateAll();
+//make sure no 2 objects are exactly alike
+            for(let o2 of this.ezbids.objects) {
+                if(o.idx == o2.idx) continue;
+                if(this.isExcluded(o2)) continue;
+                if(o._type != o2._type) continue;
 
+                let same = o2;
+                for(let k in o._entities) {
+                    if(o._entities[k] != o2._entities[k]) {
+                        same = undefined;
+                        break;
+                    }
+                }
+                if(same) {
+                    const sameseries = this.ezbids.series[same.series_idx];
+                    o.validationErrors.push("This object looks exactly like another object with Series #"+sameseries.series_idx+". We can not convert this object to BIDS as they will overwrite each other. Please set entities such as 'run' to make them all unique.");
+                   console.log("---same detected");
+                   break;
+                }
+            }
             let err = undefined;
             this.ezbids.objects.forEach((o:IObject)=>{
                 if(o.validationErrors.length > 0) err = "Please correct all issues.";
