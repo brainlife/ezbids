@@ -32,7 +32,6 @@ from PIL import Image
 plt.style.use("dark_background")
 warnings.filterwarnings("ignore")
 
-
 DATA_DIR = sys.argv[1]
 
 datatypes_yaml = yaml.load(open("../bids-specification/src/schema/objects/datatypes.yaml"))
@@ -45,6 +44,7 @@ cog_atlas_url = "http://cognitiveatlas.org/api/v-alpha/task"
 
 start_time = time.time()
 analyzer_dir = os.getcwd()
+
 os.chdir(DATA_DIR)
 
 ######## Functions ########
@@ -70,7 +70,7 @@ def cog_atlas_tasks(url):
     data = json.load(url_contents)
     tasks = [re.sub("[^A-Za-z0-9]+", "", re.split(" task| test", x["name"])[0]) for x in data] # Remove non-alphanumeric terms and "task", "test" substrings
     tasks = [x for x in tasks if len(x) > 0] # Remove empty task name terms
-    tasks = sorted(tasks, key=str.casefold) # sort alphabetically, but don't care about case
+    tasks = sorted(tasks, key=str.casefold) # sort alphabetically, but ignore case
 
     return tasks
 
@@ -572,7 +572,6 @@ def generate_dataset_list(uploaded_files_list):
             'nibabel_image': image,
             "json_path": json_file,
             "paths": paths,
-            "pngPath": "",
             "headers": "",
             "sidecar":json_data
         }
@@ -582,7 +581,7 @@ def generate_dataset_list(uploaded_files_list):
     dataset_list = sorted(dataset_list, key=itemgetter("AcquisitionDate",
                                                         "subject",
                                                         "session",
-                                                        "AcquisitionTime",
+                                                        "SeriesNumber",
                                                         "json_path"))
 
     return dataset_list
@@ -1359,6 +1358,7 @@ def modify_objects_info(dataset_list):
 
 
             objects_entities = dict(zip([x for x in entities_yaml], [""]*len([x for x in entities_yaml])))
+
             # Re-order entities to what BIDS expects
             objects_entities = dict(sorted(objects_entities.items(), key=lambda pair: entity_ordering.index(pair[0])))
 
@@ -1378,6 +1378,7 @@ def modify_objects_info(dataset_list):
                 elif ".nii.gz" in item:
                     items.append({"path":item,
                                   "name":"nii.gz",
+                                  "pngPaths": pngPaths,
                                   "headers":protocol["headers"]})
 
 
@@ -1388,7 +1389,6 @@ def modify_objects_info(dataset_list):
                             "AcquisitionDate": protocol["AcquisitionDate"],
                             "AcquisitionTime": protocol["AcquisitionTime"],
                             "SeriesNumber": protocol["SeriesNumber"],
-                            "pngPaths": pngPaths,
                             "entities": objects_entities,
                             "items": items,
                             "analysisResults": {

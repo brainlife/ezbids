@@ -429,7 +429,7 @@ export function validateSeries($root) {
 
     let seriesItemsList_indices = Array.from(Array(seriesItemsList.length).keys())
 
-    // Do through each series info pairing option to check for matches
+    // Go through each series info pairing option to check for matches
     for(const [ser_idx, element] of seriesItemsList.entries()) {
         let remaining_indices = seriesItemsList_indices.filter(i=> i !== ser_idx)
 

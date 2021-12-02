@@ -80,8 +80,8 @@
             </td>
             <td width="40%">
                 <el-radio v-model="anat.defaceSelection" label="original">Use Original</el-radio>
-                <a :href="getURL(anat.pngPaths[0])">
-                    <img style="width: 100%" :src="getURL(anat.pngPaths[0])"/>
+                <a :href="getURL(anat.items.pop().pngPaths[0])">
+                    <img style="width: 100%" :src="getURL(anat.items.pop().pngPaths[0])"/>
                 </a>
             </td>
             <td width="40%">
