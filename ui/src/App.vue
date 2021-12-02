@@ -80,7 +80,6 @@ export default defineComponent({
                 }
 
                 if(this.ezbids.notLoaded) {
-                    //console.log("loading ezbids for the first time"); //on page reload, above if(location.hash) block takes care of loading it
                     await this.$store.dispatch("loadEzbids");
                 }
             }
@@ -287,14 +286,20 @@ export default defineComponent({
 </template>
 
 <style>
+@import url('https://fonts.googleapis.com/css2?family=Merriweather+Sans:wght@400;700&family=Merriweather:wght@400;700');
+
 html, body, #app, #app-container {
     height: 100%;
 }
 body {
     margin: 0;
+    /*
     font-family: Avenir, Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    */
+    font-family: 'Merriweather Sans',Georgia,sans-serif;
+    font-size: 15px;
     color: #333;
 }
 p {

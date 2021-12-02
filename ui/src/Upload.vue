@@ -6,6 +6,9 @@ import axios from 'axios'
 import { formatNumber } from './filters'
 
 export default defineComponent({
+    components: {
+        analysisErrors: ()=>import('./components/analysisErrors.vue'),
+    },
     data() {
         return {
             dragging: false,
@@ -74,6 +77,7 @@ export default defineComponent({
             e.preventDefault();
             this.dragging = false;
             this.starting = true;
+
             //I can't wrap this around timeout because chrome won't allow accessing dataTransfer.items outside dropevent context for security reason
             await this.listDropFiles(e.dataTransfer?.items);
             this.upload();
@@ -263,7 +267,6 @@ export default defineComponent({
             this.batches.push(batch);
 
             function doSend() {
-                //let count = 0;
                 axios.post(this.config.apihost+'/upload-multi/'+this.session._id, data, {
                     onUploadProgress: evt=>{
                         //count++;
@@ -318,7 +321,7 @@ export default defineComponent({
             if(this.doneUploading) return;
             this.doneUploading = true;
 
-            //finalize the session
+            //mark the session as uploaded
             await fetch(this.config.apihost+'/session/uploaded/'+this.session._id, {
                 method: "PATCH",
                 headers: {'Content-Type': 'application/json'},
@@ -467,9 +470,11 @@ export default defineComponent({
             </div>
 
             <div v-if="!ezbids.notLoaded && ezbids.objects.length">
-                <p>Analysis complete! Please proceed to the next tab.</p>
+                <p>Analysis complete!</p>
+                <analysisErrors/>
                 <h3>Object List <small>({{ezbids.objects.length}})</small></h3>
-                <div style="max-height: 400px; overflow-x: auto; padding-right: 20px;">
+                <p><small>We have identified the following objects that can be organized into BIDS structure.</small></p>
+                <div style="max-height: 600px; overflow-x: auto;">
                     <div v-for="(object, idx) in ezbids.objects" :key="idx" style="padding-bottom: 5px;">
                         <p style="margin: 0;">
                             <el-link @click="toggleObject(idx)">
