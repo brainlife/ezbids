@@ -333,11 +333,6 @@ export default defineComponent({
         validate(o: IObject|null) {
             if(!o) return;
 
-            //console.log("validaing", o);
-
-            //make sure all required entities are set
-            //if(!series) return; //can't validate without series
-
             let entities_requirement = this.getBIDSEntities(o._type);
 
             o.validationErrors = [];
@@ -380,7 +375,7 @@ export default defineComponent({
                 let same = o2;
                 for(let k in o._entities) {
                     if(o._entities[k] != o2._entities[k]) {
-                        same = null;
+                        same = undefined;
                         break;
                     }
                 }
