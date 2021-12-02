@@ -952,8 +952,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
                             Please modify if acquisition is desired for BIDS \
                             conversion, otherwise the acqusition will not be \
                             converted".split())
-                        unique_dic["message"] = unique_dcontains >= 50 \
-                            volumes and is 4Dic["error"]
+                        unique_dic["message"] = unique_dic["error"]
                         unique_dic["type"] = "exclude"
 
                 # Spin echo field maps (for func)
