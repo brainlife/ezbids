@@ -455,8 +455,8 @@ const store = createStore({
                 const bsub_idx = b.subject_idx;
                 const ases_idx = a.session_idx;
                 const bses_idx = b.session_idx;
-                const amodseriesnum = a.ModifiedSeriesNumber);
-                const bmodseriesnum = b.ModifiedSeriesNumber);
+                const amodseriesnum = a.ModifiedSeriesNumber;
+                const bmodseriesnum = b.ModifiedSeriesNumber;
                 const apath = a.items[0].path;
                 const bpath = b.items[0].path;
                 console.log(apath)
