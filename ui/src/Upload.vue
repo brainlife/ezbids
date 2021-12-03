@@ -478,7 +478,7 @@ export default defineComponent({
                     <div v-for="(object, idx) in ezbids.objects" :key="idx" style="padding-bottom: 5px;">
                         <p style="margin: 0;">
                             <el-link @click="toggleObject(idx)">
-                                <small><el-tag size="mini" type="info">{{idx}}</el-tag> {{object.paths[0]}}</small>
+                                <small><el-tag size="mini" type="info">{{idx}}</el-tag> {{object.items[0].path}}</small>
                             </el-link>
                         </p>
                         <pre v-if="opened.includes(idx)" class="status">{{object}}</pre>

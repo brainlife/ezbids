@@ -202,6 +202,8 @@ export default defineComponent({
 
             s.validationErrors = [];
             s.validationWarnings = [];
+
+
             if(s.type != "exclude") {
                 s.validationErrors = validateEntities(s.entities);
             }
@@ -209,23 +211,19 @@ export default defineComponent({
             //run series specific validation
             if(s.type != "exclude") {
                 for(let s2 of this.ezbids.series) {
-                    console.log(s2.idx)
-                    if(s.idx == s2.idx) continue;
-                    if(this.isExcluded(s2)) continue;
+                    if(s.series_idx == s2.series_idx) continue;
                     if(s.type != s2.type) continue;
 
                     let same = s2;
                     for(let e in s.entities) {
-                        console.log('cool')
                         if(s.entities[e] != s2.entities[e]) {
                             same = undefined;
                             break;
                         }
                     }
-                    console.log(same)
                     if(same) {
-                        const sameseries = s[same.series_idx];
-                        s.validationWarnings.push("This series contains the same dataType and entity labels information as Series #"+sameseries.series_idx+". We advise setting different entity label(s) to differentiate between the series.");
+                        const sameseries = s2.series_idx;
+                        s.validationWarnings.push("This series contains the same dataType and entity labels as series #"+sameseries+". We advise setting different entity label(s) to differentiate between the series.");
                         break;
                     }
                 }
