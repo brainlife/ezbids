@@ -578,6 +578,7 @@ def generate_dataset_list(uploaded_files_list):
             "nifti_path": [x for x in nifti_paths_for_json if ".nii.gz" in x][0],
             'nibabel_image': image,
             "json_path": json_file,
+            "paths": paths,
             "headers": "",
             "sidecar":json_data
         }
