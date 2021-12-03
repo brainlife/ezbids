@@ -368,36 +368,36 @@ function findMostCommonValue(arr){
     ).pop();
 }
 
-export function deepEqual(object1, object2) {
-    /*
-    Function comes from https://dmitripavlutin.com/how-to-compare-objects-in-javascript/#4-deep-equality
+// export function deepEqual(object1, object2) {
+//     /*
+//     Function comes from https://dmitripavlutin.com/how-to-compare-objects-in-javascript/#4-deep-equality
 
-    Determines whether two arrays are identical or not.
-    */
-    const keys1 = Object.keys(object1);
-    const keys2 = Object.keys(object2);
-    if(keys1.length !== keys2.length) {
-      return false;
-    }
-    for(const key of keys1) {
-        const val1 = object1[key];
-        const val2 = object2[key];
-        const areObjects = isObject(val1) && isObject(val2);
-        if(areObjects && !deepEqual(val1, val2) || !areObjects && val1 !== val2) {
-            return false;
-        }
-    }
-    return true;
-}
+//     Determines whether two arrays are identical or not.
+//     */
+//     const keys1 = Object.keys(object1);
+//     const keys2 = Object.keys(object2);
+//     if(keys1.length !== keys2.length) {
+//       return false;
+//     }
+//     for(const key of keys1) {
+//         const val1 = object1[key];
+//         const val2 = object2[key];
+//         const areObjects = isObject(val1) && isObject(val2);
+//         if(areObjects && !deepEqual(val1, val2) || !areObjects && val1 !== val2) {
+//             return false;
+//         }
+//     }
+//     return true;
+// }
 
-export function isObject(object) {
-    /*
-    Function comes from https://dmitripavlutin.com/how-to-compare-objects-in-javascript/#4-deep-equality
+// export function isObject(object) {
+//     /*
+//     Function comes from https://dmitripavlutin.com/how-to-compare-objects-in-javascript/#4-deep-equality
 
-    This function determines whether or not something is an object.
-    */
-    return object != null && typeof object === 'object';
-}
+//     This function determines whether or not something is an object.
+//     */
+//     return object != null && typeof object === 'object';
+// }
 
 export function validateEntities(entities/*: Series*/) {
     const errors = [];
@@ -412,49 +412,49 @@ export function validateEntities(entities/*: Series*/) {
 }
 
 
-//TODO - update this to return {errors: [], warnings: []} 
-export function validateSeries(s, ezbids) {
-    /*
-    Series items with unique series_id values may still contain the same DateType, suffix, and
-    entities. This is a problem if uncorrected, because there will then be conflict(s) during
-    Objects mapping. A validation error will therefore be generated if the conditions above are
-    met.
-    */
+// //TODO - update this to return {errors: [], warnings: []}
+// export function validateSeries(s, ezbids) {
+//     /*
+//     Series items with unique series_id values may still contain the same DateType, suffix, and
+//     entities. This is a problem if uncorrected, because there will then be conflict(s) during
+//     Objects mapping. A validation error will therefore be generated if the conditions above are
+//     met.
+//     */
 
-    s.validationWarnings.push("exmple error...");
+//     s.validationWarnings.push("exmple error...");
 
-    /*
+//     /*
 
-    let seriesItemsList = [] //contains series info (type, entities) from all series
-    let duplicateSeriesInfoList = [] //contains series info if it appears more than once in seriesItemsList
+//     let seriesItemsList = [] //contains series info (type, entities) from all series
+//     let duplicateSeriesInfoList = [] //contains series info if it appears more than once in seriesItemsList
 
-    $root.series.forEach(s=>{
-        let info = {"type": s.type, "entities": s.entities}
-        seriesItemsList.push(info)
-    });
+//     $root.series.forEach(s=>{
+//         let info = {"type": s.type, "entities": s.entities}
+//         seriesItemsList.push(info)
+//     });
 
-    let seriesItemsList_indices = Array.from(Array(seriesItemsList.length).keys())
+//     let seriesItemsList_indices = Array.from(Array(seriesItemsList.length).keys())
 
-    // Go through each series info pairing option to check for matches
-    for(const [ser_idx, element] of seriesItemsList.entries()) {
-        let remaining_indices = seriesItemsList_indices.filter(i=> i !== ser_idx)
+//     // Go through each series info pairing option to check for matches
+//     for(const [ser_idx, element] of seriesItemsList.entries()) {
+//         let remaining_indices = seriesItemsList_indices.filter(i=> i !== ser_idx)
 
-        for(const remain_idx in remaining_indices) {
-            if(ser_idx != remain_idx) {
-                if(deepEqual(seriesItemsList[ser_idx], seriesItemsList[remain_idx]) == true && !duplicateSeriesInfoList.includes(JSON.stringify(seriesItemsList[ser_idx]))) {
-                    duplicateSeriesInfoList.push(JSON.stringify(seriesItemsList[ser_idx]))
-                }
-            }
-        }
-    }
-    // Convert JSON string back to JS object(s)
-    for(const [dup_idx, value] of duplicateSeriesInfoList.entries()) {
-        duplicateSeriesInfoList[dup_idx] = JSON.parse(duplicateSeriesInfoList[dup_idx])
-    }
+//         for(const remain_idx in remaining_indices) {
+//             if(ser_idx != remain_idx) {
+//                 if(deepEqual(seriesItemsList[ser_idx], seriesItemsList[remain_idx]) == true && !duplicateSeriesInfoList.includes(JSON.stringify(seriesItemsList[ser_idx]))) {
+//                     duplicateSeriesInfoList.push(JSON.stringify(seriesItemsList[ser_idx]))
+//                 }
+//             }
+//         }
+//     }
+//     // Convert JSON string back to JS object(s)
+//     for(const [dup_idx, value] of duplicateSeriesInfoList.entries()) {
+//         duplicateSeriesInfoList[dup_idx] = JSON.parse(duplicateSeriesInfoList[dup_idx])
+//     }
 
-    return duplicateSeriesInfoList
-    */
-}
+//     return duplicateSeriesInfoList
+//     */
+// }
 
 
 export function find_separator(filePath, fileData) {

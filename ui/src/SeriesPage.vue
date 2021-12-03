@@ -144,7 +144,7 @@ import { prettyBytes } from './filters'
 
 import { Series, IObject } from './store'
 
-import { validateEntities, validateSeries } from './libUnsafe'
+import { validateEntities } from './libUnsafe'
 
 export default defineComponent({
 
@@ -208,7 +208,7 @@ export default defineComponent({
                 s.validationErrors = validateEntities(s.entities);
             }
 
-            //run series specific validation
+            //let user know if multiple series have same datatype and entity labels
             if(s.type != "exclude") {
                 for(let s2 of this.ezbids.series) {
                     if(s.series_idx == s2.series_idx) continue;
