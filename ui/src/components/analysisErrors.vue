@@ -42,11 +42,13 @@ export default defineComponent({
         },
         */
 
+        /*
         composeSampleValue(key : string) {
             const samples = this.sampleValues[key].join(', ');
             if(samples.length > 30) return samples.substring(0, 30)+" ...";
             return samples;
         },
+        */
      }
 });
 

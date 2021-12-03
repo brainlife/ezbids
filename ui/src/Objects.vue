@@ -122,7 +122,7 @@
                 <div v-for="(item, idx) in so.items" :key="idx" class="border-top">
                     <el-form-item :label="item.name||'noname'">
                         <el-select v-model="item.path" placeholder="Source path" size="small" style="width: 100%">
-                            <el-option v-for="(path, idx) in so.paths" :key="idx" :label="path" :value="path"/>
+                            <el-option v-for="(item, idx) in so.items" :key="idx" :label="item.path" :value="item.path"/>
                         </el-select>
                         <el-button type="info" v-if="item.path?.endsWith('.nii.gz')" @click="niivueItem = item">View in niivue</el-button>
                     </el-form-item>

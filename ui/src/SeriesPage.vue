@@ -211,7 +211,7 @@ export default defineComponent({
             //let user know if multiple series have same datatype and entity labels
             if(s.type != "exclude") {
                 for(let s2 of this.ezbids.series) {
-                    if(s.series_idx == s2.series_idx) continue;
+                    if(s == s2) continue;
                     if(s.type != s2.type) continue;
 
                     let same = s2;
