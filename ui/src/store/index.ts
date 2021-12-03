@@ -80,7 +80,7 @@ export interface IObjectItem {
     sidecar: any;
     sidecar_json: string;
 
-    path?: string;
+    path: string;
     name?: string;
     pngPaths?: string[]; //array of png file paths
     headers?: any; //for nifti
