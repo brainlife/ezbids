@@ -356,6 +356,25 @@ export default defineComponent({
             document.body.removeChild(element);
 
         },
+        
+        itemPath(items) {
+            let str = "";
+            items.forEach(item=>{
+                if(str == "") str = item.path;
+                else {
+                    str += " / ";
+                    //for subsequent path, skip the parts that's same
+                    const strtokens = str.split(".");
+                    const pathtokens = item.path.split(".");
+                    const unique = [];
+                    for(let i = 0;i < pathtokens.length; ++i) {
+                        if(pathtokens[i] == strtokens[i]) continue;
+                        else str += "."+pathtokens[i];
+                    }
+                }
+            });
+            return str;
+        },
     },
 });
 </script>
@@ -403,14 +422,14 @@ export default defineComponent({
         </div>
 
         <div v-if="starting">
-            <h3>Initializing..</h3>
+            <h3>Initializing ... </h3>
         </div>
     </div>
 
     <div v-if="session">
         <div v-if="session.status == 'created'">
             <p>
-                <h3>Uploading ...</h3>
+                <h3><font-awesome-icon :icon="['fas', 'spinner']" spin/> Uploading ... </h3>
                 <small>Please do not close/refresh this page until all files are uploaded.</small>
             </p>
             <div v-if="failed.length > 0">
@@ -444,16 +463,16 @@ export default defineComponent({
         </div>
 
         <div v-if="['preprocessing', 'uploaded'].includes(session.status)">
-            <h3 v-if="session.dicomDone === undefined"> Inflating... </h3>
+            <h3 v-if="session.dicomDone === undefined"> Inflating... <font-awesome-icon :icon="['fas', 'spinner']" spin/></h3>
             <div v-else-if="session.dicomDone < session.dicomCount">
-                <h3>Converting DICOMS to nifti ...</h3>
+                <h3>Converting DICOMS to nifti ... <font-awesome-icon :icon="['fas', 'spinner']" spin/></h3>
                 <el-progress status="success"
                     :text-inside="true"
                     :stroke-width="24"
                     :percentage="parseFloat((session.dicomDone*100 / session.dicomCount).toFixed(1))"/>
                 <br>
             </div>
-            <h3 v-else>Analyzing...</h3>
+            <h3 v-else><font-awesome-icon :icon="['fas', 'spinner']" spin/> Analyzing ... </h3>
             <pre class="status">{{session.status_msg}}</pre>
             <small>* Depending on the size of your dataset, this process might take several hours. You can shutdown your computer while we process your data (please bookmark the URL for this page to come back to it)</small>
         </div>
@@ -466,7 +485,7 @@ export default defineComponent({
 
         <div v-if="session.pre_finish_date">
             <div v-if="ezbids.notLoaded">
-                <h3>Loading analysis results ...</h3>
+                <h3>Loading analysis results ... </h3>
             </div>
 
             <div v-if="!ezbids.notLoaded && ezbids.objects.length">
@@ -478,7 +497,10 @@ export default defineComponent({
                     <div v-for="(object, idx) in ezbids.objects" :key="idx" style="padding-bottom: 5px;">
                         <p style="margin: 0;">
                             <el-link @click="toggleObject(idx)">
-                                <small><el-tag size="mini" type="info">{{idx}}</el-tag> {{object.items[0].path}}</small>
+                                <small>
+                                    <el-tag size="mini" type="info">{{idx}}</el-tag> 
+                                    {{itemPath(object.items)}}
+                                </small>
                             </el-link>
                         </p>
                         <pre v-if="opened.includes(idx)" class="status">{{object}}</pre>

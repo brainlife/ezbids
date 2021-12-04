@@ -143,12 +143,10 @@ export default defineComponent({
     methods: {
         changeMethod() {
             if(this.ezbids.defacingMethod) {
-                console.log("switching to defaced for all anat");
                 this.getAnatObjects.forEach((o:IObject)=>{
                     o.defaceSelection = "defaced";
                 });
             } else {
-                console.log("switching to original for all anat");
                 this.getAnatObjects.forEach((o:IObject)=>{
                     o.defaceSelection = "original";
                 });
@@ -157,9 +155,11 @@ export default defineComponent({
 
         getDefacedThumbURL(anat: IObject) {
             //find the image path first
-            let path = anat.paths.find(p=>p.endsWith(".nii.gz"));
+            let item = anat.items.find(i=>i.path.endsWith(".nii.gz"));
+            if(!item) return null;
+
             //guess the image path
-            path += ".defaced.nii.gz.png";
+            let path = item.path+".defaced.nii.gz.png";
             return this.getURL(path)
         },
 
@@ -198,7 +198,6 @@ export default defineComponent({
             const list = this.getAnatObjects.map((o:IObject)=>{
                 return {idx: o.idx, path: o.items.find(i=>i.path?.endsWith(".nii.gz"))?.path};
             });
-            console.log("list", list);
 
             //reset current status for all stats (in case it's ran previously)
             this.getAnatObjects.forEach((o:IObject)=>{
@@ -284,6 +283,7 @@ pre.status {
     overflow: auto;
     padding: 10px;
     margin-bottom: 5px;
+    border-radius: 5px;
 }
 </style>
 

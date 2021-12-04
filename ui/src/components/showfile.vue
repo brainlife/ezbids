@@ -49,8 +49,9 @@ export default defineComponent({
 pre {
     background-color: #333;
     color: white;
-    padding: 10px;
     margin: 0;
     overflow: auto;
+    padding: 10px;
+    border-radius: 5px;
 }
 </style>

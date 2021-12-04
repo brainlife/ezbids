@@ -1,11 +1,11 @@
 <template>
 <div style="padding: 20px;">
     <div v-if="session.status == 'analyzed'">
-        <h3>Finalizing ...</h3>
+        <h3>Finalizing ... <font-awesome-icon :icon="['fas', 'spinner']" spin/></h3>
     </div>
 
     <div v-if="session.status == 'finalized' || (session.finalize_begin_date && !session.finalize_finish_date)">
-        <h3>Converting to BIDS ...</h3>
+        <h3>Converting to BIDS ... <font-awesome-icon :icon="['fas', 'spinner']" spin/></h3>
         <p><small><i>{{session.status_msg}}</i></small></p>
     </div>
 
@@ -41,7 +41,7 @@
     </div>
 
     <div v-if="session.status == 'failed'">
-        <p>Failed to convert to BIDS...</p>
+        <p>Failed to convert to BIDS</p>
         <el-button @click="rerun" type="success" style="float: right" size="small">Rerun Finalize Step</el-button>
         <p><small><i>{{session.status_msg}}</i></small></p>
     </div>
