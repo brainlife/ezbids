@@ -449,8 +449,6 @@ const store = createStore({
 
             //sort object by subject / session / series # / json path
             state.ezbids.objects.sort((a,b)=>{
-                // const adate = parseInt(a.AcquisitionDate.replace(/\D/g,''));
-                // const bdate = parseInt(b.AcquisitionDate.replace(/\D/g,''));
                 const asub_idx = a.subject_idx;
                 const bsub_idx = b.subject_idx;
                 const ases_idx = a.session_idx;

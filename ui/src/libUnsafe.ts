@@ -40,8 +40,8 @@ export function setSectionIDs($root) {
 export function funcQA($root) {
     /*
     Exclude functional bold acquisitions have less than the specified volume threshold from
-    Series level. If unspecified, default is 50 volumes because a func/bold with < 50 probably
-    indicates a restart or failure.
+    Series level. If unspecified, default is 50 volumes, because a func/bold with < 50 probably
+    indicates a restart, incomplete or calibration run.
     */
     $root.series.forEach(s=> {
         if (s.type == "func/bold") {
@@ -53,14 +53,17 @@ export function funcQA($root) {
                     o.exclude = false
                     if (o.analysisResults.NumVolumes < VolumeThreshold) {
                         o.exclude = true
-                        o.analysisResults.errors = [`Functional bold acquisition contains less than ${VolumeThreshold} volumes, a possible indication of a failed/restarted run. Please check to see if you want to keep this acquisition, otherwise this acquisition will be excluded from BIDS conversion.`]
+                        o.analysisResults.errors = [`Functional bold acquisition contains less than ${VolumeThreshold} volumes, a possible indication of a restarted, incomplete, or calibration run. Please check to see if you want to keep this acquisition, otherwise this acquisition will be excluded from BIDS conversion.`]
                     }
                 }
             })
         }
     })
 
-    //If func/bold acquisition is excluded, make sure that corresponding func/sbref is also excluded as well
+    /*If func/bold acquisition is excluded, make sure that corresponding
+    func/sbref, func/bold (part-phase), and func/events are all excluded as well,
+    if they exist.
+    */
     $root.objects.forEach(o=> {
         if (o._type == "func/bold" && o.exclude == true) {
             let funcBoldEntities = o._entities
@@ -72,7 +75,9 @@ export function funcQA($root) {
         }
     })
 
-    //Exclude func/sbref if its PhaseEncodingDirection is different from the corresponding func/bold PhaseEncodingDirection
+    /*Exclude func/sbref if its PhaseEncodingDirection is different
+    from the corresponding func/bold PhaseEncodingDirection.
+    */
     $root.objects.forEach(o=> {
         if (o._type == "func/bold") {
             let boldEntities = o._entities
@@ -90,8 +95,9 @@ export function funcQA($root) {
 
 
 export function fmapQA($root) {
-    // Assesses fieldmaps for improper PEDs (for spin-echo field maps),
-    // and excludes extra fieldmaps in section
+    /* Assesses fieldmaps for improper PEDs (for spin-echo field maps),
+    and excludes extra fieldmaps in section.
+    */
 
     $root._organized.forEach(subGroup=>{
         subGroup.sess.forEach(sesGroup=>{
@@ -368,37 +374,6 @@ function findMostCommonValue(arr){
     ).pop();
 }
 
-// export function deepEqual(object1, object2) {
-//     /*
-//     Function comes from https://dmitripavlutin.com/how-to-compare-objects-in-javascript/#4-deep-equality
-
-//     Determines whether two arrays are identical or not.
-//     */
-//     const keys1 = Object.keys(object1);
-//     const keys2 = Object.keys(object2);
-//     if(keys1.length !== keys2.length) {
-//       return false;
-//     }
-//     for(const key of keys1) {
-//         const val1 = object1[key];
-//         const val2 = object2[key];
-//         const areObjects = isObject(val1) && isObject(val2);
-//         if(areObjects && !deepEqual(val1, val2) || !areObjects && val1 !== val2) {
-//             return false;
-//         }
-//     }
-//     return true;
-// }
-
-// export function isObject(object) {
-//     /*
-//     Function comes from https://dmitripavlutin.com/how-to-compare-objects-in-javascript/#4-deep-equality
-
-//     This function determines whether or not something is an object.
-//     */
-//     return object != null && typeof object === 'object';
-// }
-
 export function validateEntities(entities/*: Series*/) {
     const errors = [];
     //validate entity (only alpha numeric values)
@@ -410,52 +385,6 @@ export function validateEntities(entities/*: Series*/) {
     }
     return errors;
 }
-
-
-// //TODO - update this to return {errors: [], warnings: []}
-// export function validateSeries(s, ezbids) {
-//     /*
-//     Series items with unique series_id values may still contain the same DateType, suffix, and
-//     entities. This is a problem if uncorrected, because there will then be conflict(s) during
-//     Objects mapping. A validation error will therefore be generated if the conditions above are
-//     met.
-//     */
-
-//     s.validationWarnings.push("exmple error...");
-
-//     /*
-
-//     let seriesItemsList = [] //contains series info (type, entities) from all series
-//     let duplicateSeriesInfoList = [] //contains series info if it appears more than once in seriesItemsList
-
-//     $root.series.forEach(s=>{
-//         let info = {"type": s.type, "entities": s.entities}
-//         seriesItemsList.push(info)
-//     });
-
-//     let seriesItemsList_indices = Array.from(Array(seriesItemsList.length).keys())
-
-//     // Go through each series info pairing option to check for matches
-//     for(const [ser_idx, element] of seriesItemsList.entries()) {
-//         let remaining_indices = seriesItemsList_indices.filter(i=> i !== ser_idx)
-
-//         for(const remain_idx in remaining_indices) {
-//             if(ser_idx != remain_idx) {
-//                 if(deepEqual(seriesItemsList[ser_idx], seriesItemsList[remain_idx]) == true && !duplicateSeriesInfoList.includes(JSON.stringify(seriesItemsList[ser_idx]))) {
-//                     duplicateSeriesInfoList.push(JSON.stringify(seriesItemsList[ser_idx]))
-//                 }
-//             }
-//         }
-//     }
-//     // Convert JSON string back to JS object(s)
-//     for(const [dup_idx, value] of duplicateSeriesInfoList.entries()) {
-//         duplicateSeriesInfoList[dup_idx] = JSON.parse(duplicateSeriesInfoList[dup_idx])
-//     }
-
-//     return duplicateSeriesInfoList
-//     */
-// }
-
 
 export function find_separator(filePath, fileData) {
 	if (filePath.indexOf('.tsv') > -1) {
@@ -610,7 +539,6 @@ export function createEventObjects(ezbids, files) {
         case "xlsx":
         case "xlsm":
         case "xls":
-            // let data = XLSX.readFile(file.path)
             events = parseExcelEvents(file.data)
             break;
         default: // Non-Excel formats
@@ -626,7 +554,8 @@ export function createEventObjects(ezbids, files) {
             }
         }
 
-        const eventsMappingInfo =   {
+        // Array to help map ezBIDS information to events timing files
+        const eventsMappingInfo = {
             subject: {
                 MappingKeys: [
                     "sub", "subid", "subname",
@@ -635,8 +564,8 @@ export function createEventObjects(ezbids, files) {
                     "participant", "participantid", "participantname"
                 ],
                 ezBIDSvalues: subjects,
-                eventsValue: null,
-                detectionMethod: null,
+                eventsValue: undefined,
+                detectionMethod: undefined,
             },
             session: {
                 MappingKeys: [
@@ -645,8 +574,8 @@ export function createEventObjects(ezbids, files) {
                     "session", "sessionid", "sessionname"
                 ],
                 ezBIDSvalues: sessions,
-                eventsValue: null,
-                detectionMethod: null,
+                eventsValue: undefined,
+                detectionMethod: undefined,
             },
             task: {
                 MappingKeys: [
@@ -655,23 +584,25 @@ export function createEventObjects(ezbids, files) {
                     "experiment", "experimentid", "experimentname"
                 ],
                 ezBIDSvalues: tasks,
-                eventsValue: null,
-                detectionMethod: null,
+                eventsValue: undefined,
+                detectionMethod: undefined,
             },
             run: {
                 MappingKeys: ["run", "runid", "runname"],
                 ezBIDSvalues: runs,
-                eventsValue: null,
-                detectionMethod: null,
+                eventsValue: undefined,
+                detectionMethod: undefined,
             }
         }
 
-        const keys = Object.keys(events[0]); //picking the first object as a sample
+        const keys = Object.keys(events[0]); //selecting the first column of the events timing file, which contains the column names
         for(const entity in eventsMappingInfo) {
             const info = eventsMappingInfo[entity];
 
-            // 1st stage: examine header columns and data of event file(s) to
-            // see if helpful information is contained there
+            /* 1st stage: examine header columns and data of event file(s) to
+            see if identifying information (sub, ses, task, and/or run) is contained
+            there.
+            */
             const matchingKey = keys.find(key=>{
                 const safeKey = key.toLowerCase().replace(/[^0-9a-z]/gi, '');
                 info.MappingKeys.includes(safeKey);
@@ -679,18 +610,18 @@ export function createEventObjects(ezbids, files) {
             if(matchingKey) {
                 const matchingValues = events.map(e=>e[matchingKey]);
                 info.eventsValue = findMostCommonValue(matchingValues);
-                info.detectionMethod = "column name match";
+                info.detectionMethod = "identifying information found in event columns";
             }
 
-            // 2nd stage: examine file path for helpful information
+            // 2nd stage: examine file path for identifying information
             if (info.eventsValue == undefined) {
                 Object.values(info.MappingKeys).forEach(mapping=>{
                     if (file.path.toLowerCase().split(mapping).slice(-1)[0].split(/[._-]+/)[0] == "") {
                         info.eventsValue = file.path.split(new RegExp(regEscape(mapping), "ig")).slice(-1)[0].split(/[._-]+/)[1]
-                        info.detectionMethod = 2
+                        info.detectionMethod = "identifying information found in file path";
                     } else if (isNaN(parseFloat(file.path.toLowerCase().split(mapping).slice(-1)[0])) == false) {
                         info.eventsValue = file.path.split(new RegExp(regEscape(mapping), "ig")).slice(-1)[0].split(/[._-]+/)[0]
-                        info.detectionMethod = 2
+                        info.detectionMethod = "identifying information found in file path";
                     }
                 });
             }
@@ -698,20 +629,22 @@ export function createEventObjects(ezbids, files) {
             // 3rd stage: if ezBIDSvalues lengths == 1, set those values to the corresponding eventsValue
             if (info.eventsValue == undefined && info.ezBIDSvalues.length == 1) {
                 info.eventsValue = info.ezBIDSvalues[0]
-                info.detectionMethod = 3
+                info.detectionMethod = `"there is only one ${entity} value, so assume it's that"`
             }
 
             //Sanity checks
             Object.keys(eventsMappingInfo).forEach(key=>{
                 /* 1). if a mismatch exists between any key's ezBIDSvalue and eventsValue, and the length of
-                ezBIDSvalues == 1, then the ezBIDSvalue takes precedence because that's what the user has explicitly specified
-                on ezBIDS.
+                ezBIDSvalues == 1, then the ezBIDSvalue takes precedence because that's what the user has
+                explicitly specified on ezBIDS.
                 */
                 if (!info.ezBIDSvalues.includes(info.eventsValue) && info.ezBIDSvalues.length == 1) {
                     info.eventsValue = info.ezBIDSvalues[0]
                 }
 
-                //2). ignore zero-padding in subject, session, and run eventsValue if the zero-padded value doesn't exist in corresponding ezBIDSvalues
+                /* 2). ignore zero-padding in subject, session, and run eventsValue if the zero-padded
+                value doesn't exist in corresponding ezBIDSvalues.
+                */
                 if (key != "task" && info.eventsValue) {
                     if (!info.ezBIDSvalues.includes(info.eventsValue) && info.ezBIDSvalues.includes(info.eventsValue.replace(/^0+/, ''))) {
                         info.eventsValue = info.eventsValue.replace(/^0+/, '')
@@ -720,7 +653,9 @@ export function createEventObjects(ezbids, files) {
             })
         }
 
-        //if we couldn't find task eventValue, look for task names used in ezbids in event files valued (not just column name)
+        /* if we couldn't find task eventValue, look for task names used in ezBIDS in event files
+        values (not just column name).
+        */
         if (!eventsMappingInfo.task.eventsValue) {
             const taskNames = eventsMappingInfo.task.ezBIDSvalues.map(v=>v.toLowerCase());
             events.forEach(event=>{
@@ -756,8 +691,18 @@ export function createEventObjects(ezbids, files) {
             e._entities.session == eventsMappingInfo.session.eventsValue &&
             e._entities.task == eventsMappingInfo.task.eventsValue &&
             e._entities.run == eventsMappingInfo.run.eventsValue &&
+            e._type == "func/bold" &&
             (e._entities.part == "" || e._entities.part == "mag")
             ).map(e=>e.series_idx)))
+
+        // Determine correspoding ModifiedSeriesNumber value that event file(s) go to
+        const ModifiedSeriesNumber = Array.from(new Set(ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
+            e._entities.session == eventsMappingInfo.session.eventsValue &&
+            e._entities.task == eventsMappingInfo.task.eventsValue &&
+            e._entities.run == eventsMappingInfo.run.eventsValue &&
+            e._type == "func/bold" &&
+            (e._entities.part == "" || e._entities.part == "mag")
+            ).map(e=>e.ModifiedSeriesNumber)))[0]
 
         const subjectInfo = ezbids.subjects.filter(e=>e.subject == eventsMappingInfo.subject.eventsValue)
         let sessionInfo;
@@ -767,7 +712,7 @@ export function createEventObjects(ezbids, files) {
             sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == "")
         }
 
-        // Indexing the first (any only value) but will need to filter this out better for multi-session data
+        // Indexing the first (and only value) but will need to filter this out better for multi-session data
         const subject = subjectInfo[0];
         const session = sessionInfo[0];
         const patientInfo = subject.PatientInfo[0];
@@ -778,6 +723,7 @@ export function createEventObjects(ezbids, files) {
             //series_idx: null,
             subject_idx: ezbids.subjects.indexOf(subject),
             session_idx: subject.sessions.indexOf(session),
+            ModifiedSeriesNumber: ModifiedSeriesNumber,
 
             entities: {
                 "subject": eventsMappingInfo.subject.eventsValue,
