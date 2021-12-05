@@ -39,10 +39,19 @@ export function setSectionIDs($root) {
 
 export function funcQA($root) {
     /*
-    Exclude functional bold acquisitions have less than the specified volume threshold from
+    1). Exclude functional bold acquisitions have less than the specified volume threshold from
     Series level. If unspecified, default is 50 volumes, because a func/bold with < 50 probably
-    indicates a restart, incomplete or calibration run.
+    indicates a restart, incomplete, or calibration run.
+
+    2). Additionally, if func/bold acquisition is excluded, make sure that corresponding
+    func/sbref, func/bold (part-phase), and func/events are all excluded as well,
+    if they exist.
+
+    3). Exclude func/sbref if its PhaseEncodingDirection (PED) is different
+    from the corresponding func/bold PED.
     */
+
+    // #1
     $root.series.forEach(s=> {
         if (s.type == "func/bold") {
             let series_idx = s.series_idx
@@ -51,6 +60,24 @@ export function funcQA($root) {
             $root.objects.forEach(o=> {
                 if (o.series_idx == series_idx) {
                     o.exclude = false
+
+                    /* set "exclude = false" for all func/bold corresponding acquisitions,
+                    since user may change exclusion criteria of func/bold (e.g. VolumeThreshold),
+                    in which case, the exclusion criteria needs to also be applied to the
+                    corresponding acquisitions.
+                    */
+                    let funcBoldEntities = o._entities
+                    let correspondingFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && JSON.stringify(e._entities) === JSON.stringify(funcBoldEntities))
+                    let correspondingFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.mag == "phase" && JSON.stringify(Object.keys(e._entities).filter(e=>e != "part") === JSON.stringify(funcBoldEntities)))
+                    let correspondingFuncBoldEvent = $root.objects.filter(e=>e.ModifiedSeriesNumber == o.ModifiedSeriesNumber)
+
+                    for(const corr of [correspondingFuncSBRef, correspondingFuncBoldPhase, correspondingFuncBoldEvent]) {
+                        corr.forEach(c=>{
+                            c.exclude = false
+                        })
+                    }
+
+                    // apply VolumeThreshold exclusion criteria
                     if (o.analysisResults.NumVolumes < VolumeThreshold) {
                         o.exclude = true
                         o.analysisResults.errors = [`Functional bold acquisition contains less than ${VolumeThreshold} volumes, a possible indication of a restarted, incomplete, or calibration run. Please check to see if you want to keep this acquisition, otherwise this acquisition will be excluded from BIDS conversion.`]
@@ -60,26 +87,24 @@ export function funcQA($root) {
         }
     })
 
-    /*If func/bold acquisition is excluded, make sure that corresponding
-    func/sbref, func/bold (part-phase), and func/events are all excluded as well,
-    if they exist.
-    */
     $root.objects.forEach(o=> {
-        if (o._type == "func/bold" && o.exclude == true) {
+        // #2
+        if (o._type == "func/bold" && o.exclude == true && (!o._entities.mag || o._entities.mag == "mag")) {
             let funcBoldEntities = o._entities
-            let badFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && JSON.stringify(e._entities) === JSON.stringify(funcBoldEntities)).map(e=>e.idx)
-            badFuncSBRef.forEach(bad=> {
-                $root.objects[bad].exclude = true
-                $root.objects[bad].analysisResults.errors = ["Functional sbref has a corresponding functional bold that has been set to exclude from BIDS conversion. Therefore, this sbref will also be set to exclude from BIDS conversion."]
-            })
-        }
-    })
+            let badFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && JSON.stringify(e._entities) === JSON.stringify(funcBoldEntities))
+            let badFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.mag == "phase" && JSON.stringify(Object.keys(e._entities).filter(e=>e != "part") === JSON.stringify(funcBoldEntities)))
+            let badFuncBoldEvent = $root.objects.filter(e=>e.ModifiedSeriesNumber == o.ModifiedSeriesNumber)
 
-    /*Exclude func/sbref if its PhaseEncodingDirection is different
-    from the corresponding func/bold PhaseEncodingDirection.
-    */
-    $root.objects.forEach(o=> {
-        if (o._type == "func/bold") {
+            for(const bad of [badFuncSBRef, badFuncBoldPhase, badFuncBoldEvent]) {
+                bad.forEach(b=>{
+                    b.exclude = true
+                    b.analysisResults.errors = ["The corresponding func/bold to this acquisition has been set to exclude from BIDS conversion. Since it is tied to the excluded func/bold, this acquisition will also be excluded from BIDS conversion."]
+                })
+            }
+        }
+
+        // #3
+        if (o._type == "func/bold" && (!o._entities.mag || o._entities.mag == "mag")) {
             let boldEntities = o._entities
             let boldPED = o.items[0].sidecar.PhaseEncodingDirection
             let badSBRef = $root.objects.filter(e=>e._type == "func/sbref" && JSON.stringify(e._entities) === JSON.stringify(boldEntities) &&
