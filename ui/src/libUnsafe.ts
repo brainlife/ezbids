@@ -117,6 +117,17 @@ export function funcQA($root) {
     })
 }
 
+// function newSetIntendedFor($root) {
+//     /*
+//     This function applies the IntendedFor fmap mapping, based on user
+//     input at SeriesPage.
+//     */
+//     $root.series.forEach(s=> {
+//         if (s.type.includes("fmap")) {
+//             let intendedFor = s.IntendedFor
+
+// }
+
 
 
 export function fmapQA($root) {
