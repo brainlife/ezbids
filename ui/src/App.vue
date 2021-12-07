@@ -323,7 +323,9 @@ pre {
     font-size: 85%;
     white-space: pre-wrap;
 }
-
+.el-popover.el-popper {
+    word-break: break-word !important;
+}
 </style>
 
 <style scoped>

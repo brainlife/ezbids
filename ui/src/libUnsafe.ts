@@ -423,58 +423,58 @@ export function validateEntities(entities/*: Series*/) {
 }
 
 export function find_separator(filePath, fileData) {
-	if (filePath.indexOf('.tsv') > -1) {
-		return /[ \t]+/;
-	} else if (filePath.indexOf('.out') > -1 || filePath.indexOf('.csv') > -1)  {
-		return /[ ,]+/;
-	} else if (filePath.indexOf('.txt') > -1) {
-		const data = fileData
-		const lines = data.trim().split("\n").map(l=>l.trim());
-		if (lines[0].indexOf(',') > -1) {
-			return /[ ,]+/;
-		} else {
-			return /[ \t]+/;
-		}
-	} else if (filePath.indexOf('.xlsx') > -1) {
-		return /[ ,]+/;
-	}
+    if (filePath.indexOf('.tsv') > -1) {
+        return /[ \t]+/;
+    } else if (filePath.indexOf('.out') > -1 || filePath.indexOf('.csv') > -1)  {
+        return /[ ,]+/;
+    } else if (filePath.indexOf('.txt') > -1) {
+        const data = fileData
+        const lines = data.trim().split("\n").map(l=>l.trim());
+        if (lines[0].indexOf(',') > -1) {
+            return /[ ,]+/;
+        } else {
+            return /[ \t]+/;
+        }
+    } else if (filePath.indexOf('.xlsx') > -1) {
+        return /[ ,]+/;
+    }
 
-	throw "unknown file extension";
+    throw "unknown file extension";
 }
 
 function parseEprimeEvents(fileData, cb) {
-	const lines = fileData.trim().split(/\r|\n/).map(l=>l.trim());
+    const lines = fileData.trim().split(/\r|\n/).map(l=>l.trim());
 
-	//parse each line
-	const trials = [];
-	let headers = null;
-	let block = {};
-	const timing_info = []
-	lines.forEach(line=>{
-	    switch(line) {
-	    case "*** Header Start ***":
-	        block = {};
-	        break;
-	    case "*** Header End ***":
-	        headers = block;
-	        break;
-	    case "*** LogFrame Start ***":
-	        block = {};
-	        break;
-	    case "*** LogFrame End ***":
-	        trials.push(block);
-	        break;
-	    default:
-	        const kv = line.split(": ");
-	        const k = kv[0].toLowerCase();
-	        const v = kv[1];
-	        block[k] = v;
-	    }
-	    trials.push(block);
-	});
-	timing_info.push(trials)
+    //parse each line
+    const trials = [];
+    let headers = null;
+    let block = {};
+    const timing_info = []
+    lines.forEach(line=>{
+        switch(line) {
+        case "*** Header Start ***":
+            block = {};
+            break;
+        case "*** Header End ***":
+            headers = block;
+            break;
+        case "*** LogFrame Start ***":
+            block = {};
+            break;
+        case "*** LogFrame End ***":
+            trials.push(block);
+            break;
+        default:
+            const kv = line.split(": ");
+            const k = kv[0].toLowerCase();
+            const v = kv[1];
+            block[k] = v;
+        }
+        trials.push(block);
+    });
+    timing_info.push(trials)
 
-	return timing_info[0]
+    return timing_info[0]
 }
 
 export function parseEvents(fileData, sep) {
@@ -505,37 +505,37 @@ export function parseEvents(fileData, sep) {
 }
 
 function parseExcelEvents(fileData) {
-	// Code from https://stackoverflow.com/questions/30859901/parse-xlsx-with-node-and-create-json
-	let workbook = fileData;
-	let sheet_name_list = workbook.SheetNames;
-	let trials = []
-	sheet_name_list.forEach(function(y) {
-	    let worksheet = workbook.Sheets[y];
-	    let headers = {};
-	    let data = [];
-	    for(z in worksheet) {
-	        if(z[0] === '!') continue;
-	        //parse out the column, row, and value
-	        let col = z.substring(0,1);
-	        let row = parseInt(z.substring(1));
-	        let value = worksheet[z].v;
+    // Code from https://stackoverflow.com/questions/30859901/parse-xlsx-with-node-and-create-json
+    let workbook = fileData;
+    let sheet_name_list = workbook.SheetNames;
+    let trials = []
+    sheet_name_list.forEach(function(y) {
+        let worksheet = workbook.Sheets[y];
+        let headers = {};
+        let data = [];
+        for(z in worksheet) {
+            if(z[0] === '!') continue;
+            //parse out the column, row, and value
+            let col = z.substring(0,1);
+            let row = parseInt(z.substring(1));
+            let value = worksheet[z].v;
 
-	        //store header names
-	        if(row == 1) {
-	            headers[col] = value.toLowerCase();
-	            continue;
-	        }
+            //store header names
+            if(row == 1) {
+                headers[col] = value.toLowerCase();
+                continue;
+            }
 
-	        if(!data[row]) data[row]={};
-	        data[row][headers[col]] = value;
-	    }
-	    //drop those first two rows which are empty
-	    data.shift();
-	    data.shift();
-	    trials.push(data)
-	});
+            if(!data[row]) data[row]={};
+            data[row][headers[col]] = value;
+        }
+        //drop those first two rows which are empty
+        data.shift();
+        data.shift();
+        trials.push(data)
+    });
 
-	return trials[0];
+    return trials[0];
 }
 
 //this function receives files (an array of object containing fullpath and data. data is the actual file content of the file)
@@ -759,38 +759,40 @@ export function createEventObjects(ezbids, files) {
             //series_idx: null,
             subject_idx: ezbids.subjects.indexOf(subject),
             session_idx: subject.sessions.indexOf(session),
-            ModifiedSeriesNumber: ModifiedSeriesNumber,
+            ModifiedSeriesNumber,
 
             entities: {
-                "subject": eventsMappingInfo.subject.eventsValue,
-                "session": eventsMappingInfo.session.eventsValue,
-                "task": eventsMappingInfo.task.eventsValue,
-                "run": eventsMappingInfo.run.eventsValue
+                subject: eventsMappingInfo.subject.eventsValue,
+                session: eventsMappingInfo.session.eventsValue,
+                task: eventsMappingInfo.task.eventsValue,
+                run: eventsMappingInfo.run.eventsValue
             },
-            "items": [],
+            items: [],
             //these aren't used, but I believe we have to initialize it
-            "analysisResults": {
-                "section_ID": section_ID //TODO we do need to set this so that this event object goes to the right section
+            analysisResults: {
+                section_ID: section_ID //TODO we do need to set this so that this event object goes to the right section
             },
-            "paths": [],
-            "validationErrors": [],
+            paths: [],
+            validationErrors: [],
         }, patientInfo, session); //we need to set subject / session specific fields that we figured out earlier
 
         //event object also need some item info!
         object.items.push({
-            "name": fileExt,
+            name: fileExt,
             events, //here goes the content of the event object parsed earlier
-            "path": file.path //let's use the original file.path as "path" - although it's not..
+            path: file.path //let's use the original file.path as "path" - although it's not..
         });
 
         const sidecar = {};
 
         object.items.push({
-            "name": "json",
+            name: "json",
+            path: file.path,
             sidecar,
             sidecar_json: JSON.stringify(sidecar),
         });
 
+        console.log("created event object", object);
         eventObjects.push(object);
     });
 
