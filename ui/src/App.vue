@@ -1,6 +1,5 @@
 <script lang="ts">
 
-
 import { defineComponent, defineAsyncComponent } from 'vue'
 import { mapState, mapGetters } from 'vuex'
 
@@ -21,6 +20,7 @@ import { ElNotification } from 'element-plus'
 //import 'element-plus/es/components/notification/style/css'
 
 import { setSectionIDs, funcQA, fmapQA, setRun, updateErrors, setIntendedFor } from './libUnsafe'
+//import { IObjectItem } from './store'
 import { createEventsTSV } from './lib'
 
 export default defineComponent({
@@ -34,6 +34,8 @@ export default defineComponent({
        Objects,
        Deface,
        Finalize,
+
+       niivue: ()=>import('./components/niivue.vue'),
     },
 
     data() {
@@ -50,6 +52,10 @@ export default defineComponent({
                 "deface",
                 "finalize",
             ],
+
+            //item to open in niivue
+            //niivueItem: undefined as IObjectItem|undefined,
+            niivuePath: undefined as string|undefined,
         }
     },
 
@@ -279,10 +285,17 @@ export default defineComponent({
 
         <br>
         <div class="page-action" v-if="session">
-            <el-button v-if="backLabel" :type="backButtonType" @click="back">{{backLabel}}</el-button>
-            <el-button v-if="nextLabel" type="primary" @click="next" style="float: right;">{{nextLabel}}</el-button>
+            <el-button v-if="backLabel" :type="backButtonType" @click="back">
+                <font-awesome-icon :icon="['fas', 'angle-left']"/>
+                {{backLabel}}
+            </el-button>
+            <el-button v-if="nextLabel" type="primary" @click="next" style="float: right;">
+                {{nextLabel}}
+                <font-awesome-icon :icon="['fas', 'angle-right']"/>
+            </el-button>
         </div>
     </section>
+    <niivue :path="niivuePath" @close="niivuePath = undefined"/>
 </div>
 </template>
 

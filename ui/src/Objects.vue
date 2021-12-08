@@ -124,7 +124,10 @@
                         <el-select v-model="item.path" placeholder="Source path" size="small" style="width: 100%">
                             <el-option v-for="(item, idx) in so.items" :key="idx" :label="item.path" :value="item.path"/>
                         </el-select>
-                        <el-button type="info" v-if="item.path?.endsWith('.nii.gz')" @click="niivueItem = item">View in niivue</el-button>
+                        <el-button type="info" v-if="item.path?.endsWith('.nii.gz')" @click="$root.niivuePath = item.path">
+                            <font-awesome-icon :icon="['fas', 'eye']"/>
+                            NiiVue
+                        </el-button>
                     </el-form-item>
                     <el-form-item v-if="item.sidecar" label="sidecar">
                         <el-input type="textarea" rows="10" v-model="item.sidecar_json" @blur="update(so)"/>
@@ -171,8 +174,6 @@
         <br>
         <br>
     </div><!--object-->
-
-    <niivue :item="niivueItem" @close="niivueItem = undefined"/>
 </div>
 </template>
 
@@ -182,10 +183,8 @@ import { mapState, mapGetters, } from 'vuex'
 import { defineComponent } from 'vue'
 import datatype from './components/datatype.vue'
 
-import { IObject, Subject, Session, OrganizedSession, IObjectItem } from './store'
-
+import { IObject, Subject, Session, OrganizedSession } from './store'
 import { prettyBytes } from './filters'
-
 import { validateEntities, } from './libUnsafe'
 
 interface Section {
@@ -195,15 +194,12 @@ interface Section {
 export default defineComponent({
     components: {
         datatype,
-        niivue: ()=>import('./components/niivue.vue'),
     },
 
     data() {
         return {
             so: null as IObject|null, //selected object
             sess: null as OrganizedSession|null, //selected session for IntendedFor handling
-
-            niivueItem: undefined as IObjectItem|undefined,
         }
     },
 
@@ -384,7 +380,11 @@ export default defineComponent({
                 }
                 if(same) {
                     const sameseries = this.ezbids.series[same.series_idx];
-                    o.validationErrors.push("This object looks exactly like another object with Series #"+sameseries.series_idx+". We can not convert this object to BIDS as they will overwrite each other. Please set entities such as 'run' to make them all unique (across sections).");
+                    const sameidx = undefined;
+                    if(sameseries) sameidx = sameseries.series_idx;
+                    o.validationErrors.push("This object looks exactly like another object with Series #"+sameidx+
+                        ". We can not convert this object to BIDS as they will overwrite each other. "+
+                        "Please set entities such as 'run' to make them all unique (across sections).");
                     break;
                 }
             }

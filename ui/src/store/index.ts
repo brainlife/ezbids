@@ -451,14 +451,21 @@ const store = createStore({
             state.ezbids.objects.sort((a,b)=>{
                 const asub_idx = a.subject_idx;
                 const bsub_idx = b.subject_idx;
+                if(asub_idx != bsub_idx) return asub_idx - bsub_idx;
+
                 const ases_idx = a.session_idx;
                 const bses_idx = b.session_idx;
+                if(ases_idx != bses_idx) return ases_idx - bses_idx;
+
                 const amodseriesnum = a.ModifiedSeriesNumber;
                 const bmodseriesnum = b.ModifiedSeriesNumber;
+                if(amodseriesnum && bmodseriesnum && amodseriesnum != bmodseriesnum) return amodseriesnum.localeCompare(bmodseriesnum);
+
                 const apath = a.items[0].path;
                 const bpath = b.items[0].path;
+                if(apath && bpath && apath != bpath) return apath.localeCompare(bpath);
 
-                return (asub_idx - bsub_idx || ases_idx - bses_idx || amodseriesnum.localeCompare(bmodseriesnum) || apath.localeCompare(bpath))
+                return 0;
             });
 
             //re-index and organize
