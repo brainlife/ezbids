@@ -8,31 +8,33 @@
             Otherwise, you can skip this page.
         </p>
 
-        <el-row>
-            <el-col :span="12">
-                <el-form-item>
-                    <b>Defacing Method </b>
-                    <br>
-                    <el-select v-model="ezbids.defacingMethod" placeholder="Select a defacing method" style="width: 300px;" @change="changeMethod">
-                        <el-option value="" label="Don't Deface (use original)"/>
-                        <el-option value="quickshear" label="Quickshear (recommended)"/>
-                        <el-option value="pydeface" label="pyDeface (more common but takes much longer time)"/>
-                    </el-select>
-                </el-form-item>
-            </el-col>
-            <el-col :span="12">
-                <!--sub options-->
-                <div v-if="ezbids.defacingMethod == 'quickshear'">
-                    <small>* Use ROBEX and QuickShear Average processing time. 1min per image</small>
-                </div>
-                <div v-if="ezbids.defacingMethod == 'pydeface'">
-                    <small>* pydeface uses fsl to align facial mask template. 5min per image</small>
-                </div>
-                <br>
-            </el-col>
-        </el-row>
+        <el-form-item>
+            <b>Defacing Method </b>
+            <br>
+            <el-select v-model="ezbids.defacingMethod" placeholder="Select a defacing method" style="width: 300px;" @change="changeMethod">
+                <el-option value="" label="Don't Deface (use original)"/>
+                <el-option value="quickshear" label="Quickshear (recommended)"/>
+                <el-option value="pydeface" label="pyDeface (more common but takes much longer time)"/>
+            </el-select>
+        </el-form-item>
+        <!--sub options-->
+        <p v-if="ezbids.defacingMethod == 'quickshear'">
+            <small>* Use ROBEX and QuickShear Average processing time. 1min per image</small>
+        </p>
+        <p v-if="ezbids.defacingMethod == 'pydeface'">
+            <small>* pydeface uses fsl to align facial mask template. 5min per image</small>
+        </p>
     </el-form>
 
+    <el-form>
+        <el-form-item>
+            <el-button v-if="!isDefacing && ezbids.defacingMethod && !session.deface_finish_date" @click="runDeface" type="success">Run Deface</el-button>
+            <el-button @click="cancel" v-if="isDefacing" type="warning">Cancel Defacing</el-button>
+            <el-button @click="reset" v-if="session.deface_begin_date && session.deface_finish_date">Reset Deface</el-button>
+        </el-form-item>
+    </el-form>
+
+    <br>
     <el-alert v-if="getAnatObjects.length == 0" type="warning">No anatomy files to deface. Please skip this step.</el-alert>
     <div v-if="getAnatObjects.length && ezbids.defacingMethod">
         <div v-if="session.status == 'deface' || session.status == 'defacing'">
@@ -40,7 +42,6 @@
             <pre class="status">{{session.status_msg}}</pre>
         </div>
         <div v-if="session.deface_finish_date">
-            <br>
             <el-alert type="success" show-icon>
                 Defacing completed! Please check the defacing results and proceed to the next page.
             </el-alert>
@@ -51,16 +52,8 @@
         </div>
     </div>
 
-    <br>
-    <el-form>
-        <el-form-item>
-            <el-button v-if="!isDefacing && ezbids.defacingMethod && !session.deface_finish_date" @click="runDeface" type="success">Run Deface</el-button>
-            <el-button @click="cancel" v-if="isDefacing" type="warning">Cancel Defacing</el-button>
-            <el-button @click="reset" v-if="session.deface_begin_date && session.deface_finish_date">Reset Deface</el-button>
-        </el-form-item>
-    </el-form>
 
-    <table class="table table-sm" v-if="ezbids.defacingMethod">
+    <table v-if="session.deface_begin_date" class="table">
         <thead>
             <tr>
                 <th></th>
@@ -257,8 +250,7 @@ export default defineComponent({
     },
 });
 </script>
-
-<style scoped>
+<style lang="scss" scoped>
 .deface {
     position: fixed;
     top: 0;
@@ -267,13 +259,18 @@ export default defineComponent({
     right: 0;
     overflow: auto;
 }
+.table {
+margin-top: 10px;
+border-top: 1px solid #ddd;
+padding-top: 10px;
+}
 .table td {
     border-top: 1px solid #eee;
     padding-top: 5px;
 }
 .table th {
     text-align: left;
-    padding: 10px 0;
+    padding: 5px 0;
 }
 .table td {
     vertical-align: top;

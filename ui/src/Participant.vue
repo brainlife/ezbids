@@ -132,7 +132,7 @@ export default defineComponent({
 });
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .columnEditor {
     background-color: #f9f9f9;
     margin-bottom: 10px;

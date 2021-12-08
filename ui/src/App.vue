@@ -12,6 +12,7 @@ import Objects from './Objects.vue'
 import Events from './Events.vue'
 import Deface from './Deface.vue'
 import Finalize from './Finalize.vue'
+import Feedback from './Feedback.vue'
 
 import { IObject } from './store'
 
@@ -34,6 +35,7 @@ export default defineComponent({
        Objects,
        Deface,
        Finalize,
+       Feedback,
 
        niivue: ()=>import('./components/niivue.vue'),
     },
@@ -51,6 +53,7 @@ export default defineComponent({
                 "object",
                 "deface",
                 "finalize",
+                "feedback",
             ],
 
             //item to open in niivue
@@ -119,7 +122,7 @@ export default defineComponent({
             switch(this.page) {
             case "upload":
                 return (this.session && this.session.pre_finish_date && !this.ezbids.notLoaded)?"Next":null;
-            case "finalize":
+            case "feedback":
                 return null;
             default:
                 return "Next";
@@ -154,15 +157,10 @@ export default defineComponent({
                     case "object":
                         createEventsTSV(this.ezbids, this.events);
                         break;
-                    /*
-                    case "finalize":
-                        console.log("running finalize", this.page);
-                        console.dir(this.$refs[this.page]);
-                        this.$refs[this.page].rerun();
-                        this.$refs[this.page].finalize();
-                        break;
-                    */
                     }
+
+                    //scroll page to the top
+                    window.scrollTo(0,0); 
                 }
             });
         },
@@ -255,14 +253,10 @@ export default defineComponent({
             <li :class="{active: page == 'event'}">Events</li>
             <li :class="{active: page == 'object'}">Object Adjustment</li>
             <li :class="{active: page == 'deface'}">Deface</li>
-            <li :class="{active: page == 'finalize'}">Finalize</li>
+            <li :class="{active: page == 'finalize'}">Download BIDS</li>
+            <li :class="{active: page == 'feedback'}">Feedback</li>
         </ul>
 
-        <!--
-        <div style="padding: 15px;" v-if="$root.session">
-            <p style="font-size: 80%; line-height: 150%; opacity: 0.8;">* You can reload page to revert session to the initial state.</p>
-        </div>
-        -->
         <p class="menu-footer">
             <a href="https://github.com/brainlife/ezbids" target="github">
                 <font-awesome-icon :icon="['fab', 'github']" />
@@ -282,6 +276,7 @@ export default defineComponent({
             @updateObject="updateObject"/>
         <Deface v-if="page == 'deface'" ref="deface"/>
         <Finalize v-if="page == 'finalize'" ref="finalize"/>
+        <Feedback v-if="page == 'feedback'" ref="feedback"/>
 
         <br>
         <div class="page-action" v-if="session">
@@ -307,11 +302,6 @@ html, body, #app, #app-container {
 }
 body {
     margin: 0;
-    /*
-    font-family: Avenir, Helvetica, Arial, sans-serif;
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    */
     font-family: 'Merriweather Sans',Georgia,sans-serif;
     font-size: 14px;
     color: #333;
@@ -366,12 +356,6 @@ aside ul {
 aside ul li {
     padding: 10px;
 }
-/*
-aside ul li:hover {
-    cursor: pointer;
-    background-color: #0001;
-}
-*/
 aside ul li.active {
     background-color: rgb(103, 194, 58);
     color: white;

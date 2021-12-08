@@ -14,16 +14,26 @@
             <br>
             <h3 style="margin-top: 0;">All Done!</h3>
             <p>
-            Please download the BIDS formatted data to your local computer, or send the data to other cloud resources.
+            Please download the BIDS formatted data to your local computer
             </p>
             <p>
                 <el-button @click="download" type="primary">Download BIDS</el-button>
+            </p>
+
+            <p>
+            Or send the dataset to other cloud resources.
+            </p>
+            <p>
                 <el-button @click="sendBrainlife">Send to <b>brainlife.io</b></el-button>
                 <el-button @click="sendOpenneuro">Send to <b>OpenNeuro</b></el-button>
             </p>
-            <p @click="downloadSubjectMapping" class="btn">
-                <i class="el-icon-download"></i> PatientName to Subject/Session Mapping
-                <small>* may contain sensitive PHI data. Please make sure to store in a secure location.</small>
+
+            <p style="background-color: #0001; padding: 20px; padding-top: 10px;">
+                If you have re-named the original DICOM patient names for your BIDS subject/session names,  
+                you can download the mapping file.
+                <el-button type="text" @click="downloadSubjectMapping">Download Subject Mapping (.json)</el-button>
+                <br>
+                <small>* may contain sensitive PHI data. Please make sure to store the mapping file in a secure location.</small>
             </p>
         </div>
 
@@ -176,11 +186,16 @@ export default defineComponent({
         sendOpenneuro() {
             ElNotification({ title: 'Failed', message: 'This functionality is yet to be implemented'});
         },
+
+        isValid(cb: (err?: string)=>void) {
+            //TODO?
+            cb();
+        },
     },
 });
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .download {
     border-radius: 10px;
     background-color: #eee;

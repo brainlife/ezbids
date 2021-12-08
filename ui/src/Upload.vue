@@ -552,8 +552,7 @@ export default defineComponent({
     </div>
 </div>
 </template>
-
-<style scoped>
+<style lang="scss" scoped>
 .drop-area {
     background-color: #0002;
     color: #999;

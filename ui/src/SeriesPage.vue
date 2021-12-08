@@ -256,7 +256,7 @@ export default defineComponent({
 
 </script>
 
-<style scoped>
+<style lang="scss" scoped>
 .series-list {
     font-size: 90%;
     position: fixed;
