@@ -1,5 +1,5 @@
 <template>
-<el-dialog v-model="open" :title="item?.path" width="70%" destroy-on-close center @close="close">
+<el-dialog v-model="open" :title="path" width="70%" destroy-on-close center @close="close">
     <canvas ref="canvas" class="canvas" height="500"/>
 </el-dialog>
 </template>
@@ -14,7 +14,7 @@ import { Niivue } from '@niivue/niivue'
 const nv = new Niivue();
 
 export default defineComponent({
-    props: [ 'item' ],
+    props: [ 'path' ],
     data() {
         return {
             open: false,
@@ -22,12 +22,12 @@ export default defineComponent({
     },
 
     mounted() {
-        if(this.item) this.load();
+        if(this.path) this.load();
     },
 
     watch: {
-        item() {
-            if(this.item) this.load();
+        path() {
+            if(this.path) this.load();
         }
     },
 
@@ -37,12 +37,13 @@ export default defineComponent({
 
     methods: {
         load() {
+            console.log("loading niivuew", this.path);
             this.open = true;
             this.$nextTick(()=>{
                 console.log("canvas", this.$refs.canvas)
                 nv.attachToCanvas(this.$refs.canvas);
                 nv.loadVolumes([{
-                    url: this.getURL(this.item.path),
+                    url: this.getURL(this.path),
                     volume: {hdr: null, img: null},
                     colorMap: "gray",
                     opacity: 1,

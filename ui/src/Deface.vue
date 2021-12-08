@@ -12,7 +12,7 @@
             <el-col :span="12">
                 <el-form-item>
                     <b>Defacing Method </b>
-                    &nbsp;
+                    <br>
                     <el-select v-model="ezbids.defacingMethod" placeholder="Select a defacing method" style="width: 300px;" @change="changeMethod">
                         <el-option value="" label="Don't Deface (use original)"/>
                         <el-option value="quickshear" label="Quickshear (recommended)"/>
@@ -54,7 +54,7 @@
     <br>
     <el-form>
         <el-form-item>
-            <el-button v-if="!isDefacing && ezbids.defacingMethod && !session.deface_finish_date" @click="submit" type="success">Run Deface</el-button>
+            <el-button v-if="!isDefacing && ezbids.defacingMethod && !session.deface_finish_date" @click="runDeface" type="success">Run Deface</el-button>
             <el-button @click="cancel" v-if="isDefacing" type="warning">Cancel Defacing</el-button>
             <el-button @click="reset" v-if="session.deface_begin_date && session.deface_finish_date">Reset Deface</el-button>
         </el-form-item>
@@ -78,22 +78,37 @@
                 &nbsp;
                 <datatype :type="anat._type" :series_idx="anat.series_idx" :entities="anat.entities"/>
             </td>
-            <td width="40%">
+            <td width="40%" style="position: relative">
                 <el-radio v-model="anat.defaceSelection" label="original">Use Original</el-radio>
                 <div v-for="(item, itemIdx) in anat.items" :key="itemIdx">
                     <div v-if="item.pngPaths">
                         <a :href="getURL(item.pngPaths[0])">
                             <img style="width: 100%" :src="getURL(item.pngPaths[0])"/>
                         </a>
+                        <el-button type="info" @click="$root.niivuePath = item.path" style="position: absolute; top: 50px; left: 5px" size="small">
+                            <font-awesome-icon :icon="['fas', 'eye']"/>
+                            NiiVue
+                        </el-button>
                     </div>
                 </div>
             </td>
-            <td width="40%">
+            <td width="40%" style="position: relative">
                 <el-radio v-model="anat.defaceSelection" label="defaced">Use Defaced (when finish defacing)</el-radio>
-                <a :href="getDefacedThumbURL(anat)" v-if="anat.defaced">
-                    <img style="width: 100%" :src="getDefacedThumbURL(anat)+'?nocache='+Date.now()"/>
-                </a>
-                <p v-if="session.status == 'defacing' && !anat.defaced" class="missingThumb"><small>Defacing ...</small></p>
+                <div v-if="anat.defaced">
+                    <a :href="getURL(getDefacedURL(anat)+'.png')" v-if="anat.defaced">
+                        <img style="width: 100%" :src="getURL(getDefacedURL(anat)+'.png')+'?nocache='+Date.now()"/>
+                    </a>
+                    <el-button type="info" @click="$root.niivuePath = getDefacedURL(anat)" style="position: absolute; top: 50px; left: 5px;" size="small">
+                        <font-awesome-icon :icon="['fas', 'eye']"/>
+                        NiiVue
+                    </el-button>
+                </div>
+                <p v-if="session.status == 'defacing' && !anat.defaced" class="missingThumb">
+                <small>
+                    Defacing ...
+                    <font-awesome-icon :icon="['fas', 'spinner']" spin/> 
+                </small>
+                </p>
                 <p v-if="anat.defaceFailed" class="missingThumb fail"><small>Defacing Failed</small></p>
             </td>
         </tr>
@@ -115,6 +130,7 @@ import { ElNotification } from 'element-plus'
 export default defineComponent({
     components: {
         datatype,
+        niivue: ()=>import('./components/niivue.vue'),
     },
     data() {
         return {
@@ -153,14 +169,13 @@ export default defineComponent({
             }
         },
 
-        getDefacedThumbURL(anat: IObject) {
+        getDefacedURL(anat: IObject) {
             //find the image path first
             let item = anat.items.find(i=>i.path.endsWith(".nii.gz"));
             if(!item) return null;
 
             //guess the image path
-            let path = item.path+".defaced.nii.gz.png";
-            return this.getURL(path)
+            return item.path+".defaced.nii.gz";
         },
 
         cancel() {
@@ -194,7 +209,7 @@ export default defineComponent({
             });
         },
 
-        submit() {
+        runDeface() {
             const list = this.getAnatObjects.map((o:IObject)=>{
                 return {idx: o.idx, path: o.items.find(i=>i.path?.endsWith(".nii.gz"))?.path};
             });

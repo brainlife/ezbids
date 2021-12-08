@@ -8,8 +8,8 @@ import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 import { library } from "@fortawesome/fontawesome-svg-core"
 import { faGithub } from "@fortawesome/free-brands-svg-icons"
 library.add(faGithub);
-import { faSpinner } from '@fortawesome/free-solid-svg-icons'
-library.add(faSpinner);
+import { faSpinner, faAngleLeft, faAngleRight, faEye } from '@fortawesome/free-solid-svg-icons'
+library.add(faSpinner, faAngleLeft, faAngleRight, faEye );
 
 import 'element-plus/dist/index.css'
 
@@ -19,7 +19,6 @@ import store from './store'
 //tell typescript about some global properties we are adding
 declare module '@vue/runtime-core' {
     export interface ComponentCustomProperties {
-      //$http: typeof axios
       $validate: (data: object, rule: object) => boolean
       $store: typeof store
     }
@@ -27,7 +26,6 @@ declare module '@vue/runtime-core' {
 
 const app = createApp(App);
 app.use(store)
-//app.use(ElementPlus)
 app.use(VueGtag, {
     property: {
       id: "G-J5H19RMNCT"

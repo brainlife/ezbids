@@ -117,6 +117,10 @@
                                     <img style="width: 100%" :src="getURL(path)"/>
                                 </a>
                             </p>
+                            <el-button type="info" @click="$root.niivuePath = item.path" size="small">
+                                <font-awesome-icon :icon="['fas', 'eye']"/>
+                                NiiVue
+                            </el-button>
                         </div>
                     </div>
 
@@ -151,7 +155,6 @@ export default defineComponent({
     components: {
         datatype,
         showfile,
-        niivue: ()=>import('./components/niivue.vue'),
     },
 
     data() {
