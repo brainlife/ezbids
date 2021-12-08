@@ -631,74 +631,86 @@ export function createEventObjects(ezbids, files) {
             }
         }
 
-        const keys = Object.keys(events[0]); //selecting the first column of the events timing file, which contains the column names
+        const sepChars = [".", "-", "_", "/"] //used for parsing file path for identifying information, if we need to use file path
+        const colNames = Object.keys(events[0]); //selecting the first column of the events timing file, which contains the column names
         for(const entity in eventsMappingInfo) {
             const info = eventsMappingInfo[entity];
 
-            /* 1st stage: examine header columns and data of event file(s) to
-            see if identifying information (sub, ses, task, and/or run) is contained
-            there.
+            /* 1st stage: examine column names and data of event file(s) to
+            see if identifying information (sub, ses, task, and/or run) is contained there.
             */
-            const matchingKey = keys.find(key=>{
-                const safeKey = key.toLowerCase().replace(/[^0-9a-z]/gi, '');
-                info.MappingKeys.includes(safeKey);
-            });
-            if(matchingKey) {
-                const matchingValues = events.map(e=>e[matchingKey]);
-                info.eventsValue = findMostCommonValue(matchingValues);
-                info.detectionMethod = "identifying information found in event columns";
+           let identifyingCol = undefined
+
+           for(const colName of colNames) {
+               const safeCol = colName.toLowerCase().replace(/[^0-9a-z]/gi, ''); //make lowercase and remove non-alphanumeric characters
+               if(info.MappingKeys.includes(safeCol)) {
+                   identifyingCol = safeCol
+                   break;
+               }
+           }
+            if(identifyingCol) {
+                const identifyingColValues = events.map(e=>e[identifyingCol]);
+                info.eventsValue = findMostCommonValue(identifyingColValues); //columns may contain multiple values, so find the most common value
+                info.detectionMethod = "identifying information found from value in identifying column name";
             }
 
-            // 2nd stage: examine file path for identifying information
-            if (info.eventsValue == undefined) {
-                Object.values(info.MappingKeys).forEach(mapping=>{
-                    if (file.path.toLowerCase().split(mapping).slice(-1)[0].split(/[._-]+/)[0] == "") {
-                        info.eventsValue = file.path.split(new RegExp(regEscape(mapping), "ig")).slice(-1)[0].split(/[._-]+/)[1]
-                        info.detectionMethod = "identifying information found in file path";
-                    } else if (isNaN(parseFloat(file.path.toLowerCase().split(mapping).slice(-1)[0])) == false) {
-                        info.eventsValue = file.path.split(new RegExp(regEscape(mapping), "ig")).slice(-1)[0].split(/[._-]+/)[0]
+            //2nd stage: examine file path for identifying information
+            if(info.eventsValue == undefined) {
+                const lowerCaseFilePath = file.path.toLowerCase()
+                Object.values(info.MappingKeys).forEach(mappingKey=>{
+                    const splitFilePath = lowerCaseFilePath.split(mappingKey)
+                    if(splitFilePath.length > 1) { //if a mappingKey is in the file path, the length of the splitFilePath array will be > 1
+                        let lastSplit = splitFilePath.slice(-1)[0] //splitFilePath.slice(-1) is an array of length 1, so grab the first (i.e. entire) array
+                        const lastSplitFirstChar = lastSplit[0]
+                        Object.values(sepChars).forEach(sepChar=>{ //remove leading separator character(s), if they exist
+                            if(sepChar == lastSplitFirstChar) {
+                                lastSplit = lastSplit.substring(1)
+                            }
+                        });
+                        info.eventsValue = lastSplit.split(/[._-]+/)[0] //first index will contain the value we want (e.g. sub1 ==> 1)
                         info.detectionMethod = "identifying information found in file path";
                     }
                 });
             }
 
-            // 3rd stage: if ezBIDSvalues lengths == 1, set those values to the corresponding eventsValue
-            if (info.eventsValue == undefined && info.ezBIDSvalues.length == 1) {
-                info.eventsValue = info.ezBIDSvalues[0]
-                info.detectionMethod = `"there is only one ${entity} value, so assume it's that"`
+            //3rd stage: if ezBIDSvalues lengths == 1, set that value to the corresponding eventsValue
+            if(info.eventsValue == undefined && info.ezBIDSvalues.length == 1) {
+                info.eventsValue = info.ezBIDSvalues[0] //in this scenario info.ezBIDSvalues has a length of 1, so simply get the first indexed value
+                info.detectionMethod = `"identifying information found because there is only one ${entity} value, so assumption is it's that"`
             }
 
-            //Sanity checks
+            //sanity checks, based on the current mapping performed
             Object.keys(eventsMappingInfo).forEach(key=>{
                 /* 1). if a mismatch exists between any key's ezBIDSvalue and eventsValue, and the length of
                 ezBIDSvalues == 1, then the ezBIDSvalue takes precedence because that's what the user has
-                explicitly specified on ezBIDS.
+                explicitly specified in ezBIDS.
                 */
-                if (!info.ezBIDSvalues.includes(info.eventsValue) && info.ezBIDSvalues.length == 1) {
+                if(!info.ezBIDSvalues.includes(info.eventsValue) && info.ezBIDSvalues.length == 1) {
                     info.eventsValue = info.ezBIDSvalues[0]
                 }
 
                 /* 2). ignore zero-padding in subject, session, and run eventsValue if the zero-padded
-                value doesn't exist in corresponding ezBIDSvalues.
+                value doesn't exist in corresponding ezBIDSvalues. For example, if subject ID in ezBIDS
+                is "1", but the corresponding events subject ID is "01", simply assume the two are the same.
                 */
-                if (key != "task" && info.eventsValue) {
-                    if (!info.ezBIDSvalues.includes(info.eventsValue) && info.ezBIDSvalues.includes(info.eventsValue.replace(/^0+/, ''))) {
+                if(key != "task" && info.eventsValue) {
+                    if(!info.ezBIDSvalues.includes(info.eventsValue) && info.ezBIDSvalues.includes(info.eventsValue.replace(/^0+/, ''))) {
                         info.eventsValue = info.eventsValue.replace(/^0+/, '')
                     }
                 }
             })
         }
 
-        /* if we couldn't find task eventValue, look for task names used in ezBIDS in event files
-        values (not just column name).
+        /* if task eventValue can't be determined, look for task names used in ezBIDS in event files
+        values (not just column names).
         */
-        if (!eventsMappingInfo.task.eventsValue) {
+        if(!eventsMappingInfo.task.eventsValue) {
             const taskNames = eventsMappingInfo.task.ezBIDSvalues.map(v=>v.toLowerCase());
             events.forEach(event=>{
                 for(const key in event) {
                     if(taskNames.includes(event[key])) {
                         eventsMappingInfo.task.eventsValue = event[key];
-                        info.detectionMethod = "found a column that contains ezbids task name"
+                        info.detectionMethod = "task identifying information was found in events file (not column name)"
                     }
                 }
             });
@@ -706,18 +718,18 @@ export function createEventObjects(ezbids, files) {
 
         // Determine section_ID that events object pertains to
         let section_ID;
-        if (uniqueSectionIDs.length == 1) {
+        if(uniqueSectionIDs.length == 1) {
             section_ID = uniqueSectionIDs[0]
-        } else { // multiple section_IDs; should be able to determine which func/bold the event goes to and use that section_ID
+        }else{ // multiple section_IDs; should be able to determine which func/bold the event goes to and use that section_ID
             const correspondingBoldSecID = ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
                 e._entities.session == eventsMappingInfo.session.eventsValue &&
                 e._entities.task == eventsMappingInfo.task.eventsValue &&
                 e._entities.run == eventsMappingInfo.run.eventsValue
                 ).map(e=>e.analysisResults.section_ID)
 
-            if (correspondingBoldSecID.length > 0) {
+            if(correspondingBoldSecID.length > 0) {
                 section_ID = correspondingBoldSecID[0]
-            } else {
+            }else{
                 section_ID = 1
             }
         }
@@ -744,7 +756,7 @@ export function createEventObjects(ezbids, files) {
         let sessionInfo;
 
         sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == eventsMappingInfo.subject.eventsValue)
-        if (sessionInfo.length == 0) {
+        if(sessionInfo.length == 0) {
             sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == "")
         }
 
