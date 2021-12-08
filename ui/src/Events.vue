@@ -1,22 +1,22 @@
 <template>
 <div style="padding: 20px">
     <div v-if="!events.loaded">
-        <p>If you'd like to include task events/timing data with your BIDS datasets, you can upload them here.</p>         
-        <p>Please skip this step if you do not have events data.</p>                                                                              
+        <p>If you'd like to include task events/timing data with your BIDS datasets, you can upload them here.</p>
+        <p>Please skip this step if you do not have events data, or if your events data is not set up where each row pertains to a single trial.</p>
         <!--
-        <el-button @click="open">Select Directory</el-button>                                                        
+        <el-button @click="open">Select Directory</el-button>
         -->
-        <input type="file"                                                                                      
-            webkitdirectory                                                                                 
-            mozdirectory                                                                                    
-            msdirectory                                                                                     
-            odirectory                                                                                      
-            directory                                                                                       
+        <input type="file"
+            webkitdirectory
+            mozdirectory
+            msdirectory
+            odirectory
+            directory
             placeholder="Select Directory"
             @change="open"/>
-    </div>                      
+    </div>
     <div v-if="events.loaded">
-        <el-button type="warning" @click="reset" style="float: right;">Reset</el-button>     
+        <el-button type="warning" @click="reset" style="float: right;">Reset</el-button>
         <h3>Column Mapping</h3>
         <p>Please correct the column mappings.</p>
 
@@ -28,7 +28,7 @@
                     <el-option label="=" value="eq"/>
                     <el-option label="Subtract" value="subtract"/>
                     <el-option label="Add" value="add"/>
-                </el-select> 
+                </el-select>
                 &nbsp;
                 <columnSelecter v-model="columns.onset" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
                 <span v-if="columns.onsetLogic == 'subtract'">&nbsp;-&nbsp;</span>
@@ -39,11 +39,11 @@
                 &nbsp;
                 <el-select v-model="columns.onsetUnit" size="small" style="width: 120px">
                     <el-option label="millisecond" value="ms"/>
-                </el-select> 
+                </el-select>
 
                 <p>
-                    Onset of the event measured from the beginning of the acquisition of the first volume in the corresponding task imaging data file. 
-                    If any acquired scans have been discarded before forming the imaging data file, ensure that a time of 0 corresponds to the first 
+                    Onset of the event measured from the beginning of the acquisition of the first volume in the corresponding task imaging data file.
+                    If any acquired scans have been discarded before forming the imaging data file, ensure that a time of 0 corresponds to the first
                     image stored. In other words negative numbers in "onset" are allowed.
                 </p>
                 <br>
@@ -57,7 +57,7 @@
                     <el-option label="=" value="eq"/>
                     <el-option label="Subtract" value="subtract"/>
                     <el-option label="Add" value="add"/>
-                </el-select> 
+                </el-select>
                 &nbsp;
                 <columnSelecter v-model="columns.duration" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
                 <span v-if="columns.durationLogic == 'subtract'">&nbsp;-&nbsp;</span>
@@ -68,10 +68,10 @@
                 &nbsp;
                 <el-select v-model="columns.durationUnit" size="small" style="width: 120px">
                     <el-option label="millisecond" value="ms"/>
-                </el-select> 
-                
+                </el-select>
+
                 <p>
-                    Duration of the event (measured from onset). Must always be either zero or positive. A "duration" value of zero implies that 
+                    Duration of the event (measured from onset). Must always be either zero or positive. A "duration" value of zero implies that
                     the delta function or event is so short as to be effectively modeled as an impulse.
                 </p>
                 <br>
@@ -85,7 +85,7 @@
                     <el-option label="=" value="eq"/>
                     <el-option label="Subtract" value="subtract"/>
                     <el-option label="Add" value="add"/>
-                </el-select> 
+                </el-select>
                 &nbsp;
                 <columnSelecter v-model="columns.sample" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
                 <span v-if="columns.sampleLogic == 'subtract'">&nbsp;-&nbsp;</span>
@@ -95,7 +95,7 @@
                 </div>
                 &nbsp;
                 <p>
-                    Onset of the event according to the sampling scheme of the recorded modality (that is, referring to the raw data file 
+                    Onset of the event according to the sampling scheme of the recorded modality (that is, referring to the raw data file
                     that the events.tsv file accompanies).
                 </p>
                 <br>
@@ -109,7 +109,7 @@
                     <el-option label="=" value="eq"/>
                     <el-option label="Subtract" value="subtract"/>
                     <el-option label="Add" value="add"/>
-                </el-select> 
+                </el-select>
                 &nbsp;
                 <columnSelecter v-model="columns.responseTime" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
                 <span v-if="columns.responseTimeLogic == 'subtract'">&nbsp;-&nbsp;</span>
@@ -120,10 +120,10 @@
                 &nbsp;
                 <el-select v-model="columns.responseTimeUnit" size="small" style="width: 120px">
                     <el-option label="millisecond" value="ms"/>
-                </el-select> 
-                
+                </el-select>
+
                 <p>
-                    Response time measured in seconds. A negative response time can be used to represent preemptive responses and "n/a" 
+                    Response time measured in seconds. A negative response time can be used to represent preemptive responses and "n/a"
                     denotes a missed response.
                 </p>
                 <br>
@@ -136,18 +136,18 @@
                 <columnSelecter v-model="columns.trialType" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
 
                 <p>
-                    Primary categorisation of each trial to identify them as instances of the experimental conditions. 
-                    For example: for a response inhibition task, it could take on values "go" and "no-go" to refer to response initiation 
+                    Primary categorisation of each trial to identify them as instances of the experimental conditions.
+                    For example: for a response inhibition task, it could take on values "go" and "no-go" to refer to response initiation
                     and response inhibition experimental conditions.
                 </p>
 
                 <div v-if="columns.trialType">
-                    <el-input v-model="trialTypes.longName" size="small"> 
+                    <el-input v-model="trialTypes.longName" size="small">
                         <template #prepend>longName</template>
                     </el-input>
                     <br>
                     <br>
-                    <el-input v-model="trialTypes.desc" size="small"> 
+                    <el-input v-model="trialTypes.desc" size="small">
                         <template #prepend>Description</template>
                     </el-input>
                     <br><br>
@@ -168,7 +168,7 @@
             <th>Value</th>
             <td>
                 <columnSelecter v-model="columns.value" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
-            
+
                 <p>
                     Marker value associated with the event (for example, the value of a TTL trigger that was recorded at the onset of the event).
                 </p>
@@ -180,7 +180,7 @@
             <th>HED</th>
             <td>
                 <columnSelecter v-model="columns.HED" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
-                
+
                 <p>
                     Hierarchical Event Descriptor (HED) Tag. See <a href="https://bids-specification.readthedocs.io/en/stable/99-appendices/03-hed.html">BIDS Specification / Appendix 3</a>
                 </p>
@@ -198,15 +198,15 @@
         <br>
         <br>
         <br>
-    </div>                                                                             
+    </div>
 </div>
 </template>
 
 <script lang="ts">
 
 import { mapState, mapGetters, } from 'vuex'
-import { defineComponent } from 'vue'                                                                                                                                                  
-import datatype from './components/datatype.vue' 
+import { defineComponent } from 'vue'
+import datatype from './components/datatype.vue'
 import columnSelecter from './components/columnselecter.vue'
 
 import { IObject } from './store'
@@ -242,7 +242,7 @@ export default defineComponent({
     data() {
         return {
             dragging: false,
-            starting: false, //wait for browser to handle all files     
+            starting: false, //wait for browser to handle all files
         }
     },
 
@@ -261,7 +261,7 @@ export default defineComponent({
             return this.$store.state.events.trialTypes;
         },
     },
-    
+
     methods: {
         isValid(cb: (err?: string)=>void) {
             let err = undefined;
@@ -277,7 +277,7 @@ export default defineComponent({
         },
 
         reset() {
-            //remove existing func/events 
+            //remove existing func/events
             this.ezbids.objects = this.ezbids.objects.filter((o:IObject)=>o._type != "func/events");
             this.events.loaded = false;
         },
@@ -288,12 +288,12 @@ export default defineComponent({
             if(!element.files) return;
 
             // @ts-ignore
-            for await (let file of element.files) {                                                                       
+            for await (let file of element.files) {
                 files.push({
                     path: file.webkitRelativePath,
                     data: await file.text(),
-                });                                               
-            }    
+                });
+            }
 
             this.reset();
 
@@ -304,7 +304,7 @@ export default defineComponent({
                 eventObjects.forEach(object=>{
                     this.$store.commit("addObject", object);
                 });
-                
+
                 this.$emit("mapObjects");
 
                 //enumerate all possible column headers (from the 1st example)
@@ -388,8 +388,8 @@ export default defineComponent({
     opacity: 0.2;
 }
 .left-border {
-    margin-left: 8.5px; 
-    padding-left: 4px; 
+    margin-left: 8.5px;
+    padding-left: 4px;
     border-left: 2px solid #3331;
     padding-top: 4px;
 }
@@ -403,7 +403,7 @@ export default defineComponent({
 
 .border-top {
     border-top: 1px solid #f6f6f6;
-    padding-top: 2px; 
+    padding-top: 2px;
     margin-top: 2px;
 }
 
