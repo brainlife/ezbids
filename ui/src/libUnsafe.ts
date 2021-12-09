@@ -716,41 +716,63 @@ export function createEventObjects(ezbids, files) {
             });
         }
 
-        // Determine section_ID that events object pertains to
-        let section_ID;
-        if(uniqueSectionIDs.length == 1) {
-            section_ID = uniqueSectionIDs[0]
-        }else{ // multiple section_IDs; should be able to determine which func/bold the event goes to and use that section_ID
-            const correspondingBoldSecID = ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
+        // console.log(eventsMappingInfo)
+        let section_ID = 1 //default value unless otherwise determined
+        let ModifiedSeriesNumber = "01" //default value unless otherwise determined
+        let series_idx = 1 //default value unless otherwise determined
+
+        for(const entity of ["subject", "session", "task", "run"]) {
+            if(eventsMappingInfo[entity].ezBIDSvalues && !eventsMappingInfo[entity].eventsValue) { //user has specified subject, session, task, and/or run entities, but mapping to events file(s) doesn't work
+                section_ID = undefined
+                break;
+            }
+        }
+
+        if(section_ID) {
+            section_ID = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
                 e._entities.session == eventsMappingInfo.session.eventsValue &&
                 e._entities.task == eventsMappingInfo.task.eventsValue &&
                 e._entities.run == eventsMappingInfo.run.eventsValue
                 ).map(e=>e.analysisResults.section_ID)
 
-            if(correspondingBoldSecID.length > 0) {
-                section_ID = correspondingBoldSecID[0]
+            series_idx = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
+                e._entities.session == eventsMappingInfo.session.eventsValue &&
+                e._entities.task == eventsMappingInfo.task.eventsValue &&
+                e._entities.run == eventsMappingInfo.run.eventsValue &&
+                e._type == "func/bold" &&
+                (e._entities.part == "" || e._entities.part == "mag")
+                ).map(e=>e.series_idx)
+
+            ModifiedSeriesNumber = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
+                e._entities.session == eventsMappingInfo.session.eventsValue &&
+                e._entities.task == eventsMappingInfo.task.eventsValue &&
+                e._entities.run == eventsMappingInfo.run.eventsValue &&
+                e._type == "func/bold" &&
+                (e._entities.part == "" || e._entities.part == "mag")
+                ).map(e=>e.ModifiedSeriesNumber)
+
+
             }else{
-                section_ID = 1
-            }
+            section_ID = 1
         }
 
         // Determine correspoding series_idx value that event file(s) go to
-        const series_idx = Array.from(new Set(ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
-            e._entities.session == eventsMappingInfo.session.eventsValue &&
-            e._entities.task == eventsMappingInfo.task.eventsValue &&
-            e._entities.run == eventsMappingInfo.run.eventsValue &&
-            e._type == "func/bold" &&
-            (e._entities.part == "" || e._entities.part == "mag")
-            ).map(e=>e.series_idx)))
+        // const series_idx = Array.from(new Set(ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
+        //     e._entities.session == eventsMappingInfo.session.eventsValue &&
+        //     e._entities.task == eventsMappingInfo.task.eventsValue &&
+        //     e._entities.run == eventsMappingInfo.run.eventsValue &&
+        //     e._type == "func/bold" &&
+        //     (e._entities.part == "" || e._entities.part == "mag")
+        //     ).map(e=>e.series_idx)))
 
         // Determine correspoding ModifiedSeriesNumber value that event file(s) go to
-        const ModifiedSeriesNumber = Array.from(new Set(ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
-            e._entities.session == eventsMappingInfo.session.eventsValue &&
-            e._entities.task == eventsMappingInfo.task.eventsValue &&
-            e._entities.run == eventsMappingInfo.run.eventsValue &&
-            e._type == "func/bold" &&
-            (e._entities.part == "" || e._entities.part == "mag")
-            ).map(e=>e.ModifiedSeriesNumber)))[0]
+        // const ModifiedSeriesNumber = Array.from(new Set(ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
+        //     e._entities.session == eventsMappingInfo.session.eventsValue &&
+        //     e._entities.task == eventsMappingInfo.task.eventsValue &&
+        //     e._entities.run == eventsMappingInfo.run.eventsValue &&
+        //     e._type == "func/bold" &&
+        //     (e._entities.part == "" || e._entities.part == "mag")
+        //     ).map(e=>e.ModifiedSeriesNumber)))[0]
 
         const subjectInfo = ezbids.subjects.filter(e=>e.subject == eventsMappingInfo.subject.eventsValue)
         let sessionInfo;
