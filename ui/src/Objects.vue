@@ -382,7 +382,7 @@ export default defineComponent({
                 }
                 if(same) {
                     const sameseries = this.ezbids.series[same.series_idx];
-                    const sameidx = undefined;
+                    let sameidx = undefined;
                     if(sameseries) sameidx = sameseries.series_idx;
                     o.validationErrors.push("This object looks exactly like another object with Series #"+sameidx+
                         ". We can not convert this object to BIDS as they will overwrite each other. "+

@@ -1,7 +1,6 @@
 <template>
-<div style="padding: 20px;">
-
-    <div class="series-list">
+<splitpanes class="seriespage">
+    <pane min-size="20" class="series-list">
         <div v-for="(s, series_idx) in ezbids.series" :key="series_idx"
             class="series-item"
             :class="{'selected': ss === s}"
@@ -21,16 +20,16 @@
             </el-badge>
         </div>
         <pre v-if="config.debug">{{ezbids.series}}</pre>
-    </div>
+    </pane>
 
-    <div v-if="!ss" style="margin-left: 450px; padding: 20px; background-color: #eee;">
-        <p>Please update how you'd like to map each dicom SeriesDescription to BIDS datatype/entities.</p>
-        <p>The information you specify here will be applied to all subjects that uses matching SeriesDescription. You can also override this information later for each subject.</p>
-        <div style="background-color: white; padding: 10px; color: #666;">
-            <i class="el-icon-back"/> Please select a series to view/edit
+    <pane class="series-detail">
+        <div v-if="!ss" style="padding: 20px; background-color: #eee;">
+            <p>Please update how you'd like to map each dicom SeriesDescription to BIDS datatype/entities.</p>
+            <p>The information you specify here will be applied to all subjects that uses matching SeriesDescription. You can also override this information later for each subject.</p>
+            <div style="background-color: white; padding: 10px; color: #666;">
+                <i class="el-icon-back"/> Please select a series to view/edit
+            </div>
         </div>
-    </div>
-    <div class="series-detail">
         <div v-if="ss">
             <h5>BIDS Datatype / Entities</h5>
             <el-form label-width="150px">
@@ -133,8 +132,8 @@
                 </div>
             </div>
         </div>
-    </div>
-</div>
+    </pane>
+</splitpanes>
 </template>
 
 <script lang="ts">
@@ -151,11 +150,15 @@ import { Series, IObject } from './store'
 
 import { validateEntities } from './libUnsafe'
 
+import { Splitpanes, Pane } from 'splitpanes'
+import 'splitpanes/dist/splitpanes.css'
+
 export default defineComponent({
 
     components: {
         datatype,
         showfile,
+        Splitpanes, Pane,
     },
 
     data() {
@@ -258,27 +261,40 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
+.seriespage {
+    /*
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 200px;
+    */
+    height: 500px;
+}
 .series-list {
     font-size: 90%;
+/*
     position: fixed;
     top: 0;
     bottom: 60px;
     left: 200px;
     width: 450px;
-    overflow: auto;
+    height: 100%;
     padding: 5px 10px;
-    overflow-y: scroll;
     box-sizing: border-box;
+*/
+    overflow-y: scroll;
 }
 .series-detail {
+/*
     position: fixed;
     top: 0;
     bottom: 60px;
-    overflow-y: auto;
     right: 0;
     left: 650px;
     padding: 10px;
     z-index: 1;
+*/
+    overflow-y: scroll;
 }
 .el-form-item {
     margin-bottom: 0;
