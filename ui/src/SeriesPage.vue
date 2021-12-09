@@ -106,6 +106,7 @@
                 <div style="float: right">
                     <el-tag size="mini" type="info">filesize: {{prettyBytes(ezbids.objects[object.idx].analysisResults.filesize)}}</el-tag>&nbsp;
                     <el-tag size="mini" type="info">volumes: {{ezbids.objects[object.idx].analysisResults.NumVolumes}}</el-tag>&nbsp;
+                    <el-tag size="mini" type="info">orientation: {{ezbids.objects[object.idx].analysisResults.orientation}}</el-tag>&nbsp;
                 </div>
                 <div style="margin-left: 25px">
                     <div v-for="(item, itemIdx) in ezbids.objects[object.idx].items" :key="itemIdx">
