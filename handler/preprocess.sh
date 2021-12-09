@@ -64,7 +64,7 @@ if [ ! -s $root/list ]; then
     exit 1
 fi
 
-echo "running analyzer (should only take a minute)"
+echo "running analyzer (may take several minutes, depending on size of data)"
 timeout 600 ./analyzer/run.sh $root
 
 echo "done preprocessing"
