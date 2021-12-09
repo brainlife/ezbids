@@ -154,6 +154,8 @@
                         Volumes: <b>{{so.analysisResults.NumVolumes}}</b>
                         &nbsp;&nbsp;
                         File Size: <b>{{prettyBytes(so.analysisResults.filesize)}}</b>
+                        &nbsp;&nbsp;
+                        Orientation: <b>{{so.analysisResults.orientation}}</b>
                     </p>
                     <div v-for="(item, itemIdx) in ezbids.objects[so.idx].items" :key="itemIdx">
                         <div v-if="item.pngPaths">
