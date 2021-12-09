@@ -570,6 +570,7 @@ def generate_dataset_list(uploaded_files_list):
             "exclude": False,
             "filesize": filesize,
             "NumVolumes": volume_count,
+            "orientation": ornt,
             "forType": "",
             "error": None,
             "section_idx": 1,
@@ -1412,6 +1413,7 @@ def modify_objects_info(dataset_list):
                                 "NumVolumes": protocol["NumVolumes"],
                                 "errors": protocol["error"],
                                 "filesize": protocol["filesize"],
+                                "orientation": protocol["orientation"],
                                 "section_idx": 1}
                             }
             objects_data.append(objects_info)
