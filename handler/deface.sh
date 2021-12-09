@@ -23,9 +23,11 @@ function runDeface() {
     set -x
 
     config=$1
-        
-    idx=$(echo $config | jq -r .idx) 
+
+    idx=$(echo $config | jq -r .idx)
     anat=$(echo $config | jq -r .path)
+    #apply fslreorient2std to anat image
+    fslreorient2std $anat $anat
     defaced=$anat.defaced.nii.gz
 
     echo "--------------- defacing($method) [$idx] $anat to $defaced ----------------"
@@ -57,7 +59,7 @@ function runDeface() {
 export -f runDeface
 
 #list of idx that finished defacing
-true > $root/deface.finished 
+true > $root/deface.finished
 true > $root/deface.failed
 
 #now run defacing
