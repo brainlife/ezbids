@@ -23,7 +23,7 @@ function runDeface() {
     set -x
 
     config=$1
-        
+
     idx=$(echo $config | jq -r .idx) 
     anat=$(echo $config | jq -r .path)
     defaced=$anat.defaced.nii.gz

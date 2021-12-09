@@ -20,6 +20,7 @@
     "axios": "^0.21.4",
     "element-plus": "^1.2.0-beta.5",
     "numeral": "^2.0.6",
+    "splitpanes": "^3.0.6",
     "unplugin-vue-components": "^0.15.6",
     "vue": "^3.2.23",
     "vue-gtag-next": "^1.14.0",
