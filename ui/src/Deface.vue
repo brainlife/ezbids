@@ -52,7 +52,6 @@
         </div>
     </div>
 
-
     <table v-if="session.deface_begin_date" class="table">
         <thead>
             <tr>
@@ -260,9 +259,6 @@ export default defineComponent({
     overflow: auto;
 }
 .table {
-margin-top: 10px;
-border-top: 1px solid #ddd;
-padding-top: 10px;
 }
 .table td {
     border-top: 1px solid #eee;

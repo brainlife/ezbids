@@ -187,12 +187,9 @@ export default defineComponent({
         },
 
         getSomeEntities(type: string): any {
-            let entities = this.getBIDSEntities(type);
-
-            //we don't want user set sub/ses through series
+            const entities = Object.assign({}, this.getBIDSEntities(type));
             delete entities.subject;
             delete entities.session;
-
             return entities;
         },
 

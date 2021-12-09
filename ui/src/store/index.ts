@@ -394,9 +394,10 @@ const store = createStore({
             state.ezbids.series.forEach((s:Series)=>{
                 s.validationErrors = [];
                 s.validationWarnings = [];
-                //TODO what is this for?
+                /* can't remove directly on entities - which is stored in schema (maybe clone it?)
                 delete s.entities.subject;
                 delete s.entities.session;
+                */
             });
 
             state.ezbids.subjects.forEach(s=>{
@@ -586,6 +587,9 @@ const store = createStore({
 
             //find the option that contains our suffix
             const option = datatype.options.find(option=>option.value == type);
+
+            console.log("getBIDSEntities", type, Object.keys(option.entities));
+
             return option?.entities;
         },
 
