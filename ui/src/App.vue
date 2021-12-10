@@ -160,7 +160,7 @@ export default defineComponent({
                     }
 
                     //scroll page to the top
-                    window.scrollTo(0,0); 
+                    window.scrollTo(0,0);
                 }
             });
         },

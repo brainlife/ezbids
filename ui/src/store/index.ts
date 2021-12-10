@@ -588,7 +588,7 @@ const store = createStore({
             //find the option that contains our suffix
             const option = datatype.options.find(option=>option.value == type);
 
-            console.log("getBIDSEntities", type, Object.keys(option.entities));
+            // console.log("getBIDSEntities", type, Object.keys(option.entities));
 
             return option?.entities;
         },

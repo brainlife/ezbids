@@ -17,7 +17,7 @@ export function createEventsTSV(ezbids : IEzbids, events : IEvents) {
 
             //emit all values
             item.events.forEach((event: any)=>{
-                
+
                 //compute onset
                 let onset = null;
                 switch(events.columns.onsetLogic) {

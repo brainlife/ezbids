@@ -1,34 +1,65 @@
 // @ts-nocheck
 
+//deepEqual and isPrimitive functions come from https://stackoverflow.com/a/45683145
+function deepEqual(obj1, obj2) {
+    /*
+    Determines if two arrays are equal or not. Better then JSON.stringify
+    because this accounts for different ordering, only cares about whether
+    keys and values match.
+    */
+
+    if(obj1 === obj2) // it's just the same object. No need to compare.
+        return true;
+
+    if(isPrimitive(obj1) && isPrimitive(obj2)) // compare primitives
+        return obj1 === obj2;
+
+    if(Object.keys(obj1).length !== Object.keys(obj2).length)
+        return false;
+
+    // compare objects with same number of keys
+    for(let key in obj1)
+    {
+        if(!(key in obj2)) return false; //other object doesn't have this prop
+        if(!deepEqual(obj1[key], obj2[key])) return false;
+    }
+
+    return true;
+}
+
+function isPrimitive(obj) {
+    return (obj !== Object(obj));
+}
 
 export function setSectionIDs($root) {
     /*
-    Set a section_ID value for each acquisition, beginning with a value of 1. A section is
+    Set section_ID value for each acquisition, beginning with value of 1. A section is
     ezBIDS jargin for each time participant comes out and then re-enters scanner. Each time
     a non-adjacent localizer is detected, the section_ID value is increased by 1. The
     section_ID value helps for determining fmap IntendedFor mapping, where field maps
     cannot be applied to acquisitions from different sections.
     */
 
-    //for (const subject in $root._organized) {
     $root._organized.forEach(subGroup=>{
-        const subject = subGroup.sub;
-        //const sessions = $root._organized[subject].sess
-        //for (const session in sessions) {
         subGroup.sess.forEach(sesGroup=>{
             let protocol = sesGroup.objects
             let sectionID = 1
             let obj_idx = 0
+            let message = ""
+            let previousMessage = ""
             protocol.forEach(obj=> {
-                let message = $root.series[protocol[obj_idx].series_idx].message
+                if($root.series[protocol[obj_idx].series_idx]) {
+                    message = $root.series[protocol[obj_idx].series_idx].message
+                }
 
-                let previousMessage = ""
-                if (obj_idx == 0) previousMessage = "";
-                else previousMessage = $root.series[protocol[obj_idx - 1].series_idx].message
-                if (obj_idx != 0 && message.includes("localizer") && (previousMessage == "" || !previousMessage.includes("localizer"))) {
+                if(obj_idx != 0 && $root.series[protocol[obj_idx - 1].series_idx]) {
+                    previousMessage = $root.series[protocol[obj_idx - 1].series_idx].message
+                }
+
+                if(obj_idx != 0 && message.includes("localizer") && (previousMessage == "" || !previousMessage.includes("localizer"))) {
                     sectionID++;
                     obj.analysisResults.section_ID = sectionID
-                } else {
+                }else{
                     obj.analysisResults.section_ID = sectionID
                 }
                 obj_idx++
@@ -43,7 +74,7 @@ export function funcQA($root) {
     Series level. If unspecified, default is 50 volumes, because a func/bold with < 50 probably
     indicates a restart, incomplete, or calibration run.
 
-    2). Additionally, if func/bold acquisition is excluded, make sure that corresponding
+    2). If func/bold acquisition is excluded, make sure that corresponding
     func/sbref, func/bold (part-phase), and func/events are all excluded as well,
     if they exist.
 
@@ -53,13 +84,13 @@ export function funcQA($root) {
 
     // #1
     $root.series.forEach(s=> {
-        if (s.type == "func/bold") {
+        if(s.type == "func/bold") {
             let series_idx = s.series_idx
             let VolumeThreshold = s.VolumeThreshold
 
             $root.objects.forEach(o=> {
-                if (o.series_idx == series_idx) {
-                    o.exclude = false
+                if(o.series_idx == series_idx) {
+                    // o.exclude = false
 
                     /* set "exclude = false" for all func/bold corresponding acquisitions,
                     since user may change exclusion criteria of func/bold (e.g. VolumeThreshold),
@@ -67,8 +98,8 @@ export function funcQA($root) {
                     corresponding acquisitions.
                     */
                     let funcBoldEntities = o._entities
-                    let correspondingFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && JSON.stringify(e._entities) === JSON.stringify(funcBoldEntities))
-                    let correspondingFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.mag == "phase" && JSON.stringify(Object.keys(e._entities).filter(e=>e != "part") === JSON.stringify(funcBoldEntities)))
+                    let correspondingFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, funcBoldEntities))
+                    let correspondingFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.mag == "phase" && deepEqual(Object.keys(e._entities).filter(e=>e != "part"), funcBoldEntities))
                     let correspondingFuncBoldEvent = $root.objects.filter(e=>e.ModifiedSeriesNumber == o.ModifiedSeriesNumber)
 
                     for(const corr of [correspondingFuncSBRef, correspondingFuncBoldPhase, correspondingFuncBoldEvent]) {
@@ -77,8 +108,8 @@ export function funcQA($root) {
                         })
                     }
 
-                    // apply VolumeThreshold exclusion criteria
-                    if (o.analysisResults.NumVolumes < VolumeThreshold) {
+                    //apply VolumeThreshold exclusion criteria
+                    if(o.analysisResults.NumVolumes < VolumeThreshold) {
                         o.exclude = true
                         o.analysisResults.errors = [`Functional bold acquisition contains less than ${VolumeThreshold} volumes, a possible indication of a restarted, incomplete, or calibration run. Please check to see if you want to keep this acquisition, otherwise this acquisition will be excluded from BIDS conversion.`]
                     }
@@ -89,11 +120,11 @@ export function funcQA($root) {
 
     $root.objects.forEach(o=> {
         // #2
-        if (o._type == "func/bold" && o.exclude == true && (!o._entities.mag || o._entities.mag == "mag")) {
+        if(o._type == "func/bold" && o.exclude == true && (!o._entities.mag || o._entities.mag == "mag")) {
             let funcBoldEntities = o._entities
-            let badFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && JSON.stringify(e._entities) === JSON.stringify(funcBoldEntities))
-            let badFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.mag == "phase" && JSON.stringify(Object.keys(e._entities).filter(e=>e != "part") === JSON.stringify(funcBoldEntities)))
-            let badFuncBoldEvent = $root.objects.filter(e=>e.ModifiedSeriesNumber == o.ModifiedSeriesNumber)
+            let badFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, funcBoldEntities))
+            let badFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.mag == "phase" && deepEqual(Object.keys(e._entities).filter(e=>e != "part"), funcBoldEntities))
+            let badFuncBoldEvent = $root.objects.filter(e=>e.ModifiedSeriesNumber == o.ModifiedSeriesNumber && e._type == "func/events")
 
             for(const bad of [badFuncSBRef, badFuncBoldPhase, badFuncBoldEvent]) {
                 bad.forEach(b=>{
@@ -104,10 +135,10 @@ export function funcQA($root) {
         }
 
         // #3
-        if (o._type == "func/bold" && (!o._entities.mag || o._entities.mag == "mag")) {
+        if(o._type == "func/bold" && (!o._entities.mag || o._entities.mag == "mag")) {
             let boldEntities = o._entities
             let boldPED = o.items[0].sidecar.PhaseEncodingDirection
-            let badSBRef = $root.objects.filter(e=>e._type == "func/sbref" && JSON.stringify(e._entities) === JSON.stringify(boldEntities) &&
+            let badSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, boldEntities) &&
                                                 e.items[0].sidecar.PhaseEncodingDirection != boldPED).map(e=>e.idx)
             badSBRef.forEach(bad=> {
                 $root.objects[bad].exclude = true
@@ -123,7 +154,7 @@ export function funcQA($root) {
 //     input at SeriesPage.
 //     */
 //     $root.series.forEach(s=> {
-//         if (s.type.includes("fmap")) {
+//         if(s.type.includes("fmap")) {
 //             let intendedFor = s.IntendedFor
 
 // }
@@ -158,7 +189,7 @@ export function fmapQA($root) {
                 });
 
                 let fmapMagPhaseCheck = fmapMagPhaseObjs.filter(e=>e._type.includes('fmap/phase1'))
-                if (!fmapMagPhaseCheck.length) {
+                if(!fmapMagPhaseCheck.length) {
                     fmapMagPhaseObjs = []
                 }
 
@@ -169,7 +200,7 @@ export function fmapQA($root) {
                 });
 
                 let fmapMagPhasediffCheck = fmapMagPhasediffObjs.filter(e=>e._type.includes('fmap/phasediff'))
-                if (!fmapMagPhasediffCheck.length) {
+                if(!fmapMagPhasediffCheck.length) {
                     fmapMagPhasediffObjs = []
                 }
 
@@ -179,15 +210,15 @@ export function fmapQA($root) {
                 })
 
                 let fmapMagFieldmapCheck = fmapMagFieldmapObjs.filter(e=>e._type.includes('fmap/fieldmap'))
-                if (!fmapMagFieldmapCheck.length) {
+                if(!fmapMagFieldmapCheck.length) {
                     fmapMagFieldmapObjs = []
                 }
 
                 // Perform fmap QA
-                if (funcObjs.length > 0) {
+                if(funcObjs.length > 0) {
 
                     // Remove all spin-echo fmaps except for last two
-                    if (fmapSpinEchoFuncObjs.length > 2) {
+                    if(fmapSpinEchoFuncObjs.length > 2) {
                         let fmapFuncBadObjs = fmapSpinEchoFuncObjs.slice(0,-2)
                         fmapFuncBadObjs.forEach(obj=> {
                             obj.exclude = true
@@ -196,7 +227,7 @@ export function fmapQA($root) {
                     }
 
                     // Remove spin-echo fmap if only 1 found
-                    if (fmapSpinEchoFuncObjs.length == 1) {
+                    if(fmapSpinEchoFuncObjs.length == 1) {
                         fmapSpinEchoFuncObjs.forEach(obj=> {
                             obj.exclude = true
                             obj.analysisResults.errors = ['Only one spin echo field map found; need pair. This acquisition will not be included in the BIDS output']
@@ -207,16 +238,16 @@ export function fmapQA($root) {
                     fmapSpinEchoFuncObjs = fmapSpinEchoFuncObjs.filter(e=>!e.exclude)
 
                     // Check for proper PEDs for spin-echo pairs
-                    if (fmapSpinEchoFuncObjs.length == 2) {
+                    if(fmapSpinEchoFuncObjs.length == 2) {
                         let fmapFuncPEDs = fmapSpinEchoFuncObjs.map(e=>e.items[0].sidecar.PhaseEncodingDirection)
-                        if (fmapFuncPEDs[0].toString().split('').reverse().join('').slice(-1) == fmapFuncPEDs[1].toString().split('').reverse().join('').slice(-1)) {
-                            if ((fmapFuncPEDs[0].length != 2 || fmapFuncPEDs[1].length != 1) && (fmapFuncPEDs[0].length != 1 || fmapFuncPEDs[1].length != 2)) {
+                        if(fmapFuncPEDs[0].toString().split('').reverse().join('').slice(-1) == fmapFuncPEDs[1].toString().split('').reverse().join('').slice(-1)) {
+                            if((fmapFuncPEDs[0].length != 2 || fmapFuncPEDs[1].length != 1) && (fmapFuncPEDs[0].length != 1 || fmapFuncPEDs[1].length != 2)) {
                                 fmapSpinEchoFuncObjs.forEach(obj=> {
                                     obj.exclude = true
                                     obj.analysisResults.errors = ['Spin echo field map pair do not have opposite phase encoding directions (PEDs) and will not be included in the BIDS output']
                                 });
                             }
-                        } else {
+                        }else{
                             fmapSpinEchoFuncObjs.forEach(obj=> {
                                 obj.exclude = true
                                 obj.analysisResults.errors = ['Spin echo field map pair do not have opposite phase encoding directions (PEDs) and will not be included in the BIDS output']
@@ -225,7 +256,7 @@ export function fmapQA($root) {
                     }
 
                     // Remove magnitudes & phasediff if less than 3
-                    if (fmapMagPhasediffObjs.length < 3) {
+                    if(fmapMagPhasediffObjs.length < 3) {
                         fmapMagPhasediffObjs.forEach(obj=> {
                             obj.exclude = true
                             obj.analysisResults.errors = ['Need triplet for magnitude/phasediff field maps. This acquisition will not be included in the BIDS output']
@@ -233,7 +264,7 @@ export function fmapQA($root) {
                     }
 
                     // Remove all magnitudes and phasediff except for last 3
-                    if (fmapMagPhasediffObjs.length > 3) {
+                    if(fmapMagPhasediffObjs.length > 3) {
                         let fmapMagPhasediffBadObjs = fmapMagPhasediffObjs.slice(0,-3)
                         fmapMagPhasediffBadObjs.forEach(obj=> {
                             obj.exclude = true
@@ -242,7 +273,7 @@ export function fmapQA($root) {
                     }
 
                     // Remove magnitudes and phases if less than 4
-                    if (fmapMagPhaseObjs.length < 4) {
+                    if(fmapMagPhaseObjs.length < 4) {
                         fmapMagPhaseObjs.forEach(obj=> {
                             obj.exclude = true
                             obj.analysisResults.errors = ['Need four images (2 magnitude, 2 phase). This acquisition will not be included in the BIDS output']
@@ -250,7 +281,7 @@ export function fmapQA($root) {
                     }
 
                     // Remove all magnitudes and phases except for last 4
-                    if (fmapMagPhaseObjs.length > 4) {
+                    if(fmapMagPhaseObjs.length > 4) {
                         let fmapMagPhaseBadObjs = fmapMagPhaseObjs.slice(0,-4)
                         fmapMagPhaseBadObjs.forEach(obj=> {
                             obj.exclude = true
@@ -259,7 +290,7 @@ export function fmapQA($root) {
                     }
 
                     // Remove all magnitudes & fieldmaps except for last 2
-                    if (fmapMagFieldmapObjs.length > 2) {
+                    if(fmapMagFieldmapObjs.length > 2) {
                         let fmapMagFieldmapBadObjs = fmapMagFieldmapObjs.slice(0,-2)
                         fmapMagFieldmapBadObjs.forEach(obj=> {
                             obj.exclude = true
@@ -268,14 +299,14 @@ export function fmapQA($root) {
                     }
 
                     // Remove all magnitudes & fieldmaps if less than 2
-                    if (fmapMagFieldmapObjs.length < 2) {
+                    if(fmapMagFieldmapObjs.length < 2) {
                         fmapMagFieldmapObjs.forEach(obj=> {
                             obj.exclude = true
                             obj.analysisResults.errors = ['Need pair (magnitude & fieldmap). This acquisition will not be included in BIDS output']
                         });
                     }
 
-                } else {
+                }else{
                     fmapSpinEchoFuncObjs.forEach(obj=> {
                         obj.exclude = true
                         obj.analysisResults.errors = ['No valid func/bold acquisitions found in section, spin echo field map pair will not be included in the BIDS output']
@@ -298,7 +329,7 @@ export function fmapQA($root) {
                 }
 
                 // Remove fmap meant for dwi/dwi acquisition(s) if no valid dwi/dwi found in section
-                if (dwiObjs.length == 0 && fmapSpinEchoDwiObjs.length > 0) {
+                if(dwiObjs.length == 0 && fmapSpinEchoDwiObjs.length > 0) {
                     fmapSpinEchoDwiObjs.forEach(obj=> {
                         obj.exclude = true
                         obj.analysisResults.errors = ['No valid dwi/dwi acquisitions found in section, spin echo field map will not be included in the BIDS output']
@@ -306,7 +337,7 @@ export function fmapQA($root) {
                 }
 
                 // Remove fmap meant for dwi/dwi if more than 1 fmap
-                if (fmapSpinEchoDwiObjs.length > 1) {
+                if(fmapSpinEchoDwiObjs.length > 1) {
                     fmapSpinEchoDwiObjs.forEach(obj=> {
                         obj.exclude = true
                         obj.analysisResults.errors = ['Multiple spin echo field maps (meant for dwi/dwi) detected in section; only selecting last one for BIDS conversion. The other fmap acquisition(s) in this section will not be included in the BIDS output']
@@ -321,12 +352,12 @@ export function setRun($root) {
 
     // Loop through subjects
 
-    //for (const subject in $root._organized) {
+    //for(const subject in $root._organized) {
     $root._organized.forEach(subGroup=>{
 
         // Loop through sessions
         //const sessions = subGroup.sess
-        //for (const session in sessions) {
+        //for(const session in sessions) {
         subGroup.sess.forEach(sesGroup=>{
             // Determine series_idx values
             let allSeriesIndices = sesGroup.objects.map(e=>e.series_idx)
@@ -335,7 +366,7 @@ export function setRun($root) {
             uniqueSeriesIndices.forEach(si=>{
                 let seriesObjects = sesGroup.objects.filter(e=>e.series_idx == si && !e._exclude)
                 let run = 1
-                if (seriesObjects.length > 1) {
+                if(seriesObjects.length > 1) {
                     seriesObjects.forEach(obj=>{
                         obj.entities.run = run.toString()
                         run++
@@ -351,10 +382,10 @@ export function updateErrors($root) {
     // that need to be removed, since user is aware and wants the acquisition(s) anyway,
     // or the identification was incorrect to begin with
 
-    //for (const subject in $root._organized) {
+    //for(const subject in $root._organized) {
     $root._organized.forEach(subGroup=>{
         //const sessions = $root._organized[subject].sess
-        //for (const session in sessions) {
+        //for(const session in sessions) {
         subGroup.sess.forEach(sesGroup=>{
             sesGroup.objects.filter(o=>!o.exclude).forEach(obj=>{
                 obj.analysisResults.errors = []
@@ -367,7 +398,7 @@ export function setIntendedFor($root) {
     // Apply fmap intendedFor mapping
 
     // Loop through subjects
-    //for (const subject in $root._organized) {
+    //for(const subject in $root._organized) {
     $root._organized.forEach(subGroup=>{
 
         subGroup.sess.forEach(sesGroup=>{
@@ -423,19 +454,19 @@ export function validateEntities(entities/*: Series*/) {
 }
 
 export function find_separator(filePath, fileData) {
-    if (filePath.indexOf('.tsv') > -1) {
+    if(filePath.indexOf('.tsv') > -1) {
         return /[ \t]+/;
-    } else if (filePath.indexOf('.out') > -1 || filePath.indexOf('.csv') > -1)  {
+    }else if(filePath.indexOf('.out') > -1 || filePath.indexOf('.csv') > -1)  {
         return /[ ,]+/;
-    } else if (filePath.indexOf('.txt') > -1) {
+    }else if(filePath.indexOf('.txt') > -1) {
         const data = fileData
         const lines = data.trim().split("\n").map(l=>l.trim());
-        if (lines[0].indexOf(',') > -1) {
+        if(lines[0].indexOf(',') > -1) {
             return /[ ,]+/;
-        } else {
+        }else{
             return /[ \t]+/;
         }
-    } else if (filePath.indexOf('.xlsx') > -1) {
+    }else if(filePath.indexOf('.xlsx') > -1) {
         return /[ ,]+/;
     }
 
@@ -538,8 +569,11 @@ function parseExcelEvents(fileData) {
     return trials[0];
 }
 
-//this function receives files (an array of object containing fullpath and data. data is the actual file content of the file)
 export function createEventObjects(ezbids, files) {
+    /*
+    This function receives files, an array of object containing fullpath and data.
+    Data is the actual file content of the file,
+    */
     const eventObjects = []; //new event objects to add
 
     // Identify some terms for decoding purposes
@@ -548,7 +582,7 @@ export function createEventObjects(ezbids, files) {
     const tasks = Array.from(new Set(ezbids.objects.map(e=>e._entities).filter(e=>(e.part == "" || e.part == "mag") && (e.task != "" && e.task != "rest" && e.task !== undefined)).map(e=>e.task)))
     const runs = Array.from(new Set(ezbids.objects.filter(e=>e._entities.task != "" && e._entities.task != "rest" && e._entities.task != undefined).map(e=>e._entities.run)))
     const numEventFiles = files.length
-    const uniqueSectionIDs = Array.from(new Set(ezbids.objects.map(e=>e.analysisResults.section_ID)))
+    // const uniqueSectionIDs = Array.from(new Set(ezbids.objects.map(e=>e.analysisResults.section_ID)))
 
     // Try to determine inheritance level (dataset, subject, session, or individual runs)
     const occurrences = {"Dataset": 1, "Subject": subjects.length, "Session": sessions.length, "Run": runs.length}
@@ -561,8 +595,6 @@ export function createEventObjects(ezbids, files) {
     Assumption is that the lower the level, the more common it is.
     */
     const inheritance_level = Object.keys(occurrences).filter(key=>occurrences[key] == closest).slice(-1)[0]
-
-    const regEscape = v=>v.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, '\\$&')
 
     // Sort through events file(s) list
     files.forEach(file=>{
@@ -580,10 +612,10 @@ export function createEventObjects(ezbids, files) {
         default: // Non-Excel formats
             const data = file.data
             const lines = data.trim().split("\n").map(l=>l.trim());
-            if (lines[0].indexOf('Header Start') > -1) {
+            if(lines[0].indexOf('Header Start') > -1) {
                 // E-prime file format
                 events = parseEprimeEvents(file.data)
-            } else {
+            }else{
                 // "Regular" file format (.csv .tsv .txt .out)
                 const sep = find_separator(file.path, file.data) // Read events file(s) data
                 events = parseEvents(file.data, sep);
@@ -716,13 +748,15 @@ export function createEventObjects(ezbids, files) {
             });
         }
 
-        // console.log(eventsMappingInfo)
+        /* Determine the section_ID, series_idx, and ModifiedSeriesNumber values of the events object(s).
+        This is necessary to properly organize the events object(s) on the Objects page.
+        */
         let section_ID = 1 //default value unless otherwise determined
+        let series_idx = 0 //default value unless otherwise determined
         let ModifiedSeriesNumber = "01" //default value unless otherwise determined
-        let series_idx = 1 //default value unless otherwise determined
 
         for(const entity of ["subject", "session", "task", "run"]) {
-            if(eventsMappingInfo[entity].ezBIDSvalues && !eventsMappingInfo[entity].eventsValue) { //user has specified subject, session, task, and/or run entities, but mapping to events file(s) doesn't work
+            if(eventsMappingInfo[entity].ezBIDSvalues != "" && !eventsMappingInfo[entity].eventsValue) { //user has specified subject, session, task, and/or run entities, but mapping to events file(s) doesn't work
                 section_ID = undefined
                 break;
             }
@@ -733,7 +767,7 @@ export function createEventObjects(ezbids, files) {
                 e._entities.session == eventsMappingInfo.session.eventsValue &&
                 e._entities.task == eventsMappingInfo.task.eventsValue &&
                 e._entities.run == eventsMappingInfo.run.eventsValue
-                ).map(e=>e.analysisResults.section_ID)
+                ).analysisResults.section_ID
 
             series_idx = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
                 e._entities.session == eventsMappingInfo.session.eventsValue &&
@@ -741,7 +775,7 @@ export function createEventObjects(ezbids, files) {
                 e._entities.run == eventsMappingInfo.run.eventsValue &&
                 e._type == "func/bold" &&
                 (e._entities.part == "" || e._entities.part == "mag")
-                ).map(e=>e.series_idx)
+                ).series_idx
 
             ModifiedSeriesNumber = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
                 e._entities.session == eventsMappingInfo.session.eventsValue &&
@@ -749,30 +783,10 @@ export function createEventObjects(ezbids, files) {
                 e._entities.run == eventsMappingInfo.run.eventsValue &&
                 e._type == "func/bold" &&
                 (e._entities.part == "" || e._entities.part == "mag")
-                ).map(e=>e.ModifiedSeriesNumber)
-
-
-            }else{
+                ).ModifiedSeriesNumber
+        }else{
             section_ID = 1
         }
-
-        // Determine correspoding series_idx value that event file(s) go to
-        // const series_idx = Array.from(new Set(ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
-        //     e._entities.session == eventsMappingInfo.session.eventsValue &&
-        //     e._entities.task == eventsMappingInfo.task.eventsValue &&
-        //     e._entities.run == eventsMappingInfo.run.eventsValue &&
-        //     e._type == "func/bold" &&
-        //     (e._entities.part == "" || e._entities.part == "mag")
-        //     ).map(e=>e.series_idx)))
-
-        // Determine correspoding ModifiedSeriesNumber value that event file(s) go to
-        // const ModifiedSeriesNumber = Array.from(new Set(ezbids.objects.filter(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
-        //     e._entities.session == eventsMappingInfo.session.eventsValue &&
-        //     e._entities.task == eventsMappingInfo.task.eventsValue &&
-        //     e._entities.run == eventsMappingInfo.run.eventsValue &&
-        //     e._type == "func/bold" &&
-        //     (e._entities.part == "" || e._entities.part == "mag")
-        //     ).map(e=>e.ModifiedSeriesNumber)))[0]
 
         const subjectInfo = ezbids.subjects.filter(e=>e.subject == eventsMappingInfo.subject.eventsValue)
         let sessionInfo;
@@ -790,10 +804,10 @@ export function createEventObjects(ezbids, files) {
         //register new event object using the info we gathered above
         const object = Object.assign({
             type: "func/events",
-            //series_idx: null,
+            // series_idx: series_idx, //may need to comment this line out depending on behavior
             subject_idx: ezbids.subjects.indexOf(subject),
             session_idx: subject.sessions.indexOf(session),
-            ModifiedSeriesNumber,
+            ModifiedSeriesNumber: ModifiedSeriesNumber,
 
             entities: {
                 subject: eventsMappingInfo.subject.eventsValue,
@@ -804,7 +818,7 @@ export function createEventObjects(ezbids, files) {
             items: [],
             //these aren't used, but I believe we have to initialize it
             analysisResults: {
-                section_ID: section_ID //TODO we do need to set this so that this event object goes to the right section
+                section_ID: section_ID
             },
             paths: [],
             validationErrors: [],
@@ -826,7 +840,7 @@ export function createEventObjects(ezbids, files) {
             sidecar_json: JSON.stringify(sidecar),
         });
 
-        console.log("created event object", object);
+        // console.log("created event object", object);
         eventObjects.push(object);
     });
 
