@@ -16,8 +16,8 @@ Data from all major scanner vendors can be directly uploaded to ezBIDS.
 
 Users do not need to organize their uploaded data in any specific manner, so long as the data is non-anonymized. The uploaded data can contain any number of sub-folders, and users and may compress (e.g. zip, tar) their upload directory if users so choose. ezBIDS permits two types of data uploads:
 
-1. DICOM files - Only DICOMs should be included in the upload. No specific organizational structure is required. 
-2. dcm2niix generated output (i.e. NIFTI, json, bval, and bvec) files - Only these files (no DICOMs) should be included in the upload. We strongly recommend that the dcm2niix output not be anonymized (i.e. include *-ba n* in the dcm2niix command), in which case, no specific organizational structure is required.
+1. **DICOM files** - Only DICOMs should be included in the upload. No specific organizational structure is required. 
+2. **dcm2niix generated output (i.e. NIfTI, json, bval, and bvec) files** - Only these files (no DICOMs) should be included in the upload. We strongly recommend that the dcm2niix output not be anonymized (i.e. include *-ba n* in the dcm2niix command), in which case, no specific organizational structure is required.
 
 Should users feel the need to anonymize their data before uploading, we strongly recommend that subjects (and sessions) be organized into subject (and session) folders, with explicit labeling of the subject (and session) IDs (e.g. */MRI_data/sub-01/ses-01/DICOMS*). Failure to do so for non-anonymized data will result in additional work.
 
