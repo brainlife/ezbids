@@ -57,6 +57,8 @@ export interface Series {
     error: string;
     message: string;
     //object_indices: [ number ];
+
+    IntendedFor?: number[]; //for fmap/ to store which object id the object is intended for
 }
 
 export interface Session {

@@ -40,7 +40,8 @@
                 </div>
 
                 <el-form-item label="Datatype">
-                    <el-select v-model="ss.type" required placeholder="(exclude)" size="small" @change="validate(ss)" style="width: 100%">
+                    <el-select v-model="ss.type" required filterable
+                        placeholder="(exclude)" size="small" @change="validate(ss)" style="width: 80%">
                         <el-option value="exclude">(Exclude from BIDS conversion)</el-option>
                         <el-option-group v-for="type in bidsSchema.datatypes" :key="type.label" :label="type.label">
                             <el-option v-for="subtype in type.options" :key="subtype.value" :value="subtype.value">
@@ -53,12 +54,17 @@
 
                 <div v-if="ss.type && ss.type.startsWith('fmap/')">
                     <el-form-item label="IntendedFor">
-                        <el-select v-model="ss.series_idx" required placeholder="Please select Series" size="small" @change="validate(ss)" style="width: 100%">
-                            <el-option v-for="series in this.ezbids.series" :key="series.series_idx" :label="series.series_idx" :value="series.series_idx">
+                        <el-select v-model="ss.IntendedFor" required multiple filterable
+                            placeholder="Please select Series" size="small" 
+                            @change="validate(ss)" style="width: 80%">
+                            <el-option v-for="series in this.ezbids.series.filter(s=>s.type != 'exclude')" 
+                                :key="series.series_idx" 
+                                :label="'#'+series.series_idx+' '+series.type" 
+                                :value="series.series_idx">
                                 {{series.type}} {{series.series_idx}}
                             </el-option>
                         </el-select>
-                        <p style="margin-left: 0px;">
+                        <p style="margin-top: 0">
                             <small>* Select Series that this field map should be applied to. This is important information required by BIDS specification.</small>
                         </p>
                     </el-form-item>
