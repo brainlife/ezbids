@@ -75,7 +75,7 @@ export function funcQA($root) {
     indicates a restart, incomplete, or calibration run.
 
     2). If func/bold acquisition is excluded, make sure that corresponding
-    func/sbref, func/bold (part-phase), and func/events are all excluded as well,
+    func/sbref, and func/bold (part-phase) are all excluded as well,
     if they exist.
 
     3). Exclude func/sbref if its PhaseEncodingDirection (PED) is different
@@ -90,23 +90,8 @@ export function funcQA($root) {
 
             $root.objects.forEach(o=> {
                 if(o.series_idx == series_idx) {
-                    // o.exclude = false
-
-                    /* set "exclude = false" for all func/bold corresponding acquisitions,
-                    since user may change exclusion criteria of func/bold (e.g. VolumeThreshold),
-                    in which case, the exclusion criteria needs to also be applied to the
-                    corresponding acquisitions.
-                    */
-                    let funcBoldEntities = o._entities
-                    let correspondingFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, funcBoldEntities))
-                    let correspondingFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.mag == "phase" && deepEqual(Object.keys(e._entities).filter(e=>e != "part"), funcBoldEntities))
-                    let correspondingFuncBoldEvent = $root.objects.filter(e=>e.ModifiedSeriesNumber == o.ModifiedSeriesNumber)
-
-                    for(const corr of [correspondingFuncSBRef, correspondingFuncBoldPhase, correspondingFuncBoldEvent]) {
-                        corr.forEach(c=>{
-                            c.exclude = false
-                        })
-                    }
+                    o.exclude = false
+                    o.analysisResults.errors = []
 
                     //apply VolumeThreshold exclusion criteria
                     if(o.analysisResults.NumVolumes < VolumeThreshold) {
@@ -120,16 +105,29 @@ export function funcQA($root) {
 
     $root.objects.forEach(o=> {
         // #2
+
+        //update analysisResults.errors in case user went back to Series and adjusted things
+        if(o._type == "func/bold" && o.exclude == false && (!o._entities.mag || o._entities.mag == "mag")) {
+            let funcBoldEntities = o._entities
+            let goodFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, funcBoldEntities))
+            let goodFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.mag == "phase" && deepEqual(Object.keys(e._entities).filter(e=>e != "part"), funcBoldEntities))
+
+            for(const good of [goodFuncSBRef, goodFuncBoldPhase]) {
+                good.forEach(g=>{
+                    g.analysisResults.errors = []
+                })
+            }
+        }
+
+        //now check for corresponding func/bold == exclude, and go from there
         if(o._type == "func/bold" && o.exclude == true && (!o._entities.mag || o._entities.mag == "mag")) {
             let funcBoldEntities = o._entities
             let badFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, funcBoldEntities))
             let badFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.mag == "phase" && deepEqual(Object.keys(e._entities).filter(e=>e != "part"), funcBoldEntities))
-            let badFuncBoldEvent = $root.objects.filter(e=>e.ModifiedSeriesNumber == o.ModifiedSeriesNumber && e._type == "func/events")
 
-            for(const bad of [badFuncSBRef, badFuncBoldPhase, badFuncBoldEvent]) {
+            for(const bad of [badFuncSBRef, badFuncBoldPhase]) {
                 bad.forEach(b=>{
-                    b.exclude = true
-                    b.analysisResults.errors = ["The corresponding func/bold to this acquisition has been set to exclude from BIDS conversion. Since it is tied to the excluded func/bold, this acquisition will also be excluded from BIDS conversion."]
+                    b.analysisResults.errors = [`The corresponding func/bold (#${o.series_idx}) to this acquisition has been set to exclude from BIDS conversion. Recommendation is to also exclude this acquisition from BIDS conversion, unless you have good reason for keeping it.`]
                 })
             }
         }
@@ -142,7 +140,7 @@ export function funcQA($root) {
                                                 e.items[0].sidecar.PhaseEncodingDirection != boldPED).map(e=>e.idx)
             badSBRef.forEach(bad=> {
                 $root.objects[bad].exclude = true
-                $root.objects[bad].analysisResults.errors = ["Functional sbref has a different PhaseEncodingDirection than its corresponding functional bold. This is a data error, therefore this sbref will be set to exclude from BIDS conversion."]
+                $root.objects[bad].analysisResults.errors = [`Functional sbref has a different PhaseEncodingDirection than its corresponding functional bold (#${o.series_idx}). This is a data error, therefore this sbref will be set to exclude from BIDS conversion.`]
             })
         }
     })
@@ -377,23 +375,6 @@ export function setRun($root) {
     });
 }
 
-export function updateErrors($root) {
-    // Series that have been un-excluded at Series mapping have warning/error messages
-    // that need to be removed, since user is aware and wants the acquisition(s) anyway,
-    // or the identification was incorrect to begin with
-
-    //for(const subject in $root._organized) {
-    $root._organized.forEach(subGroup=>{
-        //const sessions = $root._organized[subject].sess
-        //for(const session in sessions) {
-        subGroup.sess.forEach(sesGroup=>{
-            sesGroup.objects.filter(o=>!o.exclude).forEach(obj=>{
-                obj.analysisResults.errors = []
-            });
-        });
-    });
-}
-
 export function setIntendedFor($root) {
     // Apply fmap intendedFor mapping
 
@@ -594,7 +575,7 @@ export function createEventObjects(ezbids, files) {
     Chance that multiple occurrences values could be the same, therefore, default to lowest level.
     Assumption is that the lower the level, the more common it is.
     */
-    const inheritance_level = Object.keys(occurrences).filter(key=>occurrences[key] == closest).slice(-1)[0]
+    // const inheritance_level = Object.keys(occurrences).filter(key=>occurrences[key] == closest).slice(-1)[0]
 
     // Sort through events file(s) list
     files.forEach(file=>{
@@ -803,6 +784,7 @@ export function createEventObjects(ezbids, files) {
 
         //register new event object using the info we gathered above
         const object = Object.assign({
+            exclude: false,
             type: "func/events",
             // series_idx: series_idx, //may need to comment this line out depending on behavior
             subject_idx: ezbids.subjects.indexOf(subject),
@@ -818,7 +800,9 @@ export function createEventObjects(ezbids, files) {
             items: [],
             //these aren't used, but I believe we have to initialize it
             analysisResults: {
-                section_ID: section_ID
+                section_ID: section_ID,
+                errors: []
+
             },
             paths: [],
             validationErrors: [],
