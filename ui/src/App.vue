@@ -20,7 +20,7 @@ import { IObject } from './store'
 import { ElNotification } from 'element-plus'
 //import 'element-plus/es/components/notification/style/css'
 
-import { setSectionIDs, funcQA, fmapQA, setRun, updateErrors, setIntendedFor } from './libUnsafe'
+import { setSectionIDs, funcQA, fmapQA, setRun, setIntendedFor } from './libUnsafe'
 //import { IObjectItem } from './store'
 import { createEventsTSV } from './lib'
 
@@ -150,7 +150,6 @@ export default defineComponent({
                         funcQA(this.ezbids);
                         fmapQA(this.ezbids);
                         setRun(this.ezbids);
-                        updateErrors(this.ezbids);
                         setIntendedFor(this.ezbids);
                         this.mapObjects();
                         break;

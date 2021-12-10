@@ -301,6 +301,21 @@ export default defineComponent({
 
                 //create new event objects
                 const eventObjects = createEventObjects(this.ezbids, files);
+
+                //adjust eventObjects error message based on exclusion of corresponding func/bold
+                this.ezbids.objects.forEach(o=>{
+                    let correspondingFuncBoldEvents = eventObjects.filter(object=>object.ModifiedSeriesNumber == o.ModifiedSeriesNumber && o._type == "func/bold")
+                    if(correspondingFuncBoldEvents.length > 0) {
+                        correspondingFuncBoldEvents.forEach(object=>{
+                            object.analysisResults.errors = []
+
+                            if(o._exclude == true) {
+                                object.analysisResults.errors = [`The corresponding func/bold (#${o.series_idx}) to this acquisition has been set (or was set) to exclude from BIDS conversion. Recommendation is to also exclude this acquisition from BIDS conversion (assuming the func/bold is still set for exclusion), unless you have good reason for keeping it.`]
+                            }
+                        })
+                    }
+                })
+
                 eventObjects.forEach(object=>{
                     this.$store.commit("addObject", object);
                 });
