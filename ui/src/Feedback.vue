@@ -17,7 +17,7 @@
             <img src="./assets/images/DanLevitas.png" width="200"/>
             <br>
             <b><a href="mailto:dlevitas@iu.edu" target="mail">Dan Levitas</a></b><br>
-            Software Engineer 
+            Software Engineer
         </div>
         <div class="avatar">
             <img src="./assets/images/franco.jpg" width="200"/>
@@ -46,7 +46,7 @@
     &nbsp;
     <a href="https://grantome.com/grant/NIH/R01-EB029272-01"><img src="https://img.shields.io/badge/NIH_NIBIB-R01EB029272-green.svg"></a>
     &nbsp;
-    
+
 </div>
 </template>
 
@@ -94,9 +94,9 @@ p {
             margin-bottom: 20px;
         }
         text-align: center;
-        font-size: 125%; 
+        font-size: 125%;
         color: #0009;
-        
+
     }
 }
 </style>

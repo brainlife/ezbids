@@ -410,7 +410,7 @@ export default defineComponent({
                 </div>
             </div>
             <ul style="line-height: 200%;">
-                <li>We strongly recommend that you upload <b>non-anonymized</b> data so that we can properly identify the subject/session hierarchy. If you choose to upload anonymized data, ezBIDS will still attempt to identify the subject/session hierarchy; however, we cannot guarantee its success. To alleviate issues, anomymized data should therefore be organized by subject/session folders, with clear identifying information (e.g. "sub-", "ses-") in the folder name(s). Non-anonymized data does not require any organizational/naming structure.</li>
+                <li>We strongly recommend that you upload <b>non-anonymized</b> imaging data so that we can properly identify the subject/session hierarchy. If you choose to upload anonymized data, ezBIDS will still attempt to identify the subject/session hierarchy; however, we cannot guarantee its success. To alleviate issues, anomymized data should therefore be organized by subject/session folders, with clear identifying information (e.g. "sub-", "ses-") in the folder name(s). Non-anonymized data does not require any organizational/naming structure.</li>
                 <li>Once uploaded, ezBIDS will anonymize and remove any subject identifying information (and optionally deface all anatomy data) before converting to BIDS.</li>
                 <li>ezBIDS runs on a secure VM running on Jetstream cloud; HIPAA aligned cloud computing infrastructure.</li>
                 <li>The data you upload can only be accessed through the unique URL with your session ID; all data will be purged from our system within 5 days.</li>
@@ -430,8 +430,8 @@ export default defineComponent({
         <div v-if="session.status == 'created'">
             <p>
                 <h3>
-                    Uploading 
-                    <font-awesome-icon :icon="['fas', 'spinner']" spin/> 
+                    Uploading
+                    <font-awesome-icon :icon="['fas', 'spinner']" spin/>
                 </h3>
                 <small>Please do not close/refresh this page until all files are uploaded.</small>
             </p>
@@ -466,7 +466,7 @@ export default defineComponent({
         </div>
 
         <div v-if="['preprocessing', 'uploaded'].includes(session.status)">
-            <h3 v-if="session.dicomDone === undefined"> 
+            <h3 v-if="session.dicomDone === undefined">
                 Inflating
                 <font-awesome-icon :icon="['fas', 'spinner']" spin/>
             </h3>
@@ -483,7 +483,7 @@ export default defineComponent({
             </div>
             <h3 v-else>
                 Analyzing
-                <font-awesome-icon :icon="['fas', 'spinner']" spin/> 
+                <font-awesome-icon :icon="['fas', 'spinner']" spin/>
             </h3>
             <pre class="status">{{session.status_msg}}</pre>
             <small>* Depending on the size of your dataset, this process might take several hours. You can shutdown your computer while we process your data (please bookmark the URL for this page to come back to it)</small>
@@ -498,8 +498,8 @@ export default defineComponent({
         <div v-if="session.pre_finish_date">
             <div v-if="ezbids.notLoaded">
                 <h3>
-                    Loading analysis results 
-                    <font-awesome-icon :icon="['fas', 'spinner']" spin/> 
+                    Loading analysis results
+                    <font-awesome-icon :icon="['fas', 'spinner']" spin/>
                 </h3>
             </div>
 
@@ -512,7 +512,7 @@ export default defineComponent({
                     <p style="margin: 0;">
                         <el-link @click="toggleObject(idx)">
                             <small>
-                                <el-tag size="mini" type="info">{{idx}}</el-tag> 
+                                <el-tag size="mini" type="info">{{idx}}</el-tag>
                                 {{itemPath(object.items)}}
                             </small>
                         </el-link>
