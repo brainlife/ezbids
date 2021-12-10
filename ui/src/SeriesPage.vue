@@ -293,8 +293,8 @@ export default defineComponent({
     width: 450px;
     height: 100%;
     padding: 5px 10px;
-    box-sizing: border-box;
 */
+    box-sizing: border-box;
     overflow-y: scroll;
 }
 .series-detail {
