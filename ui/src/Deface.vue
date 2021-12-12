@@ -2,7 +2,7 @@
 <div style="padding: 20px;">
     <el-form v-if="getAnatObjects.length && !isDefacing">
         <p>
-            If you'd like to deface all anatomical images, please select a defacing method and click <b>Run Deface</b> button.
+            If you'd like to deface all anatomical images, please select a defacing method and click <b>Run Deface</b> button. Defaced images will be reoriented via FSL's <i>reorient2std</i> function to ensure proper defacing.
         </p>
         <p>
             Otherwise, you can skip this page.
@@ -98,7 +98,7 @@
                 <p v-if="session.status == 'defacing' && !anat.defaced" class="missingThumb">
                 <small>
                     Defacing ...
-                    <font-awesome-icon :icon="['fas', 'spinner']" spin/> 
+                    <font-awesome-icon :icon="['fas', 'spinner']" spin/>
                 </small>
                 </p>
                 <p v-if="anat.defaceFailed" class="missingThumb fail"><small>Defacing Failed</small></p>
