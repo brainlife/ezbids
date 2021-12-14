@@ -2,11 +2,14 @@
 <div style="padding: 20px">
     <div v-if="!events.loaded">
         <p>If you'd like to include task events/timing data with your BIDS datasets, you can upload them here.</p>
+        <p>To ensure proper mapping of events to their imaging files, please have subject, (session), task, and run information in the event file columns, or have the information in the file paths. An example of the latter can be found below.</p>
         <p>Please skip this step if you do not have events data, or if your events data is not set up where each row pertains to a single trial.</p>
-        <p>To ensure proper mapping of events to their imaging files, please have subject, (session), task, and run information in the event file columns, or have the information in the file paths. Here is an example of the latter.</p>
-        <div class="image">
-            <img src="https://github.com/brainlife/ezbids/blob/master/events_directoryUpload_example.png" width="300"/>
+        <br>
+        <div class="clearfix">
+            <img src="./assets/images/events_directoryUpload_example.png" width="600"/>
         </div>
+        <br>
+        <br>
         <!--
         <el-button @click="open">Select Directory</el-button>
         -->
