@@ -76,7 +76,8 @@ import { Remove } from '@element-plus/icons/lib'
 export default defineComponent({
     components: {
         Remove,
-    }, 
+    },
+
     data() {
         return {
             newcolumn: "",
@@ -85,20 +86,6 @@ export default defineComponent({
 
     computed: {
         ...mapState(['ezbids', 'config']),
-    },
-
-    /*
-    watch: {
-        '$root.currentPage'(v) {
-            if(v.id == 'participant') {
-                this.validate();
-            }
-        },
-    },
-    */
-
-    mounted() {
-
     },
 
     methods: {

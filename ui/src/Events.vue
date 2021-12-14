@@ -310,7 +310,7 @@ export default defineComponent({
                 const eventObjects = createEventObjects(this.ezbids, files);
 
                 //adjust eventObjects error message based on exclusion of corresponding func/bold
-                this.ezbids.objects.forEach(o=>{
+                this.ezbids.objects.forEach((o:IObject)=>{
                     let correspondingFuncBoldEvents = eventObjects.filter(object=>object.ModifiedSeriesNumber == o.ModifiedSeriesNumber && o._type == "func/bold")
                     if(correspondingFuncBoldEvents.length > 0) {
                         correspondingFuncBoldEvents.forEach(object=>{
