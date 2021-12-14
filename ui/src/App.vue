@@ -14,7 +14,7 @@ import Deface from './Deface.vue'
 import Finalize from './Finalize.vue'
 import Feedback from './Feedback.vue'
 
-import { IObject } from './store'
+import { Series, IObject } from './store'
 
 //https://github.com/element-plus/element-plus/issues/436#issuecomment-961386582
 import { ElNotification } from 'element-plus'
@@ -174,6 +174,12 @@ export default defineComponent({
             } else {
                 this.$store.commit("setPage", this.pages[idx-1]);
             }
+        },
+
+        updateSeries(s: Series) {
+            // @ts-ignore
+            this.$refs.series.validateAll();
+            this.$store.commit("validateSeries");
         },
 
         updateObject(o: IObject) {

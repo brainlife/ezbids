@@ -386,7 +386,7 @@ export default defineComponent({
                     if(sameseries) sameidx = sameseries.series_idx;
                     o.validationErrors.push("This object looks exactly like another object with Series #"+sameidx+
                         ". We can not convert this object to BIDS as they will overwrite each other. "+
-                        "Please set entities such as 'run' to make them all unique (across sections).");
+                        "Please set entities such as 'run' to make them all unique (across subjects/sessions).");
                     break;
                 }
             }

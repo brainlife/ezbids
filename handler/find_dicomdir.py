@@ -15,7 +15,7 @@ def find_leaf(dir):
             continue
 
         #does it contain any .dcmfile?
-        if x.lower().endswith(".dcm"):
+        if x.lower().endswith(".dcm") or x.lower().endswith(".ima"):
             hasDicom=True
 
     #if it contains DICOMDIR, treat it as leaf

@@ -55,11 +55,11 @@
                 <div v-if="ss.type && ss.type.startsWith('fmap/')">
                     <el-form-item label="IntendedFor">
                         <el-select v-model="ss.IntendedFor" required multiple filterable
-                            placeholder="Please select Series" size="small" 
+                            placeholder="Please select Series" size="small"
                             @change="validate(ss)" style="width: 80%">
-                            <el-option v-for="series in this.ezbids.series.filter(s=>s.type != 'exclude')" 
-                                :key="series.series_idx" 
-                                :label="'#'+series.series_idx+' '+series.type" 
+                            <el-option v-for="series in this.ezbids.series.filter(s=>s.type != 'exclude')"
+                                :key="series.series_idx"
+                                :label="'#'+series.series_idx+' '+series.type"
                                 :value="series.series_idx">
                                 {{series.type}} {{series.series_idx}}
                             </el-option>
@@ -182,6 +182,7 @@ export default defineComponent({
     },
 
     mounted() {
+        console.log("series mount completed");
         this.validateAll();
     },
 
@@ -205,10 +206,6 @@ export default defineComponent({
             this.showInfo[entity] = !this.showInfo[entity];
         },
 
-        validateAll() {
-            this.ezbids.series.forEach(this.validate);
-        },
-
         validate(s: Series|null) {
             if(!s) return;
 
@@ -225,6 +222,7 @@ export default defineComponent({
                 for(let s2 of this.ezbids.series) {
                     if(s == s2) continue;
                     if(s.type != s2.type) continue;
+                    if(s2.type == "exclude") continue;
 
                     let same = s2;
                     for(let e in s.entities) {
@@ -259,6 +257,10 @@ export default defineComponent({
                 if(s.validationErrors.length > 0) err = "Please correct all issues";
             });
             return cb(err);
+        },
+
+        validateAll() {
+            this.ezbids.series.forEach(this.validate);
         }
     },
 });
