@@ -14,7 +14,7 @@ import Deface from './Deface.vue'
 import Finalize from './Finalize.vue'
 import Feedback from './Feedback.vue'
 
-import { Series, IObject } from './store'
+import { IObject } from './store'
 
 //https://github.com/element-plus/element-plus/issues/436#issuecomment-961386582
 import { ElNotification } from 'element-plus'
@@ -23,6 +23,8 @@ import { ElNotification } from 'element-plus'
 import { setSectionIDs, funcQA, fmapQA, setRun, setIntendedFor } from './libUnsafe'
 //import { IObjectItem } from './store'
 import { createEventsTSV } from './lib'
+
+import niivue from './components/niivue.vue'
 
 export default defineComponent({
     components: {
@@ -37,7 +39,7 @@ export default defineComponent({
        Finalize,
        Feedback,
 
-       niivue: ()=>import('./components/niivue.vue'),
+       niivue,
     },
 
     data() {
@@ -131,6 +133,7 @@ export default defineComponent({
     },
 
     methods: {
+
         next() {
             this.mapObjects();
             this.$store.commit("organizeObjects");
@@ -181,6 +184,11 @@ export default defineComponent({
             // @ts-ignore
             this.$refs.object.validateAll(); //I need to validate the entire list.. so I can detect collision
             this.$store.commit("organizeObjects");
+        },
+
+        openNiivue(path: string) {
+            console.log("opening niivue", path);
+            this.niivuePath = path;
         },
 
         mapObjects() {
@@ -267,13 +275,16 @@ export default defineComponent({
         <Description v-if="page == 'description'" ref="description"/>
         <Subject v-if="page == 'subject'" ref="subject"/>
         <Participant v-if="page == 'participant'" ref="participant"/>
-        <SeriesPage v-if="page == 'seriespage'" ref="seriespage"/>
+        <SeriesPage v-if="page == 'seriespage'" ref="seriespage"
+            @niivue="openNiivue"/>
         <Events v-if="page == 'event'" ref="event"
             @mapObjects="mapObjects"/>
         <Objects v-if="page == 'object'" ref="object"
+            @niivue="openNiivue"
             @mapObjects="mapObjects"
             @updateObject="updateObject"/>
-        <Deface v-if="page == 'deface'" ref="deface"/>
+        <Deface v-if="page == 'deface'" ref="deface"
+            @niivue="openNiivue"/>
         <Finalize v-if="page == 'finalize'" ref="finalize"/>
         <Feedback v-if="page == 'feedback'" ref="feedback"/>
 

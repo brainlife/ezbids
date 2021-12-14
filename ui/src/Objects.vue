@@ -124,7 +124,7 @@
                         <el-select v-model="item.path" placeholder="Source path" size="small" style="width: 100%">
                             <el-option v-for="(item, idx) in so.items" :key="idx" :label="item.path" :value="item.path"/>
                         </el-select>
-                        <el-button size="small" type="info" v-if="item.path?.endsWith('.nii.gz')" @click="$root.niivuePath = item.path">
+                        <el-button size="small" type="info" v-if="item.path?.endsWith('.nii.gz')" @click="$emit('niivue', item.path)">
                             <font-awesome-icon :icon="['fas', 'eye']"/>
                             NiiVue
                         </el-button>
@@ -206,7 +206,6 @@ export default defineComponent({
     },
 
     mounted() {
-        console.log("object mount completed");
         this.validateAll();
     },
 

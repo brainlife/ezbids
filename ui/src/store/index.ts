@@ -134,6 +134,7 @@ export interface IObject {
         section_ID: number;
         NumVolumes?: number;
         filesize?: number;
+        orientation?: string;
     };
 
     //paths: [string]; //??
@@ -630,9 +631,11 @@ const store = createStore({
             return state.config.apihost+"/download/"+state.session._id+"/"+path;
         },
 
-        getAnatObjects(state) {
+        /*
+        getAnatObjects: (state)=>()=>{
             return state.ezbids.objects.filter(o=>o._type.startsWith('anat') && !o._exclude)
         },
+        */
     },
 })
 

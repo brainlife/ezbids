@@ -1,6 +1,6 @@
 <template>
 <div style="padding: 20px;">
-    <el-form v-if="getAnatObjects.length && !isDefacing">
+    <el-form v-if="anatObjects.length && !isDefacing">
         <p>
             If you'd like to deface all anatomical images, please select a defacing method and click <b>Run Deface</b> button. Defaced images will be reoriented via FSL's <i>reorient2std</i> function to ensure proper defacing.
         </p>
@@ -35,8 +35,8 @@
     </el-form>
 
     <br>
-    <el-alert v-if="getAnatObjects.length == 0" type="warning">No anatomy files to deface. Please skip this step.</el-alert>
-    <div v-if="getAnatObjects.length && ezbids.defacingMethod">
+    <el-alert v-if="anatObjects.length == 0" type="warning">No anatomy files to deface. Please skip this step.</el-alert>
+    <div v-if="anatObjects.length && ezbids.defacingMethod">
         <div v-if="session.status == 'deface' || session.status == 'defacing'">
             <h3>Running <b>{{ezbids.defacingMethod}}</b> ...</h3>
             <pre class="status">{{session.status_msg}}</pre>
@@ -60,7 +60,7 @@
                 <th>Defaced</th>
             </tr>
         </thead>
-        <tr v-for="anat in getAnatObjects" :key="anat.idx">
+        <tr v-for="anat in anatObjects" :key="anat.idx">
             <td>
                 <div style="margin-bottom: 0; font-size: 85%; line-height: 200%;">
                     <span><small>sub</small> {{anat._entities.subject}} </span>
@@ -77,7 +77,7 @@
                         <a :href="getURL(item.pngPaths[0])">
                             <img style="width: 100%" :src="getURL(item.pngPaths[0])"/>
                         </a>
-                        <el-button type="info" @click="$root.niivuePath = item.path" style="position: absolute; top: 50px; left: 5px" size="small">
+                        <el-button type="info" @click="$emit('niivue', item.path)" style="position: absolute; top: 50px; left: 5px" size="small">
                             <font-awesome-icon :icon="['fas', 'eye']"/>
                             NiiVue
                         </el-button>
@@ -90,7 +90,7 @@
                     <a :href="getURL(getDefacedURL(anat)+'.png')" v-if="anat.defaced">
                         <img style="width: 100%" :src="getURL(getDefacedURL(anat)+'.png')+'?nocache='+Date.now()"/>
                     </a>
-                    <el-button type="info" @click="$root.niivuePath = getDefacedURL(anat)" style="position: absolute; top: 50px; left: 5px;" size="small">
+                    <el-button type="info" @click="$emit('niivue', getDefacedURL(anat))" style="position: absolute; top: 50px; left: 5px;" size="small">
                         <font-awesome-icon :icon="['fas', 'eye']"/>
                         NiiVue
                     </el-button>
@@ -114,6 +114,7 @@
 import { mapState, mapGetters, } from 'vuex'
 import { defineComponent } from 'vue'
 import datatype from './components/datatype.vue'
+import niivue from './components/niivue.vue'
 
 import { IObject } from './store'
 
@@ -122,40 +123,45 @@ import { ElNotification } from 'element-plus'
 export default defineComponent({
     components: {
         datatype,
-        niivue: ()=>import('./components/niivue.vue'),
+        niivue,
     },
+
+    /*
     data() {
         return {
-            //tm: null, //timeout for reloading deface.log
-            //defacingMethod: "",
         }
+    },
+    */
+
+    mounted() {
+        //initialize all anat to use defaced image by default
+        this.anatObjects.forEach((o:IObject)=>{
+            if(!o.defaceSelection) o.defaceSelection = "defaced";
+        });
     },
 
     computed: {
         ...mapState(['ezbids', 'config', 'session', 'bidsSchema']),
-        ...mapGetters(['getBIDSEntities', 'getURL', 'getAnatObjects']),
+        ...mapGetters(['getBIDSEntities', 'getURL']),
 
         isDefacing() {
-            // @ts-ignore
-            return ["deface", "defacing"].includes(this.session.status);
-        }
-    },
+            if(!this.$store.state.session) return false;
+            return ["deface", "defacing"].includes(this.$store.state.session.status);
+        },
 
-    mounted() {
-        //initialize all anat to use defaced image by default
-        this.getAnatObjects.forEach((o:IObject)=>{
-            if(!o.defaceSelection) o.defaceSelection = "defaced";
-        });
+        anatObjects() {
+            return this.$store.state.ezbids.objects.filter((o:IObject)=>o._type.startsWith('anat') && !o._exclude)
+        }
     },
 
     methods: {
         changeMethod() {
             if(this.ezbids.defacingMethod) {
-                this.getAnatObjects.forEach((o:IObject)=>{
+                this.anatObjects.forEach((o:IObject)=>{
                     o.defaceSelection = "defaced";
                 });
             } else {
-                this.getAnatObjects.forEach((o:IObject)=>{
+                this.anatObjects.forEach((o:IObject)=>{
                     o.defaceSelection = "original";
                 });
             }
@@ -192,7 +198,7 @@ export default defineComponent({
                 if(status != "ok") {
                     ElNotification({ title: 'Failed', message: 'Failed to reset defacing'});
                 }
-                this.getAnatObjects.forEach((anat: IObject)=>{
+                this.anatObjects.forEach((anat: IObject)=>{
                     delete anat.defaced;
                     delete anat.defaceFailed;
                     anat.defaceSelection = "defaced";
@@ -202,12 +208,12 @@ export default defineComponent({
         },
 
         runDeface() {
-            const list = this.getAnatObjects.map((o:IObject)=>{
+            const list = this.anatObjects.map((o:IObject)=>{
                 return {idx: o.idx, path: o.items.find(i=>i.path?.endsWith(".nii.gz"))?.path};
             });
 
             //reset current status for all stats (in case it's ran previously)
-            this.getAnatObjects.forEach((o:IObject)=>{
+            this.anatObjects.forEach((o:IObject)=>{
                 delete o.defaced;
             });
 
@@ -235,7 +241,7 @@ export default defineComponent({
             if(this.session.deface_begin_date && this.session.status == "failed") {
                 //let's assume it's the defacing that failed
                 let err = undefined;
-                this.getAnatObjects.forEach((o:IObject)=>{
+                this.anatObjects.forEach((o:IObject)=>{
                     if(o.defaceSelection == "defaced" && !o.defaced) err = "Please set to use original image for deface-failed images";
                 });
                 return cb(err);

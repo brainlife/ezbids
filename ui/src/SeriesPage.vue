@@ -57,11 +57,9 @@
                         <el-select v-model="ss.IntendedFor" required multiple filterable
                             placeholder="Please select Series" size="small"
                             @change="validateAll()" style="width: 80%">
-                            <el-option v-for="series in this.ezbids.series.filter(s=>s.type != 'exclude')"
-                                :key="series.series_idx"
-                                :label="'#'+series.series_idx+' '+series.type"
-                                :value="series.series_idx">
-                                {{series.type}} {{series.series_idx}}
+                            <el-option v-for="(series, idx) in ezbids.series/*.filter(s=>s.type != 'exclude')*/" :key="idx"
+                                :label="'(#'+idx.toString()+') '+series.type" :value="idx">
+                                (#{{idx.toString()}}) {{series.type}}
                             </el-option>
                         </el-select>
                         <p style="margin-top: 0">
@@ -125,7 +123,7 @@
                                     <img style="width: 100%" :src="getURL(path)"/>
                                 </a>
                             </p>
-                            <el-button type="info" @click="$root.niivuePath = item.path" size="small">
+                            <el-button type="info" @click="$emit('niivue', item.path)" size="small">
                                 <font-awesome-icon :icon="['fas', 'eye']"/>
                                 NiiVue
                             </el-button>
@@ -158,7 +156,9 @@ import { Series, IObject } from './store'
 
 import { validateEntities } from './libUnsafe'
 
+// @ts-ignore
 import { Splitpanes, Pane } from 'splitpanes'
+
 import 'splitpanes/dist/splitpanes.css'
 
 export default defineComponent({
@@ -261,7 +261,6 @@ export default defineComponent({
 
         validateAll() {
             this.ezbids.series.forEach(this.validate);
-            console.log("test validate all")
         }
     },
 });
@@ -269,7 +268,6 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-
 .seriespage {
     position: fixed;
     top: 0;
