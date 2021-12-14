@@ -144,6 +144,21 @@ export function funcQA($root) {
             })
         }
     })
+
+    // #4
+    $root._organized.forEach(subGroup=>{
+        subGroup.sess.forEach(sesGroup=>{
+            let dwiDir0 = {}
+            let dwiDir180 = {}
+
+            let protocol = sesGroup.objects
+            protocol.Foreach(p=>{
+                if(p._type == "dwi/dwi") {
+                    console.log(p._SeriesDescription)
+                }
+            })
+        })
+    })
 }
 
 // function newSetIntendedFor($root) {
@@ -745,37 +760,37 @@ export function createEventObjects(ezbids, files) {
 
         if(section_ID) {
             try {
-                    section_ID = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
-                        e._entities.session == eventsMappingInfo.session.eventsValue &&
-                        e._entities.task == eventsMappingInfo.task.eventsValue &&
-                        e._entities.run == eventsMappingInfo.run.eventsValue
-                        ).analysisResults.section_ID
+                section_ID = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
+                    e._entities.session == eventsMappingInfo.session.eventsValue &&
+                    e._entities.task == eventsMappingInfo.task.eventsValue &&
+                    e._entities.run == eventsMappingInfo.run.eventsValue
+                    ).analysisResults.section_ID
             }
             catch {
                 section_ID = 1
             }
 
-            try {
-                    series_idx = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
-                        e._entities.session == eventsMappingInfo.session.eventsValue &&
-                        e._entities.task == eventsMappingInfo.task.eventsValue &&
-                        e._entities.run == eventsMappingInfo.run.eventsValue &&
-                        e._type == "func/bold" &&
-                        (e._entities.part == "" || e._entities.part == "mag")
-                        ).series_idx
-            }
-            catch {
-                series_idx = 0
-            }
+            // try {
+            //     series_idx = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
+            //         e._entities.session == eventsMappingInfo.session.eventsValue &&
+            //         e._entities.task == eventsMappingInfo.task.eventsValue &&
+            //         e._entities.run == eventsMappingInfo.run.eventsValue &&
+            //         e._type == "func/bold" &&
+            //         (e._entities.part == "" || e._entities.part == "mag")
+            //         ).series_idx
+            // }
+            // catch {
+            //     series_idx = 0
+            // }
 
             try {
-                    ModifiedSeriesNumber = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
-                    e._entities.session == eventsMappingInfo.session.eventsValue &&
-                    e._entities.task == eventsMappingInfo.task.eventsValue &&
-                    e._entities.run == eventsMappingInfo.run.eventsValue &&
-                    e._type == "func/bold" &&
-                    (e._entities.part == "" || e._entities.part == "mag")
-                    ).ModifiedSeriesNumber
+                ModifiedSeriesNumber = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
+                e._entities.session == eventsMappingInfo.session.eventsValue &&
+                e._entities.task == eventsMappingInfo.task.eventsValue &&
+                e._entities.run == eventsMappingInfo.run.eventsValue &&
+                e._type == "func/bold" &&
+                (e._entities.part == "" || e._entities.part == "mag")
+                ).ModifiedSeriesNumber
             }
             catch {
                 ModifiedSeriesNumber = "01"

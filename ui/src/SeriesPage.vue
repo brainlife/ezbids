@@ -261,7 +261,6 @@ export default defineComponent({
 
         validateAll() {
             this.ezbids.series.forEach(this.validate);
-            console.log("test validate all")
         }
     },
 });
