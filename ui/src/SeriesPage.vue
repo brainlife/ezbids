@@ -41,7 +41,7 @@
 
                 <el-form-item label="Datatype">
                     <el-select v-model="ss.type" required filterable
-                        placeholder="(exclude)" size="small" @change="validate(ss)" style="width: 80%">
+                        placeholder="(exclude)" size="small" @change="validateAll()" style="width: 80%">
                         <el-option value="exclude">(Exclude from BIDS conversion)</el-option>
                         <el-option-group v-for="type in bidsSchema.datatypes" :key="type.label" :label="type.label">
                             <el-option v-for="subtype in type.options" :key="subtype.value" :value="subtype.value">
@@ -56,7 +56,7 @@
                     <el-form-item label="IntendedFor">
                         <el-select v-model="ss.IntendedFor" required multiple filterable
                             placeholder="Please select Series" size="small"
-                            @change="validate(ss)" style="width: 80%">
+                            @change="validateAll()" style="width: 80%">
                             <el-option v-for="series in this.ezbids.series.filter(s=>s.type != 'exclude')"
                                 :key="series.series_idx"
                                 :label="'#'+series.series_idx+' '+series.type"
@@ -77,7 +77,7 @@
                             :title="bidsSchema.entities[entity].name"
                             :content="bidsSchema.entities[entity].description">
                             <template #reference>
-                                <el-input v-model="ss.entities[entity]" size="small" :required="v == 'required'" @change="validate(ss)"/>
+                                <el-input v-model="ss.entities[entity]" size="small" :required="v == 'required'" @change="validateAll()"/>
                             </template>
                         </el-popover>
                     </el-form-item>
@@ -261,6 +261,7 @@ export default defineComponent({
 
         validateAll() {
             this.ezbids.series.forEach(this.validate);
+            console.log("test validate all")
         }
     },
 });

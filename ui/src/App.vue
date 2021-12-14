@@ -176,12 +176,6 @@ export default defineComponent({
             }
         },
 
-        updateSeries(s: Series) {
-            // @ts-ignore
-            this.$refs.series.validateAll();
-            this.$store.commit("validateSeries");
-        },
-
         updateObject(o: IObject) {
             this.mapObject(o);
             // @ts-ignore
