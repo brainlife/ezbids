@@ -10,15 +10,15 @@
                     <small>Exclude this subject</small>
                 </el-checkbox>
             </span>
-            <div v-for="o_ses in o_sub.sess" :key="o_ses.ses" :class="{'left-border': o_ses.ses != ''}">
-                <span v-if="o_ses.ses" class="hierarchy">
+            <div v-for="o_ses in o_sub.sess" :key="o_ses.sess" :class="{'left-border': o_ses.sess != ''}">
+                <span v-if="o_ses.sess" class="hierarchy">
                     <i class="el-icon-time" style="margin-right: 2px;"/>
-                    <small>ses-</small><b>{{o_ses.ses}}</b>
+                    <small>ses-</small><b>{{o_ses.sess}}</b>
                     &nbsp;
                     <small style="opacity: 0.5;">{{o_ses.AcquisitionDate}}</small>
                     &nbsp;
                     &nbsp;
-                    <el-checkbox :value="o_ses.exclude" @change="excludeSession(o_sub.sub.toString(), o_ses.ses.toString(), $event)">
+                    <el-checkbox :value="o_ses.exclude" @change="excludeSession(o_sub.sub.toString(), o_ses.sess.toString(), $event)">
                         <small>Exclude this session</small>
                     </el-checkbox>
                 </span>
