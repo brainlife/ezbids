@@ -264,7 +264,7 @@ export default defineComponent({
             <li :class="{active: page == 'feedback'}">Feedback</li>
         </ul>
 
-        <p class="menu-footer">
+        <p class="menu-footer" style="font-size: 150%">
             <a href="https://github.com/brainlife/ezbids" target="github">
                 <font-awesome-icon :icon="['fab', 'github']" />
             </a>
@@ -349,7 +349,7 @@ pre {
     color: white;
     h2 {
         margin-top: 0;
-        color: white;
+        color: #ccc;
     }
 }
 </style>
