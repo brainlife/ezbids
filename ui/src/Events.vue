@@ -2,16 +2,10 @@
 <div style="padding: 20px">
     <div v-if="!events.loaded">
         <p>If you'd like to include task events/timing data with your BIDS datasets, you can upload them here.</p>
-        <p>To ensure proper mapping of events to their imaging files, please have subject, (session), task, and run information in the event file columns, or have the information in the file paths. An example of the latter can be found below.</p>
         <p>Please skip this page if you do not have events data, or if your events data is not set up where each row pertains to an individual trial.</p>
         <br>
-        <div class="clearfix">
-            <img src="./assets/images/events_directoryUpload_example.png" width="600"/>
-        </div>
-        <br>
-        <!--
-        <el-button @click="open">Select Directory</el-button>
-        -->
+
+        <!-- <el-button @click="open">Select Directory</el-button> -->
         <input type="file"
             webkitdirectory
             mozdirectory
@@ -20,6 +14,20 @@
             directory
             placeholder="Select Directory"
             @change="open"/>
+
+        <br>
+        <br>
+        <br>
+        <div class="hint">
+            <h2>Hint</h2>
+            <p>To ensure proper mapping of events to their imaging files, please have subject, (session), task, and run information in the event file columns, or have the information in the file paths. An example of the latter can be found below.</p>
+            <div class="clearfix">
+                <img src="./assets/images/events_directoryUpload_example.png" width="600"/>
+            </div>
+        </div>
+        <br>
+        <br>
+        <br>
     </div>
     <div v-if="events.loaded">
         <el-button type="warning" @click="reset" style="float: right;">Reset</el-button>

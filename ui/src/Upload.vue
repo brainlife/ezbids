@@ -409,16 +409,23 @@ export default defineComponent({
                             @change="selectit" style="font-size: 80%; width: 400px; background-color: #fff3; padding: 5px;"/>
                 </div>
             </div>
-            <ul style="line-height: 200%;">
-                <li>We strongly recommend that you upload <b>non-anonymized</b> imaging data so that we can properly identify the subject/session hierarchy. If you choose to upload anonymized data, ezBIDS will still attempt to identify the subject/session hierarchy; however, we cannot guarantee its success. To alleviate issues, anomymized data should therefore be organized by subject/session folders, with clear identifying information (e.g. "sub-", "ses-") in the folder name(s). Non-anonymized data does not require any organizational/naming structure.</li>
-                <li>Once uploaded, ezBIDS will anonymize and remove any subject identifying information (and optionally deface all anatomy data) before converting to BIDS.</li>
-                <li>ezBIDS runs on a secure VM running on Jetstream cloud; HIPAA aligned cloud computing infrastructure.</li>
-                <li>The data you upload can only be accessed through the unique URL with your session ID; all data will be purged from our system within 5 days.</li>
-            </ul>
+            
             <br>
             <br>
             <br>
-            <iframe width="560" height="315" src="https://www.youtube.com/embed/mY3_bmt_e80" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            <div class="hint">
+                <h2>Hint</h2>
+                <ul style="line-height: 200%;">
+                    <li>We strongly recommend that you upload <b>non-anonymized</b> imaging data so that we can properly identify the subject/session hierarchy. If you choose to upload anonymized data, ezBIDS will still attempt to identify the subject/session hierarchy; however, we cannot guarantee its success. To alleviate issues, anomymized data should therefore be organized by subject/session folders, with clear identifying information (e.g. "sub-", "ses-") in the folder name(s). Non-anonymized data does not require any organizational/naming structure.</li>
+                    <li>Once uploaded, ezBIDS will anonymize and remove any subject identifying information (and optionally deface all anatomy data) before converting to BIDS.</li>
+                    <li>ezBIDS runs on a secure VM running on Jetstream cloud; HIPAA aligned cloud computing infrastructure.</li>
+                    <li>The data you upload can only be accessed through the unique URL with your session ID; all data will be purged from our system within 5 days.</li>
+                </ul>
+                <iframe width="560" height="315" src="https://www.youtube.com/embed/mY3_bmt_e80" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+            </div>
+            <br>
+            <br>
+            <br>
         </div>
 
         <div v-if="starting">
@@ -430,8 +437,7 @@ export default defineComponent({
         <div v-if="session.status == 'created'">
             <p>
                 <h3>
-                    Uploading
-                    <font-awesome-icon :icon="['fas', 'spinner']" spin/>
+                    Uploading&nbsp;<font-awesome-icon :icon="['fas', 'spinner']" spin/>
                 </h3>
                 <small>Please do not close/refresh this page until all files are uploaded.</small>
             </p>
