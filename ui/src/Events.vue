@@ -9,7 +9,6 @@
             <img src="./assets/images/events_directoryUpload_example.png" width="600"/>
         </div>
         <br>
-        <br>
         <!--
         <el-button @click="open">Select Directory</el-button>
         -->

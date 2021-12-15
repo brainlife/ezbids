@@ -187,7 +187,7 @@ import datatype from './components/datatype.vue'
 
 import { IObject, Subject, Session, OrganizedSession } from './store'
 import { prettyBytes } from './filters'
-import { validateEntities, } from './libUnsafe'
+import { validateEntities } from './libUnsafe'
 
 interface Section {
     [key: string]: IObject[];

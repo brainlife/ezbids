@@ -144,21 +144,6 @@ export function funcQA($root) {
             })
         }
     })
-
-    // #4
-    $root._organized.forEach(subGroup=>{
-        subGroup.sess.forEach(sesGroup=>{
-            let dwiDir0 = {}
-            let dwiDir180 = {}
-
-            let protocol = sesGroup.objects
-            protocol.Foreach(p=>{
-                if(p._type == "dwi/dwi") {
-                    console.log(p._SeriesDescription)
-                }
-            })
-        })
-    })
 }
 
 // function newSetIntendedFor($root) {
@@ -449,6 +434,31 @@ export function validateEntities(entities/*: Series*/) {
     return errors;
 }
 
+// export function dwiQA($root) {
+//     /*
+//     DWI acquisitions typically come in flipped PED pairs. This QA checks to see
+//     if only one acquisition (i.e. no pair) exists.
+//     */
+//     $root._organized.forEach(subGroup=>{
+//         subGroup.sess.forEach(sesGroup=>{
+//             let dwiDirs = []
+//             let protocolObjects = sesGroup.objects
+
+//             for(const protocol of protocolObjects) {
+//                 Object.keys(protocol).forEach(key=>{
+//                     if(protocol[key] == "dwi/dwi") {
+//                         dwiDirs.push({"idx": protocol.idx, "direction": protocol._entities.direction})
+//                     }
+//                 })
+//             }
+//             if(dwiDirs.length == 1) {
+//                 protocolObjects[dwiDirs[0].idx].validationWarnings.push("This dwi/dwi acquisition doesn't appear to have a corresponding dwi/dwi acquisition with a 180 degree flipped phase encoding direction. If there isn't a corresponding field map meant for this acquisition, you should exclude this form BIDS conversion")
+//             }
+//         })
+//     })
+//     return $root
+// }
+
 export function find_separator(filePath, fileData) {
     if(filePath.indexOf('.tsv') > -1) {
         return /[ \t]+/;
@@ -709,13 +719,13 @@ export function createEventObjects(ezbids, files) {
 
             //sanity checks, based on the current mapping performed
             Object.keys(eventsMappingInfo).forEach(key=>{
-                /* 1). if a mismatch exists between any key's ezBIDSvalue and eventsValue, and the length of
-                ezBIDSvalues == 1, then the ezBIDSvalue takes precedence because that's what the user has
-                explicitly specified in ezBIDS.
-                */
-                if(!info.ezBIDSvalues.includes(info.eventsValue) && info.ezBIDSvalues.length == 1) {
-                    info.eventsValue = info.ezBIDSvalues[0]
-                }
+                // /* 1). if a mismatch exists between any key's ezBIDSvalue and eventsValue, and the length of
+                // ezBIDSvalues == 1, then the ezBIDSvalue takes precedence because that's what the user has
+                // explicitly specified in ezBIDS.
+                // */
+                // if(!info.ezBIDSvalues.includes(info.eventsValue) && info.ezBIDSvalues.length == 1) {
+                //     info.eventsValue = info.ezBIDSvalues[0]
+                // }
 
                 /* 2). ignore zero-padding in subject, session, and run eventsValue if the zero-padded
                 value doesn't exist in corresponding ezBIDSvalues. For example, if subject ID in ezBIDS
@@ -744,6 +754,8 @@ export function createEventObjects(ezbids, files) {
             });
         }
 
+        console.log(eventsMappingInfo)
+
         /* Determine the section_ID, series_idx, and ModifiedSeriesNumber values of the events object(s).
         This is necessary to properly organize the events object(s) on the Objects page.
         */
@@ -770,18 +782,18 @@ export function createEventObjects(ezbids, files) {
                 section_ID = 1
             }
 
-            // try {
-            //     series_idx = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
-            //         e._entities.session == eventsMappingInfo.session.eventsValue &&
-            //         e._entities.task == eventsMappingInfo.task.eventsValue &&
-            //         e._entities.run == eventsMappingInfo.run.eventsValue &&
-            //         e._type == "func/bold" &&
-            //         (e._entities.part == "" || e._entities.part == "mag")
-            //         ).series_idx
-            // }
-            // catch {
-            //     series_idx = 0
-            // }
+            try {
+                series_idx = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
+                    e._entities.session == eventsMappingInfo.session.eventsValue &&
+                    e._entities.task == eventsMappingInfo.task.eventsValue &&
+                    e._entities.run == eventsMappingInfo.run.eventsValue &&
+                    e._type == "func/bold" &&
+                    (e._entities.part == "" || e._entities.part == "mag")
+                    ).series_idx
+            }
+            catch {
+                series_idx = 0
+            }
 
             try {
                 ModifiedSeriesNumber = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
@@ -800,12 +812,13 @@ export function createEventObjects(ezbids, files) {
         }
 
         const subjectInfo = ezbids.subjects.filter(e=>e.subject == eventsMappingInfo.subject.eventsValue)
-        let sessionInfo;
 
-        sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == eventsMappingInfo.subject.eventsValue)
+        let sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == eventsMappingInfo.subject.eventsValue)
         if(sessionInfo.length == 0) {
             sessionInfo = subjectInfo[0].sessions.filter(e=>e.session == "")
         }
+
+
 
         // Indexing the first (and only value) but will need to filter this out better for multi-session data
         const subject = subjectInfo[0];
