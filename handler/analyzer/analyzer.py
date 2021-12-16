@@ -570,6 +570,7 @@ def generate_dataset_list(uploaded_files_list):
             "exclude": False,
             "filesize": filesize,
             "NumVolumes": volume_count,
+            "VolumeThreshold": None,
             "orientation": ornt,
             "forType": "",
             "error": None,
@@ -1407,6 +1408,7 @@ def modify_objects_info(dataset_list):
                             "AcquisitionTime": protocol["AcquisitionTime"],
                             "SeriesNumber": protocol["SeriesNumber"],
                             "ModifiedSeriesNumber": protocol["ModifiedSeriesNumber"],
+                            "VolumeThreshold": protocol["VolumeThreshold"],
                             "entities": objects_entities,
                             "items": items,
                             "analysisResults": {
@@ -1463,6 +1465,45 @@ def extract_series_info(dataset_list_unique_series):
 
     return ui_series_info_list
 
+def setVolumeThreshold(dataset_list_unique_series, objects_list):
+    """
+    Sets a volume threshold for all func/bold acquisitions in dataset.
+
+
+    Parameters
+    ----------
+    dataset_list_unique_series : list
+        List of dictionaries of unique series
+    objects_list: list
+        List of dictionaries of all dataset objects
+
+    Returns
+    -------
+    proper_pe_direction: string
+        pe_direction, in "ijk" format
+    """
+
+    unique_funcBold_series_indices = [x["series_idx"] for x in dataset_list_unique_series if x["type"] == "func/bold"]
+    for series_idx in unique_funcBold_series_indices:
+        corresponding_objects_volumes = [x["analysisResults"]["NumVolumes"] for x in objects_list if x["series_idx"] == series_idx]
+        minNumVolumes = min(corresponding_objects_volumes)
+        maxNumVolumes = max(corresponding_objects_volumes)
+
+        if minNumVolumes == maxNumVolumes: # set threshold at max NumVolumes
+            volumeThreshold = maxNumVolumes
+        else: # set the threshold at 50% of max NumVolumes or min NumVolumes if it's higher than half
+            half = floor(maxNumVolumes/2)
+            if minNumVolumes > half:
+                volumeThreshold = minNumVolumes
+            else:
+                volumeThreshold = half
+
+        for obj in objects_list:
+            if obj["series_idx"] == series_idx:
+                obj["VolumeThreshold"] = volumeThreshold
+
+
+
 ##################### Begin #####################
 
 print("########################################")
@@ -1513,6 +1554,9 @@ dataset_list = update_dataset_list(dataset_list, dataset_list_unique_series)
 # Apply a few other changes to the objects level
 objects_list = modify_objects_info(dataset_list)
 
+# Set volume threshold for func/bold acquisitions
+setVolumeThreshold(dataset_list_unique_series, objects_list)
+
 # Map unique series IDs to all other acquisitions in dataset that have those parameters
 for index, unique_dic in enumerate(dataset_list_unique_series):
 
@@ -1523,6 +1567,8 @@ for index, unique_dic in enumerate(dataset_list_unique_series):
         ".format(unique_dic["nifti_path"], unique_dic["SeriesDescription"], unique_dic["type"], [x for x in unique_dic["entities"].items() if x[-1] != ""]).split()))
     print("")
     print("")
+
+
 
 # Extract important series information to display in ezBIDS UI
 ui_series_info_list = extract_series_info(dataset_list_unique_series)
