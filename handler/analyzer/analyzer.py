@@ -1408,7 +1408,6 @@ def modify_objects_info(dataset_list):
                             "AcquisitionTime": protocol["AcquisitionTime"],
                             "SeriesNumber": protocol["SeriesNumber"],
                             "ModifiedSeriesNumber": protocol["ModifiedSeriesNumber"],
-                            "VolumeThreshold": protocol["VolumeThreshold"],
                             "entities": objects_entities,
                             "items": items,
                             "analysisResults": {
@@ -1449,6 +1448,7 @@ def extract_series_info(dataset_list_unique_series):
                           "EchoTime": unique_dic["EchoTime"],
                           "ImageType": unique_dic["ImageType"],
                           "RepetitionTime": unique_dic["RepetitionTime"],
+                          "VolumeThreshold": unique_dic["VolumeThreshold"],
                           "NumVolumes": unique_dic["NumVolumes"],
                           "nifti_path": unique_dic["nifti_path"],
                           "series_idx": unique_dic["series_idx"],
@@ -1479,28 +1479,33 @@ def setVolumeThreshold(dataset_list_unique_series, objects_list):
         List of dictionaries of all dataset objects
     """
 
-    series_indices_TRs = [[x["series_idx"], x["RepetitionTime"]] for x in dataset_list_unique_series if x["type"] == "func/bold"]
-    for series_idx, tr in series_indices_TRs:
-        corresponding_objects_volumes = [x["analysisResults"]["NumVolumes"] for x in objects_list if x["series_idx"] == series_idx]
-        minNumVolumes = min(corresponding_objects_volumes)
-        maxNumVolumes = max(corresponding_objects_volumes)
-        numVolumes1min = floor(60/tr)
 
-        if maxNumVolumes < numVolumes1min: # set default as # volumes after 1 minute
-            volmeThreshold = numVolumes1min
-        elif minNumVolumes == maxNumVolumes: # set threshold at max NumVolumes
-            volumeThreshold = maxNumVolumes
-        else: # set threshold at 50% of max NumVolumes, or min NumVolumes if it's greater than half
-            half = floor(maxNumVolumes/2)
-            if minNumVolumes > half:
-                volumeThreshold = minNumVolumes
-            else:
-                volumeThreshold = half
+    func_series = [x for x in dataset_list_unique_series if "func" in x["type"]
+                   and x["type"] != "func/sbref"]
 
-        for obj in objects_list:
-            if obj["series_idx"] == series_idx:
-                obj["VolumeThreshold"] = volumeThreshold
+    if len(func_series):
+        for func in func_series:
+            series_idx = func["series_idx"]
+            tr = func["RepetitionTime"]
+            corresponding_objects_volumes = [x["analysisResults"]["NumVolumes"]
+                                             for x in objects_list
+                                             if x["series_idx"] == series_idx]
+            minNumVolumes = min(corresponding_objects_volumes)
+            maxNumVolumes = max(corresponding_objects_volumes)
+            numVolumes1min = floor(60/tr)
 
+            if maxNumVolumes < numVolumes1min: # set default as # volumes after 1 minute
+                volmeThreshold = numVolumes1min
+            elif minNumVolumes == maxNumVolumes: # set threshold at max NumVolumes
+                volumeThreshold = maxNumVolumes
+            else: # set threshold at 50% of max NumVolumes, or min NumVolumes if it's greater than half
+                half = floor(maxNumVolumes/2)
+                if minNumVolumes > half:
+                    volumeThreshold = minNumVolumes
+                else:
+                    volumeThreshold = half
+
+            func["VolumeThreshold"] = volumeThreshold
 
 
 ##################### Begin #####################
