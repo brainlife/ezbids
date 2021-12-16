@@ -264,7 +264,7 @@ export default defineComponent({
             <li :class="{active: page == 'feedback'}">Feedback</li>
         </ul>
 
-        <p class="menu-footer">
+        <p class="menu-footer" style="font-size: 150%">
             <a href="https://github.com/brainlife/ezbids" target="github">
                 <font-awesome-icon :icon="['fab', 'github']" />
             </a>
@@ -304,7 +304,7 @@ export default defineComponent({
 </div>
 </template>
 
-<style>
+<style lang="scss">
 @import url('https://fonts.googleapis.com/css2?family=Merriweather+Sans:wght@400;700&family=Merriweather:wght@400;700');
 
 html, body, #app, #app-container {
@@ -318,6 +318,7 @@ body {
 }
 p {
     line-height: 175%;
+    margin: 0 0 10px 0;
 }
 a {
     color: inherit;
@@ -339,9 +340,21 @@ pre {
 .el-popover.el-popper {
     word-break: break-word !important;
 }
+.hint {
+    box-shadow: 1px 1px 3px #999;
+    background-color: #666;
+    padding: 20px;
+    margin: 10px 0;
+    border-radius: 5px;
+    color: white;
+    h2 {
+        margin-top: 0;
+        color: #ccc;
+    }
+}
 </style>
 
-<style scoped>
+<style scoped lang="scss">
 aside h1 {
     padding: 0;
     margin: 0;
