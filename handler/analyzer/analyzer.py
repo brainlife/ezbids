@@ -1467,7 +1467,8 @@ def extract_series_info(dataset_list_unique_series):
 
 def setVolumeThreshold(dataset_list_unique_series, objects_list):
     """
-    Sets a volume threshold for all func/bold acquisitions in dataset.
+    Determine a volume threshold for all func/bold acquisitions in dataset,
+    using the following heuristic:
 
 
     Parameters
@@ -1478,15 +1479,18 @@ def setVolumeThreshold(dataset_list_unique_series, objects_list):
         List of dictionaries of all dataset objects
     """
 
-    unique_funcBold_series_indices = [x["series_idx"] for x in dataset_list_unique_series if x["type"] == "func/bold"]
-    for series_idx in unique_funcBold_series_indices:
+    series_indices_TRs = [[x["series_idx"], x["RepetitionTime"]] for x in dataset_list_unique_series if x["type"] == "func/bold"]
+    for series_idx, tr in series_indices_TRs:
         corresponding_objects_volumes = [x["analysisResults"]["NumVolumes"] for x in objects_list if x["series_idx"] == series_idx]
         minNumVolumes = min(corresponding_objects_volumes)
         maxNumVolumes = max(corresponding_objects_volumes)
+        numVolumes1min = floor(60/tr)
 
-        if minNumVolumes == maxNumVolumes: # set threshold at max NumVolumes
+        if maxNumVolumes < numVolumes1min: # set default as # volumes after 1 minute
+            volmeThreshold = numVolumes1min
+        elif minNumVolumes == maxNumVolumes: # set threshold at max NumVolumes
             volumeThreshold = maxNumVolumes
-        else: # set the threshold at 50% of max NumVolumes or min NumVolumes if it's higher than half
+        else: # set threshold at 50% of max NumVolumes, or min NumVolumes if it's greater than half
             half = floor(maxNumVolumes/2)
             if minNumVolumes > half:
                 volumeThreshold = minNumVolumes
