@@ -1479,7 +1479,6 @@ def setVolumeThreshold(dataset_list_unique_series, objects_list):
         List of dictionaries of all dataset objects
     """
 
-
     func_series = [x for x in dataset_list_unique_series if "func" in x["type"]
                    and x["type"] != "func/sbref"]
 
@@ -1495,7 +1494,7 @@ def setVolumeThreshold(dataset_list_unique_series, objects_list):
             numVolumes1min = floor(60/tr)
 
             if maxNumVolumes < numVolumes1min: # set default as # volumes after 1 minute
-                volmeThreshold = numVolumes1min
+                volumeThreshold = numVolumes1min
             elif minNumVolumes == maxNumVolumes: # set threshold at max NumVolumes
                 volumeThreshold = maxNumVolumes
             else: # set threshold at 50% of max NumVolumes, or min NumVolumes if it's greater than half
@@ -1570,12 +1569,13 @@ for index, unique_dic in enumerate(dataset_list_unique_series):
     print("")
 
 
+# Set volume threshold for func/bold acquisitions
+setVolumeThreshold(dataset_list_unique_series, objects_list)
 
 # Extract important series information to display in ezBIDS UI
 ui_series_info_list = extract_series_info(dataset_list_unique_series)
 
-# Set volume threshold for func/bold acquisitions
-setVolumeThreshold(dataset_list_unique_series, objects_list)
+
 
 # Convert information to dictionary
 EZBIDS = {"subjects": subjects_information,
