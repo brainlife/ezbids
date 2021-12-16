@@ -341,12 +341,10 @@ pre {
     word-break: break-word !important;
 }
 .hint {
-    box-shadow: 1px 1px 3px #999;
-    background-color: #666;
+    box-shadow: 1px 1px 3px #666;
     padding: 20px;
     margin: 10px 0;
     border-radius: 5px;
-    color: white;
     h2 {
         margin-top: 0;
         color: #ccc;
