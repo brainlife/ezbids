@@ -1476,11 +1476,6 @@ def setVolumeThreshold(dataset_list_unique_series, objects_list):
         List of dictionaries of unique series
     objects_list: list
         List of dictionaries of all dataset objects
-
-    Returns
-    -------
-    proper_pe_direction: string
-        pe_direction, in "ijk" format
     """
 
     unique_funcBold_series_indices = [x["series_idx"] for x in dataset_list_unique_series if x["type"] == "func/bold"]
