@@ -1558,9 +1558,6 @@ dataset_list = update_dataset_list(dataset_list, dataset_list_unique_series)
 # Apply a few other changes to the objects level
 objects_list = modify_objects_info(dataset_list)
 
-# Set volume threshold for func/bold acquisitions
-setVolumeThreshold(dataset_list_unique_series, objects_list)
-
 # Map unique series IDs to all other acquisitions in dataset that have those parameters
 for index, unique_dic in enumerate(dataset_list_unique_series):
 
@@ -1576,6 +1573,9 @@ for index, unique_dic in enumerate(dataset_list_unique_series):
 
 # Extract important series information to display in ezBIDS UI
 ui_series_info_list = extract_series_info(dataset_list_unique_series)
+
+# Set volume threshold for func/bold acquisitions
+setVolumeThreshold(dataset_list_unique_series, objects_list)
 
 # Convert information to dictionary
 EZBIDS = {"subjects": subjects_information,
