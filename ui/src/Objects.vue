@@ -36,6 +36,7 @@
                             <el-badge v-if="o.validationErrors.length > 0" type="danger"
                                 :value="o.validationErrors.length" style="margin-left: 5px;"/>
 
+                            <!--show validation warning as "warning"-->
                             <el-badge v-if="o.validationWarnings.length > 0" type="warning"
                                 :value="o.validationWarnings.length" style="margin-left: 5px;"/>
 
@@ -79,7 +80,7 @@
                     <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in so.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
                  </div>
                 <div style="margin-bottom: 5px;">
-                    <el-alert show-icon :closable="false" type="warning" v-for="(error, idx) in so.validationWarnings" :key="idx" :title="error" style="margin-bottom: 4px;"/>
+                    <el-alert show-icon :closable="false" type="warning" v-for="(warning, idx) in so.validationWarnings" :key="idx" :title="warning" style="margin-bottom: 4px;"/>
                  </div>
                 <div style="margin-bottom: 5px;">
                     <el-alert show-icon :closable="false" type="warning" v-for="(error, idx) in so.analysisResults.errors" :key="idx" :title="error"/>
@@ -193,7 +194,7 @@ import datatype from './components/datatype.vue'
 
 import { IObject, Subject, Session, OrganizedSession } from './store'
 import { prettyBytes } from './filters'
-import { validateEntities } from './libUnsafe'
+import { deepEqual, isPrimitive, validateEntities } from './libUnsafe'
 
 interface Section {
     [key: string]: IObject[];
@@ -342,6 +343,7 @@ export default defineComponent({
             let entities_requirement = this.getBIDSEntities(o._type);
 
             o.validationErrors = [];
+            o.validationWarnings = [];
 
             if(this.isExcluded(o)) return;
 
@@ -395,6 +397,26 @@ export default defineComponent({
                         "Please set entities such as 'run' to make them all unique (across subjects/sessions).");
                     break;
                 }
+            }
+
+            //for func/events object, update series_idx and ModifiedSeriesNumber to match corresponding func/bold object.
+            //Also update validationWarnings if corresponding func/bold has been excluded
+            if(o._type == "func/events") {
+                let funcBoldObjects = this.$store.state.ezbids.objects.filter(o=>o._type == "func/bold" && (o._entities.part == "" || o._entities.part == "mag"))
+                funcBoldObjects.forEach(func=>{
+                    let funcEntities = Object.fromEntries(Object.entries(func._entities).filter(([_, v]) => v != "")); //remove empty entity labels
+                    let objEntities = Object.fromEntries(Object.entries(o._entities).filter(([_, v]) => v != "")); //remove empty entity labels
+                    if(deepEqual(funcEntities, objEntities)) {
+                        o.ModifiedSeriesNumber = func.ModifiedSeriesNumber
+                        o.analysisResults.section_ID = func.analysisResults.section_ID
+
+                        //o.validationWarnings = [];
+
+                        if(func._exclude === true || func._type == "exclude") {
+                            o.validationWarnings.push("The corresponding func/bold #"+func.series_idx+" is currently set to exclude from BIDS conversion. We recommend this func/events also be excluded unless there is a reason for keeping it.")
+                        }
+                    }
+                })
             }
         },
 

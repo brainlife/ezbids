@@ -20,7 +20,7 @@ import { IObject } from './store'
 import { ElNotification } from 'element-plus'
 //import 'element-plus/es/components/notification/style/css'
 
-import { deepEqual, isPrimitive, setSectionIDs, funcQA, fmapQA, setRun, setIntendedFor } from './libUnsafe'
+import { setSectionIDs, funcQA, fmapQA, setRun, setIntendedFor } from './libUnsafe'
 //import { IObjectItem } from './store'
 import { createEventsTSV } from './lib'
 
@@ -243,26 +243,6 @@ export default defineComponent({
             o._entities = e;
 
             o.validationWarnings = [];
-
-            //for func/events object, update series_idx and ModifiedSeriesNumber to match corresponding func/bold object.
-            //Also update validationWarnings if corresponding func/bold has been excluded
-            if(o._type == "func/events") {
-                let funcBoldObjects = this.$store.state.ezbids.objects.filter(o=>o._type == "func/bold" && (o._entities.part == "" || o._entities.part == "mag"))
-                funcBoldObjects.forEach(func=>{
-                    let funcEntities = Object.fromEntries(Object.entries(func._entities).filter(([_, v]) => v != "")); //remove empty entity labels
-                    let objEntities = Object.fromEntries(Object.entries(o._entities).filter(([_, v]) => v != "")); //remove empty entity labels
-                    if(deepEqual(funcEntities, objEntities)) {
-                        o.ModifiedSeriesNumber = func.ModifiedSeriesNumber
-                        o.analysisResults.section_ID = func.analysisResults.section_ID
-
-                        o.validationWarnings = [];
-
-                        if(func._exclude === true || func._type == "exclude") {
-                            o.validationWarnings.push("The corresponding func/bold #"+func.series_idx+" is currently set to exclude from BIDS conversion. We recommend this func/events also be excluded unless there is a reason for keeping it.")
-                        }
-                    }
-                })
-            }
         },
     }
 });
