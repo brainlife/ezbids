@@ -72,41 +72,15 @@ export function setSectionIDs($root) {
 
 export function funcQA($root) {
     /*
-    1). Exclude functional bold acquisitions have less than the specified volume threshold from
-    Series level. If unspecified, default is 50 volumes, because a func/bold with < 50 probably
-    indicates a restart, incomplete, or calibration run.
-
-    2). If func/bold acquisition is excluded, make sure that corresponding
-    func/sbref, and func/bold (part-phase) are all excluded as well,
+    1). If func/bold acquisition is excluded, warn users that corresponding
+    func/sbref, and func/bold (part-phase) should all excluded as well,
     if they exist.
 
-    3). Exclude func/sbref if its PhaseEncodingDirection (PED) is different
+    2). Warn users to exclude func/sbref if its PhaseEncodingDirection (PED) is different
     from the corresponding func/bold PED.
     */
-
-    // #1
-    $root.series.forEach(s=> {
-        if(s.type == "func/bold") {
-            let series_idx = s.series_idx
-            let VolumeThreshold = s.VolumeThreshold
-
-            $root.objects.forEach(o=> {
-                if(o.series_idx == series_idx) {
-                    o.exclude = false
-                    o.analysisResults.errors = []
-
-                    //apply VolumeThreshold exclusion criteria
-                    if(o.analysisResults.NumVolumes < VolumeThreshold) {
-                        o.exclude = true
-                        o.analysisResults.errors = [`Functional bold acquisition contains ${o.analysisResults.NumVolumes} volumes, less than the ${VolumeThreshold} volume threshold. This is a possible indication of a restarted, incomplete, or calibration run. Please check to see if you want to keep this acquisition, otherwise this acquisition will be excluded from BIDS conversion.`]
-                    }
-                }
-            })
-        }
-    })
-
     $root.objects.forEach(o=> {
-        // #2
+        // #1
 
         //update analysisResults.errors in case user went back to Series and adjusted things
         if(o._type == "func/bold" && o.exclude == false && (!o._entities.mag || o._entities.mag == "mag")) {
@@ -134,15 +108,15 @@ export function funcQA($root) {
             }
         }
 
-        // #3
+        // #2
         if(o._type == "func/bold" && (!o._entities.mag || o._entities.mag == "mag")) {
             let boldEntities = o._entities
             let boldPED = o.items[0].sidecar.PhaseEncodingDirection
             let badSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, boldEntities) &&
                                                 e.items[0].sidecar.PhaseEncodingDirection != boldPED).map(e=>e.idx)
             badSBRef.forEach(bad=> {
-                $root.objects[bad].exclude = true
-                $root.objects[bad].analysisResults.errors = [`Functional sbref has a different PhaseEncodingDirection than its corresponding functional bold (#${o.series_idx}). This is a data error, therefore this sbref will be set to exclude from BIDS conversion.`]
+                // $root.objects[bad].exclude = true
+                $root.objects[bad].analysisResults.errors = [`Functional sbref has a different PhaseEncodingDirection than its corresponding functional bold (#${o.series_idx}). This is likely a data error, therefore this sbref should be excluded from BIDS conversion.`]
             })
         }
     })

@@ -570,7 +570,6 @@ def generate_dataset_list(uploaded_files_list):
             "exclude": False,
             "filesize": filesize,
             "NumVolumes": volume_count,
-            "VolumeThreshold": None,
             "orientation": ornt,
             "forType": "",
             "error": None,
@@ -1448,7 +1447,6 @@ def extract_series_info(dataset_list_unique_series):
                           "EchoTime": unique_dic["EchoTime"],
                           "ImageType": unique_dic["ImageType"],
                           "RepetitionTime": unique_dic["RepetitionTime"],
-                          "VolumeThreshold": unique_dic["VolumeThreshold"],
                           "NumVolumes": unique_dic["NumVolumes"],
                           "nifti_path": unique_dic["nifti_path"],
                           "series_idx": unique_dic["series_idx"],
@@ -1505,7 +1503,21 @@ def setVolumeThreshold(dataset_list_unique_series, objects_list):
                     else:
                         volumeThreshold = half
 
-            func["VolumeThreshold"] = volumeThreshold
+
+            #With volume threshold, exclude objects that don't pass it
+            corresponding_objects = [x for x in objects_list if x["series_idx"] == series_idx]
+            for obj in corresponding_objects:
+                if obj["analysisResults"]["NumVolumes"] < volumeThreshold:
+                    obj["exclude"] = True
+                    obj["analysisResults"]["errors"] = " ".join("Acquisition is \
+                        believed to be func/bold and contains {} volumes, which \
+                        is less than the threshold value of {} volumes. Therefore, \
+                        this acquisition will be excluded from BIDS conversion.\
+                        Please modify if incorrect".format(obj["analysisResults"]["NumVolumes"], volumeThreshold).split())
+
+
+
+
 
 
 ##################### Begin #####################

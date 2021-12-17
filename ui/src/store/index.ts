@@ -52,8 +52,6 @@ export interface Series {
     ImageType: [string];
     RepetitionTime: string;
 
-    VolumeThreshold?: number; //if set, it overrided the default 50
-
     error: string;
     message: string;
     //object_indices: [ number ];
