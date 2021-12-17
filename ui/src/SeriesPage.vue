@@ -2,12 +2,11 @@
 <splitpanes class="seriespage default-theme">
     <pane min-size="20" size="30" class="series-list">
         <div v-for="(s, series_idx) in ezbids.series" :key="series_idx"
-            class="series-item"
-            :class="{'selected': ss === s}"
+            class="series-item" :class="{selected: ss === s, excluded: s.type == 'exclude'}"
             @click="ss = s">
             <el-tag type="info" size="mini" title="Series index">#{{series_idx}}</el-tag>
             &nbsp;
-            <datatype :type="s.type" :series_idx="series_idx" :entities="s.entities" :class="{excluded: s.type == 'exclude'}"/>
+            <datatype :type="s.type" :series_idx="series_idx" :entities="s.entities"/>
             <small style="opacity: 0.7;">({{s.SeriesDescription}})</small>
             &nbsp;
             <el-tag type="info" effect="plain" size="mini" title="Number of objects">{{getObjectsFromSeries(s).length}} objs</el-tag>
@@ -23,11 +22,13 @@
     </pane>
 
     <pane class="series-detail">
-        <div v-if="!ss" style="padding: 20px; background-color: #eee;">
-            <p>Please update how you'd like to map each dicom SeriesDescription to BIDS datatype/entities.</p>
-            <p>The information you specify here will be applied to all subjects that uses matching SeriesDescription. You can also override this information later for each subject.</p>
-            <div style="background-color: white; padding: 10px; color: #666;">
-                <i class="el-icon-back"/> Please select a series to view/edit
+        <div v-if="!ss" style="padding: 20px;">
+            <div class="hint">
+                <p>Please update how you'd like to map each dicom SeriesDescription to BIDS datatype/entities.</p>
+                <p>The information you specify here will be applied to all subjects that uses matching SeriesDescription. You can also override this information later for each subject.</p>
+                <div style="background-color: white; padding: 10px; color: #666;">
+                    <i class="el-icon-back"/> &lt; Please select a series to view/edit
+                </div>
             </div>
         </div>
         <div v-if="ss">
@@ -272,14 +273,6 @@ export default defineComponent({
 
     width: inherit;
     height: inherit;
-
-    /*
-    .splitpanes {
-        &.default-theme .splitpanes_pane {
-            background-color: inherit;
-        }
-    }
-    */
 }
 
 .splitpanes.default-theme .splitpanes__pane {
@@ -289,28 +282,10 @@ export default defineComponent({
 .series-list {
     padding: 10px;
     font-size: 90%;
-/*
-    position: fixed;
-    top: 0;
-    bottom: 60px;
-    left: 200px;
-    width: 450px;
-    height: 100%;
-    padding: 5px 10px;
-*/
     box-sizing: border-box;
     overflow-y: scroll;
 }
 .series-detail {
-/*
-    position: fixed;
-    top: 0;
-    bottom: 60px;
-    right: 0;
-    left: 650px;
-    padding: 10px;
-    z-index: 1;
-*/
     overflow-y: scroll;
 }
 .el-form-item {
@@ -319,6 +294,10 @@ export default defineComponent({
 .series-item {
     transition: background-color 0.3s;
     padding: 2px;
+
+    &.excluded {
+        opacity: 0.5;
+    }
 }
 .series-item:hover {
     background-color: #ddd;
@@ -338,9 +317,6 @@ export default defineComponent({
     height: 300px;
     overflow: auto;
     box-shadow: 2px 2px 4px #0005;
-}
-.excluded {
-    opacity: 0.4;
 }
 h5 {
     padding: 0 20px;

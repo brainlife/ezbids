@@ -1,6 +1,6 @@
 <template>
-<div style="padding: 20px">
-    <div class="bids-structure">
+<splitpanes class="objectpage default-theme">
+    <pane min-size="20" size="30" class="bids-structure">
         <div v-for="o_sub in ezbids._organized" :key="o_sub.sub" style="font-size: 90%; margin-bottom: 10px">
             <span v-if="o_sub.sub != ''" class="hierarchy">
                 <i class="el-icon-user-solid" style="margin-right: 2px;"/>
@@ -26,7 +26,10 @@
                     <div v-if="section.length > 1" style="border-top: 1px dotted #bbb; width: 100%; margin: 9px 0;">
                         <span class="section-divider">section {{sectionId}}</span>
                     </div>
-                    <div v-for="o in section" :key="o.idx" class="clickable hierarchy-item" :class="{selected: so === o, exclude: isExcluded(o)}" @click="select(o, o_ses)">
+                    <div v-for="o in section" :key="o.idx" 
+                        class="clickable hierarchy-item" :class="{selected: so === o, excluded: isExcluded(o)}" 
+                        @click="select(o, o_ses)">
+
                         <el-tag type="info" size="mini" v-if="o.series_idx !== undefined" :title="'Series#'+o.series_idx+' '+o._SeriesDescription">#{{o.series_idx}}</el-tag>&nbsp;
                         <datatype :type="o._type" :series_idx="o.series_idx" :entities="o.entities"/>
                         <small v-if="o._type == 'exclude'">&nbsp;({{o._SeriesDescription}})</small>
@@ -52,18 +55,20 @@
         <br>
         <br>
         <br>
-    </div>
+    </pane>
 
-    <div v-if="!so" style="margin-left: 350px; padding: 20px; background-color: #eee;">
-        <p>Please make sure all subject/session/series mappings are correctly applied to your data.</p>
-        <p>By default, entities specified in the <b>Series</b> page will be used as defaults for all objects. On this page you can override those entities.</p>
-        <div style="background-color: white; padding: 10px; color: #666;">
-            <i class="el-icon-back"/> Please select an object to view/edit in the BIDS Structure list
+    <pane class="object-detail">
+        <div v-if="!so" style="padding: 20px">
+            <div class="hint">
+                <p>Please make sure all subject/session/series mappings are correctly applied to your data.</p>
+                <p>By default, entities specified in the <b>Series</b> page will be used as defaults for all objects. On this page you can override those entities.</p>
+                <div style="background-color: white; padding: 10px; color: #666;">
+                    <i class="el-icon-back"/> Please select an object to view/edit in the BIDS Structure list
+                </div>
+            </div>
         </div>
-    </div>
-    <div class="object" ref="object-detail">
-        <div v-if="so && sess">
 
+        <div v-if="so && sess">
             <el-form label-width="200px">
                 <el-form-item>
                     <el-checkbox v-model="so.exclude" @change="update(so)">Exclude this object</el-checkbox>
@@ -182,8 +187,8 @@
         <br>
         <br>
         <br>
-    </div><!--object-->
-</div>
+    </pane><!--object-->
+</splitpanes>
 </template>
 
 <script lang="ts">
@@ -196,6 +201,11 @@ import { IObject, Subject, Session, OrganizedSession } from './store'
 import { prettyBytes } from './filters'
 import { deepEqual, isPrimitive, validateEntities } from './libUnsafe'
 
+// @ts-ignore
+import { Splitpanes, Pane } from 'splitpanes'
+
+import 'splitpanes/dist/splitpanes.css'
+
 interface Section {
     [key: string]: IObject[];
 }
@@ -203,6 +213,7 @@ interface Section {
 export default defineComponent({
     components: {
         datatype,
+        Splitpanes, Pane,
     },
 
     data() {
@@ -428,26 +439,29 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-.bids-structure {
-    font-size: 90%;
+.objectpage {
     position: fixed;
     top: 0;
     bottom: 60px;
     left: 200px;
-    width: 350px;
-    overflow: auto;
-    padding: 5px 10px;
-    overflow-y: scroll;
-    box-sizing: border-box;
-}
-.object {
-    position: fixed;
-    top: 0;
-    bottom: 60px;
-    overflow-y: auto;
-    left: 550px;
     right: 0;
-    z-index: 1;
+
+    width: inherit;
+    height: inherit;
+}
+
+.splitpanes.default-theme .splitpanes__pane {
+    background-color: inherit;
+}
+
+.bids-structure {
+    padding: 10px;
+    font-size: 90%;
+    box-sizing: border-box;
+    overflow-y: scroll;
+}
+.object-detail {
+    overflow-y: scroll; 
 }
 .item {
     padding-bottom: 5px;
@@ -462,9 +476,8 @@ export default defineComponent({
     padding: 2px;
     min-height: 20px;
 
-    &.exclude {
-        opacity: 1;
-        color: #0003;
+    &.excluded {
+        opacity: 0.5;
     }
 }
 .clickable {

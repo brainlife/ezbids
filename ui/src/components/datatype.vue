@@ -47,7 +47,7 @@ export default defineComponent({
         },
 
         color() {
-            if(this.type == "exclude") return "hsl(0, 100%, 40%)";
+            //if(this.type == "exclude") return "hsl(0, 100%, 40%)";
             const hash = this.type.split("").reduce(function(a:number,b:string){a=((a<<5)-a)+b.charCodeAt(0);return a&a},0);          
             let numhash = Math.abs(hash+12)%360;   
             return "hsl("+(numhash%360)+", 50%, 55%)"; 
