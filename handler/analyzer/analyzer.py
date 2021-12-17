@@ -1509,11 +1509,11 @@ def setVolumeThreshold(dataset_list_unique_series, objects_list):
             for obj in corresponding_objects:
                 if obj["analysisResults"]["NumVolumes"] < volumeThreshold:
                     obj["exclude"] = True
-                    obj["analysisResults"]["errors"] = " ".join("Acquisition is \
+                    obj["analysisResults"]["errors"] = [" ".join("Acquisition is \
                         believed to be func/bold and contains {} volumes, which \
                         is less than the threshold value of {} volumes. Therefore, \
                         this acquisition will be excluded from BIDS conversion.\
-                        Please modify if incorrect".format(obj["analysisResults"]["NumVolumes"], volumeThreshold).split())
+                        Please modify if incorrect".format(obj["analysisResults"]["NumVolumes"], volumeThreshold).split())]
 
 
 
