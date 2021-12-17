@@ -773,6 +773,7 @@ export function createEventObjects(ezbids, files) {
             },
             paths: [],
             validationErrors: [],
+            validationWarnings: []
         };
 
 
