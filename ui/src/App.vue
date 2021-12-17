@@ -255,6 +255,8 @@ export default defineComponent({
                         o.ModifiedSeriesNumber = func.ModifiedSeriesNumber
                         o.analysisResults.section_ID = func.analysisResults.section_ID
 
+                        o.validationWarnings = [];
+
                         if(func._exclude === true || func._type == "exclude") {
                             o.validationWarnings.push("The corresponding func/bold #"+func.series_idx+" is currently set to exclude from BIDS conversion. We recommend this func/events also be excluded unless there is a reason for keeping it.")
                         }

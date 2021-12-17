@@ -1493,16 +1493,17 @@ def setVolumeThreshold(dataset_list_unique_series, objects_list):
             maxNumVolumes = max(corresponding_objects_volumes)
             numVolumes1min = floor(60/tr)
 
-            if maxNumVolumes < numVolumes1min: # set default as # volumes after 1 minute
+            if maxNumVolumes <= numVolumes1min: # set default as # volumes after 1 minute
                 volumeThreshold = numVolumes1min
-            elif minNumVolumes == maxNumVolumes: # set threshold at max NumVolumes
-                volumeThreshold = maxNumVolumes
-            else: # set threshold at 50% of max NumVolumes, or min NumVolumes if it's greater than half
-                half = floor(maxNumVolumes/2)
-                if minNumVolumes > half:
-                    volumeThreshold = minNumVolumes
-                else:
-                    volumeThreshold = half
+            else:
+                if minNumVolumes == maxNumVolumes: # set threshold at max NumVolumes
+                    volumeThreshold = maxNumVolumes
+                else: # set threshold at 50% of max NumVolumes, or min NumVolumes if it's greater than half
+                    half = floor(maxNumVolumes/2)
+                    if minNumVolumes > half:
+                        volumeThreshold = minNumVolumes
+                    else:
+                        volumeThreshold = half
 
             func["VolumeThreshold"] = volumeThreshold
 

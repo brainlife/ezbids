@@ -98,7 +98,7 @@ export function funcQA($root) {
                     //apply VolumeThreshold exclusion criteria
                     if(o.analysisResults.NumVolumes < VolumeThreshold) {
                         o.exclude = true
-                        o.analysisResults.errors = [`Functional bold acquisition contains less than ${VolumeThreshold} volumes, a possible indication of a restarted, incomplete, or calibration run. Please check to see if you want to keep this acquisition, otherwise this acquisition will be excluded from BIDS conversion.`]
+                        o.analysisResults.errors = [`Functional bold acquisition contains ${o.analysisResults.NumVolumes} volumes, less than the ${VolumeThreshold} volume threshold. This is a possible indication of a restarted, incomplete, or calibration run. Please check to see if you want to keep this acquisition, otherwise this acquisition will be excluded from BIDS conversion.`]
                     }
                 }
             })
@@ -829,7 +829,7 @@ export function createEventObjects(ezbids, files) {
             }
         }
 
-        //set subject_idx and session_idx to 0 if they're still undefined at this point, but adjust entity labels
+        //set subject_idx and session_idx to 0 if they're still undefined at this point, and adjust task,run entity labels
         if(object.subject_idx === undefined) {
             object.subject_idx = 0
             object.entities.subject = "XX" + randSubID.toString() //set the subjectID to a new value, which user would them correct.
