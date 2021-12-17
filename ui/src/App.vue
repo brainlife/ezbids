@@ -241,8 +241,6 @@ export default defineComponent({
             }
 
             o._entities = e;
-
-            o.validationWarnings = [];
         },
     }
 });

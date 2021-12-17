@@ -66,7 +66,7 @@
 
             <el-form label-width="200px">
                 <el-form-item>
-                    <el-checkbox v-model="so.exclude" @change="validate(so)">Exclude this object</el-checkbox>
+                    <el-checkbox v-model="so.exclude" @change="update(so)">Exclude this object</el-checkbox>
                 </el-form-item>
                 <div style="margin-bottom: 5px;" v-if="isExcluded(so)">
                     <el-alert :closable="false" type="info">This object will be excluded from the BIDS output</el-alert>
