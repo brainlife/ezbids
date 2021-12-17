@@ -36,6 +36,9 @@
                             <el-badge v-if="o.validationErrors.length > 0" type="danger"
                                 :value="o.validationErrors.length" style="margin-left: 5px;"/>
 
+                            <el-badge v-if="o.validationWarnings.length > 0" type="warning"
+                                :value="o.validationWarnings.length" style="margin-left: 5px;"/>
+
                             <!-- show "QC errors" as warnings-->
                             <el-badge v-if="o._type != 'exclude' && o.analysisResults && o.analysisResults.errors && o.analysisResults.errors.length > 0" type="warning"
                                 :value="o.analysisResults.errors.length" style="margin-left: 5px"/>
@@ -74,6 +77,9 @@
                 <!--messagess-->
                 <div style="margin-bottom: 5px;">
                     <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in so.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
+                 </div>
+                <div style="margin-bottom: 5px;">
+                    <el-alert show-icon :closable="false" type="warning" v-for="(error, idx) in so.validationWarnings" :key="idx" :title="error" style="margin-bottom: 4px;"/>
                  </div>
                 <div style="margin-bottom: 5px;">
                     <el-alert show-icon :closable="false" type="warning" v-for="(error, idx) in so.analysisResults.errors" :key="idx" :title="error"/>
@@ -336,6 +342,7 @@ export default defineComponent({
             let entities_requirement = this.getBIDSEntities(o._type);
 
             o.validationErrors = [];
+
             if(this.isExcluded(o)) return;
 
             o.validationErrors = validateEntities(o.entities);

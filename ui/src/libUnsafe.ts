@@ -3,7 +3,7 @@
 import { isPlainObject } from "vue/node_modules/@vue/shared";
 
 //deepEqual and isPrimitive functions come from https://stackoverflow.com/a/45683145
-function deepEqual(obj1, obj2) {
+export function deepEqual(obj1, obj2) {
     /*
     Determines if two arrays are equal or not. Better then JSON.stringify
     because this accounts for different ordering, only cares about whether
@@ -29,7 +29,7 @@ function deepEqual(obj1, obj2) {
     return true;
 }
 
-function isPrimitive(obj) {
+export function isPrimitive(obj) {
     return (obj !== Object(obj));
 }
 
@@ -838,7 +838,8 @@ export function createEventObjects(ezbids, files) {
 
         if(object.session_idx === undefined) {
             object.session_idx = 0
-            if(eventsMappingInfo.session.ezBIDSvalues.length > 0) {
+            if(eventsMappingInfo.session.ezBIDSvalues.length > 0 && eventsMappingInfo.session.ezBIDSvalues.filter(e=>e != "").length > 0) {
+                console.log('bad')
                 object.entities.session = "XX" + randSesID.toString() //set the sessionID to a new value, which user would them correct.
             }
         }
