@@ -106,8 +106,8 @@
                     </span>
                 </div>
                 <div style="float: right">
-                    <el-tag size="mini" type="info">filesize: {{prettyBytes(ezbids.objects[object.idx].analysisResults.filesize)}}</el-tag>&nbsp;
                     <el-tag size="mini" type="info">volumes: {{ezbids.objects[object.idx].analysisResults.NumVolumes}}</el-tag>&nbsp;
+                    <el-tag size="mini" type="info">filesize: {{prettyBytes(ezbids.objects[object.idx].analysisResults.filesize)}}</el-tag>&nbsp;
                     <el-tag size="mini" type="info">orientation: {{ezbids.objects[object.idx].analysisResults.orientation}}</el-tag>&nbsp;
                 </div>
                 <div style="margin-left: 25px">
@@ -241,6 +241,13 @@ export default defineComponent({
                     if(!s.entities[k]) {
                         s.validationErrors.push("entity: "+k+" is required.");
                     }
+                }
+            }
+
+            if(s.type.startsWith("fmap/")) {
+                if(!s.IntendedFor) s.IntendedFor = [];
+                if(s.IntendedFor.length == 0) {
+                    s.validationErrors.push("fmap should have IntendedFor set to at least 1 series ID. Alternatively, you can exclude this series from BIDS conversion if you're unsure of the IntendedFor mapping.");
                 }
             }
         },

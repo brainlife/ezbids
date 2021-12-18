@@ -26,8 +26,8 @@
                     <div v-if="section.length > 1" style="border-top: 1px dotted #bbb; width: 100%; margin: 9px 0;">
                         <span class="section-divider">section {{sectionId}}</span>
                     </div>
-                    <div v-for="o in section" :key="o.idx" 
-                        class="clickable hierarchy-item" :class="{selected: so === o, excluded: isExcluded(o)}" 
+                    <div v-for="o in section" :key="o.idx"
+                        class="clickable hierarchy-item" :class="{selected: so === o, excluded: isExcluded(o)}"
                         @click="select(o, o_ses)">
 
                         <el-tag type="info" size="mini" v-if="o.series_idx !== undefined" :title="'Series#'+o.series_idx+' '+o._SeriesDescription">#{{o.series_idx}}</el-tag>&nbsp;
@@ -165,9 +165,9 @@
                     <p style="font-size: 90%">
                         Volumes: <b>{{so.analysisResults.NumVolumes}}</b>
                         &nbsp;&nbsp;
-                        File Size: <b>{{prettyBytes(so.analysisResults.filesize)}}</b>
-                        &nbsp;&nbsp;
                         Orientation: <b>{{so.analysisResults.orientation}}</b>
+                        &nbsp;&nbsp;
+                        File Size: <b>{{prettyBytes(so.analysisResults.filesize)}}</b>
                     </p>
                     <div v-for="(item, itemIdx) in ezbids.objects[so.idx].items" :key="itemIdx">
                         <div v-if="item.pngPaths">
@@ -461,7 +461,7 @@ export default defineComponent({
     overflow-y: scroll;
 }
 .object-detail {
-    overflow-y: scroll; 
+    overflow-y: scroll;
 }
 .item {
     padding-bottom: 5px;
