@@ -18,6 +18,7 @@ fs.writeFileSync(root + "/bids/" + datasetName + "/.bidsignore", `
 finalized.json
 `);
 info.readme += `
+
 ## ezbids
 
 This dataset was converted from DICOM to BIDS using ezBIDS (https://brainlife.io/ezbids)
