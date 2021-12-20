@@ -249,6 +249,14 @@ export default defineComponent({
                 if(s.IntendedFor.length == 0) {
                     s.validationErrors.push("fmap should have IntendedFor set to at least 1 series ID. Alternatively, you can exclude this series from BIDS conversion if you're unsure of the IntendedFor mapping.");
                 }
+                //Ensure other fmap series aren't included in the IntendedFor mapping
+                if(s.IntendedFor.length > 0) {
+                    s.IntendedFor.forEach(i=>{
+                        if(this.ezbids.series[i].type.startsWith("fmap/")) {
+                            s.validationErrors.push("The selected series (#"+i+") appears to be a field map (fmap), which isn't allowed in the IntenedFor mapping. Please remove this series, or, if it isn't a field map, please correct it.")
+                        }
+                    })
+                }
             }
         },
 

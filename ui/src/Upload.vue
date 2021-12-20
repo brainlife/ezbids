@@ -409,15 +409,16 @@ export default defineComponent({
                             @change="selectit" style="font-size: 80%; width: 400px; background-color: #fff3; padding: 5px;"/>
                 </div>
             </div>
-            
+
             <br>
             <br>
             <br>
             <div class="hint">
                 <h2>Hint</h2>
                 <ul style="line-height: 200%;">
-                    <li>We strongly recommend that you upload <b>non-anonymized</b> imaging data so that we can properly identify the subject/session hierarchy. If you choose to upload anonymized data, ezBIDS will still attempt to identify the subject/session hierarchy; however, we cannot guarantee its success. To alleviate issues, anomymized data should therefore be organized by subject/session folders, with clear identifying information (e.g. "sub-", "ses-") in the folder name(s). Non-anonymized data does not require any organizational/naming structure.</li>
+                    <li>We strongly recommend that you upload <b>non-anonymized</b> imaging data so that we can properly identify the subject/session hierarchy. If you choose to upload anonymized imaging data, ezBIDS will still attempt to identify the subject/session hierarchy; however, we cannot guarantee its success. To alleviate issues, anomymized data should therefore be organized by subject/session folders, with clear identifying information (e.g. "sub-", "ses-") in the folder name(s). Non-anonymized data does not require any organizational/naming structure.</li>
                     <li>Once uploaded, ezBIDS will anonymize and remove any subject identifying information (and optionally deface all anatomy data) before converting to BIDS.</li>
+                    <li>If you plan on converting timing files to BIDS events.tsv format, please do not upload them here. You will be prompted later for uploading timing files.</li>
                     <li>ezBIDS runs on a secure VM running on Jetstream cloud; HIPAA aligned cloud computing infrastructure.</li>
                     <li>The data you upload can only be accessed through the unique URL with your session ID; all data will be purged from our system within 5 days.</li>
                 </ul>

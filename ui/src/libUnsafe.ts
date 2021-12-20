@@ -122,19 +122,6 @@ export function funcQA($root) {
     })
 }
 
-// function newSetIntendedFor($root) {
-//     /*
-//     This function applies the IntendedFor fmap mapping, based on user
-//     input at SeriesPage.
-//     */
-//     $root.series.forEach(s=> {
-//         if(s.type.includes("fmap")) {
-//             let intendedFor = s.IntendedFor
-
-// }
-
-
-
 export function fmapQA($root) {
     /* Assesses fieldmaps for improper PEDs (for spin-echo field maps),
     and excludes extra fieldmaps in section.
@@ -351,35 +338,33 @@ export function setRun($root) {
     });
 }
 
+
 export function setIntendedFor($root) {
-    // Apply fmap intendedFor mapping
+    // Apply fmap intendedFor mapping, based on user specifications on Series page.
 
     // Loop through subjects
-    //for(const subject in $root._organized) {
     $root._organized.forEach(subGroup=>{
 
         subGroup.sess.forEach(sesGroup=>{
+
             // Determine unique sectionIDs
             let allSectionIDs = sesGroup.objects.map(e=>e.analysisResults.section_ID)
             let sectionIDs = Array.from(new Set(allSectionIDs))
 
-            // Loop through sections (no excluded acquisitions included)
+            // Loop through sections
             sectionIDs.forEach(s=> {
-                let section = sesGroup.objects.filter(e=>e.analysisResults.section_ID == s && !e._exclude)
+                let section = sesGroup.objects.filter(e=>e.analysisResults.section_ID == s && !e._exclude && e._type != "exclude")
 
-                let funcObjs = section.filter(e=>e._type == 'func/bold' || e._type == 'func/sbref' && !e._exclude)
-                let dwiObjs = section.filter(e=>e._type == 'dwi/dwi' && !e._exclude)
-                let fmapFuncObjs = section.filter(e=>e._type.startsWith('fmap') && e._forType == 'func/bold' && !e._exclude)
-                let fmapDwiObjs = section.filter(e=>e._type.startsWith('fmap') && e._forType == 'dwi/dwi' && !e._exclude)
-
-                // Assign IntendedFor information
-                fmapFuncObjs.forEach(obj=> {
-                    obj.IntendedFor = funcObjs.map(e=>e.idx)
-                });
-
-                fmapDwiObjs.forEach(obj=> {
-                    obj.IntendedFor = dwiObjs.map(e=>e.idx)
-                });
+                section.forEach(obj=>{
+                    if(obj._type.startsWith("fmap/")) { //add IntendedFor info
+                        Object.assign(obj, {IntendedFor: []})
+                        let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor
+                        correspindingSeriesIntendedFor.forEach(i=>{
+                            let IntendedForIDs = section.filter(o=>o.series_idx == i).map(o=>o.idx)
+                            obj.IntendedFor = obj.IntendedFor.concat(IntendedForIDs)
+                        })
+                    }
+                })
             });
         });
     });
