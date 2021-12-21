@@ -123,8 +123,9 @@ export function funcQA($root) {
 }
 
 export function fmapQA($root) {
-    /* Assesses fieldmaps for improper PEDs (for spin-echo field maps),
-    and excludes extra fieldmaps in section.
+    /* Generate warning(s) duplicate field maps (or not enough) are detected.
+
+    TODO: generate warning(s) if Pepolar field maps don't have opposite phase encoding directions
     */
 
     $root._organized.forEach(subGroup=>{
@@ -134,180 +135,161 @@ export function fmapQA($root) {
             let allSectionIDs = sesGroup.objects.map(e=>e.analysisResults.section_ID)
             let sectionIDs = Array.from(new Set(allSectionIDs))
 
-            // Loop through sections (no excluded acquisitions included)
+            // Loop through sections
             sectionIDs.forEach(s=> {
-                let section = sesGroup.objects.filter(e=>e.analysisResults.section_ID == s && !e._exclude)
+                let section = sesGroup.objects.filter(o=>o.analysisResults.section_ID == s && !o._exclude && o._type != "exclude")
 
-                let funcObjs = section.filter(e=>e._type == 'func/bold' || e._type == 'func/sbref')
-                let dwiObjs = section.filter(e=>e._type == 'dwi/dwi')
-                let fmapSpinEchoFuncObjs = section.filter(e=>e._type.startsWith('fmap/epi') && e._forType == 'func/bold')
-                let fmapSpinEchoDwiObjs = section.filter(e=>e._type.startsWith('fmap/epi') && e._forType == 'dwi/dwi')
-                let fmapMagPhaseObjs = section.filter(function (e) {
-                    return e._type.startsWith('fmap/magnitude1') ||
-                    e._type.startsWith('fmap/magnitude2') ||
-                    e._type.includes('phase1') ||
-                    e._type.includes('phase2')
+                // https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/01-magnetic-resonance-imaging-data.html#types-of-fieldmaps
+
+                // case #1: Phase-difference map and at least one magnitude image
+                let fmapMagPhasediffObjs = section.filter(function (o) {
+                    return o._type == "fmap/magnitude1" ||
+                    o._type == "fmap/magnitude2" ||
+                    o._type == "fmap/phasediff"
                 });
 
-                let fmapMagPhaseCheck = fmapMagPhaseObjs.filter(e=>e._type.includes('fmap/phase1'))
-                if(!fmapMagPhaseCheck.length) {
-                    fmapMagPhaseObjs = []
-                }
-
-                let fmapMagPhasediffObjs = section.filter(function (e) {
-                    return e._type.startsWith('fmap/magnitude1') ||
-                    e._type.startsWith('fmap/magnitude2') ||
-                    e._type.includes('phasediff')
-                });
-
-                let fmapMagPhasediffCheck = fmapMagPhasediffObjs.filter(e=>e._type.includes('fmap/phasediff'))
+                let fmapMagPhasediffCheck = fmapMagPhasediffObjs.filter(o=>o._type == "fmap/phasediff") //since cases 1 & 2 can have "fmap/magnitude1", check for "fmap/phasediff to determine case 1"
                 if(!fmapMagPhasediffCheck.length) {
                     fmapMagPhasediffObjs = []
                 }
 
-                let fmapMagFieldmapObjs = section.filter(function (e) {
-                    return e._type.startsWith('fmap/magnitude') ||
-                    e._type.includes('fieldmap')
+
+                // case #2: Two phase maps and two magnitude maps
+                let fmapMagPhaseObjs = section.filter(function (o) {
+                    return o._type == "fmap/magnitude1" ||
+                    o._type == "fmap/magnitude2" ||
+                    o._type == "fmap/phase1" ||
+                    o._type == "fmap/phase2"
+                });
+
+                let fmapMagPhaseCheck = fmapMagPhaseObjs.filter(o=>o._type == "fmap/phase1") //since cases 1 & 2 can have "fmap/magnitude1", check for "fmap/phase1 to determine case 2"
+                if(!fmapMagPhaseCheck.length) {
+                    fmapMagPhaseObjs = []
+                }
+
+
+                // case #3: Direct field mapping
+                let fmapDirectObjs = section.filter(function (o) {
+                    return o._type == "fmap/magnitude" ||
+                    o._type == "fmap/fieldmap"
                 })
 
-                let fmapMagFieldmapCheck = fmapMagFieldmapObjs.filter(e=>e._type.includes('fmap/fieldmap'))
-                if(!fmapMagFieldmapCheck.length) {
-                    fmapMagFieldmapObjs = []
+
+                //case #4: Multiple phase encoding direction ("pepolar")
+                let fmapPepolar = section.filter(o=>o._type == "fmap/epi")
+
+                /*
+                In addition to the fmap cases listed above, other field maps exist.
+                For list of these [quantitative MRI] field maps, see
+                https://github.com/bids-standard/bids-specification/blob/master/src/schema/rules/datatypes/fmap.yaml and
+                https://bids-specification.readthedocs.io/en/stable/99-appendices/11-qmri.html
+                */
+
+                let fmapM0scan = section.filter(o=>o._type == "fmap/m0scan") //pair
+                let fmapTB1DAM = section.filter(o=>o._type == "fmap/TB1DAM") //??
+                let fmapTB1EPI = section.filter(o=>o._type == "fmap/TB1EPI") //pair
+                let fmapTB1AFI = section.filter(o=>o._type == "fmap/TB1AFI") //pair
+                let fmapTB1TFL = section.filter(o=>o._type == "fmap/TB1TFL") //pair
+                let fmapTB1RFM = section.filter(o=>o._type == "fmap/TB1RFM") //pair
+                let fmapRB1COR = section.filter(o=>o._type == "fmap/RB1COR") //pair
+                let fmapTB1SRGE = section.filter(o=>o._type == "fmap/TB1SRGE") //??
+                let fmapTB1map = section.filter(o=>o._type == "fmap/TB1map") //single?
+                let fmapRB1map = section.filter(o=>o._type == "fmap/RB1map") //single?
+
+
+                /* Check for duplicate fmaps (or not enough fmaps). If so, generate validation
+                warning for the duplicate(s). ezBIDS assumes that the duplicates are the first fmap [sets],
+                and then the last fmap(s) in the section are what user want. If not, they can ignore
+                the warning(s) or make modifications as they see fit.
+                */
+
+                if(fmapMagPhasediffObjs.length) {
+                    // for case #1, there can be a pair (magnitude1, phasediff) or a triplet (magnitude1, magnitude2, phasediff)
+                    if(fmapMagPhasediffObjs.length == 1) {
+                        fmapMagPhasediffObjs.forEach(o=>{
+                            o.validationWarnings.push("There doesn't appear to be a full field map pair (magnitude1, phasediff) or triplet (magnitude1, magnitude2, phasediff). It is highly recommended that this acquistion be excluded from BIDS conversion, as it doesn't form a complete pair/triplet.")
+                        })
+                    }
+                    if(fmapMagPhasediffObjs.length > 3) {
+                        fmapMagPhasediffObjs.forEach(o=>{
+                            o.validationWarnings.push("There appear to be too many field maps of this kind, the max allowed for this kind of field map is a triplet (magnitude1, magnitude2, phasediff). There may be duplicates, in which case the duplicate(s) should be excluded from BIDS conversion.")
+                        })
+                    }
                 }
 
-                // Perform fmap QA
-                if(funcObjs.length > 0) {
-
-                    // Remove all spin-echo fmaps except for last two
-                    if(fmapSpinEchoFuncObjs.length > 2) {
-                        let fmapFuncBadObjs = fmapSpinEchoFuncObjs.slice(0,-2)
-                        fmapFuncBadObjs.forEach(obj=> {
-                            obj.exclude = true
-                            obj.analysisResults.errors = ['Multiple spin echo field map pairs detected in section; only selecting last pair for BIDS conversion. The other pair acquisition(s) in this section will not be included in the BIDS output']
-                        });
+                if(fmapMagPhaseObjs.length) {
+                    // for case #2, there must be a set of 4 (phase1, phase2, magnitude1, magnitude2)
+                    if(fmapMagPhaseObjs.length < 4) {
+                        fmapMagPhaseObjs.forEach(o=>{
+                            o.validationWarnings.push("There doesn't appear to be a full field map set (phase1, phase2, magnitude1, magnitude2) for this kind of field maps. It is highly recommended that this fmap acquisition be excluded from BIDS conversion, as it is incomplete (i.e. doesn't form complete set of 4).")
+                        })
                     }
-
-                    // Remove spin-echo fmap if only 1 found
-                    if(fmapSpinEchoFuncObjs.length == 1) {
-                        fmapSpinEchoFuncObjs.forEach(obj=> {
-                            obj.exclude = true
-                            obj.analysisResults.errors = ['Only one spin echo field map found; need pair. This acquisition will not be included in the BIDS output']
-                        });
+                    if(fmapMagPhaseObjs.length > 4) {
+                        fmapMagPhaseObjs.forEach(o=>{
+                            o.validationWarnings.push("There appear to be too many field maps of this kind, only a set (phase1, phase2, magnitude1, magnitude2) is allowed for this kind of field map. There may be duplicates, in which case the duplicate(s) should be excluded from BIDS conversion.")
+                        })
                     }
+                }
 
-                    // Re-determine spin-echo fmaps meant for func/bold (in event that some were set for exclusion)
-                    fmapSpinEchoFuncObjs = fmapSpinEchoFuncObjs.filter(e=>!e.exclude)
+                if(fmapDirectObjs.length) {
+                    // for case #3, there must be a pair (magnitude, fieldmap)
+                    if(fmapDirectObjs.length < 2) {
+                        fmapDirectObjs.forEach(o=>{
+                            o.validationWarnings.push("There doesn't appear to be a field map pair (magnitude, fieldmap) for this kind of field map. It is highly recommended that this fmap acquisition be excluded from BIDS conversion, as it is incomplete (i.e. doesn't form pair).")
+                        })
+                    }
+                    if(fmapDirectObjs.length > 2) {
+                        fmapDirectObjs.forEach(o=>{
+                            o.validationWarnings.push("There appear to be too many field maps of this kind, only a pair (magnitude, fieldmap) is allowed for this kind of field map. There may be duplicates, in which case the duplicate(s) should be excluded from BIDS conversion.")
+                        })
+                    }
+                }
 
-                    // Check for proper PEDs for spin-echo pairs
-                    if(fmapSpinEchoFuncObjs.length == 2) {
-                        let fmapFuncPEDs = fmapSpinEchoFuncObjs.map(e=>e.items[0].sidecar.PhaseEncodingDirection)
-                        if(fmapFuncPEDs[0].toString().split('').reverse().join('').slice(-1) == fmapFuncPEDs[1].toString().split('').reverse().join('').slice(-1)) {
-                            if((fmapFuncPEDs[0].length != 2 || fmapFuncPEDs[1].length != 1) && (fmapFuncPEDs[0].length != 1 || fmapFuncPEDs[1].length != 2)) {
-                                fmapSpinEchoFuncObjs.forEach(obj=> {
-                                    obj.exclude = true
-                                    obj.analysisResults.errors = ['Spin echo field map pair do not have opposite phase encoding directions (PEDs) and will not be included in the BIDS output']
-                                });
-                            }
-                        }else{
-                            fmapSpinEchoFuncObjs.forEach(obj=> {
-                                obj.exclude = true
-                                obj.analysisResults.errors = ['Spin echo field map pair do not have opposite phase encoding directions (PEDs) and will not be included in the BIDS output']
-                            });
+                if(fmapDirectObjs.length) {
+                    // for case #4, there must be a pair (epi, epi)
+                    if(fmapPepolar.length < 2) {
+                        fmapPepolar.forEach(o=>{
+                            o.validationWarnings.push("There doesn't appear to be a pair for this kind of field map. It is highly recommended that this fmap acquisition be excluded from BIDS conversion, as it is incomplete (i.e. doesn't form pair).")
+                        })
+                    }
+                    if(fmapPepolar.length > 2) {
+                        fmapPepolar.forEach(o=>{
+                            o.validationWarnings.push("There appear to be too many field maps of this kind, only a pair is allowed for this kind of field map. There may be duplicates, in which case the duplicate(s) should be excluded from BIDS conversion.")
+                        })
+                    }
+                }
+
+                // several of the quantitative MRI field maps come in pairs, so validate them the same way
+                for(const fmap of [fmapM0scan, fmapTB1EPI, fmapTB1AFI, fmapTB1TFL, fmapTB1RFM, fmapRB1COR]) {
+                    if(fmap.length) {
+                        if(fmap.length < 2) {
+                            fmap.forEach(o=>{
+                                o.validationWarnings.push("There doesn't appear to be a pair for this kind of field map. It is highly recommended that this fmap acquisition be excluded from BIDS conversion, as it is incomplete (i.e. doesn't form pair).")
+                            })
+                        }
+                        if(fmap.length > 2) {
+                            fmap.forEach(o=>{
+                                o.validationWarnings.push("There appear to be too many field maps of this kind, only a pair is allowed for this kind of field map. There may be duplicates, in which case the duplicate(s) should be excluded from BIDS conversion.")
+                            })
                         }
                     }
-
-                    // Remove magnitudes & phasediff if less than 3
-                    if(fmapMagPhasediffObjs.length < 3) {
-                        fmapMagPhasediffObjs.forEach(obj=> {
-                            obj.exclude = true
-                            obj.analysisResults.errors = ['Need triplet for magnitude/phasediff field maps. This acquisition will not be included in the BIDS output']
-                        });
-                    }
-
-                    // Remove all magnitudes and phasediff except for last 3
-                    if(fmapMagPhasediffObjs.length > 3) {
-                        let fmapMagPhasediffBadObjs = fmapMagPhasediffObjs.slice(0,-3)
-                        fmapMagPhasediffBadObjs.forEach(obj=> {
-                            obj.exclude = true
-                            obj.analysisResults.errors = ['More than three magnitude/phasediff field map acquisitions found in section. Only selecting most recent three. Others will not be included in the BIDS output']
-                        });
-                    }
-
-                    // Remove magnitudes and phases if less than 4
-                    if(fmapMagPhaseObjs.length < 4) {
-                        fmapMagPhaseObjs.forEach(obj=> {
-                            obj.exclude = true
-                            obj.analysisResults.errors = ['Need four images (2 magnitude, 2 phase). This acquisition will not be included in the BIDS output']
-                        });
-                    }
-
-                    // Remove all magnitudes and phases except for last 4
-                    if(fmapMagPhaseObjs.length > 4) {
-                        let fmapMagPhaseBadObjs = fmapMagPhaseObjs.slice(0,-4)
-                        fmapMagPhaseBadObjs.forEach(obj=> {
-                            obj.exclude = true
-                            obj.analysisResults.errors = ['Multiple images sets of (2 magnitude, 2 phase) field map acquisitions found in section. Only selecting most recent set. Other(s) will not be included in the BIDS output']
-                        });
-                    }
-
-                    // Remove all magnitudes & fieldmaps except for last 2
-                    if(fmapMagFieldmapObjs.length > 2) {
-                        let fmapMagFieldmapBadObjs = fmapMagFieldmapObjs.slice(0,-2)
-                        fmapMagFieldmapBadObjs.forEach(obj=> {
-                            obj.exclude = true
-                            obj.analysisResults.errors = ['Multiple image sets of magnitude & fieldmap field map acquistions found in section. Only selecting most recent pair. Other(s) will not be included in BIDS output']
-                        });
-                    }
-
-                    // Remove all magnitudes & fieldmaps if less than 2
-                    if(fmapMagFieldmapObjs.length < 2) {
-                        fmapMagFieldmapObjs.forEach(obj=> {
-                            obj.exclude = true
-                            obj.analysisResults.errors = ['Need pair (magnitude & fieldmap). This acquisition will not be included in BIDS output']
-                        });
-                    }
-
-                }else{
-                    fmapSpinEchoFuncObjs.forEach(obj=> {
-                        obj.exclude = true
-                        obj.analysisResults.errors = ['No valid func/bold acquisitions found in section, spin echo field map pair will not be included in the BIDS output']
-                    });
-
-                    fmapMagPhasediffObjs.forEach(obj=> {
-                        obj.exclude = true
-                        obj.analysisResults.errors = ['No valid func/bold acquisitions found in section, magnitude & phasediff field maps will not be included in the BIDS output']
-                    });
-
-                    fmapMagPhaseObjs.forEach(obj=> {
-                        obj.exclude = true
-                        obj.analysisResults.errors = ['No valid func/bold acquisitions found in section, magnitude & phase field maps will not be included in the BIDS output']
-                    });
-
-                    fmapMagFieldmapObjs.forEach(obj=> {
-                        obj.exclude = true
-                        obj.analysisResults.errors = ['No valid func/bold acquisitions found in section, magnitude & fieldmap will not be included in the BIDS output']
-                    })
                 }
-
-                // Remove fmap meant for dwi/dwi acquisition(s) if no valid dwi/dwi found in section
-                if(dwiObjs.length == 0 && fmapSpinEchoDwiObjs.length > 0) {
-                    fmapSpinEchoDwiObjs.forEach(obj=> {
-                        obj.exclude = true
-                        obj.analysisResults.errors = ['No valid dwi/dwi acquisitions found in section, spin echo field map will not be included in the BIDS output']
-                    });
-                }
-
-                // Remove fmap meant for dwi/dwi if more than 1 fmap
-                if(fmapSpinEchoDwiObjs.length > 1) {
-                    fmapSpinEchoDwiObjs.forEach(obj=> {
-                        obj.exclude = true
-                        obj.analysisResults.errors = ['Multiple spin echo field maps (meant for dwi/dwi) detected in section; only selecting last one for BIDS conversion. The other fmap acquisition(s) in this section will not be included in the BIDS output']
-                    });
+                // some of the quantitative MRI field maps come as a single acquisition, so validate them the same way
+                for(const fmap of [fmapTB1map, fmapRB1map]) {
+                    if(fmap.length) {
+                        if(fmap.length > 1) {
+                            fmap.forEach(o=>{
+                                o.validationWarnings.push("There appear to be too many field maps of this kind, only a single acquisition for this kind of field map is allowed. There may be duplicates, in which case the duplicate(s) should be excluded from BIDS conversion.")
+                            })
+                        }
+                    }
                 }
             });
         });
     });
 }
+
+
 export function setRun($root) {
     // Set run entity label if not already specified at Series level
 
@@ -395,30 +377,56 @@ export function validateEntities(entities/*: Series*/) {
     return errors;
 }
 
-// export function dwiQA($root) {
-//     /*
-//     DWI acquisitions typically come in flipped PED pairs. This QA checks to see
-//     if only one acquisition (i.e. no pair) exists.
-//     */
-//     $root._organized.forEach(subGroup=>{
-//         subGroup.sess.forEach(sesGroup=>{
-//             let dwiDirs = []
-//             let protocolObjects = sesGroup.objects
+export function dwiQA($root) {
+    /*
+    DWI acquisitions are typically acquired in two ways:
 
-//             for(const protocol of protocolObjects) {
-//                 Object.keys(protocol).forEach(key=>{
-//                     if(protocol[key] == "dwi/dwi") {
-//                         dwiDirs.push({"idx": protocol.idx, "direction": protocol._entities.direction})
-//                     }
-//                 })
-//             }
-//             if(dwiDirs.length == 1) {
-//                 protocolObjects[dwiDirs[0].idx].validationWarnings.push("This dwi/dwi acquisition doesn't appear to have a corresponding dwi/dwi acquisition with a 180 degree flipped phase encoding direction. If there isn't a corresponding field map meant for this acquisition, you should exclude this form BIDS conversion")
-//             }
-//         })
-//     })
-//     return $root
-// }
+    1). Flipped PED pairs.
+    2). One or more DWI acquisitions with one PED and a corresponding b0/fieldmap with opposite PED.
+
+    This QA checks to see if one of these two conditions is met; if not, a validation warning is
+    generated to alert user.
+    */
+    $root._organized.forEach(subGroup=>{
+        subGroup.sess.forEach(sesGroup=>{
+            let dwiInfo = []
+            let fmapInfo = []
+            let protocolObjects = sesGroup.objects
+
+            for(const protocol of protocolObjects) {
+                Object.keys(protocol).forEach(key=>{
+                    if(key == "_type" && protocol[key] == "dwi/dwi") {
+                        dwiInfo.push({"series_idx": protocol.series_idx, "idx": protocol.idx, "direction": protocol.direction, "fmap": "N/A", "oppDWI": "N/A"})
+                    }
+
+                    if(key == "_type" && protocol[key].startsWith("fmap/")) { //check for field map(s) that might be applied to DWI acquisitions
+                        fmapInfo.push({"IntendedFor": protocol.IntendedFor})
+                    }
+                })
+            }
+
+            dwiDirs = dwiInfo.map(e=>e.direction)
+
+            fmapInfo.forEach(f=>{
+                dwiInfo.forEach(d=>{
+                    if(f.IntendedFor.includes(d.series_idx)) {
+                        d.fmap = "yes"
+                    }
+                    if(dwiDirs.includes(d.direction.split("").reverse().join(""))) {
+                        d.oppDWI = "yes"
+                    }
+                })
+            })
+
+            dwiInfo.forEach(d=>{
+                if(d.fmap != "yes" || d.oppDWI != "yes") {
+                    protocolObjects[d.idx].validationWarnings.push("This dwi/dwi acquisition doesn't appear to have a corresponding dwi/dwi or field map acquisition with a 180 degree flipped phase encoding direction. You may wish to exclude this from BIDS conversion, unless there is a reason for keping it.")
+                }
+            })
+        })
+    })
+    // return $root
+}
 
 export function find_separator(filePath, fileData) {
     if(filePath.indexOf('.tsv') > -1) {

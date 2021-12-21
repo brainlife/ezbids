@@ -1409,6 +1409,7 @@ def modify_objects_info(dataset_list):
                             "ModifiedSeriesNumber": protocol["ModifiedSeriesNumber"],
                             "entities": objects_entities,
                             "items": items,
+                            "PED": protocol["direction"],
                             "analysisResults": {
                                 "NumVolumes": protocol["NumVolumes"],
                                 "errors": protocol["error"],
