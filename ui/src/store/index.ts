@@ -129,6 +129,7 @@ export interface IObject {
 
     analysisResults: {
         errors: string[];
+        warnings: string[];
         section_ID: number;
         NumVolumes?: number;
         filesize?: number;

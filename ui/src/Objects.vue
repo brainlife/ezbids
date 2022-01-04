@@ -356,6 +356,11 @@ export default defineComponent({
             o.validationErrors = [];
             o.validationWarnings = [];
 
+            //update validationWarnings
+            if(o.analysisResults.warnings.length) {
+                o.validationWarnings = o.analysisResults.warnings
+            }
+
             if(this.isExcluded(o)) return;
 
             o.validationErrors = validateEntities(o.entities);

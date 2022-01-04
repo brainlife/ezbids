@@ -82,7 +82,7 @@ export function funcQA($root) {
     $root.objects.forEach(o=> {
         // #1
 
-        //update analysisResults.errors in case user went back to Series and adjusted things
+        //update analysisResults.warnings in case user went back to Series and adjusted things
         if(o._type == "func/bold" && o.exclude == false && (!o._entities.mag || o._entities.mag == "mag")) {
             let funcBoldEntities = o._entities
             let goodFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, funcBoldEntities))
@@ -90,7 +90,7 @@ export function funcQA($root) {
 
             for(const good of [goodFuncSBRef, goodFuncBoldPhase]) {
                 good.forEach(g=>{
-                    g.analysisResults.errors = []
+                    g.analysisResults.warnings = []
                 })
             }
         }
@@ -103,7 +103,7 @@ export function funcQA($root) {
 
             for(const bad of [badFuncSBRef, badFuncBoldPhase]) {
                 bad.forEach(b=>{
-                    b.analysisResults.errors = [`The corresponding func/bold (#${o.series_idx}) to this acquisition has been set to exclude from BIDS conversion. Recommendation is to also exclude this acquisition from BIDS conversion, unless you have good reason for keeping it.`]
+                    b.analysisResults.warnings.push(`The corresponding func/bold (#${o.series_idx}) to this acquisition has been set to exclude from BIDS conversion. Recommendation is to also exclude this acquisition from BIDS conversion, unless you have good reason for keeping it.`)
                 })
             }
         }
@@ -116,7 +116,7 @@ export function funcQA($root) {
                                                 e.items[0].sidecar.PhaseEncodingDirection != boldPED).map(e=>e.idx)
             badSBRef.forEach(bad=> {
                 // $root.objects[bad].exclude = true
-                $root.objects[bad].analysisResults.errors = [`Functional sbref has a different PhaseEncodingDirection than its corresponding functional bold (#${o.series_idx}). This is likely a data error, therefore this sbref should be excluded from BIDS conversion.`]
+                $root.objects[bad].analysisResults.warnings.push(`Functional sbref has a different PhaseEncodingDirection than its corresponding functional bold (#${o.series_idx}). This is likely a data error, therefore this sbref should be excluded from BIDS conversion.`)
             })
         }
     })
@@ -207,12 +207,12 @@ export function fmapQA($root) {
                     // for case #1, there can be a pair (magnitude1, phasediff) or a triplet (magnitude1, magnitude2, phasediff)
                     if(fmapMagPhasediffObjs.length == 1) {
                         fmapMagPhasediffObjs.forEach(o=>{
-                            o.validationWarnings.push("There doesn't appear to be a full field map pair (magnitude1, phasediff) or triplet (magnitude1, magnitude2, phasediff). It is highly recommended that this acquistion be excluded from BIDS conversion, as it doesn't form a complete pair/triplet.")
+                            o.analysisResults.warnings.push("There doesn't appear to be a full field map pair (magnitude1, phasediff) or triplet (magnitude1, magnitude2, phasediff). It is highly recommended that this acquistion be excluded from BIDS conversion, as it doesn't form a complete pair/triplet.")
                         })
                     }
                     if(fmapMagPhasediffObjs.length > 3) {
                         fmapMagPhasediffObjs.forEach(o=>{
-                            o.validationWarnings.push("There appear to be too many field maps of this kind, the max allowed for this kind of field map is a triplet (magnitude1, magnitude2, phasediff). There may be duplicates, in which case the duplicate(s) should be excluded from BIDS conversion.")
+                            o.analysisResults.warnings.push("There appear to be too many field maps of this kind, the max allowed for this kind of field map is a triplet (magnitude1, magnitude2, phasediff). There may be duplicates, in which case the duplicate(s) should be excluded from BIDS conversion.")
                         })
                     }
                 }
@@ -221,12 +221,12 @@ export function fmapQA($root) {
                     // for case #2, there must be a set of 4 (phase1, phase2, magnitude1, magnitude2)
                     if(fmapMagPhaseObjs.length < 4) {
                         fmapMagPhaseObjs.forEach(o=>{
-                            o.validationWarnings.push("There doesn't appear to be a full field map set (phase1, phase2, magnitude1, magnitude2) for this kind of field maps. It is highly recommended that this fmap acquisition be excluded from BIDS conversion, as it is incomplete (i.e. doesn't form complete set of 4).")
+                            o.analysisResults.warnings.push("There doesn't appear to be a full field map set (phase1, phase2, magnitude1, magnitude2) for this kind of field maps. It is highly recommended that this fmap acquisition be excluded from BIDS conversion, as it is incomplete (i.e. doesn't form complete set of 4).")
                         })
                     }
                     if(fmapMagPhaseObjs.length > 4) {
                         fmapMagPhaseObjs.forEach(o=>{
-                            o.validationWarnings.push("There appear to be too many field maps of this kind, only a set (phase1, phase2, magnitude1, magnitude2) is allowed for this kind of field map. There may be duplicates, in which case the duplicate(s) should be excluded from BIDS conversion.")
+                            o.analysisResults.warnings.push("There appear to be too many field maps of this kind, only a set (phase1, phase2, magnitude1, magnitude2) is allowed for this kind of field map. There may be duplicates, in which case the duplicate(s) should be excluded from BIDS conversion.")
                         })
                     }
                 }
@@ -235,12 +235,12 @@ export function fmapQA($root) {
                     // for case #3, there must be a pair (magnitude, fieldmap)
                     if(fmapDirectObjs.length < 2) {
                         fmapDirectObjs.forEach(o=>{
-                            o.validationWarnings.push("There doesn't appear to be a field map pair (magnitude, fieldmap) for this kind of field map. It is highly recommended that this fmap acquisition be excluded from BIDS conversion, as it is incomplete (i.e. doesn't form pair).")
+                            o.analysisResults.warnings.push("There doesn't appear to be a field map pair (magnitude, fieldmap) for this kind of field map. It is highly recommended that this fmap acquisition be excluded from BIDS conversion, as it is incomplete (i.e. doesn't form pair).")
                         })
                     }
                     if(fmapDirectObjs.length > 2) {
                         fmapDirectObjs.forEach(o=>{
-                            o.validationWarnings.push("There appear to be too many field maps of this kind, only a pair (magnitude, fieldmap) is allowed for this kind of field map. There may be duplicates, in which case the duplicate(s) should be excluded from BIDS conversion.")
+                            o.analysisResults.warnings.push("There appear to be too many field maps of this kind, only a pair (magnitude, fieldmap) is allowed for this kind of field map. There may be duplicates, in which case the duplicate(s) should be excluded from BIDS conversion.")
                         })
                     }
                 }
@@ -249,12 +249,12 @@ export function fmapQA($root) {
                     // for case #4, there must be a pair (epi, epi)
                     if(fmapPepolar.length < 2) {
                         fmapPepolar.forEach(o=>{
-                            o.validationWarnings.push("There doesn't appear to be a pair for this kind of field map. It is highly recommended that this fmap acquisition be excluded from BIDS conversion, as it is incomplete (i.e. doesn't form pair).")
+                            o.analysisResults.warnings.push("There doesn't appear to be a pair for this kind of field map. It is highly recommended that this fmap acquisition be excluded from BIDS conversion, as it is incomplete (i.e. doesn't form pair).")
                         })
                     }
                     if(fmapPepolar.length > 2) {
                         fmapPepolar.forEach(o=>{
-                            o.validationWarnings.push("There appear to be too many field maps of this kind, only a pair is allowed for this kind of field map. There may be duplicates, in which case the duplicate(s) should be excluded from BIDS conversion.")
+                            o.analysisResults.warnings.push("There appear to be too many field maps of this kind, only a pair is allowed for this kind of field map. There may be duplicates, in which case the duplicate(s) should be excluded from BIDS conversion.")
                         })
                     }
                 }
@@ -264,12 +264,12 @@ export function fmapQA($root) {
                     if(fmap.length) {
                         if(fmap.length < 2) {
                             fmap.forEach(o=>{
-                                o.validationWarnings.push("There doesn't appear to be a pair for this kind of field map. It is highly recommended that this fmap acquisition be excluded from BIDS conversion, as it is incomplete (i.e. doesn't form pair).")
+                                o.analysisResults.warnings.push("There doesn't appear to be a pair for this kind of field map. It is highly recommended that this fmap acquisition be excluded from BIDS conversion, as it is incomplete (i.e. doesn't form pair).")
                             })
                         }
                         if(fmap.length > 2) {
                             fmap.forEach(o=>{
-                                o.validationWarnings.push("There appear to be too many field maps of this kind, only a pair is allowed for this kind of field map. There may be duplicates, in which case the duplicate(s) should be excluded from BIDS conversion.")
+                                o.analysisResults.warnings.push("There appear to be too many field maps of this kind, only a pair is allowed for this kind of field map. There may be duplicates, in which case the duplicate(s) should be excluded from BIDS conversion.")
                             })
                         }
                     }
@@ -279,7 +279,7 @@ export function fmapQA($root) {
                     if(fmap.length) {
                         if(fmap.length > 1) {
                             fmap.forEach(o=>{
-                                o.validationWarnings.push("There appear to be too many field maps of this kind, only a single acquisition for this kind of field map is allowed. There may be duplicates, in which case the duplicate(s) should be excluded from BIDS conversion.")
+                                o.analysisResults.warnings.push("There appear to be too many field maps of this kind, only a single acquisition for this kind of field map is allowed. There may be duplicates, in which case the duplicate(s) should be excluded from BIDS conversion.")
                             })
                         }
                     }
@@ -295,12 +295,9 @@ export function setRun($root) {
 
     // Loop through subjects
 
-    //for(const subject in $root._organized) {
     $root._organized.forEach(subGroup=>{
 
         // Loop through sessions
-        //const sessions = subGroup.sess
-        //for(const session in sessions) {
         subGroup.sess.forEach(sesGroup=>{
             // Determine series_idx values
             let allSeriesIndices = sesGroup.objects.map(e=>e.series_idx)
@@ -396,7 +393,7 @@ export function dwiQA($root) {
             for(const protocol of protocolObjects) {
                 Object.keys(protocol).forEach(key=>{
                     if(key == "_type" && protocol[key] == "dwi/dwi") {
-                        dwiInfo.push({"series_idx": protocol.series_idx, "idx": protocol.idx, "direction": protocol.direction, "fmap": "N/A", "oppDWI": "N/A"})
+                        dwiInfo.push({"series_idx": protocol.series_idx, "idx": protocol.idx, "direction": protocol.PED, "fmap": "N/A", "oppDWI": "N/A"})
                     }
 
                     if(key == "_type" && protocol[key].startsWith("fmap/")) { //check for field map(s) that might be applied to DWI acquisitions
@@ -405,24 +402,36 @@ export function dwiQA($root) {
                 })
             }
 
-            dwiDirs = dwiInfo.map(e=>e.direction)
+            if(dwiInfo.length) {
 
-            fmapInfo.forEach(f=>{
+                let dwiDirs = dwiInfo.map(e=>e.direction)
+
+                if(fmapInfo.length) {
+                    fmapInfo.forEach(f=>{
+                        dwiInfo.forEach(d=>{
+                            if(f.IntendedFor.includes(d.series_idx)) {
+                                d.fmap = "yes"
+                            }
+                            if(dwiDirs.includes(d.direction.split("").reverse().join(""))) {
+                                d.oppDWI = "yes"
+                            }
+                        })
+                    })
+                }else{
+                    dwiInfo.forEach(d=>{
+                        if(dwiDirs.includes(d.direction.split("").reverse().join(""))) {
+                            d.oppDWI = "yes"
+                        }
+                    })
+                }
+
                 dwiInfo.forEach(d=>{
-                    if(f.IntendedFor.includes(d.series_idx)) {
-                        d.fmap = "yes"
-                    }
-                    if(dwiDirs.includes(d.direction.split("").reverse().join(""))) {
-                        d.oppDWI = "yes"
+                    if(d.fmap != "yes" && d.oppDWI != "yes") {
+                        let corrProtocolObj = protocolObjects.filter(e=>e.idx == d.idx)[0] //will always be an index of 1, so just grab the first (i.e. only) index
+                        corrProtocolObj.analysisResults.warnings.push("This dwi/dwi acquisition doesn't appear to have a corresponding dwi/dwi or field map acquisition with a 180 degree flipped phase encoding direction. You may wish to exclude this from BIDS conversion, unless there is a reason for keeping it.")
                     }
                 })
-            })
-
-            dwiInfo.forEach(d=>{
-                if(d.fmap != "yes" || d.oppDWI != "yes") {
-                    protocolObjects[d.idx].validationWarnings.push("This dwi/dwi acquisition doesn't appear to have a corresponding dwi/dwi or field map acquisition with a 180 degree flipped phase encoding direction. You may wish to exclude this from BIDS conversion, unless there is a reason for keping it.")
-                }
-            })
+            }
         })
     })
     // return $root
@@ -761,7 +770,8 @@ export function createEventObjects(ezbids, files) {
             //these aren't used, but I believe we have to initialize it
             analysisResults: {
                 section_ID: section_ID,
-                errors: []
+                errors: [],
+                warnings: []
 
             },
             paths: [],

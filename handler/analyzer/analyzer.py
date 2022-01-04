@@ -1413,6 +1413,7 @@ def modify_objects_info(dataset_list):
                             "analysisResults": {
                                 "NumVolumes": protocol["NumVolumes"],
                                 "errors": protocol["error"],
+                                "warnings": [],
                                 "filesize": protocol["filesize"],
                                 "orientation": protocol["orientation"],
                                 "section_idx": 1}
