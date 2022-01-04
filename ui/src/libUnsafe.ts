@@ -103,7 +103,7 @@ export function funcQA($root) {
 
             for(const bad of [badFuncSBRef, badFuncBoldPhase]) {
                 bad.forEach(b=>{
-                    b.analysisResults.warnings.push(`The corresponding func/bold (#${o.series_idx}) to this acquisition has been set to exclude from BIDS conversion. Recommendation is to also exclude this acquisition from BIDS conversion, unless you have good reason for keeping it.`)
+                    b.analysisResults.warnings = [`The corresponding func/bold (#${o.series_idx}) to this acquisition has been set to exclude from BIDS conversion. Recommendation is to also exclude this acquisition from BIDS conversion, unless you have good reason for keeping it.`]
                 })
             }
         }
@@ -116,7 +116,7 @@ export function funcQA($root) {
                                                 e.items[0].sidecar.PhaseEncodingDirection != boldPED).map(e=>e.idx)
             badSBRef.forEach(bad=> {
                 // $root.objects[bad].exclude = true
-                $root.objects[bad].analysisResults.warnings.push(`Functional sbref has a different PhaseEncodingDirection than its corresponding functional bold (#${o.series_idx}). This is likely a data error, therefore this sbref should be excluded from BIDS conversion.`)
+                $root.objects[bad].analysisResults.warnings = [`Functional sbref has a different PhaseEncodingDirection than its corresponding functional bold (#${o.series_idx}). This is likely a data error, therefore this sbref should be excluded from BIDS conversion.`]
             })
         }
     })
@@ -397,7 +397,7 @@ export function dwiQA($root) {
                     }
 
                     if(key == "_type" && protocol[key].startsWith("fmap/")) { //check for field map(s) that might be applied to DWI acquisitions
-                        fmapInfo.push({"IntendedFor": protocol.IntendedFor})
+                        fmapInfo.push({"IntendedFor": $root.series.filter(e=>e.series_idx == protocol.series_idx)[0].IntendedFor})
                     }
                 })
             }
@@ -434,7 +434,6 @@ export function dwiQA($root) {
             }
         })
     })
-    // return $root
 }
 
 export function find_separator(filePath, fileData) {
