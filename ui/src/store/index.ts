@@ -130,7 +130,7 @@ export interface IObject {
     analysisResults: {
         errors: string[];
         warnings: string[];
-        section_ID: number;
+        section_id: number;
         NumVolumes?: number;
         filesize?: number;
         orientation?: string;

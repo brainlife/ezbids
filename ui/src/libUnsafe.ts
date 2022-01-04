@@ -35,10 +35,10 @@ export function isPrimitive(obj) {
 
 export function setSectionIDs($root) {
     /*
-    Set section_ID value for each acquisition, beginning with value of 1. A section is
+    Set section_id value for each acquisition, beginning with value of 1. A section is
     ezBIDS jargin for each time participant comes out and then re-enters scanner. Each time
-    a non-adjacent localizer is detected, the section_ID value is increased by 1. The
-    section_ID value helps for determining fmap IntendedFor mapping, where field maps
+    a non-adjacent localizer is detected, the section_id value is increased by 1. The
+    section_id value helps for determining fmap IntendedFor mapping, where field maps
     cannot be applied to acquisitions from different sections.
     */
 
@@ -60,9 +60,9 @@ export function setSectionIDs($root) {
 
                 if(obj_idx != 0 && message.includes("localizer") && (previousMessage == "" || !previousMessage.includes("localizer"))) {
                     sectionID++;
-                    obj.analysisResults.section_ID = sectionID
+                    obj.analysisResults.section_id = sectionID
                 }else{
-                    obj.analysisResults.section_ID = sectionID
+                    obj.analysisResults.section_id = sectionID
                 }
                 obj_idx++
             })
@@ -132,12 +132,12 @@ export function fmapQA($root) {
         subGroup.sess.forEach(sesGroup=>{
 
             // Determine unique sectionIDs
-            let allSectionIDs = sesGroup.objects.map(e=>e.analysisResults.section_ID)
+            let allSectionIDs = sesGroup.objects.map(e=>e.analysisResults.section_id)
             let sectionIDs = Array.from(new Set(allSectionIDs))
 
             // Loop through sections
             sectionIDs.forEach(s=> {
-                let section = sesGroup.objects.filter(o=>o.analysisResults.section_ID == s && !o._exclude && o._type != "exclude")
+                let section = sesGroup.objects.filter(o=>o.analysisResults.section_id == s && !o._exclude && o._type != "exclude")
 
                 // https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/01-magnetic-resonance-imaging-data.html#types-of-fieldmaps
 
@@ -327,12 +327,12 @@ export function setIntendedFor($root) {
         subGroup.sess.forEach(sesGroup=>{
 
             // Determine unique sectionIDs
-            let allSectionIDs = sesGroup.objects.map(e=>e.analysisResults.section_ID)
+            let allSectionIDs = sesGroup.objects.map(e=>e.analysisResults.section_id)
             let sectionIDs = Array.from(new Set(allSectionIDs))
 
             // Loop through sections
             sectionIDs.forEach(s=> {
-                let section = sesGroup.objects.filter(e=>e.analysisResults.section_ID == s && !e._exclude && e._type != "exclude")
+                let section = sesGroup.objects.filter(e=>e.analysisResults.section_id == s && !e._exclude && e._type != "exclude")
 
                 section.forEach(obj=>{
                     if(obj._type.startsWith("fmap/")) { //add IntendedFor info
@@ -735,7 +735,7 @@ export function createEventObjects(ezbids, files) {
         excplitly map it.
         */
 
-        let section_ID = 1 //default value unless otherwise determined
+        let section_id = 1 //default value unless otherwise determined
         let ModifiedSeriesNumber = "01" //default value unless otherwise determined
         let sidecar = {}
 
@@ -769,7 +769,7 @@ export function createEventObjects(ezbids, files) {
             ],
             //these aren't used, but I believe we have to initialize it
             analysisResults: {
-                section_ID: section_ID,
+                section_id: section_id,
                 errors: [],
                 warnings: []
 
@@ -831,18 +831,18 @@ export function createEventObjects(ezbids, files) {
             randRunID++
         }
 
-        //update section_ID, series_idx, and ModifiedSeriesNumber
+        //update section_id, series_idx, and ModifiedSeriesNumber
         try {
-            section_ID = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
+            section_id = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
                 e._entities.session == eventsMappingInfo.session.eventsValue &&
                 e._entities.task == eventsMappingInfo.task.eventsValue &&
                 e._entities.run == eventsMappingInfo.run.eventsValue
-                ).analysisResults.section_ID
+                ).analysisResults.section_id
         }
         catch {
-            section_ID = 1
+            section_id = 1
         }
-        object.analysisResults.section_ID = section_ID
+        object.analysisResults.section_id = section_id
 
         try {
             ModifiedSeriesNumber = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&

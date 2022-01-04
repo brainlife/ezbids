@@ -573,7 +573,7 @@ def generate_dataset_list(uploaded_files_list):
             "orientation": ornt,
             "forType": "",
             "error": None,
-            "section_idx": 1,
+            "section_id": 1,
             "message": None,
             "type": "",
             "nifti_path": [x for x in nifti_paths_for_json if ".nii.gz" in x][0],
@@ -1416,7 +1416,7 @@ def modify_objects_info(dataset_list):
                                 "warnings": [],
                                 "filesize": protocol["filesize"],
                                 "orientation": protocol["orientation"],
-                                "section_idx": 1}
+                                "section_id": 1}
                             }
             objects_data.append(objects_info)
 

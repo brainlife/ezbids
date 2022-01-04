@@ -281,7 +281,7 @@ export default defineComponent({
         groupSections(sess: OrganizedSession) {
             let sections = {} as Section;
             sess.objects.forEach(o=>{
-                let sectionId = o.analysisResults.section_ID;
+                let sectionId = o.analysisResults.section_id;
                 if(!sections[sectionId]) sections[sectionId] = [];
                 sections[sectionId].push(o);
             });
@@ -424,7 +424,7 @@ export default defineComponent({
                     let objEntities = Object.fromEntries(Object.entries(o._entities).filter(([_, v]) => v != "")); //remove empty entity labels
                     if(deepEqual(funcEntities, objEntities)) {
                         o.ModifiedSeriesNumber = func.ModifiedSeriesNumber
-                        o.analysisResults.section_ID = func.analysisResults.section_ID
+                        o.analysisResults.section_id = func.analysisResults.section_id
 
                         //o.validationWarnings = [];
 
