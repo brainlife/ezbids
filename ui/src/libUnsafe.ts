@@ -437,11 +437,11 @@ export function dwiQA($root) {
 }
 
 export function find_separator(filePath, fileData) {
-    if(filePath.indexOf('.tsv') > -1) {
+    if(filePath.indexOf(".tsv") > -1) {
         return /[ \t]+/;
-    }else if(filePath.indexOf('.out') > -1 || filePath.indexOf('.csv') > -1)  {
+    }else if(filePath.indexOf(".out") > -1 || filePath.indexOf(".csv") > -1)  {
         return /[ ,]+/;
-    }else if(filePath.indexOf('.txt') > -1) {
+    }else if(filePath.indexOf(".txt") > -1) {
         const data = fileData
         const lines = data.trim().split("\n").map(l=>l.trim());
         if(lines[0].indexOf(',') > -1) {
@@ -449,7 +449,7 @@ export function find_separator(filePath, fileData) {
         }else{
             return /[ \t]+/;
         }
-    }else if(filePath.indexOf('.xlsx') > -1) {
+    }else if(filePath.indexOf(".xlsx") > -1) {
         return /[ ,]+/;
     }
 
@@ -797,7 +797,7 @@ export function createEventObjects(ezbids, files) {
             }
 
             //update session_idx
-            if(entity == "session" && eventsMappingInfo.session.ezBIDSvalues.length > 0 && ezBIDSvalues.includes(eventsValue)) {
+            if(entity == "session" && object.subject_idx && eventsMappingInfo.session.ezBIDSvalues.length > 0 && ezBIDSvalues.includes(eventsValue)) {
                 let sessionsInfo = subjectsInfo[object.subject_idx].sessions
 
                 object.session_idx = sessionsInfo.findIndex(function (sessionsInfo) {
@@ -816,7 +816,6 @@ export function createEventObjects(ezbids, files) {
         if(object.session_idx === undefined) {
             object.session_idx = 0
             if(eventsMappingInfo.session.ezBIDSvalues.length > 0 && eventsMappingInfo.session.ezBIDSvalues.filter(e=>e != "").length > 0) {
-                console.log('bad')
                 object.entities.session = "XX" + randSesID.toString() //set the sessionID to a new value, which user would them correct.
             }
         }
