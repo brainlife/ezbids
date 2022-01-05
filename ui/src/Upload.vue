@@ -438,7 +438,8 @@ export default defineComponent({
         <div v-if="session.status == 'created'">
             <p>
                 <h3>
-                    Uploading&nbsp;<font-awesome-icon :icon="['fas', 'spinner', 'pulse']" spin/>
+                    Uploading
+                    <font-awesome-icon icon="spinner" pulse/>
                 </h3>
                 <small>Please do not close/refresh this page until all files are uploaded.</small>
             </p>
@@ -475,12 +476,12 @@ export default defineComponent({
         <div v-if="['preprocessing', 'uploaded'].includes(session.status)">
             <h3 v-if="session.dicomDone === undefined">
                 Inflating
-                <font-awesome-icon :icon="['fas', 'spinner']" spin/>
+                <font-awesome-icon icon="spinner" pulse/>
             </h3>
             <div v-else-if="session.dicomDone < session.dicomCount">
                 <h3>
                     Converting DICOMS to nifti
-                    <font-awesome-icon :icon="['fas', 'spinner']" spin/>
+                    <font-awesome-icon icon="spinner" pulse/>
                 </h3>
                 <el-progress status="success"
                     :text-inside="true"
@@ -490,7 +491,7 @@ export default defineComponent({
             </div>
             <h3 v-else>
                 Analyzing
-                <font-awesome-icon :icon="['fas', 'spinner']" spin/>
+                <font-awesome-icon icon="spinner" pulse/>
             </h3>
             <pre class="status">{{session.status_msg}}</pre>
             <small>* Depending on the size of your dataset, this process might take several hours. You can shutdown your computer while we process your data (please bookmark the URL for this page to come back to it)</small>
@@ -506,7 +507,7 @@ export default defineComponent({
             <div v-if="ezbids.notLoaded">
                 <h3>
                     Loading analysis results
-                    <font-awesome-icon :icon="['fas', 'spinner']" spin/>
+                    <font-awesome-icon icon="spinner" pulse/>
                 </h3>
             </div>
 

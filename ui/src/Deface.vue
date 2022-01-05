@@ -97,8 +97,8 @@
                 </div>
                 <p v-if="session.status == 'defacing' && !anat.defaced" class="missingThumb">
                 <small>
-                    Defacing ...
-                    <font-awesome-icon :icon="['fas', 'spinner']" spin/>
+                    Defacing 
+                    <font-awesome-icon icon="spinner" pulse/>
                 </small>
                 </p>
                 <p v-if="anat.defaceFailed" class="missingThumb fail"><small>Defacing Failed</small></p>
