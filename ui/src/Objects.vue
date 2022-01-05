@@ -533,7 +533,6 @@ pre.headers {
     top: -7px;
     position: relative;
     background-color: white;
-    font-size: 70%;
     color: #999;
     padding: 0 10px;
     margin-right: 10px;

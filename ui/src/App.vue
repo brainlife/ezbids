@@ -31,11 +31,11 @@ export default defineComponent({
        Upload,
        Description,
        Subject,
-       Participant,
        SeriesPage,
        Events,
        Objects,
        Deface,
+       Participant,
        Finalize,
        Feedback,
 
@@ -49,11 +49,11 @@ export default defineComponent({
                 "upload",
                 "description",
                 "subject",
-                "participant",
                 "seriespage",
                 "event",
                 "object",
                 "deface",
+                "participant",
                 "finalize",
                 "feedback",
             ],
@@ -249,18 +249,37 @@ export default defineComponent({
 </script>
 
 <template>
-<div id="here">
+<div>
     <aside>
         <h1 style="font-size: 25pt"><span style="letter-spacing: -3px; opacity: 0.6;">ez</span>BIDS</h1>
+
         <ul>
             <li :class="{active: page == 'upload'}">Upload DICOM</li>
-            <li :class="{active: page == 'description'}">BIDS Description</li>
-            <li :class="{active: page == 'subject'}">Subjects/Sessions</li>
-            <li :class="{active: page == 'participant'}">Participants Info</li>
-            <li :class="{active: page == 'seriespage'}">Series Mapping</li>
-            <li :class="{active: page == 'event'}">Events</li>
-            <li :class="{active: page == 'object'}">Object Adjustment</li>
-            <li :class="{active: page == 'deface'}">Deface</li>
+            <li :class="{active: page == 'description'}">Dataset Description</li>
+        </ul>
+
+        <div class="section">
+            <h2 class="list-header">Dataset Mappings</h2>
+            <ul>
+                <li :class="{active: page == 'subject'}">Subjects/Sessions</li>
+                <li :class="{active: page == 'seriespage'}">Series Mapping</li>
+                <li :class="{active: page == 'event'}">Events</li>
+            </ul>
+        </div>
+
+        <ul>
+            <li :class="{active: page == 'object'}">Dataset Review</li>
+        </ul>
+
+        <div class="section">
+            <h2 class="list-header">Optional</h2>
+            <ul>
+                <li :class="{active: page == 'deface'}">Deface</li>
+                <li :class="{active: page == 'participant'}">Participants Info</li>
+            </ul>
+        </div>
+
+        <ul>
             <li :class="{active: page == 'finalize'}">Download BIDS</li>
             <li :class="{active: page == 'feedback'}">Feedback</li>
         </ul>
@@ -367,20 +386,34 @@ aside {
 
     background-color: #eee;
     color: #333;
-}
-aside h1 {
-    padding: 10px;
-}
-aside ul {
-    list-style: none;
-    padding-left: 0;
-}
-aside ul li {
-    padding: 10px;
-}
-aside ul li.active {
-    background-color: rgb(103, 194, 58);
-    color: white;
+    h1 {
+        padding: 10px;
+    }
+    h2 {
+        margin-bottom: 0px;
+        padding: 10px;
+        font-size: 110%;
+    }
+    ul {
+        list-style: none;
+        padding-left: 0;
+        margin: 0;
+
+        li {
+            padding: 10px;
+        }
+        li.active {
+            background-color: rgb(103, 194, 58);
+            color: white;
+        }
+    }
+    .section {
+        margin-bottom: 10px;
+        ul {
+            list-style: inside;
+        }
+    }
+
 }
 .menu-footer {
     padding: 10px;
@@ -404,5 +437,10 @@ footer {
     padding: 10px;
     background-color: #0003;
     z-index: 3;
+}
+.list-header {
+    opacity: 0.5;
+    font-weight: bold;
+    background-color: #0001;
 }
 </style>

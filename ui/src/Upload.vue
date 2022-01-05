@@ -438,7 +438,7 @@ export default defineComponent({
         <div v-if="session.status == 'created'">
             <p>
                 <h3>
-                    Uploading&nbsp;<font-awesome-icon :icon="['fas', 'spinner']" spin/>
+                    Uploading&nbsp;<font-awesome-icon :icon="['fas', 'spinner', 'pulse']" spin/>
                 </h3>
                 <small>Please do not close/refresh this page until all files are uploaded.</small>
             </p>
@@ -515,7 +515,7 @@ export default defineComponent({
                 <analysisErrors/>
                 <h3>Object List <small>({{ezbids.objects.length}})</small></h3>
                 <p><small>We have identified the following objects that can be organized into BIDS structure.</small></p>
-                <div v-for="(object, idx) in ezbids.objects" :key="idx" style="padding-bottom: 5px;">
+                <div v-for="(object, idx) in ezbids.objects" :key="idx" style="padding-bottom: 2px;">
                     <p style="margin: 0;">
                         <el-link @click="toggleObject(idx)">
                             <small>
@@ -590,6 +590,7 @@ export default defineComponent({
 }
 .batch-stat {
     font-family: monospace;
+    font-size: 90%;
 }
 
 pre.status {
