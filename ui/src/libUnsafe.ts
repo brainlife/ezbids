@@ -451,6 +451,8 @@ export function find_separator(filePath, fileData) {
         }
     }else if(filePath.indexOf(".xlsx") > -1) {
         return /[ ,]+/;
+    }else{
+        console.log("ignoring", filePath);
     }
 
     throw "unknown file extension";
@@ -597,8 +599,6 @@ export function createEventObjects(ezbids, files) {
         switch(fileExt) {
         // Excel workbook formats (.xlsx, .xlsm, .xls)
         case "xlsx":
-        case "xlsm":
-        case "xls":
             events = parseExcelEvents(file.data)
             break;
         default: // Non-Excel formats

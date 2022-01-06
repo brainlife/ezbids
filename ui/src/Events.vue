@@ -2,7 +2,8 @@
 <div style="padding: 20px">
     <div v-if="!events.loaded">
         <p>If you'd like to include task events/timing data with your BIDS datasets, you can upload them here.</p>
-        <p>Please skip this page if you do not have events data, or if your events data is not set up where each row pertains to an individual trial.</p>
+        <p>Please skip this page if you do not have events data, or if your events data is not set up where each row pertains to an individual trial. An exception is E-Prime txt files, which are allowed.</p>
+        <p>Only the following file extensions will be accepted by ezBIDS: <b>.csv</b>, <b>.tsv</b>, <b>.txt</b>, <b>.out</b>, and <b>.xlsx</b>. Uploaded files with other extensions will be ignored.</p>
         <br>
 
         <!-- <el-button @click="open">Select Directory</el-button> -->
@@ -339,7 +340,7 @@ export default defineComponent({
                 //enumerate all possible column headers (from the 1st example)
                 const example = this.ezbids.objects.find((o:IObject)=>o._type == "func/events");
                 if(!example) return; //no event file uploaded
-                const tsvItem = eventObjects[0].items.find((i: any) => i.name == "csv" || i.name == "out" || i.name == "txt" || i.name == "tsv" || i.name == "xlsx" || i.name == "xlsm" || i.name == "xlsb" || i.name == "xlm")
+                const tsvItem = eventObjects[0].items.find((i: any) => i.name == "csv" || i.name == "out" || i.name == "txt" || i.name == "tsv" || i.name == "xlsx")
                 if(!tsvItem) return; //should never happen
 
                 const firstEvent = tsvItem.events[0];
