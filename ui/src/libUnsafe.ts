@@ -809,25 +809,34 @@ export function createEventObjects(ezbids, files) {
         //set subject_idx and session_idx to 0 if they're still undefined at this point, and adjust task,run entity labels
         if(object.subject_idx === undefined) {
             object.subject_idx = 0
-            object.entities.subject = "XX" + randSubID.toString() //set the subjectID to a new value, which user would them correct.
-            randSubID++
+            if(!eventsMappingInfo.subject.eventsValue) {
+                object.entities.subject = "XX" + randSubID.toString() //set the subjectID to a new value, which user would then correct.
+                randSubID++
+            }else{
+                object.entities.subject = eventsMappingInfo.subject.eventsValue
+
+            }
         }
 
         if(object.session_idx === undefined) {
             object.session_idx = 0
-            if(eventsMappingInfo.session.ezBIDSvalues.length > 0 && eventsMappingInfo.session.ezBIDSvalues.filter(e=>e != "").length > 0) {
-                object.entities.session = "XX" + randSesID.toString() //set the sessionID to a new value, which user would them correct.
+            if(eventsMappingInfo.session.eventsValue) {
+                object.entities.session = eventsMappingInfo.session.eventsValue
+            }else{ // if(eventsMappingInfo.session.ezBIDSvalues.length > 0 && eventsMappingInfo.session.ezBIDSvalues.filter(e=>e != "").length > 0) {
+                object.entities.session = "XX" + randSesID.toString() //set the sessionID to a new value, which user would then correct.
+                randSesID++
             }
         }
 
         if(object.entities.task === undefined) {
-            object.entities.task = randTaskName //set the task name to a new value, which user would them correct.
+            object.entities.task = randTaskName //set the task name to a new value, which user would then correct.
         }
 
         if(object.entities.run === undefined) {
-            object.entities.run = randRunID //set the runID to a new value, which user would them correct.
+            object.entities.run = randRunID //set the runID to a new value, which user would then correct.
             randRunID++
         }
+
 
         //update section_id, series_idx, and ModifiedSeriesNumber
         try {
