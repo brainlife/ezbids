@@ -300,19 +300,29 @@ export default defineComponent({
         async open(event: Event) {
             const element = event.currentTarget as HTMLInputElement;
             const files = [] as IPathAndData[];
+            const filesIgnore = [];
             if(!element.files) return;
 
             // @ts-ignore
             for await (let file of element.files) {
-                files.push({
-                    path: file.webkitRelativePath,
-                    data: await file.text(),
-                });
+                const fileExt = file.webkitRelativePath.split(".").pop();
+                if((fileExt != "tsv") && (fileExt != "csv") && (fileExt != "txt") && (fileExt != "out") && (fileExt != "xlsx")) {
+                    filesIgnore.push(file.webkitRelativePath)
+                }else{
+                    files.push({
+                        path: file.webkitRelativePath,
+                        data: await file.text(),
+                    });
+                }
             }
 
             this.reset();
 
             try {
+
+                if(filesIgnore.length) {
+                    alert("The following files contain an unsupported extension and will be ignored:\n\n"+filesIgnore.join("\n"));
+                }
 
                 //create new event objects
                 const eventObjects = createEventObjects(this.ezbids, files);

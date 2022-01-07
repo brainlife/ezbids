@@ -6,7 +6,7 @@ import { isPlainObject } from "vue/node_modules/@vue/shared";
 export function deepEqual(obj1, obj2) {
     /*
     Determines if two arrays are equal or not. Better then JSON.stringify
-    because this accounts for different ordering, only cares about whether
+    because this accounts for different ordering; only cares about whether
     keys and values match.
     */
 
@@ -76,7 +76,7 @@ export function funcQA($root) {
     func/sbref, and func/bold (part-phase) should all excluded as well,
     if they exist.
 
-    2). Warn users to exclude func/sbref if its PhaseEncodingDirection (PED) is different
+    2). Warn users about func/sbref if its PhaseEncodingDirection (PED) is different
     from the corresponding func/bold PED.
     */
     $root.objects.forEach(o=> {
@@ -109,7 +109,7 @@ export function funcQA($root) {
         }
 
         // #2
-        if(o._type == "func/bold" && (!o._entities.mag || o._entities.mag == "mag")) {
+        if(o._type == "func/bold" && o.exclude == false && (!o._entities.mag || o._entities.mag == "mag")) {
             let boldEntities = o._entities
             let boldPED = o.items[0].sidecar.PhaseEncodingDirection
             let badSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, boldEntities) &&
@@ -119,6 +119,14 @@ export function funcQA($root) {
                 $root.objects[bad].analysisResults.warnings = [`Functional sbref has a different PhaseEncodingDirection than its corresponding functional bold (#${o.series_idx}). This is likely a data error, therefore this sbref should be excluded from BIDS conversion.`]
             })
         }
+
+        // // #3
+        // if(o._type == "func/bold" && o.exclude == false) {
+        //     let boldOrientations = $root.objects.map(o=>o.analysisResults.orientation)
+        //     console.log(boldOrientations)
+
+        // }
+
     })
 }
 
