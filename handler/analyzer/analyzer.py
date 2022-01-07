@@ -1172,7 +1172,7 @@ def entity_labels_identification(dataset_list_unique_series):
     entity_ordering = yaml.load(open(os.path.join(analyzer_dir, entity_ordering_file)))
 
     tb1afi_tr = 1
-    tb1afi_tr = 1
+    tb1srge_td = 1
     for index, unique_dic in enumerate(dataset_list_unique_series):
 
         series_entities = {}
