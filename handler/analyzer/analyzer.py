@@ -1172,6 +1172,7 @@ def entity_labels_identification(dataset_list_unique_series):
     entity_ordering = yaml.load(open(os.path.join(analyzer_dir, entity_ordering_file)))
 
     tb1afi_tr = 1
+    tb1afi_tr = 1
     for index, unique_dic in enumerate(dataset_list_unique_series):
 
         series_entities = {}
@@ -1211,11 +1212,11 @@ def entity_labels_identification(dataset_list_unique_series):
                 unique_dic["type"] = "exclude"
                 unique_dic["message"] = " ".join("Acquisition appears to be an \
                     anatomical multi-echo, but not the combined RMS file. Since this is \
-                    not the combined RMS file, this acquisition will not be set to \
+                    not the combined RMS file, this acquisition will be set to \
                     exclude. Please modify if incorrect".split())
 
         # flip
-        if any(x in unique_dic["type"] for x in ["anat/VFA", "anat/MPM", "anat/MTS", "fmap/TB1EPI"]) and "FlipAngle" in unique_dic["sidecar"]:
+        if any(x in unique_dic["type"] for x in ["anat/VFA", "anat/MPM", "anat/MTS", "fmap/TB1EPI", "fmap/TB1DAM"]) and "FlipAngle" in unique_dic["sidecar"]:
             regex = re.compile('flip([1-9]*)')
             try:
                 series_entities["flip"] = regex.findall(re.sub("[^A-Za-z0-9]+", "", sd).lower())[0]
@@ -1232,6 +1233,10 @@ def entity_labels_identification(dataset_list_unique_series):
         if any(x in unique_dic["type"] for x in ["fmap/TB1AFI"]):
             series_entities["acquisition"] = "tr" + str(tb1afi_tr)
             tb1afi_tr += 1
+
+        if any(x in unique_dic["type"] for x in ["fmap/TB1SRGE"]) and "DelayTime" in unique_dic["sidecar"]:
+            series_entities["acquisition"] = "td" + str(tb1srge_td)
+            tb1srge_td += 1
 
         if any(x in unique_dic["type"] for x in ["fmap/RB1COR"]) and "ReceiveCoilName" in unique_dic["sidecar"]:
             if "Head" in unique_dic["sidecar"]["ReceiveCoilName"]:

@@ -194,21 +194,21 @@ export function fmapQA($root) {
                 */
 
                 let fmapM0scan = section.filter(o=>o._type == "fmap/m0scan") //pair
-                let fmapTB1DAM = section.filter(o=>o._type == "fmap/TB1DAM") //??
+                let fmapTB1DAM = section.filter(o=>o._type == "fmap/TB1DAM") //pair
                 let fmapTB1EPI = section.filter(o=>o._type == "fmap/TB1EPI") //pair
                 let fmapTB1AFI = section.filter(o=>o._type == "fmap/TB1AFI") //pair
                 let fmapTB1TFL = section.filter(o=>o._type == "fmap/TB1TFL") //pair
                 let fmapTB1RFM = section.filter(o=>o._type == "fmap/TB1RFM") //pair
                 let fmapRB1COR = section.filter(o=>o._type == "fmap/RB1COR") //pair
-                let fmapTB1SRGE = section.filter(o=>o._type == "fmap/TB1SRGE") //??
-                let fmapTB1map = section.filter(o=>o._type == "fmap/TB1map") //single?
-                let fmapRB1map = section.filter(o=>o._type == "fmap/RB1map") //single?
+                let fmapTB1SRGE = section.filter(o=>o._type == "fmap/TB1SRGE") //pair
+                let fmapTB1map = section.filter(o=>o._type == "fmap/TB1map") //single
+                let fmapRB1map = section.filter(o=>o._type == "fmap/RB1map") //single
 
 
                 /* Check for duplicate fmaps (or not enough fmaps). If so, generate validation
-                warning for the duplicate(s). ezBIDS assumes that the duplicates are the first fmap [sets],
-                and then the last fmap(s) in the section are what user want. If not, they can ignore
-                the warning(s) or make modifications as they see fit.
+                warning for the duplicate(s) or missing field maps. ezBIDS assumes that the duplicates
+                are the first fmap [sets], and then the last fmap(s) in the section are what user want.
+                If not, they can ignore the warning(s) or make modifications as they see fit.
                 */
 
                 if(fmapMagPhasediffObjs.length) {
@@ -268,7 +268,7 @@ export function fmapQA($root) {
                 }
 
                 // several of the quantitative MRI field maps come in pairs, so validate them the same way
-                for(const fmap of [fmapM0scan, fmapTB1EPI, fmapTB1AFI, fmapTB1TFL, fmapTB1RFM, fmapRB1COR]) {
+                for(const fmap of [fmapM0scan, fmapTB1EPI, fmapTB1AFI, fmapTB1TFL, fmapTB1RFM, fmapRB1COR, fmapTB1SRGE, fmapTB1DAM]) {
                     if(fmap.length) {
                         if(fmap.length < 2) {
                             fmap.forEach(o=>{
