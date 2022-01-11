@@ -16,6 +16,7 @@ const upload = multer(config.multer);
 
 const router = express.Router();
 
+/*
 //TODO - what is this for?
 var storage = multer.diskStorage({
     destination: function (req, file, cb) {
@@ -26,6 +27,21 @@ var storage = multer.diskStorage({
       cb(null, file.fieldname + '-' + Date.now()+'.'+fileExtension)
     }
 })
+*/
+
+router.get('/health', (req, res, next) => {
+    let status = "ok";
+    let message = "";
+
+    //check to see if we can access the workdir
+    try {
+        fs.writeFileSync(config.workdir+'/health.txt', "test")
+    } catch (err) {
+        status = "failed";
+        message = err;
+    }
+    res.json({status, message});
+});
 
 router.post('/session', (req, res, next)=>{
     req.body.status = "created";
