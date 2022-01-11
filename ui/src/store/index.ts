@@ -209,6 +209,19 @@ export interface ISession {
     finalize_finish_date?: string;
 }
 
+let apihost = "/api/ezbids";
+let debug = false;
+switch(process.env.NODE_ENV) {
+case "development":
+    apihost = "https://dev1.soichi.us/api/easybids";
+    debug = true;
+    break;
+case "development-dan":
+    apihost = "https://gpu1-pestillilab.psych.indiana.edu/api/easybids";
+    debug = true;
+    break; 
+}
+
 const state = {
     //counter: 0,
     bidsSchema: {
@@ -217,8 +230,8 @@ const state = {
     },
 
     config: {
-        apihost: (process.env.NODE_ENV == "development") ? "https://dev1.soichi.us/api/easybids" : "/api/ezbids",
-        debug: (process.env.NODE_ENV == "development")?true:false,
+        apihost,
+        debug,
     },
 
     session: null as ISession|null,
