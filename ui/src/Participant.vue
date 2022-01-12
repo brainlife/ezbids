@@ -35,7 +35,7 @@
         </p>
 
     </el-form>
-    
+
     <br clear="both">
 
     <h5>phenotype.tsv</h5>
@@ -95,7 +95,7 @@ export default defineComponent({
                 LongName: "",
                 Description: "",
                 Units: "",
-                Levels: {},   
+                Levels: {},
             }
             this.newcolumn = "";
         },

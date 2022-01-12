@@ -108,7 +108,7 @@ async.forEachOf(info.objects, (o, idx, next_o) => {
                 //console.log("link doesn't exist yet");
             }
             //I need to use hardlink so that when archiver tries to create .zip in download API
-            //the files will be found. As far as I know, archiver module can't de-reference 
+            //the files will be found. As far as I know, archiver module can't de-reference
             //symlinks
             fs.linkSync(root + "/" + item.path, fullpath);
         }
@@ -168,60 +168,13 @@ async.forEachOf(info.objects, (o, idx, next_o) => {
         if (suffix == "events") {
             //we handle events a bit differently.. we need to generate events.tsv from items content
             const events = o.items.find(o => !!o.eventsBIDS);
-            /*
-            console.log("handling events");
-
-            console.log("tsv");
-            console.dir(tsv);
-            console.log("sidecar");
-            console.dir(sidecar);
-            console.log("info.events");
-            console.dir(info.events);
-
-            const columns = info.events.columns;
-
-            //compose headers
-            const headers = [];
-            if(columns.onset) headers.push("onset");
-            if(columns.duration) headers.push("duration");
-            if(columns.sample) headers.push("sample");
-            if(columns.trialType) headers.push("trial_type");
-            if(columns.responseTime) headers.push("response_time");
-            if(columns.value) headers.push("value"); //??
-            if(columns.HED) headers.push("HED");
-            tsv.content = headers.join("\t")+"\n";
-
-            function fixUnit(v, unit) {
-                switch(unit) {
-                case "ms": return v/1000;
-                case "us": return v/1000000;
-                default:
-                    return v;
-                }
-            }
-
-            //emit all values
-            tsv.events.forEach(event=>{
-                const values = [];
-                if(columns.onset) values.push(fixUnit(event[columns.onset], columns.onsetUnit));
-                if(columns.duration) values.push(fixUnit(event[columns.duration], columns.durationUnit));
-                if(columns.sample) values.push(event[columns.sample]);
-                if(columns.trialType) values.push(event[columns.trialType]);
-                if(columns.responseTime) values.push(fixUnit(event[columns.responseTime], columns.responseTimeUnit));
-                if(columns.value) values.push(event[columns.value]);
-                if(columns.HED) values.push(event[columns.HED]);
-                tsv.content += values.join("\t")+"\n";
-                tsv.content += values.map(v=>(v|'empty')).join("\t")+"\n";
-            });
-            console.log(tsv.content);
-            */
             //convert eventsBIDS to tsv.content
-            const headers = ["onset", "duration", "sample", "trial_type", "response_time", "value", "HED"];
+            const headers = Object.keys(events.eventsBIDS[0]); //take first index value to see which columns user selected
             events.content = headers.join("\t") + "\n";
             events.eventsBIDS.forEach(rec => {
                 const row = [];
                 headers.forEach(key => {
-                    row.push(rec[key] || "null");
+                    row.push(rec[key]);
                 });
                 events.content += row.join("\t") + "\n";
             });
