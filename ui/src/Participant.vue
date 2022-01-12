@@ -52,10 +52,10 @@
         </tr>
         </thead>
         <tbody>
-            <tr v-for="subject in ezbids.subjects" :key="subject.subject">
-                <th>{{subject.subject}}</th>
+            <tr v-for="o_sub in ezbids._organized" :key="o_sub.sub">
+                <th>{{o_sub.sub}}</th>
                 <td v-for="(column, key) in ezbids.participantsColumn" :key="key">
-                    <el-input v-model="subject.phenotype[key]" size="mini"/>
+                    <el-input v-model="findSubjectFromString(o_sub.sub).phenotype[key]" size="mini"/>
                 </td>
             </tr>
         </tbody>
@@ -66,7 +66,7 @@
 
 <script lang="ts">
 
-import { mapState } from 'vuex'
+import { mapState, mapGetters, } from 'vuex'
 import { defineComponent } from 'vue'
 
 //element-plus icons are bad .. replace it with fontawesome
@@ -86,6 +86,8 @@ export default defineComponent({
 
     computed: {
         ...mapState(['ezbids', 'config']),
+        ...mapGetters(['findSubjectFromString']),
+
     },
 
     methods: {

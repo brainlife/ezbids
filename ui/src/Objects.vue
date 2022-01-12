@@ -229,7 +229,7 @@ export default defineComponent({
 
     computed: {
         ...mapState(['ezbids', 'config', 'bidsSchema', 'events']),
-        ...mapGetters(['getBIDSEntities', 'getURL', 'findSubject', 'findSession']),
+        ...mapGetters(['getBIDSEntities', 'getURL', 'findSubject', 'findSession', 'findSubjectFromString']),
 
         totalIssues() {
             let count = 0;
@@ -244,10 +244,6 @@ export default defineComponent({
     methods: {
 
         prettyBytes,
-
-        findSubjectFromString(sub: string) {
-            return this.ezbids.subjects.find((s:Subject)=>s.subject == sub);
-        },
 
         //subject needs to be an object
         findSessionFromString(sub: string, ses: string) {

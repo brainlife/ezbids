@@ -4,6 +4,8 @@ const fs = require('fs');
 const mkdirp = require('mkdirp');
 const async = require('async');
 
+import { IObject, Subject, Session, OrganizedSession } from '../ui/src/store'
+
 const root = process.argv[2];
 if(!root) throw "please specify root directory";
 
@@ -42,14 +44,32 @@ for(let key of keys) {
     tsvheader.push(key);
 }
 tsv.push(tsvheader);
-info.subjects.forEach(subject=>{
+
+let participantInfoList = []
+info.subjects.forEach(sub=>{
+    participantInfoList.push({"subject": sub.subject, "phenotype": sub.phenotype})
+})
+participantInfoList = [...new Set(participantInfoList.map(a => JSON.stringify(a)))].map(a => JSON.parse(a))
+
+participantInfoList.forEach(sub=>{
     let tsvrec = [];
-    tsvrec.push("sub-"+subject.subject);
+    tsvrec.push("sub-"+sub.subject);
+    for(let key in sub.phenotype) {
+        tsvrec.push(sub.phenotype[key])
+    }
+    tsv.push(tsvrec);
+})
+
+/*
+info._organized.forEach(subj=>{
+    let tsvrec = [];
+    tsvrec.push("sub-"+subj.sub);
     for(let key in info.participantsColumn) {
-        tsvrec.push(subject.phenotype[key]);
+        tsvrec.push(info.subjects.find(s=>s.subject == subj.sub).phenotype[key]);
     }
     tsv.push(tsvrec);
 });
+*/
 let tsvf = fs.openSync(root+"/bids/"+datasetName+"/participants.tsv", "w");
 for(let rec of tsv) {
     fs.writeSync(tsvf, rec.join("\t")+"\n");
@@ -184,7 +204,6 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
         if(suffix == "events") {
             //we handle events a bit differently.. we need to generate events.tsv from items content
             const events = o.items.find(o=>!!o.eventsBIDS);
-            //convert eventsBIDS to tsv.content
             const headers = Object.keys(events.eventsBIDS[0]) //take first index value to see which columns user selected
             events.content = headers.join("\t")+"\n";
             events.eventsBIDS.forEach(rec=>{

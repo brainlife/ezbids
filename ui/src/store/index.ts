@@ -624,6 +624,10 @@ const store = createStore({
             */
         },
 
+        findSubjectFromString: (state)=>(sub: string) =>{
+            return state.ezbids.subjects.find((s:Subject)=>s.subject == sub);
+        },
+
         getURL: (state)=>(path: string|undefined)=>{
             if(!path) return undefined;
             if(!state.session) return undefined;
