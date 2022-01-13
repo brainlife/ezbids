@@ -52,16 +52,6 @@ participantInfoList.forEach(sub => {
     }
     tsv.push(tsvrec);
 });
-/*
-info._organized.forEach(subj=>{
-    let tsvrec = [];
-    tsvrec.push("sub-"+subj.sub);
-    for(let key in info.participantsColumn) {
-        tsvrec.push(info.subjects.find(s=>s.subject == subj.sub).phenotype[key]);
-    }
-    tsv.push(tsvrec);
-});
-*/
 let tsvf = fs.openSync(root + "/bids/" + datasetName + "/participants.tsv", "w");
 for (let rec of tsv) {
     fs.writeSync(tsvf, rec.join("\t") + "\n");

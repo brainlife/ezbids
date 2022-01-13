@@ -113,13 +113,6 @@ export interface IObject {
     _type: string;
     _forType: string;
 
-    /*
-    //primary keys for subject (TODO now that we are using subject_idx, do we still need this?)
-    PatientName: string;
-    PatientID: string;
-    PatientBirthDate: string;
-    */
-
     //primary key for session - but we want to keep these for sotring purpose
     AcquisitionDate: string;
     //AcquisitionDateTime: string; //ISO - only used to sort objects
@@ -135,8 +128,6 @@ export interface IObject {
         filesize?: number;
         orientation?: string;
     };
-
-    //paths: [string]; //??
 
     IntendedFor?: number[]; //for fmap/ to store which object id the object is intended for
 
@@ -181,7 +172,6 @@ export interface OrganizedSession {
 
 export interface OrganizedSubject {
     sub: string,
-    //objects: IObject[], //all objects under this subject
     sess: OrganizedSession[],
 }
 

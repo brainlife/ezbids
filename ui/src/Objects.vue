@@ -197,7 +197,7 @@ import { mapState, mapGetters, } from 'vuex'
 import { defineComponent } from 'vue'
 import datatype from './components/datatype.vue'
 
-import { IObject, Session, OrganizedSession } from './store'
+import { IObject, Session, OrganizedSession, OrganizedSubject } from './store'
 import { prettyBytes } from './filters'
 import { validateEntities } from './libUnsafe'
 
@@ -255,10 +255,10 @@ export default defineComponent({
             if(this.findSubjectFromString(sub) !== undefined) {
                 const subject = this.findSubjectFromString(sub);
                 subject.exclude = b;
-            }else{
-                const subject = this.ezbids._organized.filter(e=>e.sub == sub)
-                subject.forEach(sub=>{
-                    sub.sess.forEach(ses=>{
+            } else {
+                const o_subs = this.ezbids._organized.filter((e:OrganizedSubject)=>e.sub == sub)
+                o_subs.forEach((o_sub:OrganizedSubject)=>{
+                    o_sub.sess.forEach(ses=>{
                         ses.objects[0].exclude = b; //objects is always length of 1, so index first (i.e. only)
                     })
                 })
