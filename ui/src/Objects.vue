@@ -197,9 +197,9 @@ import { mapState, mapGetters, } from 'vuex'
 import { defineComponent } from 'vue'
 import datatype from './components/datatype.vue'
 
-import { IObject, Subject, Session, OrganizedSession } from './store'
+import { IObject, Session, OrganizedSession } from './store'
 import { prettyBytes } from './filters'
-import { deepEqual, isPrimitive, validateEntities } from './libUnsafe'
+import { validateEntities } from './libUnsafe'
 
 // @ts-ignore
 import { Splitpanes, Pane } from 'splitpanes'
@@ -414,8 +414,11 @@ export default defineComponent({
             //for func/events object, update series_idx and ModifiedSeriesNumber to match corresponding func/bold object.
             //Also update validationWarnings if corresponding func/bold has been excluded
             if(o._type == "func/events") {
+                /* before
                 let funcBoldObjects = this.$store.state.ezbids.objects.filter(o=>o._type == "func/bold" && (o._entities.part == "" || o._entities.part == "mag"))
                 funcBoldObjects.forEach(func=>{
+
+                    //TODO - rewrite this. 
                     let funcEntities = Object.fromEntries(Object.entries(func._entities).filter(([_, v]) => v != "")); //remove empty entity labels
                     let objEntities = Object.fromEntries(Object.entries(o._entities).filter(([_, v]) => v != "")); //remove empty entity labels
                     if(deepEqual(funcEntities, objEntities)) {
@@ -429,6 +432,27 @@ export default defineComponent({
                         }
                     }
                 })
+                */
+
+                //find bold object with the same set of entities
+                const matchingBold = this.$store.state.ezbids.objects
+                    .filter(o=>o._type == "func/bold")
+                    .filter(o=>(o._entities.part == "" || o._entities.part == "mag")) //TODO - explain why?
+                    .find(func=>{
+                        for(let k in o._entities) {
+                            if(o._entities[k] != func._entities[k]) return false;
+                        }
+                        return true
+                    });
+
+                if(matchingBold) {
+                    o.ModifiedSeriesNumber = matchingBold.ModifiedSeriesNumber;
+                    o.analysisResults.section_id = matchingBold.analysisResults.section_id;
+                    if(matchingBold._exclude) {
+                        o.validationWarnings.push(`The corresponding func/bold #${matchingBold.series_idx} is currently set to exclude from BIDS conversion.
+                            We recommend this func/events also be excluded unless there is a reason for keeping it.`)
+                    }
+                }
             }
         },
 

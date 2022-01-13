@@ -2,13 +2,13 @@
 
 import { isPlainObject } from "vue/node_modules/@vue/shared";
 
+/*
 //deepEqual and isPrimitive functions come from https://stackoverflow.com/a/45683145
 export function deepEqual(obj1, obj2) {
-    /*
-    Determines if two arrays are equal or not. Better then JSON.stringify
-    because this accounts for different ordering; only cares about whether
-    keys and values match.
-    */
+    
+    //Determines if two arrays are equal or not. Better then JSON.stringify
+    //because this accounts for different ordering; only cares about whether
+    //keys and values match.
 
     if(obj1 === obj2) // it's just the same object. No need to compare.
         return true;
@@ -32,6 +32,7 @@ export function deepEqual(obj1, obj2) {
 export function isPrimitive(obj) {
     return (obj !== Object(obj));
 }
+*/
 
 export function setSectionIDs($root) {
     /*

@@ -334,8 +334,6 @@ import funcDatatype from '../assets/schema/datatypes/func.json'
 loadDatatype("func", funcDatatype, "Functional");
 
 import fmapDatatype from '../assets/schema/datatypes/fmap.json'
-import { DEFAULT_ECDH_CURVE } from 'tls';
-import { TRAP_FOCUS_HANDLER } from 'element-plus/lib/directives/trap-focus';
 loadDatatype("fmap", fmapDatatype, "Field Map");
 
 const store = createStore({
@@ -624,7 +622,7 @@ const store = createStore({
             */
         },
 
-        findSubjectFromString: (state)=>(sub: string) =>{
+        findSubjectFromString: (state)=>(sub: string) : (Subject|undefined) =>{
             return state.ezbids.subjects.find((s:Subject)=>s.subject == sub);
         },
 
