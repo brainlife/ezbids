@@ -13,7 +13,7 @@ library.add(faSpinner, faAngleLeft, faAngleRight, faEye );
 
 import 'element-plus/dist/index.css'
 
-import store from './store'
+import store from './store/index.ts'
 
 //move to ./types?
 //tell typescript about some global properties we are adding
