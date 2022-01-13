@@ -252,8 +252,17 @@ export default defineComponent({
         },
 
         excludeSubject(sub: string, b: boolean) {
-            const subject = this.findSubjectFromString(sub);
-            subject.exclude = b;
+            if(this.findSubjectFromString(sub) !== undefined) {
+                const subject = this.findSubjectFromString(sub);
+                subject.exclude = b;
+            }else{
+                const subject = this.ezbids._organized.filter(e=>e.sub == sub)
+                subject.forEach(sub=>{
+                    sub.sess.forEach(ses=>{
+                        ses.objects[0].exclude = b; //objects is always length of 1, so index first (i.e. only)
+                    })
+                })
+            }
 
             this.$emit("mapObjects");
             this.validateAll();
@@ -266,9 +275,18 @@ export default defineComponent({
         },
 
         excludeSession(sub: string, ses: string, b: boolean) {
-            //const subject = this.findSubjectFromString(sub);
-            const session = this.findSessionFromString(sub, ses);
-            if(session) session.exclude = b;
+            if(this.findSubjectFromString(sub) !== undefined && this.findSessionFromString(sub, ses) !== undefined) {
+                const session = this.findSessionFromString(sub, ses);
+                if(session) session.exclude = b;
+            }else{
+                const subject = this.ezbids._organized.filter(e=>e.sub == sub)
+                subject.forEach(sub=>{
+                    let session = sub.sess.filter(s=>s.sess == ses)
+                    session.forEach(ses=>{
+                        ses.objects[0].exclude = b; //objects is always length of 1, so index first (i.e. only)
+                    })
+                })
+            }
 
             this.$emit("mapObjects");
             this.validateAll();
