@@ -104,7 +104,7 @@ export default defineComponent({
         backLabel(): string|null {
             switch(this.page) {
             case "upload":
-               if(this.session) return "Re-Upload";
+               if(this.session) return "Re-Upload"; //TODO - looks like this is broken
                return null;
             default:
                     return "Back";

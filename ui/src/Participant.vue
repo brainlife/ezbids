@@ -55,9 +55,7 @@
             <tr v-for="o_sub in ezbids._organized" :key="o_sub.sub">
                 <th>{{o_sub.sub}}</th>
                 <td v-for="(column, key) in ezbids.participantsColumn" :key="key">
-                    <div v-if="findSubjectFromString(o_sub.sub) !== undefined">
-                        <el-input v-model="findSubjectFromString(o_sub.sub).phenotype[key]" size="mini"/>
-                    </div>
+                    <el-input v-model.trim="ezbids.participantsInfo[o_sub.sub][key]" size="mini"/>
                 </td>
             </tr>
         </tbody>
@@ -68,8 +66,10 @@
 
 <script lang="ts">
 
-import { mapState, mapGetters, } from 'vuex'
+import { mapState } from 'vuex'
 import { defineComponent } from 'vue'
+
+import { OrganizedSubject } from './store'
 
 //element-plus icons are bad .. replace it with fontawesome
 // @ts-ignore
@@ -88,8 +88,15 @@ export default defineComponent({
 
     computed: {
         ...mapState(['ezbids', 'config']),
-        ...mapGetters(['findSubjectFromString']),
+        //...mapGetters(['findSubjectFromString']),
 
+    },
+
+    created() {
+        //initialize
+        this.ezbids._organized.forEach((o:OrganizedSubject)=>{
+            if(!this.ezbids.participantsInfo[o.sub]) this.ezbids.participantsInfo[o.sub] = {};
+        });
     },
 
     methods: {
@@ -114,9 +121,7 @@ export default defineComponent({
         },
 
         isValid(cb: (v?: string)=>void) {
-            console.log("validaging participant");
             this.validate();
-            //TODO
             cb();
         }
     },

@@ -27,8 +27,6 @@ export interface Subject {
 
     PatientInfo: PatientInfo[];
 
-    phenotype: any;
-
     subject: string; //subject name mapped to this subject
 
     validationErrors: string[];
@@ -171,8 +169,8 @@ export interface OrganizedSession {
 }
 
 export interface OrganizedSubject {
-    sub: string,
-    sess: OrganizedSession[],
+    sub: string;
+    sess: OrganizedSession[];
 }
 
 export interface ISession {
@@ -244,6 +242,7 @@ const state = {
 
         readme: "edit me",
         participantsColumn: {},
+        participantsInfo: {} as {[key:string]: any},
 
         //here lives various things
         subjects: [] as Subject[],
@@ -360,6 +359,7 @@ const store = createStore({
                 },
                 readme: "edit me",
                 participantsColumn: {},
+                participantsInfo: {},
 
                 //here lives various things
                 subjects: [],
@@ -464,17 +464,18 @@ const store = createStore({
             state.ezbids.objects.forEach((o, idx)=>{
                 o.idx = idx; //reindex
 
-                let sub = /*"sub-"+*/o._entities.subject;
-                let sess = o._entities.session;//?("ses-"+o._entities.session):"";
+                let sub = o._entities.subject;
+                let sess = o._entities.session;
 
                 let subGroup = state.ezbids._organized.find(s=>s.sub == sub);
                 if(!subGroup) {
                     subGroup = {
                         sub,
-                        sess: []
+                        sess: [],
                     }
                     state.ezbids._organized.push(subGroup);
                 }
+                //if(!state.ezbids.participantsInfo[sub]) state.ezbids.participantsInfo[sub] = {};
 
                 let sesGroup = subGroup.sess.find(s=>s.sess == sess);
                 if(!sesGroup) {

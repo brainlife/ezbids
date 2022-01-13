@@ -1,9 +1,9 @@
 #!/usr/bin/env node
 "use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
 const fs = require('fs');
 const mkdirp = require('mkdirp');
 const async = require('async');
+//import { IObject, Subject, Session, OrganizedSession } from '../ui/src/store'
 const root = process.argv[2];
 if (!root)
     throw "please specify root directory";
@@ -39,19 +39,21 @@ for (let key of keys) {
     tsvheader.push(key);
 }
 tsv.push(tsvheader);
-let participantInfoList = [];
-info.subjects.forEach(sub => {
-    participantInfoList.push({ "subject": sub.subject, "phenotype": sub.phenotype });
-});
-participantInfoList = [...new Set(participantInfoList.map(a => JSON.stringify(a)))].map(a => JSON.parse(a));
-participantInfoList.forEach(sub => {
+/*
+let participantInfoList = []
+info.subjects.forEach(sub=>{
+    participantInfoList.push({"subject": sub.subject, "phenotype": sub.phenotype})
+})
+participantInfoList = [...new Set(participantInfoList.map(a => JSON.stringify(a)))].map(a => JSON.parse(a))
+*/
+for (const sub in info.participantInfo) {
     let tsvrec = [];
-    tsvrec.push("sub-" + sub.subject);
-    for (let key in sub.phenotype) {
-        tsvrec.push(sub.phenotype[key]);
+    tsvrec.push("sub-" + sub);
+    for (let key in info.participantsColumn) {
+        tsvrec.push(info.participantInfo[sub][key] || 'n/a');
     }
     tsv.push(tsvrec);
-});
+}
 let tsvf = fs.openSync(root + "/bids/" + datasetName + "/participants.tsv", "w");
 for (let rec of tsv) {
     fs.writeSync(tsvf, rec.join("\t") + "\n");

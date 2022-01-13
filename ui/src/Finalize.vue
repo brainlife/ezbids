@@ -35,7 +35,7 @@
             </p>
 
             <p style="background-color: #0001; padding: 20px; padding-top: 10px;">
-                If you have re-named the original DICOM patient names for your BIDS subject/session names,  
+                If you have re-named the original DICOM patient names for your BIDS subject/session names,
                 you can download the mapping file.
                 <el-button type="text" @click="downloadSubjectMapping">Download Subject Mapping (.json)</el-button>
                 <br>
@@ -86,29 +86,29 @@
 
 <script lang="ts">
 
-import { mapState, mapGetters, } from 'vuex'
-import { defineComponent } from 'vue'                                                                                                                                                  
-import showfile from './components/showfile.vue' 
+import { mapState } from 'vuex'
+import { defineComponent } from 'vue'
+import showfile from './components/showfile.vue'
+
+import { OrganizedSubject } from './store'
 
 import { ElNotification } from 'element-plus'
 
 export default defineComponent({
 
-    components: { 
-        showfile 
+    components: {
+        showfile
     },
 
     data() {
         return {
             submitting: false, //prevent double submit
             activeLogs: [],
-            //defacingStats: null,
         }
     },
 
     computed: {
         ...mapState(['ezbids', 'config', 'bidsSchema', 'session', 'events']),
-        //...mapGetters(['getBIDSEntities']),
     },
 
     mounted() {
@@ -131,33 +131,36 @@ export default defineComponent({
 
         dofinalize(cb: (err: string|null)=>void) {
             //TODO - why can't server just look up the bids schema by itself!?
-            //mapping between things like like "subject" to "sub"                                                       
-            const entityMappings = {} as {[key: string]: string};                                                                                  
-            for(const key in this.bidsSchema.entities) {                                                                      
-                entityMappings[key] = this.bidsSchema.entities[key].entity;                                                   
-            }                                                                                                           
-                                                                                                                        
-            fetch(this.config.apihost+'/session/'+this.session._id+'/finalize', {                                              
-                method: "POST",                                                                                         
-                headers: {'Content-Type': 'application/json; charset=UTF-8'},                                           
+            //mapping between things like like "subject" to "sub"
+            const entityMappings = {} as {[key: string]: string};
+            for(const key in this.bidsSchema.entities) {
+                entityMappings[key] = this.bidsSchema.entities[key].entity;
+            }
+
+
+            fetch(this.config.apihost+'/session/'+this.session._id+'/finalize', {
+                method: "POST",
+                headers: { 'Content-Type': 'application/json; charset=UTF-8' },
                 body: JSON.stringify({
                     //basically we just need everything except _organized
+
+                    //we store these so we can reload the session later
+                    subjects: this.ezbids.subjects,
+                    series: this.ezbids.series,
+                    defacingMethod: this.ezbids.defacingMethod,
+
+                    //things that convert.ts uses
+                    objects: this.ezbids.objects, //most important thing that convert.ts needs
+                    events: this.events,
+                    entityMappings, //helps with convert
                     datasetDescription: this.ezbids.datasetDescription,
                     readme: this.ezbids.readme,
                     participantsColumn: this.ezbids.participantsColumn,
-                    subjects: this.ezbids.subjects,
-                    series: this.ezbids.series,
-                    objects: this.ezbids.objects,
-                    defacingMethod: this.ezbids.defacingMethod,
-
-                    events: this.events,
-
-                    //information to help with the finalize step 
-                    entityMappings,
+                    participantInfo: this.ezbids.participantsInfo,
                 }),
-            }).then(res=>res.text()).then(status=>{                                                                     
-                   if(cb) cb((status=="ok")?null:status);                                                                                                       
-            });  
+            }).then(res=>res.text()).then(status=>{
+                   if(cb) cb((status=="ok")?null:status);
+            });
         },
 
         rerun() {
