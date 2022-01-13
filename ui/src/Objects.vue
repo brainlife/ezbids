@@ -280,16 +280,6 @@ export default defineComponent({
             if(this.findSubjectFromString(sub) !== undefined && this.findSessionFromString(sub, ses) !== undefined) {
                 const session = this.findSessionFromString(sub, ses);
                 if(session) session.exclude = b;
-<<<<<<< HEAD
-            }else{
-                const subject = this.ezbids._organized.filter((e:OrganizedSubject)=>e.sub == sub)
-                subject.forEach((sub:OrganizedSubject)=>{
-                    let session = sub.sess.filter(s=>s.sess == ses)
-                    session.forEach(ses=>{
-                        ses.objects[0].exclude = b; //objects is always length of 1, so index first (i.e. only)
-                    })
-                })
-=======
             } else {
                 const o_subs = this.ezbids._organized.filter((e:OrganizedSubject)=>e.sub == sub)
                 o_subs.forEach((o_sub:OrganizedSubject)=>{
@@ -300,7 +290,6 @@ export default defineComponent({
                         });
                     });
                 });
->>>>>>> db80bbca633c910d17f346552ea936e1a321e930
             }
 
             this.$emit("mapObjects");
