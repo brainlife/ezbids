@@ -259,7 +259,9 @@ export default defineComponent({
                 const o_subs = this.ezbids._organized.filter((e:OrganizedSubject)=>e.sub == sub)
                 o_subs.forEach((o_sub:OrganizedSubject)=>{
                     o_sub.sess.forEach(ses=>{
-                        ses.objects[0].exclude = b; //objects is always length of 1, so index first (i.e. only)
+                        ses.objects.forEach(obj=>{
+                            obj.exclude = b;
+                        })
                     })
                 })
             }
@@ -278,6 +280,7 @@ export default defineComponent({
             if(this.findSubjectFromString(sub) !== undefined && this.findSessionFromString(sub, ses) !== undefined) {
                 const session = this.findSessionFromString(sub, ses);
                 if(session) session.exclude = b;
+<<<<<<< HEAD
             }else{
                 const subject = this.ezbids._organized.filter((e:OrganizedSubject)=>e.sub == sub)
                 subject.forEach((sub:OrganizedSubject)=>{
@@ -286,6 +289,18 @@ export default defineComponent({
                         ses.objects[0].exclude = b; //objects is always length of 1, so index first (i.e. only)
                     })
                 })
+=======
+            } else {
+                const o_subs = this.ezbids._organized.filter((e:OrganizedSubject)=>e.sub == sub)
+                o_subs.forEach((o_sub:OrganizedSubject)=>{
+                    const o_ses = o_sub.sess.filter(s=>s.sess == ses)
+                    o_ses.forEach(ses=>{
+                        ses.objects.forEach(obj=>{
+                            obj.exclude = b;
+                        });
+                    });
+                });
+>>>>>>> db80bbca633c910d17f346552ea936e1a321e930
             }
 
             this.$emit("mapObjects");
@@ -436,7 +451,7 @@ export default defineComponent({
                 let funcBoldObjects = this.$store.state.ezbids.objects.filter(o=>o._type == "func/bold" && (o._entities.part == "" || o._entities.part == "mag"))
                 funcBoldObjects.forEach(func=>{
 
-                    //TODO - rewrite this. 
+                    //TODO - rewrite this.
                     let funcEntities = Object.fromEntries(Object.entries(func._entities).filter(([_, v]) => v != "")); //remove empty entity labels
                     let objEntities = Object.fromEntries(Object.entries(o._entities).filter(([_, v]) => v != "")); //remove empty entity labels
                     if(deepEqual(funcEntities, objEntities)) {
@@ -455,8 +470,10 @@ export default defineComponent({
                 //find bold object with the same set of entities
                 const matchingBold = this.$store.state.ezbids.objects
                     .filter((o:IObject)=>o._type == "func/bold")
-                    .filter((o:IObject)=>(o._entities.part == "" || o._entities.part == "mag")) //TODO - explain why?
+                    ////common func/bold acquisitions are magnitude ("mag"); the part entity label can have this value or be left blank. Both convey the same information
+                    .filter((o:IObject)=>(o._entities.part == "" || o._entities.part == "mag"))
                     .find((func:IObject)=>{
+
                         for(let k in o._entities) {
                             if(o._entities[k] != func._entities[k]) return false;
                         }
