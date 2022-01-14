@@ -620,12 +620,14 @@ def determine_subj_ses_IDs(dataset_list):
     date_counter = 1
     subject_idx_counter = 0
     subjects_information = []
+    participants_info = {}
     # Determine unique subjects from uploaded dataset
     for sub in np.unique([x["subject"] for x in dataset_list]):
         sub_dics_list = [x for x in dataset_list if x["subject"] == sub]
 
         # Organize phenotype (sex, age) information
-        phenotype_info = list({"sex":x["PatientSex"],"age":x["PatientAge"]} for x in sub_dics_list)[0]
+        phenotype_info = list({"sex":x["PatientSex"],"age":x["PatientAge"],"PatientName":x["PatientName"], "PatientID":x["PatientID"]} for x in sub_dics_list)[0]
+        participants_info.update({str(sub):phenotype_info})
 
         # Give each subject a unique subject_idx value
         for x in sub_dics_list:
@@ -699,7 +701,7 @@ def determine_subj_ses_IDs(dataset_list):
         subject_ids_info = {
                             "subject": sub,
                             "PatientInfo": patient_info,
-                            "phenotype": phenotype_info,
+                            "phenotype": list({"sex":x["PatientSex"],"age":x["PatientAge"]} for x in sub_dics_list)[0],
                             "exclude": False,
                             "sessions": [{k: v for k, v in d.items() if k != "session_idx" and k != "AcquisitionTime"} for d in unique_ses_date_times],
                             "validationErrors": []
@@ -707,7 +709,7 @@ def determine_subj_ses_IDs(dataset_list):
 
         subjects_information.append(subject_ids_info)
 
-    return dataset_list, subjects_information
+    return dataset_list, subjects_information, participants_info
 
 
 def determine_unique_series(dataset_list):
@@ -1560,7 +1562,7 @@ uploaded_files_list = modify_uploaded_dataset_list(uploaded_json_list)
 dataset_list = generate_dataset_list(uploaded_files_list)
 
 # Determine subject (and session) information
-dataset_list, subjects_information = determine_subj_ses_IDs(dataset_list)
+dataset_list, subjects_information, participants_info = determine_subj_ses_IDs(dataset_list)
 
 # Make a new list containing the dictionaries of only unique dataset acquisitions
 dataset_list, dataset_list_unique_series = determine_unique_series(dataset_list)
@@ -1595,11 +1597,10 @@ setVolumeThreshold(dataset_list_unique_series, objects_list)
 # Extract important series information to display in ezBIDS UI
 ui_series_info_list = extract_series_info(dataset_list_unique_series)
 
-
-
 # Convert information to dictionary
 EZBIDS = {"subjects": subjects_information,
           "participantsColumn": PARTICIPANTS_COLUMN,
+          "participantsInfo": participants_info,
           "series": ui_series_info_list,
           "objects": objects_list
           }

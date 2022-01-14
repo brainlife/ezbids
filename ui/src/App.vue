@@ -20,7 +20,7 @@ import { IObject } from './store'
 import { ElNotification } from 'element-plus'
 //import 'element-plus/es/components/notification/style/css'
 
-import { setSectionIDs, funcQA, fmapQA, dwiQA, setRun, setIntendedFor } from './libUnsafe'
+import { setSectionIDs, funcQA, fmapQA, dwiQA, setRun, setIntendedFor, updateParticipantsInfo } from './libUnsafe'
 //import { IObjectItem } from './store'
 import { createEventsTSV } from './lib'
 
@@ -159,6 +159,9 @@ export default defineComponent({
                         break;
                     case "object":
                         createEventsTSV(this.ezbids, this.events);
+                        break;
+                    case "participant":
+                        updateParticipantsInfo(this.ezbids);
                         break;
                     }
 
