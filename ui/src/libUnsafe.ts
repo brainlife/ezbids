@@ -44,7 +44,7 @@ export function updateParticipantsInfo($root) {
 
     let subjectsList = subjectsInfo.map(e=>e.subject) // most up to date
     for(const par in participantsInfo) {
-        if(subjectsList.includes(par) != true) { // user must have changed subjectID, so participantsInfo
+        if(subjectsList.includes(par) != true) { // user must have changed subjectID, so update participantsInfo
             subjectsInfo.forEach(sub=>{
                 let patientNames = sub.PatientInfo.map(e=>e.PatientName)
                 let patientIDs = sub.PatientInfo.map(e=>e.PatientID)
@@ -58,11 +58,38 @@ export function updateParticipantsInfo($root) {
         }
     }
 
-    // Remove unnecessary values for ParticipantsInfo
+    // Remove unnecessary values for participantsInfo
     for(const par in participantsInfo) {
         delete participantsInfo[par].PatientName
         delete participantsInfo[par].PatientID
     }
+
+    // Determine list of subject IDs to include in participantsInfo (i.e. not excluded)
+    let subjs = $root._organized
+    let finalSubs = []
+    subjs.forEach(sub=>{
+        const subObjs = []
+        const subExcludedObjs = []
+        sub.sess.forEach(ses=>{
+            const sesObjs = ses.objects.map(o=>o._exclude)
+            const sesExcludedObjs = ses.objects.filter(e=>e._exclude == true)
+            subObjs.push(sesObjs)
+            subExcludedObjs.push(sesExcludedObjs)
+        });
+        if(subObjs.flat().length != subExcludedObjs.flat().length) {
+            finalSubs.push(sub.sub)
+        }
+    })
+    finalSubs = Array.from(new Set(finalSubs)) // remove duplicate subject IDs (when parsing multi-session data)
+    console.log(finalSubs)
+
+    // remove excluded subject(s) from participantsInfo
+    for(const par in participantsInfo) {
+        if(finalSubs.includes(par) != true) {
+            delete participantsInfo[par]
+        }
+    }
+    console.log(participantsInfo)
 }
 
 export function setSectionIDs($root) {

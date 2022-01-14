@@ -52,10 +52,10 @@
         </tr>
         </thead>
         <tbody>
-            <tr v-for="o_sub in ezbids._organized" :key="o_sub.sub">
-                <th>{{o_sub.sub}}</th>
+            <tr v-for="(phenotype,sub) in ezbids.participantsInfo" :key="sub">
+                <th>{{sub}}</th>
                 <td v-for="(column, key) in ezbids.participantsColumn" :key="key">
-                    <el-input v-model.trim="ezbids.participantsInfo[o_sub.sub][key]" size="mini"/>
+                    <el-input v-model.trim="phenotype[key]" size="mini"/>
                 </td>
             </tr>
         </tbody>
