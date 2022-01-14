@@ -53,12 +53,10 @@
         </thead>
         <tbody>
             <tr v-for="o_sub in ezbids._organized" :key="o_sub.sub">
-                <div v-if="finalSubjects().includes(o_sub.sub)">
-                    <th>{{o_sub.sub}}</th>
-                    <td v-for="(column, key) in ezbids.participantsColumn" :key="key">
-                        <el-input v-model.trim="ezbids.participantsInfo[o_sub.sub][key]" size="mini"/>
-                    </td>
-                </div>
+                <th>{{o_sub.sub}}</th>
+                <td v-for="(column, key) in ezbids.participantsColumn" :key="key">
+                    <el-input v-model.trim="ezbids.participantsInfo[o_sub.sub][key]" size="mini"/>
+                </td>
             </tr>
         </tbody>
         </table>
@@ -113,6 +111,7 @@ export default defineComponent({
             this.newcolumn = "";
         },
 
+        /*
         finalSubjects() {
             let subjs = this.ezbids._organized
             let finalSubs = []
@@ -132,6 +131,7 @@ export default defineComponent({
             finalSubs = Array.from(new Set(finalSubs)) // remove duplicate subject IDs (when parsing multi-session data)
             return finalSubs
         },
+        */
 
         remove(key: string|number|symbol) {
             delete this.ezbids.participantsColumn[key];
