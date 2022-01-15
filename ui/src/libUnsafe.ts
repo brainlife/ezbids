@@ -81,15 +81,13 @@ export function updateParticipantsInfo($root) {
         }
     })
     finalSubs = Array.from(new Set(finalSubs)) // remove duplicate subject IDs (when parsing multi-session data)
-    console.log(finalSubs)
 
     // remove excluded subject(s) from participantsInfo
     for(const par in participantsInfo) {
         if(finalSubs.includes(par) != true) {
-            delete participantsInfo[par]
+            participantsInfo[par] = undefined
         }
     }
-    console.log(participantsInfo)
 }
 
 export function setSectionIDs($root) {

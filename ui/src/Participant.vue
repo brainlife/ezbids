@@ -52,7 +52,7 @@
         </tr>
         </thead>
         <tbody>
-            <tr v-for="(phenotype,sub) in ezbids.participantsInfo" :key="sub">
+            <tr v-for="(phenotype, sub) in ezbids.participantsInfo" :key="sub">
                 <th>{{sub}}</th>
                 <td v-for="(column, key) in ezbids.participantsColumn" :key="key">
                     <el-input v-model.trim="phenotype[key]" size="mini"/>
@@ -110,28 +110,6 @@ export default defineComponent({
             }
             this.newcolumn = "";
         },
-
-        /*
-        finalSubjects() {
-            let subjs = this.ezbids._organized
-            let finalSubs = []
-            subjs.forEach(sub=>{
-                const subObjs = []
-                const subExcludedObjs = []
-                sub.sess.forEach(ses=>{
-                    const sesObjs = ses.objects.map(o=>o.exclude)
-                    const sesExcludedObjs = ses.objects.filter(e=>e.exclude == true)
-                    subObjs.push(sesObjs)
-                    subExcludedObjs.push(sesExcludedObjs)
-                });
-                if(subObjs.flat().length != subExcludedObjs.flat().length) {
-                    finalSubs.push(sub.sub)
-                }
-            })
-            finalSubs = Array.from(new Set(finalSubs)) // remove duplicate subject IDs (when parsing multi-session data)
-            return finalSubs
-        },
-        */
 
         remove(key: string|number|symbol) {
             delete this.ezbids.participantsColumn[key];
