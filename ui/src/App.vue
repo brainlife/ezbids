@@ -160,9 +160,6 @@ export default defineComponent({
                     case "object":
                         createEventsTSV(this.ezbids, this.events);
                         break;
-                    case "participant":
-                        updateParticipantsInfo(this.ezbids);
-                        break;
                     }
 
                     //scroll page to the top

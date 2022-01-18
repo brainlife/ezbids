@@ -33,63 +33,6 @@ export function isPrimitive(obj) {
 }
 */
 
-export function updateParticipantsInfo($root) {
-    /*
-    Since users may change subject ID, make sure this is reflected
-    in the participantsInfo.
-    */
-
-    let subjectsInfo = $root.subjects
-    let participantsInfo = $root.participantsInfo
-
-    let subjectsList = subjectsInfo.map(e=>e.subject) // most up to date
-    for(const par in participantsInfo) {
-        if(subjectsList.includes(par) != true) { // user must have changed subjectID, so update participantsInfo
-            subjectsInfo.forEach(sub=>{
-                let patientNames = sub.PatientInfo.map(e=>e.PatientName)
-                let patientIDs = sub.PatientInfo.map(e=>e.PatientID)
-                if(patientNames.includes(participantsInfo[par].PatientName) || patientIDs.includes(participantsInfo[par].PatientID)) {
-                    participantsInfo[par].sex = sub.phenotype.sex
-                    participantsInfo[par].age = sub.phenotype.age
-                    participantsInfo[sub.subject] = participantsInfo[par]
-                }
-            })
-            delete participantsInfo[par] // remove the old key
-        }
-    }
-
-    // Remove unnecessary values for participantsInfo
-    for(const par in participantsInfo) {
-        delete participantsInfo[par].PatientName
-        delete participantsInfo[par].PatientID
-    }
-
-    // Determine list of subject IDs to include in participantsInfo (i.e. not excluded)
-    let subjs = $root._organized
-    let finalSubs = []
-    subjs.forEach(sub=>{
-        const subObjs = []
-        const subExcludedObjs = []
-        sub.sess.forEach(ses=>{
-            const sesObjs = ses.objects.map(o=>o._exclude)
-            const sesExcludedObjs = ses.objects.filter(e=>e._exclude == true)
-            subObjs.push(sesObjs)
-            subExcludedObjs.push(sesExcludedObjs)
-        });
-        if(subObjs.flat().length != subExcludedObjs.flat().length) {
-            finalSubs.push(sub.sub)
-        }
-    })
-    finalSubs = Array.from(new Set(finalSubs)) // remove duplicate subject IDs (when parsing multi-session data)
-
-    // remove excluded subject(s) from participantsInfo
-    for(const par in participantsInfo) {
-        if(finalSubs.includes(par) != true) {
-            participantsInfo[par] = undefined
-        }
-    }
-}
-
 export function setSectionIDs($root) {
     /*
     Set section_id value for each acquisition, beginning with value of 1. A section is
