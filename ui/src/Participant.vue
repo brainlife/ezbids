@@ -90,25 +90,16 @@ export default defineComponent({
         ...mapState(['ezbids', 'config']),
         //...mapGetters(['findSubjectFromString']),
 
-        finalSubs() : string[] {
-            // Determine list of subject IDs to include in participantsInfo (i.e. not excluded)
-            let subjs = this.ezbids._organized
-            let finalSubs = []
-            subjs.forEach(sub=>{
-                const subObjs = []
-                const subExcludedObjs = []
+        finalSubs() {
+            let finalSubs = [] as string[]
+            this.ezbids._organized.forEach((sub: OrganizedSubject)=>{
+                let use = false;
                 sub.sess.forEach(ses=>{
-                    const sesObjs = ses.objects.map(o=>o._exclude)
-                    const sesExcludedObjs = ses.objects.filter(e=>e._exclude == true)
-                    subObjs.push(sesObjs)
-                    subExcludedObjs.push(sesExcludedObjs)
+                    if(ses.objects.some(o=>!o._exclude)) use = true;
                 });
-                if(subObjs.flat().length != subExcludedObjs.flat().length) {
-                    finalSubs.push(sub.sub)
-                }
+                if(use) finalSubs.push(sub.sub);
             })
-            finalSubs = Array.from(new Set(finalSubs)) // remove duplicate subject IDs (when parsing multi-session data)
-            return finalSubs
+            return finalSubs;
         }
     },
 
