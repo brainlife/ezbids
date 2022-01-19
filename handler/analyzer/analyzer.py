@@ -21,6 +21,7 @@ import json
 import warnings
 from operator import itemgetter
 from urllib.request import urlopen
+from datetime import date
 from math import floor
 import pandas as pd
 import numpy as np
@@ -45,6 +46,8 @@ cog_atlas_url = "http://cognitiveatlas.org/api/v-alpha/task"
 start_time = time.time()
 analyzer_dir = os.getcwd()
 
+today_date = date.today().strftime("%Y-%m-%d")
+
 os.chdir(DATA_DIR)
 
 ######## Functions ########
@@ -54,7 +57,8 @@ def cog_atlas_tasks(url):
     task url.
 
     Parameters
-    ----------
+    ----------today_date = date.today().strftime("%Y-%m-%d")
+
     url : string
         web url of the Cognitive Atlas API task page.
 
@@ -432,6 +436,34 @@ def generate_dataset_list(uploaded_files_list):
             if json_data["PatientSex"] in ["M", "F"]:
                 patient_sex = json_data["PatientSex"]
 
+        # Find PatientAge
+        if "PatientAge" in json_data:
+            patient_age = json_data["PatientAge"]
+        else:
+            patient_age = "NA"
+
+        """metadata may contain PatientBirthDate and/or PatientAge. Check either
+        to see if one truly provides accurate age information."""
+        age = "NA"
+        if "PatientAge" in json_data:
+            patient_age = json_data["PatientAge"]
+            if not patient_age.isalnum(): # if true, is alphanumeric, so not age
+                try:
+                    if (type(patient_age) == int or type(patient_age) == float) and int(patient_age) < 100: # if age is over 100, probably made up
+                        age = patient_age
+                except:
+                    pass
+
+        if age == "NA" and "PatientBirthDate" in json_data:
+            patient_birth_date = json_data["PatientBirthDate"] # ISO 8601 "YYYY-MM-DD"
+            try:
+                age = int(today_date.split("-")[0]) - int(patient_birth_date.split("-")[0]) - \
+                    ((int(today_date.split("-")[1]), int(today_date.split("-")[2])) < \
+                     (int(patient_birth_date.split("-")[2]), int(patient_birth_date.split("-")[2])))
+            except:
+                pass
+
+
         """
         Select subject ID to display.
         Subject ID precedence order if explicit subject ID (i.e. ReproIn) is not
@@ -546,7 +578,7 @@ def generate_dataset_list(uploaded_files_list):
             "PatientID": patient_id,
             "PatientBirthDate": patient_birth_date,
             "PatientSex": patient_sex,
-            "PatientAge": "N/A",
+            "PatientAge": age,
             "subject": subject,
             "session": session,
             "SeriesNumber": series_number,
@@ -626,6 +658,7 @@ def determine_subj_ses_IDs(dataset_list):
         sub_dics_list = [x for x in dataset_list if x["subject"] == sub]
 
         # Organize phenotype (sex, age) information
+
         phenotype_info = list({"sex":x["PatientSex"],"age":x["PatientAge"],"PatientName":x["PatientName"], "PatientID":x["PatientID"]} for x in sub_dics_list)[0]
         participants_info.update({str(sub):phenotype_info})
 
