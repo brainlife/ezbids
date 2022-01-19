@@ -19,9 +19,11 @@ import sys
 import re
 import json
 import warnings
+import shutil
 from operator import itemgetter
 from urllib.request import urlopen
 from datetime import date
+from joblib import Parallel, delayed
 from math import floor
 import pandas as pd
 import numpy as np
@@ -57,7 +59,7 @@ def cog_atlas_tasks(url):
     task url.
 
     Parameters
-    ----------today_date = date.today().strftime("%Y-%m-%d")
+    ----------
 
     url : string
         web url of the Cognitive Atlas API task page.
@@ -68,7 +70,6 @@ def cog_atlas_tasks(url):
         list of all possible task names. Each task name has spaces, "task", and
         "test" removed, to make it easier to search the SeriesDescription
         fields for a matching task name.
-
     """
     url_contents = urlopen(url)
     data = json.load(url_contents)
@@ -77,6 +78,59 @@ def cog_atlas_tasks(url):
     tasks = sorted(tasks, key=str.casefold) # sort alphabetically, but ignore case
 
     return tasks
+
+def create_funcBold_screenshots_4movie(object_img_array, output_dir, v):
+    """
+    Create screenshots of each func/bold acquisition volume, to be combined into
+    video for examining motion.
+
+    Parameters
+    ----------
+
+    object_img_array: numpy.ndarray
+        Array from nib.load(nifti_image)
+
+    output_dir : string
+        Where to output the screenshots
+
+
+    v: int
+        volume iterator number
+
+    """
+
+    max_len = len(str(object_img_array.shape[3]))
+
+    if not os.path.isfile("{}/{}.png".format(output_dir, v)):
+
+        slice_x = object_img_array[floor(object_img_array.shape[0]/2), :, :, v]
+        slice_y = object_img_array[:, floor(object_img_array.shape[1]/2), :, v]
+        slice_z = object_img_array[:, :, floor(object_img_array.shape[2]/2), v]
+
+        fig, axes = plt.subplots(1, 3, figsize=(9, 3))
+        for index, slices in enumerate([slice_x, slice_y, slice_z]):
+            axes[index].imshow(slices.T, cmap="gray", origin="lower", aspect="auto")
+            axes[index].axis("off")
+        plt.tight_layout(pad=0, w_pad=0, h_pad=0)
+
+        fig.canvas.draw()
+
+        w,h = fig.canvas.get_width_height()
+        buf = np.fromstring(fig.canvas.tostring_argb(), dtype=np.uint8)
+        buf.shape = (w,h,4)
+
+        buf = np.roll(buf,3,axis=2)
+
+        w,h,d = buf.shape
+        png = Image.frombytes("RGBA", (w,h), buf.tostring())
+
+        # Sort files in Linux-friendly way (i.e. zero pad)
+        v_len = len(str(v))
+        new_v = "0"*(max_len - v_len) + str(v)
+
+        png.save("{}/{}.png".format(output_dir, new_v))
+
+
 
 
 def create_DWIshell_screenshots(nifti_path, nibabel_nifti_obj, bval_path):
@@ -611,6 +665,7 @@ def generate_dataset_list(uploaded_files_list):
             "nifti_path": [x for x in nifti_paths_for_json if ".nii.gz" in x][0],
             'nibabel_image': image,
             "json_path": json_file,
+            "movie_path": None,
             "paths": paths,
             "headers": "",
             "sidecar":json_data
@@ -1450,6 +1505,7 @@ def modify_objects_info(dataset_list):
                             "entities": objects_entities,
                             "items": items,
                             "PED": protocol["direction"],
+                            # "nibabel_image": image,
                             "analysisResults": {
                                 "NumVolumes": protocol["NumVolumes"],
                                 "errors": protocol["error"],
@@ -1611,6 +1667,25 @@ dataset_list = update_dataset_list(dataset_list, dataset_list_unique_series)
 
 # Apply a few other changes to the objects level
 objects_list = modify_objects_info(dataset_list)
+
+# # Parallelize creating the screenshots and movies for func/bold acquisitions, since it would take awhile otherwise
+
+# # gather all func/bold objects
+# funcBold_series_idxs = [x["series_idx"] for x in dataset_list_unique_series if x["type"] == "func/bold"]
+# func_bold_objs = [x for x in objects_list if x["series_idx"] in funcBold_series_idxs]
+# func_bold_objs_output_dirs = [x["items"][-1]["path"][:-7] for x in func_bold_objs if ".nii.gz" in x["items"][-1]["path"]]
+# func_bold_nibabel_objs = [x["nibabel_image"] for x in func_bold_objs]
+
+# for i in range(len(func_bold_objs)):
+#     output_dir = func_bold_objs[i]["items"][-1]["path"][:-7]
+#     if not os.path.isdir(output_dir):
+#         os.mkdir(output_dir)
+#     object_img_array = func_bold_objs[i]["nibabel_image"].dataobj[:]
+
+#     Parallel(n_jobs=12)(delayed(create_funcBold_screenshots_4movie)(object_img_array=object_img_array, output_dir=output_dir, v=v) for v in range(object_img_array.shape[3]))
+#     os.system("ffmpeg -framerate 30 -pattern_type glob -i {}/'*.png' {}/{}.mp4".format(output_dir, DATA_DIR, output_dir))
+#     shutil.rmtree(output_dir)
+
 
 # Map unique series IDs to all other acquisitions in dataset that have those parameters
 for index, unique_dic in enumerate(dataset_list_unique_series):
