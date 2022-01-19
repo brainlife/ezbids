@@ -1,11 +1,18 @@
 <template>
 <div style="padding: 20px;">
     <div v-if="session.status == 'analyzed'">
+        <p>Your dataset is now ready to be converted to BIDS! Please click the button below to generate BIDS structure.</p>
+        <el-button @click="finalize" type="success">Finalize</el-button>
+    </div>
+
+    <!--
+    <div v-if="session.status == 'bidsing'">
         <h3>
             Finalizing
             <font-awesome-icon icon="spinner" pulse/>
         </h3>
     </div>
+    -->
 
     <div v-if="session.status == 'finalized' || (session.finalize_begin_date && !session.finalize_finish_date)">
         <h3>
@@ -18,6 +25,7 @@
     <div v-if="session.finalize_finish_date">
         <div class="download">
             <br>
+            <el-button @click="finalize" type="success" style="float: right" size="small">Rerun Finalize Step</el-button>
             <h3 style="margin-top: 0;">All Done!</h3>
             <p>
             Please download the BIDS formatted data to your local computer
@@ -25,6 +33,7 @@
             <p>
                 <el-button @click="download" type="primary">Download BIDS</el-button>
             </p>
+
 
             <p>
             Or send the dataset to other cloud resources.
@@ -41,6 +50,7 @@
                 <br>
                 <small>* may contain sensitive PHI data. Please make sure to store the mapping file in a secure location.</small>
             </p>
+
         </div>
 
         <br>
@@ -58,7 +68,7 @@
 
     <div v-if="session.status == 'failed'">
         <p>Failed to convert to BIDS</p>
-        <el-button @click="rerun" type="success" style="float: right" size="small">Rerun Finalize Step</el-button>
+        <el-button @click="finalize" type="success" style="float: right" size="small">Rerun Finalize Step</el-button>
         <p><small><i>{{session.status_msg}}</i></small></p>
     </div>
 
@@ -113,13 +123,17 @@ export default defineComponent({
 
     mounted() {
         //TODO - update this to do this on demand
-        this.rerun(); 
-        this.finalize();
+        //this.rerun(); 
+        //this.finalize();
     },
 
     methods: {
 
         finalize() {
+            this.session.status = "finalized";
+            delete this.session.finalize_begin_date;
+            delete this.session.finalize_finish_date;
+
             this.submitting = true;
             this.dofinalize((err:string|null)=>{
                 if(err) ElNotification({ title: 'Failed', message: 'Failed to finalize:'+err});
@@ -163,12 +177,14 @@ export default defineComponent({
             });
         },
 
+        /*
         rerun() {
             //fake it to make it looks like we haven't finalized yet.
-            this.session.status = "analyzed";
+            this.session.status = "finalized";
             delete this.session.finalize_begin_date;
             delete this.session.finalize_finish_date;
         },
+        */
 
         download() {
             document.location.href = this.config.apihost+'/download/'+this.session._id+'/bids/'+this.ezbids.datasetDescription.Name;
