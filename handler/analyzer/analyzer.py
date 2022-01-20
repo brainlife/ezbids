@@ -23,7 +23,6 @@ import shutil
 from operator import itemgetter
 from urllib.request import urlopen
 from datetime import date
-from joblib import Parallel, delayed
 from math import floor
 import pandas as pd
 import numpy as np
@@ -37,11 +36,13 @@ warnings.filterwarnings("ignore")
 
 DATA_DIR = sys.argv[1]
 
+
 datatypes_yaml = yaml.load(open("../bids-specification/src/schema/objects/datatypes.yaml"))
 entities_yaml = yaml.load(open("../bids-specification/src/schema/objects/entities.yaml"))
 suffixes_yaml = yaml.load(open("../bids-specification/src/schema/objects/suffixes.yaml"))
 datatype_suffix_rules = "../bids-specification/src/schema/rules/datatypes"
 entity_ordering_file = "../bids-specification/src/schema/rules/entities.yaml"
+
 
 cog_atlas_url = "http://cognitiveatlas.org/api/v-alpha/task"
 
@@ -1505,7 +1506,6 @@ def modify_objects_info(dataset_list):
                             "entities": objects_entities,
                             "items": items,
                             "PED": protocol["direction"],
-                            # "nibabel_image": image,
                             "analysisResults": {
                                 "NumVolumes": protocol["NumVolumes"],
                                 "errors": protocol["error"],
@@ -1667,24 +1667,6 @@ dataset_list = update_dataset_list(dataset_list, dataset_list_unique_series)
 
 # Apply a few other changes to the objects level
 objects_list = modify_objects_info(dataset_list)
-
-# # Parallelize creating the screenshots and movies for func/bold acquisitions, since it would take awhile otherwise
-
-# # gather all func/bold objects
-# funcBold_series_idxs = [x["series_idx"] for x in dataset_list_unique_series if x["type"] == "func/bold"]
-# func_bold_objs = [x for x in objects_list if x["series_idx"] in funcBold_series_idxs]
-# func_bold_objs_output_dirs = [x["items"][-1]["path"][:-7] for x in func_bold_objs if ".nii.gz" in x["items"][-1]["path"]]
-# func_bold_nibabel_objs = [x["nibabel_image"] for x in func_bold_objs]
-
-# for i in range(len(func_bold_objs)):
-#     output_dir = func_bold_objs[i]["items"][-1]["path"][:-7]
-#     if not os.path.isdir(output_dir):
-#         os.mkdir(output_dir)
-#     object_img_array = func_bold_objs[i]["nibabel_image"].dataobj[:]
-
-#     Parallel(n_jobs=12)(delayed(create_funcBold_screenshots_4movie)(object_img_array=object_img_array, output_dir=output_dir, v=v) for v in range(object_img_array.shape[3]))
-#     os.system("ffmpeg -framerate 30 -pattern_type glob -i {}/'*.png' {}/{}.mp4".format(output_dir, DATA_DIR, output_dir))
-#     shutil.rmtree(output_dir)
 
 
 # Map unique series IDs to all other acquisitions in dataset that have those parameters
