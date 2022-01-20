@@ -375,7 +375,7 @@ export default defineComponent({
             o.validationWarnings = [];
 
             //update validationWarnings
-            if(o.analysisResults.warnings.length) {
+            if(o.analysisResults.warnings?.length) {
                 o.validationWarnings = o.analysisResults.warnings
             }
 

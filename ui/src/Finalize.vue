@@ -1,6 +1,6 @@
 <template>
 <div style="padding: 20px;">
-    <div v-if="session.status == 'analyzed'">
+    <div v-if="session.status == 'analyzed' || session.status == 'defaced'">
         <p>Your dataset is now ready to be converted to BIDS! Please click the button below to generate BIDS structure.</p>
         <el-button @click="finalize" type="success">Finalize</el-button>
     </div>
@@ -14,7 +14,7 @@
     </div>
     -->
 
-    <div v-if="session.status == 'finalized' || (session.finalize_begin_date && !session.finalize_finish_date)">
+    <div v-else-if="session.status == 'finalized' || (session.finalize_begin_date && !session.finalize_finish_date)">
         <h3>
             Converting to BIDS 
             <font-awesome-icon icon="spinner" pulse/>
@@ -22,7 +22,7 @@
         <p><small><i>{{session.status_msg}}</i></small></p>
     </div>
 
-    <div v-if="session.finalize_finish_date">
+    <div v-else-if="session.finalize_finish_date">
         <div class="download">
             <br>
             <el-button @click="finalize" type="success" style="float: right" size="small">Rerun Finalize Step</el-button>
