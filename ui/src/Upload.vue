@@ -185,7 +185,8 @@ export default defineComponent({
                     file.path.includes(".rar") ||
 
                     //dicom files doesn't have any file extensions..
-                    !file.path.includes(".")) {
+                    !file.path.includes(".") ||
+                    file.path.includes("MR.")) {
 
                     accept = true;
                 }
