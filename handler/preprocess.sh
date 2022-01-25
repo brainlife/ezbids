@@ -33,7 +33,7 @@ function d2n {
     #note.. this function runs inside $root (by --wd $root)
 
     #set -e #we can't set this here because dcm2niix could return code:2
-    #which just means there are no .dcm files in that directory
+    #which just means there are no DICOM files in that directory
     set -x
 
     path=$1
@@ -48,13 +48,6 @@ function d2n {
 export -f d2n
 cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n {} 2>> $root/dcm2niix_output
 
-# pull dcm2niix error information to log file
-{ grep -B 1 --group-separator=$'\n\n' Error $root/dcm2niix_output || true; } > $root/dcm2niix_error
-if [ -s $root/dcm2niix_error ]; then
-    echo "WARNING: dcm2niix error(s) detected. This suggests some of your data contains issues. ezBIDS will process the rest of your data."
-    echo "Please post a new issue to the dcm2niix Issues page (https://github.com/rordenlab/dcm2niix/issues) for assistance in this matter, with the contents of the error log (dcm2niix_error_log.txt)."
-fi
-
 #find products
 (cd $root && find . -type f \( -name "*.json" \) > list)
 cat $root/list
@@ -63,6 +56,18 @@ if [ ! -s $root/list ]; then
     echo "couldn't find any dicom files. aborting"
     exit 1
 fi
+
+# pull dcm2niix error information to log file
+{ grep -B 1 --group-separator=$'\n\n' Error $root/dcm2niix_output || true; } > $root/dcm2niix_error
+
+# # remove error message(s) about not finding any DICOMs in folder
+line_nums=$(grep -n 'Error: Unable to find any DICOM images' $root/dcm2niix_error | cut -d: -f1)
+
+for line_num in ${line_nums[*]}
+do
+    sed -i "$((line_num-1)), $((line_num+1))d" $root/dcm2niix_error
+done
+
 
 echo "running analyzer (may take several minutes, depending on size of data)"
 timeout 600 ./analyzer/run.sh $root

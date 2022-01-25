@@ -5,7 +5,9 @@ import sys
 
 def find_leaf(dir):
     leaf=True
-    hasDicom=False
+    hasDicom=True
+    # hasDicom=False
+
 
     #is it leaf?
     for x in os.listdir(dir):
@@ -14,9 +16,9 @@ def find_leaf(dir):
             leaf=False
             continue
 
-        #does it contain any .dcmfile?
-        if x.lower().endswith(".dcm") or x.lower().endswith(".ima") or x.lower().startswith("mr."):
-            hasDicom=True
+        # #does it contain any .dcmfile?
+        # if x.lower().endswith(".dcm") or x.lower().endswith(".ima") or x.lower().startswith("mr."):
+        #     hasDicom=True
 
     #if it contains DICOMDIR, treat it as leaf
     if not leaf:

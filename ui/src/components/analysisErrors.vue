@@ -2,11 +2,11 @@
 <div class="analysisError" v-if="errors">
     <h3>dcm2niix Errors</h3>
     <p>
-        We were not able to convert all DICOM files due to the following issues. Please submit an issue at <a href="https://github.com/rordenlab/dcm2niix/issues" target="rordenlagb/dcm2niix">https://github.com/rordenlab/dcm2niix/issues</a>. You can send your input DICOM files to dcm2niix team via a shared Google Drive folder.
+        We encountered a dcm2niix error (or errors) that may require attention. If this should be addressed, please submit an issue at <a href="https://github.com/rordenlab/dcm2niix/issues" target="rordenlagb/dcm2niix">https://github.com/rordenlab/dcm2niix/issues</a>. Copy the information below for each unique error message (beginning with the "+" key) and paste into in the body of your dcm2niix issue, if you choose to submit an issue. You can send your error DICOM files/folders to the dcm2niix team via a shared Google Drive folder.
     </p>
     <pre class="errors">{{errors}}</pre>
     <p>
-        You can proceed with ezBIDS process with the other successfully converted data.
+        You may continue ezBIDS with the other successfully converted data if you wish.
     </p>
 </div>
 </template>
