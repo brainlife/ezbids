@@ -67,4 +67,8 @@ fi
 echo "running analyzer (may take several minutes, depending on size of data)"
 timeout 600 ./analyzer/run.sh $root
 
+echo "generating thumbnails and movies for 3/4D acquisitions (may take several minutes, depending on size of data)"
+cat $root/list | parallel --linebuffer -j 6 --progress python3 "createThumbnailsMovies.py" $root
+
+
 echo "done preprocessing"

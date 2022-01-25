@@ -12,37 +12,32 @@ BIDS-compliant dataset.
 """
 
 from __future__ import division
+import os
+import re
+import sys
+import json
 import yaml
 import time
-import os
-import sys
-import re
-import json
-import warnings
 import shutil
-from operator import itemgetter
-from urllib.request import urlopen
-from datetime import date
-from math import floor
-import pandas as pd
-import numpy as np
-import nibabel as nib
+import warnings
 import matplotlib
-matplotlib.use("Agg")
+import numpy as np
+import pandas as pd
+import nibabel as nib
 import matplotlib.pyplot as plt
 from PIL import Image
-plt.style.use("dark_background")
-warnings.filterwarnings("ignore")
+from math import floor
+from datetime import date
+from operator import itemgetter
+from urllib.request import urlopen
 
 DATA_DIR = sys.argv[1]
-
 
 datatypes_yaml = yaml.load(open("../bids-specification/src/schema/objects/datatypes.yaml"))
 entities_yaml = yaml.load(open("../bids-specification/src/schema/objects/entities.yaml"))
 suffixes_yaml = yaml.load(open("../bids-specification/src/schema/objects/suffixes.yaml"))
 datatype_suffix_rules = "../bids-specification/src/schema/rules/datatypes"
 entity_ordering_file = "../bids-specification/src/schema/rules/entities.yaml"
-
 
 cog_atlas_url = "http://cognitiveatlas.org/api/v-alpha/task"
 
@@ -80,175 +75,11 @@ def cog_atlas_tasks(url):
 
     return tasks
 
-def create_funcBold_screenshots_4movie(object_img_array, output_dir, v):
-    """
-    Create screenshots of each func/bold acquisition volume, to be combined into
-    video for examining motion.
-
-    Parameters
-    ----------
-
-    object_img_array: numpy.ndarray
-        Array from nib.load(nifti_image)
-
-    output_dir : string
-        Where to output the screenshots
-
-
-    v: int
-        volume iterator number
-
-    """
-
-    max_len = len(str(object_img_array.shape[3]))
-
-    if not os.path.isfile("{}/{}.png".format(output_dir, v)):
-
-        slice_x = object_img_array[floor(object_img_array.shape[0]/2), :, :, v]
-        slice_y = object_img_array[:, floor(object_img_array.shape[1]/2), :, v]
-        slice_z = object_img_array[:, :, floor(object_img_array.shape[2]/2), v]
-
-        fig, axes = plt.subplots(1, 3, figsize=(9, 3))
-        for index, slices in enumerate([slice_x, slice_y, slice_z]):
-            axes[index].imshow(slices.T, cmap="gray", origin="lower", aspect="auto")
-            axes[index].axis("off")
-        plt.tight_layout(pad=0, w_pad=0, h_pad=0)
-
-        fig.canvas.draw()
-
-        w,h = fig.canvas.get_width_height()
-        buf = np.fromstring(fig.canvas.tostring_argb(), dtype=np.uint8)
-        buf.shape = (w,h,4)
-
-        buf = np.roll(buf,3,axis=2)
-
-        w,h,d = buf.shape
-        png = Image.frombytes("RGBA", (w,h), buf.tostring())
-
-        # Sort files in Linux-friendly way (i.e. zero pad)
-        v_len = len(str(v))
-        new_v = "0"*(max_len - v_len) + str(v)
-
-        png.save("{}/{}.png".format(output_dir, new_v))
-
-
-
-
-def create_DWIshell_screenshots(nifti_path, nibabel_nifti_obj, bval_path):
-    """
-    Generates PNG screenshot of each unique DWI shell (e.g. unique b-value(s))
-
-    Parameters
-    ----------
-    nifti_path: str
-        location of nifti file
-
-    nibabel_nifti_obj : nibabel.nifti1.Nifti1Image
-        result of nib.load(nifti_file_path)
-
-    bval_path: str
-        location of corresponding bval file
-
-
-    Returns
-    -------
-    pngPaths: list
-        list of screenshots, each screenshot pertains to unique bval
-    """
-    pngPaths = []
-    image = nibabel_nifti_obj
-    bvals = [floor(float(x)) for x in pd.read_csv(bval_path, delim_whitespace=True).columns.tolist()]
-    modified_bvals = [round(x, -2) for x in bvals]
-    unique_bvals = np.unique(modified_bvals).tolist()
-
-    for bval in unique_bvals:
-        object_img_array = image.dataobj[..., modified_bvals.index(bval)]
-
-        slice_x = object_img_array[floor(object_img_array.shape[0]/2), :, :]
-        slice_y = object_img_array[:, floor(object_img_array.shape[1]/2), :]
-        slice_z = object_img_array[:, :, floor(object_img_array.shape[2]/2)]
-
-        fig, axes = plt.subplots(1, 3, figsize=(9, 3))
-        for index, slices in enumerate([slice_x, slice_y, slice_z]):
-            axes[index].imshow(slices.T, cmap="gray", origin="lower", aspect="auto")
-            axes[index].axis("off")
-        plt.tight_layout(pad=0, w_pad=0, h_pad=0)
-
-        fig.canvas.draw()
-
-        w,h = fig.canvas.get_width_height()
-        buf = np.fromstring(fig.canvas.tostring_argb(), dtype=np.uint8)
-        buf.shape = (w,h,4)
-
-        buf = np.roll(buf,3,axis=2)
-
-        w,h,d = buf.shape
-        png = Image.frombytes("RGBA", (w,h), buf.tostring())
-        png.save("{}_shell-{}.png".format(nifti_path[:-7], bval))
-
-        pngPaths.append("{}_shell-{}.png".format(nifti_path[:-7], bval))
-
-    return pngPaths
-
-
-def create_screenshots(nifti_path, nibabel_nifti_obj, num_volumes):
-    """
-    Generates PNG screenshot of each acquisition
-
-    Parameters
-    ----------
-    nifti_path: str
-        location of nifti file
-
-    nibabel_nifti_obj : nibabel.nifti1.Nifti1Image
-        result of nib.load(nifti_file_path)
-
-    num_volumes: int
-        number of volumes in the nifti file
-
-
-    Returns
-    -------
-    pngPaths: list
-        list of 1, containing file path of screenshot
-    """
-    image = nibabel_nifti_obj
-    object_img_array = image.dataobj
-
-    if num_volumes > 1:
-        object_img_array = image.dataobj[..., 1]
-    else:
-        object_img_array = image.dataobj[:]
-
-    slice_x = object_img_array[floor(object_img_array.shape[0]/2), :, :]
-    slice_y = object_img_array[:, floor(object_img_array.shape[1]/2), :]
-    slice_z = object_img_array[:, :, floor(object_img_array.shape[2]/2)]
-
-    fig, axes = plt.subplots(1, 3, figsize=(9, 3))
-    for index, slices in enumerate([slice_x, slice_y, slice_z]):
-        axes[index].imshow(slices.T, cmap="gray", origin="lower", aspect="auto")
-        axes[index].axis("off")
-    plt.tight_layout(pad=0, w_pad=0, h_pad=0)
-
-    fig.canvas.draw()
-
-    w,h = fig.canvas.get_width_height()
-    buf = np.fromstring(fig.canvas.tostring_argb(), dtype=np.uint8)
-    buf.shape = (w,h,4)
-
-    buf = np.roll(buf,3,axis=2)
-
-    w,h,d = buf.shape
-    png = Image.frombytes("RGBA", (w,h), buf.tostring())
-    png.save("{}.png".format(nifti_path[:-7]))
-
-    return ["{}.png".format(nifti_path[:-7])]
-
 
 def correct_pe(pe_direction, ornt):
     """
-    Takes phase encoding direction (pe_direction) and image orientation (ornt)
-    to correct pe_direction if need be. This correction occurs if pe_direction
+    Takes phase encoding direction and image orientation to correct
+    pe_direction if need be. This correction occurs if pe_direction
     is in "xyz" format instead of "ijk".
 
     Function is based on https://github.com/nipreps/fmriprep/issues/2341 and
@@ -307,9 +138,8 @@ def correct_pe(pe_direction, ornt):
 
 def determine_direction(pe_direction, ornt):
     """
-    Takes [corrected] pe_direction (pe_direction) and image orientation (ornt)
-    to determine "_dir-" entity label, which is required for specific
-    acquisitions.
+    Takes [corrected] pe_direction and image orientation to determine "_dir-" entity label,
+    which is required or highly recommended for specific acquisitions.
 
     Based on https://github.com/nipreps/fmriprep/issues/2341 and code derived
     from Chris Markiewicz and Mathias Goncalves.
@@ -521,8 +351,8 @@ def generate_dataset_list(uploaded_files_list):
 
         """
         Select subject ID to display.
-        Subject ID precedence order if explicit subject ID (i.e. ReproIn) is not
-        found is: PatientName > PatientID > PatientBirthDate
+        Subject ID precedence order if explicit subject ID (i.e. ReproIn naming convention)
+        is not found: PatientName > PatientID > PatientBirthDate
         """
         subject = "NA"
         for value in [json_file, patient_name, patient_id]:
@@ -666,7 +496,6 @@ def generate_dataset_list(uploaded_files_list):
             "nifti_path": [x for x in nifti_paths_for_json if ".nii.gz" in x][0],
             'nibabel_image': image,
             "json_path": json_file,
-            "movie_path": None,
             "paths": paths,
             "headers": "",
             "sidecar":json_data
@@ -1437,7 +1266,6 @@ def modify_objects_info(dataset_list):
         additional information. """
 
         for p, protocol in enumerate(scan_protocol):
-            pngPaths = []
             image = protocol["nibabel_image"]
             protocol["headers"] = str(image.header).splitlines()[1:]
 
@@ -1450,19 +1278,6 @@ def modify_objects_info(dataset_list):
                     with the corresponding DICOMS".split())
                 protocol["message"] = protocol["error"]
                 protocol["type"] = "exclude"
-            else:
-                # Generate screenshot of every acquisition in dataset
-                pngPaths.append(create_screenshots(protocol["nifti_path"], image, protocol["NumVolumes"]))
-
-                # Generate screenshot(s) of every unique dwi/dwi shell (e.g. b-value(s))
-                if protocol["type"] == "dwi/dwi":
-                    try:
-                        bval_path = [x for x in protocol["paths"] if ".bval" in x][0]
-                        pngPaths.append(create_DWIshell_screenshots(protocol["nifti_path"], image, bval_path))
-                    except:
-                        print("Could not generate unique DWI shell screenshots for {}".format(protocol["nifti_path"]))
-
-            pngPaths = [item for sublist in pngPaths for item in sublist] # flatten list of lists
 
             if protocol["error"]:
                 protocol["error"] = [protocol["error"]]
@@ -1491,7 +1306,8 @@ def modify_objects_info(dataset_list):
                 elif ".nii.gz" in item:
                     items.append({"path":item,
                                   "name":"nii.gz",
-                                  "pngPaths": pngPaths,
+                                  "pngPaths": [],
+                                  "moviePath": None,
                                   "headers":protocol["headers"]})
 
 
