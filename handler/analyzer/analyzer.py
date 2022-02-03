@@ -738,8 +738,8 @@ def datatype_suffix_identification(dataset_list_unique_series):
     dwi_derived_keys = ["trace", "fa", "adc"]
     dwi_keys = ["dti", "dmri"]
     func_keys = ["func", "fmri", "mri", "task", "rest"]
-    t1w_keys = ["tfl3d", "mprage", "spgr", "tflmgh", "t1mpr"]
-    t2w_keys = ["t2"]
+    t1w_keys = ["tfl3d", "mprage", "spgr", "tflmgh", "t1mpr", "anatt1"]
+    t2w_keys = ["t2", "anatt2"]
     tb1tfl_keys = ["tflb1map"]
     tb1rfm_keys = ["rfmap"]
 
@@ -1070,6 +1070,18 @@ def datatype_suffix_identification(dataset_list_unique_series):
             metadata field), consider excluding this current one from BIDS \
             conversion".split())
 
+        # check that func/bold acquisitions have RepetitionTime, otherwise exclude
+        if unique_dic["type"] == "func/bold":
+            if unique_dic["RepetitionTime"] == "N/A":
+                unique_dic["type"] = "exclude"
+                unique_dic["message"] = " ".join("This acquisition is believed \
+                            to be func/bold, yet does not contain RepetitionTime in  \
+                            in the metadata. This acquisition will therefore be \
+                            excluded from BIDS conversion. Please modify if \
+                            incorrect".split())
+                unique_dic["error"] = unique_dic["message"]
+
+
     return dataset_list_unique_series
 
 
@@ -1392,7 +1404,7 @@ def setVolumeThreshold(dataset_list_unique_series, objects_list):
     """
 
     func_series = [x for x in dataset_list_unique_series if "func" in x["type"]
-                   and x["type"] != "func/sbref"]
+                   and x["type"] != "func/sbref" and x["RepetitionTime"] != "N/A"]
 
     if len(func_series):
         for func in func_series:
@@ -1418,7 +1430,7 @@ def setVolumeThreshold(dataset_list_unique_series, objects_list):
                         volumeThreshold = half
 
 
-            #With volume threshold, exclude objects that don't pass it
+            # With volume threshold, exclude objects that don't pass it
             corresponding_objects = [x for x in objects_list if x["series_idx"] == series_idx]
             for obj in corresponding_objects:
                 if obj["analysisResults"]["NumVolumes"] < volumeThreshold:
