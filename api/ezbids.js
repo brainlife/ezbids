@@ -8,11 +8,13 @@ const cors = require("cors");
 const nocache = require("nocache");
 const models = require("./models");
 const config = require("./config");
+//import sendSeekable = require('send-seekable');
 //init express
 const app = express();
 app.use(cors());
 app.use(compression());
 app.use(nocache());
+//app.use(sendSeekable);
 app.disable('x-powered-by'); //for better security?
 app.use(bodyParser.urlencoded({
     limit: '50gb',

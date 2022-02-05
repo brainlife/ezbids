@@ -9,11 +9,14 @@ import nocache = require('nocache');
 import models = require("./models");
 import config = require("./config");
 
+//import sendSeekable = require('send-seekable');
+
 //init express
 const app: express.Application  = express();
 app.use(cors());
 app.use(compression());
 app.use(nocache());
+//app.use(sendSeekable);
 
 app.disable('x-powered-by'); //for better security?
 
