@@ -12,6 +12,8 @@ import models = require('./models');
 import { isFunction } from 'util';
 import { fstat } from 'fs';
 
+import rangeStream = require('range-stream');
+
 const upload = multer(config.multer);
 
 const router = express.Router();
@@ -159,11 +161,26 @@ router.get('/download/:session_id/*', (req, res, next)=>{
             });
             archive.directory(fullpath, 'bids');
             archive.finalize();
+
+            /*
+            if(req.headers.range) {
+                //partial content
+                let [start, end] = req.headers.range.replace(/bytes=/, "").split("-");
+                res.status(206);
+                console.log("range request", start, end);
+                res.setHeader('Content-Ranges', `bytes ${start}-${end}`);
+                res.setHeader('Accept-Ranges', 'bytes');
+                archive.pipe(rangeStream(start,end)).pipe(res);
+            } else {
+                //full content
+                archive.pipe(res);
+            }
+            */
             archive.pipe(res);
+            //console.log("pointer", archive.pointer());
+            //res.sendSeekable(archive);
+
         } else next("unknown file");
-
-        //TODO - if it's directory, then send an archive down
-
     }).catch(err=>{
         next(err);
     });
