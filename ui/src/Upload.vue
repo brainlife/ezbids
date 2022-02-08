@@ -546,8 +546,9 @@ export default defineComponent({
                 </ul>
 
                 <el-button @click="dump" size="mini">Dump state</el-button>
+                <br>
 
-                <p>
+                <p v-if="ignoredFiles.length">
                     <b>Ignored Files</b>
                     <ul>
                         <li v-for="(file, idx) in ignoredFiles" :key="idx"><pre>{{file.path}}</pre></li>

@@ -213,7 +213,7 @@ export default defineComponent({
         },
 
         isValid(cb: (err?: string)=>void) {
-            //TODO?
+            if(this.session.status != 'finished') return cb("Please finalize the page first");
             cb();
         },
     },
