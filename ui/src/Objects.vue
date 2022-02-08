@@ -199,7 +199,7 @@ import datatype from './components/datatype.vue'
 
 import { IObject, Session, OrganizedSession, OrganizedSubject } from './store'
 import { prettyBytes } from './filters'
-import { validateEntities } from './libUnsafe'
+import { deepEqual, validateEntities } from './libUnsafe'
 
 // @ts-ignore
 import { Splitpanes, Pane } from 'splitpanes'
@@ -436,7 +436,6 @@ export default defineComponent({
             //for func/events object, update series_idx and ModifiedSeriesNumber to match corresponding func/bold object.
             //Also update validationWarnings if corresponding func/bold has been excluded
             if(o._type == "func/events") {
-                /* before
                 let funcBoldObjects = this.$store.state.ezbids.objects.filter(o=>o._type == "func/bold" && (o._entities.part == "" || o._entities.part == "mag"))
                 funcBoldObjects.forEach(func=>{
 
@@ -454,7 +453,6 @@ export default defineComponent({
                         }
                     }
                 })
-                */
 
                 //find bold object with the same set of entities
                 const matchingBold = this.$store.state.ezbids.objects
