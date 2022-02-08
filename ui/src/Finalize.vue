@@ -209,7 +209,9 @@ export default defineComponent({
         },
 
         sendOpenneuro() {
-            ElNotification({ title: 'Failed', message: 'This functionality is yet to be implemented'});
+            //ElNotification({ title: 'Failed', message: 'This functionality is yet to be implemented'});
+            const url = this.config.apihost+'/download/'+this.session._id+'/bids/'+this.ezbids.datasetDescription.Name;
+            window.open("https://openneuro.org/import?url="+encodeURI(url));
         },
 
         isValid(cb: (err?: string)=>void) {
