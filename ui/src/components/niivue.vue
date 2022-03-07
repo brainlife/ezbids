@@ -11,7 +11,10 @@ import { mapGetters, } from 'vuex'
 
 // @ts-ignore
 import { Niivue } from '@niivue/niivue'
-const nv = new Niivue();
+
+const nv = new Niivue({
+    dragAndDropEnabled: false
+});
 
 export default defineComponent({
     props: [ 'path' ],
@@ -48,7 +51,6 @@ export default defineComponent({
                     colorMap: "gray",
                     opacity: 1,
                     visible: true,
-                    dragAndDropEnabled: false,
                 }]);
             })
         },
