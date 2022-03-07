@@ -16,13 +16,22 @@
     "@fortawesome/free-brands-svg-icons": "^6.0",
     "@fortawesome/free-solid-svg-icons": "^6.0",
     "@fortawesome/vue-fontawesome": "^3.0.0-5",
+<<<<<<< HEAD
     "@niivue/niivue": "^0.21.1",
+=======
+    "@niivue/niivue": "^0.21",
+>>>>>>> 154e02e3a60cdb1e5739bfff5050a030a213c72d
     "axios": "^0.24",
     "element-plus": "^1.2.0-beta.6",
     "numeral": "^2.0.6",
     "splitpanes": "^3.1.1",
+<<<<<<< HEAD
     "unplugin-vue-components": "^0.17.18",
     "vue": "^3.2.30",
+=======
+    "unplugin-vue-components": "^0.17.21",
+    "vue": "^3.2.31",
+>>>>>>> 154e02e3a60cdb1e5739bfff5050a030a213c72d
     "vue-gtag-next": "^1.14.0",
     "vue-router": "^4.0.13",
     "vuex": "^4.0.2"
