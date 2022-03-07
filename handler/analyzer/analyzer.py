@@ -736,7 +736,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
     se_mag_phase_fmap_keys = ["fmap", "fieldmap", "spinecho", "sefmri", "semri"]
     flair_keys = ["t2spacedafl"]
     dwi_derived_keys = ["trace", "fa", "adc"]
-    dwi_keys = ["dti", "dmri"]
+    dwi_keys = ["dti", "dmri", "dwi"]
     func_keys = ["func", "fmri", "mri", "task", "rest"]
     t1w_keys = ["tfl3d", "mprage", "spgr", "tflmgh", "t1mpr", "anatt1"]
     t2w_keys = ["t2", "anatt2"]
