@@ -48,6 +48,7 @@ export default defineComponent({
                     colorMap: "gray",
                     opacity: 1,
                     visible: true,
+                    dragAndDropEnabled: false,
                 }]);
             })
         },
