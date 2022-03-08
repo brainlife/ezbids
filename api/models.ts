@@ -7,11 +7,15 @@ if(config.mongoose_debug) mongoose.set("debug", true);
 export function connect(cb) {
     console.debug("connecting to mongo");
     mongoose.connect(config.mongodb, {
+
+        /* this really screwed up warehouse db..
         readPreference: 'nearest',
         writeConcern: {
             w: 'majority', //isn't this the default?
         },
         readConcernLevel: 'majority',//prevents read to grab stale data from secondary
+        */
+
         useNewUrlParser: true,
         useUnifiedTopology: true,
         //auto_reconnect: true, //isn't this the default?

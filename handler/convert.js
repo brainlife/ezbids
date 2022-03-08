@@ -7,8 +7,7 @@ const async = require('async');
 const root = process.argv[2];
 if (!root)
     throw "please specify root directory";
-const json = fs.readFileSync(root + "/finalized.json");
-const info = JSON.parse(json);
+const info = JSON.parse(fs.readFileSync(root + "/finalized.json"));
 const datasetName = info.datasetDescription.Name;
 mkdirp.sync(root + "/bids/" + datasetName);
 fs.writeFileSync(root + "/bids/" + datasetName + "/finalized.json", JSON.stringify(info, null, 4)); //copy the finalized.json
@@ -39,13 +38,6 @@ for (let key of keys) {
     tsvheader.push(key);
 }
 tsv.push(tsvheader);
-/*
-let participantInfoList = []
-info.subjects.forEach(sub=>{
-    participantInfoList.push({"subject": sub.subject, "phenotype": sub.phenotype})
-})
-participantInfoList = [...new Set(participantInfoList.map(a => JSON.stringify(a)))].map(a => JSON.parse(a))
-*/
 for (const sub in info.participantInfo) {
     let tsvrec = [];
     tsvrec.push("sub-" + sub);
@@ -244,8 +236,6 @@ async.forEachOf(info.objects, (o, idx, next_o) => {
                             //if intended object is excluded, skip it
                             if (io._type == "exclude")
                                 continue;
-                            //doesn't make sense to intentend for its own object (I don't think this ever happens)
-                            //if(io == o) continue;
                             const iomodality = io._type.split("/")[0];
                             const suffix = io._type.split("/")[1];
                             //construct a path relative to the subject
@@ -319,6 +309,8 @@ async.forEachOf(info.objects, (o, idx, next_o) => {
             handleDwi();
             break;
         case "excluded":
+            if (!info.includeExcluded)
+                break;
             o.items.forEach((item, idx) => {
                 //sub-OpenSciJan22_desc-localizer_obj5-0.json
                 handleItem(item, "excluded." + item.name);

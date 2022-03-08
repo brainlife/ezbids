@@ -2,6 +2,10 @@
 <div style="padding: 20px;">
     <div v-if="session.status == 'analyzed' || session.status == 'defaced'">
         <p>Your dataset is now ready to be converted to BIDS! Please click the button below to generate BIDS structure.</p>
+        <p>
+            <el-checkbox v-model="ezbids.includeExcluded">Save all acquisitions set to 'exclude' in an /excluded directory in output BIDS structure</el-checkbox>
+        </p>
+        <br>
         <el-button @click="finalize" type="success">Finalize</el-button>
     </div>
 
@@ -25,7 +29,7 @@
     <div v-else-if="session.finalize_finish_date">
         <div class="download">
             <br>
-            <el-button @click="finalize" type="success" style="float: right" size="small">Rerun Finalize Step</el-button>
+            <el-button @click="session.status = 'analyzed'" type="success" style="float: right" size="small">Rerun Finalize Step</el-button>
             <h3 style="margin-top: 0;">All Done!</h3>
             <p>
             Please download the BIDS formatted data to your local computer
@@ -162,6 +166,7 @@ export default defineComponent({
                     subjects: this.ezbids.subjects,
                     series: this.ezbids.series,
                     defacingMethod: this.ezbids.defacingMethod,
+                    includeExcluded: this.ezbids.includeExcluded,
 
                     //things that convert.ts uses
                     objects: this.ezbids.objects, //most important thing that convert.ts needs

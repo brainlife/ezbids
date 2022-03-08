@@ -252,6 +252,7 @@ const state = {
         _organized: [] as OrganizedSubject[], //above things are organized into subs/ses/run/object hierarchy for quick access
 
         defacingMethod: "",
+        includeExcluded: true,
     },
 
     events: {
@@ -368,8 +369,8 @@ const store = createStore({
 
                 _organized: [], //above things are organized into subs/ses/run/object hierarchy for quick access
 
-                //for defacing page
                 defacingMethod: "",
+                includeExcluded: true,
             };
 
             Object.assign(state.events, {
