@@ -316,7 +316,7 @@ def generate_dataset_list(uploaded_files_list):
             patient_birth_date = "00000000"
 
         # Find PatientSex
-        patient_sex = "N/A"
+        patient_sex = "NA"
         if "PatientSex" in json_data:
             if json_data["PatientSex"] in ["M", "F"]:
                 patient_sex = json_data["PatientSex"]
@@ -356,9 +356,15 @@ def generate_dataset_list(uploaded_files_list):
         """
         subject = "NA"
         for value in [json_file, patient_name, patient_id]:
-            if any(x in value.lower() for x in ["sub-", "subject-", "sub_", "subject_"]):
-                subject = re.split("[^a-zA-Z0-9]+", re.compile(r"sub-|subject-|sub_|subject_", re.IGNORECASE).split(value)[-1])[0]
-                break
+            for string in ["sub-", "subject-", "sub_", "subject_"]:
+                if string in value.lower():
+                    if not value.lower().split(string)[0][-1].isalnum():
+                        subject = re.split("[^a-zA-Z0-9]+", re.compile(string, re.IGNORECASE).split(value)[-1])[0]
+                        break
+        # for value in [json_file, patient_name, patient_id]:
+        #     if any(x in value.lower() for x in ["sub-", "subject-", "sub_", "subject_"]):
+        #         subject = re.split("[^a-zA-Z0-9]+", re.compile(r"sub-|subject-|sub_|subject_", re.IGNORECASE).split(value)[-1])[0]
+        #         break
 
         if subject == "NA":
             if patient_name != "NA":
@@ -375,9 +381,11 @@ def generate_dataset_list(uploaded_files_list):
         # Select session ID to display, if applicable
         session = ""
         for value in [json_file, patient_name, patient_id]:
-            if any(x in value.lower() for x in ["ses-", "session-", "ses_", "session_"]):
-                session = re.split("[^a-zA-Z0-9]+", re.compile(r"ses-|session-|ses_|session_", re.IGNORECASE).split(value)[-1])[0]
-                break
+            for string in ["ses-", "session-", "ses_", "session_"]:
+                if string in value.lower():
+                    if not value.lower().split(string)[0][-1].isalnum():
+                        session = re.split("[^a-zA-Z0-9]+", re.compile(string, re.IGNORECASE).split(value)[-1])[0]
+                        break
 
         # Remove non-alphanumeric characters from subject (and session) ID(s)
         subject = re.sub("[^A-Za-z0-9]+", "", subject)
@@ -400,7 +408,7 @@ def generate_dataset_list(uploaded_files_list):
         if "RepetitionTime" in json_data:
             repetition_time = json_data["RepetitionTime"]
         else:
-            repetition_time = "N/A"
+            repetition_time = "NA"
 
         # Find EchoNumber
         if "EchoNumber" in json_data:
@@ -439,13 +447,13 @@ def generate_dataset_list(uploaded_files_list):
         if "SeriesDescription" in json_data:
             series_description = json_data["SeriesDescription"]
         else:
-            series_description = "N/A"
+            series_description = "NA"
 
         # Find ProtocolName
         if "ProtocolName" in json_data:
             protocol_name = json_data["ProtocolName"]
         else:
-            protocol_name = "N/A"
+            protocol_name = "NA"
 
         # Find ImageType
         if "ImageType" in json_data:
@@ -1072,7 +1080,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
         # check that func/bold acquisitions have RepetitionTime, otherwise exclude
         if unique_dic["type"] == "func/bold":
-            if unique_dic["RepetitionTime"] == "N/A":
+            if unique_dic["RepetitionTime"] == "NA":
                 unique_dic["type"] = "exclude"
                 unique_dic["message"] = " ".join("This acquisition is believed \
                             to be func/bold, yet does not contain RepetitionTime in  \
@@ -1404,7 +1412,7 @@ def setVolumeThreshold(dataset_list_unique_series, objects_list):
     """
 
     func_series = [x for x in dataset_list_unique_series if "func" in x["type"]
-                   and x["type"] != "func/sbref" and x["RepetitionTime"] != "N/A"]
+                   and x["type"] != "func/sbref" and x["RepetitionTime"] != "NA"]
 
     if len(func_series):
         for func in func_series:
