@@ -119,7 +119,7 @@ def create_thumbnail(nifti_file, image):
     buf = np.roll(buf,3,axis=2)
 
     w,h,d = buf.shape
-    png = Image.frombytes("RGBA", (w,h), buf.tostring())
+    png = Image.frombytes("RGBA", (w,h), buf.tobytes())
     png.save(output_file)
 
 
