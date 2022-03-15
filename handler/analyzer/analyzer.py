@@ -446,14 +446,17 @@ def generate_dataset_list(uploaded_files_list):
         # Find SeriesDescription
         if "SeriesDescription" in json_data:
             series_description = json_data["SeriesDescription"]
+            descriptor = "SeriesDescription"
         else:
             series_description = "NA"
+            descriptor = "ProtocolName"
 
         # Find ProtocolName
         if "ProtocolName" in json_data:
             protocol_name = json_data["ProtocolName"]
         else:
             protocol_name = "NA"
+
 
         # Find ImageType
         if "ImageType" in json_data:
@@ -481,6 +484,7 @@ def generate_dataset_list(uploaded_files_list):
             "AcquisitionTime": acquisition_time,
             "SeriesDescription": series_description,
             "ProtocolName": protocol_name,
+            "descriptor": descriptor,
             "ImageType": image_type,
             "RepetitionTime": repetition_time,
             "EchoNumber": echo_number,
@@ -551,7 +555,6 @@ def determine_subj_ses_IDs(dataset_list):
         sub_dics_list = [x for x in dataset_list if x["subject"] == sub]
 
         # Organize phenotype (sex, age) information
-
         phenotype_info = list({"sex":x["PatientSex"],"age":x["PatientAge"],"PatientName":x["PatientName"], "PatientID":x["PatientID"]} for x in sub_dics_list)[0]
         participants_info.update({str(sub):phenotype_info})
 
@@ -669,19 +672,28 @@ def determine_unique_series(dataset_list):
         series as non retro-reconstruction ones. These are generally rare
         cases, but should be accounted for.
         """
-        if "_RR" in acquisition_dic["SeriesDescription"]:
-            modified_sd = acquisition_dic["SeriesDescription"].replace("_RR", "")
+
+        if acquisition_dic["SeriesDescription"] != "NA":
+            if "_RR" in acquisition_dic["SeriesDescription"]:
+                modified_sd = acquisition_dic["SeriesDescription"].replace("_RR", "")
+                heuristic_items = [acquisition_dic["EchoTime"],
+                                   modified_sd,
+                                   acquisition_dic["ImageType"],
+                                   acquisition_dic["RepetitionTime"],
+                                   1]
+            else:
+                heuristic_items = [acquisition_dic["EchoTime"],
+                                   acquisition_dic["SeriesDescription"],
+                                   acquisition_dic["ImageType"],
+                                   acquisition_dic["RepetitionTime"],
+                                   1]
+        else: # No SeriesDescription; use ProtocolName instead
             heuristic_items = [acquisition_dic["EchoTime"],
-                               modified_sd,
-                               acquisition_dic["ImageType"],
-                               acquisition_dic["RepetitionTime"],
-                               1]
-        else:
-            heuristic_items = [acquisition_dic["EchoTime"],
-                               acquisition_dic["SeriesDescription"],
-                               acquisition_dic["ImageType"],
-                               acquisition_dic["RepetitionTime"],
-                               1]
+                                   acquisition_dic["ProtocolName"],
+                                   acquisition_dic["ImageType"],
+                                   acquisition_dic["RepetitionTime"],
+                                   1]
+            print(heuristic_items)
 
         if index == 0:
             acquisition_dic["series_idx"] = 0
@@ -753,7 +765,10 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
     for index, unique_dic in enumerate(dataset_list_unique_series):
 
-        sd = unique_dic["SeriesDescription"]
+        if unique_dic["SeriesDescription"] == "NA":
+            sd = unique_dic["ProtocolName"]
+        else:
+            sd = unique_dic["SeriesDescription"]
 
         """Make easier to find key characters/phrases in sd by removing
         non-alphanumeric characters and make everything lowercase."""
@@ -777,8 +792,8 @@ def datatype_suffix_identification(dataset_list_unique_series):
                 unique_dic["datatype"] = datatype
                 unique_dic["suffix"] = [x for x in suffixes if re.findall(x.lower(), sd)][-1]
                 unique_dic["message"] = " ".join("Acquisition is believed to \
-                    be {}/{} because '{}' is in the SeriesDescription. Please \
-                    modify if incorrect.".format(unique_dic["datatype"], unique_dic["suffix"], unique_dic["suffix"]).split())
+                    be {}/{} because '{}' is in the {}. Please \
+                    modify if incorrect.".format(unique_dic["datatype"], unique_dic["suffix"], unique_dic["suffix"], unique_dic["descriptor"]).split())
 
             # Instances where users specify both mp2rage and UNI[T1] together, default to UNIT1
             if "DERIVED" and "UNI" in unique_dic["ImageType"]:
@@ -814,25 +829,25 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     acquisition, which is currently not supported by ezBIDS at \
                     this time, but will be in the future".split())
                 unique_dic["message"] = " ".join("Acquisition is believed to be anat/angio \
-                    because '{}' is in the SeriesDescription. Please modify if \
+                    because '{}' is in the {}. Please modify if \
                     incorrect. Currently, ezBIDS does not support Angiography \
-                    conversion to BIDS".format([x for x in angio_keys if re.findall(x, sd)][0]).split())
+                    conversion to BIDS".format([x for x in angio_keys if re.findall(x, sd)][0], unique_dic["descriptor"]).split())
 
             # TB1TFL field maps
             elif any(x in sd for x in tb1tfl_keys):
                 unique_dic["datatype"] = "fmap"
                 unique_dic["suffix"] = "TB1TFL"
                 unique_dic["message"] = " ".join("Acquisition is believed to be a \
-                    TB1TFL field map because 'tflb1map' is in the SeriesDescription. \
-                    Please modify if incorrect".split())
+                    TB1TFL field map because 'tflb1map' is in the {}. \
+                    Please modify if incorrect".format(unique_dic["descriptor"]).split())
 
             # TB1RFM field maps
             elif any(x in sd for x in tb1rfm_keys):
                 unique_dic["datatype"] = "fmap"
                 unique_dic["suffix"] = "TB1RFM"
                 unique_dic["message"] = " ".join("Acquisition is believed to be a \
-                    TB1RFM field map because 'rfmap' is in the SeriesDescription. \
-                    Please modify if incorrect".split())
+                    TB1RFM field map because 'rfmap' is in the {}. \
+                    Please modify if incorrect".format(unique_dic["descriptor"]).split())
 
             # Magnitude/Phase[diff] and Spin Echo (SE) field maps
             elif any(x in sd for x in se_mag_phase_fmap_keys):
@@ -1116,7 +1131,10 @@ def entity_labels_identification(dataset_list_unique_series):
     for index, unique_dic in enumerate(dataset_list_unique_series):
 
         series_entities = {}
-        sd = unique_dic["SeriesDescription"]
+        if unique_dic["SeriesDescription"] == "NA":
+            sd = unique_dic["ProtocolName"]
+        else:
+            sd = unique_dic["SeriesDescription"]
 
         """ Check to see if entity labels can be determined from ReproIn naming
         convention
