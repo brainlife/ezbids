@@ -693,7 +693,6 @@ def determine_unique_series(dataset_list):
                                    acquisition_dic["ImageType"],
                                    acquisition_dic["RepetitionTime"],
                                    1]
-            print(heuristic_items)
 
         if index == 0:
             acquisition_dic["series_idx"] = 0
@@ -775,39 +774,40 @@ def datatype_suffix_identification(dataset_list_unique_series):
         sd = re.sub("[^A-Za-z0-9]+", "", sd).lower()
 
         # Try checking based on BIDS schema keys/labels
-        for datatype in datatypes_yaml:
-            if datatype in sd:
-                unique_dic["datatype"] = datatype
+        if unique_dic["SeriesDescription"] != "NA":
+            for datatype in datatypes_yaml:
+                if datatype in sd:
+                    unique_dic["datatype"] = datatype
 
-            rule = yaml.load(open(os.path.join(analyzer_dir, datatype_suffix_rules, datatype) + ".yaml"))
+                rule = yaml.load(open(os.path.join(analyzer_dir, datatype_suffix_rules, datatype) + ".yaml"))
 
-            suffixes = [x for y in [x["suffixes"] for x in rule] for x in y]
-            unhelpful_suffixes = ["fieldmap", "beh", "epi"]
+                suffixes = [x for y in [x["suffixes"] for x in rule] for x in y]
+                unhelpful_suffixes = ["fieldmap", "beh", "epi"]
 
-            # Remove deprecated suffixes
-            deprecated_suffixes = ["T2star", "FLASH", "PD"]
-            suffixes = [x for x in suffixes if x not in deprecated_suffixes and x not in unhelpful_suffixes]
+                # Remove deprecated suffixes
+                deprecated_suffixes = ["T2star", "FLASH", "PD"]
+                suffixes = [x for x in suffixes if x not in deprecated_suffixes and x not in unhelpful_suffixes]
 
-            if any(x.lower() in sd for x in suffixes):
-                unique_dic["datatype"] = datatype
-                unique_dic["suffix"] = [x for x in suffixes if re.findall(x.lower(), sd)][-1]
-                unique_dic["message"] = " ".join("Acquisition is believed to \
-                    be {}/{} because '{}' is in the {}. Please \
-                    modify if incorrect.".format(unique_dic["datatype"], unique_dic["suffix"], unique_dic["suffix"], unique_dic["descriptor"]).split())
+                if any(x.lower() in sd for x in suffixes):
+                    unique_dic["datatype"] = datatype
+                    unique_dic["suffix"] = [x for x in suffixes if re.findall(x.lower(), sd)][-1]
+                    unique_dic["message"] = " ".join("Acquisition is believed to \
+                        be {}/{} because '{}' is in the {}. Please \
+                        modify if incorrect.".format(unique_dic["datatype"], unique_dic["suffix"], unique_dic["suffix"], unique_dic["descriptor"]).split())
 
-            # Instances where users specify both mp2rage and UNI[T1] together, default to UNIT1
-            if "DERIVED" and "UNI" in unique_dic["ImageType"]:
-                unique_dic["datatype"] = "anat"
-                unique_dic["suffix"] = "UNIT1"
-                unique_dic["message"] = " ".join("Acquisition is believed to be anat/UNIT1 \
-                    because 'DERIVED' and 'UNI' are in the ImageType. Please modify \
-                    if incorrect".split())
+                # Instances where users specify both mp2rage and UNI[T1] together, default to UNIT1
+                if "DERIVED" and "UNI" in unique_dic["ImageType"]:
+                    unique_dic["datatype"] = "anat"
+                    unique_dic["suffix"] = "UNIT1"
+                    unique_dic["message"] = " ".join("Acquisition is believed to be anat/UNIT1 \
+                        because 'DERIVED' and 'UNI' are in the ImageType. Please modify \
+                        if incorrect".split())
 
-            """ Oftentimes, magnitude/phase[diff] acquisitions are called "gre-field-mapping",
-            so shouldn't receive the fieldmap suffix """
-            if "grefieldmap" in sd:
-                unique_dic["datatype"] = ""
-                unique_dic["suffix"] = ""
+                """ Oftentimes, magnitude/phase[diff] acquisitions are called "gre-field-mapping",
+                so shouldn't receive the fieldmap suffix """
+                if "grefieldmap" in sd:
+                    unique_dic["datatype"] = ""
+                    unique_dic["suffix"] = ""
 
         """ If no luck with BIDS schema keys/labels, try using common keys in
         SeriesDescription """
@@ -998,12 +998,6 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     be converted. Please modify if incorrect".split())
                 unique_dic["type"] = "exclude"
 
-            elif any(x in sd for x in func_keys) and "sbref" not in sd:
-                unique_dic["datatype"] = "func"
-                unique_dic["suffix"] = "bold"
-                unique_dic["message"] = " ".join("Acquisition is believed to be \
-                    func/bold because '{}' is in the SeriesDescription \
-                    (but not 'sbref'). Please modify if incorrect".format([x for x in func_keys if re.findall(x, sd)][0]).split())
 
             # Single band reference (sbref) for func or dwi
             elif "sbref" in sd:
@@ -1018,6 +1012,22 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     unique_dic["datatype"] = "func"
                     unique_dic["message"] = " ".join("Acquisition is believed to be \
                         func/sbref because 'sbref' is in the SeriesDescription".split())
+
+            elif unique_dic["SeriesDescription"] == "NA" and unique_dic["NumVolumes"] == 1 and unique_dic["nibabel_image"].ndim == 3 and any(x in sd for x in func_keys):
+                unique_dic["datatype"] = "func"
+                unique_dic["suffix"] = "sbref"
+                unique_dic["message"] = " ".join("Acquisition is believed to be \
+                        func/sbref the acquisition is 4D, has one volume, and \
+                        information is provided by ProtocolName".split())
+
+            # Functional BOLD
+            elif any(x in sd for x in func_keys) and "sbref" not in sd:
+                unique_dic["datatype"] = "func"
+                unique_dic["suffix"] = "bold"
+                unique_dic["message"] = " ".join("Acquisition is believed to be \
+                    func/bold because '{}' is in the SeriesDescription \
+                    (but not 'sbref'). Please modify if incorrect".format([x for x in func_keys if re.findall(x, sd)][0]).split())
+
 
             # T1w
             elif any(x in sd for x in t1w_keys):

@@ -188,7 +188,6 @@ else:
     output_dir = nifti_file.split(".nii.gz")[0]
     image = nib.load(nifti_file)
     object_img_array = image.dataobj[:]
-    print(nifti_file)
 
 
     bval_file = json_file.split(".json")[0].split("./")[-1] + ".bval"

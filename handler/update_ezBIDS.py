@@ -3,7 +3,7 @@
 """
 Created on Tue Jan 25 13:55:10 2022
 
-update ezBIDS.json
+update ezBIDS.json with pngPaths and moviePath
 
 @author: dlevitas
 """
@@ -34,7 +34,7 @@ for json_file in json_list:
                 if path == nifti_file:
                     files = [os.path.join(os.path.dirname(nifti_file), x) for x in os.listdir(os.path.dirname(nifti_file))]
 
-                    png_files = natsorted([x for x in files if nifti_file.split(".nii.gz")[0] in x and ".png" in x])
+                    png_files = natsorted([x for x in files if nifti_file.split("nii.gz")[0] in x and ".png" in x])
                     item["pngPaths"] = png_files
 
                     mp4_file = [x for x in files if nifti_file.split(".nii.gz")[0] in x and ".mp4" in x]
