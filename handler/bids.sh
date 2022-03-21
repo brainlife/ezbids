@@ -11,7 +11,7 @@ root=$1
 
 datasetName=`jq -r '.datasetDescription.Name' $root/finalized.json`
 
-rootDir=$root/bids/$datasetName
+rootDir="$root/bids/$datasetName"
 
 #clean up from previous run
 rm -rf $root/bids
@@ -20,8 +20,8 @@ echo "converting output to bids"
 ./convert.js $root
 
 echo "output bids directory structure"
-tree $rootDir > $root/tree.log
+tree "$rootDir" > $root/tree.log
 
 echo "running bids validator"
-bids-validator $rootDir > $root/validator.log || true
+bids-validator "$rootDir" > $root/validator.log || true
 

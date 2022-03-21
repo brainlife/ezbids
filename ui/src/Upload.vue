@@ -160,49 +160,6 @@ export default defineComponent({
             this.starting = false;
             this.doneUploading = false;
 
-            // //only allow certain files
-            // for(let i = 0;i < this.files.length;++i) {
-            //     let file = this.files[i];
-            //     let accept = false;
-            //     if( file.path.endsWith(".dcm") ||
-            //         file.path.endsWith(".IMA") ||
-
-            //         file.path.endsWith(".json") ||
-            //         file.path.endsWith(".nii.gz") ||
-            //         file.path.endsWith(".nii") ||
-            //         file.path.endsWith(".bval") ||
-            //         file.path.endsWith(".bvec") ||
-
-            //         //zip files
-            //         file.path.endsWith(".zip") ||
-            //         file.path.endsWith(".gz") ||
-            //         file.path.endsWith(".tgz") ||
-            //         file.path.endsWith(".7z") ||
-            //         file.path.endsWith(".bz2") ||
-            //         file.path.endsWith(".xz") ||
-
-            //         file.path.includes(".tar") ||
-            //         file.path.includes(".rar") ||
-
-            //         //dicom files doesn't have any file extensions..
-            //         !file.path.includes(".") ||
-            //         file.path.includes("MR.")) {
-
-            //         accept = true;
-            //     }
-
-            //     if(file.path.includes("/.")) {
-            //         //console.log("hidden files", file.path);
-            //         accept = false;
-            //     }
-
-            //     if(!accept) {
-            //         console.log("ignoring", file.path);
-            //         file.ignore = true;
-            //         this.ignoreCount++;
-            //     }
-            // }
-
             //calculate total file size
             this.total_size = 0;
             for(let i = 0;i < this.files.length;++i) {
