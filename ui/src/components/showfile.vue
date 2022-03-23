@@ -28,7 +28,7 @@ export default defineComponent({
         }
     },
 
-    computed: {   
+    computed: {
         ...mapState(['session', 'config']),
     },
 
