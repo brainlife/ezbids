@@ -69,6 +69,24 @@
                     </el-form-item>
                 </div>
 
+                <div v-if="ss.type && (ss.type.includes('fmap/') || ss.type.includes('func/sbref') || ss.type.includes('dwi/dwi') || ss.type.includes('dwi/sbref') || ss.type.includes('func/bold'))">
+                    <el-form-item label="B0FieldIdentifier">
+                        <el-select v-model="ss.B0FieldIdentifier" required multiple filterable
+                            placeholder="Please select Series" size="small"
+                            @change="validateAll()" style="width: 80%">
+                            <el-option v-for="(series, idx) in ezbids.series/*.filter(s=>s.type != 'exclude')*/" :key="idx"
+                                :label="'(#'+idx.toString()+') '+series.type" :value="idx">
+                                (#{{idx.toString()}}) {{series.type}}
+                            </el-option>
+                        </el-select>
+                        <p style="margin-top: 0">
+                            <small>Optional: select Series that this field map should be applied to.</small>
+                        </p>
+                    </el-form-item>
+                </div>
+
+
+
                 <div v-if="ss.type">
                     <el-form-item v-for="(v, entity) in getSomeEntities(ss.type)" :key="entity"
                         :label="entity.toString()+'-'+(v=='required'?' *':'')" style="width: 350px">

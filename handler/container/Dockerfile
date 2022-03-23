@@ -15,7 +15,7 @@ RUN apt-get update && apt-get upgrade -y && \
 ##https://fsl.fmrib.ox.ac.uk/fsl/fslwiki/FslInstallation/Linux
 RUN apt update && apt install -y wget python libgl-dev jq python-numpy
 
-#install fsl, but get rid of src 
+#install fsl, but get rid of src
 RUN wget https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py && \
       python fslinstaller.py -d /usr/local/fsl -V 6.0.4 && rm -rf /usr/local/fsl/src
 
@@ -63,6 +63,6 @@ RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 #install bids-validator
 RUN npm install -g bids-validator@1.9.2
 
-RUN apt-get install -y rename 
+RUN apt-get install -y rename
 
 WORKDIR /app/handler

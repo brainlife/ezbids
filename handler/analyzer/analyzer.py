@@ -210,8 +210,12 @@ def modify_uploaded_dataset_list(uploaded_json_list):
 
     # Parse json files
     for json_file in uploaded_json_list:
-        json_data = open(json_file)
-        json_data = json.load(json_data, strict=False)
+        ##### Remove the except portion  once dcm2niix is updated past the current 20211106 version
+        try:
+            json_data = open(json_file)
+            json_data = json.load(json_data, strict=False)
+        except:
+            print("{} has improper JSON syntax, probably related to dcm2niix version.".format(json_file))
 
         # Only want json files with corresonding nifti (and bval/bvec) and if
         # the files come from dcm2niix
