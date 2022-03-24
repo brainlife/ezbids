@@ -50,9 +50,10 @@ export interface Series {
     ImageType: [string];
     RepetitionTime: string;
 
+    B0FieldIdentifier?: string; //only 4D data
+
     error: string;
     message: string;
-    //object_indices: [ number ];
 
     IntendedFor?: number[]; //for fmap/ to store which object id the object is intended for
 }
