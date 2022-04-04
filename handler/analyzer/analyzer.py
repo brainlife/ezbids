@@ -268,6 +268,10 @@ def generate_dataset_list(uploaded_files_list):
         corresponding_nifti = [x for x in nifti_list if json_file[:-4] in x
                                if "nii.gz" in x][0]
 
+        print("")
+        print(corresponding_nifti)
+        print(json_data["InstitutionName"])
+
         #Phase encoding direction info
         if "PhaseEncodingDirection" in json_data:
             pe_direction = json_data["PhaseEncodingDirection"]
@@ -1150,6 +1154,8 @@ def entity_labels_identification(dataset_list_unique_series):
         else:
             sd = unique_dic["SeriesDescription"]
 
+        path =  re.sub("[^A-Za-z0-9]+", "", unique_dic["nifti_path"]).lower()
+
         """ Check to see if entity labels can be determined from ReproIn naming
         convention
         """
@@ -1176,16 +1182,24 @@ def entity_labels_identification(dataset_list_unique_series):
         if any(x in unique_dic["type"] for x in ["fmap/epi", "dwi/dwi"]) and not series_entities["direction"]:
             series_entities["direction"] = unique_dic["direction"]
 
-        # echo
-        if unique_dic["EchoNumber"] and not any(x in unique_dic["type"] for x in ["fmap/epi", "fmap/magnitude1", "fmap/magnitude2", "fmap/phasediff", "fmap/phase1", "fmap/phase2", "fmap/fieldmap"]):
-            series_entities["echo"] = str(unique_dic["EchoNumber"])
-            # Exclude non-RMS multi-echo anatomical acquisitions
-            if "anat" in unique_dic["type"] and "EchoNumber" in unique_dic["sidecar"] and "MEAN" not in unique_dic["ImageType"]:
-                unique_dic["type"] = "exclude"
-                unique_dic["message"] = " ".join("Acquisition appears to be an \
-                    anatomical multi-echo, but not the combined RMS file. Since this is \
-                    not the combined RMS file, this acquisition will be set to \
-                    exclude. Please modify if incorrect".split())
+        # # echo
+        # if unique_dic["EchoNumber"] and not any(x in unique_dic["type"] for x in ["fmap/epi", "fmap/magnitude1", "fmap/magnitude2", "fmap/phasediff", "fmap/phase1", "fmap/phase2", "fmap/fieldmap"]):
+        #     series_entities["echo"] = str(unique_dic["EchoNumber"])
+        #     # Exclude non-RMS multi-echo anatomical acquisitions
+        #     if "anat" in unique_dic["type"] and "EchoNumber" in unique_dic["sidecar"] and "MEAN" not in unique_dic["ImageType"]:
+        #         unique_dic["type"] = "exclude"
+        #         unique_dic["message"] = " ".join("Acquisition appears to be an \
+        #             anatomical multi-echo, but not the combined RMS file. Since this is \
+        #             not the combined RMS file, this acquisition will be set to \
+        #             exclude. Please modify if incorrect".split())
+
+        # ceagent
+        if any(x in path for x in ["+C", "rsuth", "riversstate", "continental", "inter", "imagecenter"]):
+            series_entities["ceagent"] = "gadolinium"
+        elif "lifebridge" in path:
+            series_entities["ceagent"] = "deulomin"
+
+
 
         # flip
         if any(x in unique_dic["type"] for x in ["anat/VFA", "anat/MPM", "anat/MTS", "fmap/TB1EPI", "fmap/TB1DAM"]) and "FlipAngle" in unique_dic["sidecar"]:
@@ -1196,6 +1210,14 @@ def entity_labels_identification(dataset_list_unique_series):
                 series_entities["flip"] = ""
 
         # acq
+        if "Axi" in sd:
+            series_entities["acquisition"] = "axial"
+        elif "Sag" in sd:
+            series_entities["acquisition"] = "sagittal"
+        elif "Cor" in sd:
+            series_entities["acquisition"] = "coronal"
+
+
         if any(x in unique_dic["type"] for x in ["fmap/TB1TFL", "fmap/TB1RFM"]):
             if "FLIP ANGLE MAP" in unique_dic["ImageType"]:
                 series_entities["acquisition"] = "fmap"

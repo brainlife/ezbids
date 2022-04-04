@@ -1,10 +1,9 @@
 "use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
         function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
         function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        function step(result) { result.done ? resolve(result.value) : new P(function (resolve) { resolve(result.value); }).then(fulfilled, rejected); }
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
@@ -176,7 +175,7 @@ router.post('/upload-multi/:session_id', upload.any(), (req, res, next) => {
     let mtimes = req.body["mtimes"];
     if (!Array.isArray(mtimes))
         mtimes = [mtimes];
-    models.Session.findById(req.params.session_id).then((session) => __awaiter(void 0, void 0, void 0, function* () {
+    models.Session.findById(req.params.session_id).then((session) => __awaiter(this, void 0, void 0, function* () {
         let idx = -1;
         async.eachSeries(req.files, (file, next_file) => {
             idx++;
