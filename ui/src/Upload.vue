@@ -89,6 +89,8 @@ export default defineComponent({
 
             this.starting = true;
             //this.$nextTick() won't update the UI with starting flag change
+            console.log("selectit - called", this.files.length);
+            console.dir(this.files);
             setTimeout(()=>{
                 for(let file of this.files) {
                     file.path = file.webkitRelativePath;
@@ -100,6 +102,9 @@ export default defineComponent({
         //Unlike file input(directory) selecter, I have to do some convoluted thing to get all the files that user drops...
         async listDropFiles(items) {
             this.files = [];
+
+            console.log("listDropFiles");
+            console.dir(items);
 
             // Get all the entries (files or sub-directories) in a directory
             // by calling readEntries until it returns empty array
@@ -159,6 +164,8 @@ export default defineComponent({
         async upload() {
             this.starting = false;
             this.doneUploading = false;
+
+            console.log("upload");
 
             //calculate total file size
             this.total_size = 0;
