@@ -1206,10 +1206,12 @@ def entity_labels_identification(dataset_list_unique_series):
         #             exclude. Please modify if incorrect".split())
 
         # ceagent
-        if any(x in path for x in ["+C", "rsuth", "riversstate", "continental", "inter", "imagecenter"]):
-            series_entities["ceagent"] = "gadolinium"
+        if any(x in path for x in ["rsuth", "riversstate", "continental", "inter", "imagecenter"]):
+            if "+c" in sd.lower():
+                series_entities["ceagent"] = "gadolinium"
         elif "lifebridge" in path:
-            series_entities["ceagent"] = "deulomin"
+            if "+c" in sd.lower():
+                series_entities["ceagent"] = "deulomin"
 
 
 
