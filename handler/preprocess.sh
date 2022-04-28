@@ -10,7 +10,7 @@ fi
 root=$1
 
 echo "running expand.sh"
-timeout 1800 ./expand.sh $root
+timeout 3600 ./expand.sh $root
 
 echo "replace file path that contains space"
 find $root -depth -name "* *" -execdir rename 's/ /_/g' "{}" \;
@@ -67,7 +67,6 @@ for line_num in ${line_nums[*]}
 do
     sed -i "$((line_num-1)), $((line_num+1))d" $root/dcm2niix_error
 done
-
 
 echo "running analyzer (may take several minutes, depending on size of data)"
 timeout 600 ./analyzer/run.sh $root
