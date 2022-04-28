@@ -1220,11 +1220,11 @@ def entity_labels_identification(dataset_list_unique_series):
                 series_entities["flip"] = ""
 
         # acq
-        if "Axi" in sd:
+        if "axi" in sd.lower() or "axdwi" in sd.lower():
             series_entities["acquisition"] = "axial"
-        elif "Sag" in sd:
+        elif "sag" in sd.lower():
             series_entities["acquisition"] = "sagittal"
-        elif "Cor" in sd:
+        elif "cor" in sd.lower():
             series_entities["acquisition"] = "coronal"
 
 
