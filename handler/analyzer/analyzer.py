@@ -335,6 +335,15 @@ def generate_dataset_list(uploaded_files_list):
         else:
             patient_age = "NA"
 
+        # Find clinical group
+        if "control" in json_file.lower():
+            clinical_group = "Control"
+        elif "dementia" in json_file.lower():
+            clinical_group = "Dementia"
+        elif "parkinson" in json_file.lower():
+            clinical_group = "Parkinson"
+
+
         """metadata may contain PatientBirthDate and/or PatientAge. Check either
         to see if one truly provides accurate age information."""
         age = "NA"
@@ -482,6 +491,7 @@ def generate_dataset_list(uploaded_files_list):
             "PatientID": patient_id,
             "PatientBirthDate": patient_birth_date,
             "PatientSex": patient_sex,
+            "Clinical_Group": clinical_group,
             "PatientAge": age,
             "subject": subject,
             "session": session,
@@ -563,7 +573,7 @@ def determine_subj_ses_IDs(dataset_list):
         sub_dics_list = [x for x in dataset_list if x["subject"] == sub]
 
         # Organize phenotype (sex, age) information
-        phenotype_info = list({"sex":x["PatientSex"],"age":x["PatientAge"],"PatientName":x["PatientName"], "PatientID":x["PatientID"]} for x in sub_dics_list)[0]
+        phenotype_info = list({"sex":x["PatientSex"],"age":x["PatientAge"],"Clinical_Group":x["Clinical_Group"],"PatientName":x["PatientName"], "PatientID":x["PatientID"]} for x in sub_dics_list)[0]
         participants_info.update({str(sub):phenotype_info})
 
         # Give each subject a unique subject_idx value
@@ -638,7 +648,7 @@ def determine_subj_ses_IDs(dataset_list):
         subject_ids_info = {
                             "subject": sub,
                             "PatientInfo": patient_info,
-                            "phenotype": list({"sex":x["PatientSex"],"age":x["PatientAge"]} for x in sub_dics_list)[0],
+                            "phenotype": list({"sex":x["PatientSex"],"age":x["PatientAge"],"Clinical_Group":x["Clinical_Group"]} for x in sub_dics_list)[0],
                             "exclude": False,
                             "sessions": [{k: v for k, v in d.items() if k != "session_idx" and k != "AcquisitionTime"} for d in unique_ses_date_times],
                             "validationErrors": []
