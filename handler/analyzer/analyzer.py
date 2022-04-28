@@ -342,6 +342,8 @@ def generate_dataset_list(uploaded_files_list):
             clinical_group = "Dementia"
         elif "parkinson" in json_file.lower():
             clinical_group = "Parkinson"
+        else:
+            clinical_group = "NA"
 
 
         """metadata may contain PatientBirthDate and/or PatientAge. Check either
