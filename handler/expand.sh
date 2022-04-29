@@ -13,15 +13,13 @@ echo "expanding zip/gz/tar in $root"
 #expand various things that we can expand
 function expand {
 
-    #pigz can't handle xz.. so fall back to use native tar uncompressor
-    for tar in $(find $root -name "*.tar.xz"); do
-        #tar is too verbose
-        tar -xf $tar -C $(dirname $tar)
-        rm -rf $tar
-    done
+    ##############################################################################################
+    ##
+    ## tar can handle most things
+    ##
 
-    for tar in $(find $root -name "*.tar*"); do
-        #tar is too verbose
+    #use pigz for gz
+    for tar in $(find $root -name "*.tar.gz"); do
         tar -I pigz -xf $tar -C $(dirname $tar)
         rm -rf $tar
     done
@@ -31,6 +29,16 @@ function expand {
         tar -I pigz -xf $tar -C $(dirname $tar)
         rm -rf $tar
     done
+
+    #let tar handle all other compression algorithms in default way
+    for tar in $(find $root -name "*.tar*"); do
+        tar -xf $tar -C $(dirname $tar)
+        rm -rf $tar
+    done
+
+    ##
+    ##
+    ##############################################################################################
 
     for gz in $(find $root -name "*.gz"); do
         if [[ "$gz" != *".nii.gz" ]]; then
@@ -59,7 +67,10 @@ function expand {
         rm -rf $rar
     done
 
-    #TODO .xz?
+    for zst in $(find $root -name "*.zst"); do
+        zst -d $zip
+        rm -rf $zip
+    done
 }
 
 #keep expanding until there is nothing else to expand
