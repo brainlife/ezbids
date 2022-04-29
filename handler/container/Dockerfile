@@ -63,6 +63,6 @@ RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 #install bids-validator
 RUN npm install -g bids-validator@1.9.2
 
-RUN apt-get install -y rename
+RUN apt-get install -y rename zstd
 
 WORKDIR /app/handler

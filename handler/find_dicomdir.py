@@ -5,7 +5,7 @@ import sys
 
 def find_leaf(dir):
     leaf=True
-    hasDicom=True
+    hasDicom=False
 
     #is it leaf?
     for x in os.listdir(dir):
@@ -16,21 +16,21 @@ def find_leaf(dir):
             leaf=False
             continue
 
-        # #does it contain any .dcmfile?
-        # if x.lower().endswith(".dcm") or x.lower().endswith(".ima") or x.lower().startswith("mr."):
-        #     hasDicom=True
+        #does it contain any .dcmfile?
+        if x.lower().endswith(".dcm") or x.lower().endswith(".ima") or x.lower().startswith("mr."):
+            hasDicom=True
 
     #don't consider a leaf directory with nothing but .nii or .nii.gz
     #otherwise dcm2niix gets run on that directory and it will fail
     #it could still fail if directory doesn't have any dcm
-    if leaf:
-        allNifty=True
-        for x in os.listdir(dir):
-            if not x.endswith(".nii") and not x.endswith(".nii.gz"):
-                allNifty=False
-                break
-        if allNifty:
-            hasDicom=False
+    #if leaf:
+    #    allNifty=True
+    #    for x in os.listdir(dir):
+    #        if not x.endswith(".nii") and not x.endswith(".nii.gz"):
+    #            allNifty=False
+    #            break
+    #    if allNifty:
+    #        hasDicom=False
 
     #if it contains DICOMDIR, treat it as leaf
     if not leaf:

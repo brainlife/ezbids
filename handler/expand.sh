@@ -8,7 +8,7 @@ set -x
 root=$1
 cd $root
 
-echo "expanding zip/gz/tar in $root"
+echo "expanding archives in $root"
 
 #expand various things that we can expand
 function expand {
@@ -32,6 +32,7 @@ function expand {
 
     #let tar handle all other compression algorithms in default way
     for tar in $(find $root -name "*.tar*"); do
+        echo "found $tar ----------"
         tar -xf $tar -C $(dirname $tar)
         rm -rf $tar
     done
