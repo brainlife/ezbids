@@ -33,9 +33,9 @@ from urllib.request import urlopen
 
 DATA_DIR = sys.argv[1]
 
-datatypes_yaml = yaml.load(open("../bids-specification/src/schema/objects/datatypes.yaml"))
-entities_yaml = yaml.load(open("../bids-specification/src/schema/objects/entities.yaml"))
-suffixes_yaml = yaml.load(open("../bids-specification/src/schema/objects/suffixes.yaml"))
+datatypes_yaml = yaml.load(open("../bids-specification/src/schema/objects/datatypes.yaml"), Loader=yaml.FullLoader)
+entities_yaml = yaml.load(open("../bids-specification/src/schema/objects/entities.yaml"), Loader=yaml.FullLoader)
+suffixes_yaml = yaml.load(open("../bids-specification/src/schema/objects/suffixes.yaml"), Loader=yaml.FullLoader)
 datatype_suffix_rules = "../bids-specification/src/schema/rules/datatypes"
 entity_ordering_file = "../bids-specification/src/schema/rules/entities.yaml"
 
@@ -335,16 +335,6 @@ def generate_dataset_list(uploaded_files_list):
         else:
             patient_age = "NA"
 
-        # Find clinical group
-        if "control" in json_file.lower():
-            clinical_group = "Control"
-        elif "dementia" in json_file.lower():
-            clinical_group = "Dementia"
-        elif "parkinson" in json_file.lower():
-            clinical_group = "Parkinson"
-        else:
-            clinical_group = "NA"
-
 
         """metadata may contain PatientBirthDate and/or PatientAge. Check either
         to see if one truly provides accurate age information."""
@@ -493,7 +483,6 @@ def generate_dataset_list(uploaded_files_list):
             "PatientID": patient_id,
             "PatientBirthDate": patient_birth_date,
             "PatientSex": patient_sex,
-            "Clinical_Group": clinical_group,
             "PatientAge": age,
             "subject": subject,
             "session": session,
@@ -575,7 +564,7 @@ def determine_subj_ses_IDs(dataset_list):
         sub_dics_list = [x for x in dataset_list if x["subject"] == sub]
 
         # Organize phenotype (sex, age) information
-        phenotype_info = list({"sex":x["PatientSex"],"age":x["PatientAge"],"Clinical_Group":x["Clinical_Group"],"PatientName":x["PatientName"], "PatientID":x["PatientID"]} for x in sub_dics_list)[0]
+        phenotype_info = list({"sex":x["PatientSex"],"age":x["PatientAge"],"PatientName":x["PatientName"], "PatientID":x["PatientID"]} for x in sub_dics_list)[0]
         participants_info.update({str(sub):phenotype_info})
 
         # Give each subject a unique subject_idx value
@@ -650,7 +639,7 @@ def determine_subj_ses_IDs(dataset_list):
         subject_ids_info = {
                             "subject": sub,
                             "PatientInfo": patient_info,
-                            "phenotype": list({"sex":x["PatientSex"],"age":x["PatientAge"],"Clinical_Group":x["Clinical_Group"]} for x in sub_dics_list)[0],
+                            "phenotype": list({"sex":x["PatientSex"],"age":x["PatientAge"]} for x in sub_dics_list)[0],
                             "exclude": False,
                             "sessions": [{k: v for k, v in d.items() if k != "session_idx" and k != "AcquisitionTime"} for d in unique_ses_date_times],
                             "validationErrors": []
@@ -795,39 +784,46 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
         # Try checking based on BIDS schema keys/labels
         if unique_dic["SeriesDescription"] != "NA":
-            for datatype in datatypes_yaml:
-                if datatype in sd:
-                    unique_dic["datatype"] = datatype
+            if unique_dic["nibabel_image"].get_data_dtype() == [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]: # non an MRI acquisition for BIDS
+                unique_dic["type"] = "exclude"
+                unique_dic["error"] = "Acquisition does not appear to be an MRI acquisition for BIDS"
+                unique_dic["message"] = " ".join("Acquisition is not believed \
+                    to be an MRI acquisition and therefore will not be converted \
+                    to BIDS. Please modify if incorrect.".split())
+            else:
+                for datatype in datatypes_yaml:
+                    if datatype in sd:
+                        unique_dic["datatype"] = datatype
 
-                rule = yaml.load(open(os.path.join(analyzer_dir, datatype_suffix_rules, datatype) + ".yaml"))
+                    rule = yaml.load(open(os.path.join(analyzer_dir, datatype_suffix_rules, datatype) + ".yaml"), Loader=yaml.FullLoader)
 
-                suffixes = [x for y in [x["suffixes"] for x in rule] for x in y]
-                unhelpful_suffixes = ["fieldmap", "beh", "epi"]
+                    suffixes = [x for y in [x["suffixes"] for x in rule] for x in y]
+                    unhelpful_suffixes = ["fieldmap", "beh", "epi"]
 
-                # Remove deprecated suffixes
-                deprecated_suffixes = ["T2star", "FLASH", "PD"]
-                suffixes = [x for x in suffixes if x not in deprecated_suffixes and x not in unhelpful_suffixes]
+                    # Remove deprecated suffixes
+                    deprecated_suffixes = ["T2star", "FLASH", "PD"]
+                    suffixes = [x for x in suffixes if x not in deprecated_suffixes and x not in unhelpful_suffixes]
 
-                if any(x.lower() in sd for x in suffixes):
-                    unique_dic["datatype"] = datatype
-                    unique_dic["suffix"] = [x for x in suffixes if re.findall(x.lower(), sd)][-1]
-                    unique_dic["message"] = " ".join("Acquisition is believed to \
-                        be {}/{} because '{}' is in the {}. Please \
-                        modify if incorrect.".format(unique_dic["datatype"], unique_dic["suffix"], unique_dic["suffix"], unique_dic["descriptor"]).split())
+                    if any(x.lower() in sd for x in suffixes):
+                        unique_dic["datatype"] = datatype
+                        unique_dic["suffix"] = [x for x in suffixes if re.findall(x.lower(), sd)][-1]
+                        unique_dic["message"] = " ".join("Acquisition is believed to \
+                            be {}/{} because '{}' is in the {}. Please \
+                            modify if incorrect.".format(unique_dic["datatype"], unique_dic["suffix"], unique_dic["suffix"], unique_dic["descriptor"]).split())
 
-                # Instances where users specify both mp2rage and UNI[T1] together, default to UNIT1
-                if "DERIVED" and "UNI" in unique_dic["ImageType"]:
-                    unique_dic["datatype"] = "anat"
-                    unique_dic["suffix"] = "UNIT1"
-                    unique_dic["message"] = " ".join("Acquisition is believed to be anat/UNIT1 \
-                        because 'DERIVED' and 'UNI' are in the ImageType. Please modify \
-                        if incorrect".split())
+                    # Instances where users specify both mp2rage and UNI[T1] together, default to UNIT1
+                    if "DERIVED" and "UNI" in unique_dic["ImageType"]:
+                        unique_dic["datatype"] = "anat"
+                        unique_dic["suffix"] = "UNIT1"
+                        unique_dic["message"] = " ".join("Acquisition is believed to be anat/UNIT1 \
+                            because 'DERIVED' and 'UNI' are in the ImageType. Please modify \
+                            if incorrect".split())
 
-                """ Oftentimes, magnitude/phase[diff] acquisitions are called "gre-field-mapping",
-                so shouldn't receive the fieldmap suffix """
-                if "grefieldmap" in sd:
-                    unique_dic["datatype"] = ""
-                    unique_dic["suffix"] = ""
+                    """ Oftentimes, magnitude/phase[diff] acquisitions are called "gre-field-mapping",
+                    so shouldn't receive the "fieldmap" suffix """
+                    if "grefieldmap" in sd:
+                        unique_dic["datatype"] = ""
+                        unique_dic["suffix"] = ""
 
         """ If no luck with BIDS schema keys/labels, try using common keys in
         SeriesDescription """
@@ -1154,7 +1150,7 @@ def entity_labels_identification(dataset_list_unique_series):
     dataset_list_unique_series : list
         updated input list
     """
-    entity_ordering = yaml.load(open(os.path.join(analyzer_dir, entity_ordering_file)))
+    entity_ordering = yaml.load(open(os.path.join(analyzer_dir, entity_ordering_file)), Loader=yaml.FullLoader)
 
     tb1afi_tr = 1
     tb1srge_td = 1
@@ -1205,14 +1201,6 @@ def entity_labels_identification(dataset_list_unique_series):
         #             not the combined RMS file, this acquisition will be set to \
         #             exclude. Please modify if incorrect".split())
 
-        # ceagent
-        if any(x in path for x in ["rsuth", "riversstate", "continental", "inter", "imagecenter"]):
-            if "+c" in sd.lower():
-                series_entities["ceagent"] = "gadolinium"
-        elif "lifebridge" in path:
-            if "+c" in sd.lower():
-                series_entities["ceagent"] = "deulomin"
-
 
 
         # flip
@@ -1224,14 +1212,6 @@ def entity_labels_identification(dataset_list_unique_series):
                 series_entities["flip"] = ""
 
         # acq
-        if "axi" in sd.lower() or "axdwi" in sd.lower():
-            series_entities["acquisition"] = "axial"
-        elif "sag" in sd.lower():
-            series_entities["acquisition"] = "sagittal"
-        elif "cor" in sd.lower():
-            series_entities["acquisition"] = "coronal"
-
-
         if any(x in unique_dic["type"] for x in ["fmap/TB1TFL", "fmap/TB1RFM"]):
             if "FLIP ANGLE MAP" in unique_dic["ImageType"]:
                 series_entities["acquisition"] = "fmap"
@@ -1337,7 +1317,7 @@ def modify_objects_info(dataset_list):
     """
     objects_list = []
 
-    entity_ordering = yaml.load(open(os.path.join(analyzer_dir, entity_ordering_file)))
+    entity_ordering = yaml.load(open(os.path.join(analyzer_dir, entity_ordering_file)), Loader=yaml.FullLoader)
 
     # Find unique subject/session idx pairs in dataset and sort them
     subj_ses_pairs = [[x["subject_idx"], x["session_idx"]] for x in dataset_list]

@@ -63,13 +63,13 @@ def create_movie_thumbnails(nifti_file, output_dir, object_img_array, v):
         fig.canvas.draw()
 
         w,h = fig.canvas.get_width_height()
-        buf = np.fromstring(fig.canvas.tostring_argb(), dtype=np.uint8)
+        buf = np.frombuffer(fig.canvas.tostring_argb(), dtype=np.uint8)
         buf.shape = (w,h,4)
 
         buf = np.roll(buf,3,axis=2)
 
         w,h,d = buf.shape
-        png = Image.frombytes("RGBA", (w,h), buf.tostring())
+        png = Image.frombytes("RGBA", (w,h), buf.tobytes())
 
         # Sort files in Linux-friendly way (i.e. zero pad)
         v_len = len(str(v))
@@ -163,13 +163,13 @@ def create_DWIshell_thumbnails(nifti_file, image, bval_file):
         fig.canvas.draw()
 
         w,h = fig.canvas.get_width_height()
-        buf = np.fromstring(fig.canvas.tostring_argb(), dtype=np.uint8)
+        buf = np.frombuffer(fig.canvas.tostring_argb(), dtype=np.uint8)
         buf.shape = (w,h,4)
 
         buf = np.roll(buf,3,axis=2)
 
         w,h,d = buf.shape
-        png = Image.frombytes("RGBA", (w,h), buf.tostring())
+        png = Image.frombytes("RGBA", (w,h), buf.tobytes())
         png.save("{}_shell-{}.png".format(output_file, bval))
 
 
@@ -216,19 +216,24 @@ else:
     #     # Combine volume PNGs into movie
     #     os.system("ffmpeg -framerate 30 -pattern_type glob -i {}/'*.png' {}_movie.mp4".format(output_dir, output_dir))
 
-    # create thumbnail
-    if nifti_file != "N/A":
-        print("")
-        print("Creating thumbnail for {}".format(nifti_file))
-        print("")
-        create_thumbnail(nifti_file, image)
 
-    # create thumbnail of each DWI's unique shell
-    if bval_file != "N/A":
-        print("")
-        print("Creating thumbnail(s) for each DWI shell in {}".format(nifti_file))
-        print("")
-        create_DWIshell_thumbnails(nifti_file, image, bval_file)
+    # Some acquisitions may not have a proper dtype, strongly indicating a non-MRI acquisition
+    if image.get_data_dtype() == [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]:
+        print("{} doesn't appear to be an MRI acquisition, has dtype value of {}".format(nifti_file, [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]))
+    else:
+        # create thumbnail
+        if nifti_file != "N/A":
+            print("")
+            print("Creating thumbnail for {}".format(nifti_file))
+            print("")
+            create_thumbnail(nifti_file, image)
+
+        # create thumbnail of each DWI's unique shell
+        if bval_file != "N/A":
+            print("")
+            print("Creating thumbnail(s) for each DWI shell in {}".format(nifti_file))
+            print("")
+            create_DWIshell_thumbnails(nifti_file, image, bval_file)
 
     # remove the folder containing the PNGs for movie gneration; don't need them anymore
     if os.path.isdir(output_dir):
