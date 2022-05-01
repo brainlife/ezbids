@@ -780,11 +780,12 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
         """Make easier to find key characters/phrases in sd by removing
         non-alphanumeric characters and make everything lowercase."""
-        sd = re.sub("[^A-Za-z0-9]+", "", sd).lower()
+        # sd = re.sub("[^A-Za-z0-9]+", "", sd).lower()
+        sd = sd.lower()
 
         # Try checking based on BIDS schema keys/labels
         if unique_dic["SeriesDescription"] != "NA":
-            if unique_dic["nibabel_image"].get_data_dtype() == [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]: # non an MRI acquisition for BIDS
+            if unique_dic["nibabel_image"].get_data_dtype() == [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]: # non-BIDS acquisition
                 unique_dic["type"] = "exclude"
                 unique_dic["error"] = "Acquisition does not appear to be an MRI acquisition for BIDS"
                 unique_dic["message"] = " ".join("Acquisition is not believed \
@@ -991,7 +992,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
                             therefore not be converted".split())
                         unique_dic["message"] = " ".join("Acquisition is believed to be \
                             TRACE, FA, or ADC because there are bval & bvec files \
-                            with the same SeriesNumber, and '{}' are in the \
+                            with the same SeriesNumber, and '{}' is in the \
                             SeriesDescription. Please modify if \
                             incorrect".format([x for x in dwi_derived_keys if re.findall(x, sd)][0]).split())
                         unique_dic["type"] = "exclude"
