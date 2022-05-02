@@ -10,7 +10,9 @@ fi
 root=$1
 
 echo "running expand.sh"
-timeout 3600 ./expand.sh $root
+#timeout 3600 ./expand.sh $root
+#disabling timeout until we migrate to js2
+./expand.sh $root
 
 echo "replace file path that contains space"
 find $root -depth -name "* *" -execdir rename 's/ /_/g' "{}" \;
