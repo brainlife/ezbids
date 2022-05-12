@@ -563,14 +563,15 @@ def determine_subj_ses_IDs(dataset_list):
     for sub in np.unique([x["subject"] for x in dataset_list]):
         sub_dics_list = [x for x in dataset_list if x["subject"] == sub]
 
-        # Organize phenotype (sex, age) information
-        phenotype_info = list({"sex":x["PatientSex"],"age":x["PatientAge"],"PatientName":x["PatientName"], "PatientID":x["PatientID"]} for x in sub_dics_list)[0]
-        participants_info.update({str(sub):phenotype_info})
-
         # Give each subject a unique subject_idx value
         for x in sub_dics_list:
             x["subject_idx"] = subject_idx_counter
         subject_idx_counter += 1
+
+        # Organize phenotype (sex, age) information
+        phenotype_info = list({"sex":x["PatientSex"],"age":x["PatientAge"],"PatientName":x["PatientName"], "PatientID":x["PatientID"]} for x in sub_dics_list)[0]
+        #participants_info.update({str(sub):phenotype_info})
+        participants_info.update({str(x["subject_idx"]):phenotype_info})
 
         # Determine all unique sessions (if applicable) per subject
         unique_ses_date_times = []

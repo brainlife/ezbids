@@ -165,12 +165,14 @@ interface BIDSDatatypes {
 
 export interface OrganizedSession {
     sess: string,
+    session_idx: number;
     objects: IObject[], //all object under this subject/session
     AcquisitionDate: string, //TODO.. should be Date?
 }
 
 export interface OrganizedSubject {
     sub: string;
+    subject_idx: number;
     sess: OrganizedSession[];
 }
 
@@ -199,9 +201,8 @@ export interface ISession {
 }
 
 const state = {
-    //counter: 0,
     bidsSchema: {
-        entities: bidsEntities as BIDSEntities, //await import('../assets/schema/entities.json'), //aka "bids_entities"
+        entities: bidsEntities as BIDSEntities, 
         datatypes: {} as BIDSDatatypes,
     },
 
@@ -243,7 +244,7 @@ const state = {
 
         readme: "edit me",
         participantsColumn: {},
-        participantsInfo: {} as {[key:string]: any},
+        participantsInfo: {} as {[key:string]: any}, //any?
 
         //here lives various things
         subjects: [] as Subject[],
@@ -473,16 +474,17 @@ const store = createStore({
                 if(!subGroup) {
                     subGroup = {
                         sub,
+                        subject_idx: o.subject_idx,
                         sess: [],
                     }
                     state.ezbids._organized.push(subGroup);
                 }
-                //if(!state.ezbids.participantsInfo[sub]) state.ezbids.participantsInfo[sub] = {};
 
                 let sesGroup = subGroup.sess.find(s=>s.sess == sess);
                 if(!sesGroup) {
                     sesGroup = {
                         sess,
+                        session_idx: o.session_idx,
                         AcquisitionDate: o.AcquisitionDate,
                         objects: [],
                     }
@@ -581,38 +583,16 @@ const store = createStore({
             //find the option that contains our suffix
             const option = datatype.options.find(option=>option.value == type);
 
-            // console.log("getBIDSEntities", type, Object.keys(option.entities));
-
             return option?.entities;
         },
 
         //find a session inside sub hierarchy
         findSession: (state)=>(sub: Subject, o: IObject) : (Session|undefined)=>{
             return sub.sessions[o.session_idx];
-            //return sub.sessions.find(s=>s.AcquisitionDate == o.AcquisitionDate); //will be deprecasted
         },
 
         findSubject: (state)=>(o: IObject): (Subject|undefined) =>{
             return state.ezbids.subjects[o.subject_idx];
-            /*
-            //rest is deprecated now that we use subject_idx to find subject
-            //does this still happen?
-            if(!o.PatientName && o.PatientID && o.PatientBirthDate) {
-                console.error("none of the patient identifying fields are set.. can't find this object");
-                console.dir(o);
-                return undefined;
-            }
-            return state.ezbids.subjects.find(s=>{
-                //see if any of the PatientInfo matches this object's
-                let match = s.PatientInfo.find(info=>{
-                    if(o.PatientName && info.PatientName != o.PatientName) return false;
-                    if(o.PatientID && info.PatientID != o.PatientID) return false;
-                    if(o.PatientBirthDate && info.PatientBirthDate != o.PatientBirthDate) return false;
-                    return true;
-                });
-                return !!match;
-            });
-            */
         },
 
         findSubjectFromString: (state)=>(sub: string) : (Subject|undefined) =>{
@@ -624,12 +604,6 @@ const store = createStore({
             if(!state.session) return undefined;
             return state.config.apihost+"/download/"+state.session._id+"/"+path;
         },
-
-        /*
-        getAnatObjects: (state)=>()=>{
-            return state.ezbids.objects.filter(o=>o._type.startsWith('anat') && !o._exclude)
-        },
-        */
     },
 })
 

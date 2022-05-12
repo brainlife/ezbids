@@ -6,9 +6,9 @@
     <small>Define phenotypical keys stored for this study (optional).</small>
     <br><br>
     <el-form>
-        <div v-for="(column, key) in ezbids.participantsColumn" :key="key" class="columnEditor">
+        <div v-for="(column, idx) in ezbids.participantsColumn" :key="key" class="columnEditor">
             <span style="float: right">
-                <el-button type="danger" @click="remove(key)" size="mini"><Remove style="width: 16px;"/></el-button>
+                <el-button type="danger" @click="remove(idx)" size="mini"><Remove style="width: 16px;"/></el-button>
             </span>
             <b>{{key}}</b>
             <br>
@@ -52,10 +52,10 @@
         </tr>
         </thead>
         <tbody>
-            <tr v-for="(sub) in finalSubs" :key="sub">
-                <th>{{sub}}</th>
+            <tr v-for="subject_idx in finalSubs" :key="subject_idx">
+                <th>{{ezbids.subjects[parseInt(subject_idx)].subject}}</th>
                 <td v-for="(column, key) in ezbids.participantsColumn" :key="key">
-                    <el-input v-model.trim="ezbids.participantsInfo[sub][key]" size="mini"/>
+                    <el-input v-model.trim="ezbids.participantsInfo[subject_idx][key]" size="mini"/>
                 </td>
             </tr>
         </tbody>
@@ -90,6 +90,7 @@ export default defineComponent({
         ...mapState(['ezbids', 'config']),
         //...mapGetters(['findSubjectFromString']),
 
+        //only show subjects that are really used (not excluded)
         finalSubs() {
             let finalSubs = [] as string[]
             this.ezbids._organized.forEach((sub: OrganizedSubject)=>{
@@ -97,7 +98,7 @@ export default defineComponent({
                 sub.sess.forEach(ses=>{
                     if(ses.objects.some(o=>!o._exclude)) use = true;
                 });
-                if(use) finalSubs.push(sub.sub);
+                if(use) finalSubs.push(sub.subject_idx);
             })
             return finalSubs;
         }
@@ -106,7 +107,7 @@ export default defineComponent({
     created() {
         //initialize
         this.ezbids._organized.forEach((o:OrganizedSubject)=>{
-            if(!this.ezbids.participantsInfo[o.sub]) this.ezbids.participantsInfo[o.sub] = {};
+            if(!this.ezbids.participantsInfo[o.subject_idx]) this.ezbids.participantsInfo[o.subject_idx] = {};
         });
     },
 
@@ -123,8 +124,8 @@ export default defineComponent({
         },
 
 
-        remove(key: string|number|symbol) {
-            delete this.ezbids.participantsColumn[key];
+        remove(idx: number) {
+            delete this.ezbids.participantsColumn[idx];
         },
 
         //TODO

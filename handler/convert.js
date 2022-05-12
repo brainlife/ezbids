@@ -38,11 +38,12 @@ for (let key of keys) {
     tsvheader.push(key);
 }
 tsv.push(tsvheader);
-for (const sub in info.participantInfo) {
+for (const subject_idx in info.participantInfo) {
+    const sub = info.subjects[subject_idx];
     let tsvrec = [];
-    tsvrec.push("sub-" + sub);
+    tsvrec.push("sub-" + sub.subject);
     for (let key in info.participantsColumn) {
-        tsvrec.push(info.participantInfo[sub][key] || 'n/a');
+        tsvrec.push(info.participantInfo[subject_idx][key] || 'n/a');
     }
     tsv.push(tsvrec);
 }
