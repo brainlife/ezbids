@@ -49,7 +49,7 @@ today_date = date.today().strftime("%Y-%m-%d")
 os.chdir(DATA_DIR)
 
 ######## Functions ########
-def cog_atlas_tasks(url):
+def find_cog_atlas_tasks(url):
     """
     Generates a list of all possible task names from the Cognitive Atlas API
     task url.
@@ -797,7 +797,13 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     if datatype in sd:
                         unique_dic["datatype"] = datatype
 
+
                     rule = yaml.load(open(os.path.join(analyzer_dir, datatype_suffix_rules, datatype) + ".yaml"), Loader=yaml.FullLoader)
+
+                    if isinstance(rule,list):
+                        suffixes = [x for y in [x["suffixes"] for x in rule] for x in y]
+                    elif isinstance(rule,dict):
+                        suffixes = [x for y in [rule[x]["suffixes"] for x in rule] for x in y]
 
                     suffixes = [x for y in [x["suffixes"] for x in rule] for x in y]
                     unhelpful_suffixes = ["fieldmap", "beh", "epi"]
@@ -1186,7 +1192,7 @@ def entity_labels_identification(dataset_list_unique_series):
         else:
             match_index = [x for x,y in enumerate(re.search(x, sd, re.IGNORECASE) for x in cog_atlas_tasks) if y != None]
             if len(match_index) == 1:
-                series_entities["task"] = cog_atlas_tasks[match_index[0]]
+                series_entities["task"] = find_cog_atlas_tasks[match_index[0]]
 
         # dir (required for fmap/epi an highly recommended for dwi/dwi)
         if any(x in unique_dic["type"] for x in ["fmap/epi", "dwi/dwi"]) and not series_entities["direction"]:
@@ -1525,7 +1531,7 @@ PARTICIPANTS_COLUMN = {"sex": {"LongName": "gender",
                        }
 
 # Generate list of all possible Cognitive Atlas task terms
-cog_atlas_tasks = cog_atlas_tasks(cog_atlas_url)
+cog_atlas_tasks = find_cog_atlas_tasks(cog_atlas_url)
 
 # Load dataframe containing all uploaded files
 uploaded_json_list = pd.read_csv("list", header=None, sep="\n").to_numpy().flatten().tolist()
