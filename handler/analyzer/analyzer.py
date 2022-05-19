@@ -268,10 +268,6 @@ def generate_dataset_list(uploaded_files_list):
         corresponding_nifti = [x for x in nifti_list if json_file[:-4] in x
                                if "nii.gz" in x][0]
 
-        print("")
-        print(corresponding_nifti)
-        print(json_data["InstitutionName"])
-
         #Phase encoding direction info
         if "PhaseEncodingDirection" in json_data:
             pe_direction = json_data["PhaseEncodingDirection"]
@@ -1041,7 +1037,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
                         information is provided by ProtocolName".split())
 
             # Functional BOLD
-            elif any(x in sd for x in func_keys) and "sbref" not in sd:
+            elif any(x in sd for x in func_keys) or (len([x for x in func_keys if x in sd_sparse]) and [x for x in func_keys if x in sd_sparse][-1] > 3) and "sbref" not in sd:
                 unique_dic["datatype"] = "func"
                 unique_dic["suffix"] = "bold"
                 unique_dic["message"] = " ".join("Acquisition is believed to be \
@@ -1050,7 +1046,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
 
             # T1w
-            elif any(x in sd for x in t1w_keys):
+            elif any(x in sd for x in t1w_keys) or (len([x for x in t1w_keys if x in sd_sparse]) and [x for x in t1w_keys if x in sd_sparse][-1] > 3):
                 unique_dic["datatype"] = "anat"
                 unique_dic["suffix"] = "T1w"
                 unique_dic["message"] = " ".join("Acquisition is believed to be anat/T1w \
@@ -1058,7 +1054,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     incorrect".format([x for x in t1w_keys if re.findall(x, sd)][0]).split())
 
             # FLAIR
-            elif any(x in sd for x in flair_keys):
+            elif any(x in sd for x in flair_keys) or (len([x for x in flair_keys if x in sd_sparse]) and [x for x in flair if x in sd_sparse][-1] > 3):
                 unique_dic["datatype"] = "anat"
                 unique_dic["suffix"] = "FLAIR"
                 unique_dic["message"] = " ".join("Acquisition is believed to be anat/FLAIR \
