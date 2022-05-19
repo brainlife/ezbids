@@ -89,8 +89,6 @@ export default defineComponent({
 
             this.starting = true;
             //this.$nextTick() won't update the UI with starting flag change
-            console.log("selectit - called", this.files.length);
-            console.dir(this.files);
             setTimeout(()=>{
                 for(let file of this.files) {
                     file.path = file.webkitRelativePath;
@@ -104,7 +102,7 @@ export default defineComponent({
             this.files = [];
 
             console.log("listDropFiles");
-            console.dir(items);
+            // console.dir(items);
 
             // Get all the entries (files or sub-directories) in a directory
             // by calling readEntries until it returns empty array

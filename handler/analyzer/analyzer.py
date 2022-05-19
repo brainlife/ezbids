@@ -805,7 +805,6 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     elif isinstance(rule,dict):
                         suffixes = [x for y in [rule[x]["suffixes"] for x in rule] for x in y]
 
-                    suffixes = [x for y in [x["suffixes"] for x in rule] for x in y]
                     unhelpful_suffixes = ["fieldmap", "beh", "epi"]
 
                     # Remove deprecated suffixes
