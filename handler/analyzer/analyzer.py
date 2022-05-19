@@ -70,7 +70,7 @@ def find_cog_atlas_tasks(url):
     url_contents = urlopen(url)
     data = json.load(url_contents)
     tasks = [re.sub("[^A-Za-z0-9]+", "", re.split(" task| test", x["name"])[0]) for x in data] # Remove non-alphanumeric terms and "task", "test" substrings
-    tasks = [x for x in tasks if len(x) > 0] # Remove empty task name terms
+    tasks = [x for x in tasks if len(x) > 2] # Remove empty task name terms and ones under 2 characters (b/c hard to detect in SeriesDescription)
     tasks = sorted(tasks, key=str.casefold) # sort alphabetically, but ignore case
 
     return tasks
@@ -781,7 +781,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
         """Make easier to find key characters/phrases in sd by removing
         non-alphanumeric characters and make everything lowercase."""
-        # sd = re.sub("[^A-Za-z0-9]+", "", sd).lower()
+        sd_sparse = re.sub("[^A-Za-z0-9]+", "", sd).lower()
         sd = sd.lower()
 
         # Try checking based on BIDS schema keys/labels
@@ -800,10 +800,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
                     rule = yaml.load(open(os.path.join(analyzer_dir, datatype_suffix_rules, datatype) + ".yaml"), Loader=yaml.FullLoader)
 
-                    if isinstance(rule,list):
-                        suffixes = [x for y in [x["suffixes"] for x in rule] for x in y]
-                    elif isinstance(rule,dict):
-                        suffixes = [x for y in [rule[x]["suffixes"] for x in rule] for x in y]
+                    suffixes = [x for y in [rule[x]["suffixes"] for x in rule] for x in y]
 
                     unhelpful_suffixes = ["fieldmap", "beh", "epi"]
 
