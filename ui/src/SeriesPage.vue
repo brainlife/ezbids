@@ -90,7 +90,7 @@
                 <div v-if="ss.type">
                     <el-form-item v-for="(v, entity) in getSomeEntities(ss.type)" :key="entity"
                         :label="entity.toString()+'-'+(v=='required'?' *':'')" style="width: 350px">
-                        <el-popover v-if="bidsSchema.entities[entity]" :width="350" trigger="focus" placement="left-start"
+                        <el-popover v-if="bidsSchema.entities[entity]" :width="350"
                             :title="bidsSchema.entities[entity].name"
                             :content="bidsSchema.entities[entity].description">
                             <template #reference>

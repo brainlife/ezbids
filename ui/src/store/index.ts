@@ -1,7 +1,7 @@
 
 import { createStore } from 'vuex'
 
-import bidsEntities from '../assets/schema/entities.json'
+import bidsEntities from '../assets/schema/objects/entities.json'
 export interface DatasetDescription {
     Name: string;
     BIDSVersion: string;
@@ -303,9 +303,14 @@ const state = {
 export type IEzbids = typeof state.ezbids;
 export type IEvents = typeof state.events;
 
-function loadDatatype(modality: string, datatype: BIDSSchemaEntities[], label: string) {
+function loadDatatype(
+    modality: string, 
+    datatypes: {[key: string]: BIDSSchemaEntities}, 
+    label: string) {
+
     state.bidsSchema.datatypes[modality] = { label, options: [] };
-    datatype.forEach(group=>{
+    for(const group of Object.values(datatypes)) {
+    //datatype.forEach(group=>{
         group.suffixes.forEach((suffix:string)=>{
             state.bidsSchema.datatypes[modality].options.push({
                 value: modality+"/"+suffix,
@@ -313,19 +318,19 @@ function loadDatatype(modality: string, datatype: BIDSSchemaEntities[], label: s
                 entities: group.entities,   //["subject", "session", etc..]
             });
         });
-    });
+    }
 }
 
-import dwiDatatype from '../assets/schema/datatypes/dwi.json'
+import dwiDatatype from '../assets/schema/rules/datatypes/dwi.json'
 loadDatatype("dwi", dwiDatatype, "Diffusion");
 
-import anatDatatype from '../assets/schema/datatypes/anat.json'
+import anatDatatype from '../assets/schema/rules/datatypes/anat.json'
 loadDatatype("anat", anatDatatype, "Anatomical");
 
-import funcDatatype from '../assets/schema/datatypes/func.json'
+import funcDatatype from '../assets/schema/rules/datatypes/func.json'
 loadDatatype("func", funcDatatype, "Functional");
 
-import fmapDatatype from '../assets/schema/datatypes/fmap.json'
+import fmapDatatype from '../assets/schema/rules/datatypes/fmap.json'
 loadDatatype("fmap", fmapDatatype, "Field Map");
 
 const store = createStore({

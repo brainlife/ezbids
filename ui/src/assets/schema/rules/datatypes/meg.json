@@ -1,5 +1,5 @@
-[
-  {
+{
+  "meg": {
     "suffixes": [
       "meg"
     ],
@@ -14,7 +14,12 @@
       ".ave",
       ".mrk",
       ".kdf",
-      ".mhd"
+      ".mhd",
+      ".trg",
+      ".chn"
+    ],
+    "datatypes": [
+      "meg"
     ],
     "entities": {
       "subject": "required",
@@ -26,12 +31,60 @@
       "split": "optional"
     }
   },
-  {
+  "calibration": {
+    "suffixes": [
+      "meg"
+    ],
+    "extensions": [
+      ".dat"
+    ],
+    "datatypes": [
+      "meg"
+    ],
+    "entities": {
+      "subject": "required",
+      "session": "optional",
+      "acquisition": {
+        "requirement": "required",
+        "type": "string",
+        "enum": [
+          "calibration"
+        ]
+      }
+    }
+  },
+  "crosstalk": {
+    "suffixes": [
+      "meg"
+    ],
+    "extensions": [
+      ".fif"
+    ],
+    "datatypes": [
+      "meg"
+    ],
+    "entities": {
+      "subject": "required",
+      "session": "optional",
+      "acquisition": {
+        "requirement": "required",
+        "type": "string",
+        "enum": [
+          "crosstalk"
+        ]
+      }
+    }
+  },
+  "headshape": {
     "suffixes": [
       "headshape"
     ],
     "extensions": [
-      "*"
+      ".*",
+      ".pos"
+    ],
+    "datatypes": [
+      "meg"
     ],
     "entities": {
       "subject": "required",
@@ -39,13 +92,16 @@
       "acquisition": "optional"
     }
   },
-  {
+  "markers": {
     "suffixes": [
       "markers"
     ],
     "extensions": [
       ".sqd",
       ".mrk"
+    ],
+    "datatypes": [
+      "meg"
     ],
     "entities": {
       "subject": "required",
@@ -55,12 +111,15 @@
       "space": "optional"
     }
   },
-  {
+  "coordsystem": {
     "suffixes": [
       "coordsystem"
     ],
     "extensions": [
       ".json"
+    ],
+    "datatypes": [
+      "meg"
     ],
     "entities": {
       "subject": "required",
@@ -68,13 +127,16 @@
       "acquisition": "optional"
     }
   },
-  {
+  "channels": {
     "suffixes": [
       "channels"
     ],
     "extensions": [
       ".json",
       ".tsv"
+    ],
+    "datatypes": [
+      "meg"
     ],
     "entities": {
       "subject": "required",
@@ -85,13 +147,16 @@
       "processing": "optional"
     }
   },
-  {
+  "events": {
     "suffixes": [
       "events"
     ],
     "extensions": [
       ".json",
       ".tsv"
+    ],
+    "datatypes": [
+      "meg"
     ],
     "entities": {
       "subject": "required",
@@ -101,17 +166,44 @@
       "run": "optional"
     }
   },
-  {
+  "photo": {
     "suffixes": [
       "photo"
     ],
     "extensions": [
-      ".jpg"
+      ".jpg",
+      ".png",
+      ".tif"
+    ],
+    "datatypes": [
+      "meg"
     ],
     "entities": {
       "subject": "required",
       "session": "optional",
       "acquisition": "optional"
     }
+  },
+  "timeseries": {
+    "suffixes": [
+      "physio",
+      "stim"
+    ],
+    "extensions": [
+      ".tsv.gz",
+      ".json"
+    ],
+    "datatypes": [
+      "meg"
+    ],
+    "entities": {
+      "subject": "required",
+      "session": "optional",
+      "task": "required",
+      "acquisition": "optional",
+      "run": "optional",
+      "processing": "optional",
+      "recording": "optional"
+    }
   }
-]
+}

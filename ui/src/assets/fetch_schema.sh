@@ -1,16 +1,22 @@
 #!/bin/bash
 
-git clone --depth 1 https://github.com/bids-standard/bids-specification -b v1.6.0 bids-specification
+#TODO get rid of this eventually and let UI load the .yml files directly
 
-mkdir -p schema/datatypes
+#git clone --depth 1 https://github.com/bids-standard/bids-specification -b v1.6.0 bids-specification
+
+schemadir=../../../bids-specification/src/schema
+
+mkdir -p schema/objects
+mkdir -p schema/rules/datatypes
 
 echo "converting entities.yaml"
-yq eval -o=j bids-specification/src/schema/entities.yaml > schema/entities.json
+yq eval -o=j $schemadir/objects/entities.yaml > schema/objects/entities.json
 
-for yaml in $(ls bids-specification/src/schema/datatypes); do
-    echo "converting datatypes/$yaml"
-    filename="${yaml%.*}"
-    yq eval -o=j bids-specification/src/schema/datatypes/$yaml > schema/datatypes/$filename.json
+ls $schemadir/rules/datatypes
+for yaml in $(ls $schemadir/rules/datatypes/*.yaml); do
+    filename=$(basename $yaml .yaml)
+    echo "converting $yaml to $filename.json"
+    yq eval -o=j $yaml > schema/rules/datatypes/$filename.json
 done
 
-rm -rf bids-specification
+#rm -rf bids-specification

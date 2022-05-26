@@ -1,5 +1,5 @@
-[
-  {
+{
+  "dwi": {
     "suffixes": [
       "dwi"
     ],
@@ -10,16 +10,20 @@
       ".bvec",
       ".bval"
     ],
+    "datatypes": [
+      "dwi"
+    ],
     "entities": {
       "subject": "required",
       "session": "optional",
       "acquisition": "optional",
+      "reconstruction": "optional",
       "direction": "optional",
       "run": "optional",
       "part": "optional"
     }
   },
-  {
+  "sbref": {
     "suffixes": [
       "sbref"
     ],
@@ -28,13 +32,40 @@
       ".nii",
       ".json"
     ],
+    "datatypes": [
+      "dwi"
+    ],
     "entities": {
       "subject": "required",
       "session": "optional",
       "acquisition": "optional",
+      "reconstruction": "optional",
       "direction": "optional",
       "run": "optional",
       "part": "optional"
     }
+  },
+  "timeseries": {
+    "suffixes": [
+      "physio",
+      "stim"
+    ],
+    "extensions": [
+      ".tsv.gz",
+      ".json"
+    ],
+    "datatypes": [
+      "dwi"
+    ],
+    "entities": {
+      "subject": "required",
+      "session": "optional",
+      "acquisition": "optional",
+      "reconstruction": "optional",
+      "direction": "optional",
+      "run": "optional",
+      "part": "optional",
+      "recording": "optional"
+    }
   }
-]
+}

@@ -1,5 +1,5 @@
-[
-  {
+{
+  "pet": {
     "suffixes": [
       "pet"
     ],
@@ -7,6 +7,9 @@
       ".nii.gz",
       ".nii",
       ".json"
+    ],
+    "datatypes": [
+      "pet"
     ],
     "entities": {
       "subject": "required",
@@ -17,13 +20,16 @@
       "run": "optional"
     }
   },
-  {
+  "blood": {
     "suffixes": [
       "blood"
     ],
     "extensions": [
       ".tsv",
       ".json"
+    ],
+    "datatypes": [
+      "pet"
     ],
     "entities": {
       "subject": "required",
@@ -35,13 +41,16 @@
       "recording": "required"
     }
   },
-  {
+  "events": {
     "suffixes": [
       "events"
     ],
     "extensions": [
       ".tsv",
       ".json"
+    ],
+    "datatypes": [
+      "pet"
     ],
     "entities": {
       "subject": "required",
@@ -51,5 +60,27 @@
       "reconstruction": "optional",
       "run": "optional"
     }
+  },
+  "timeseries": {
+    "suffixes": [
+      "physio",
+      "stim"
+    ],
+    "extensions": [
+      ".tsv.gz",
+      ".json"
+    ],
+    "datatypes": [
+      "pet"
+    ],
+    "entities": {
+      "subject": "required",
+      "session": "optional",
+      "task": "optional",
+      "tracer": "optional",
+      "reconstruction": "optional",
+      "run": "optional",
+      "recording": "optional"
+    }
   }
-]
+}

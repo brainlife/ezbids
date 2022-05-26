@@ -118,7 +118,10 @@ router.post('/session/:session_id/finalize', (req, res, next)=>{
         if(!session) return next("no such session");
         fs.writeFile(config.workdir+"/"+session._id+"/finalized.json", JSON.stringify(req.body), err=>{
             models.ezBIDS.findOneAndUpdate({_session_id: req.params.session_id}, {$set: {
-                updated: req.body,
+
+                //TODO - store this somewhere for book keeping
+                //updated: req.body, //finalized.json could exceed 16MB 
+
                 update_date: new Date(),
             }}).then(err=>{
                 session.status = "finalized";
