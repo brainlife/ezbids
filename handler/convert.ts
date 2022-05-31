@@ -65,7 +65,7 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
 
     if(o._type == "exclude" || o._exclude) {
         o._type = "excluded/obj"+o.idx;
-        o._entities.description = o._SeriesDescription; //inject seriesdesc to filename
+        o._entities.description = o._SeriesDescription; //inject series desc to filename
     }
 
     let typeTokens = o._type.split("/");

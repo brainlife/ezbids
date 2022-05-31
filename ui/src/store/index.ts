@@ -2,6 +2,7 @@
 import { createStore } from 'vuex'
 
 import bidsEntities from '../assets/schema/objects/entities.json'
+// import bidsEntitiesOrdered from '../../../bids-specification/src/schema/rules/entities.json'
 export interface DatasetDescription {
     Name: string;
     BIDSVersion: string;
@@ -117,8 +118,6 @@ export interface IObject {
     //AcquisitionDateTime: string; //ISO - only used to sort objects
     AcquisitionTime: string;
 
-    SeriesNumber: string;
-
     analysisResults: {
         errors: string[];
         warnings: string[];
@@ -202,7 +201,7 @@ export interface ISession {
 
 const state = {
     bidsSchema: {
-        entities: bidsEntities as BIDSEntities, 
+        entities: bidsEntities as BIDSEntities,
         datatypes: {} as BIDSDatatypes,
     },
 
@@ -304,8 +303,8 @@ export type IEzbids = typeof state.ezbids;
 export type IEvents = typeof state.events;
 
 function loadDatatype(
-    modality: string, 
-    datatypes: {[key: string]: BIDSSchemaEntities}, 
+    modality: string,
+    datatypes: {[key: string]: BIDSSchemaEntities},
     label: string) {
 
     state.bidsSchema.datatypes[modality] = { label, options: [] };
