@@ -117,6 +117,7 @@ export interface IObject {
     AcquisitionDate: string;
     //AcquisitionDateTime: string; //ISO - only used to sort objects
     AcquisitionTime: string;
+    SeriesNumber: string;
 
     analysisResults: {
         errors: string[];
