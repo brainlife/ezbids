@@ -61,7 +61,7 @@ RUN pip3 install pydeface
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
 #install bids-validator
-RUN npm install -g bids-validator@1.9.2
+RUN npm install -g bids-validator@1.9.3
 
 RUN apt-get install -y rename zstd
 

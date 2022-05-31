@@ -3,11 +3,24 @@
 const fs = require('fs');
 const mkdirp = require('mkdirp');
 const async = require('async');
+const bidsEntitiesOrdered = require('../ui/src/assets/schema/rules/entities.json')
 //import { IObject, Subject, Session, OrganizedSession } from '../ui/src/store'
 const root = process.argv[2];
 if (!root)
     throw "please specify root directory";
 const info = JSON.parse(fs.readFileSync(root + "/finalized.json"));
+
+//order the entityMappings correctly, as specified by the BIDS specification
+let newEntityOrdering = {};
+Object.values(bidsEntitiesOrdered).forEach(order=>{
+    Object.keys(info.entityMappings).forEach(key=>{
+        if(order == key) {
+            newEntityOrdering[key] = info.entityMappings[key]
+        }
+    })
+})
+info.entityMappings = newEntityOrdering
+
 const datasetName = info.datasetDescription.Name;
 mkdirp.sync(root + "/bids/" + datasetName);
 fs.writeFileSync(root + "/bids/" + datasetName + "/finalized.json", JSON.stringify(info, null, 4)); //copy the finalized.json

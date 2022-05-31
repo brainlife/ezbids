@@ -2,7 +2,6 @@
 import { createStore } from 'vuex'
 
 import bidsEntities from '../assets/schema/objects/entities.json'
-// import bidsEntitiesOrdered from '../../../bids-specification/src/schema/rules/entities.json'
 export interface DatasetDescription {
     Name: string;
     BIDSVersion: string;
