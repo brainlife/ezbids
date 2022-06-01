@@ -264,6 +264,7 @@ def generate_dataset_list(uploaded_files_list):
     for index, json_file in enumerate(json_list):
         json_data = open(json_file)
         json_data = json.load(json_data, strict=False)
+        print("JSON file: {}".format(json_file))
 
         corresponding_nifti = [x for x in nifti_list if json_file[:-4] in x
                                if "nii.gz" in x][0]
