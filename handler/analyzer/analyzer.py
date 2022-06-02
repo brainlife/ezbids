@@ -1184,8 +1184,8 @@ def entity_labels_identification(dataset_list_unique_series):
             series_entities["task"] = "rest"
         else:
             match_index = [x for x,y in enumerate(re.search(x, sd, re.IGNORECASE) for x in cog_atlas_tasks) if y != None]
-            if len(match_index) == 1:
-                series_entities["task"] = find_cog_atlas_tasks[match_index[0]]
+            if len(match_index):
+                series_entities["task"] = cog_atlas_tasks[match_index[0]]
 
         # dir (required for fmap/epi an highly recommended for dwi/dwi)
         if any(x in unique_dic["type"] for x in ["fmap/epi", "dwi/dwi"]) and not series_entities["direction"]:
