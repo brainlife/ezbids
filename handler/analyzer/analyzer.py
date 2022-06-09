@@ -267,7 +267,7 @@ def generate_dataset_list(uploaded_files_list):
         print("JSON file: {}".format(json_file))
 
         corresponding_nifti = [x for x in nifti_list if json_file[:-4] in x
-                               if "nii.gz" in x][0]
+                               if ".nii" in x or ".nii.gz" in x][0]
 
         #Phase encoding direction info
         if "PhaseEncodingDirection" in json_data:
