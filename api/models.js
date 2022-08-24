@@ -1,5 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.ezBIDS = exports.Session = exports.disconnect = exports.connect = void 0;
 const mongoose = require("mongoose");
 const config = require("./config");
 if (config.mongoose_debug)
@@ -16,6 +17,7 @@ function connect(cb) {
         */
         useNewUrlParser: true,
         useUnifiedTopology: true,
+        //auto_reconnect: true, //isn't this the default?
     }, err => {
         if (err)
             return cb(err);
@@ -56,6 +58,17 @@ var sessionSchema = mongoose.Schema({
     dicomCount: Number,
     dicomDone: Number,
     status_msg: String,
+    /*
+    files: [{
+        idx: Number,
+        name: String,
+        size: Number,
+        path: String,
+        _upload: Object, //set when the file is uploaded.. just to store some extra information from multer
+    }],
+    */
+    //workdir: String, //directory containing uploaded file structure
+    //removed: { type: Boolean, default: false },
 });
 sessionSchema.pre('save', function (next) {
     this.update_date = Date.now();

@@ -1,5 +1,3 @@
-#FROM ubuntu:20.04
-#FROM brainlife/fsl-mini:6.0.3
 FROM neurodebian:nd20.04-non-free
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -28,18 +26,22 @@ RUN . $FSLDIR/etc/fslconf/fsl.sh
 ENV FSLOUTPUTTYPE=NIFTI_GZ
 
 #make sure fslpython is properly installed
-RUN which imcp
+#RUN which imcp
 
 RUN apt install -y curl
 RUN curl -fsSL https://deb.nodesource.com/setup_14.x | bash -
 RUN apt install -y nodejs
 
 # Get dcm2niix from github and compile
-RUN cd /tmp && \
-    git clone https://github.com/rordenlab/dcm2niix.git -b v1.0.20211006 && \
-    cd dcm2niix && mkdir build && cd build && \
-    cmake -DBATCH_VERSION=ON -DUSE_OPENJPEG=ON .. && \
-    make && make install
+#RUN cd /tmp && \
+#    git clone https://github.com/rordenlab/dcm2niix.git -b v1.0.20211006 && \
+#    cd dcm2niix && mkdir build && cd build && \
+#    cmake -DBATCH_VERSION=ON -DUSE_OPENJPEG=ON .. && \
+#    make && make install
+
+RUN wget https://github.com/rordenlab/dcm2niix/releases/download/v1.0.20220720/dcm2niix_lnx.zip -O /tmp/dcm2niix_lnx.zip
+RUN unzip /tmp/dcm2niix_lnx.zip
+RUN mv dcm2niix /usr/local/bin
 
 # Get bids-specification from github
 RUN cd && git clone https://github.com/bids-standard/bids-specification
@@ -51,7 +53,9 @@ RUN pip3 install numpy nibabel pandas==1.0.1 matplotlib pyyaml==5.4.1 natsort #n
 RUN pip3 install quickshear
 
 #install ROBEX
-COPY ROBEXv12.linux64.tar.gz /
+#COPY ROBEXv12.linux64.tar.gz /
+ADD https://www.nitrc.org/frs/download.php/5994/ROBEXv12.linux64.tar.gz//?i_agree=1&download_now=1 /
+RUN ls -la
 RUN tar -xzf /ROBEXv12.linux64.tar.gz
 ENV PATH=$PATH:/ROBEX
 
@@ -61,8 +65,11 @@ RUN pip3 install pydeface
 RUN rm /bin/sh && ln -s /bin/bash /bin/sh
 
 #install bids-validator
-RUN npm install -g bids-validator@1.9.3
+RUN npm install -g bids-validator@1.9.6
 
 RUN apt-get install -y rename zstd
 
 WORKDIR /app/handler
+RUN npm install -g pm2 #for dev
+
+

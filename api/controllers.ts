@@ -29,7 +29,7 @@ router.get('/health', (req, res, next) => {
         status = "failed";
         message = err;
     }
-    res.json({status, message});
+    res.json({status, message, date: new Date()});
 });
 
 router.post('/session', (req, res, next)=>{

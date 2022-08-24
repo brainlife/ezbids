@@ -26,7 +26,7 @@ app.use(bodyParser.json({
 }));
 app.use('/', require('./controllers'));
 //error handling
-//app.use(expressWinston.errorLogger(config.logger.winston));
+//app.use(expressWinston.errorLogger(config.logger.winston)); 
 app.use(function (err, req, res, next) {
     if (typeof err == "string")
         err = { message: err };
@@ -54,5 +54,5 @@ models.connect(err => {
 });
 //increase timeout for dataset download .. (default 120s)
 //without this, places like nki/s3 will timeout
-//server.timeout = 300*1000;
+//server.timeout = 300*1000; 
 //# sourceMappingURL=ezbids.js.map

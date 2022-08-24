@@ -3,12 +3,8 @@
   "version": "0.2.0",
   "scripts": {
     "dev": "vite",
-    "dev-dist": "NODE_ENV=development lite-server --baseDir=/ezbids/ dist",
     "build": "vite build --base=/ezbids/",
-    "serve": "vite preview",
-    "deploy": "ssh -t hayashis@test.brainlife.io \"sudo su - -c 'cd /root/docker/ezbids && ./update-ui.sh'\"",
-    "deploy-prod": "ssh -t -J hayashis@brainlife.io ubuntu@ezbids \"sudo su - -c 'cd /root/docker/ezbids && ./update-ui.sh'\"",
-    "deploy-rsync": "rsync -av dist/ hayashis@test.brainlife.io:/usr/local/static/ezbids/ui/dist"
+    "serve": "vite preview"
   },
   "dependencies": {
     "@element-plus/icons": "0.0.11",

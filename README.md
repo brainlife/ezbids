@@ -99,5 +99,11 @@ We ask that you the following articles when publishing papers that used data, co
 
 1. Avesani, P., McPherson, B., Hayashi, S. et al. The open diffusion data derivatives, brain data upcycling via integrated publishing of derivatives and reproducible open cloud services. Sci Data 6, 69 (2019). [https://doi.org/10.1038/s41597-019-0073-y](https://doi.org/10.1038/s41597-019-0073-y)
 
+### This repo was bootstrapped by
+
+```
+npm init vite@latest ui2 -- --template vue-ts
+```
+
 Copyright © 2020 brainlife.io at University of Texas at Austin and Indiana University
 

@@ -4,25 +4,15 @@ import vue from '@vitejs/plugin-vue'
 import Components from 'unplugin-vue-components/vite'
 import { ElementPlusResolver } from 'unplugin-vue-components/resolvers'
 
-/*
-const vueI18nPlugin = {
-  name: 'vue-i18n',
-  transform(code, id) {
-    if (!/vue&type=i18n/.test(id)) {
-      return
-    }
-    if (/\.ya?ml$/.test(id)) {
-      code = JSON.stringify(require('js-yaml').safeLoad(code.trim()))
-    }
-    return `export default Comp => {
-      Comp.i18n = ${code}
-    }`
-  }
-}
-*/
-
-// https://vitejs.dev/config/
 export default defineConfig({
+  /* no effect?
+  server: {
+    port: 3001,
+    hmr: {
+        clientPort: 8082,
+    },
+  },
+  */
   plugins: [
       vue(), /*vueI18nPlugin*/
 
@@ -30,7 +20,6 @@ export default defineConfig({
       Components({
         resolvers: [ElementPlusResolver()],
       }),
-      
   ],
   build: {
     sourcemap: true,

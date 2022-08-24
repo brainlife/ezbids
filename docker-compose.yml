@@ -1,0 +1,67 @@
+version: "3"
+
+services:
+
+  mongodb:
+    image: mongo:4.4.15
+    volumes: 
+      - /data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
+      interval: 10s
+      timeout: 10s
+      retries: 5
+    ports:
+      - 27417:27017 #for local debuggin
+
+  api:
+    build: .
+    volumes:
+      - ./api:/app/api
+      - /tmp:/tmp
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+    working_dir: /app/api
+    command: ./dev.sh
+    ports:
+      - 8082:8080
+
+  handler:
+    build: ./handler
+    volumes:
+      - .:/app
+      - /tmp:/tmp
+    depends_on:
+      mongodb:
+        condition: service_healthy
+    tty:
+        true #turn on color for bids-validator output
+    command: pm2 start handler.js --attach --watch --ignore-watch "ui **/node_modules"
+
+  ui:
+    build: ./ui
+    volumes:
+      - ./ui/src:/ui/src #don't copy node_modules which might be compiled for mac (vite won't work)
+    environment:
+      VITE_APIHOST: http://localhost:8082
+    healthcheck:
+        test: ["CMD", "curl", "-f", "http://localhost:3000"]
+    ports:
+      - 3000:3000
+
+#  nginx:
+#    image: nginx:1.18
+#    depends_on:
+#      api:
+#        condition: service_healthy
+#      ui:
+#        condition: service_healthy
+#    volumes:
+#      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf
+#    ports:
+#      - 8082:80
+
+
