@@ -107,7 +107,8 @@ npm init vite@latest ui2 -- --template vue-ts
 
 ### Development Environment
 
-A local development instance of ezBIDS can be launched by first git cloning this repo, then running the ./dev.sh script on docker enabled machine.
+A local development instance of ezBIDS can be launched by first git cloning this repo, then running `./dev.sh` on a docker enabled machine. When everything is built/running, you should be able to reach the dev instance at http://localhost:3000/
+
 
 
 Copyright © 2020 brainlife.io at University of Texas at Austin and Indiana University
