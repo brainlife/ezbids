@@ -105,5 +105,10 @@ We ask that you the following articles when publishing papers that used data, co
 npm init vite@latest ui2 -- --template vue-ts
 ```
 
+### Development Environment
+
+A local development instance of ezBIDS can be launched by first git cloning this repo, then running the ./dev.sh script on docker enabled machine.
+
+
 Copyright © 2020 brainlife.io at University of Texas at Austin and Indiana University
 

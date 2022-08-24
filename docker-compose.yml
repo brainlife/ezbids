@@ -27,7 +27,7 @@ services:
     working_dir: /app/api
     command: ./dev.sh
     ports:
-      - 8082:8080
+      - 8082:8080 #localhost runs on local browser to it needs to access api via host port
 
   handler:
     build: ./handler
@@ -50,7 +50,7 @@ services:
     healthcheck:
         test: ["CMD", "curl", "-f", "http://localhost:3000"]
     ports:
-      - 3000:3000
+      - 3000:3000 #vite wants to be exposed on the host for HMR?
 
 #  nginx:
 #    image: nginx:1.18

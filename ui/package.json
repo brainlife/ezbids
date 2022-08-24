@@ -2,7 +2,7 @@
   "name": "ui",
   "version": "0.2.0",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
     "build": "vite build --base=/ezbids/",
     "serve": "vite preview"
   },
