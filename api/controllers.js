@@ -18,6 +18,7 @@ const archiver = require("archiver");
 const async = require("async");
 const config = require("./config");
 const models = require("./models");
+console.debug(config.multer);
 const upload = multer(config.multer);
 const router = express.Router();
 router.get('/health', (req, res, next) => {

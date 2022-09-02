@@ -14,6 +14,7 @@ import { fstat } from 'fs';
 
 import rangeStream = require('range-stream');
 
+console.debug(config.multer);
 const upload = multer(config.multer);
 
 const router = express.Router();
