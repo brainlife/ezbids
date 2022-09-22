@@ -93,6 +93,7 @@ brainlife.io is publicly funded and for the sustainability of the project it is 
 [![NSF-ACI-1916518](https://img.shields.io/badge/NSF_ACI-1916518-blue.svg)](https://nsf.gov/awardsearch/showAward?AWD_ID=1916518)
 [![NSF-IIS-1912270](https://img.shields.io/badge/NSF_IIS-1912270-blue.svg)](https://nsf.gov/awardsearch/showAward?AWD_ID=1912270)
 [![NIH-NIBIB-R01EB029272](https://img.shields.io/badge/NIH_NIBIB-R01EB029272-green.svg)](https://grantome.com/grant/NIH/R01-EB029272-01)
+[![NIH-NIMH-R01MH126699]](https://img.shields.io/badge/NIH_NIMH-R01MH126699-green.svg)](https://grantome.com/grant/NIH/R01-EB029272)
 
 ### Citations
 We ask that you the following articles when publishing papers that used data, code or other resources created by the brainlife.io community.
@@ -111,5 +112,5 @@ A local development instance of ezBIDS can be launched by first git cloning this
 
 
 
-Copyright © 2020 brainlife.io at University of Texas at Austin and Indiana University
+Copyright © 2022 brainlife.io at University of Texas at Austin
 
