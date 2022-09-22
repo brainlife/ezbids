@@ -46,7 +46,7 @@ buf.shape = (w,h,4)
 buf = np.roll(buf,3,axis=2)
 
 w,h,d = buf.shape
-png = Image.frombytes("RGBA", (w,h), buf.tostring())
+png = Image.frombytes("RGBA", (w,h), buf.tobytes())
 png.save(output_image)
 
 
