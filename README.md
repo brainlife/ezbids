@@ -6,7 +6,7 @@ The secure, cloud-based service via a browser interface for the semi-automated m
 
 ### About
 
-This is the developmental repository for a semi-automated [BIDS](https://bids.neuroimaging.io/) web service that allows users to upload to a secure server a directory containing DICOM (or dcm2niix output) files from an MRI scanner to be converted to BIDS. 
+This is the developmental repository for a semi-supervised DICOM to [BIDS](https://bids.neuroimaging.io/) conversion web service. ezBIDS allows users to upload to a secure server a directory containing DICOMs (or [dcm2niix](https://github.com/rordenlab/dcm2niix) output) files from an MRI scanner to be converted to BIDS. 
 
 Unlike other DICOM to BIDS converters, ezBIDS eliminates the need for the command line and heuristic/configuration setup.
 
