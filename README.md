@@ -2,8 +2,7 @@
 
 The secure, cloud-based service via a browser interface for the semi-automated mapping of entire MRI scanning sessions (DICOM files) to the Brain Imaging Data Structure ([BIDS](https://bids.neuroimaging.io/)) standard.  
 
-[![This video is a tutorial for ezBIDS](
-(https://img.youtube.com/vi/mY3_bmt_e80/0.jpg)](https://www.youtube.com/watch?v=3m4pSljscEY)
+[![This video is a tutorial for ezBIDS](https://img.youtube.com/vi/mY3_bmt_e80/0.jpg)](https://www.youtube.com/watch?v=3m4pSljscEY)
 
 ### About
 
