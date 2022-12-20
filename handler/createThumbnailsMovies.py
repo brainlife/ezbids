@@ -194,7 +194,9 @@ else:
     if not os.path.isfile("{}/{}".format(data_dir, bval_file)):
         bval_file = "N/A"
     else:
-        bvals = [floor(float(x)) for x in pd.read_csv(bval_file, delim_whitespace=True).columns.tolist()]
+        bvals = [x.split(" ") for x in pd.read_csv(bval_file).columns.tolist()][0]
+        bvals = [floor(float(x)) for x in bvals]
+        
         if len(bvals) <= 1: # just b0, so unhelpful
             bval_file = "N/A"
 
