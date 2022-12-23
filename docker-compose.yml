@@ -4,6 +4,7 @@ services:
 
   mongodb:
     image: mongo:4.4.15
+    platform: linux/amd64
     volumes: 
       - /data/db
     healthcheck:
@@ -16,6 +17,7 @@ services:
 
   api:
     build: .
+    platform: linux/amd64
     volumes:
       - ./api:/app/api
       - /tmp:/tmp
@@ -31,6 +33,7 @@ services:
 
   handler:
     build: ./handler
+    platform: linux/amd64
     volumes:
       - .:/app
       - /tmp:/tmp
@@ -43,6 +46,7 @@ services:
 
   ui:
     build: ./ui
+    platform: linux/amd64
     volumes:
       - ./ui/src:/ui/src #don't copy node_modules which might be compiled for mac (vite won't work)
     environment:
