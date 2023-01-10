@@ -25,11 +25,11 @@ services:
       mongodb:
         condition: service_healthy
     healthcheck:
-        test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+        test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
     working_dir: /app/api
     command: ./dev.sh
     ports:
-      - 8082:8080 #localhost runs on local browser to it needs to access api via host port
+      - 8082:8082 #localhost runs on local browser to it needs to access api via host port
 
   handler:
     build: ./handler
