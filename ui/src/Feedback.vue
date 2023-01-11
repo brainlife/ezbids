@@ -6,7 +6,7 @@
     <br>
 
     <h2>Feedbacks / Comments</h2>
-    <p>ezBIDS is a brand new web service! Your feedback is extremely valuable to us. Please send us an email at <a href="mailto:ezbids@brainlife.io" target="mail">ezbids@brainlife.io</a> describing your experience with ezBIDS, any feedbacks / comments / suggestions.</p>
+    <p>ezBIDS is a brand new web service! Your feedback is extremely valuable to us. Please send us an email at <a href="mailto:dlevitas@iu.edu" target="mail">dlevitas@iu.edu</a> describing your experience with ezBIDS, any feedbacks / comments / suggestions.</p>
     <p>If you have experienced any issues while using ezBIDS, please submit an <a href="https://github.com/brainlife/ezbids/issues" target="github">Github Issues</a></p>
     <br>
     <br>
