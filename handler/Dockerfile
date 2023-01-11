@@ -8,7 +8,7 @@ RUN apt update && \
     apt-get update && apt-get upgrade -y
 
 RUN apt install -y parallel python3 python3-pip tree curl unzip git jq python libgl-dev python-numpy
-RUN pip3 install numpy nibabel pandas==1.0.1 matplotlib pyyaml==5.4.1 natsort pydeface && \
+RUN pip3 install numpy==1.23.0 nibabel pandas==1.0.1 matplotlib pyyaml==5.4.1 natsort pydeface && \
     pip3 install quickshear
 
 RUN apt-get install -y build-essential pkg-config cmake git pigz rename zstd libopenjp2-7 wget && \
