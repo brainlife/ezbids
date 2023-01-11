@@ -16,18 +16,23 @@ RUN apt-get install -y build-essential pkg-config cmake git pigz rename zstd lib
 
 #this is the most tedious that's why it's one of the first layers installed
 #install fsl, and get rid of src
-RUN wget https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py && \
-      python fslinstaller.py -d /usr/local/fsl -V 6.0.6 && rm -rf /usr/local/fsl/src
+# RUN wget https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py && \
+#       python fslinstaller.py -d /usr/local/fsl -V 6.0.6 && rm -rf /usr/local/fsl/src
+
+RUN mkdir -p /usr/local/fsl/bin && \
+    mkdir -p /usr/local/fsl/lib && \
+    git clone https://github.com/dlevitas/FSL_binaries /usr/local/fsl/bin && \
+    rm -rf /usr/local/fsl/bin/README.md
 
 ENV FSLDIR=/usr/local/fsl
 ENV PATH=$PATH:$FSLDIR/bin
 ENV LD_LIBRARY_PATH=$FSLDIR/lib
-RUN . $FSLDIR/etc/fslconf/fsl.sh
+# RUN . $FSLDIR/etc/fslconf/fsl.sh
 
 ENV FSLOUTPUTTYPE=NIFTI_GZ
 
-#make sure fslpython is properly installed
-RUN which imcp
+# #make sure fslpython is properly installed
+# RUN which imcp
 
 # certs have expired for nodesource use the hack below to get around that for install
 #### HACK Warning ####
