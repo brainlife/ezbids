@@ -13,7 +13,7 @@ import config = require("./config");
 
 //init express
 const app: express.Application  = express();
-app.use(cors());
+app.use(cors({ origin: '*' }));
 app.use(compression());
 app.use(nocache());
 //app.use(sendSeekable);
