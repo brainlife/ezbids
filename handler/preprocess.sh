@@ -3,6 +3,8 @@
 set -e
 set -x
 
+export SHELL=$(type -p bash)
+
 if [ -z $1 ]; then
     echo "please specify root dir"
     exit 1
@@ -38,7 +40,7 @@ function d2n {
     #which just means there are no DICOM files in that directory
     set -x
 
-    path=$root
+    path=$1
 
     echo "----------------------- $path ------------------------"
     timeout 3600 dcm2niix --progress y -v 1 -ba n -z o -f 'time-%t-sn-%s' $path
@@ -48,8 +50,8 @@ function d2n {
 }
 
 export -f d2n
-#cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n {} 2>> $root/dcm2niix_output
-cat $root/dcm2niix.list | d2n {} 2>> $root/dcm2niix_output
+
+cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n {} 2>> $root/dcm2niix_output
 
 #find products
 (cd $root && find . -type f \( -name "*.json" \) > list)

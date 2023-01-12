@@ -3,6 +3,8 @@
 set -e
 set -x
 
+export SHELL=$(type -p bash)
+
 if [ -z $1 ]; then
     echo "please specify root dir"
     exit 1
