@@ -68,7 +68,7 @@ async function handle_uploaded(session) {
         cb();
     }, cb=>{
         //finish callback
-        fs.readFile(workdir+"/ezBIDS.json", "utf8", async (err, data)=>{
+        fs.readFile(workdir+"/ezBIDS_core.json", "utf8", async (err, data)=>{
             if(err) return cb(err);
             try {
                 //try parsing the json!

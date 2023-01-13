@@ -265,7 +265,7 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
                     for(let idx of o.IntendedFor) {
                         const io = info.objects[idx];
 
-                        //this should not happen, but ezBIDS.json could be corrupted..
+                        //this should not happen, but ezBIDS_core.json could be corrupted..
                         if(!io) {
                             console.error("can't find object with ", idx);
                             continue;

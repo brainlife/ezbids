@@ -11,7 +11,7 @@ const config = require("./config");
 //import sendSeekable = require('send-seekable');
 //init express
 const app = express();
-app.use(cors());
+app.use(cors({ origin: '*' }));
 app.use(compression());
 app.use(nocache());
 //app.use(sendSeekable);

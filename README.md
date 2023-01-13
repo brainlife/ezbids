@@ -41,11 +41,11 @@ When a user starts uploading data, ezBIDS will create a new *session* using `(po
 
 2. Preprocessing Data
 
-The backend server polls for uploaded sessions, and when it finds "uploaded" session, it will launch the preprocessing script. It sets the session state to "preprocessing". It basically unzip all zipped files, run dcm2niix and create a `list` file containing all the nifti and sidecar json. analyzer.py uses this to analyze each nifti files and at the end create `ezBIDS.json`. When the preprocessing completes, the session state will be set to "analyzed". The preprocessing step then load ezBIDS.json json and copy the content to DB/ezBIDS collection (not session collection) under `original` key.
+The backend server polls for uploaded sessions, and when it finds "uploaded" session, it will launch the preprocessing script. It sets the session state to "preprocessing". It basically unzip all zipped files, run dcm2niix and create a `list` file containing all the nifti and sidecar json. analyzer.py uses this to analyze each nifti files and at the end create `ezBIDS_core.json`. When the preprocessing completes, the session state will be set to "analyzed". The preprocessing step then load ezBIDS_core.json json and copy the content to DB/ezBIDS collection (not session collection) under `original` key.
 
 3. User interact with the session via web UI.
 
-Web UI detects the preprocessing completed by polling for session state, and load the content of ezBIDS.json via `(get)/download/:session_id/ezBIDS.json` API. User then view / correct the content of ezBIDS.json. 
+Web UI detects the preprocessing completed by polling for session state, and load the content of ezBIDS_core.json via `(get)/download/:session_id/ezBIDS_core.json` API. User then view / correct the content of ezBIDS_core.json. 
 
 4. (optionally) User request for defacing
 

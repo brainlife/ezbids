@@ -214,7 +214,7 @@ const state = {
     page: "upload",
 
     //current state of the session
-    //WATCH OUT - this gets wiped out when we load ezbids.json from analyzer
+    //WATCH OUT - this gets wiped out when we load ezBIDS_core.json from analyzer
     ezbids: {
         notLoaded: true,
 
@@ -525,13 +525,13 @@ const store = createStore({
 
         async loadEzbids(context) {
             if(!context.state.session || !context.state.session.pre_finish_date) return;
-            const res = await fetch(context.state.config.apihost+'/download/'+context.state.session._id+'/ezBIDS.json');
+            const res = await fetch(context.state.config.apihost+'/download/'+context.state.session._id+'/ezBIDS_core.json');
             if(res.status == 200) {
                 const conf = await res.json();
                 conf.notLoaded = false;
                 context.commit("updateEzbids", conf);
             } else {
-                console.log("no ezbids.json yet");
+                console.log("no ezBIDS_core.json yet");
             }
         },
 

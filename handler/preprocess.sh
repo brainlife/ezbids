@@ -73,13 +73,13 @@ do
     sed -i "$((line_num-1)), $((line_num+1))d" $root/dcm2niix_error
 done
 
-echo "running analyzer (may take several minutes, depending on size of data)"
-timeout 600 ./analyzer/run.sh $root
+echo "running ezBIDS_core (may take several minutes, depending on size of data)"
+python3 "./ezBIDS_core/ezBIDS_core.py" $root
 
 echo "generating thumbnails and movies for 3/4D acquisitions (may take several minutes, depending on size of data)"
-cat $root/list | parallel --linebuffer -j 6 --progress python3 "createThumbnailsMovies.py" $root
+cat $root/list | parallel --linebuffer -j 6 --progress python3 "./ezBIDS_core/createThumbnailsMovies.py" $root
 
-echo "updating ezBIDS.json"
-python3 "update_ezBIDS.py" $root
+echo "updating ezBIDS_core.json"
+python3 "./ezBIDS_core/update_ezBIDS_core.py" $root
 
 echo "done preprocessing"

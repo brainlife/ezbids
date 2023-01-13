@@ -73,7 +73,7 @@ function handle_uploaded(session) {
             cb();
         }, cb => {
             //finish callback
-            fs.readFile(workdir + "/ezBIDS.json", "utf8", (err, data) => __awaiter(this, void 0, void 0, function* () {
+            fs.readFile(workdir + "/ezBIDS_core.json", "utf8", (err, data) => __awaiter(this, void 0, void 0, function* () {
                 if (err)
                     return cb(err);
                 try {

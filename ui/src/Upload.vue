@@ -504,7 +504,7 @@ export default defineComponent({
                     <li><a :href="config.apihost+'/download/'+session._id+'/preprocess.err'">preprocess.err</a></li>
                     <li><a :href="config.apihost+'/download/'+session._id+'/dcm2niix_error'">dcm2niix_error</a></li>
                     <li><a :href="config.apihost+'/download/'+session._id+'/list'">list</a></li>
-                    <li><a :href="config.apihost+'/download/'+session._id+'/ezBIDS.json'">ezBIDS.json</a></li>
+                    <li><a :href="config.apihost+'/download/'+session._id+'/ezBIDS_core.json'">ezBIDS_core.json</a></li>
                 </ul>
 
                 <el-button @click="dump" size="mini">Dump state</el-button>
