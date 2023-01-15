@@ -353,7 +353,7 @@ const store = createStore({
 
                 datasetDescription: {
                     Name: "Untitled",
-                    BIDSVersion: "1.6.0",
+                    BIDSVersion: "1.8.0",
                     DatasetType: "raw",
                     License: "",
                     Authors: [],
