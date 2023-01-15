@@ -11,7 +11,7 @@ RUN apt install -y parallel python3 python3-pip tree curl unzip git jq python li
 RUN pip3 install numpy==1.23.0 nibabel pandas==1.0.1 matplotlib pyyaml==5.4.1 natsort pydeface && \
     pip3 install quickshear
 
-RUN apt-get install -y build-essential pkg-config cmake git pigz rename zstd libopenjp2-7 wget && \
+RUN apt-get install -y build-essential pkg-config cmake git pigz rename zstd libopenjp2-7 libgdcm-tools wget && \
     apt-get clean -y && apt-get autoclean -y && apt-get autoremove -y
 
 #this is the most tedious that's why it's one of the first layers installed
