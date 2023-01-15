@@ -63,7 +63,7 @@ ENV NODE_PATH $NVM_DIR/v$NODE_VERSION/lib/node_modules
 ENV PATH $NVM_DIR/v$NODE_VERSION/bin:$PATH
 
 #install bids-validator
-RUN npm install -g bids-validator@1.9.6
+RUN npm install -g bids-validator@1.9.9
 
 # install source code from local
 WORKDIR /app/handler
