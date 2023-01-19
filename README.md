@@ -76,7 +76,7 @@ When user clicks "finalize" button, UI makes an API call for `(post)/session/:se
 
 The API then store this information as `finalized.json` in workdir, and copy the content to DB/ezBIDS collection under `updated` key (to contrast with `original` key). The session status will be set to "finalized". This kicks off finalized handler on the server side and the handler reset the status to "bidsing" and run `bids.sh` script to generate the bids structure according to the information stored at the object level. Once it finishes, the session status will be set to "finished".
 
-6. User download BIDS
+6. User Get BIDS
 
 Once session status becomes "finished", user will be then allowed to download the final "bids" directory via the download API, or send to other cloud resources
 

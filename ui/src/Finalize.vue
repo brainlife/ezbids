@@ -35,7 +35,7 @@
             Please download the BIDS formatted data to your local computer
             </p>
             <p>
-                <el-button @click="download" type="primary">Download BIDS</el-button>
+                <el-button @click="download" type="primary">Get BIDS</el-button>
             </p>
 
 

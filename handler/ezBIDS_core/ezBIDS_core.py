@@ -768,6 +768,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
     t2w_keys = ["t2", "anatt2"]
     tb1tfl_keys = ["tflb1map"]
     tb1rfm_keys = ["rfmap"]
+    asl_keys = ["pasl", "m0scan"]
 
     for index, unique_dic in enumerate(dataset_list_unique_series):
 
@@ -836,6 +837,14 @@ def datatype_suffix_identification(dataset_list_unique_series):
                 unique_dic["message"] = " ".join("Acquisition is believed to be a \
                     localizer and will therefore not be converted to BIDS. Please \
                     modify if incorrect.".split())
+
+            # Arterial Spin Labeling (ASL)
+            elif any(x in sd for x in asl_keys):
+                unique_dic["datatype"] = "perf"
+                unique_dic["suffix"] = "asl"
+                unique_dic["message"] = " ".join("Acquisition is believed to be perf/asl \
+                    because '{}' is in the {}. Please modify if \
+                    incorrect.".format([x for x in asl_keys if re.findall(x, sd)][0]).split())
 
             # Angiography
             elif any(x in sd for x in angio_keys):

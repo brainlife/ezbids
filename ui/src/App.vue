@@ -280,7 +280,7 @@ export default defineComponent({
         </div>
 
         <ul>
-            <li :class="{active: page == 'finalize'}">Download BIDS</li>
+            <li :class="{active: page == 'finalize'}">Get BIDS</li>
             <li :class="{active: page == 'feedback'}">Feedback</li>
         </ul>
 
