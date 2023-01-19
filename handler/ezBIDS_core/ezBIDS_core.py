@@ -838,13 +838,13 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     localizer and will therefore not be converted to BIDS. Please \
                     modify if incorrect.".split())
 
-            # Arterial Spin Labeling (ASL)
-            elif any(x in sd for x in asl_keys):
-                unique_dic["datatype"] = "perf"
-                unique_dic["suffix"] = "asl"
-                unique_dic["message"] = " ".join("Acquisition is believed to be perf/asl \
-                    because '{}' is in the {}. Please modify if \
-                    incorrect.".format([x for x in asl_keys if re.findall(x, sd)][0]).split())
+            # # Arterial Spin Labeling (ASL)
+            # elif any(x in sd for x in asl_keys):
+            #     unique_dic["datatype"] = "perf"
+            #     unique_dic["suffix"] = "asl"
+            #     unique_dic["message"] = " ".join("Acquisition is believed to be perf/asl \
+            #         because '{}' is in the {}. Please modify if \
+            #         incorrect.".format([x for x in asl_keys if re.findall(x, sd)][0]).split())
 
             # Angiography
             elif any(x in sd for x in angio_keys):
