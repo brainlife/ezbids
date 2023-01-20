@@ -11,7 +11,7 @@ RUN apt install -y parallel python3 python3-pip tree curl unzip git jq python li
 RUN pip3 install numpy==1.23.0 nibabel pandas==1.0.1 matplotlib pyyaml==5.4.1 natsort pydeface && \
     pip3 install quickshear
 
-RUN apt-get install -y build-essential pkg-config cmake git pigz rename zstd libopenjp2-7 libgdcm-tools wget && \
+RUN apt-get install -y build-essential pkg-config cmake git pigz rename zstd libopenjp2-7 libgdcm-tools wget libopenblas-dev && \
     apt-get clean -y && apt-get autoclean -y && apt-get autoremove -y
 
 #this is the most tedious that's why it's one of the first layers installed
@@ -19,14 +19,13 @@ RUN apt-get install -y build-essential pkg-config cmake git pigz rename zstd lib
 # RUN wget https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py && \
 #       python fslinstaller.py -d /usr/local/fsl -V 6.0.6 && rm -rf /usr/local/fsl/src
 
-RUN mkdir -p /usr/local/fsl/bin && \
-    mkdir -p /usr/local/fsl/lib && \
-    git clone https://github.com/dlevitas/FSL_binaries /usr/local/fsl/bin && \
-    rm -rf /usr/local/fsl/bin/README.md
+RUN mkdir -p /usr/local/fsl && \
+    git clone https://github.com/dlevitas/FSL_binaries /usr/local/fsl && \
+    rm -rf /usr/local/fsl/README.md
 
 ENV FSLDIR=/usr/local/fsl
 ENV PATH=$PATH:$FSLDIR/bin
-ENV LD_LIBRARY_PATH=$FSLDIR/lib
+# ENV LD_LIBRARY_PATH=$FSLDIR/lib
 # RUN . $FSLDIR/etc/fslconf/fsl.sh
 
 ENV FSLOUTPUTTYPE=NIFTI_GZ
