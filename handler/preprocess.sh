@@ -3,10 +3,9 @@
 set -e
 set -x
 
-export SHELL=$(type -p bash)
-# if [ $OSTYPE == "darwin" ]; then
-#     export SHELL=$(type -p bash)
-# fi
+if [ $OSTYPE == "darwin" ]; then
+    export SHELL=$(type -p bash)
+fi
     
 if [ -z $1 ]; then
     echo "please specify root dir"
