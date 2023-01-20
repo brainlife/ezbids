@@ -3,8 +3,6 @@
 set -e
 set -x
 
-export SHELL=$(type -p bash)
-
 if [ -z $1 ]; then
     echo "please specify root dir"
     exit 1
@@ -46,13 +44,11 @@ function d2n {
     timeout 3600 dcm2niix --progress y -v 1 -ba n -z o -f 'time-%t-sn-%s' $path
 
     #all good
-    echo $path >> $root/dcm2niix.done
+    echo $path >> dcm2niix.done
 }
 
 export -f d2n
-
-# cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n {} 2>> $root/dcm2niix_output
-cat $root/dcm2niix.list | d2n {} 2>> $root/dcm2niix_output
+cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n {} 2>> $root/dcm2niix_output
 
 #find products
 (cd $root && find . -type f \( -name "*.json" \) > list)
@@ -65,7 +61,6 @@ fi
 
 # pull dcm2niix error information to log file
 { grep -B 1 --group-separator=$'\n\n' Error $root/dcm2niix_output || true; } > $root/dcm2niix_error
-
 # # remove error message(s) about not finding any DICOMs in folder
 line_nums=$(grep -n 'Error: Unable to find any DICOM images' $root/dcm2niix_error | cut -d: -f1)
 
