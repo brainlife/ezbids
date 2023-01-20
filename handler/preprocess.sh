@@ -3,6 +3,11 @@
 set -e
 set -x
 
+export SHELL=$(type -p bash)
+# if [ $OSTYPE == "darwin" ]; then
+#     export SHELL=$(type -p bash)
+# fi
+    
 if [ -z $1 ]; then
     echo "please specify root dir"
     exit 1
@@ -48,7 +53,12 @@ function d2n {
 }
 
 export -f d2n
-cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n {} 2>> $root/dcm2niix_output
+
+if [ $OSTYPE = "darwin" ]; then
+    cat $root/dcm2niix.list | d2n {} 2>> $root/dcm2niix_output
+else
+    cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n {} 2>> $root/dcm2niix_output
+fi
 
 #find products
 (cd $root && find . -type f \( -name "*.json" \) > list)

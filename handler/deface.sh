@@ -16,7 +16,7 @@ method=$(jq -r .method $root/deface.json)
 #so runDeface parallel function can access it
 export root
 export method
-export appdir=$(pwd)
+export appdir=$(pwd)/ezBIDS_core
 
 function runDeface() {
     #note.. this function runs inside $root (by --wd $root)
