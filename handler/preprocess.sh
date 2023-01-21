@@ -3,9 +3,10 @@
 set -e
 set -x
 
-if [ $OSTYPE == "darwin" ]; then
-    export SHELL=$(type -p bash)
-fi
+export SHELL=$(type -p bash)
+# if [ $OSTYPE == "darwin" ]; then
+#     export SHELL=$(type -p bash)
+# fi
     
 if [ -z $1 ]; then
     echo "please specify root dir"
@@ -19,7 +20,8 @@ echo "running expand.sh"
 ./expand.sh $root
 
 echo "replace file path that contains space"
-find $root -depth -name "* *" -execdir rename 's/ /_/g' "{}" \;
+# find $root -depth -name "* *" -execdir rename 's/ /_/g' "{}" \;
+find $root -depth -name "*[ ()]*" -execdir rename 's/[ )]/_/g; s/\(//g' "{}" \;
 
 # If there are .nii files, compress them to .nii.gz
 echo "Making sure all NIfTI files are in .nii.gz format"
