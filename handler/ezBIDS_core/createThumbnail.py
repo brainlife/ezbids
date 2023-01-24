@@ -40,7 +40,7 @@ plt.tight_layout(pad=0, w_pad=0, h_pad=0)
 fig.canvas.draw()
 
 w,h = fig.canvas.get_width_height()
-buf = np.fromstring(fig.canvas.tostring_argb(), dtype=np.uint8)
+buf = np.frombuffer(fig.canvas.tostring_argb(), dtype=np.uint8)
 buf.shape = (w,h,4)
 
 buf = np.roll(buf,3,axis=2)
