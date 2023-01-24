@@ -759,7 +759,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
     common keys/labels. """
     localizer_keys = ["localizer", "scout"]
     angio_keys = ["angio"]
-    se_mag_phase_fmap_keys = ["fmap", "fieldmap", "spinecho", "sefmri", "semri"]
+    se_mag_phase_fmap_keys = ["fmap", "fieldmap", "spinecho", "sefmri", "semri", "grefieldmap"]
     flair_keys = ["t2spacedafl"]
     dwi_derived_keys = ["trace", "fa", "adc"]
     dwi_keys = ["dti", "dmri", "dwi"]
@@ -823,8 +823,8 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
                     """ Oftentimes, magnitude/phase[diff] acquisitions are called "gre-field-mapping",
                     so shouldn't receive the "fieldmap" suffix """
-                    if "grefieldmap" in sd:
-                        unique_dic["datatype"] = ""
+                    if "grefieldmap" in sd_sparse:
+                        unique_dic["datatype"] = "fmap"
                         unique_dic["suffix"] = ""
 
         """ If no luck with BIDS schema keys/labels, try using common keys in
@@ -876,7 +876,12 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     Please modify if incorrect".format(unique_dic["descriptor"]).split())
 
             # Magnitude/Phase[diff] and Spin Echo (SE) field maps
-            elif any(x in sd for x in se_mag_phase_fmap_keys):
+            elif any(x in sd for x in se_mag_phase_fmap_keys) or (len([x for x in se_mag_phase_fmap_keys if x in sd_sparse]) and len([x for x in se_mag_phase_fmap_keys if x in sd_sparse][-1]) > 3):
+                if any(x in sd for x in se_mag_phase_fmap_keys):
+                    piece = sd
+                else:
+                    piece = sd_sparse
+                
                 unique_dic["datatype"] = "fmap"
                 unique_dic["forType"] = "func/bold"
 
@@ -887,26 +892,26 @@ def datatype_suffix_identification(dataset_list_unique_series):
                             fmap/magnitude1 because '{}' is in SeriesDescription, \
                             EchoNumber == 1 in metadata, and the phrase '_e1_ph' \
                             is not in the filename. Please modify if \
-                            incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, sd)][0]).split())
+                            incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, piece)][0]).split())
                     elif unique_dic["EchoNumber"] == 1 and "_e1_ph" in unique_dic["json_path"]:
                         unique_dic["suffix"] = "phase1"
                         unique_dic["message"] = " ".join("Acquisition is believed to \
                             be fmap/phase1 because '{}' is in SeriesDescription, \
                             EchoNumber == 1 in metadata, and the phrase '_e1_ph' is in \
-                            the filename. Please modify if incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, sd)][0]).split())
+                            the filename. Please modify if incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, piece)][0]).split())
                     elif unique_dic["EchoNumber"] == 2 and "_e2_ph" not in unique_dic["json_path"]:
                         unique_dic["suffix"] = "magnitude2"
                         unique_dic["message"] = " ".join("Acquisition is believed to be \
                             fmap/magnitude2 because '{}' is in SeriesDescription, \
                             EchoNumber == 2 in metadata, and the phrase '_e2_ph' is \
-                            not in the filename. Please modify if incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, sd)][0]).split())
+                            not in the filename. Please modify if incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, piece)][0]).split())
                     elif unique_dic["EchoNumber"] == 2 and "_e2_ph" in unique_dic["json_path"] and "_e1_ph" in dataset_list_unique_series[index-2]["json_path"]:
                         unique_dic["suffix"] = "phase2"
                         unique_dic["message"] = " ".join("Acquisition is believed to be \
                             fmap/phase2 because '{}' is in SeriesDescription, \
                             EchoNumber == 2 in metadata, and the phrase '_e2_ph' \
                             is in the filename and '_e1_ph' the one two before. \
-                            Please modify if incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, sd)][0]).split())
+                            Please modify if incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, piece)][0]).split())
                     elif unique_dic["EchoNumber"] == 2 and "_e2_ph" in unique_dic["json_path"] and "_e1_ph" not in dataset_list_unique_series[index-2]["json_path"]:
                         unique_dic["suffix"] = "phasediff"
                         unique_dic["message"] = " ".join("Acquisition is believed to be \
@@ -1047,29 +1052,44 @@ def datatype_suffix_identification(dataset_list_unique_series):
                         information is provided by ProtocolName".split())
 
             # Functional BOLD
-            elif any(x in sd for x in func_keys) or (len([x for x in func_keys if x in sd_sparse]) and [x for x in func_keys if x in sd_sparse][-1] > 3) and "sbref" not in sd:
+            elif any(x in sd for x in func_keys) or (len([x for x in func_keys if x in sd_sparse]) and len([x for x in func_keys if x in sd_sparse][-1]) > 3) and "sbref" not in sd:
+                if any(x in sd for x in func_keys):
+                    piece = sd
+                else:
+                    piece = sd_sparse
+                    
                 unique_dic["datatype"] = "func"
                 unique_dic["suffix"] = "bold"
                 unique_dic["message"] = " ".join("Acquisition is believed to be \
                     func/bold because '{}' is in the SeriesDescription \
-                    (but not 'sbref'). Please modify if incorrect".format([x for x in func_keys if re.findall(x, sd)][0]).split())
+                    (but not 'sbref'). Please modify if incorrect".format([x for x in func_keys if re.findall(x, piece)][0]).split())
 
 
             # T1w
-            elif any(x in sd for x in t1w_keys) or (len([x for x in t1w_keys if x in sd_sparse]) and [x for x in t1w_keys if x in sd_sparse][-1] > 3):
+            elif any(x in sd for x in t1w_keys) or (len([x for x in t1w_keys if x in sd_sparse]) and len([x for x in t1w_keys if x in sd_sparse][-1]) > 3):
+                if any(x in sd for x in t1w_keys):
+                    piece = sd
+                else:
+                    piece = sd_sparse
+                
                 unique_dic["datatype"] = "anat"
                 unique_dic["suffix"] = "T1w"
                 unique_dic["message"] = " ".join("Acquisition is believed to be anat/T1w \
                     because '{}' is in the SeriesDescription. Please modify if \
-                    incorrect".format([x for x in t1w_keys if re.findall(x, sd)][0]).split())
+                    incorrect".format([x for x in t1w_keys if re.findall(x, piece)][0]).split())
 
             # FLAIR
-            elif any(x in sd for x in flair_keys) or (len([x for x in flair_keys if x in sd_sparse]) and [x for x in flair if x in sd_sparse][-1] > 3):
+            elif any(x in sd for x in flair_keys) or (len([x for x in flair_keys if x in sd_sparse]) and len([x for x in flair_keys if x in sd_sparse][-1]) > 3):
+                if any(x in sd for x in flair_keys):
+                    piece = sd
+                else:
+                    piece = sd_sparse
+                
                 unique_dic["datatype"] = "anat"
                 unique_dic["suffix"] = "FLAIR"
                 unique_dic["message"] = " ".join("Acquisition is believed to be anat/FLAIR \
                     because '{}' is in the SeriesDescription. Please modify if \
-                    incorrect".format([x for x in flair_keys if re.findall(x, sd)][0]).split())
+                    incorrect".format([x for x in flair_keys if re.findall(x, piece)][0]).split())
 
             # T2w (typically have EchoTime > 100ms)
             elif any(x in sd for x in t2w_keys) and unique_dic["EchoTime"] > 100:
