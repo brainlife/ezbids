@@ -15,7 +15,7 @@
     "@niivue/niivue": "^0.21.1",
     "axios": "^0.24",
     "element-plus": "^1.2.0-beta.6",
-    "lint": "^0.7.0",
+    "lint": "^0.8.19",
     "numeral": "^2.0.6",
     "splitpanes": "^3.1.1",
     "unplugin-vue-components": "^0.17.18",
