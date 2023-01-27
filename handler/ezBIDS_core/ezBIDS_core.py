@@ -1514,7 +1514,8 @@ def setVolumeThreshold(dataset_list_unique_series, objects_list):
                         volumeThreshold = minNumVolumes
                     else:
                         volumeThreshold = half
-
+            
+            volumeThreshold = 30 # temporary, but setting threshold low for debugging purposes
 
             # With volume threshold, exclude objects that don't pass it
             corresponding_objects = [x for x in objects_list if x["series_idx"] == series_idx]

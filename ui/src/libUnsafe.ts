@@ -595,7 +595,8 @@ export function createEventObjects(ezbids, files) {
 
     // Identify some terms for decoding purposes
     const subjects = Array.from(new Set(ezbids.subjects.filter(e=>e.exclude == false).map(e=>e.subject)))
-    const sessions = Array.from(new Set(ezbids.subjects.map(e=>e.sessions)[0].filter(e=>e.exclude == false).map(e=>e.session)))
+    const sessionsArray = Array.from(new Set(ezbids.subjects.map(e=>e.sessions)[0].filter(e=>e.exclude == false).map(e=>e.session)))
+    const sessions = sessionsArray.filter(function(e){return e}) // remove empty strings & spaces (i.e. no session(s) present
     const tasks = Array.from(new Set(ezbids.objects.map(e=>e._entities).filter(e=>(e.part == "" || e.part == "mag") && (e.task != "" && e.task != "rest" && e.task !== undefined)).map(e=>e.task)))
     const runs = Array.from(new Set(ezbids.objects.filter(e=>e._entities.task != "" && e._entities.task != "rest" && e._entities.task != undefined).map(e=>e._entities.run)))
     const numEventFiles = files.length
@@ -714,11 +715,13 @@ export function createEventObjects(ezbids, files) {
                     if(splitFilePath.length > 1) { //if a mappingKey is in the file path, the length of the splitFilePath array will be > 1
                         let lastSplit = splitFilePath.slice(-1)[0] //splitFilePath.slice(-1) is an array of length 1, so grab the first (i.e. entire) array
                         const lastSplitFirstChar = lastSplit[0]
+
                         Object.values(sepChars).forEach(sepChar=>{ //remove leading separator character(s), if they exist
                             if(sepChar == lastSplitFirstChar) {
-                                lastSplit = lastSplit.substring(1)
+                                lastSplit = lastSplit.substring(1).replace(sepChar, "")
                             }
                         });
+                        lastSplit = lastSplit.replace("/", "-")
 
                         let value = lastSplit.split(/[._-]+/)[0]
                         let regex = new RegExp(value, "gi")
@@ -737,7 +740,16 @@ export function createEventObjects(ezbids, files) {
                     info.eventsValue = info.eventsValue.replace(/^0+/, '')
                     info.detectionMethod = "ignoring zero-padding led to proper match"
                 }
+                
+                info.ezBIDSvalues.forEach(ezBIDSvalue=>{
+                    if(!info.eventsValue.includes(ezBIDSvalue) && info.eventsValue.includes(ezBIDSvalue.replace(/^0+/, ''))) {
+                        info.eventsValue = info.eventsValue.replace(/^0+/, '')
+                        info.detectionMethod = "ignoring zero-padding led to proper match"
+                    }
+                  });
             }
+
+
 
             /* 4th stage: if task eventValue can't be determined, look for task name(s) used in ezBIDS in event files
             values (not just column names).
@@ -851,8 +863,10 @@ export function createEventObjects(ezbids, files) {
             if(eventsMappingInfo.session.eventsValue) {
                 object.entities.session = eventsMappingInfo.session.eventsValue
             }else{ // if(eventsMappingInfo.session.ezBIDSvalues.length > 0 && eventsMappingInfo.session.ezBIDSvalues.filter(e=>e != "").length > 0) {
-                object.entities.session = "XX" + randSesID.toString() //set the sessionID to a new value, which user would then correct.
-                randSesID++
+                if(!eventsMappingInfo.session.eventsValue && sessions.length > 0) {
+                    object.entities.session = "XX" + randSesID.toString() //set the sessionID to a new value, which user would then correct.
+                    randSesID++
+                }
             }
         }
 
@@ -867,30 +881,56 @@ export function createEventObjects(ezbids, files) {
 
 
         //update section_id, series_idx, and ModifiedSeriesNumber
-        try {
-            section_id = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
+        if(sessions.length > 0) {
+            try {
+                section_id = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
+                    e._entities.session == eventsMappingInfo.session.eventsValue &&
+                    e._entities.task == eventsMappingInfo.task.eventsValue &&
+                    e._entities.run == eventsMappingInfo.run.eventsValue
+                    ).analysisResults.section_id
+            }
+            catch {
+                section_id = 1
+            }
+
+            try {
+                ModifiedSeriesNumber = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
                 e._entities.session == eventsMappingInfo.session.eventsValue &&
                 e._entities.task == eventsMappingInfo.task.eventsValue &&
-                e._entities.run == eventsMappingInfo.run.eventsValue
-                ).analysisResults.section_id
-        }
-        catch {
-            section_id = 1
+                e._entities.run == eventsMappingInfo.run.eventsValue &&
+                e._type == "func/bold" &&
+                (e._entities.part == "" || e._entities.part == "mag")
+                ).ModifiedSeriesNumber
+            }
+            catch {
+                ModifiedSeriesNumber = "01"
+            }
+
+        }else{
+            try {
+                section_id = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
+                    e._entities.task == eventsMappingInfo.task.eventsValue &&
+                    e._entities.run == eventsMappingInfo.run.eventsValue
+                    ).analysisResults.section_id
+            }
+            catch {
+                section_id = 1
+            }
+
+            try {
+                ModifiedSeriesNumber = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
+                e._entities.task == eventsMappingInfo.task.eventsValue &&
+                e._entities.run == eventsMappingInfo.run.eventsValue &&
+                e._type == "func/bold" &&
+                (e._entities.part == "" || e._entities.part == "mag")
+                ).ModifiedSeriesNumber
+            }
+            catch {
+                ModifiedSeriesNumber = "01"
+            }
+
         }
         object.analysisResults.section_id = section_id
-
-        try {
-            ModifiedSeriesNumber = ezbids.objects.find(e=>e._entities.subject == eventsMappingInfo.subject.eventsValue &&
-            e._entities.session == eventsMappingInfo.session.eventsValue &&
-            e._entities.task == eventsMappingInfo.task.eventsValue &&
-            e._entities.run == eventsMappingInfo.run.eventsValue &&
-            e._type == "func/bold" &&
-            (e._entities.part == "" || e._entities.part == "mag")
-            ).ModifiedSeriesNumber
-        }
-        catch {
-            ModifiedSeriesNumber = "01"
-        }
         object.ModifiedSeriesNumber = ModifiedSeriesNumber
 
         // console.log("created event object", object);
