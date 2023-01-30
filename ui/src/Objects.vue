@@ -433,6 +433,27 @@ export default defineComponent({
                 }
             }
 
+            //for func/sbref object, update validationWarnings if corresponding func/bold has been excluded
+            if(o._type == "func/sbref") {
+                let funcBoldObjects = this.$store.state.ezbids.objects.filter(o=>o._type == "func/bold" && (o._entities.part == "" || o._entities.part == "mag"))
+                funcBoldObjects.forEach(func=>{
+
+                    //TODO - rewrite this.
+                    let funcEntities = Object.fromEntries(Object.entries(func._entities).filter(([_, v]) => v != "")); //remove empty entity labels
+                    let objEntities = Object.fromEntries(Object.entries(o._entities).filter(([_, v]) => v != "")); //remove empty entity labels
+                    if(deepEqual(funcEntities, objEntities)) {
+                        o.ModifiedSeriesNumber = func.ModifiedSeriesNumber
+                        o.analysisResults.section_id = func.analysisResults.section_id
+
+                        o.validationWarnings = [];
+
+                        if(func._exclude === true || func._type == "exclude") {
+                            o.validationWarnings.push("The corresponding func/bold #"+func.series_idx+" is currently set to exclude from BIDS conversion. We recommend this func/sbref also be excluded unless there is a reason for keeping it.")
+                        }
+                    }
+                })
+            }
+
             //for func/events object, update series_idx and ModifiedSeriesNumber to match corresponding func/bold object.
             //Also update validationWarnings if corresponding func/bold has been excluded
             if(o._type == "func/events") {
@@ -446,7 +467,7 @@ export default defineComponent({
                         o.ModifiedSeriesNumber = func.ModifiedSeriesNumber
                         o.analysisResults.section_id = func.analysisResults.section_id
 
-                        //o.validationWarnings = [];
+                        o.validationWarnings = [];
 
                         if(func._exclude === true || func._type == "exclude") {
                             o.validationWarnings.push("The corresponding func/bold #"+func.series_idx+" is currently set to exclude from BIDS conversion. We recommend this func/events also be excluded unless there is a reason for keeping it.")
