@@ -433,7 +433,7 @@ export default defineComponent({
                 }
             }
 
-            //for func/sbref object, update validationWarnings if corresponding func/bold has been excluded
+            //for func/sbref object(s), update validationWarnings if corresponding func/bold has been excluded
             if(o._type == "func/sbref") {
                 let funcBoldObjects = this.$store.state.ezbids.objects.filter(o=>o._type == "func/bold" && (o._entities.part == "" || o._entities.part == "mag"))
                 funcBoldObjects.forEach(func=>{
@@ -454,7 +454,7 @@ export default defineComponent({
                 })
             }
 
-            //for func/events object, update series_idx and ModifiedSeriesNumber to match corresponding func/bold object.
+            //for func/events object(s), update series_idx and ModifiedSeriesNumber to match corresponding func/bold object.
             //Also update validationWarnings if corresponding func/bold has been excluded
             if(o._type == "func/events") {
                 let funcBoldObjects = this.$store.state.ezbids.objects.filter(o=>o._type == "func/bold" && (o._entities.part == "" || o._entities.part == "mag"))
