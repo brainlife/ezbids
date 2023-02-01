@@ -47,7 +47,7 @@ function d2n {
     path=$1
 
     echo "----------------------- $path ------------------------"
-    timeout 3600 dcm2niix --progress y -v 1 -ba n -z o -f 'time-%t-sn-%s' $path
+    timeout 3600 dcm2niix --progress y -v 1 -ba n -z o -d 9 -f 'time-%t-sn-%s' $path
 
     #all good
     echo $path >> dcm2niix.done
