@@ -90,15 +90,15 @@ export default defineComponent({
                     this.$store.dispatch("loadSession", this.session._id);
                 }
 
-                if(this.ezbids.notLoaded) {
-                    await this.$store.dispatch("loadEzbids");
-                }
+                // if(this.ezbids.notLoaded) {
+                //     await this.$store.dispatch("loadEzbids");
+                // }
             }
         }, 5000)
     },
 
     computed: {
-        ...mapState(['session', 'ezbids', 'events', 'page']),
+        ...mapState(['session', 'ezbids', 'bidsSchema', 'events', 'page']),
         ...mapGetters(['getBIDSEntities', 'findSession', 'findSubject']),
 
         backLabel(): string|null {
@@ -161,6 +161,32 @@ export default defineComponent({
                         createEventsTSV(this.ezbids, this.events);
                         break;
                     }
+
+                    const entityMappings = {} as {[key: string]: string};
+                    for(const key in this.bidsSchema.entities) {
+                        entityMappings[key] = this.bidsSchema.entities[key].entity;
+                    }
+
+                    fetch(this.config.apihost+'/session/'+this.session._id+'/save', {
+                        method: "POST",
+                        headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+                        body: JSON.stringify({
+                            //we store these so we can reload the session later
+                            subjects: this.ezbids.subjects,
+                            series: this.ezbids.series,
+                            defacingMethod: this.ezbids.defacingMethod,
+                            includeExcluded: this.ezbids.includeExcluded,
+
+                            //things that convert.ts uses
+                            objects: this.ezbids.objects, //most important thing that convert.ts needs
+                            events: this.events,
+                            entityMappings, //helps with convert
+                            datasetDescription: this.ezbids.datasetDescription,
+                            readme: this.ezbids.readme,
+                            participantsColumn: this.ezbids.participantsColumn,
+                            participantInfo: this.ezbids.participantsInfo,
+                        }),
+                    })
 
                     //scroll page to the top
                     window.scrollTo(0,0);

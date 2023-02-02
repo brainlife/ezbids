@@ -6,13 +6,9 @@ import fs = require('fs');
 import mkdirp = require('mkdirp');
 import archiver = require('archiver');
 import async = require('async');
-
 import config = require('./config');
-import models = require('./models');
-import { isFunction } from 'util';
-import { fstat } from 'fs';
 
-import rangeStream = require('range-stream');
+import * as models from './models';
 
 console.debug(config.multer);
 const upload = multer(config.multer);
@@ -52,8 +48,22 @@ router.get('/session/:session_id', (req, res, next) => {
     });
 });
 
+
+router.get('/session/:session_id/save', (req, res, next) => {
+    models.Session.findByIdAndUpdate(req.params.session_id, {
+        config: req.body, // TODO improve security/validation
+    }).then(session=>{
+        if(!session) return next("no such session");
+        res.send("ok");
+    }).catch(err=>{
+        console.error(err);
+        next(err);
+    });
+});
+
+
 router.post('/session/:session_id/deface', (req, res, next)=>{
-    models.Session.findById(req.params.session_id).then(session=>{
+    models.Session.findById(req.params.session_id).then((session: models.Session)=>{
         if(!session) return next("no such session");
 
         fs.writeFile(config.workdir+"/"+session._id+"/deface.json", JSON.stringify(req.body), err=>{

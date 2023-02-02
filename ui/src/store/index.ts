@@ -510,7 +510,7 @@ const store = createStore({
                 _id: id,
             });
             await context.dispatch("loadSession");
-            await context.dispatch("loadEzbids"); //might not yet exist
+            // await context.dispatch("loadEzbids"); //might not yet exist
             await context.dispatch("loadEzbidsUpdated"); //might not yet exist
         },
 
@@ -520,20 +520,24 @@ const store = createStore({
                 method: "GET",
                 headers: { 'Content-Type': 'application/json' },
             });
-            context.commit("setSession", await res.json());
+            const session = await res.json()
+            context.commit("setSession", session);
+
+            session.config.notLoaded = false;
+            context.commit("updateEzbids", session.config);
         },
 
-        async loadEzbids(context) {
-            if(!context.state.session || !context.state.session.pre_finish_date) return;
-            const res = await fetch(context.state.config.apihost+'/download/'+context.state.session._id+'/ezBIDS_core.json');
-            if(res.status == 200) {
-                const conf = await res.json();
-                conf.notLoaded = false;
-                context.commit("updateEzbids", conf);
-            } else {
-                console.log("no ezBIDS_core.json yet");
-            }
-        },
+        // async loadEzbids(context) {
+        //     if(!context.state.session || !context.state.session.pre_finish_date) return;
+        //     const res = await fetch(context.state.config.apihost+'/download/'+context.state.session._id+'/ezBIDS_core.json');
+        //     if(res.status == 200) {
+        //         const conf = await res.json();
+        //         conf.notLoaded = false;
+        //         context.commit("updateEzbids", conf);
+        //     } else {
+        //         console.log("no ezBIDS_core.json yet");
+        //     }
+        // },
 
         async loadEzbidsUpdated(context) {
             if(!context.state.session || !context.state.session.pre_finish_date) return;
