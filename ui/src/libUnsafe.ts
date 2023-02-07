@@ -143,7 +143,6 @@ export function funcQA($root) {
         // // #3
         // if(o._type == "func/bold" && o.exclude == false) {
         //     let boldOrientations = $root.objects.map(o=>o.analysisResults.orientation)
-        //     console.log(boldOrientations)
 
         // }
 
@@ -748,8 +747,6 @@ export function createEventObjects(ezbids, files) {
                     }
                   });
             }
-
-
 
             /* 4th stage: if task eventValue can't be determined, look for task name(s) used in ezBIDS in event files
             values (not just column names).

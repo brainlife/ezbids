@@ -395,6 +395,15 @@ export default defineComponent({
                 if(o.IntendedFor.length == 0) {
                     o.validationErrors.push("fmap should have IntendedFor set to at least 1 object");
                 }
+                //Ensure other fmap series aren't included in the IntendedFor mapping
+                if(o.IntendedFor.length > 0) {
+                    o.IntendedFor.forEach(i=>{
+                        let series_idx = this.ezbids.objects[i].series_idx
+                        if(this.ezbids.objects[i]._type.startsWith("fmap/")) {
+                            o.validationErrors.push("The selected series (#"+series_idx+") appears to be a field map (fmap), which isn't allowed in the IntenedFor mapping. Please remove this series, or, if it isn't a field map, please correct it.")
+                        }
+                    })
+                }
             }
 
             //try parsing items
@@ -448,7 +457,7 @@ export default defineComponent({
                         o.validationWarnings = [];
 
                         if(func._exclude === true || func._type == "exclude") {
-                            o.validationWarnings.push("The corresponding func/bold #"+func.series_idx+" is currently set to exclude from BIDS conversion. We recommend this func/sbref also be excluded unless there is a reason for keeping it.")
+                            o.validationWarnings = ["The corresponding func/bold #"+func.series_idx+" is currently set to exclude from BIDS conversion. We recommend this func/sbref also be excluded unless there is a reason for keeping it."]
                         }
                     }
                 })
@@ -470,7 +479,7 @@ export default defineComponent({
                         o.validationWarnings = [];
 
                         if(func._exclude === true || func._type == "exclude") {
-                            o.validationWarnings.push("The corresponding func/bold #"+func.series_idx+" is currently set to exclude from BIDS conversion. We recommend this func/events also be excluded unless there is a reason for keeping it.")
+                            o.validationWarnings = ["The corresponding func/bold #"+func.series_idx+" is currently set to exclude from BIDS conversion. We recommend this func/events also be excluded unless there is a reason for keeping it."]
                         }
                     }
                 })
@@ -492,8 +501,8 @@ export default defineComponent({
                     o.ModifiedSeriesNumber = matchingBold.ModifiedSeriesNumber;
                     o.analysisResults.section_id = matchingBold.analysisResults.section_id;
                     if(matchingBold._exclude) {
-                        o.validationWarnings.push(`The corresponding func/bold #${matchingBold.series_idx} is currently set to exclude from BIDS conversion.
-                            We recommend this func/events also be excluded unless there is a reason for keeping it.`)
+                        o.validationWarnings = [`The corresponding func/bold #${matchingBold.series_idx} is currently set to exclude from BIDS conversion.
+                            We recommend this func/events also be excluded unless there is a reason for keeping it.`]
                     }
                 }
             }

@@ -159,6 +159,7 @@ export default defineComponent({
                         break;
                     case "object":
                         createEventsTSV(this.ezbids, this.events);
+                        setIntendedFor(this.ezbids);
                         break;
                     }
 
