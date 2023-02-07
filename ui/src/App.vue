@@ -98,7 +98,7 @@ export default defineComponent({
     },
 
     computed: {
-        ...mapState(['session', 'ezbids', 'bidsSchema', 'events', 'page']),
+        ...mapState(['config', 'session', 'ezbids', 'bidsSchema', 'events', 'page']),
         ...mapGetters(['getBIDSEntities', 'findSession', 'findSubject']),
 
         backLabel(): string|null {

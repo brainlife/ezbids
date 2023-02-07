@@ -49,7 +49,7 @@ router.get('/session/:session_id', (req, res, next) => {
 });
 
 
-router.get('/session/:session_id/save', (req, res, next) => {
+router.post('/session/:session_id/save', (req, res, next) => {
     models.Session.findByIdAndUpdate(req.params.session_id, {
         config: req.body, // TODO improve security/validation
     }).then(session=>{

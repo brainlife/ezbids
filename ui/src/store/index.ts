@@ -510,7 +510,7 @@ const store = createStore({
                 _id: id,
             });
             await context.dispatch("loadSession");
-            // await context.dispatch("loadEzbids"); //might not yet exist
+            await context.dispatch("loadEzbids"); //might not yet exist
             await context.dispatch("loadEzbidsUpdated"); //might not yet exist
         },
 
@@ -521,23 +521,27 @@ const store = createStore({
                 headers: { 'Content-Type': 'application/json' },
             });
             const session = await res.json()
-            context.commit("setSession", session);
 
+            if (!session.config) {
+                session.config = {};
+            }
             session.config.notLoaded = false;
+
             context.commit("updateEzbids", session.config);
+            context.commit("setSession", session);
         },
 
-        // async loadEzbids(context) {
-        //     if(!context.state.session || !context.state.session.pre_finish_date) return;
-        //     const res = await fetch(context.state.config.apihost+'/download/'+context.state.session._id+'/ezBIDS_core.json');
-        //     if(res.status == 200) {
-        //         const conf = await res.json();
-        //         conf.notLoaded = false;
-        //         context.commit("updateEzbids", conf);
-        //     } else {
-        //         console.log("no ezBIDS_core.json yet");
-        //     }
-        // },
+        async loadEzbids(context) {
+            if(!context.state.session || !context.state.session.pre_finish_date) return;
+            const res = await fetch(context.state.config.apihost+'/download/'+context.state.session._id+'/ezBIDS_core.json');
+            if(res.status == 200) {
+                const conf = await res.json();
+                conf.notLoaded = false;
+                context.commit("updateEzbids", conf);
+            } else {
+                console.log("no ezBIDS_core.json yet");
+            }
+        },
 
         async loadEzbidsUpdated(context) {
             if(!context.state.session || !context.state.session.pre_finish_date) return;
@@ -564,7 +568,7 @@ const store = createStore({
                     if(!o) console.error("can't find", idx);
                     else o.defaced = true;
                 });
-            } else console.log("couldn't load deface.finished - mayber not yet defaced");
+            } else console.log("couldn't load deface.finished - maybe not yet defaced");
 
             const failed = await fetch(context.state.config.apihost+'/download/'+context.state.session._id+'/deface.failed');
             if(failed.status == 200) {
