@@ -55,6 +55,12 @@
             <b><a href="mailto:hayashis@iu.edu" target="mail">Soichi Hayashi</a></b><br>
             Technical Lead
         </div>
+        <div class="avatar">
+            <img src="./assets/images/Anibal.png" width="200"/>
+            <br>
+            <b><a href="mailto:anibalsolon@utexas.edu" target="mail">Anibal S. Heinsfeld</a></b><br>
+            Software Engineer
+        </div>
     </div>
 
 </div>
@@ -96,7 +102,7 @@ p {
 .avatars {
     .avatar {
         display: inline-block;
-        width: 300px;
+        width: 250px;
         padding: 10px;
         margin-bottom: 20px;
         img {
