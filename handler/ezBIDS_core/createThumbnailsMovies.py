@@ -22,7 +22,8 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 plt.style.use('dark_background')
 
-os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
+os.environ[ 'MPLCONFIGDIR' ] = os.getcwd() + "/configs/"
+
 
 ###### functions #########
 def create_movie_thumbnails(nifti_file, output_dir, object_img_array, v):
@@ -195,7 +196,7 @@ else:
         bval_file = "N/A"
     else:
         bvals = [x.split(" ") for x in pd.read_csv(bval_file).columns.tolist()][0]
-        bvals = [floor(float(x)) for x in bvals]
+        bvals = [floor(float(x)) for x in bvals if type(x) != str]
         
         if len(bvals) <= 1: # just b0, so unhelpful
             bval_file = "N/A"
