@@ -844,7 +844,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
             #     unique_dic["suffix"] = "asl"
             #     unique_dic["message"] = " ".join("Acquisition is believed to be perf/asl \
             #         because '{}' is in the {}. Please modify if \
-            #         incorrect.".format([x for x in asl_keys if re.findall(x, sd)][0]).split())
+            #         incorrect.".format([x for x in asl_keys if re.findall(x, piece)][0]).split())
 
             # Angiography
             elif any(x in sd for x in angio_keys):
@@ -857,7 +857,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
                 unique_dic["message"] = " ".join("Acquisition is believed to be anat/angio \
                     because '{}' is in the {}. Please modify if \
                     incorrect. Currently, ezBIDS does not support Angiography \
-                    conversion to BIDS".format([x for x in angio_keys if re.findall(x, sd)][0], unique_dic["descriptor"]).split())
+                    conversion to BIDS".format([x for x in angio_keys if re.findall(x, piece)][0], unique_dic["descriptor"]).split())
 
             # TB1TFL field maps
             elif any(x in sd for x in tb1tfl_keys):
@@ -936,7 +936,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     unique_dic["message"] = " ".join("Acquisition is believed to be fmap/epi \
                         because '{}' is in SeriesDescription, and does not contain \
                         metadata info associated with magnitude/phasediff acquisitions.\
-                        Please modify if incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, sd)][0]).split())
+                        Please modify if incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, piece)][0]).split())
 
             # spin echo field maps (for dwi)
             elif "DIFFUSION" in unique_dic["ImageType"] and "b0" in sd:
@@ -964,7 +964,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
                             unique_dic["suffix"] = "FLAIR"
                             unique_dic["message"] = " ".join("Acquisition is believed to be \
                                 anat/FLAIR because '{}' is in the \
-                                SeriesDescription. Please modify if incorrect".format([x for x in flair_keys if re.findall(x, sd)][0]).split())
+                                SeriesDescription. Please modify if incorrect".format([x for x in flair_keys if re.findall(x, piece)][0]).split())
                         elif "t2w" in sd:
                             unique_dic["datatype"] = "anat"
                             unique_dic["suffix"] = "T2w"
@@ -1008,7 +1008,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
                             TRACE, FA, or ADC because there are bval & bvec files \
                             with the same SeriesNumber, and '{}' is in the \
                             SeriesDescription. Please modify if \
-                            incorrect".format([x for x in dwi_derived_keys if re.findall(x, sd)][0]).split())
+                            incorrect".format([x for x in dwi_derived_keys if re.findall(x, piece)][0]).split())
                         unique_dic["type"] = "exclude"
                     else:
                         unique_dic["datatype"] = "dwi"
@@ -1097,7 +1097,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
                 unique_dic["suffix"] = "T2w"
                 unique_dic["message"] = " ".join("Acquisition is believed to be anat/T2w \
                     because '{}' is in the SeriesDescription and EchoTime > 100ms. \
-                    Please modify if incorrect".format([x for x in t2w_keys if re.findall(x, sd)][0]).split())
+                    Please modify if incorrect".format([x for x in t2w_keys if re.findall(x, piece)][0]).split())
 
             else:
                 """Can"t discern info from SeriesDescription, try using ndim and
