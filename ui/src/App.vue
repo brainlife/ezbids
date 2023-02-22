@@ -255,7 +255,7 @@ export default defineComponent({
         <h1 style="font-size: 25pt"><span style="letter-spacing: -3px; opacity: 0.6;">ez</span>BIDS</h1>
 
         <ul>
-            <li :class="{active: page == 'upload'}">Upload DICOM</li>
+            <li :class="{active: page == 'upload'}">Upload Imaging Data</li>
             <li :class="{active: page == 'description'}">Dataset Description</li>
         </ul>
 

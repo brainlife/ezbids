@@ -346,7 +346,7 @@ export default defineComponent({
 <div style="padding: 20px;">
     <div v-if="!session">
         <p>
-            Welcome to <b><span style="letter-spacing: -2px; opacity: 0.5">ez</span>BIDS</b> - an online DICOM to BIDS conversion / organizing tool.
+            Welcome to <b><span style="letter-spacing: -2px; opacity: 0.5">ez</span>BIDS</b> - an online imaging data to BIDS conversion / organizing tool.
         </p>
 
         <div v-if="!starting">
@@ -356,7 +356,7 @@ export default defineComponent({
                 @dragover="dragover">
                 <div class="drop-area-backdrop"><b><span style="letter-spacing: -4vh;">ez</span>BIDS</b></div>
                 <div>
-                    <b>Drag & Drop a DICOM folder here to start</b>
+                    <b>Drag & Drop DICOM (or dcm2niix) data here to start</b>
                     <br>
                     <br>
                     or
@@ -443,7 +443,7 @@ export default defineComponent({
             </h3>
             <div v-else-if="session.dicomDone < session.dicomCount">
                 <h3>
-                    Converting DICOMS to nifti
+                    Converting DICOMS to NIfTI
                     <font-awesome-icon icon="spinner" pulse/>
                 </h3>
                 <el-progress status="success"
