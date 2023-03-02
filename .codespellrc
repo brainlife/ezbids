@@ -1,0 +1,4 @@
+[codespell]
+skip = .git,*.pdf,*.svg,*.json,*.eps,*.min.js,bids-specification
+# ALS
+ignore-words-list = als
