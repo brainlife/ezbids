@@ -109,7 +109,7 @@ export default defineComponent({
 
         <el-form-item label="How To Acknowledge" prop="HowToAckowledge">
             <el-input type="textarea"
-                placeholder="Enter how you want your users to acknowlege when they use this dataset"
+                placeholder="Enter how you want your users to acknowledge when they use this dataset"
                 :autosize="{ minRows: 2, maxRows: 6}"
                 v-model="dd.HowToAcknowledge"/>
         </el-form-item>

@@ -3,7 +3,7 @@
 Created on Fri Jun 26 08:37:56 2020
 
 This code represents ezBIDS's attempt to determine BIDS information (subject/session mapping,
-datatype, suffix, entitiy labels [acq, run, dir, etc]) based on dcm2niix output.
+datatype, suffix, entity labels [acq, run, dir, etc]) based on dcm2niix output.
 This information is then displayed in the ezBIDS UI, where users can make
 edits/modifications as they see fit, before finalizing their data into a
 BIDS-compliant dataset.
@@ -217,7 +217,7 @@ def modify_uploaded_dataset_list(uploaded_json_list):
         except:
             print("{} has improper JSON syntax, probably related to dcm2niix version.".format(json_file))
 
-        # Only want json files with corresonding nifti (and bval/bvec) and if
+        # Only want json files with corresponding nifti (and bval/bvec) and if
         # the files come from dcm2niix
         if "ConversionSoftware" in json_data and json_data["ConversionSoftware"] == "dcm2niix":
             if len([os.path.dirname(json_file) + "/" + x for x in os.listdir(os.path.dirname(json_file)) if os.path.basename(json_file)[:-4] in x]) > 1:
@@ -235,7 +235,7 @@ def generate_dataset_list(uploaded_files_list):
     to create a list of info directories for each uploaded acquisition, where
     each directory contains metadata and other dicom header information to
     help ezBIDS determine the identify of acquisitions, and to determine other
-    BIDS-related information (e.g. entitiy labels).
+    BIDS-related information (e.g. entity labels).
 
     Parameters
     ----------
@@ -851,7 +851,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
                 unique_dic["type"] = "exclude"
                 unique_dic["datatype"] = "anat"
                 unique_dic["suffix"] = "angio"
-                unique_dic["error"] = " ".join("Acqusition appears to be an Angiography \
+                unique_dic["error"] = " ".join("Acquisition appears to be an Angiography \
                     acquisition, which is currently not supported by ezBIDS at \
                     this time, but will be in the future".split())
                 unique_dic["message"] = " ".join("Acquisition is believed to be anat/angio \
@@ -925,7 +925,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
                             of fieldmap with an EchoNumber, however, unable to \
                             determine if it is a magnitude, phase, or phasediff. \
                             Please modify if acquisition is desired for BIDS \
-                            conversion, otherwise the acqusition will not be \
+                            conversion, otherwise the acquisition will not be \
                             converted".split())
                         unique_dic["message"] = unique_dic["error"]
                         unique_dic["type"] = "exclude"
@@ -1129,7 +1129,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     unique_dic["message"] = " ".join("Acquisition is unknown because there \
                         is not enough adequate information, primarily in the \
                         SeriesDescription. Please modify if acquisition is desired \
-                        for BIDS conversion, otherwise the acqusition will not be \
+                        for BIDS conversion, otherwise the acquisition will not be \
                         converted".split())
                     unique_dic["type"] = "exclude"
 
@@ -1144,7 +1144,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
         """
         if "anat" in unique_dic["type"] and "NORM" not in unique_dic["ImageType"]:
             unique_dic["message"] = unique_dic["message"] + " ".join(" This acquisition \
-            appers to be non-normalized, potentially having poor CNR. If there \
+            appears to be non-normalized, potentially having poor CNR. If there \
             is a corresponding normalized acquisition ('NORM' in ImageType \
             metadata field), consider excluding this current one from BIDS \
             conversion".split())
@@ -1292,7 +1292,7 @@ def entity_labels_identification(dataset_list_unique_series):
 
 
         """ Replace periods in series entities with "p", if found. If other
-        non alpha-numeric characters are found in the entity labels, remove them """
+        non alphanumeric characters are found in the entity labels, remove them """
         for key, value in series_entities.items():
             if "." in value:
                 series_entities[key] = value.replace(".", "p")
@@ -1369,7 +1369,7 @@ def modify_objects_info(dataset_list):
 
             object_img_array = image.dataobj
             if object_img_array.dtype not in ["<i2", "<u2"]:
-                # Weird edge case where data array is RGB instead of intger
+                # Weird edge case where data array is RGB instead of integer
                 protocol["exclude"] = True
                 protocol["error"] = " ".join("The data array is for this \
                     acquisition is improper, likely suggesting some issue \

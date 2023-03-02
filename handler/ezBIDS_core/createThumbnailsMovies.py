@@ -238,7 +238,7 @@ else:
             print("")
             create_DWIshell_thumbnails(nifti_file, image, bval_file)
 
-    # remove the folder containing the PNGs for movie gneration; don't need them anymore
+    # remove the folder containing the PNGs for movie generation; don't need them anymore
     if os.path.isdir(output_dir):
         shutil.rmtree(output_dir)
 
