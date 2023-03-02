@@ -112,7 +112,7 @@ export interface IObject {
     _type: string;
     _forType: string;
 
-    //primary key for session - but we want to keep these for sotring purpose
+    //primary key for session - but we want to keep these for sorting purpose
     AcquisitionDate: string;
     //AcquisitionDateTime: string; //ISO - only used to sort objects
     AcquisitionTime: string;
