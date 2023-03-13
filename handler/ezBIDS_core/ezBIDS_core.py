@@ -764,8 +764,8 @@ def datatype_suffix_identification(dataset_list_unique_series):
     dwi_derived_keys = ["trace", "fa", "adc"]
     dwi_keys = ["dti", "dmri", "dwi"]
     func_keys = ["func", "fmri", "mri", "task", "rest"]
-    t1w_keys = ["tfl3d", "mprage", "spgr", "tflmgh", "t1mpr", "anatt1"]
-    t2w_keys = ["t2", "anatt2"]
+    t1w_keys = ["tfl3d", "mprage", "spgr", "tflmgh", "t1mpr", "anatt1", "3dt1"]
+    t2w_keys = ["t2", "anatt2", "3dt2"]
     tb1tfl_keys = ["tflb1map"]
     tb1rfm_keys = ["rfmap"]
     asl_keys = ["pasl", "m0scan"]
@@ -781,6 +781,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
         non-alphanumeric characters and make everything lowercase."""
         sd_sparse = re.sub("[^A-Za-z0-9]+", "", sd).lower()
         sd = sd.lower()
+        sd = sd.replace(" ", "")
 
         # Try checking based on BIDS schema keys/labels
         if unique_dic["SeriesDescription"] != "NA":
@@ -1093,6 +1094,11 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
             # T2w (typically have EchoTime > 100ms)
             elif any(x in sd for x in t2w_keys) and unique_dic["EchoTime"] > 100:
+                if any(x in sd for x in t2w_keys):
+                    piece = sd
+                else:
+                    piece = sd_sparse
+
                 unique_dic["datatype"] = "anat"
                 unique_dic["suffix"] = "T2w"
                 unique_dic["message"] = " ".join("Acquisition is believed to be anat/T2w \
