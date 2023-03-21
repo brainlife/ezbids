@@ -35,6 +35,44 @@ echo "finding dicom directories"
 ./find_dicomdir.py $root > $root/dcm2niix.list
 cat $root/dcm2niix.list
 
+PET2BIDS_INSTALLED=`which dcm2niix4pet > /dev/null && echo $?`
+
+if [ $PET2BIDS_INSTALLED -eq 0 ]; then
+
+    function dcm2niix4pet {
+        #note.. this function runs inside $root (by --wd $root)
+
+        path=$1
+
+        echo "----------------------- $path ------------------------"
+        timeout 3600 dcm2niix4pet $path
+
+        #all good
+        echo $path >> pet2bids.done
+    } 
+
+    export -f dcm2niix4pet
+
+    # now we do a little magic to run pet2bids if it's installed
+    ./find_petdir.py $root > $root/pet2bids.list
+    echo "Found PET directories:"
+    cat $root/pet2bids.list
+
+    # remove pet directories from dcm2niix list
+    echo "Removing PET directories from dcm2niix list"
+    grep -v -x -f <(sort pet2bids.list) <(sort dcm2niix.list) > dcm2niix.list
+    
+    # run pet2bids
+    true > $root/pet2bids.done
+
+    if [ $OSTYPE = "darwin" ]; then
+        cat $root/pet2bids.list | dcm2niix4pet {} 2>> $root/pet2bids_output
+    else
+        cat $root/pet2bids.list | parallel --linebuffer --wd $root -j 6 dcm2niix4pet {} 2>> $root/pet2bids_output
+    fi
+
+fi
+
 echo "running dcm2niix"
 true > $root/dcm2niix.done
 function d2n {
