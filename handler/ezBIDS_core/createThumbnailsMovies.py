@@ -182,75 +182,70 @@ os.chdir(data_dir)
 json_list = pd.read_csv("list", header=None, sep="\n").to_numpy().flatten().tolist()
 
 nifti_file = json_file.split(".json")[0] + ".nii.gz"
+print("")
+print(nifti_file)
+print("")
 
 if not os.path.isfile("{}/{}".format(data_dir, nifti_file)): # no corresponding nifti, so don't process
-    nifti_file = "N/A"
+    print("{} does not have a corresponding NIfTI file, cannot process".format(json_file))
+    # nifti_file = "N/A"
 else:
     output_dir = nifti_file.split(".nii.gz")[0]
     image = nib.load(nifti_file)
-    object_img_array = image.dataobj[:]
 
-
-    bval_file = json_file.split(".json")[0].split("./")[-1] + ".bval"
-    if not os.path.isfile("{}/{}".format(data_dir, bval_file)):
-        bval_file = "N/A"
+    if len([x for x in image.shape if x < 0]): # image has negative dimension(s), cannot process
+        print("{} has negative dimension(s), cannot process".format(nifti_file))
+        # nifti_file = "N/A"
     else:
-        bvals = [x.split(" ") for x in pd.read_csv(bval_file).columns.tolist()][0]
-        bvals = [floor(float(x)) for x in bvals if type(x) != str]
-        
-        if len(bvals) <= 1: # just b0, so unhelpful
+        object_img_array = image.dataobj[:]
+
+        bval_file = json_file.split(".json")[0].split("./")[-1] + ".bval"
+        if not os.path.isfile("{}/{}".format(data_dir, bval_file)):
             bval_file = "N/A"
+        else:
+            bvals = [x.split(" ") for x in pd.read_csv(bval_file).columns.tolist()][0]
+            bvals = [floor(float(x)) for x in bvals if type(x) != str]
+            
+            if len(bvals) <= 1: # just b0, so unhelpful
+                bval_file = "N/A"
 
 
-    # # create movie of each volume in 4D acquisition
-    # if image.ndim == 4 and nifti_file != "N/A": # 4D
-    #     print("")
-    #     print("Creating movie of all volumes for {}".format(nifti_file))
-    #     print("")
-    #     max_len = len(str(object_img_array.shape[3]))
+        # # create movie of each volume in 4D acquisition
+        # if image.ndim == 4 and nifti_file != "N/A": # 4D
+        #     print("")
+        #     print("Creating movie of all volumes for {}".format(nifti_file))
+        #     print("")
+        #     max_len = len(str(object_img_array.shape[3]))
 
-    #     if not os.path.isdir(output_dir):
-    #         os.mkdir(output_dir)
+        #     if not os.path.isdir(output_dir):
+        #         os.mkdir(output_dir)
 
-    #     for v in range(object_img_array.shape[3]):
-    #         create_movie_thumbnails(nifti_file, output_dir, object_img_array, v)
-    #     # Parallel(n_jobs=6)(delayed(create_movie)(nifti_file=nifti_file, output_dir=output_dir, object_img_array=object_img_array, v=v) for v in range(object_img_array.shape[3]))
+        #     for v in range(object_img_array.shape[3]):
+        #         create_movie_thumbnails(nifti_file, output_dir, object_img_array, v)
+        #     # Parallel(n_jobs=6)(delayed(create_movie)(nifti_file=nifti_file, output_dir=output_dir, object_img_array=object_img_array, v=v) for v in range(object_img_array.shape[3]))
 
-    #     # Combine volume PNGs into movie
-    #     os.system("ffmpeg -framerate 30 -pattern_type glob -i {}/'*.png' {}_movie.mp4".format(output_dir, output_dir))
-
-
-    # Some acquisitions may not have a proper dtype, strongly indicating a non-MRI acquisition
-    if image.get_data_dtype() == [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]:
-        print("{} doesn't appear to be an MRI acquisition, has dtype value of {}".format(nifti_file, [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]))
-    else:
-        # create thumbnail
-        if nifti_file != "N/A":
-            print("")
-            print("Creating thumbnail for {}".format(nifti_file))
-            print("")
-            create_thumbnail(nifti_file, image)
-
-        # create thumbnail of each DWI's unique shell
-        if bval_file != "N/A":
-            print("")
-            print("Creating thumbnail(s) for each DWI shell in {}".format(nifti_file))
-            print("")
-            create_DWIshell_thumbnails(nifti_file, image, bval_file)
-
-    # remove the folder containing the PNGs for movie generation; don't need them anymore
-    if os.path.isdir(output_dir):
-        shutil.rmtree(output_dir)
+        #     # Combine volume PNGs into movie
+        #     os.system("ffmpeg -framerate 30 -pattern_type glob -i {}/'*.png' {}_movie.mp4".format(output_dir, output_dir))
 
 
+        # Some acquisitions may not have a proper dtype, strongly indicating a non-MRI acquisition
+        if image.get_data_dtype() == [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]:
+            print("{} doesn't appear to be an MRI acquisition, has dtype value of {}".format(nifti_file, [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]))
+        else:
+            # create thumbnail
+            if nifti_file != "N/A":
+                print("")
+                print("Creating thumbnail for {}".format(nifti_file))
+                print("")
+                create_thumbnail(nifti_file, image)
 
+            # create thumbnail of each DWI's unique shell
+            if bval_file != "N/A":
+                print("")
+                print("Creating thumbnail(s) for each DWI shell in {}".format(nifti_file))
+                print("")
+                create_DWIshell_thumbnails(nifti_file, image, bval_file)
 
-
-
-
-
-
-
-
-
-
+        # remove the folder containing the PNGs for movie generation; don't need them anymore
+        if os.path.isdir(output_dir):
+            shutil.rmtree(output_dir)

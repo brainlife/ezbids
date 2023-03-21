@@ -63,6 +63,9 @@ fi
 
 #find products
 (cd $root && find . -type f \( -name "*.json" \) > list)
+# remove ezBIDS_core.json if it was inserted
+grep -F -v ezBIDS_core.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
+
 cat $root/list
 
 if [ ! -s $root/list ]; then

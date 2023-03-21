@@ -796,7 +796,6 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     if datatype in sd:
                         unique_dic["datatype"] = datatype
 
-
                     rule = yaml.load(open(os.path.join(analyzer_dir, datatype_suffix_rules, datatype) + ".yaml"), Loader=yaml.FullLoader)
 
                     suffixes = [x for y in [rule[x]["suffixes"] for x in rule] for x in y]
@@ -1065,7 +1064,6 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     func/bold because '{}' is in the SeriesDescription \
                     (but not 'sbref'). Please modify if incorrect".format([x for x in func_keys if re.findall(x, piece)][0]).split())
 
-
             # T1w
             elif any(x in sd for x in t1w_keys) or (len([x for x in t1w_keys if x in sd_sparse]) and len([x for x in t1w_keys if x in sd_sparse][-1]) > 3):
                 if any(x in sd for x in t1w_keys):
@@ -1237,8 +1235,6 @@ def entity_labels_identification(dataset_list_unique_series):
         #             not the combined RMS file, this acquisition will be set to \
         #             exclude. Please modify if incorrect".split())
 
-
-
         # flip
         if any(x in unique_dic["type"] for x in ["anat/VFA", "anat/MPM", "anat/MTS", "fmap/TB1EPI", "fmap/TB1DAM"]) and "FlipAngle" in unique_dic["sidecar"]:
             regex = re.compile('flip([1-9]*)')
@@ -1280,7 +1276,6 @@ def entity_labels_identification(dataset_list_unique_series):
         # reconstruction
         if "wave" in sd:
             series_entities["reconstruction"] = "wave"
-
 
         # part
         if "REAL" in unique_dic["ImageType"]:
@@ -1382,6 +1377,13 @@ def modify_objects_info(dataset_list):
                     with the corresponding DICOMS".split())
                 protocol["message"] = protocol["error"]
                 protocol["type"] = "exclude"
+            
+            # Check for negative dimesions and exclude from BIDS conversion if they exist
+            if len([x for x in image.shape if x < 0]):
+                protocol["exclude"] = True
+                protocol["type"] = "exclude"
+                protocol["error"] = "Image contains negative dimension(s) and cannot be converted to BIDS format"
+                protocol["message"] = "Image contains negative dimension(s) and cannot be converted to BIDS format"
 
             if protocol["error"]:
                 protocol["error"] = [protocol["error"]]
@@ -1533,11 +1535,6 @@ def setVolumeThreshold(dataset_list_unique_series, objects_list):
                         is less than the threshold value of {} volumes. Therefore, \
                         this acquisition will be excluded from BIDS conversion.\
                         Please modify if incorrect".format(obj["analysisResults"]["NumVolumes"], volumeThreshold).split())]
-
-
-
-
-
 
 ##################### Begin #####################
 
