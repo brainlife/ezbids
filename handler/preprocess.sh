@@ -35,6 +35,9 @@ echo "finding dicom directories"
 ./find_dicomdir.py $root > $root/dcm2niix.list
 cat $root/dcm2niix.list
 
+# There can be overlap between the dicom directories and the pet directories
+# we want to use dcm2niix4pet for the pet directories, and dcm2niix for the dicom directories
+# but if and only if the conversion library PET2BIDS is installed
 PET2BIDS_INSTALLED=`which dcm2niix4pet > /dev/null && echo $?`
 
 if [ $PET2BIDS_INSTALLED -eq 0 ]; then
