@@ -780,8 +780,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
         """Make easier to find key characters/phrases in sd by removing
         non-alphanumeric characters and make everything lowercase."""
         sd_sparse = re.sub("[^A-Za-z0-9]+", "", sd).lower()
-        sd = sd.lower()
-        sd = sd.replace(" ", "")
+        sd = sd.lower().replace(" ", "")
 
         # Try checking based on BIDS schema keys/labels
         if unique_dic["SeriesDescription"] != "NA":
@@ -840,6 +839,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
             # # Arterial Spin Labeling (ASL)
             # elif any(x in sd for x in asl_keys):
+                # piece = sd
             #     unique_dic["datatype"] = "perf"
             #     unique_dic["suffix"] = "asl"
             #     unique_dic["message"] = " ".join("Acquisition is believed to be perf/asl \
@@ -848,6 +848,8 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
             # Angiography
             elif any(x in sd for x in angio_keys):
+                piece = sd
+
                 unique_dic["type"] = "exclude"
                 unique_dic["datatype"] = "anat"
                 unique_dic["suffix"] = "angio"
@@ -960,6 +962,8 @@ def datatype_suffix_identification(dataset_list_unique_series):
                 if "DIFFUSION" not in unique_dic["ImageType"]:
                     if unique_dic["NumVolumes"] < 2:
                         if any(x in sd for x in flair_keys):
+                            piece = sd
+
                             unique_dic["datatype"] = "anat"
                             unique_dic["suffix"] = "FLAIR"
                             unique_dic["message"] = " ".join("Acquisition is believed to be \
@@ -1001,6 +1005,8 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
                     # elif any(x in sd for x in dwi_derived_keys) and not any(x in sd for x in dwi_keys):
                     elif any(x in sd for x in dwi_derived_keys):
+                        piece = sd
+                        
                         unique_dic["error"] = " ".join("Acquisition appears to be a TRACE, \
                             FA, or ADC, which are unsupported by ezBIDS and will \
                             therefore not be converted".split())
