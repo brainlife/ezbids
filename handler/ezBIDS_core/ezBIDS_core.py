@@ -603,9 +603,11 @@ def determine_subj_ses_IDs(dataset_list):
             patient_dic = {
                             "PatientName": [x["PatientName"] for x in sub_dics_list if x["session"] == ses_info["session"] and x["AcquisitionDate"] == ses_info["AcquisitionDate"]][0],
                             "PatientID": [x["PatientID"] for x in sub_dics_list if x["session"] == ses_info["session"] and x["AcquisitionDate"] == ses_info["AcquisitionDate"]][0],
-                            "PatientBirthDate": [x["PatientName"] for x in sub_dics_list if x["session"] == ses_info["session"] and x["AcquisitionDate"] == ses_info["AcquisitionDate"]][0]
+                            "PatientBirthDate": [x["PatientBirthDate"] for x in sub_dics_list if x["session"] == ses_info["session"] and x["AcquisitionDate"] == ses_info["AcquisitionDate"]][0]
+                            # "PatientBirthDate": [x["PatientName"] for x in sub_dics_list if x["session"] == ses_info["session"] and x["AcquisitionDate"] == ses_info["AcquisitionDate"]][0]
                            }
             patient_info.append(patient_dic)
+            print(patient_dic)
 
         """
         See if multiple sessions occurred on same day, meaning same AcquisitionDate
@@ -760,7 +762,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
     localizer_keys = ["localizer", "scout"]
     angio_keys = ["angio"]
     se_mag_phase_fmap_keys = ["fmap", "fieldmap", "spinecho", "sefmri", "semri", "grefieldmap", "distortionmap"]
-    flair_keys = ["t2spacedafl"]
+    flair_keys = ["t2spacedafl", "t2spc"]
     dwi_derived_keys = ["trace", "fa", "adc"]
     dwi_keys = ["dti", "dmri", "dwi"]
     func_keys = ["func", "fmri", "mri", "task", "rest"]
@@ -799,7 +801,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
                     suffixes = [x for y in [rule[x]["suffixes"] for x in rule] for x in y]
 
-                    unhelpful_suffixes = ["fieldmap", "beh", "epi"]
+                    unhelpful_suffixes = ["fieldmap", "beh", "epi", "PC"]
 
                     # Remove deprecated suffixes
                     deprecated_suffixes = ["T2star", "FLASH", "PD"]
@@ -883,10 +885,6 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     piece = sd
                 else:
                     piece = sd_sparse
-
-                print(sd)
-                print(sd_sparse)
-                print(piece)
                 
                 unique_dic["datatype"] = "fmap"
                 unique_dic["forType"] = "func/bold"
