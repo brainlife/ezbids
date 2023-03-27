@@ -759,7 +759,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
     common keys/labels. """
     localizer_keys = ["localizer", "scout"]
     angio_keys = ["angio"]
-    se_mag_phase_fmap_keys = ["fmap", "fieldmap", "spinecho", "sefmri", "semri", "grefieldmap"]
+    se_mag_phase_fmap_keys = ["fmap", "fieldmap", "spinecho", "sefmri", "semri", "grefieldmap", "distortionmap"]
     flair_keys = ["t2spacedafl"]
     dwi_derived_keys = ["trace", "fa", "adc"]
     dwi_keys = ["dti", "dmri", "dwi"]
@@ -883,6 +883,10 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     piece = sd
                 else:
                     piece = sd_sparse
+
+                print(sd)
+                print(sd_sparse)
+                print(piece)
                 
                 unique_dic["datatype"] = "fmap"
                 unique_dic["forType"] = "func/bold"
