@@ -2,6 +2,7 @@
 
 import os
 import sys
+import pydicom
 
 def find_leaf(dir):
     leaf=True
@@ -17,8 +18,20 @@ def find_leaf(dir):
             continue
 
         #does it contain any .dcmfile?
-        if x.lower().endswith(".dcm") or x.lower().endswith(".ima") or x.lower().startswith("mr."):
+        if x.lower().endswith(".dcm") or x.lower().endswith(".ima") or x.lower().endswith(".img") or x.lower().startswith("mr."):
             hasDicom=True
+        else:
+            # no explicit raw data (e.g., DICOM) extension, check using pydicom
+            try:
+                read_file = pydicom.dcmread("{}/{}".format(dir, x))
+                if read_file.Modality == "MR": # eventually need to expand this to other imaging modalities
+                    hasDicom=True
+                else:
+                    # Not MRI imaging modality, ignore for now
+                    pass
+            except:
+                # Doesn't appear to be raw imaging data
+                pass
 
     #don't consider a leaf directory with nothing but .nii or .nii.gz
     #otherwise dcm2niix gets run on that directory and it will fail
