@@ -13,6 +13,7 @@ if [ -z $1 ]; then
     exit 1
 fi
 root=$1
+echo "running preprocess.sh on root folder ${root}"
 
 echo "running expand.sh"
 #timeout 3600 ./expand.sh $root
@@ -42,7 +43,8 @@ PET2BIDS_INSTALLED=`which dcm2niix4pet > /dev/null && echo $?`
 
 if [ $PET2BIDS_INSTALLED -eq 0 ]; then
 
-    function dcm2niix4pet {
+    echo "PET2BIDS is installed, using dcm2niix4pet for PET directories found in root dir ${root}"
+    function rundcm2niix4pet {
         #note.. this function runs inside $root (by --wd $root)
 
         path=$1
@@ -54,7 +56,7 @@ if [ $PET2BIDS_INSTALLED -eq 0 ]; then
         echo $path >> pet2bids.done
     } 
 
-    export -f dcm2niix4pet
+    export -f rundcm2niix4pet
 
     # now we do a little magic to run pet2bids if it's installed
     ./find_petdir.py $root > $root/pet2bids.list
@@ -69,9 +71,9 @@ if [ $PET2BIDS_INSTALLED -eq 0 ]; then
     true > $root/pet2bids.done
 
     if [ $OSTYPE = "darwin" ]; then
-        cat $root/pet2bids.list | dcm2niix4pet {} 2>> $root/pet2bids_output
+        cat $root/pet2bids.list | rundcm2niix4pet {} 2>> $root/pet2bids_output
     else
-        cat $root/pet2bids.list | parallel --linebuffer --wd $root -j 6 dcm2niix4pet {} 2>> $root/pet2bids_output
+        cat $root/pet2bids.list | parallel --linebuffer --wd $root -j 6 rundcm2niix4pet {} 2>> $root/pet2bids_output
     fi
 
 fi
