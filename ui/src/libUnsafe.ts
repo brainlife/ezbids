@@ -362,15 +362,35 @@ export function setIntendedFor($root) {
                 let section = sesGroup.objects.filter(e=>e.analysisResults.section_id == s && !e._exclude && e._type != "exclude")
 
                 section.forEach(obj=>{
-                    if(obj._type.startsWith("fmap/")) { //add IntendedFor info
+                    //add IntendedFor information
+                    if(obj._type.startsWith("fmap/")) {
                         Object.assign(obj, {IntendedFor: []})
                         let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor
                         correspindingSeriesIntendedFor.forEach(i=>{
                             let IntendedForIDs = section.filter(o=>o.series_idx == i).map(o=>o.idx)
                             obj.IntendedFor = obj.IntendedFor.concat(IntendedForIDs)
-                        })
+                        });
                     }
-                })
+
+                    // check B0FieldIdentifier and B0FieldSource information
+                    if(obj._type && !obj._type.includes('exclude')) {
+                        Object.assign(obj, {B0FieldIdentifier: []})
+                        Object.assign(obj, {B0FieldSource: []})
+
+                        let correspindingSeriesB0FieldIdentifier = $root.series[obj.series_idx].B0FieldIdentifier
+                        let correspindingSeriesB0FieldSource = $root.series[obj.series_idx].B0FieldSource
+                        
+                        for(const k in correspindingSeriesB0FieldIdentifier) {
+                            const v = correspindingSeriesB0FieldIdentifier[k]
+                            obj.B0FieldIdentifier.push(v)
+                        }
+
+                        for(const k in correspindingSeriesB0FieldSource) {
+                            const v = correspindingSeriesB0FieldSource[k]
+                            obj.B0FieldSource.push(v)
+                        }
+                    }
+                });
             });
         });
     });
@@ -389,16 +409,32 @@ function findMostCommonValue(arr){
     ).pop();
 }
 
-export function validateEntities(entities/*: Series*/) {
-    const errors = [];
-    //validate entity (only alpha numeric values)
+export function validate_Entities_B0FieldIdentifier_B0FieldSource(entities, B0FieldIdentifier, B0FieldSource/*: Series*/) {     
+    const errors = [];                                                                                      
+    //validate entity (only alpha numeric values)                                                               
     for(const k in entities) {
-        const v = entities[k];
-        if(v && !/^[a-zA-Z0-9]*$/.test(v)) {
-            errors.push("Entity:"+k+" contains non-alphanumeric character");
-        }
+        const v = entities[k];                                                                                
+        if(v && !/^[a-zA-Z0-9]*$/.test(v)) {                                                                    
+            errors.push("Entity label "+k+" contains non-alphanumeric character");                        
+        }                                                                                                       
     }
-    return errors;
+    
+    //validate B0FieldIdentifier (only alpha numeric values and dash [-] and underscore [_])
+    for(const k in B0FieldIdentifier) {
+        const v = B0FieldIdentifier[k];                                                                                
+        if(v && !/^[a-zA-Z0-9-_]*$/.test(v)) {                                                                    
+            errors.push("B0FieldIdentifier (#"+k+"-indexed selection) contains non-alphanumeric character (dash [-] and underscore [_] characters acceptable)");                        
+        }                                                                                                       
+    }
+
+    //validate B0FieldSource (only alpha numeric values and dash [-] and underscore [_])
+    for(const k in B0FieldSource) {
+        const v = B0FieldSource[k];                                                                                
+        if(v && !/^[a-zA-Z0-9-_]*$/.test(v)) {                                                                    
+            errors.push("B0FieldSource (#"+k+"-indexed selection) contains non-alphanumeric character (dash [-] and underscore [_] characters acceptable)");                        
+        }                                                                                                       
+    }
+    return errors;                                                                                          
 }
 
 export function dwiQA($root) {

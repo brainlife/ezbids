@@ -127,7 +127,28 @@
                         </el-select>
                     </el-form-item>
                     <p style="margin-left: 200px;">
-                        <small>* IntendedFor information is used to specify which image this fieldmap is intended for. This is important information recommended by BIDS specification.</small>
+                        <small>* IntendedFor information is used to specify which image this fieldmap is intended for. This is recommended information according to the BIDS specification.</small>
+                    </p>
+                </div>
+
+                <div v-if="so._type && !so._type.includes('exclude')" class="border-top">
+                    <br>
+                    <el-form-item label="B0FieldIdentifier">
+                        <el-select v-model="so.B0FieldIdentifier" multiple filterable allow-create default-first-option
+                            placeholder="Enter text string" size="small" style="width: 100%" @change="update(so)">
+                        </el-select>
+                    </el-form-item>
+                    <p style="margin-left: 200px;">
+                        <small>* Optional/Recommended: If this sequence will be used for fieldmap correction, enter a text string of your choice. A good formatting suggestion is the "datatype_suffix[index]" format (e.g., <b>fmap_epi0</b>, <b>fmap_phasediff1</b>, etc). If another sequence will be used with this one for fieldmap correction, use the exact same text string there as well. Leave field blank if unclear.</small>
+                    </p>
+                    <br>
+                    <el-form-item label="B0FieldSource">
+                        <el-select v-model="so.B0FieldSource" multiple filterable allow-create default-first-option
+                            placeholder="Enter text string" size="small" style="width: 100%" @change="update(so)">
+                        </el-select>
+                    </el-form-item>
+                    <p style="margin-left: 200px;">
+                        <small>* Optional/Recommended: If this sequence will be used for fieldmap correction, enter a text string of your choice. A good formatting suggestion is the "datatype_suffix" format (e.g., fmap_epi, fmap_phasediff). If another sequence will be used with this one for fieldmap correction, use the exact same text string there as well. Leave field blank if unclear.</small>
                     </p>
                 </div>
 
@@ -199,7 +220,7 @@ import datatype from './components/datatype.vue'
 
 import { IObject, Session, OrganizedSession, OrganizedSubject } from './store'
 import { prettyBytes } from './filters'
-import { deepEqual, validateEntities } from './libUnsafe'
+import { deepEqual, validate_Entities_B0FieldIdentifier_B0FieldSource } from './libUnsafe'
 
 // @ts-ignore
 import { Splitpanes, Pane } from 'splitpanes'
@@ -381,7 +402,7 @@ export default defineComponent({
 
             if(this.isExcluded(o)) return;
 
-            o.validationErrors = validateEntities(o.entities);
+            o.validationErrors = validate_Entities_B0FieldIdentifier_B0FieldSource(o.entities, o.B0FieldIdentifier, o.B0FieldSource);
 
             if(o._type.startsWith("func/")) {
                 const series = this.ezbids.series[o.series_idx];

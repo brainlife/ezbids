@@ -62,12 +62,13 @@ export interface Series {
     ImageType: [string];
     RepetitionTime: string;
 
-    B0FieldIdentifier?: string; //only 4D data
+    B0FieldIdentifier?: string[];
+    B0FieldSource?: string[];
 
     error: string;
     message: string;
 
-    IntendedFor?: number[]; //for fmap/ to store which object id the object is intended for
+    IntendedFor?: number[]; //for storing which object id the object is intended for
 }
 
 export interface Session {
@@ -139,7 +140,10 @@ export interface IObject {
         orientation?: string;
     };
 
-    IntendedFor?: number[]; //for fmap/ to store which object id the object is intended for
+    IntendedFor?: number[]; //for storing which object id the object is intended for
+
+    B0FieldIdentifier: string[];
+    B0FieldSource: string[];
 
     defaced?: boolean;
     defaceFailed?: boolean;

@@ -64,28 +64,31 @@
                             </el-option>
                         </el-select>
                         <p style="margin-top: 0">
-                            <small>* Select Series that this field map should be applied to. This is important information required by BIDS specification.</small>
+                            <small>* Optional/Recommended: select Series that this field map should be applied to. Helpful is planning on using BIDS-apps for processing (e.g., fMRIPrep).</small>
                         </p>
                     </el-form-item>
                 </div>
-
-                <div v-if="ss.type && (ss.type.includes('fmap/') || ss.type.includes('func/sbref') || ss.type.includes('dwi/dwi') || ss.type.includes('dwi/sbref') || ss.type.includes('func/bold'))">
-                    <el-form-item label="B0FieldIdentifier">
-                        <el-select v-model="ss.B0FieldIdentifier" required multiple filterable
-                            placeholder="Please select Series" size="small"
+                
+                <div v-if="ss.type && !ss.type.includes('exclude')">
+                    <el-form-item label="B0FieldIdentifier" prop="B0FieldIdentifier">
+                        <el-select v-model="ss.B0FieldIdentifier" multiple filterable allow-create default-first-option
+                            placeholder="Enter text string" size="small" 
                             @change="validateAll()" style="width: 80%">
-                            <el-option v-for="(series, idx) in ezbids.series/*.filter(s=>s.type != 'exclude')*/" :key="idx"
-                                :label="'(#'+idx.toString()+') '+series.type" :value="idx">
-                                (#{{idx.toString()}}) {{series.type}}
-                            </el-option>
                         </el-select>
                         <p style="margin-top: 0">
-                            <small>Optional: select Series that this field map should be applied to.</small>
+                            <small>* Optional/Recommended: If this sequence will be used for fieldmap/distortion correction, enter a text string of your choice. A good formatting suggestion is the "datatype_suffix[index]" format (e.g., <b>fmap_epi0</b>, <b>fmap_phasediff1</b>, etc). If another sequence will be used with this one for fieldmap/distortion correction, use the exact same text string there as well. Leave field blank if unclear.</small>
                         </p>
                     </el-form-item>
-                </div>
-
-
+                    <el-form-item label="B0FieldSource" prop="B0FieldSource">
+                        <el-select v-model="ss.B0FieldSource" multiple filterable allow-create default-first-option
+                            placeholder="Enter text string" size="small" 
+                            @change="validateAll()" style="width: 80%">
+                        </el-select>
+                        <p style="margin-top: 0">
+                            <small>* Optional/Recommended: If fieldmap/distortion correction will be applied to this image, enter the identical text string from the B0FieldIdentifier field of the sequence(s) used to create the fieldmap/distortion estimation. Leave field blank if unclear.</small>
+                        </p>
+                    </el-form-item>
+                </div>              
 
                 <div v-if="ss.type">
                     <el-form-item v-for="(v, entity) in getSomeEntities(ss.type)" :key="entity"
@@ -170,7 +173,7 @@ import { prettyBytes } from './filters'
 
 import { Series, IObject } from './store'
 
-import { validateEntities } from './libUnsafe'
+import { validate_Entities_B0FieldIdentifier_B0FieldSource } from './libUnsafe'
 
 // @ts-ignore
 import { Splitpanes, Pane } from 'splitpanes'
@@ -228,9 +231,8 @@ export default defineComponent({
             s.validationErrors = [];
             s.validationWarnings = [];
 
-
             if(s.type != "exclude") {
-                s.validationErrors = validateEntities(s.entities);
+                s.validationErrors = validate_Entities_B0FieldIdentifier_B0FieldSource(s.entities, s.B0FieldIdentifier, s.B0FieldSource);
             }
 
             //let user know if multiple series have same datatype and entity labels

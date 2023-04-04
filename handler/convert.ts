@@ -182,6 +182,21 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
                 handleItem(item, suffix+".nii.gz", derivatives);
                 break;
             case "json":
+                //handle B0FieldIdentifier and B0FieldSource if present
+                if(o.B0FieldIdentifier.length) {
+                    if(o.B0FieldIdentifier.length > 1) {
+                        item.sidecar.B0FieldIdentifier = Object.values(o.B0FieldIdentifier)
+                    }else{
+                        item.sidecar.B0FieldIdentifier = o.B0FieldIdentifier[0]
+                    }
+                }
+                if(o.B0FieldSource.length) {
+                    if(o.B0FieldSource.length > 1) {
+                        item.sidecar.B0FieldSource = Object.values(o.B0FieldSource)
+                    }else{
+                        item.sidecar.B0FieldSource = o.B0FieldSource[0]
+                    }
+                }
                 handleItem(item, suffix+".json", derivatives);
                 break;
             default:
@@ -232,6 +247,21 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
                     handleItem(item, suffix+".nii.gz");
                     break;
                 case "json":
+                    //handle B0FieldIdentifier and B0FieldSource if present
+                    if(o.B0FieldIdentifier.length) {
+                        if(o.B0FieldIdentifier.length > 1) {
+                            item.sidecar.B0FieldIdentifier = Object.values(o.B0FieldIdentifier)
+                        }else{
+                            item.sidecar.B0FieldIdentifier = o.B0FieldIdentifier[0]
+                        }
+                    }
+                    if(o.B0FieldSource.length) {
+                        if(o.B0FieldSource.length > 1) {
+                            item.sidecar.B0FieldSource = Object.values(o.B0FieldSource)
+                        }else{
+                            item.sidecar.B0FieldSource = o.B0FieldSource[0]
+                        }
+                    }
                     item.sidecar.TaskName = o._entities.task;
                     handleItem(item, suffix+".json");
                     break;
@@ -259,6 +289,22 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
                 handleItem(item, suffix+".nii.gz");
                 break;
             case "json":
+                //handle B0FieldIdentifier and B0FieldSource if present
+                if(o.B0FieldIdentifier.length) {
+                    if(o.B0FieldIdentifier.length > 1) {
+                        item.sidecar.B0FieldIdentifier = Object.values(o.B0FieldIdentifier)
+                    }else{
+                        item.sidecar.B0FieldIdentifier = o.B0FieldIdentifier[0]
+                    }
+                    console.log(item.sidecar.B0FieldIdentifier)
+                }
+                if(o.B0FieldSource.length) {
+                    if(o.B0FieldSource.length > 1) {
+                        item.sidecar.B0FieldSource = Object.values(o.B0FieldSource)
+                    }else{
+                        item.sidecar.B0FieldSource = o.B0FieldSource[0]
+                    }
+                }
                 //handle IntendedFor
                 if(o.IntendedFor) {
                     item.sidecar.IntendedFor = [];
@@ -315,6 +361,21 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
                 handleItem(item, "dwi.bval");
                 break;
             case "json":
+                //handle B0FieldIdentifier and B0FieldSource if present
+                if(o.B0FieldIdentifier.length) {
+                    if(o.B0FieldIdentifier.length > 1) {
+                        item.sidecar.B0FieldIdentifier = Object.values(o.B0FieldIdentifier)
+                    }else{
+                        item.sidecar.B0FieldIdentifier = o.B0FieldIdentifier[0]
+                    }
+                }
+                if(o.B0FieldSource.length) {
+                    if(o.B0FieldSource.length > 1) {
+                        item.sidecar.B0FieldSource = Object.values(o.B0FieldSource)
+                    }else{
+                        item.sidecar.B0FieldSource = o.B0FieldSource[0]
+                    }
+                }
                 handleItem(item, "dwi.json");
                 break;
             default:

@@ -295,15 +295,31 @@ export function setIntendedFor($root) {
     }
 }
 
-export function validateEntities(entities/*: Series*/) {     
+export function validate_Entities_B0FieldIdentifier_B0FieldSource(entities, B0FieldIdentifier, B0FieldSource/*: Series*/) {     
     const errors = [];                                                                                      
     //validate entity (only alpha numeric values)                                                               
-    for(const k in entities) {                                                                                
+    for(const k in entities) {
         const v = entities[k];                                                                                
         if(v && !/^[a-zA-Z0-9]*$/.test(v)) {                                                                    
-            errors.push("Entity:"+k+" contains non-alphanumeric character");                        
+            errors.push("Entity label "+k+" contains non-alphanumeric character");                        
         }                                                                                                       
-    }                 
+    }
+    
+    //validate B0FieldIdentifier (only alpha numeric values and dash [-] and underscore [_])
+    for(const k in B0FieldIdentifier) {
+        const v = B0FieldIdentifier[k];                                                                                
+        if(v && !/^[a-zA-Z0-9-_]*$/.test(v)) {                                                                    
+            errors.push("B0FieldIdentifier (#"+k+"-indexed selection) contains non-alphanumeric character (dash [-] and underscore [_] characters acceptable)");                        
+        }                                                                                                       
+    }
+
+    //validate B0FieldSource (only alpha numeric values and dash [-] and underscore [_])
+    for(const k in B0FieldSource) {
+        const v = B0FieldSource[k];                                                                                
+        if(v && !/^[a-zA-Z0-9-_]*$/.test(v)) {                                                                    
+            errors.push("B0FieldSource (#"+k+"-indexed selection) contains non-alphanumeric character (dash [-] and underscore [_] characters acceptable)");                        
+        }                                                                                                       
+    }
     return errors;                                                                                          
 }
 
