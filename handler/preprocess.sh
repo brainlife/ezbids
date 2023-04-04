@@ -45,6 +45,8 @@ done
 
 test_root=${test_root///$substring/}
 
+echo $test_root
+
 # chmod -R 777 $test_root
 # chmod -R 777 .
 
