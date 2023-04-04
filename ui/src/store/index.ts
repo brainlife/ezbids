@@ -2,9 +2,19 @@
 import { createStore } from 'vuex'
 
 import bidsEntities from '../assets/schema/objects/entities.json'
+
+export interface DatasetDescriptionObject {
+    Name: string,
+    Version: string,
+    Description: string,
+    CodeURL: string,
+}
+
 export interface DatasetDescription {
     Name: string;
     BIDSVersion: string;
+    HEDVersion: string[];
+    DatasetLinks: string[];
     DatasetType: string;
     License: string;
     Authors: string[];
@@ -14,6 +24,8 @@ export interface DatasetDescription {
     EthicsApprovals: string[];
     ReferencesAndLinks: string[];
     DatasetDOI: string;
+    GeneratedBy: [DatasetDescriptionObject];
+    SourceDatasets: string[];
 }
 
 export interface PatientInfo {
@@ -241,7 +253,7 @@ const state = {
             DatasetDOI: "", //"10.0.2.3/dfjj.10"
         } as DatasetDescription,
 
-        readme: "edit me",
+        readme: "This data was converted using ezBIDS (https://brainlife.io/ezbids/). Please continue editing for additional information regarding the dataset",
         participantsColumn: {},
         participantsInfo: {} as {[key:string]: any}, //any?
 
@@ -364,7 +376,7 @@ const store = createStore({
                     ReferencesAndLinks: [],
                     DatasetDOI: "",
                 },
-                readme: "edit me",
+                readme: "This data was converted using ezBIDS (https://brainlife.io/ezbids/). Please continue editing for additional information regarding the dataset",
                 participantsColumn: {},
                 participantsInfo: {},
 

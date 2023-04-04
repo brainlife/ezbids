@@ -32,7 +32,7 @@ info.readme += `
 
 ## ezbids
 
-This dataset was converted from DICOM to BIDS using ezBIDS (https://brainlife.io/ezbids)
+This dataset was converted to BIDS using ezBIDS (https://brainlife.io/ezbids)
 
 `;
 fs.writeFileSync(root + "/bids/" + datasetName + "/README", info.readme);

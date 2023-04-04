@@ -260,7 +260,7 @@ export function updateErrors($root) {
 }
 
 export function setIntendedFor($root) {
-    // Apply fmap intendedFor mapping
+    // Apply fmap intendedFor mapping, if necessary
 
     // Loop through subjects
     for (const subject in $root._organized) {
@@ -282,7 +282,7 @@ export function setIntendedFor($root) {
                 let fmapFuncObjs = section.filter(e=>e._type.startsWith('fmap') && e._forType == 'func/bold' && !e._exclude)
                 let fmapDwiObjs = section.filter(e=>e._type.startsWith('fmap') && e._forType == 'dwi/dwi' && !e._exclude)
 
-                // Assign IntendedFor information 
+                // Assign IntendedFor information
                 fmapFuncObjs.forEach(obj=> {
                     obj.IntendedFor = funcObjs.map(e=>e.idx)
                 });
@@ -435,43 +435,7 @@ function mode(arr){
 //this function receives files (an array of object containing fullpath and data. data is the actual file content of the file)
 export function createEventObjects(ezbids, files) {
 
-    //console.log("dumping input parameters to build a test case");
     //console.dir(JSON.stringify({ezbids,files}, null, 4));
-
-    /* example for ezbids
-    {
-        datasetDescription: {
-            Name: "Untitled",                                                                                     
-            BIDSVersion: "1.6.0",                                                                                 
-            DatasetType: "raw",                                                                                   
-            License: "",                                                                                       
-            Authors: [],                                                                                                      
-            Acknowledgements: "", 
-            HowToAcknowledge: "", 
-            Funding: [],                                                                                                      
-            EthicsApprovals: [],                                                                                                      
-            ReferencesAndLinks: [],                                                                                                      
-            DatasetDOI: "",  
-        },
-        readme: "edit me",                                                                                          
-        participantsColumn: {}, 
-
-        //here lives various things
-        subjects: [],                                                                                               
-        series: [],                                                                                                 
-        objects: [],                                                                                                
-
-        _organized: {}, //above things are organized into subs/ses/run/object hierarchy for quick access
-    }
-    */
-
-    /* example for files
-    [
-        {path: "/some/event1.tsv", data: "...content of the tsv..."},
-        {path: "/some/event2.tsv", data: "...content of the tsv..."},
-        {path: "/some/sub/event3.tsv", data: "...content of the tsv..."},
-    ]
-    */
 
     const eventObjects = []; //new event objects to add 
 

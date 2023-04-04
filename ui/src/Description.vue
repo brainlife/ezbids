@@ -9,28 +9,12 @@ export default defineComponent({
     //props: [ 'dd' ],
     data() {
         return {
-            /*
-            dd: {
-                Name: "",
-                DatasetType: "",
-                BIDSVersion: "",
-                License: "",
-                Authors: [],
-                Acknowledgements: "",
-                HowToAcknowledge: "",
-                Funding: [],
-                ReferencesAndLinks: [],
-                DatasetDOI: "",
-                readme: "",
-            },
-            */
-
             rules: {
                 Name: [
                     {required: true, message: "Please enter dataset description", trigger: "blur"},    
                 ],
-                DatasetType: [
-                    {required: true, message: "Please enter Dataset Type", trigger: "blur"},    
+                DatasetLinks: [
+                    {required: true, message: "Please enter Dataset Links if BIDS URI(s) used", trigger: "blur"},    
                 ],
                 BIDSVersion: [
                     {required: true, message: "Please enter BIDS Version", trigger: "blur"},    
@@ -86,11 +70,16 @@ export default defineComponent({
         <el-form-item label="Dataset Name" prop="Name">
             <el-input v-model="dd.Name"></el-input>
         </el-form-item>
-        <el-form-item label="DatasetType" prop="DatasetType">
-            <el-input v-model="dd.DatasetType" disabled></el-input>
-        </el-form-item>
         <el-form-item label="BIDSVersion" prop="BIDSVersion">
             <el-input v-model="dd.BIDSVersion" disabled></el-input>
+        </el-form-item>
+        <el-form-item label="HEDVersion" prop="HEDVersion">
+            <el-select v-model="dd.HEDVersion" multiple filterable allow-create default-first-option
+                placeholder="Enter HED tags" style="width: 100%">
+            </el-select>
+        </el-form-item>                     
+        <el-form-item label="DatasetType" prop="DatasetType">
+            <el-input v-model="dd.DatasetType" disabled></el-input>
         </el-form-item>
         <el-form-item label="License" prop="License">
             <el-input v-model="dd.License"></el-input>
@@ -106,32 +95,43 @@ export default defineComponent({
                 :autosize="{ minRows: 2, maxRows: 6}"
                 v-model="dd.Acknowledgements"/>
         </el-form-item>
-
         <el-form-item label="How To Acknowledge" prop="HowToAckowledge">
             <el-input type="textarea"
                 placeholder="Enter how you want your users to acknowledge when they use this dataset"
                 :autosize="{ minRows: 2, maxRows: 6}"
                 v-model="dd.HowToAcknowledge"/>
         </el-form-item>
-
         <el-form-item label="Funding Sources" prop="Funding">
             <el-select v-model="dd.Funding" multiple filterable     
                 allow-create default-first-option
                 placeholder="Funding sources" style="width: 100%">
             </el-select>
         </el-form-item>
-
+        <el-form-item label="EthicsApprovals" prop="EthicsApprovals">
+            <el-select v-model="dd.EthicsApprovals" multiple filterable allow-create default-first-option
+                placeholder="Enter list of ethics committee approvals of the research" style="width: 100%">
+            </el-select>
+        </el-form-item>        
         <el-form-item label="References and Links" prop="ReferencesAndLinks">
             <el-select v-model="dd.ReferencesAndLinks" multiple filterable     
                 allow-create default-first-option
                 placeholder="Add any references / citations / links" style="width: 100%">
             </el-select>
         </el-form-item>
-
         <el-form-item label="Dataset DOI" prop="DatasetDOI">
             <el-input placeholder="DOI assigned for this dataset"
                 v-model="dd.DatasetDOI"/>
         </el-form-item>
+        <!-- <el-form-item label="GeneratedBy" prop="GeneratedBy">
+            <el-select v-model="dd.GeneratedBy" :items="dd.GeneratedBy" filled return-object
+                placeholder="Specify provenance of the dataset" style="width: 100%">
+            </el-select>
+        </el-form-item>      -->
+        <el-form-item label="SourceDatasets" prop="SourceDatasets">
+            <el-select v-model="dd.SourceDatasets" multiple filterable allow-create default-first-option
+                placeholder="Specify location(s) and relevant attribute(s) of all source datasets" style="width: 100%">
+            </el-select>
+        </el-form-item>       
 
         <p style="border-top: 1px solid #0002" prop="readme"/>
         <el-form-item label="README(.md)">

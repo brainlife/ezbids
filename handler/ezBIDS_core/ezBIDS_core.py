@@ -36,10 +36,13 @@ DATA_DIR = sys.argv[1]
 datatypes_yaml = yaml.load(open("../bids-specification/src/schema/objects/datatypes.yaml"), Loader=yaml.FullLoader)
 entities_yaml = yaml.load(open("../bids-specification/src/schema/objects/entities.yaml"), Loader=yaml.FullLoader)
 suffixes_yaml = yaml.load(open("../bids-specification/src/schema/objects/suffixes.yaml"), Loader=yaml.FullLoader)
+dataset_description_yaml = yaml.load(open("../bids-specification/src/schema/rules/dataset_metadata.yaml"), Loader=yaml.FullLoader)
 datatype_suffix_rules = "../bids-specification/src/schema/rules/datatypes"
 entity_ordering_file = "../bids-specification/src/schema/rules/entities.yaml"
 
 cog_atlas_url = "http://cognitiveatlas.org/api/v-alpha/task"
+
+bids_compliant = pd.read_csv("{}/bids_compliant.log".format(DATA_DIR), header=None).iloc[1][0]
 
 start_time = time.time()
 analyzer_dir = os.getcwd()
@@ -49,6 +52,81 @@ today_date = date.today().strftime("%Y-%m-%d")
 os.chdir(DATA_DIR)
 
 ######## Functions ########
+def set_fmap_intended_for(dataset_list_unique_series):
+    for index, unique_dic in enumerate(dataset_list_unique_series):
+        json_path = unique_dic["json_path"]
+
+        json_data = open(json_path)
+        json_data = json.load(json_data, strict=False)
+
+        if "IntendedFor" in json_data:
+            IntendedFor_indices = []
+            IntendedFor = json_data["IntendedFor"]
+            for i in IntendedFor:
+                IntendedFor_items = [[x["nifti_path"], x["series_idx"]] for x in dataset_list_unique_series]
+                IntendedFor_items = [x for x in IntendedFor_items if i in x[0]]
+                
+                for IntendedFor_item in IntendedFor_items:
+                    IntendedFor_indices.append(IntendedFor_item[1])
+            
+            unique_dic["IntendedFor"] = IntendedFor_indices
+    
+    return dataset_list_unique_series
+
+def generate_dataset_description(DATA_DIR, bids_compliant):
+    dataset_description_dic = {}
+    for field in dataset_description_yaml["dataset_description"]["fields"]:
+        if "GeneratedBy" not in field:
+            dataset_description_dic[field] = ""    
+
+    if bids_compliant == "yes":
+        bids_root_dir = pd.read_csv("{}/bids_compliant.log".format(DATA_DIR), header=None).iloc[0][0]
+        dataset_description = open("{}/dataset_description.json".format(bids_root_dir))
+        dataset_description = json.load(dataset_description, strict=False)
+
+        for field in dataset_description:
+            if field in dataset_description_dic.keys() and "GeneratedBy" not in field:
+                dataset_description_dic[field] = dataset_description[field]
+    
+    dataset_description_dic["GeneratedBy"] =[
+                                                {"Name": "ezBIDS", 
+                                                 "Version": "n/a", 
+                                                 "Description": "ezBIDS is a web-based tool for converting MRI datasets to BIDS, requiring neither coding nor knowledge of the BIDS specification", 
+                                                 "CodeURL": "https://brainlife.io/ezbids/", 
+                                                }
+                                            ]  
+    # Explicit checks
+    if dataset_description_dic["Name"] == "":
+        dataset_description_dic["Name"] = "Untitled"  
+    
+    if dataset_description_dic["BIDSVersion"] == "":
+        dataset_description_dic["BIDSVersion"] = "1.8.0"    
+    
+    if dataset_description_dic["DatasetType"] == "":
+        dataset_description_dic["DatasetType"] = "raw"
+        
+    return dataset_description_dic
+
+def generate_participants_columns(DATA_DIR, bids_compliant):
+    bids_root_dir = pd.read_csv("{}/bids_compliant.log".format(DATA_DIR), header=None).iloc[0][0]
+    
+    if bids_compliant == "yes" and os.path.isfile("{}/participants.json".format(bids_root_dir)):
+        participants_column_info = open("{}/participants.json".format(bids_root_dir))
+        participants_column_info = json.load(participants_column_info, strict=False)
+    else:
+        participants_column_info = {"sex": {"LongName": "gender",
+                                    "Description": "generic gender field",
+                                    "Levels": {
+                                        "M": "male",
+                                        "F": "female"
+                                        }
+                                    },
+                            "age": {"LongName": "age",
+                                    "Units": "years"
+                                    }
+                            }
+    return participants_column_info
+
 def find_cog_atlas_tasks(url):
     """
     Generates a list of all possible task names from the Cognitive Atlas API
@@ -74,7 +152,6 @@ def find_cog_atlas_tasks(url):
     tasks = sorted(tasks, key=str.casefold) # sort alphabetically, but ignore case
 
     return tasks
-
 
 def correct_pe(pe_direction, ornt):
     """
@@ -210,12 +287,11 @@ def modify_uploaded_dataset_list(uploaded_json_list):
 
     # Parse json files
     for json_file in uploaded_json_list:
-        ##### Remove the except portion  once dcm2niix is updated past the current 20211106 version
         try:
             json_data = open(json_file)
             json_data = json.load(json_data, strict=False)
         except:
-            print("{} has improper JSON syntax, probably related to dcm2niix version.".format(json_file))
+            print("{} has improper JSON syntax, possibly b/c uploaded data was converted by older dcm2niix version.".format(json_file))
 
         # Only want json files with corresponding nifti (and bval/bvec) and if
         # the files come from dcm2niix
@@ -307,12 +383,12 @@ def generate_dataset_list(uploaded_files_list):
         if "PatientName" in json_data:
             patient_name = json_data["PatientName"]
         else:
-            patient_name = "NA"
+            patient_name = "n/a"
 
         if "PatientID" in json_data:
             patient_id = json_data["PatientID"]
         else:
-            patient_id = "NA"
+            patient_id = "n/a"
 
         # Find PatientBirthDate
         if "PatientBirthDate" in json_data:
@@ -321,7 +397,7 @@ def generate_dataset_list(uploaded_files_list):
             patient_birth_date = "00000000"
 
         # Find PatientSex
-        patient_sex = "NA"
+        patient_sex = "n/a"
         if "PatientSex" in json_data:
             if json_data["PatientSex"] in ["M", "F"]:
                 patient_sex = json_data["PatientSex"]
@@ -330,12 +406,12 @@ def generate_dataset_list(uploaded_files_list):
         if "PatientAge" in json_data:
             patient_age = json_data["PatientAge"]
         else:
-            patient_age = "NA"
+            patient_age = "n/a"
 
 
         """metadata may contain PatientBirthDate and/or PatientAge. Check either
         to see if one truly provides accurate age information."""
-        age = "NA"
+        age = "n/a"
         if "PatientAge" in json_data:
             patient_age = json_data["PatientAge"]
             if not patient_age.isalnum(): # if true, is alphanumeric, so not age
@@ -345,7 +421,7 @@ def generate_dataset_list(uploaded_files_list):
                 except:
                     pass
 
-        if age == "NA" and "PatientBirthDate" in json_data:
+        if age == "n/a" and "PatientBirthDate" in json_data:
             patient_birth_date = json_data["PatientBirthDate"] # ISO 8601 "YYYY-MM-DD"
             try:
                 age = int(today_date.split("-")[0]) - int(patient_birth_date.split("-")[0]) - \
@@ -354,13 +430,12 @@ def generate_dataset_list(uploaded_files_list):
             except:
                 pass
 
-
         """
         Select subject ID to display.
         Subject ID precedence order if explicit subject ID (i.e. ReproIn naming convention)
         is not found: PatientName > PatientID > PatientBirthDate
         """
-        subject = "NA"
+        subject = "n/a"
         for value in [json_file, patient_name, patient_id]:
             for string in ["sub-", "subject-", "sub_", "subject_"]:
                 if string in value.lower():
@@ -372,10 +447,10 @@ def generate_dataset_list(uploaded_files_list):
         #         subject = re.split("[^a-zA-Z0-9]+", re.compile(r"sub-|subject-|sub_|subject_", re.IGNORECASE).split(value)[-1])[0]
         #         break
 
-        if subject == "NA":
-            if patient_name != "NA":
+        if subject == "n/a":
+            if patient_name != "n/a":
                 subject = patient_name
-            elif patient_id != "NA":
+            elif patient_id != "n/a":
                 subject = patient_id
             elif patient_birth_date != "00000000":
                 subject = patient_birth_date
@@ -414,7 +489,7 @@ def generate_dataset_list(uploaded_files_list):
         if "RepetitionTime" in json_data:
             repetition_time = json_data["RepetitionTime"]
         else:
-            repetition_time = "NA"
+            repetition_time = "n/a"
 
         # Find EchoNumber
         if "EchoNumber" in json_data:
@@ -454,15 +529,14 @@ def generate_dataset_list(uploaded_files_list):
             series_description = json_data["SeriesDescription"]
             descriptor = "SeriesDescription"
         else:
-            series_description = "NA"
+            series_description = "n/a"
             descriptor = "ProtocolName"
 
         # Find ProtocolName
         if "ProtocolName" in json_data:
             protocol_name = json_data["ProtocolName"]
         else:
-            protocol_name = "NA"
-
+            protocol_name = "n/a"
 
         # Find ImageType
         if "ImageType" in json_data:
@@ -501,13 +575,13 @@ def generate_dataset_list(uploaded_files_list):
             "session_idx": 0,
             "series_idx": 0,
             "direction": ped,
-            "TaskName": "",
             "exclude": False,
             "filesize": filesize,
             "NumVolumes": volume_count,
             "orientation": ornt,
             "forType": "",
             "error": None,
+            "IntendedFor": None,
             "section_id": 1,
             "message": None,
             "type": "",
@@ -526,10 +600,9 @@ def generate_dataset_list(uploaded_files_list):
                                                         "session",
                                                         "ModifiedSeriesNumber",
                                                         "json_path"))
-
     return dataset_list
 
-def determine_subj_ses_IDs(dataset_list):
+def determine_subj_ses_IDs(dataset_list, bids_compliant):
     """
     Determine subject ID(s), and session ID(s) (if applicable) of uploaded
     dataset.
@@ -565,10 +638,30 @@ def determine_subj_ses_IDs(dataset_list):
             x["subject_idx"] = subject_idx_counter
         subject_idx_counter += 1
 
-        # Organize phenotype (sex, age) information
-        phenotype_info = list({"sex":x["PatientSex"],"age":x["PatientAge"],"PatientName":x["PatientName"], "PatientID":x["PatientID"]} for x in sub_dics_list)[0]
-        #participants_info.update({str(sub):phenotype_info})
-        participants_info.update({str(x["subject_idx"]):phenotype_info})
+        # Organize phenotype (e.g., sex, age) information
+        bids_root_dir = pd.read_csv("{}/bids_compliant.log".format(DATA_DIR), header=None).iloc[0][0]
+        if bids_compliant == "yes" and os.path.isfile("{}/participants.tsv".format(bids_root_dir)):
+            participants_info_data = pd.read_csv("{}/participants.tsv".format(bids_root_dir), sep="\t")
+
+            participants_info = {}
+            participants_info_columns = [x for x in participants_info_data.columns if x != "participant_id"] + ["PatientName", "PatientID"]
+            for len_index in range(len(participants_info_data)):
+                participants_info[str(len_index)] = dict.fromkeys(participants_info_columns)
+                
+                for col in participants_info_columns:
+                    if col not in ["PatientName", "PatientID"]:
+                        participants_info[str(len_index)][col] = str(participants_info_data[col].iloc[len_index])
+                    else:
+                        if "sub-" in participants_info_data["participant_id"].iloc[len_index]:
+                            participant_id = participants_info_data["participant_id"].iloc[len_index].split("-")[-1]
+                        else:
+                            participant_id = participants_info_data["participant_id"].iloc[len_index]
+
+                        participants_info[str(len_index)]["PatientName"] = str(participant_id)
+                        participants_info[str(len_index)]["PatientID"] = str(participant_id)
+        else:
+            phenotype_info = list({"sex":x["PatientSex"],"age":x["PatientAge"],"PatientName":x["PatientName"], "PatientID":x["PatientID"]} for x in sub_dics_list)[0]
+            participants_info.update({str(x["subject_idx"]):phenotype_info})
 
         # Determine all unique sessions (if applicable) per subject
         unique_ses_date_times = []
@@ -607,7 +700,6 @@ def determine_subj_ses_IDs(dataset_list):
                             # "PatientBirthDate": [x["PatientName"] for x in sub_dics_list if x["session"] == ses_info["session"] and x["AcquisitionDate"] == ses_info["AcquisitionDate"]][0]
                            }
             patient_info.append(patient_dic)
-            print(patient_dic)
 
         """
         See if multiple sessions occurred on same day, meaning same AcquisitionDate
@@ -650,7 +742,7 @@ def determine_subj_ses_IDs(dataset_list):
     return dataset_list, subjects_information, participants_info
 
 
-def determine_unique_series(dataset_list):
+def determine_unique_series(dataset_list, bids_compliant):
     """
     From the dataset_list, lump the individual acquisitions into unique series.
     Unique data is determined from 4 dicom header values: SeriesDescription
@@ -682,7 +774,7 @@ def determine_unique_series(dataset_list):
         cases, but should be accounted for.
         """
 
-        if acquisition_dic["SeriesDescription"] != "NA":
+        if acquisition_dic["SeriesDescription"] != "n/a":
             if "_RR" in acquisition_dic["SeriesDescription"]:
                 modified_sd = acquisition_dic["SeriesDescription"].replace("_RR", "")
                 heuristic_items = [acquisition_dic["EchoTime"],
@@ -703,38 +795,46 @@ def determine_unique_series(dataset_list):
                                    acquisition_dic["RepetitionTime"],
                                    1]
 
-        if index == 0:
-            acquisition_dic["series_idx"] = 0
+        if bids_compliant == "yes": # Each uploaded BIDS NIfTI/JSON pair is a unique series
+            if index == 0:
+                series_idx = 0
+            else:
+                series_idx += 1
+            acquisition_dic["series_idx"] = series_idx
             dataset_list_unique_series.append(acquisition_dic)
+        else:
+            if index == 0:
+                acquisition_dic["series_idx"] = 0
+                dataset_list_unique_series.append(acquisition_dic)
 
-        # unique acquisition, make unique series ID
-        elif heuristic_items not in [x[:-1] for x in series_checker]:
-            # But first, check if EchoTimes are essentially the same (i.e. +- 0.5)
-            if heuristic_items[1:] in [x[1:-1] for x in series_checker]:
-                echo_time = heuristic_items[0]
-                common_series_index = [x[1:-1] for x in series_checker].index(heuristic_items[1:])
+            # unique acquisition, make unique series ID
+            elif heuristic_items not in [x[:-1] for x in series_checker]:
+                # But first, check if EchoTimes are essentially the same (i.e. +- 0.5)
+                if heuristic_items[1:] in [x[1:-1] for x in series_checker]:
+                    echo_time = heuristic_items[0]
+                    common_series_index = [x[1:-1] for x in series_checker].index(heuristic_items[1:])
 
-                """ Add slight EchoTime measurement error tolerance.
-                See https://github.com/rordenlab/dcm2niix/issues/543 """
-                if series_checker[common_series_index][0] - 0.5 <= echo_time <= series_checker[common_series_index][0] + 0.5:
-                    common_series_idx = series_checker[common_series_index][-1]
-                    acquisition_dic["series_idx"] = common_series_idx
+                    """ Add slight EchoTime measurement error tolerance.
+                    See https://github.com/rordenlab/dcm2niix/issues/543 """
+                    if series_checker[common_series_index][0] - 0.5 <= echo_time <= series_checker[common_series_index][0] + 0.5:
+                        common_series_idx = series_checker[common_series_index][-1]
+                        acquisition_dic["series_idx"] = common_series_idx
+                    else:
+                        series_idx += 1
+                        acquisition_dic["series_idx"] = series_idx
+                        dataset_list_unique_series.append(acquisition_dic)
+
                 else:
                     series_idx += 1
                     acquisition_dic["series_idx"] = series_idx
                     dataset_list_unique_series.append(acquisition_dic)
 
             else:
-                series_idx += 1
-                acquisition_dic["series_idx"] = series_idx
-                dataset_list_unique_series.append(acquisition_dic)
+                common_series_index = [x[:-1] for x in series_checker].index(heuristic_items)
+                common_series_idx = series_checker[common_series_index][-1]
+                acquisition_dic["series_idx"] = common_series_idx
 
-        else:
-            common_series_index = [x[:-1] for x in series_checker].index(heuristic_items)
-            common_series_idx = series_checker[common_series_index][-1]
-            acquisition_dic["series_idx"] = common_series_idx
-
-        series_checker.append(heuristic_items + [acquisition_dic["series_idx"]])
+            series_checker.append(heuristic_items + [acquisition_dic["series_idx"]])
 
     return dataset_list, dataset_list_unique_series
 
@@ -756,9 +856,9 @@ def datatype_suffix_identification(dataset_list_unique_series):
     """
 
     """ Schema datatype and suffix labels are helpful, but typically
-    researhcers label their imaging protocols in less standardized ways.
+    researchers label their imaging protocols in less standardized ways.
     ezBIDS will attempt to determine datatype and suffix labels based on
-    common keys/labels. """
+    common keys/labels."""
     localizer_keys = ["localizer", "scout"]
     angio_keys = ["angio"]
     se_mag_phase_fmap_keys = ["fmap", "fieldmap", "spinecho", "sefmri", "semri", "grefieldmap", "distortionmap"]
@@ -774,7 +874,9 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
     for index, unique_dic in enumerate(dataset_list_unique_series):
 
-        if unique_dic["SeriesDescription"] == "NA":
+        json_path = unique_dic["json_path"]
+
+        if unique_dic["SeriesDescription"] == "n/a":
             sd = unique_dic["ProtocolName"]
         else:
             sd = unique_dic["SeriesDescription"]
@@ -785,7 +887,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
         sd = sd.lower().replace(" ", "")
 
         # Try checking based on BIDS schema keys/labels
-        if unique_dic["SeriesDescription"] != "NA":
+        if unique_dic["SeriesDescription"] != "n/a":
             if unique_dic["nibabel_image"].get_data_dtype() == [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]: # non-BIDS acquisition
                 unique_dic["type"] = "exclude"
                 unique_dic["error"] = "Acquisition does not appear to be an MRI acquisition for BIDS"
@@ -794,39 +896,70 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     to BIDS. Please modify if incorrect.".split())
             else:
                 for datatype in datatypes_yaml:
-                    if datatype in sd:
+                    if datatype in sd or datatype in json_path:
                         unique_dic["datatype"] = datatype
 
                     rule = yaml.load(open(os.path.join(analyzer_dir, datatype_suffix_rules, datatype) + ".yaml"), Loader=yaml.FullLoader)
 
                     suffixes = [x for y in [rule[x]["suffixes"] for x in rule] for x in y]
 
-                    unhelpful_suffixes = ["fieldmap", "beh", "epi", "PC"]
-
-                    # Remove deprecated suffixes
-                    deprecated_suffixes = ["T2star", "FLASH", "PD"]
-                    suffixes = [x for x in suffixes if x not in deprecated_suffixes and x not in unhelpful_suffixes]
-
-                    if any(x.lower() in sd for x in suffixes):
-                        unique_dic["datatype"] = datatype
-                        unique_dic["suffix"] = [x for x in suffixes if re.findall(x.lower(), sd)][-1]
-                        unique_dic["message"] = " ".join("Acquisition is believed to \
-                            be {}/{} because '{}' is in the {}. Please \
-                            modify if incorrect.".format(unique_dic["datatype"], unique_dic["suffix"], unique_dic["suffix"], unique_dic["descriptor"]).split())
-
-                    # Instances where users specify both mp2rage and UNI[T1] together, default to UNIT1
-                    if "DERIVED" and "UNI" in unique_dic["ImageType"]:
-                        unique_dic["datatype"] = "anat"
-                        unique_dic["suffix"] = "UNIT1"
-                        unique_dic["message"] = " ".join("Acquisition is believed to be anat/UNIT1 \
-                            because 'DERIVED' and 'UNI' are in the ImageType. Please modify \
-                            if incorrect".split())
+                    unhelpful_suffixes = ["fieldmap", "beh", "epi", "PC", "DF", "magnitude", "magnitude1", "magnitude2", "phasediff"]
 
                     """ Oftentimes, magnitude/phase[diff] acquisitions are called "gre-field-mapping",
                     so shouldn't receive the "fieldmap" suffix """
                     if "grefieldmap" in sd_sparse:
                         unique_dic["datatype"] = "fmap"
                         unique_dic["suffix"] = ""
+
+                    # Remove deprecated suffixes
+                    deprecated_suffixes = ["T2star", "FLASH", "PD"]
+                    suffixes = [x for x in suffixes if x not in deprecated_suffixes and x not in unhelpful_suffixes]
+
+                    if any(x.lower() in sd for x in suffixes):
+                        unique_dic["suffix"] = [x for x in suffixes if re.findall(x.lower(), sd)][-1]
+                        unique_dic["message"] = " ".join("Acquisition is believed to \
+                            be {}/{} because '{}' is in the {}. Please \
+                            modify if incorrect.".format(unique_dic["datatype"], unique_dic["suffix"], unique_dic["suffix"], unique_dic["descriptor"]).split())
+
+                    if any(x in json_path for x in suffixes):
+                        unique_dic["suffix"] = [x for x in suffixes if re.findall(x, json_path)][-1]
+                        unique_dic["message"] = " ".join("Acquisition is believed to \
+                            be {}/{} because '{}' is in the file path. Please \
+                            modify if incorrect.".format(unique_dic["datatype"], unique_dic["suffix"], unique_dic["suffix"]).split())
+
+                    for unhelpful_suffix in unhelpful_suffixes:
+                        if "_{}.json".format(unhelpful_suffix) in json_path:
+                            if unhelpful_suffix == "fieldmap":
+                                unique_dic["datatype"] = "fmap"
+                            elif unhelpful_suffix == "beh":
+                                unique_dic["datatype"] = "beh"
+                            elif unhelpful_suffix == "epi":
+                                unique_dic["datatype"] = "fmap"
+                            elif unhelpful_suffix == "magnitude":
+                                unique_dic["datatype"] = "fmap"
+                            elif unhelpful_suffix == "magnitude1":
+                                unique_dic["datatype"] = "fmap"
+                            elif unhelpful_suffix == "magnitude2":
+                                unique_dic["datatype"] = "fmap"                                                                                           
+                            elif unhelpful_suffix == "phasediff":
+                                unique_dic["datatype"] = "fmap"                                                                                        
+                            elif unhelpful_suffix == "PC":
+                                unique_dic["datatype"] = "micr"                            
+                            elif unhelpful_suffix == "DF":
+                                unique_dic["datatype"] = "micr"
+
+                            unique_dic["suffix"] = unhelpful_suffix
+                            unique_dic["message"] = " ".join("Acquisition is believed to \
+                            be {}/{} because '_{}.json' is in the file path. Please \
+                            modify if incorrect.".format(unique_dic["datatype"], unique_dic["suffix"], unhelpful_suffix).split())
+
+                    # Instances where users specify both mp2rage and UNIT1 together, default to UNIT1
+                    if "DERIVED" and "UNI" in unique_dic["ImageType"]:
+                        unique_dic["datatype"] = "anat"
+                        unique_dic["suffix"] = "UNIT1"
+                        unique_dic["message"] = " ".join("Acquisition is believed to be anat/UNIT1 \
+                            because 'DERIVED' and 'UNI' are in the ImageType. Please modify \
+                            if incorrect".split())
 
         """ If no luck with BIDS schema keys/labels, try using common keys in
         SeriesDescription """
@@ -1052,7 +1185,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     unique_dic["message"] = " ".join("Acquisition is believed to be \
                         func/sbref because 'sbref' is in the SeriesDescription".split())
 
-            elif unique_dic["SeriesDescription"] == "NA" and unique_dic["NumVolumes"] == 1 and unique_dic["nibabel_image"].ndim == 3 and any(x in sd for x in func_keys):
+            elif unique_dic["SeriesDescription"] == "n/a" and unique_dic["NumVolumes"] == 1 and unique_dic["nibabel_image"].ndim == 3 and any(x in sd for x in func_keys):
                 unique_dic["datatype"] = "func"
                 unique_dic["suffix"] = "sbref"
                 unique_dic["message"] = " ".join("Acquisition is believed to be \
@@ -1163,7 +1296,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
         # check that func/bold acquisitions have RepetitionTime, otherwise exclude
         if unique_dic["type"] == "func/bold":
-            if unique_dic["RepetitionTime"] == "NA":
+            if unique_dic["RepetitionTime"] == "n/a":
                 unique_dic["type"] = "exclude"
                 unique_dic["message"] = " ".join("This acquisition is believed \
                             to be func/bold, yet does not contain RepetitionTime in  \
@@ -1199,24 +1332,31 @@ def entity_labels_identification(dataset_list_unique_series):
     for index, unique_dic in enumerate(dataset_list_unique_series):
 
         series_entities = {}
-        if unique_dic["SeriesDescription"] == "NA":
+        if unique_dic["SeriesDescription"] == "n/a":
             sd = unique_dic["ProtocolName"]
         else:
             sd = unique_dic["SeriesDescription"]
 
-        path =  re.sub("[^A-Za-z0-9]+", "", unique_dic["nifti_path"]).lower()
+        json_path = unique_dic["json_path"]
+        path = re.sub("[^A-Za-z0-9]+", "", unique_dic["nifti_path"]).lower()
 
-        """ Check to see if entity labels can be determined from ReproIn naming
+        """ Check to see if entity labels can be determined from BIDS naming
         convention
         """
         for key in entities_yaml:
-            entity = "_" + entities_yaml[key]["entity"] + "-"
+            if key != "subject":
+                entity = "_" + entities_yaml[key]["entity"] + "-"
+            else:
+                entity = entities_yaml[key]["entity"] + "-"
+
             if entity in sd:
                 series_entities[key] = sd.split(entity)[-1].split("_")[0]
+            elif entity in json_path:
+                series_entities[key] = json_path.split(entity)[-1].split("_")[0]
             else:
                 series_entities[key] = ""
 
-        """ If ReproIn naming convention isn't detected, do a more thorough
+        """ If BIDS naming convention isn't detected, do a more thorough
         check for certain entities labels
         """
         # task
@@ -1295,11 +1435,6 @@ def entity_labels_identification(dataset_list_unique_series):
         else:
             pass
 
-        # run (strip leading zeros, if any, as this isn't proper by BIDS standards)
-        if series_entities["run"]:
-            series_entities["run"] = series_entities["run"].lstrip("0")
-
-
         """ Replace periods in series entities with "p", if found. If other
         non alphanumeric characters are found in the entity labels, remove them """
         for key, value in series_entities.items():
@@ -1333,6 +1468,7 @@ def update_dataset_list(dataset_list, dataset_list_unique_series):
                 data["forType"] = unique_dic["forType"]
                 data["error"] = unique_dic["error"]
                 data["message"] = unique_dic["message"]
+                data["IntendedFor"] = unique_dic["IntendedFor"]
 
     return dataset_list
 
@@ -1433,6 +1569,7 @@ def modify_objects_info(dataset_list):
                             "AcquisitionTime": protocol["AcquisitionTime"],
                             "SeriesNumber": protocol["SeriesNumber"],
                             "ModifiedSeriesNumber": protocol["ModifiedSeriesNumber"],
+                            "IntendedFor": protocol["IntendedFor"],
                             "entities": objects_entities,
                             "items": items,
                             "PED": protocol["direction"],
@@ -1476,6 +1613,7 @@ def extract_series_info(dataset_list_unique_series):
                           "ImageType": unique_dic["ImageType"],
                           "RepetitionTime": unique_dic["RepetitionTime"],
                           "NumVolumes": unique_dic["NumVolumes"],
+                          "IntendedFor": unique_dic["IntendedFor"],
                           "nifti_path": unique_dic["nifti_path"],
                           "series_idx": unique_dic["series_idx"],
                           "AcquisitionDateTime": unique_dic["AcquisitionDateTime"],
@@ -1506,7 +1644,7 @@ def setVolumeThreshold(dataset_list_unique_series, objects_list):
     """
 
     func_series = [x for x in dataset_list_unique_series if "func" in x["type"]
-                   and x["type"] != "func/sbref" and x["RepetitionTime"] != "NA"]
+                   and x["type"] != "func/sbref" and x["RepetitionTime"] != "n/a"]
 
     if len(func_series):
         for func in func_series:
@@ -1551,18 +1689,11 @@ print("Beginning conversion process of uploaded dataset")
 print("########################################")
 print("")
 
+# dataset description information
+dataset_description_dic = generate_dataset_description(DATA_DIR, bids_compliant)
+
 # participantsColumn portion of ezBIDS_core.json
-PARTICIPANTS_COLUMN = {"sex": {"LongName": "gender",
-                               "Description": "generic gender field",
-                               "Levels": {
-                                   "M": "male",
-                                   "F": "female"
-                                   }
-                               },
-                       "age": {"LongName": "age",
-                               "Units": "years"
-                               }
-                       }
+participants_column_info = generate_participants_columns(DATA_DIR, bids_compliant)
 
 # Generate list of all possible Cognitive Atlas task terms
 cog_atlas_tasks = find_cog_atlas_tasks(cog_atlas_url)
@@ -1577,10 +1708,10 @@ uploaded_files_list = modify_uploaded_dataset_list(uploaded_json_list)
 dataset_list = generate_dataset_list(uploaded_files_list)
 
 # Determine subject (and session) information
-dataset_list, subjects_information, participants_info = determine_subj_ses_IDs(dataset_list)
+dataset_list, subjects_information, participants_info = determine_subj_ses_IDs(dataset_list, bids_compliant)
 
 # Make a new list containing the dictionaries of only unique dataset acquisitions
-dataset_list, dataset_list_unique_series = determine_unique_series(dataset_list)
+dataset_list, dataset_list_unique_series = determine_unique_series(dataset_list, bids_compliant)
 
 # Identify datatype and suffix information
 dataset_list_unique_series = datatype_suffix_identification(dataset_list_unique_series)
@@ -1588,12 +1719,15 @@ dataset_list_unique_series = datatype_suffix_identification(dataset_list_unique_
 # Identify entity label information
 dataset_list_unique_series = entity_labels_identification(dataset_list_unique_series)
 
+# If BIDS-compliant dataset uploaded, set and apply IntendedFor mapping
+if bids_compliant == "yes":
+    dataset_list_unique_series = set_fmap_intended_for(dataset_list_unique_series)
+
 # Port series level information to all other acquistions (i.e. objects level) with same series info
 dataset_list = update_dataset_list(dataset_list, dataset_list_unique_series)
 
 # Apply a few other changes to the objects level
 objects_list = modify_objects_info(dataset_list)
-
 
 # Map unique series IDs to all other acquisitions in dataset that have those parameters
 for index, unique_dic in enumerate(dataset_list_unique_series):
@@ -1614,11 +1748,12 @@ setVolumeThreshold(dataset_list_unique_series, objects_list)
 ui_series_info_list = extract_series_info(dataset_list_unique_series)
 
 # Convert information to dictionary
-EZBIDS = {"subjects": subjects_information,
-          "participantsColumn": PARTICIPANTS_COLUMN,
-          "participantsInfo": participants_info,
-          "series": ui_series_info_list,
-          "objects": objects_list
+EZBIDS = {  "datasetDescription": dataset_description_dic,
+            "subjects": subjects_information,
+            "participantsColumn": participants_column_info,
+            "participantsInfo": participants_info,
+            "series": ui_series_info_list,
+            "objects": objects_list
           }
 
 # Write dictionary to ezBIDS_core.json

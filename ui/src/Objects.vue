@@ -127,7 +127,7 @@
                         </el-select>
                     </el-form-item>
                     <p style="margin-left: 200px;">
-                        <small>* IntendedFor information is used to specify which epi image this fieldmap is intended for. This is an important information required by BIDS specification.</small>
+                        <small>* IntendedFor information is used to specify which image this fieldmap is intended for. This is important information recommended by BIDS specification.</small>
                     </p>
                 </div>
 
@@ -386,14 +386,14 @@ export default defineComponent({
             if(o._type.startsWith("func/")) {
                 const series = this.ezbids.series[o.series_idx];
                 if(entities_requirement['task'] && !o.entities.task && !series?.entities.task) {
-                    o.validationErrors.push("Task Name is required for func/bold but not set in series nor overridden.");
+                    o.validationErrors.push("task entity label is required for func/bold but not set on Series Mapping page, nor overridden.");
                 }
             }
 
             if(o._type.startsWith("fmap/")) {
                 if(!o.IntendedFor) o.IntendedFor = []; //TODO can't think of a better place to do this
                 if(o.IntendedFor.length == 0) {
-                    o.validationErrors.push("fmap should have IntendedFor set to at least 1 object");
+                    o.validationWarnings.push("It is recommended that field map (fmap) images have IntendedFor set to at least 1 object. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep");
                 }
                 //Ensure other fmap series aren't included in the IntendedFor mapping
                 if(o.IntendedFor.length > 0) {
