@@ -45,7 +45,7 @@ done
 
 test_root=${test_root///$substring/}
 
-chmod -R 777 $test_root
+chmod -R 777 .
 
 touch $test_root/.bidsignore
 echo "*finalized.json" > $test_root/.bidsignore
