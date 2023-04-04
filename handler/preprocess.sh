@@ -33,9 +33,12 @@ maxdepth=1
 
 test_root=($(find $root -maxdepth $maxdepth -type f \( -name $substring \)))
 
+bids="no"
+
 until [[ $maxdepth -gt 5 ]]
 do
     if [[ "$test_root" == *"$substring"* ]]; then
+        bids="yes"
         break
     else
         ((maxdepth++))
@@ -43,12 +46,14 @@ do
     fi
 done
 
-test_root=${test_root///$substring/}
+if [[ $bids == "yes" ]]; then
+    test_root=${test_root///$substring/}
+else
+    test_root=$root
+fi
 
 echo $test_root
-
-# chmod -R 777 $test_root
-# chmod -R 777 .
+echo $bids
 
 touch $test_root/.bidsignore
 echo "*finalized.json" > $test_root/.bidsignore
