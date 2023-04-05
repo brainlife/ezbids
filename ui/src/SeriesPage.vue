@@ -24,7 +24,7 @@
     <pane class="series-detail">
         <div v-if="!ss" style="padding: 20px;">
             <div class="hint">
-                <p>Please update how you'd like to map each dicom SeriesDescription to BIDS datatype/entities.</p>
+                <p>Please update how you'd like to map each dicom SeriesDescription to BIDS datatype, suffix, entities.</p>
                 <p>The information you specify here will be applied to all subjects that uses matching SeriesDescription. You can also override this information later for each subject.</p>
                 <div style="background-color: white; padding: 10px; color: #666;">
                     <i class="el-icon-back"/> &lt; Please select a series to view/edit
@@ -32,7 +32,7 @@
             </div>
         </div>
         <div v-if="ss">
-            <h5>BIDS Datatype / Entities</h5>
+            <h5>BIDS Datatype, Suffix, Entities</h5>
             <el-form label-width="150px">
                 <el-alert v-if="ss.message" :title="ss.message" type="warning" style="margin-bottom: 4px;"/>
                 <div style="margin-bottom: 10px;">
@@ -40,7 +40,7 @@
                     <el-alert show-icon :closable="false" type="warning" v-for="(warn, idx) in ss.validationWarnings" :key="idx" :title="warn" style="margin-bottom: 4px;"/>
                 </div>
 
-                <el-form-item label="Datatype">
+                <el-form-item label="Datatype/Suffix">
                     <el-select v-model="ss.type" required filterable
                         placeholder="(exclude)" size="small" @change="validateAll()" style="width: 80%">
                         <el-option value="exclude">(Exclude from BIDS conversion)</el-option>
@@ -251,7 +251,7 @@ export default defineComponent({
                     }
                     if(same) {
                         const sameseries = s2.series_idx;
-                        s.validationWarnings.push("This series contains the same dataType and entity labels as series #"+sameseries+". We advise setting different entity label(s) to differentiate between the series.");
+                        s.validationWarnings.push("This series contains the same datatype, suffix and entity labels as series #"+sameseries+". We advise setting different entity label(s) to differentiate between the series.");
                         break;
                     }
                 }

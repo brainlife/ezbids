@@ -52,26 +52,53 @@ today_date = date.today().strftime("%Y-%m-%d")
 os.chdir(DATA_DIR)
 
 ######## Functions ########
-def set_fmap_intended_for(dataset_list_unique_series):
-    for index, unique_dic in enumerate(dataset_list_unique_series):
-        json_path = unique_dic["json_path"]
+def set_IntendedFor_B0FieldIdentifier_B0FieldSource(dataset_list_unique_series, bids_compliant):
+    if bids_compliant == "yes":
+        for index, unique_dic in enumerate(dataset_list_unique_series):
+            json_path = unique_dic["json_path"]
 
-        json_data = open(json_path)
-        json_data = json.load(json_data, strict=False)
+            json_data = open(json_path)
+            json_data = json.load(json_data, strict=False)
 
-        if "IntendedFor" in json_data:
-            IntendedFor_indices = []
-            IntendedFor = json_data["IntendedFor"]
-            for i in IntendedFor:
-                IntendedFor_items = [[x["nifti_path"], x["series_idx"]] for x in dataset_list_unique_series]
-                IntendedFor_items = [x for x in IntendedFor_items if i in x[0]]
+            if "IntendedFor" in json_data:
+                IntendedFor_indices = []
+                IntendedFor = json_data["IntendedFor"]
+                for i in IntendedFor:
+                    IntendedFor_items = [[x["nifti_path"], x["series_idx"]] for x in dataset_list_unique_series]
+                    IntendedFor_items = [x for x in IntendedFor_items if i in x[0]]
+                    
+                    for IntendedFor_item in IntendedFor_items:
+                        IntendedFor_indices.append(IntendedFor_item[1])
                 
-                for IntendedFor_item in IntendedFor_items:
-                    IntendedFor_indices.append(IntendedFor_item[1])
-            
-            unique_dic["IntendedFor"] = IntendedFor_indices
-    
+                unique_dic["IntendedFor"] = IntendedFor_indices
+
+            if "B0FieldIdentifier" in json_data:
+                unique_dic["B0FieldIdentifier"] = json_data["B0FieldIdentifier"]
+                if type(unique_dic["B0FieldIdentifier"]) == str:
+                    unique_dic["B0FieldIdentifier"] = [unique_dic["B0FieldIdentifier"]]
+            if "B0FieldSource" in json_data:
+                unique_dic["B0FieldSource"] = json_data["B0FieldSource"]
+                if type(unique_dic["B0FieldSource"]) == str:
+                    unique_dic["B0FieldSource"] = [unique_dic["B0FieldSource"]]
+                
     return dataset_list_unique_series
+
+def generate_readme(DATA_DIR, bids_compliant):
+    readme = []
+
+    if bids_compliant == "yes":
+        bids_root_dir = pd.read_csv("{}/bids_compliant.log".format(DATA_DIR), header=None).iloc[0][0]
+        try:
+            with open("{}/README".format(bids_root_dir)) as f:
+                lines = f.readlines()
+        except:
+            lines = []
+    else:
+        lines = ["This data was converted using ezBIDS (https://brainlife.io/ezbids/). Additional information regarding this dataset can be entered in this file."]
+    
+    readme = lines
+
+    return readme
 
 def generate_dataset_description(DATA_DIR, bids_compliant):
     dataset_description_dic = {}
@@ -582,6 +609,8 @@ def generate_dataset_list(uploaded_files_list):
             "forType": "",
             "error": None,
             "IntendedFor": None,
+            "B0FieldIdentifier": None,
+            "B0FieldSource": None,
             "section_id": 1,
             "message": None,
             "type": "",
@@ -1469,6 +1498,8 @@ def update_dataset_list(dataset_list, dataset_list_unique_series):
                 data["error"] = unique_dic["error"]
                 data["message"] = unique_dic["message"]
                 data["IntendedFor"] = unique_dic["IntendedFor"]
+                data["B0FieldIdentifier"] = unique_dic["B0FieldIdentifier"]
+                data["B0FieldSource"] = unique_dic["B0FieldSource"]
 
     return dataset_list
 
@@ -1570,6 +1601,8 @@ def modify_objects_info(dataset_list):
                             "SeriesNumber": protocol["SeriesNumber"],
                             "ModifiedSeriesNumber": protocol["ModifiedSeriesNumber"],
                             "IntendedFor": protocol["IntendedFor"],
+                            "B0FieldIdentifier": protocol["B0FieldIdentifier"],
+                            "B0FieldSource": protocol["B0FieldSource"],
                             "entities": objects_entities,
                             "items": items,
                             "PED": protocol["direction"],
@@ -1614,6 +1647,8 @@ def extract_series_info(dataset_list_unique_series):
                           "RepetitionTime": unique_dic["RepetitionTime"],
                           "NumVolumes": unique_dic["NumVolumes"],
                           "IntendedFor": unique_dic["IntendedFor"],
+                          "B0FieldIdentifier": unique_dic["B0FieldIdentifier"],
+                          "B0FieldSource": unique_dic["B0FieldSource"],
                           "nifti_path": unique_dic["nifti_path"],
                           "series_idx": unique_dic["series_idx"],
                           "AcquisitionDateTime": unique_dic["AcquisitionDateTime"],
@@ -1689,6 +1724,9 @@ print("Beginning conversion process of uploaded dataset")
 print("########################################")
 print("")
 
+# README
+readme = generate_readme(DATA_DIR, bids_compliant)
+
 # dataset description information
 dataset_description_dic = generate_dataset_description(DATA_DIR, bids_compliant)
 
@@ -1720,8 +1758,7 @@ dataset_list_unique_series = datatype_suffix_identification(dataset_list_unique_
 dataset_list_unique_series = entity_labels_identification(dataset_list_unique_series)
 
 # If BIDS-compliant dataset uploaded, set and apply IntendedFor mapping
-if bids_compliant == "yes":
-    dataset_list_unique_series = set_fmap_intended_for(dataset_list_unique_series)
+dataset_list_unique_series = set_IntendedFor_B0FieldIdentifier_B0FieldSource(dataset_list_unique_series, bids_compliant)
 
 # Port series level information to all other acquistions (i.e. objects level) with same series info
 dataset_list = update_dataset_list(dataset_list, dataset_list_unique_series)
@@ -1748,7 +1785,8 @@ setVolumeThreshold(dataset_list_unique_series, objects_list)
 ui_series_info_list = extract_series_info(dataset_list_unique_series)
 
 # Convert information to dictionary
-EZBIDS = {  "datasetDescription": dataset_description_dic,
+EZBIDS = {  "readme": readme,
+            "datasetDescription": dataset_description_dic,
             "subjects": subjects_information,
             "participantsColumn": participants_column_info,
             "participantsInfo": participants_info,

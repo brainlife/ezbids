@@ -35,7 +35,7 @@ test_root=($(find $root -maxdepth $maxdepth -type f \( -name $substring \)))
 
 bids="no"
 
-until [[ $maxdepth -gt 5 ]]
+until [[ $maxdepth -gt 5 ]] # go five levels in to check for existence of BIDS-compliant data
 do
     if [[ "$test_root" == *"$substring"* ]]; then
         bids="yes"
@@ -52,12 +52,14 @@ else
     test_root=$root
 fi
 
-echo $test_root
-echo $bids
+if [ -f $test_root/.bidsignore]; then
+    touch $test_root/.bidsignore
+    echo "*finalized.json" > $test_root/.bidsignore
+else
+    echo "*finalized.json" >> $test_root/.bidsignore
+fi
 
-touch $test_root/.bidsignore
-echo "*finalized.json" > $test_root/.bidsignore
-echo "*dcm2niix*" > $test_root/.bidsignore
+echo "*dcm2niix*" >> $test_root/.bidsignore
 echo "*preprocess*" >> $test_root/.bidsignore
 echo "*list" >> $test_root/.bidsignore
 echo "*nii_files" >> $test_root/.bidsignore

@@ -91,7 +91,7 @@
                     <el-alert show-icon :closable="false" type="warning" v-for="(error, idx) in so.analysisResults.errors" :key="idx" :title="error"/>
                 </div>
 
-                <el-form-item label="Datatype">
+                <el-form-item label="Datatype/Suffix">
                     <el-select v-model="so.type" clearable :placeholder="so._type" size="small" style="width: 100%" @change="update(so)">
                         <el-option value="">(Use Series Default)</el-option>
                         <el-option-group v-for="type in bidsSchema.datatypes" :key="type.label" :label="type.label">
