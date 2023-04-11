@@ -98,7 +98,7 @@ brainlife.io is publicly funded and for the sustainability of the project it is 
 ### Citations
 We ask that you the following articles when publishing papers that used data, code or other resources created by the brainlife.io community.
 
-1. Avesani, P., McPherson, B., Hayashi, S. et al. The open diffusion data derivatives, brain data upcycling via integrated publishing of derivatives and reproducible open cloud services. Sci Data 6, 69 (2019). [https://doi.org/10.1038/s41597-019-0073-y](https://doi.org/10.1038/s41597-019-0073-y)
+1. Levias, D. et al. **In review**
 
 ### This repo was bootstrapped by
 
