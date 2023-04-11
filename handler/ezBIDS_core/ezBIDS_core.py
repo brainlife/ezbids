@@ -84,7 +84,6 @@ def set_IntendedFor_B0FieldIdentifier_B0FieldSource(dataset_list_unique_series, 
     return dataset_list_unique_series
 
 def generate_readme(DATA_DIR, bids_compliant):
-    readme = []
 
     if bids_compliant == "yes":
         bids_root_dir = pd.read_csv("{}/bids_compliant.log".format(DATA_DIR), header=None).iloc[0][0]
@@ -96,7 +95,7 @@ def generate_readme(DATA_DIR, bids_compliant):
     else:
         lines = ["This data was converted using ezBIDS (https://brainlife.io/ezbids/). Additional information regarding this dataset can be entered in this file."]
     
-    readme = lines
+    readme = "\n".join(lines)
 
     return readme
 

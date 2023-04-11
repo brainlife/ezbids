@@ -257,7 +257,6 @@ const state = {
             DatasetDOI: "", //"10.0.2.3/dfjj.10"
         } as DatasetDescription,
 
-        // readme: "This data was converted using ezBIDS (https://brainlife.io/ezbids/). Additional information regarding this dataset can be entered in this file",
         readme: "",
         participantsColumn: {},
         participantsInfo: {} as {[key:string]: any}, //any?
@@ -381,7 +380,6 @@ const store = createStore({
                     ReferencesAndLinks: [],
                     DatasetDOI: "",
                 },
-                // readme: "This data was converted using ezBIDS (https://brainlife.io/ezbids/). Additional information regarding this dataset can be entered in this file",
                 readme: "",
                 participantsColumn: {},
                 participantsInfo: {},
