@@ -388,7 +388,7 @@ def generate_dataset_list(uploaded_files_list):
             ped = determine_direction(proper_pe_direction, ornt)
         else:
             ped = ""
-
+        
         # Nifti (and bval/bvec) file(s) associated with specific json file
         nifti_paths_for_json = [x for x in nifti_list if json_file[:-4] in x]
         nifti_paths_for_json = [x for x in nifti_paths_for_json if ".json" not in x]
@@ -484,7 +484,7 @@ def generate_dataset_list(uploaded_files_list):
                 subject = json_file.split("/")[1]
             else:
                 pass
-
+        
         # Select session ID to display, if applicable
         session = ""
         for value in [json_file, patient_name, patient_id]:
@@ -931,7 +931,11 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
                     suffixes = [x for y in [rule[x]["suffixes"] for x in rule] for x in y]
 
-                    unhelpful_suffixes = ["fieldmap", "beh", "epi", "PC", "DF", "magnitude", "magnitude1", "magnitude2", "phasediff"]
+                    short_suffixes = [x for x in suffixes if len(x) < 3]
+
+                    unhelpful_suffixes = ["fieldmap", "beh", "epi", "magnitude", "magnitude1", "magnitude2", "phasediff"]
+
+                    bad_suffixes = short_suffixes + unhelpful_suffixes
 
                     """ Oftentimes, magnitude/phase[diff] acquisitions are called "gre-field-mapping",
                     so shouldn't receive the "fieldmap" suffix """
@@ -941,10 +945,11 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
                     # Remove deprecated suffixes
                     deprecated_suffixes = ["T2star", "FLASH", "PD"]
-                    suffixes = [x for x in suffixes if x not in deprecated_suffixes and x not in unhelpful_suffixes]
+                    suffixes = [x for x in suffixes if x not in deprecated_suffixes and x not in bad_suffixes]
 
                     if any(x.lower() in sd for x in suffixes):
                         unique_dic["suffix"] = [x for x in suffixes if re.findall(x.lower(), sd)][-1]
+                        print(unique_dic["suffix"])
                         unique_dic["message"] = " ".join("Acquisition is believed to \
                             be {}/{} because '{}' is in the {}. Please \
                             modify if incorrect.".format(unique_dic["datatype"], unique_dic["suffix"], unique_dic["suffix"], unique_dic["descriptor"]).split())
@@ -955,31 +960,31 @@ def datatype_suffix_identification(dataset_list_unique_series):
                             be {}/{} because '{}' is in the file path. Please \
                             modify if incorrect.".format(unique_dic["datatype"], unique_dic["suffix"], unique_dic["suffix"]).split())
 
-                    for unhelpful_suffix in unhelpful_suffixes:
-                        if "_{}.json".format(unhelpful_suffix) in json_path:
-                            if unhelpful_suffix == "fieldmap":
+                    for bad_suffix in bad_suffixes:
+                        if "_{}.json".format(bad_suffix) in json_path:
+                            if bad_suffix == "fieldmap":
                                 unique_dic["datatype"] = "fmap"
-                            elif unhelpful_suffix == "beh":
+                            elif bad_suffix == "beh":
                                 unique_dic["datatype"] = "beh"
-                            elif unhelpful_suffix == "epi":
+                            elif bad_suffix == "epi":
                                 unique_dic["datatype"] = "fmap"
-                            elif unhelpful_suffix == "magnitude":
+                            elif bad_suffix == "magnitude":
                                 unique_dic["datatype"] = "fmap"
-                            elif unhelpful_suffix == "magnitude1":
+                            elif bad_suffix == "magnitude1":
                                 unique_dic["datatype"] = "fmap"
-                            elif unhelpful_suffix == "magnitude2":
+                            elif bad_suffix == "magnitude2":
                                 unique_dic["datatype"] = "fmap"                                                                                           
-                            elif unhelpful_suffix == "phasediff":
+                            elif bad_suffix == "phasediff":
                                 unique_dic["datatype"] = "fmap"                                                                                        
-                            elif unhelpful_suffix == "PC":
+                            elif bad_suffix == "PC":
                                 unique_dic["datatype"] = "micr"                            
-                            elif unhelpful_suffix == "DF":
+                            elif bad_suffix == "DF":
                                 unique_dic["datatype"] = "micr"
 
-                            unique_dic["suffix"] = unhelpful_suffix
+                            unique_dic["suffix"] = bad_suffix
                             unique_dic["message"] = " ".join("Acquisition is believed to \
                             be {}/{} because '_{}.json' is in the file path. Please \
-                            modify if incorrect.".format(unique_dic["datatype"], unique_dic["suffix"], unhelpful_suffix).split())
+                            modify if incorrect.".format(unique_dic["datatype"], unique_dic["suffix"], bad_suffix).split())
 
                     # Instances where users specify both mp2rage and UNIT1 together, default to UNIT1
                     if "DERIVED" and "UNI" in unique_dic["ImageType"]:
@@ -1372,18 +1377,20 @@ def entity_labels_identification(dataset_list_unique_series):
         convention
         """
         for key in entities_yaml:
-            if key != "subject":
-                entity = "_" + entities_yaml[key]["entity"] + "-"
-            else:
+            if key not in ["subject", "session"]:
                 entity = entities_yaml[key]["entity"] + "-"
-
-            if entity in sd:
-                series_entities[key] = sd.split(entity)[-1].split("_")[0]
-            elif entity in json_path:
-                series_entities[key] = json_path.split(entity)[-1].split("_")[0]
+                if len(key) > 2: # an entity less than 3 characters could cause problems, though I don't think there are any entities currently this short
+                    if entity in sd:
+                        series_entities[key] = sd.split(entity)[-1].split("_")[0]
+                    elif entity in json_path:
+                        series_entities[key] = json_path.split(entity)[-1].split("_")[0]
+                    else:
+                        series_entities[key] = ""
+                else:
+                    series_entities[key] = ""  
             else:
-                series_entities[key] = ""
-
+                 series_entities[key] = ""     
+                                
         """ If BIDS naming convention isn't detected, do a more thorough
         check for certain entities labels
         """
@@ -1563,7 +1570,6 @@ def modify_objects_info(dataset_list):
                 protocol["error"] = [protocol["error"]]
             else:
                 protocol["error"] = []
-
 
             objects_entities = dict(zip([x for x in entities_yaml], [""]*len([x for x in entities_yaml])))
 
