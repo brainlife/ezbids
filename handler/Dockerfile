@@ -46,7 +46,7 @@ RUN echo "insecure" > $HOME/.curlrc \
     && rm -f /etc/apt/apt.conf.d/80ssl-exceptions \
     && npm --version
 
-RUN wget https://github.com/rordenlab/dcm2niix/releases/download/v1.0.20220720/dcm2niix_lnx.zip -O /tmp/dcm2niix_lnx.zip && \
+RUN wget https://github.com/rordenlab/dcm2niix/releases/download/v1.0.20230411/dcm2niix_lnx.zip -O /tmp/dcm2niix_lnx.zip && \
     unzip /tmp/dcm2niix_lnx.zip && \
     mv dcm2niix /usr/local/bin
 
