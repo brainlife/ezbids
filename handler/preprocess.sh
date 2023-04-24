@@ -65,7 +65,7 @@ if [ $PET2BIDS_INSTALLED -eq 0 ]; then
 
     # remove pet directories from dcm2niix list
     echo "Removing PET directories from dcm2niix list"
-    grep -v -x -f <(sort pet2bids.list) <(sort dcm2niix.list) > dcm2niix.list
+    comm -13 pet2bids.list dcm2niix.list
     
     # run pet2bids
     true > $root/pet2bids.done
