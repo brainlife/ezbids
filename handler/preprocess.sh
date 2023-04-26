@@ -4,20 +4,22 @@ set -e
 set -x
 
 export SHELL=$(type -p bash)
-# if [ $OSTYPE == "darwin" ]; then
-#     export SHELL=$(type -p bash)
-# fi
-    
+
+# We want to keep track of whether or not dcm2niix has run, with the addition of PET2BIDs 
+# dcm2niix may not be triggerd to run at all if only PET images (dicoms/ecat) are uploaded
+
+DCM2NIIX_RUN=false
+PET2BIDS_RUN=false
+
 if [ -z $1 ]; then
     echo "please specify root dir"
     exit 1
 fi
+
 root=$1
 echo "running preprocess.sh on root folder ${root}"
 
 echo "running expand.sh"
-#timeout 3600 ./expand.sh $root
-#disabling timeout until we migrate to js2
 ./expand.sh $root
 
 echo "replace file path that contains space"
@@ -38,45 +40,37 @@ cat $root/dcm2niix.list
 
 # There can be overlap between the dicom directories and the pet directories
 # we want to use dcm2niix4pet for the pet directories, and dcm2niix for the dicom directories
-# but if and only if the conversion library PET2BIDS is installed
-PET2BIDS_INSTALLED=`which dcm2niix4pet > /dev/null && echo $?`
 
-if [ $PET2BIDS_INSTALLED -eq 0 ]; then
+echo "PET2BIDS is installed, using dcm2niix4pet for PET directories found in root dir ${root}"
+function rundcm2niix4pet {
+    #note.. this function runs inside $root (by --wd $root)
 
-    echo "PET2BIDS is installed, using dcm2niix4pet for PET directories found in root dir ${root}"
-    function rundcm2niix4pet {
-        #note.. this function runs inside $root (by --wd $root)
+    path=$1
 
-        path=$1
+    echo "----------------------- $path ------------------------"
+    timeout 3600 dcm2niix4pet $path
 
-        echo "----------------------- $path ------------------------"
-        timeout 3600 dcm2niix4pet $path
+    #all good
+    echo $path >> pet2bids.done
+    PET2BIDS_RUN=true
+} 
 
-        #all good
-        echo $path >> pet2bids.done
-    } 
+export -f rundcm2niix4pet
 
-    export -f rundcm2niix4pet
+# now we do a little magic to run pet2bids if it's installed
+./find_petdir.py $root > $root/pet2bids.list
+echo "Found PET directories:"
+cat $root/pet2bids.list
 
-    # now we do a little magic to run pet2bids if it's installed
-    ./find_petdir.py $root > $root/pet2bids.list
-    echo "Found PET directories:"
-    cat $root/pet2bids.list
+# remove pet directories from dcm2niix list
+echo "Removing PET directories from dcm2niix list"
+echo "comm -13 ${root}/pet2bids.list ${root}/dcm2niix.list"
+comm -13 ${root}/pet2bids.list ${root}/dcm2niix.list
 
-    # remove pet directories from dcm2niix list
-    echo "Removing PET directories from dcm2niix list"
-    comm -13 pet2bids.list dcm2niix.list
-    
-    # run pet2bids
-    true > $root/pet2bids.done
+# run pet2bids
+true > $root/pet2bids.done
 
-    if [ $OSTYPE = "darwin" ]; then
-        cat $root/pet2bids.list | rundcm2niix4pet {} 2>> $root/pet2bids_output
-    else
-        cat $root/pet2bids.list | parallel --linebuffer --wd $root -j 6 rundcm2niix4pet {} 2>> $root/pet2bids_output
-    fi
-
-fi
+cat $root/pet2bids.list | parallel --linebuffer --wd $root -j 6 rundcm2niix4pet {} 2>> $root/pet2bids_output
 
 echo "running dcm2niix"
 true > $root/dcm2niix.done
@@ -89,39 +83,47 @@ function d2n {
 
     path=$1
 
-    echo "----------------------- $path ------------------------"
-    timeout 3600 dcm2niix --progress y -v 1 -ba n -z o -d 9 -f 'time-%t-sn-%s' $path
+    # if path is empty then do nothing
+    if [ -z "$path" ]; then
+        echo "No path ${path} provided to d2n, skipping"
+    else 
+        echo "----------------------- $path ------------------------"
+        timeout 3600 dcm2niix --progress y -v 1 -ba n -z o -d 9 -f 'time-%t-sn-%s' $path
 
-    #all good
-    echo $path >> dcm2niix.done
+        #all good
+        echo $path >> dcm2niix.done
+        DCM2NIIX_RUN=true
+    fi
 }
 
 export -f d2n
 
-if [ $OSTYPE = "darwin" ]; then
-    cat $root/dcm2niix.list | d2n {} 2>> $root/dcm2niix_output
-else
-    cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n {} 2>> $root/dcm2niix_output
-fi
+cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n {} 2>> $root/dcm2niix_output
 
 #find products
+echo "searching for products in $root"
 (cd $root && find . -type f \( -name "*.json" \) > list)
+echo "echoing found products"
+echo "*******************************"
 cat $root/list
+echo "*******************************"
 
 if [ ! -s $root/list ]; then
     echo "couldn't find any dicom files. aborting"
     exit 1
 fi
 
-# pull dcm2niix error information to log file
-{ grep -B 1 --group-separator=$'\n\n' Error $root/dcm2niix_output || true; } > $root/dcm2niix_error
-# # remove error message(s) about not finding any DICOMs in folder
-line_nums=$(grep -n 'Error: Unable to find any DICOM images' $root/dcm2niix_error | cut -d: -f1)
+if [[ $DCM2NIIX_RUN -eq "true" ]]; then
+    # pull dcm2niix error information to log file
+    { grep -B 1 --group-separator=$'\n\n' Error $root/dcm2niix_output || true; } > $root/dcm2niix_error
+    # # remove error message(s) about not finding any DICOMs in folder
+    line_nums=$(grep -n 'Error: Unable to find any DICOM images' $root/dcm2niix_error | cut -d: -f1)
 
-for line_num in ${line_nums[*]}
-do
-    sed -i "$((line_num-1)), $((line_num+1))d" $root/dcm2niix_error
-done
+    for line_num in ${line_nums[*]}
+    do
+        sed -i "$((line_num-1)), $((line_num+1))d" $root/dcm2niix_error
+    done
+fi
 
 echo "running ezBIDS_core (may take several minutes, depending on size of data)"
 python3 "./ezBIDS_core/ezBIDS_core.py" $root
