@@ -179,7 +179,7 @@ data_dir = sys.argv[1]
 json_file = sys.argv[2]
 os.chdir(data_dir)
 
-json_list = pd.read_csv("list", header=None, sep="\n").to_numpy().flatten().tolist()
+json_list = pd.read_csv("list", header=None, lineterminator="\n").to_numpy().flatten().tolist()
 
 nifti_file = json_file.split(".json")[0] + ".nii.gz"
 

@@ -1563,7 +1563,7 @@ PARTICIPANTS_COLUMN = {"sex": {"LongName": "gender",
 cog_atlas_tasks = find_cog_atlas_tasks(cog_atlas_url)
 
 # Load dataframe containing all uploaded files
-uploaded_json_list = pd.read_csv("list", header=None, sep="\n").to_numpy().flatten().tolist()
+uploaded_json_list = pd.read_csv("list", header=None, lineterminator='\n').to_numpy().flatten().tolist()
 
 # Filter for files that ezBIDS can't use
 uploaded_files_list = modify_uploaded_dataset_list(uploaded_json_list)

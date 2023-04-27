@@ -118,7 +118,6 @@ else
     # There can be overlap between the dicom directories and the pet directories
     # we want to use dcm2niix4pet for the pet directories, and dcm2niix for the dicom directories
 
-    echo "PET2BIDS is installed, using dcm2niix4pet for PET directories found in root dir ${root}"
     function rundcm2niix4pet {
         #note.. this function runs inside $root (by --wd $root)
 
@@ -134,20 +133,27 @@ else
 
     export -f rundcm2niix4pet
 
-    # determine which uploaded files/folders are PET directories
-    ./find_petdir.py $root > $root/pet2bids.list
-    echo "Found PET directories:"
-    cat $root/pet2bids.list
+    # determine which uploaded files/folders are PET directories accept return
+    # code value of 1 (no PET directories found) or 0 (PET directories found)
+    
+    (./find_petdir.py $root > $root/pet2bids.list || touch $root/pet2bids.list)
 
+    cat $root/pet2bids.list
     # remove pet directories from dcm2niix list
     echo "Removing PET directories from dcm2niix list"
-    echo "comm -13 ${root}/pet2bids.list ${root}/dcm2niix.list"
-    comm -13 ${root}/pet2bids.list ${root}/dcm2niix.list
+    comm -12  ${root}/dcm2niix.list ${root}/pet2bids.list > ${root}/remove_from_dcm2niix_list.list
+    for folder in $(cat ${root}/remove_from_dcm2niix_list.list); do
+        # use sed to remove any lines that contain the folder name while escaping special characters (slashs and dots mostly)
+        sed -i "/${folder//\//\\/}/d" ${root}/dcm2niix.list > ${root}/tmpfile && mv ${root}/tmpfile ${root}/dcm2niix.list
+    done
+    [ -e ${root}/remove_from_dcm2niix_list.list ] && rm ${root}/remove_from_dcm2niix_list.list
+    [ -e ${root}/tmpfile ] && rm ${root}/tmpfile
 
     # run pet2bids
     true > $root/pet2bids.done
 
     cat $root/pet2bids.list | parallel --linebuffer --wd $root -j 6 rundcm2niix4pet {} 2>> $root/pet2bids_output
+
 
     echo "running dcm2niix"
     true > $root/dcm2niix.done
