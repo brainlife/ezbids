@@ -949,7 +949,6 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
                     if any(x.lower() in sd for x in suffixes):
                         unique_dic["suffix"] = [x for x in suffixes if re.findall(x.lower(), sd)][-1]
-                        print(unique_dic["suffix"])
                         unique_dic["message"] = " ".join("Acquisition is believed to \
                             be {}/{} because '{}' is in the {}. Please \
                             modify if incorrect.".format(unique_dic["datatype"], unique_dic["suffix"], unique_dic["suffix"], unique_dic["descriptor"]).split())
@@ -1742,7 +1741,8 @@ participants_column_info = generate_participants_columns(DATA_DIR, bids_complian
 cog_atlas_tasks = find_cog_atlas_tasks(cog_atlas_url)
 
 # Load dataframe containing all uploaded files
-uploaded_json_list = pd.read_csv("list", header=None, sep="\n").to_numpy().flatten().tolist()
+# uploaded_json_list = pd.read_csv("list", header=None, sep="\n").to_numpy().flatten().tolist()
+uploaded_json_list = pd.read_csv("list", header=None, lineterminator="\n").to_numpy().flatten().tolist()
 
 # Filter for files that ezBIDS can't use
 uploaded_files_list = modify_uploaded_dataset_list(uploaded_json_list)
