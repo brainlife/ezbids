@@ -219,7 +219,7 @@ def modify_uploaded_dataset_list(uploaded_json_list):
 
         # Only want json files with corresponding nifti (and bval/bvec) and if
         # the files come from dcm2niix
-        if "ConversionSoftware" in json_data and json_data["ConversionSoftware"] == "dcm2niix":
+        if "ConversionSoftware" in json_data and ("dcm2niix" in json_data["ConversionSoftware"] or "pypet2bids" in json_data["ConversionSoftware"]): 
             if len([os.path.dirname(json_file) + "/" + x for x in os.listdir(os.path.dirname(json_file)) if os.path.basename(json_file)[:-4] in x]) > 1:
                 uploaded_files_list.append([os.path.dirname(json_file) + "/" + x for x in os.listdir(os.path.dirname(json_file)) if os.path.basename(json_file[:-4]) in x])
 

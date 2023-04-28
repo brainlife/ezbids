@@ -138,6 +138,10 @@ else
     
     (./find_petdir.py $root > $root/pet2bids.list || touch $root/pet2bids.list)
 
+    # sort $root/pet2bids.list and $root/dcm2niix.list for comm
+    sort -o $root/pet2bids.list $root/pet2bids.list
+    sort -o $root/dcm2niix.list $root/dcm2niix.list
+
     cat $root/pet2bids.list
     # remove pet directories from dcm2niix list
     echo "Removing PET directories from dcm2niix list"
