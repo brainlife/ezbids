@@ -332,6 +332,9 @@ loadDatatype("func", funcDatatype, "Functional");
 import fmapDatatype from '../assets/schema/rules/datatypes/fmap.json'
 loadDatatype("fmap", fmapDatatype, "Field Map");
 
+import petDatatype from '../assets/schema/rules/datatypes/pet.json'
+loadDatatype("pet", petDatatype, "PET");
+
 const store = createStore({
     state,
 

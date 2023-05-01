@@ -1374,7 +1374,7 @@ def modify_objects_info(dataset_list):
             protocol["headers"] = str(image.header).splitlines()[1:]
 
             object_img_array = image.dataobj
-            if object_img_array.dtype not in ["<i2", "<u2"]:
+            if object_img_array.dtype not in ["<i2", "<u2", "<f4"]:
                 # Weird edge case where data array is RGB instead of integer
                 protocol["exclude"] = True
                 protocol["error"] = " ".join("The data array is for this \
