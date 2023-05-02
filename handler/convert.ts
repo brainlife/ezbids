@@ -143,7 +143,21 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
             fs.linkSync(root+"/"+item.path, fullpath);
         }
     }
-
+    function handlePET() {
+        o.items.forEach(item => {
+            let derivatives = null;
+            switch (item.name) {
+                case "nii.gz":
+                    handleItem(item, suffix + ".nii.gz", derivatives);
+                    break;
+                case "json":
+                    handleItem(item, suffix + ".json", derivatives);
+                    break;
+                default:
+                    console.error("unknown PET item name", item.name);
+            }
+        });
+    }
     function handleAnat() {
         /*
         - suffixes:
@@ -412,6 +426,9 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
     case "dwi":
         handleDwi();
         break;
+    case "pet":
+        handlePET();
+        break;        
     case "excluded":
         if(!info.includeExcluded) break;
         o.items.forEach((item, idx)=>{
