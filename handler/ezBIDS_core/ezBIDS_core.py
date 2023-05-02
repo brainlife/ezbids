@@ -30,14 +30,18 @@ from math import floor
 from datetime import date
 from operator import itemgetter
 from urllib.request import urlopen
+from pathlib import Path
 
 DATA_DIR = sys.argv[1]
 
-datatypes_yaml = yaml.load(open("../bids-specification/src/schema/objects/datatypes.yaml"), Loader=yaml.FullLoader)
-entities_yaml = yaml.load(open("../bids-specification/src/schema/objects/entities.yaml"), Loader=yaml.FullLoader)
-suffixes_yaml = yaml.load(open("../bids-specification/src/schema/objects/suffixes.yaml"), Loader=yaml.FullLoader)
-datatype_suffix_rules = "../bids-specification/src/schema/rules/datatypes"
-entity_ordering_file = "../bids-specification/src/schema/rules/entities.yaml"
+PROJECT_DIR = Path(__file__).resolve().parents[2]
+BIDS_SCHEMA_DIR = PROJECT_DIR / Path("bids-specification/src/schema")
+
+datatypes_yaml = yaml.load(open(BIDS_SCHEMA_DIR / Path("objects/datatypes.yaml")), Loader=yaml.FullLoader)
+entities_yaml = yaml.load(open(BIDS_SCHEMA_DIR / Path("objects/entities.yaml")), Loader=yaml.FullLoader)
+suffixes_yaml = yaml.load(open(BIDS_SCHEMA_DIR / Path("objects/suffixes.yaml")), Loader=yaml.FullLoader)
+datatype_suffix_rules = str(BIDS_SCHEMA_DIR / Path("rules/datatypes"))
+entity_ordering_file = str(BIDS_SCHEMA_DIR / Path("rules/entities.yaml"))
 
 cog_atlas_url = "http://cognitiveatlas.org/api/v-alpha/task"
 
@@ -410,6 +414,9 @@ def generate_dataset_list(uploaded_files_list):
         if "AcquisitionTime" in json_data:
             acquisition_time = json_data["AcquisitionTime"]
 
+        if "TimeZero" in json_data and json_data.get("ScanStart", None) == 0:
+            acquisition_time = json_data["TimeZero"]
+
         # Find RepetitionTime
         if "RepetitionTime" in json_data:
             repetition_time = json_data["RepetitionTime"]
@@ -769,7 +776,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
     tb1tfl_keys = ["tflb1map"]
     tb1rfm_keys = ["rfmap"]
     asl_keys = ["pasl", "m0scan"]
-
+    pet_keys = ["Radiopharmaceutical", "InjectionStart"]
     for index, unique_dic in enumerate(dataset_list_unique_series):
 
         if unique_dic["SeriesDescription"] == "NA":
@@ -797,7 +804,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
                         unique_dic["datatype"] = datatype
 
 
-                    rule = yaml.load(open(os.path.join(analyzer_dir, datatype_suffix_rules, datatype) + ".yaml"), Loader=yaml.FullLoader)
+                    rule = yaml.load(open(os.path.join(datatype_suffix_rules, datatype + ".yaml")), Loader=yaml.FullLoader)
 
                     suffixes = [x for y in [rule[x]["suffixes"] for x in rule] for x in y]
 
@@ -1105,6 +1112,13 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     because '{}' is in the SeriesDescription and EchoTime > 100ms. \
                     Please modify if incorrect".format([x for x in t2w_keys if re.findall(x, piece)][0]).split())
 
+            # PET
+            elif any(x in sd for x in pet_keys) or (len([x for x in pet_keys if x in sd_sparse]) or "pet2bids" in unique_dic.get("ConversionSoftware", "")):
+                print(f"sd_sparse: {sd_sparse}\nunique_dic: {unique_dic}\nsd: {sd}")
+                unique_dic["datatype"] = "pet"
+                unique_dic["suffix"] = "pet"
+                unique_dic["message"] = " ".join("Acquisition is believed to be PET")\
+
             else:
                 """Can"t discern info from SeriesDescription, try using ndim and
                 number of volumes to see if this is a func/bold."""
@@ -1129,15 +1143,23 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
                 # Assume not BIDS-compliant acquisition, unless user specifies otherwise
                 else:
-                    unique_dic["error"] = " ".join("Acquisition cannot be resolved. Please \
-                        determine whether or not this acquisition should be \
-                        converted to BIDS".split())
-                    unique_dic["message"] = " ".join("Acquisition is unknown because there \
-                        is not enough adequate information, primarily in the \
-                        SeriesDescription. Please modify if acquisition is desired \
-                        for BIDS conversion, otherwise the acquisition will not be \
-                        converted".split())
-                    unique_dic["type"] = "exclude"
+                    # okay this hack needs work but it's a start
+                    if unique_dic.get("sidecar", {}).get("Modality","") == "PT":
+                        #unique_dic["message"] = "Acquisition is believed to be PET"
+                        #unique_dic["type"] = "pet"
+                        #unique_dic["datatype"] = "pet"
+                        #unique_dic["suffix"] = "pet"
+                        pass
+                    if unique_dic.get("sidecar", {}).get("Modality","") != "PT":
+                        unique_dic["error"] = " ".join("Acquisition cannot be resolved. Please \
+                            determine whether or not this acquisition should be \
+                            converted to BIDS".split())
+                        unique_dic["message"] = " ".join("Acquisition is unknown because there \
+                            is not enough adequate information, primarily in the \
+                            SeriesDescription. Please modify if acquisition is desired \
+                            for BIDS conversion, otherwise the acquisition will not be \
+                            converted".split())
+                        unique_dic["type"] = "exclude"
 
         """ Combine datatype and suffix to create type variable, which
         is needed for internal brainlife.io storage. """
