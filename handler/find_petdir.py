@@ -2,7 +2,6 @@
 
 import os
 import sys
-import subprocess
 from pathlib import Path
 
 # if pet2bids is installed we use it wherever PET dicoms live
