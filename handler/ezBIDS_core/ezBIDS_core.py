@@ -1113,8 +1113,8 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     Please modify if incorrect".format([x for x in t2w_keys if re.findall(x, piece)][0]).split())
 
             # PET
-            elif any(x in sd for x in pet_keys) or (len([x for x in pet_keys if x in sd_sparse]) or "pet2bids" in unique_dic.get("ConversionSoftware", "")):
-                print(f"sd_sparse: {sd_sparse}\nunique_dic: {unique_dic}\nsd: {sd}")
+            elif any(x in sd for x in pet_keys) or (len([x for x in pet_keys if x in sd_sparse]) or "pypet2bids" in unique_dic.get("sidecar", {}).get("ConversionSoftware", "")) \
+                or unique_dic.get("sidecar", {}).get("Modality", "") == "PT":
                 unique_dic["datatype"] = "pet"
                 unique_dic["suffix"] = "pet"
                 unique_dic["message"] = " ".join("Acquisition is believed to be PET")\
@@ -1143,23 +1143,15 @@ def datatype_suffix_identification(dataset_list_unique_series):
 
                 # Assume not BIDS-compliant acquisition, unless user specifies otherwise
                 else:
-                    # okay this hack needs work but it's a start
-                    if unique_dic.get("sidecar", {}).get("Modality","") == "PT":
-                        #unique_dic["message"] = "Acquisition is believed to be PET"
-                        #unique_dic["type"] = "pet"
-                        #unique_dic["datatype"] = "pet"
-                        #unique_dic["suffix"] = "pet"
-                        pass
-                    if unique_dic.get("sidecar", {}).get("Modality","") != "PT":
-                        unique_dic["error"] = " ".join("Acquisition cannot be resolved. Please \
-                            determine whether or not this acquisition should be \
-                            converted to BIDS".split())
-                        unique_dic["message"] = " ".join("Acquisition is unknown because there \
-                            is not enough adequate information, primarily in the \
-                            SeriesDescription. Please modify if acquisition is desired \
-                            for BIDS conversion, otherwise the acquisition will not be \
-                            converted".split())
-                        unique_dic["type"] = "exclude"
+                    unique_dic["error"] = " ".join("Acquisition cannot be resolved. Please \
+                        determine whether or not this acquisition should be \
+                        converted to BIDS".split())
+                    unique_dic["message"] = " ".join("Acquisition is unknown because there \
+                        is not enough adequate information, primarily in the \
+                        SeriesDescription. Please modify if acquisition is desired \
+                        for BIDS conversion, otherwise the acquisition will not be \
+                        converted".split())
+                    unique_dic["type"] = "exclude"
 
         """ Combine datatype and suffix to create type variable, which
         is needed for internal brainlife.io storage. """
