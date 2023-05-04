@@ -30,15 +30,19 @@ from math import floor
 from datetime import date
 from operator import itemgetter
 from urllib.request import urlopen
+from pathlib import Path
 
 DATA_DIR = sys.argv[1]
 
-datatypes_yaml = yaml.load(open("../bids-specification/src/schema/objects/datatypes.yaml"), Loader=yaml.FullLoader)
-entities_yaml = yaml.load(open("../bids-specification/src/schema/objects/entities.yaml"), Loader=yaml.FullLoader)
-suffixes_yaml = yaml.load(open("../bids-specification/src/schema/objects/suffixes.yaml"), Loader=yaml.FullLoader)
-dataset_description_yaml = yaml.load(open("../bids-specification/src/schema/rules/dataset_metadata.yaml"), Loader=yaml.FullLoader)
-datatype_suffix_rules = "../bids-specification/src/schema/rules/datatypes"
-entity_ordering_file = "../bids-specification/src/schema/rules/entities.yaml"
+PROJECT_DIR = Path(__file__).resolve().parents[2]
+BIDS_SCHEMA_DIR = PROJECT_DIR / Path("bids-specification/src/schema")
+
+datatypes_yaml = yaml.load(open(BIDS_SCHEMA_DIR / Path("objects/datatypes.yaml")), Loader=yaml.FullLoader)
+entities_yaml = yaml.load(open(BIDS_SCHEMA_DIR / Path("objects/entities.yaml")), Loader=yaml.FullLoader)
+suffixes_yaml = yaml.load(open(BIDS_SCHEMA_DIR / Path("objects/suffixes.yaml")), Loader=yaml.FullLoader)
+dataset_description_yaml = yaml.load(open(BIDS_SCHEMA_DIR / Path("rules/dataset_metadata.yaml")), Loader=yaml.FullLoader)
+datatype_suffix_rules = str(BIDS_SCHEMA_DIR / Path("rules/datatypes"))
+entity_ordering_file = str(BIDS_SCHEMA_DIR / Path("rules/entities.yaml"))
 
 cog_atlas_url = "http://cognitiveatlas.org/api/v-alpha/task"
 
@@ -321,7 +325,7 @@ def modify_uploaded_dataset_list(uploaded_json_list):
 
         # Only want json files with corresponding nifti (and bval/bvec) and if
         # the files come from dcm2niix
-        if "ConversionSoftware" in json_data and json_data["ConversionSoftware"] == "dcm2niix":
+        if "ConversionSoftware" in json_data and ("dcm2niix" in json_data["ConversionSoftware"] or "pypet2bids" in json_data["ConversionSoftware"]): 
             if len([os.path.dirname(json_file) + "/" + x for x in os.listdir(os.path.dirname(json_file)) if os.path.basename(json_file)[:-4] in x]) > 1:
                 uploaded_files_list.append([os.path.dirname(json_file) + "/" + x for x in os.listdir(os.path.dirname(json_file)) if os.path.basename(json_file[:-4]) in x])
 
@@ -510,6 +514,9 @@ def generate_dataset_list(uploaded_files_list):
 
         if "AcquisitionTime" in json_data:
             acquisition_time = json_data["AcquisitionTime"]
+
+        if "TimeZero" in json_data and json_data.get("ScanStart", None) == 0:
+            acquisition_time = json_data["TimeZero"]
 
         # Find RepetitionTime
         if "RepetitionTime" in json_data:
@@ -900,7 +907,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
     tb1rfm_keys = ["rfmap"]
     chimap_keys = ["qsm"]
     asl_keys = ["pasl", "m0scan"]
-
+    pet_keys = ["Radiopharmaceutical", "InjectionStart"]
     for index, unique_dic in enumerate(dataset_list_unique_series):
 
         json_path = unique_dic["json_path"]
@@ -929,6 +936,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
                         unique_dic["datatype"] = datatype
 
                     rule = yaml.load(open(os.path.join(analyzer_dir, datatype_suffix_rules, datatype) + ".yaml"), Loader=yaml.FullLoader)
+                    # rule = yaml.load(open(os.path.join(datatype_suffix_rules, datatype + ".yaml")), Loader=yaml.FullLoader)
 
                     suffixes = [x for y in [rule[x]["suffixes"] for x in rule] for x in y]
 
@@ -1289,6 +1297,12 @@ def datatype_suffix_identification(dataset_list_unique_series):
                 unique_dic["message"] = " ".join("Acquisition is believed to be anat/Chimap \
                     because '{}' is in the SeriesDescription and the EchoNumber key is in the json sidecar. \
                     Please modify if incorrect".format([x for x in chimap_keys if re.findall(x, piece)][0]).split())
+            # PET
+            elif any(x in sd for x in pet_keys) or (len([x for x in pet_keys if x in sd_sparse]) or "pypet2bids" in unique_dic.get("sidecar", {}).get("ConversionSoftware", "")) \
+                or unique_dic.get("sidecar", {}).get("Modality", "") == "PT":
+                unique_dic["datatype"] = "pet"
+                unique_dic["suffix"] = "pet"
+                unique_dic["message"] = " ".join("Acquisition is believed to be PET")\
 
             else:
                 """Can"t discern info from SeriesDescription, try using ndim and
@@ -1562,7 +1576,8 @@ def modify_objects_info(dataset_list):
             protocol["headers"] = str(image.header).splitlines()[1:]
 
             object_img_array = image.dataobj
-            if object_img_array.dtype not in ["<i2", "<u2"]:
+            # PET images are scaled, type will be float <f4 
+            if object_img_array.dtype not in ["<i2", "<u2"] and protocol.get("sidecar", {}).get("Modality", "") != "PT":
                 # Weird edge case where data array is RGB instead of integer
                 protocol["exclude"] = True
                 protocol["error"] = " ".join("The data array for this \
@@ -1754,8 +1769,7 @@ participants_column_info = generate_participants_columns(DATA_DIR, bids_complian
 cog_atlas_tasks = find_cog_atlas_tasks(cog_atlas_url)
 
 # Load dataframe containing all uploaded files
-# uploaded_json_list = pd.read_csv("list", header=None, sep="\n").to_numpy().flatten().tolist()
-uploaded_json_list = pd.read_csv("list", header=None, lineterminator="\n").to_numpy().flatten().tolist()
+uploaded_json_list = pd.read_csv("list", header=None, lineterminator='\n').to_numpy().flatten().tolist()
 
 # Filter for files that ezBIDS can't use
 uploaded_files_list = modify_uploaded_dataset_list(uploaded_json_list)
