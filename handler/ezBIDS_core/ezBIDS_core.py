@@ -898,6 +898,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
     t2w_keys = ["t2", "anatt2", "3dt2"]
     tb1tfl_keys = ["tflb1map"]
     tb1rfm_keys = ["rfmap"]
+    chimap_keys = ["qsm"]
     asl_keys = ["pasl", "m0scan"]
 
     for index, unique_dic in enumerate(dataset_list_unique_series):
@@ -1276,6 +1277,19 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     because '{}' is in the SeriesDescription and EchoTime > 100ms. \
                     Please modify if incorrect".format([x for x in t2w_keys if re.findall(x, piece)][0]).split())
 
+            # Chimap, typically referred to as Quantitative susceptibility map (QSM)
+            elif any(x in sd for x in chimap_keys) and "EchoNumber" in unique_dic:
+                if any(x in sd for x in t2w_keys):
+                    piece = sd
+                else:
+                    piece = sd_sparse
+            
+                unique_dic["datatype"] = "anat"
+                unique_dic["suffix"] = "Chimap"
+                unique_dic["message"] = " ".join("Acquisition is believed to be anat/Chimap \
+                    because '{}' is in the SeriesDescription and the EchoNumber key is in the json sidecar. \
+                    Please modify if incorrect".format([x for x in chimap_keys if re.findall(x, piece)][0]).split())
+
             else:
                 """Can"t discern info from SeriesDescription, try using ndim and
                 number of volumes to see if this is a func/bold."""
@@ -1336,7 +1350,6 @@ def datatype_suffix_identification(dataset_list_unique_series):
                             excluded from BIDS conversion. Please modify if \
                             incorrect".split())
                 unique_dic["error"] = unique_dic["message"]
-
 
     return dataset_list_unique_series
 
@@ -1406,16 +1419,16 @@ def entity_labels_identification(dataset_list_unique_series):
         if any(x in unique_dic["type"] for x in ["fmap/epi", "dwi/dwi"]) and not series_entities["direction"]:
             series_entities["direction"] = unique_dic["direction"]
 
-        # # echo
-        # if unique_dic["EchoNumber"] and not any(x in unique_dic["type"] for x in ["fmap/epi", "fmap/magnitude1", "fmap/magnitude2", "fmap/phasediff", "fmap/phase1", "fmap/phase2", "fmap/fieldmap"]):
-        #     series_entities["echo"] = str(unique_dic["EchoNumber"])
-        #     # Exclude non-RMS multi-echo anatomical acquisitions
-        #     if "anat" in unique_dic["type"] and "EchoNumber" in unique_dic["sidecar"] and "MEAN" not in unique_dic["ImageType"]:
-        #         unique_dic["type"] = "exclude"
-        #         unique_dic["message"] = " ".join("Acquisition appears to be an \
-        #             anatomical multi-echo, but not the combined RMS file. Since this is \
-        #             not the combined RMS file, this acquisition will be set to \
-        #             exclude. Please modify if incorrect".split())
+        # echo
+        if unique_dic["EchoNumber"] and not any(x in unique_dic["type"] for x in ["fmap/epi", "fmap/magnitude1", "fmap/magnitude2", "fmap/phasediff", "fmap/phase1", "fmap/phase2", "fmap/fieldmap"]):
+            series_entities["echo"] = str(unique_dic["EchoNumber"])
+            # Warn user about non-RMS multi-echo anatomical acquisitions
+            if "anat" in unique_dic["type"] and "EchoNumber" in unique_dic["sidecar"] and "MEAN" not in unique_dic["ImageType"]:
+                # unique_dic["type"] = "exclude"
+                unique_dic["message"] = unique_dic["message"] + ". " + " ".join("Acquisition also appears to be an \
+                    anatomical multi-echo, but not the combined RMS file. If the RMS file \
+                    exists it might be ideal to exclude this acquisition and only save \
+                    the RMS file.".split())
 
         # flip
         if any(x in unique_dic["type"] for x in ["anat/VFA", "anat/MPM", "anat/MTS", "fmap/TB1EPI", "fmap/TB1DAM"]) and "FlipAngle" in unique_dic["sidecar"]:
@@ -1552,7 +1565,7 @@ def modify_objects_info(dataset_list):
             if object_img_array.dtype not in ["<i2", "<u2"]:
                 # Weird edge case where data array is RGB instead of integer
                 protocol["exclude"] = True
-                protocol["error"] = " ".join("The data array is for this \
+                protocol["error"] = " ".join("The data array for this \
                     acquisition is improper, likely suggesting some issue \
                     with the corresponding DICOMS".split())
                 protocol["message"] = protocol["error"]
@@ -1761,6 +1774,8 @@ dataset_list_unique_series = datatype_suffix_identification(dataset_list_unique_
 
 # Identify entity label information
 dataset_list_unique_series = entity_labels_identification(dataset_list_unique_series)
+for index, unique_dic in enumerate(dataset_list_unique_series):
+    print(unique_dic["message"])
 
 # If BIDS-compliant dataset uploaded, set and apply IntendedFor mapping
 dataset_list_unique_series = set_IntendedFor_B0FieldIdentifier_B0FieldSource(dataset_list_unique_series, bids_compliant)
