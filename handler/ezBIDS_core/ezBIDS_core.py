@@ -1285,7 +1285,7 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     because '{}' is in the SeriesDescription and EchoTime > 100ms. \
                     Please modify if incorrect".format([x for x in t2w_keys if re.findall(x, piece)][0]).split())
 
-            # Chimap, typically referred to as Quantitative susceptibility map (QSM)
+            # Chimap, typically referred to as Quantitative susceptibility map (QSM), or MEGRE
             elif any(x in sd for x in chimap_keys):
                 if any(x in sd for x in t2w_keys):
                     piece = sd
