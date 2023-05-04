@@ -1286,15 +1286,21 @@ def datatype_suffix_identification(dataset_list_unique_series):
                     Please modify if incorrect".format([x for x in t2w_keys if re.findall(x, piece)][0]).split())
 
             # Chimap, typically referred to as Quantitative susceptibility map (QSM)
-            elif any(x in sd for x in chimap_keys) and "EchoNumber" in unique_dic:
+            elif any(x in sd for x in chimap_keys):
                 if any(x in sd for x in t2w_keys):
                     piece = sd
                 else:
                     piece = sd_sparse
             
                 unique_dic["datatype"] = "anat"
-                unique_dic["suffix"] = "Chimap"
-                unique_dic["message"] = " ".join("Acquisition is believed to be anat/Chimap \
+                if "EchoNumber" not in unique_dic:
+                    unique_dic["suffix"] = "Chimap"
+                    unique_dic["message"] = " ".join("Acquisition is believed to be anat/Chimap \
+                    because '{}' is in the SeriesDescription. \
+                    Please modify if incorrect".format([x for x in chimap_keys if re.findall(x, piece)][0]).split())
+                else:
+                    unique_dic["suffix"] = "MEGRE"
+                unique_dic["message"] = " ".join("Acquisition is believed to be anat/MEGRE \
                     because '{}' is in the SeriesDescription and the EchoNumber key is in the json sidecar. \
                     Please modify if incorrect".format([x for x in chimap_keys if re.findall(x, piece)][0]).split())
             # PET
