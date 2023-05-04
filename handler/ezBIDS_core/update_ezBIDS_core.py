@@ -18,7 +18,7 @@ from natsort import natsorted
 data_dir = sys.argv[1]
 os.chdir(data_dir)
 
-json_list = pd.read_csv("list", header=None, sep="\n").to_numpy().flatten().tolist()
+json_list = pd.read_csv("list", header=None, lineterminator="\n").to_numpy().flatten().tolist()
 
 # place paths to thumbnails and movies in ezBIDS_core.json
 with open("ezBIDS_core.json", "r") as ezBIDS_json:

@@ -8,8 +8,9 @@ RUN apt update && \
     apt-get update && apt-get upgrade -y
 
 RUN apt install -y parallel python3 python3-pip tree curl unzip git jq python libgl-dev python-numpy
+
 RUN pip3 install numpy==1.23.0 nibabel==4.0.0 pandas==1.0.1 matplotlib pyyaml==5.4.1 pydicom==2.3.1 natsort pydeface && \
-    pip3 install quickshear
+    pip3 install quickshear pypet2bids
 
 RUN apt-get install -y build-essential pkg-config cmake git pigz rename zstd libopenjp2-7 libgdcm-tools wget libopenblas-dev && \
     apt-get clean -y && apt-get autoclean -y && apt-get autoremove -y
@@ -62,7 +63,7 @@ ENV NODE_PATH $NVM_DIR/v$NODE_VERSION/lib/node_modules
 ENV PATH $NVM_DIR/v$NODE_VERSION/bin:$PATH
 
 #install bids-validator
-RUN npm install -g bids-validator@1.9.9
+RUN npm install -g bids-validator@1.11.0
 
 # install source code from local
 WORKDIR /app/handler
