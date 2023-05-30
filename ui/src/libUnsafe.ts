@@ -368,26 +368,30 @@ export function setIntendedFor($root) {
                         let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor
                         correspindingSeriesIntendedFor.forEach(i=>{
                             let IntendedForIDs = section.filter(o=>o.series_idx == i).map(o=>o.idx)
+                            let dan = section.filter(o=>o.series_idx == i)
                             obj.IntendedFor = obj.IntendedFor.concat(IntendedForIDs)
                         });
                     }
 
                     // check B0FieldIdentifier and B0FieldSource information
-                    if(obj._type && !obj._type.includes('exclude')) {
+                    if(obj._type && !obj._type.includes('exclude') && !obj._type.includes('events')) {
                         Object.assign(obj, {B0FieldIdentifier: []})
                         Object.assign(obj, {B0FieldSource: []})
-
-                        let correspindingSeriesB0FieldIdentifier = $root.series[obj.series_idx].B0FieldIdentifier
-                        let correspindingSeriesB0FieldSource = $root.series[obj.series_idx].B0FieldSource
-                        
-                        for(const k in correspindingSeriesB0FieldIdentifier) {
-                            const v = correspindingSeriesB0FieldIdentifier[k]
-                            obj.B0FieldIdentifier.push(v)
+                                                
+                        if("B0FieldIdentifier" in $root.series[obj.series_idx]) {
+                            let correspindingSeriesB0FieldIdentifier = $root.series[obj.series_idx].B0FieldIdentifier
+                            for(const k in correspindingSeriesB0FieldIdentifier) {
+                                const v = correspindingSeriesB0FieldIdentifier[k]
+                                obj.B0FieldIdentifier.push(v)
+                            }
                         }
 
-                        for(const k in correspindingSeriesB0FieldSource) {
-                            const v = correspindingSeriesB0FieldSource[k]
-                            obj.B0FieldSource.push(v)
+                        if("B0FieldSource" in $root.series[obj.series_idx]) {
+                            let correspindingSeriesB0FieldSource = $root.series[obj.series_idx].B0FieldSource
+                            for(const k in correspindingSeriesB0FieldSource) {
+                                const v = correspindingSeriesB0FieldSource[k]
+                                obj.B0FieldSource.push(v)
+                            }
                         }
                     }
                 });

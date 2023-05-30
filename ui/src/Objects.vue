@@ -421,7 +421,7 @@ export default defineComponent({
                     o.IntendedFor.forEach(i=>{
                         let series_idx = this.ezbids.objects[i].series_idx
                         if(this.ezbids.objects[i]._type.startsWith("fmap/")) {
-                            o.validationErrors.push("The selected series (#"+series_idx+") appears to be a field map (fmap), which isn't allowed in the IntenedFor mapping. Please remove this series, or, if it isn't a field map, please correct it.")
+                            o.validationErrors.push("The selected series (#"+series_idx+") appears to be a field map (fmap), which isn't allowed in the IntendedFor mapping. Please remove this series, or, if it isn't a field map, please correct it.")
                         }
                     })
                 }

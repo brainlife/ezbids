@@ -99,7 +99,7 @@ export default defineComponent({
 
     computed: {
         ...mapState(['session', 'ezbids', 'events', 'page']),
-        ...mapGetters(['getBIDSEntities', 'findSession', 'findSubject']),
+        ...mapGetters(['getBIDSEntities', 'getBIDSMetadata', 'findSession', 'findSubject']),
 
         backLabel(): string|null {
             switch(this.page) {
@@ -154,7 +154,7 @@ export default defineComponent({
                         fmapQA(this.ezbids);
                         dwiQA(this.ezbids);
                         setRun(this.ezbids);
-                        setIntendedFor(this.ezbids);
+                        // setIntendedFor(this.ezbids);
                         this.mapObjects();
                         break;
                     case "object":

@@ -119,12 +119,23 @@ def generate_dataset_description(DATA_DIR, bids_compliant):
                 dataset_description_dic[field] = dataset_description[field]
     
     dataset_description_dic["GeneratedBy"] =[
-                                                {"Name": "ezBIDS", 
-                                                 "Version": "n/a", 
-                                                 "Description": "ezBIDS is a web-based tool for converting MRI datasets to BIDS, requiring neither coding nor knowledge of the BIDS specification", 
-                                                 "CodeURL": "https://brainlife.io/ezbids/", 
+                                                {   "Name": "ezBIDS", 
+                                                    "Version": "n/a", 
+                                                    "Description": "ezBIDS is a web-based tool for converting MRI datasets to BIDS, requiring neither coding nor knowledge of the BIDS specification", 
+                                                    "CodeURL": "https://brainlife.io/ezbids/",
+                                                    "Container": {
+                                                        "Type": "n/a",
+                                                        "Tag": "n/a"
+                                                    }
                                                 }
-                                            ]  
+                                            ]
+
+    dataset_description_dic["SourceDatasets"] =[
+                                                    {   "DOI": "n/a", 
+                                                        "URL": "https://brainlife.io/ezbids/",
+                                                        "Version": "n/a"
+                                                    }
+                                                ]  
     # Explicit checks
     if dataset_description_dic["Name"] == "":
         dataset_description_dic["Name"] = "Untitled"  
@@ -1117,12 +1128,12 @@ def datatype_suffix_identification(dataset_list_unique_series):
                         Please modify if incorrect".format([x for x in se_mag_phase_fmap_keys if re.findall(x, piece)][0]).split())
 
             # spin echo field maps (for dwi)
-            elif "DIFFUSION" in unique_dic["ImageType"] and "b0" in sd:
+            elif "DIFFUSION" in unique_dic["ImageType"] and ("b0" in sd or "bzero" in sd):
                 unique_dic["datatype"] = "fmap"
                 unique_dic["suffix"] = "epi"
                 unique_dic["forType"] = "dwi/dwi"
                 unique_dic["message"] = " ".join("Acquisition appears to be a fmap/epi meant \
-                    for dwi/dwi, as 'DIFFUSION' is in ImageType, and 'b0' is in \
+                    for dwi/dwi, as 'DIFFUSION' is in ImageType, and 'b0' or 'bzero' is in \
                     the SeriesDescription. Please modify if incorrect".split())
 
             # DWI
@@ -1413,9 +1424,9 @@ def entity_labels_identification(dataset_list_unique_series):
                 entity = entities_yaml[key]["entity"] + "-"
                 if len(key) > 2: # an entity less than 3 characters could cause problems, though I don't think there are any entities currently this short
                     if entity in sd:
-                        series_entities[key] = sd.split(entity)[-1].split("_")[0]
+                        series_entities[key] = re.split('[^a-zA-Z0-9]', sd.split(entity)[-1].split("_")[0])
                     elif entity in json_path:
-                        series_entities[key] = json_path.split(entity)[-1].split("_")[0]
+                        series_entities[key] = re.split('[^a-zA-Z0-9]', json_path.split(entity)[-1].split("_")[0])[0]
                     else:
                         series_entities[key] = ""
                 else:
