@@ -130,26 +130,30 @@
                         <small>* IntendedFor information is used to specify which image this fieldmap is intended for. This is recommended information according to the BIDS specification.</small>
                     </p>
                 </div>
-
                 <div v-if="so._type && !so._type.includes('exclude')" class="border-top">
                     <br>
-                    <el-form-item label="B0FieldIdentifier">
-                        <el-select v-model="so.B0FieldIdentifier" multiple filterable allow-create default-first-option
-                            placeholder="Enter text string" size="small" style="width: 100%" @change="update(so)">
-                        </el-select>
-                    </el-form-item>
-                    <p style="margin-left: 200px;">
-                        <small>* Optional/Recommended: If this sequence will be used for fieldmap correction, enter a text string of your choice. A good formatting suggestion is the "datatype_suffix[index]" format (e.g., <b>fmap_epi0</b>, <b>fmap_phasediff1</b>, etc). If another sequence will be used with this one for fieldmap correction, use the exact same text string there as well. Leave field blank if unclear.</small>
-                    </p>
+                    <div v-if="!so._type.includes('events')" class="border-top">
+                        <el-form-item label="B0FieldIdentifier">
+                            <el-select v-model="so.B0FieldIdentifier" multiple filterable allow-create default-first-option
+                                placeholder="Enter text string" size="small" style="width: 100%" @change="update(so)">
+                            </el-select>
+                        </el-form-item>
+                        <p style="margin-left: 200px;">
+                            <small>* Optional/Recommended: If this sequence will be used for fieldmap correction, enter a text string of your choice. A good formatting suggestion is the "datatype_suffix[index]" format (e.g., <b>fmap_epi0</b>, <b>fmap_phasediff1</b>, etc). If another sequence will be used with this one for fieldmap correction, use the exact same text string there as well. Leave field blank if unclear.</small>
+                        </p>
+                    </div>
+                   
                     <br>
-                    <el-form-item label="B0FieldSource">
-                        <el-select v-model="so.B0FieldSource" multiple filterable allow-create default-first-option
-                            placeholder="Enter text string" size="small" style="width: 100%" @change="update(so)">
-                        </el-select>
-                    </el-form-item>
-                    <p style="margin-left: 200px;">
-                        <small>* Optional/Recommended: If this sequence will be used for fieldmap correction, enter a text string of your choice. A good formatting suggestion is the "datatype_suffix" format (e.g., fmap_epi, fmap_phasediff). If another sequence will be used with this one for fieldmap correction, use the exact same text string there as well. Leave field blank if unclear.</small>
-                    </p>
+                    <div v-if="!so._type.includes('events')" class="border-top">
+                        <el-form-item label="B0FieldSource">
+                            <el-select v-model="so.B0FieldSource" multiple filterable allow-create default-first-option
+                                placeholder="Enter text string" size="small" style="width: 100%" @change="update(so)">
+                            </el-select>
+                        </el-form-item>
+                        <p style="margin-left: 200px;">
+                            <small>* Optional/Recommended: If this sequence will be used for fieldmap correction, enter a text string of your choice. A good formatting suggestion is the "datatype_suffix" format (e.g., fmap_epi, fmap_phasediff). If another sequence will be used with this one for fieldmap correction, use the exact same text string there as well. Leave field blank if unclear.</small>
+                        </p>
+                    </div>
                 </div>
 
                 <div v-for="(item, idx) in so.items" :key="idx" class="border-top">
