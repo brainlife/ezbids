@@ -321,8 +321,9 @@ def modify_uploaded_dataset_list(uploaded_json_list):
 
     # Remove Philips proprietary files in uploaded_json_list if they exist
     uploaded_json_list = [json for json in uploaded_json_list
-                          if "parrec" not in json.lower()]
-
+                          if "parrec" not in json.lower()
+                          and "finalized.json" not in json]
+    
     # Sort uploaded_json_list
     uploaded_json_list.sort()
 
@@ -964,17 +965,21 @@ def datatype_suffix_identification(dataset_list_unique_series):
                         unique_dic["suffix"] = ""
 
                     # Remove deprecated suffixes
-                    deprecated_suffixes = ["T2star", "FLASH", "PD"]
+                    deprecated_suffixes = ["T2star", "FLASH", "PD", "phase"]
                     suffixes = [x for x in suffixes if x not in deprecated_suffixes and x not in bad_suffixes]
 
                     if any(x.lower() in sd for x in suffixes):
                         unique_dic["suffix"] = [x for x in suffixes if re.findall(x.lower(), sd)][-1]
+                        if unique_dic["datatype"] == "func" and unique_dic["suffix"] == "phase":
+                            unique_dic["suffix"] = "bold"
                         unique_dic["message"] = " ".join("Acquisition is believed to \
                             be {}/{} because '{}' is in the {}. Please \
                             modify if incorrect.".format(unique_dic["datatype"], unique_dic["suffix"], unique_dic["suffix"], unique_dic["descriptor"]).split())
 
                     if any(x in json_path for x in suffixes):
                         unique_dic["suffix"] = [x for x in suffixes if re.findall(x, json_path)][-1]
+                        if unique_dic["datatype"] == "func" and unique_dic["suffix"] == "phase":
+                            unique_dic["suffix"] = "bold"
                         unique_dic["message"] = " ".join("Acquisition is believed to \
                             be {}/{} because '{}' is in the file path. Please \
                             modify if incorrect.".format(unique_dic["datatype"], unique_dic["suffix"], unique_dic["suffix"]).split())
@@ -1421,12 +1426,20 @@ def entity_labels_identification(dataset_list_unique_series):
         """
         for key in entities_yaml:
             if key not in ["subject", "session"]:
-                entity = entities_yaml[key]["entity"] + "-"
-                if len(key) > 2: # an entity less than 3 characters could cause problems, though I don't think there are any entities currently this short
-                    if entity in sd:
-                        series_entities[key] = re.split('[^a-zA-Z0-9]', sd.split(entity)[-1].split("_")[0])
+                entity = entities_yaml[key]["entity"]
+                if len(entity) > 2: # an entity less than 3 characters could cause problems, though I don't think there are any entities currently this short
+                    if entity == "res" and ("rest" in sd or "rest" in json_path): # short for "resolution", but might be confused with 'rest'
+                        pass
+                    elif entity in sd:
+                        item = sd.split(entity)[-1][0] # what comes right after the entity
+                        if item.isalpha() == False and item.isnumeric() == False: # non-alphanumeric character separates entity key from its value
+                            entity = f"{entity}{item}"
+                        series_entities[key] = re.split('[^a-zA-Z0-9]', sd.split(entity)[-1])[0]
                     elif entity in json_path:
-                        series_entities[key] = re.split('[^a-zA-Z0-9]', json_path.split(entity)[-1].split("_")[0])[0]
+                        item = json_path.split(entity)[-1][0]
+                        if item.isalpha() == False and item.isnumeric() == False: # non-alphanumeric character separates entity key from its value
+                            entity = f"{entity}{item}"
+                        series_entities[key] = re.split('[^a-zA-Z0-9]', json_path.split(entity)[-1])[0]
                     else:
                         series_entities[key] = ""
                 else:
@@ -1530,6 +1543,25 @@ def entity_labels_identification(dataset_list_unique_series):
 
     return dataset_list_unique_series
 
+def check_part_entity(dataset_list_unique_series):
+    """ Certain data contain the part-phase entity key/value pair. 
+        If this occurs, expose the part-mag key/value pair for the 
+        corresponding data.
+    """
+    part_phase_data = [x for x in dataset_list_unique_series if x["entities"]["part"] == "phase"]
+
+    for part in part_phase_data:
+        mag_data = [x for x in dataset_list_unique_series
+                    if x != part
+                    and x["SeriesDescription"] == part["SeriesDescription"]
+                    and x["type"] == part["type"]
+                    and {key:val for key, val in x["entities"].items() if key != "part"} == {key:val for key, val in part["entities"].items() if key != "part"}
+                    ]
+
+        if len(mag_data) and len(mag_data) == 1:
+            mag_data[0]["entities"]["part"] = "mag"
+        
+    return dataset_list_unique_series
 
 def update_dataset_list(dataset_list, dataset_list_unique_series):
     """
@@ -1766,6 +1798,15 @@ def setVolumeThreshold(dataset_list_unique_series, objects_list):
                         this acquisition will be excluded from BIDS conversion.\
                         Please modify if incorrect".format(obj["analysisResults"]["NumVolumes"], volumeThreshold).split())]
 
+# def finalized_configuration(uploaded_json_list):
+#     finalized = [json for json in uploaded_json_list if "finalized.json" in json]
+#     if len(finalized):
+#         finalized_config = finalized[0]
+#         finalized_config = open(finalized_config)
+#         finalized_config = json.load(finalized_config, strict=False)
+#     else:
+#         pass
+
 ##################### Begin #####################
 
 print("########################################")
@@ -1788,6 +1829,8 @@ cog_atlas_tasks = find_cog_atlas_tasks(cog_atlas_url)
 # Load dataframe containing all uploaded files
 uploaded_json_list = pd.read_csv("list", header=None, lineterminator='\n').to_numpy().flatten().tolist()
 
+# finalized_configuration(uploaded_json_list)
+
 # Filter for files that ezBIDS can't use
 uploaded_files_list = modify_uploaded_dataset_list(uploaded_json_list)
 
@@ -1807,6 +1850,8 @@ dataset_list_unique_series = datatype_suffix_identification(dataset_list_unique_
 dataset_list_unique_series = entity_labels_identification(dataset_list_unique_series)
 for index, unique_dic in enumerate(dataset_list_unique_series):
     print(unique_dic["message"])
+
+dataset_list_unique_series = check_part_entity(dataset_list_unique_series)
 
 # If BIDS-compliant dataset uploaded, set and apply IntendedFor mapping
 dataset_list_unique_series = set_IntendedFor_B0FieldIdentifier_B0FieldSource(dataset_list_unique_series, bids_compliant)
