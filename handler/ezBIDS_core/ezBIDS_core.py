@@ -1430,6 +1430,8 @@ def entity_labels_identification(dataset_list_unique_series):
                 if len(entity) > 2: # an entity less than 3 characters could cause problems, though I don't think there are any entities currently this short
                     if entity == "res" and ("rest" in sd or "rest" in json_path): # short for "resolution", but might be confused with 'rest'
                         pass
+                    elif entity == "dir": # ezBIDS already knows the phase encoding direction for dir entitiy label
+                        series_entities[key] = ""
                     elif entity in sd:
                         item = sd.split(entity)[-1][0] # what comes right after the entity
                         if item.isalpha() == False and item.isnumeric() == False: # non-alphanumeric character separates entity key from its value
@@ -1445,7 +1447,7 @@ def entity_labels_identification(dataset_list_unique_series):
                 else:
                     series_entities[key] = ""  
             else:
-                 series_entities[key] = ""     
+                series_entities[key] = ""
                                 
         """ If BIDS naming convention isn't detected, do a more thorough
         check for certain entities labels
@@ -1459,7 +1461,7 @@ def entity_labels_identification(dataset_list_unique_series):
             if len(match_index):
                 series_entities["task"] = cog_atlas_tasks[match_index[0]]
 
-        # dir (required for fmap/epi an highly recommended for dwi/dwi)
+        # dir (required for fmap/epi and highly recommended for dwi/dwi)
         if any(x in unique_dic["type"] for x in ["fmap/epi", "dwi/dwi"]) and not series_entities["direction"]:
             series_entities["direction"] = unique_dic["direction"]
 
