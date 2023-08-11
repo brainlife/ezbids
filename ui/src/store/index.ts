@@ -3,6 +3,62 @@ import { createStore } from 'vuex'
 
 import bidsEntities from '../assets/schema/objects/entities.json'
 
+// import { getFieldSeverity } from 'bids-validator-monorepo/bids-validator/src/schema/applyRules'
+// import { getFieldSeverity } from 'bids-validator/schema/applyRules'
+
+import { BIDSContext } from 'bids-validator/schema/context'
+import {
+    GenericRule,
+    GenericSchema,
+    SchemaFields,
+    SchemaTypeLike,
+} from 'bids-validator/types/schema'
+
+// export interface GenericRule {
+//     selectors?: string[]
+//     checks?: string[]
+//     columns?: Record<string, string>
+//     additional_columns?: string
+//     initial_columns?: string[]
+//     fields: Record<string, SchemaFields>
+//     issue?: SchemaIssue
+//     extensions?: string[]
+//     suffixes?: string[]
+//     stem?: string
+//     path?: string
+//     datatypes?: string[]
+//     pattern?: string
+//     name?: string
+//     format?: string
+//     required?: string
+//     index_columns?: string[]
+// }
+
+// export interface SchemaFields {
+//     level: string
+//     level_addendum?: string
+//     issue?: SchemaIssue
+// }
+
+// export interface SchemaIssue {
+//     code: string
+//     message: string
+//     level?: string
+// }
+
+// interface SchemaType {
+//     type: string
+//     enum?: string[]
+// }
+
+// interface AnyOf {
+//     anyOf: SchemaType[]
+// }
+
+// export type GenericSchema = { [key: string]: GenericRule | GenericSchema }
+// export type SchemaTypeLike = AnyOf | SchemaType
+
+
 export interface DatasetDescriptionObject {
     Name: string,
     Version: string,
@@ -54,7 +110,6 @@ export interface Series {
     validationWarnings: string[];
 
     type: string;
-    forType: string;
 
     SeriesDescription: string;
     SeriesNumber: string; //used to sort object by it
@@ -123,7 +178,6 @@ export interface IObject {
     _SeriesDescription: string; //copied from series for quick ref
     type: string; //override
     _type: string;
-    _forType: string;
 
     //primary key for session - but we want to keep these for sorting purpose
     AcquisitionDate: string;
@@ -318,6 +372,41 @@ const state = {
 export type IEzbids = typeof state.ezbids;
 export type IEvents = typeof state.events;
 
+interface checkMetadata {
+    modality: string,
+    datatype: string,
+    suffix: string,
+    filePath: string,
+    MetaDataField: string
+}
+
+// function evalJsonCheck(
+//     rule: GenericRule,
+//     context: BIDSContext,
+//     schema: GenericSchema,
+//     schemaPath: string,
+// ): void {
+
+//     const validateMetadata: checkMetadata[] = []
+
+//     for (const [key, requirement] of Object.entries(rule.fields)) {
+//         const severity = getFieldSeverity(requirement, context)
+//         const keyName = schema.objects.metadata[key].name
+
+
+//         if(severity && severity !== 'ignore' && !(keyName in context.sidecar) && !context.file.path.includes('.json') && keyName !== 'Name' && keyName !== 'BIDSVersion') {
+//             // console.log(context.modality, context.datatype, context.suffix, context.file.path, keyName)
+//             validateMetadata.push({ "modality": context.modality, 
+//                                     "datatype": context.datatype, 
+//                                     "suffix": context.suffix, 
+//                                     "filePath": context.file.path,
+//                                     "MetaDataField": keyName
+//                                 })
+//         }
+//     }
+//     console.log(validateMetadata)
+// }
+
 function loadDatatype(
     modality: string,
     datatypes: {[key: string]: BIDSSchemaEntities},
@@ -329,7 +418,7 @@ function loadDatatype(
         group.suffixes.forEach((suffix:string)=>{
             state.bidsSchema.datatypes[modality].options.push({
                 value: modality+"/"+suffix,
-                label: suffix, //bold, cbv, sbred, events, etc..
+                label: suffix, //bold, cbv, sbref, events, etc..
                 entities: group.entities,   //["subject", "session", etc..]
             });
         });

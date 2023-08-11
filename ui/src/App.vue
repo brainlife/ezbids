@@ -207,7 +207,6 @@ export default defineComponent({
                 //func/events doesn't have any series
                 o._SeriesDescription = series.SeriesDescription.replace('_RR', ""); //helps in objects view
                 o._type = series.type;
-                o._forType = series.forType;
             }
             if(o.type) o._type = o.type; //object level override
 

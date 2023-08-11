@@ -725,7 +725,6 @@ def generate_dataset_list(uploaded_files_list, data_type):
             "filesize": filesize,
             "NumVolumes": volume_count,
             "orientation": ornt,
-            "forType": "",
             "error": None,
             "IntendedFor": None,
             "B0FieldIdentifier": None,
@@ -1930,7 +1929,6 @@ def update_dataset_list(dataset_list, dataset_list_unique_series):
             if data["series_idx"] == unique_dic["series_idx"]:
                 data["entities"] = unique_dic["entities"]
                 data["type"] = unique_dic["type"]
-                data["forType"] = unique_dic["forType"]
                 data["error"] = unique_dic["error"]
                 data["message"] = unique_dic["message"]
                 data["IntendedFor"] = unique_dic["IntendedFor"]
@@ -2097,7 +2095,6 @@ def extract_series_info(dataset_list_unique_series):
             "AcquisitionDateTime": unique_dic["AcquisitionDateTime"],
             "entities": unique_dic["entities"],
             "type": unique_dic["type"],
-            "forType": unique_dic["forType"],
             "error": unique_dic["error"],
             "message": unique_dic["message"],
             "object_indices": []
