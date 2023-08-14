@@ -52,6 +52,32 @@ export function isPrimitive(obj) {
     return (obj !== Object(obj));
 }
 
+export function setVolumeThreshold($root) {
+    /*
+    Determine volume threshold for all func/bold acquisitions in dataset and set
+    to exclude if the number of volumes does not meet the volume threshold. Threshold 
+    caluclated based on the expected number of volumes collected in a 1-minute time frame,
+    with the formula (60-sec / tr), where tr == RepetitionTime
+    */
+    $root.objects.forEach(o=> {
+
+        //update analysisResults.warnings in case user went back to Series and adjusted things
+        if(o._type == "func/bold") {
+            let tr = o.items[0].sidecar.RepetitionTime
+            let numVolumes = o.analysisResults.NumVolumes
+            let numVolumes1min = Math.floor(60 / tr)
+            if(numVolumes <= numVolumes1min) {
+                o.exclude = true
+                o.analysisResults.warnings.push(`This func/bold sequence contains ${numVolumes} volumes, which is \
+                less than the threshold value of ${numVolumes1min} volumes, calculated by the expected number of \
+                volumes in a 1-minute time frame. This acquisition will thus be excluded from BIDS conversion. \
+                Please modify if incorrect`)
+            }
+        }
+    });
+
+}
+
 
 export function setSectionIDs($root) {
     /*
@@ -116,14 +142,17 @@ export function funcQA($root) {
         }
 
         //now check for corresponding func/bold == exclude, and go from there
-        if(o._type == "func/bold" && o.exclude == true && (!o._entities.mag || o._entities.mag == "mag")) {
+        if(o._type == "func/bold" && o.exclude == true && (!o._entities.mag || o._entities.mag == "mag" || o._entities.mag == "part")) {
             let funcBoldEntities = o._entities
             let badFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, funcBoldEntities))
             let badFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.mag == "phase" && deepEqual(Object.keys(e._entities).filter(e=>e != "part"), funcBoldEntities))
 
             for(const bad of [badFuncSBRef, badFuncBoldPhase]) {
                 bad.forEach(b=>{
-                    b.analysisResults.warnings = [`The corresponding func/bold (#${o.series_idx}) to this acquisition has been set to exclude from BIDS conversion. Recommendation is to also exclude this acquisition from BIDS conversion, unless you have good reason for keeping it.`]
+                    b.exclude = true
+                    b.analysisResults.warnings = [`The corresponding func/bold (#${o.series_idx}) to this acquisition \
+                    has been set to exclude from BIDS conversion. Since this func/sbref is linked, it will also be \
+                    excluded from conversion. Please modify if incorrect.`]
                 })
             }
         }
@@ -367,8 +396,7 @@ export function setIntendedFor($root) {
                         Object.assign(obj, {IntendedFor: []})
                         let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor
                         correspindingSeriesIntendedFor.forEach(i=>{
-                            let IntendedForIDs = section.filter(o=>o.series_idx == i).map(o=>o.idx)
-                            let dan = section.filter(o=>o.series_idx == i)
+                            let IntendedForIDs = section.filter(o=>o.series_idx == i && o.type != "func/events").map(o=>o.idx)
                             obj.IntendedFor = obj.IntendedFor.concat(IntendedForIDs)
                         });
                     }
@@ -427,7 +455,8 @@ export function validate_Entities_B0FieldIdentifier_B0FieldSource(entities, B0Fi
     for(const k in B0FieldIdentifier) {
         const v = B0FieldIdentifier[k];                                                                                
         if(v && !/^[a-zA-Z0-9-_]*$/.test(v)) {                                                                    
-            errors.push("B0FieldIdentifier (#"+k+"-indexed selection) contains non-alphanumeric character (dash [-] and underscore [_] characters acceptable)");                        
+            errors.push("B0FieldIdentifier (#"+k+"-indexed selection) contains non-alphanumeric character(s). \
+            The (dash [-] and underscore [_] characters are acceptable)");                        
         }                                                                                                       
     }
 
@@ -435,7 +464,8 @@ export function validate_Entities_B0FieldIdentifier_B0FieldSource(entities, B0Fi
     for(const k in B0FieldSource) {
         const v = B0FieldSource[k];                                                                                
         if(v && !/^[a-zA-Z0-9-_]*$/.test(v)) {                                                                    
-            errors.push("B0FieldSource (#"+k+"-indexed selection) contains non-alphanumeric character (dash [-] and underscore [_] characters acceptable)");                        
+            errors.push("B0FieldSource (#"+k+"-indexed selection) contains non-alphanumeric character(s). \
+            The (dash [-] and underscore [_] characters are acceptable)");                        
         }                                                                                                       
     }
     return errors;                                                                                          
@@ -883,7 +913,7 @@ export function createEventObjects(ezbids, files) {
             }
         }
 
-        //set subject_idx and session_idx to 0 if they're still undefined at this point, and adjust task,run entity labels
+        //set subject_idx and session_idx to 0 if they're still undefined at this point, and adjust task & run entity labels
         if(object.subject_idx === undefined) {
             object.subject_idx = 0
             if(!eventsMappingInfo.subject.eventsValue) {
@@ -970,7 +1000,6 @@ export function createEventObjects(ezbids, files) {
         object.analysisResults.section_id = section_id
         object.ModifiedSeriesNumber = ModifiedSeriesNumber
 
-        // console.log("created event object", object);
         eventObjects.push(object);
     });
 
