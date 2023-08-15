@@ -155,11 +155,11 @@ export default defineComponent({
                         fmapQA(this.ezbids);
                         dwiQA(this.ezbids);
                         setRun(this.ezbids);
-                        // setIntendedFor(this.ezbids);
                         this.mapObjects();
                         break;
                     case "object":
-                        createEventsTSV(this.ezbids, this.events);
+                        // createEventsTSV(this.ezbids, this.events);
+                        createEventsTSV(this.ezbids, this.ezbids.events);
                         setIntendedFor(this.ezbids);
                         break;
                     }

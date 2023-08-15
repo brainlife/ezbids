@@ -19,10 +19,10 @@
         </el-form-item>
         <!--sub options-->
         <p v-if="ezbids.defacingMethod == 'quickshear'">
-            <small>* Use ROBEX and QuickShear Average processing time. 1min per image</small>
+            <small>* Use ROBEX and QuickShear Average processing time. 1-min per image</small>
         </p>
         <p v-if="ezbids.defacingMethod == 'pydeface'">
-            <small>* pydeface uses fsl to align facial mask template. 5min per image</small>
+            <small>* pydeface uses FSL to align facial mask template. 5-min per image</small>
         </p>
     </el-form>
 

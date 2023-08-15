@@ -75,10 +75,10 @@ bids-validator $test_root > $test_root/validator.log || true
 
 if grep -w "ERR" $test_root/validator.log; then
 	echo "Uploaded data is not a BIDS-compliant dataset"
-    bids_compliant="no"
+    bids_compliant="false"
 else
     echo "Uploaded data is a BIDS-compliant dataset"
-	bids_compliant="yes"
+	bids_compliant="true"
 fi
 
 echo $test_root > $root/bids_compliant.log
@@ -86,7 +86,7 @@ echo $bids_compliant >> $root/bids_compliant.log
 
 cat $root/bids_compliant.log
 
-if [ $bids_compliant == "yes" ]; then
+if [ $bids_compliant == "true" ]; then
     # Skip certain processing steps, since uploaded data is already BIDS-compliant
 
     touch $root/dcm2niix_output

@@ -270,10 +270,12 @@ export default defineComponent({
         ...mapGetters(['getBIDSEntities', 'getURL', 'findSubject']),
 
         columns() {
-            return this.$store.state.events.columns;
+            return this.ezbids.events.columns;
+            // return this.$store.state.events.columns;
         },
         trialTypes() {
-            return this.$store.state.events.trialTypes;
+            return this.ezbids.events.trialTypes;
+            // return this.$store.state.events.trialTypes;
         },
     },
 
@@ -366,7 +368,7 @@ export default defineComponent({
                     this.events.sampleValues[key] = samples;
                 })
 
-                const columnMappings = mapEventColumns(tsvItem.events);
+                const columnMappings = mapEventColumns(this.ezbids.events, tsvItem.events);
                 Object.assign(this.columns, columnMappings);
 
                 console.log("successfully processed event files");

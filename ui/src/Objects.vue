@@ -176,11 +176,11 @@
                             <el-table :data="item.eventsBIDS" size="mini" border style="width: 100%">
                                 <el-table-column prop="onset" label="onset" />
                                 <el-table-column prop="duration" label="duration" />
-                                <el-table-column v-if="events.columns.sample" prop="sample" label="sample" />
-                                <el-table-column v-if="events.columns.trialType" prop="trial_type" label="trial_type" />
-                                <el-table-column v-if="events.columns.responseTime" prop="response_time" label="response_time" />
-                                <el-table-column v-if="events.columns.value" prop="value" label="value" />
-                                <el-table-column v-if="events.columns.HED" prop="HED" label="HED" />
+                                <el-table-column v-if="item.eventsBIDS[0].sample" prop="sample" label="sample" />
+                                <el-table-column v-if="item.eventsBIDS[0].trial_type" prop="trial_type" label="trial_type" />
+                                <el-table-column v-if="item.eventsBIDS[0].response_time" prop="response_time" label="response_time" />
+                                <el-table-column v-if="item.eventsBIDS[0].value" prop="value" label="value" />
+                                <el-table-column v-if="item.eventsBIDS[0].HED" prop="HED" label="HED" />
                             </el-table>
                         </el-form-item>
                         <br>
@@ -487,8 +487,8 @@
                             if(func._exclude === true || func._type == "exclude") {
                                 o.exclude = true
                                 o._exclude = true
-                                o.validationWarnings = ["The corresponding func/bold #"+func.series_idx+" is currently set to exclude from BIDS conversion. \
-                                Since this func/sbref is linked, it will also be excluded from conversion. Please modify if incorrect."]
+                                o.validationWarnings = [`The corresponding func/bold #"+func.series_idx+" is currently set to exclude from BIDS conversion. \
+                                Since this func/sbref is linked, it will also be excluded from conversion. Please modify if incorrect.`]
                             }
                             if(func._exclude === false) {
                                 o.exclude = false

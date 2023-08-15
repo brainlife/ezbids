@@ -66,12 +66,13 @@ export function setVolumeThreshold($root) {
             let tr = o.items[0].sidecar.RepetitionTime
             let numVolumes = o.analysisResults.NumVolumes
             let numVolumes1min = Math.floor(60 / tr)
+            // let numVolumes1min = 5
             if(numVolumes <= numVolumes1min) {
                 o.exclude = true
-                o.analysisResults.warnings.push(`This func/bold sequence contains ${numVolumes} volumes, which is \
+                o.analysisResults.warnings = [`This func/bold sequence contains ${numVolumes} volumes, which is \
                 less than the threshold value of ${numVolumes1min} volumes, calculated by the expected number of \
-                volumes in a 1-minute time frame. This acquisition will thus be excluded from BIDS conversion. \
-                Please modify if incorrect`)
+                volumes in a 1min time frame. This acquisition will thus be excluded from BIDS conversion. \
+                Please modify if incorrect`]
             }
         }
     });
@@ -885,7 +886,6 @@ export function createEventObjects(ezbids, files) {
             validationWarnings: []
         };
 
-
         //modify object values
         for(const entity of ["subject", "session", "task", "run"]) {
             let ezBIDSvalues = eventsMappingInfo[entity].ezBIDSvalues
@@ -1009,40 +1009,44 @@ export function createEventObjects(ezbids, files) {
 
 /*
 this function receives one example event object. we will do our best to map the event keys (columns) and
-map them to bids events.tsv column names.
+map them to bids events.tsv column names. If an ezBIDS configuration (finalized.json) was uploaded, with
+imaging data, those mappings are auto generated when user uploads new events timing files.
 */
-export function mapEventColumns(events) {
-    //we only have to return things that we found out.. (leave other things not set)
-    const columns = Object.values(Object.keys(events[0]))
+export function mapEventColumns(ezbids_events, events) {
+    if(ezbids_events.columns.onset != "") {
+        return ezbids_events.columns
+    } else {
+        // //we only have to return things that we found out.. (leave other things not set)
+        // const columns = Object.values(Object.keys(events[0]))
+        return {
 
-    return {
+            //type definitions are in store/index
 
-        //type definitions are in store/index
+            onsetLogic: "eq",
+            onset: null,
+            onset2: null,
+            onsetUnit: "sec",
 
-        onsetLogic: "eq",
-        onset: null,
-        onset2: null,
-        onsetUnit: "sec",
+            durationLogic: "eq",
+            duration: null,
+            duration2: null,
+            durationUnit: "sec",
 
-        durationLogic: "eq",
-        duration: null,
-        duration2: null,
-        durationUnit: "sec",
+            sampleLogic: "eq",
+            sample: null,
+            sample2: null,
+            sampleUnit: "samples",
 
-        sampleLogic: "eq",
-        sample: null,
-        sample2: null,
-        sampleUnit: "samples",
+            trialType: null,
 
-        trialType: null,
+            responseTimeLogic: "eq",
+            responseTime: null,
+            responseTime2: null,
+            responseTimeUnit: "sec",
 
-        responseTimeLogic: "eq",
-        responseTime: null,
-        responseTime2: null,
-        responseTimeUnit: "sec",
+            values: null,
 
-        values: null,
-
-        HED: null
+            HED: null
+        }
     }
 }

@@ -92,9 +92,10 @@ export function createEventsTSV(ezbids : IEzbids, events : IEvents) {
 
                 if(events.columns.trialType) rec.trial_type = event[events.columns.trialType];
                 if(events.columns.value) rec.value = event[events.columns.value];
-                if(events.columns.HED) rec.HEAD = event[events.columns.HED];
+                if(events.columns.HED) rec.HED = event[events.columns.HED];
 
                 (item.eventsBIDS as IBIDSEvent[]).push(rec);
+
             });
         });
     });

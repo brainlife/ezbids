@@ -140,7 +140,7 @@ export interface IBIDSEvent {
     trial_type?: string,
     response_time?: number;
     value?: string|number;
-    HEAD?: string;
+    HED?: string;
 }
 
 export interface IObjectItem {
@@ -371,6 +371,7 @@ const state = {
 }
 export type IEzbids = typeof state.ezbids;
 export type IEvents = typeof state.events;
+
 
 interface checkMetadata {
     modality: string,

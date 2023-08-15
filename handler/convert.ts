@@ -31,7 +31,7 @@ fs.writeFileSync(root+"/bids/"+datasetName+"/dataset_description.json", JSON.str
 fs.writeFileSync(root+"/bids/"+datasetName+"/.bidsignore", `
 **/excluded
 **/*_MP2RAGE.*
-finalized.json
+*finalized.json
 `);
 
 info.readme += `
@@ -197,14 +197,14 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
                 break;
             case "json":
                 //handle B0FieldIdentifier and B0FieldSource if present
-                if(o.B0FieldIdentifier.length) {
+                if(o.B0FieldIdentifier) {
                     if(o.B0FieldIdentifier.length > 1) {
                         item.sidecar.B0FieldIdentifier = Object.values(o.B0FieldIdentifier)
                     }else{
                         item.sidecar.B0FieldIdentifier = o.B0FieldIdentifier[0]
                     }
                 }
-                if(o.B0FieldSource.length) {
+                if(o.B0FieldSource) {
                     if(o.B0FieldSource.length > 1) {
                         item.sidecar.B0FieldSource = Object.values(o.B0FieldSource)
                     }else{
@@ -310,7 +310,6 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
                     }else{
                         item.sidecar.B0FieldIdentifier = o.B0FieldIdentifier[0]
                     }
-                    console.log(item.sidecar.B0FieldIdentifier)
                 }
                 if(o.B0FieldSource.length) {
                     if(o.B0FieldSource.length > 1) {
