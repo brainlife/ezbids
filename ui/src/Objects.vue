@@ -224,7 +224,7 @@
     
     import { IObject, Session, OrganizedSession, OrganizedSubject } from './store'
     import { prettyBytes } from './filters'
-    import { deepEqual, validate_Entities_B0FieldIdentifier_B0FieldSource } from './libUnsafe'
+    import { deepEqual, setIntendedFor, validate_Entities_B0FieldIdentifier_B0FieldSource } from './libUnsafe'
     
     // @ts-ignore
     import { Splitpanes, Pane } from 'splitpanes'
@@ -381,6 +381,7 @@
             intendedForLabel(o: IObject) {
                 const series = this.ezbids.series[o.series_idx];
                 if(!series) return "no-series";
+                // if(!series && o._type != "func/events") return "no-series";
                 let l = "#"+series.series_idx+" ";
                 l += o._type;
                 for(let k in o._entities) {
@@ -393,6 +394,8 @@
     
             validate(o: IObject|null) {
                 if(!o) return;
+
+                setIntendedFor(this.ezbids)
     
                 let entities_requirement = this.getBIDSEntities(o._type);
     

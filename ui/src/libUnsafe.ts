@@ -71,12 +71,11 @@ export function setVolumeThreshold($root) {
                 o.exclude = true
                 o.analysisResults.warnings = [`This func/bold sequence contains ${numVolumes} volumes, which is \
                 less than the threshold value of ${numVolumes1min} volumes, calculated by the expected number of \
-                volumes in a 1min time frame. This acquisition will thus be excluded from BIDS conversion. \
-                Please modify if incorrect`]
+                volumes in a 1 min time frame. This acquisition will thus be excluded from BIDS conversion unless \
+                unexcluded. Please modify if incorrect.`]
             }
         }
     });
-
 }
 
 
@@ -397,7 +396,7 @@ export function setIntendedFor($root) {
                         Object.assign(obj, {IntendedFor: []})
                         let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor
                         correspindingSeriesIntendedFor.forEach(i=>{
-                            let IntendedForIDs = section.filter(o=>o.series_idx == i && o.type != "func/events").map(o=>o.idx)
+                            let IntendedForIDs = section.filter(o=>o.series_idx == i && o._type != "func/events").map(o=>o.idx)
                             obj.IntendedFor = obj.IntendedFor.concat(IntendedForIDs)
                         });
                     }

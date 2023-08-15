@@ -20,7 +20,7 @@ import { IObject } from './store'
 import { ElNotification } from 'element-plus'
 //import 'element-plus/es/components/notification/style/css'
 
-import { setSectionIDs, funcQA, fmapQA, dwiQA, setRun, setIntendedFor, setVolumeThreshold } from './libUnsafe'
+import { setSectionIDs, funcQA, fmapQA, dwiQA, setRun, setVolumeThreshold } from './libUnsafe'
 //import { IObjectItem } from './store'
 import { createEventsTSV } from './lib'
 
@@ -158,9 +158,9 @@ export default defineComponent({
                         this.mapObjects();
                         break;
                     case "object":
-                        // createEventsTSV(this.ezbids, this.events);
+                        // createEventsTSV(this.ezbids, this.events); // functionality replace by next line
                         createEventsTSV(this.ezbids, this.ezbids.events);
-                        setIntendedFor(this.ezbids);
+                        // setIntendedFor(this.ezbids); // Moving this into Objects.vue directly
                         break;
                     }
 

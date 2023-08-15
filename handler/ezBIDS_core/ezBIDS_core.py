@@ -1218,6 +1218,7 @@ def finalized_configuration(dataset_list_unique_series, subjects_information, co
             ref_IntendedFor = config_series_ref["IntendedFor"]
             ref_B0FieldIdentifier = config_series_ref["B0FieldIdentifier"]
             ref_B0FieldSource = config_series_ref["B0FieldSource"]
+            ref_message = config_series_ref["message"]
 
             unique_dic["type"] = ref_type
             unique_dic["entities"] = ref_entities
@@ -1225,9 +1226,13 @@ def finalized_configuration(dataset_list_unique_series, subjects_information, co
             unique_dic["B0FieldIdentifier"] = ref_B0FieldIdentifier
             unique_dic["B0FieldSource"] = ref_B0FieldSource
             unique_dic["finalized_match"] = True
-            unique_dic["message"] = "Datatype, suffix, and entity information was determined based on match "\
-                "with corresponding data in ezBIDS configuration (finalized.json) file. Please modify if incorrect"
-
+            if "localizer" in ref_message:
+                unique_dic["message"] = "Datatype, suffix, and entity information was determined based on match "\
+                    "with corresponding data in ezBIDS configuration (finalized.json) file. This data is believed to "\
+                    "be a localizer. Please modify if incorrect"
+            else:
+                unique_dic["message"] = "Datatype, suffix, and entity information was determined based on match "\
+                    "with corresponding data in ezBIDS configuration (finalized.json) file. Please modify if incorrect"
     """
     If events.tsv files (for func/bold) are referenced in the configuration, grab this information and display
     it on the Events page if user uploads event timing data again.
