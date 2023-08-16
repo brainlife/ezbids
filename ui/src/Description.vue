@@ -122,23 +122,6 @@ export default defineComponent({
             <el-input placeholder="DOI assigned for this dataset"
                 v-model="dd.DatasetDOI"/>
         </el-form-item>
-
-        <!-- <el-form-item label="GeneratedBy">
-        <div v-if="dd.GeneratedBy && dd.GeneratedBy[0]">
-            <template v-for="(value, key, index) in dd.GeneratedBy[0]" :key="index">
-            <el-form-item v-if="key !== 'Container'" :label="key">
-                <el-input :placeholder="value" v-model="dd.GeneratedBy[0][key]" />
-            </el-form-item>
-            </template>
-            <label class="el-form-item">Container</label>
-            <div v-if="dd.GeneratedBy[0].Container">
-            <el-form-item v-for="(containerValue, containerKey, containerIndex) in dd.GeneratedBy[0].Container" :key="containerIndex" :label="containerKey">
-                <el-input :placeholder="containerValue" v-model="dd.GeneratedBy[0].Container[containerKey]" />
-            </el-form-item>
-            </div>
-        </div>
-        </el-form-item> -->
-
         <el-form-item label="GeneratedBy">
         <br>
         <div v-if="dd.GeneratedBy && dd.GeneratedBy[0]">
