@@ -32,6 +32,9 @@
                     <el-button @click="addNewColumn" type="primary">Add</el-button>
                 </template>
             </el-input>
+            <div>
+                <a href="https://bids-specification.readthedocs.io/en/stable/03-modality-agnostic-files.html#participants-file">See here for suggestions</a>
+            </div>
         </p>
 
     </el-form>
@@ -53,7 +56,7 @@
         </thead>
         <tbody>
             <tr v-for="subject_idx in finalSubs" :key="subject_idx">
-                <th>{{ezbids.subjects[parseInt(subject_idx)].subject}}</th>
+                <th>{{ezbids.subjects[(subject_idx)].subject}}</th>
                 <td v-for="(column, key) in ezbids.participantsColumn" :key="key">
                     <el-input v-model.trim="ezbids.participantsInfo[subject_idx][key]" size="mini"/>
                 </td>
@@ -92,7 +95,7 @@ export default defineComponent({
 
         //only show subjects that are really used (not excluded)
         finalSubs() {
-            let finalSubs = [] as string[]
+            let finalSubs = [] as number[]
             this.ezbids._organized.forEach((sub: OrganizedSubject)=>{
                 let use = false;
                 sub.sess.forEach(ses=>{
