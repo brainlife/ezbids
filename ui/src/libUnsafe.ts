@@ -1045,7 +1045,9 @@ export function mapEventColumns(ezbids_events, events) {
 
             values: null,
 
-            HED: null
+            HED: null,
+
+            stim_file: null
         }
     }
 }

@@ -254,7 +254,7 @@ def generate_dataset_description(DATA_DIR, bids_compliant):
         {
             "DOI": "n/a",
             "URL": "https://brainlife.io/ezbids/",
-            "Version": "n/a"
+            "Version": "1.0.0"
         }
     ]
 
@@ -2430,7 +2430,8 @@ else:
             "responseTime2": None,
             "responseTimeUnit": "sec",
             "values": None,
-            "HED": None
+            "HED": None,
+            "stim_file": None
         },
         "loaded": False,
         "sampleValues": {},

@@ -203,6 +203,18 @@
             </td>
         </tr>
 
+        <tr>
+            <th>stim_file</th>
+            <td>
+                <columnSelecter v-model="columns.stim_file" :columnKeys="ezbids.columnKeys" :sampleValues="events.sampleValues"/>
+
+                <p>
+                    Represents the location of the stimulus file (such as an image, video, or audio file) presented at the given onset time. There are no restrictions on the file formats of the stimuli files, but they should be stored in the /stimuli directory (under the root directory of the dataset; with OPTIONAL subdirectories). The values under the stim_file column correspond to a path relative to /stimuli. For example images/cat03.jpg will be translated to /stimuli/images/cat03.jpg. See <a href="https://bids-specification.readthedocs.io/en/stable/99-appendices/03-hed.html">BIDS Specification / Appendix 3</a>
+                </p>
+                <br>
+            </td>
+        </tr>        
+
         </table>
 
         <!--

@@ -58,12 +58,23 @@ import {
 // export type GenericSchema = { [key: string]: GenericRule | GenericSchema }
 // export type SchemaTypeLike = AnyOf | SchemaType
 
+export interface ContainerObject {
+    Type: string;
+    Tag: string;
+}
 
-export interface DatasetDescriptionObject {
-    Name: string,
-    Version: string,
-    Description: string,
-    CodeURL: string,
+export interface GeneratedByObject {
+    Name: string;
+    Version: string;
+    Description: string;
+    CodeURL: string;
+    Container: [ContainerObject];
+}
+
+export interface SourceDatasetObject {
+    DOI: string;
+    URL: string;
+    Version: string;
 }
 
 export interface DatasetDescription {
@@ -80,8 +91,8 @@ export interface DatasetDescription {
     EthicsApprovals: string[];
     ReferencesAndLinks: string[];
     DatasetDOI: string;
-    GeneratedBy: [DatasetDescriptionObject];
-    SourceDatasets: string[];
+    GeneratedBy: [GeneratedByObject];
+    SourceDatasets: [SourceDatasetObject];
 }
 
 export interface PatientInfo {
@@ -141,6 +152,7 @@ export interface IBIDSEvent {
     response_time?: number;
     value?: string|number;
     HED?: string;
+    stim_file?: string;
 }
 
 export interface IObjectItem {
@@ -356,6 +368,8 @@ const state = {
             value: null,
 
             HED: null,
+
+            stim_file: null,
         },
 
         trialTypes: {

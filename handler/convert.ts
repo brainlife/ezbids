@@ -233,6 +233,11 @@ async.forEachOf(info.objects, (o, idx, next_o)=>{
             const headers = Object.keys(events.eventsBIDS[0]) //take first index value to see which columns user selected
             events.content = headers.join("\t")+"\n";
             events.eventsBIDS.forEach(rec=>{
+                if(rec.stim_file) {
+                    if(!rec.stim_file.startsWith("/stimuli/")) {
+                        rec.stim_file = "/stimuli/" + rec.stim_file
+                    }
+                }
                 const row = [];
                 headers.forEach(key=>{
                     row.push(rec[key]);

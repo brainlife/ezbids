@@ -181,6 +181,7 @@
                                 <el-table-column v-if="item.eventsBIDS[0].response_time" prop="response_time" label="response_time" />
                                 <el-table-column v-if="item.eventsBIDS[0].value" prop="value" label="value" />
                                 <el-table-column v-if="item.eventsBIDS[0].HED" prop="HED" label="HED" />
+                                <el-table-column v-if="item.eventsBIDS[0].stim_file" prop="stim_file" label="stim_file" />
                             </el-table>
                         </el-form-item>
                         <br>
