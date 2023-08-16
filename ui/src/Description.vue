@@ -122,17 +122,46 @@ export default defineComponent({
             <el-input placeholder="DOI assigned for this dataset"
                 v-model="dd.DatasetDOI"/>
         </el-form-item>
-        <!-- <el-form-item label="GeneratedBy" prop="GeneratedBy">
-            <el-select v-model="dd.GeneratedBy" :items="dd.GeneratedBy" filled return-object
-                placeholder="Specify provenance of the dataset" style="width: 100%">
-            </el-select>
-        </el-form-item>      -->
-        <el-form-item label="SourceDatasets" prop="SourceDatasets">
-            <el-select v-model="dd.SourceDatasets" multiple filterable allow-create default-first-option
-                placeholder="Specify location(s) and relevant attribute(s) of all source datasets" style="width: 100%">
-            </el-select>
-        </el-form-item>       
 
+        <!-- <el-form-item label="GeneratedBy">
+        <div v-if="dd.GeneratedBy && dd.GeneratedBy[0]">
+            <template v-for="(value, key, index) in dd.GeneratedBy[0]" :key="index">
+            <el-form-item v-if="key !== 'Container'" :label="key">
+                <el-input :placeholder="value" v-model="dd.GeneratedBy[0][key]" />
+            </el-form-item>
+            </template>
+            <label class="el-form-item">Container</label>
+            <div v-if="dd.GeneratedBy[0].Container">
+            <el-form-item v-for="(containerValue, containerKey, containerIndex) in dd.GeneratedBy[0].Container" :key="containerIndex" :label="containerKey">
+                <el-input :placeholder="containerValue" v-model="dd.GeneratedBy[0].Container[containerKey]" />
+            </el-form-item>
+            </div>
+        </div>
+        </el-form-item> -->
+
+        <el-form-item label="GeneratedBy">
+        <br>
+        <div v-if="dd.GeneratedBy && dd.GeneratedBy[0]">
+            <template v-for="(value, key, index) in dd.GeneratedBy[0]" :key="index">
+            <el-form-item v-if="key !== 'Container'" :label="key">
+                <el-input :placeholder="value" v-model="dd.GeneratedBy[0][key]"/>
+            </el-form-item>
+            <el-form-item v-if="key == 'Container'" :label="key" style="width: 50px"></el-form-item>
+            </template>
+            <div v-if="dd.GeneratedBy[0].Container">
+            <el-form-item v-for="(containerValue, containerKey, containerIndex) in dd.GeneratedBy[0].Container" :key="containerIndex" :label="containerKey">
+                <el-input :placeholder="containerValue" v-model="dd.GeneratedBy[0].Container[containerKey]" />
+            </el-form-item>
+            </div>
+        </div>
+        </el-form-item>
+        <el-form-item label="SourceDatasets">
+            <div v-if="dd.SourceDatasets && dd.SourceDatasets[0]">
+                <el-form-item v-for="(value, key) in dd.SourceDatasets[0]" :key="key" :label="key">
+                    <el-input :placeholder="value" v-model="dd.SourceDatasets[0][key]" />
+                </el-form-item>
+            </div>
+        </el-form-item>
         <p style="border-top: 1px solid #0002" prop="readme"/>
         <el-form-item label="README(.md)">
             <el-input type="textarea" 

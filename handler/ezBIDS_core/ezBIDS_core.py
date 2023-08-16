@@ -239,13 +239,13 @@ def generate_dataset_description(DATA_DIR, bids_compliant):
     dataset_description_dic["GeneratedBy"] = [
         {
             "Name": "ezBIDS",
-            "Version": "n/a",
+            "Version": "1.0.0",
             "Description": "ezBIDS is a web-based tool for converting neuroimaging datasets to BIDS, requiring"
                            " neither coding nor knowledge of the BIDS specification",
             "CodeURL": "https://brainlife.io/ezbids/",
             "Container": {
-                "Type": "n/a",
-                "Tag": "n/a"
+                "Type": "docker",
+                "Tag": "brainlife/ezbids-handler"
             }
         }
     ]
@@ -253,8 +253,8 @@ def generate_dataset_description(DATA_DIR, bids_compliant):
     dataset_description_dic["SourceDatasets"] = [
         {
             "DOI": "n/a",
-            "URL": "https://brainlife.io/ezbids/",
-            "Version": "1.0.0"
+            "URL": "n/a",
+            "Version": "n/a"
         }
     ]
 
