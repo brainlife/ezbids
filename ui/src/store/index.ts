@@ -3,16 +3,17 @@ import { createStore } from 'vuex'
 
 import bidsEntities from '../assets/schema/objects/entities.json'
 
-// import { getFieldSeverity } from 'bids-validator-monorepo/bids-validator/src/schema/applyRules'
-// import { getFieldSeverity } from 'bids-validator/schema/applyRules'
+// import { getFieldSeverity } from '../../../bids-validator/bids-validator/src/schema/applyRules'
 
-import { BIDSContext } from 'bids-validator/schema/context'
+import { BIDSContext } from '../../../bids-validator/bids-validator/src/schema/context'
 import {
     GenericRule,
     GenericSchema,
     SchemaFields,
     SchemaTypeLike,
-} from 'bids-validator/types/schema'
+} from '../../../bids-validator/bids-validator/src/types/schema'
+import { Severity } from '../../../bids-validator/bids-validator/src/types/issues'
+
 
 // export interface GenericRule {
 //     selectors?: string[]
@@ -116,6 +117,8 @@ export interface Subject {
 
 export interface Series {
     entities: any;
+
+    PED: string;
 
     validationErrors: string[];
     validationWarnings: string[];
@@ -226,8 +229,9 @@ interface BIDSEntities {
     [key: string]: { //task, subject, session, etc..
         name: string;
         entity: string;
-        format: string;
         description: string;
+        type: string;
+        format: string
     }
 }
 
@@ -300,28 +304,28 @@ const state = {
     ezbids: {
         notLoaded: true,
 
-        //pretty much straight out of bids/dataset_description.json
-        datasetDescription: {
-            Name: "",
-            BIDSVersion: "",
-            DatasetType: "",
-            License: "",
-            Authors: [],
-            Acknowledgements: "", //"Special thanks to Korbinian Brodmann for help in formatting this dataset in BIDS. We thank Alan Lloyd Hodgkin and Andrew Huxley for helpful comments and discussions about the experiment and manuscript; Hermann Ludwig He  lmholtz for administrative support; and Claudius Galenus for providing data for the medial-to-lateral index analysis.",
-            HowToAcknowledge: "", //"Please cite this paper: https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
-            Funding: [
-                //"National Institute of Neuroscience Grant F378236MFH1",
-                //"National Institute of Neuroscience Grant 5RMZ0023106"
-            ],
-            EthicsApprovals: [
-                //"Army Human Research Protections Office (Protocol ARL-20098-10051, ARL 12-040, and ARL 12-041)"
-            ],
-            ReferencesAndLinks: [
-                //"https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",items
-                //"http://doi.org/1920.8/jndata.2015.7"
-            ],
-            DatasetDOI: "", //"10.0.2.3/dfjj.10"
-        } as DatasetDescription,
+        // //pretty much straight out of bids/dataset_description.json
+        // datasetDescription: {
+        //     Name: "",
+        //     BIDSVersion: "",
+        //     DatasetType: "",
+        //     License: "",
+        //     Authors: [],
+        //     Acknowledgements: "", //"Special thanks to Korbinian Brodmann for help in formatting this dataset in BIDS. We thank Alan Lloyd Hodgkin and Andrew Huxley for helpful comments and discussions about the experiment and manuscript; Hermann Ludwig He  lmholtz for administrative support; and Claudius Galenus for providing data for the medial-to-lateral index analysis.",
+        //     HowToAcknowledge: "", //"Please cite this paper: https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
+        //     Funding: [
+        //         //"National Institute of Neuroscience Grant F378236MFH1",
+        //         //"National Institute of Neuroscience Grant 5RMZ0023106"
+        //     ],
+        //     EthicsApprovals: [
+        //         //"Army Human Research Protections Office (Protocol ARL-20098-10051, ARL 12-040, and ARL 12-041)"
+        //     ],
+        //     ReferencesAndLinks: [
+        //         //"https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",items
+        //         //"http://doi.org/1920.8/jndata.2015.7"
+        //     ],
+        //     DatasetDOI: "", //"10.0.2.3/dfjj.10"
+        // } as DatasetDescription,
 
         readme: "",
         participantsColumn: {},

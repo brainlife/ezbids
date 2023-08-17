@@ -3,7 +3,7 @@
 """
 Created on Tue Jan 25 13:55:10 2022
 
-update ezBIDS_core.json with pngPaths and moviePath
+update ezBIDS_core.json with pngPaths
 
 @author: dlevitas
 """
@@ -20,7 +20,7 @@ os.chdir(data_dir)
 
 json_list = pd.read_csv("list", header=None, lineterminator="\n").to_numpy().flatten().tolist()
 
-# place paths to thumbnails and movies in ezBIDS_core.json
+# place paths to image thumbnails in ezBIDS_core.json
 with open("ezBIDS_core.json", "r") as ezBIDS_json:
     ezBIDS = json.load(ezBIDS_json)
 

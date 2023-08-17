@@ -31,7 +31,7 @@
                             @click="select(o, o_ses)">
     
                             <el-tag type="info" size="mini" v-if="o.series_idx !== undefined" :title="'Series#'+o.series_idx+' '+o._SeriesDescription">#{{o.series_idx}}</el-tag>&nbsp;
-                            <datatype :type="o._type" :series_idx="o.series_idx" :entities="o.entities"/>
+                            <datatype :type="o._type" :series_idx="o.series_idx" :entities="o._entities"/>
                             <small v-if="o._type == 'exclude'">&nbsp;({{o._SeriesDescription}})</small>
     
                             <span v-if="!isExcluded(o)">
@@ -473,86 +473,82 @@
                         break;
                     }
                 }
-    
-                //for func/sbref object(s), update validationWarnings if corresponding func/bold has been excluded
+
+                /* Ensure direction (dir) entity labels are capitalized (e.g. AP, not ap).
+                Can occur when user adds this themselves.
+                */
+                if(o._entities.direction && o._entities.direction !== "") {
+                    if(o._entities.direction !== o._entities.direction.toUpperCase()) {
+                        o.validationErrors.push("Please ensure that the phase-encoding direction entity label is fully capitalized")
+                    }
+                }
+
+                //func/sbref are implicitly linked to a func/bold; make sure these have same entities and exclusion criteria
                 if(o._type == "func/sbref") {
-                    let funcBoldObjects = this.$store.state.ezbids.objects.filter(o=>o._type == "func/bold" && (o._entities.part == "" || o._entities.part == "mag" || o._entities.part == "phase"))
-                    funcBoldObjects.forEach(func=>{
-    
-                        //TODO - rewrite this.
-                        let funcEntities = Object.fromEntries(Object.entries(func._entities).filter(([_, v]) => v != "")); //remove empty entity labels
-                        let objEntities = Object.fromEntries(Object.entries(o._entities).filter(([_, v]) => v != "")); //remove empty entity labels
-                        if(deepEqual(funcEntities, objEntities)) {
-                            o.ModifiedSeriesNumber = func.ModifiedSeriesNumber
-                            o.analysisResults.section_id = func.analysisResults.section_id
-    
-                            o.validationWarnings = [];
-    
-                            if(func._exclude === true || func._type == "exclude") {
-                                o.exclude = true
-                                o._exclude = true
-                                o.validationWarnings = [`The corresponding func/bold #"+func.series_idx+" is currently set to exclude from BIDS conversion. \
-                                Since this func/sbref is linked, it will also be excluded from conversion. Please modify if incorrect.`]
+                    let correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>parseInt(object.ModifiedSeriesNumber) == parseInt(o.ModifiedSeriesNumber) + 1 && object._type == "func/bold") //func/sbref [should] always come right before their func/bold
+                    if(correspondingFuncBold) { // should be no more than one
+                        correspondingFuncBold.forEach((boldObj:IObject)=>{
+                            o.analysisResults.section_id = boldObj.analysisResults.section_id
+                            for(let k in boldObj._entities) {
+                                if(boldObj._entities[k] !== "" && k !== "echo") {
+                                    if(k === "part" && boldObj._entities[k] === "phase") {
+                                        //pass
+                                    } else {
+                                        o._entities[k] = boldObj._entities[k]
+                                    }
+                                }
                             }
-                            if(func._exclude === false) {
+                            if(boldObj._exclude === true || correspondingFuncBold._type === "exclude") {
+                            o.exclude = true
+                            o._exclude = true
+                            o.validationWarnings = [`The corresponding func/bold #${boldObj.series_idx} is currently set to exclude from BIDS conversion. \
+                                Since this func/sbref is linked, it will also be excluded from conversion unless the corresponding
+                                func/bold is unexcluded. Please modify if incorrect.`]
+                            }
+                            if(boldObj._exclude === false) {
                                 o.exclude = false
                                 o._exclude = false
                                 o.validationWarnings = []
                             }
-                        }
-                    })
+                        })
+                    }
                 }
     
-                //for func/events object(s), update series_idx and ModifiedSeriesNumber to match corresponding func/bold object.
-                //Also update validationWarnings if corresponding func/bold has been excluded
+                //func/events are implicitly linked to a func/bold; make sure these have same entities and exclusion criteria
                 if(o._type == "func/events") {
-                    let funcBoldObjects = this.$store.state.ezbids.objects.filter(o=>o._type == "func/bold" && (o._entities.part == "" || o._entities.part == "mag" || o._entities.part == "phase"))
-                    funcBoldObjects.forEach(func=>{
-    
-                        //TODO - rewrite this.
-                        let funcEntities = Object.fromEntries(Object.entries(func._entities).filter(([_, v]) => v != "")); //remove empty entity labels
-                        let objEntities = Object.fromEntries(Object.entries(o._entities).filter(([_, v]) => v != "")); //remove empty entity labels
-                        if(deepEqual(funcEntities, objEntities)) {
-                            o.ModifiedSeriesNumber = func.ModifiedSeriesNumber
-                            o.analysisResults.section_id = func.analysisResults.section_id
-    
-                            o.validationWarnings = [];
-    
-                            if(func._exclude === true || func._type == "exclude") {
-                                o.exclude = true
-                                o._exclude = true
-                                o.validationWarnings = ["The corresponding func/bold #"+func.series_idx+" is currently set to exclude from BIDS conversion. \
-                                Since this func/sbref is linked, it will also be excluded from conversion. Please modify if incorrect."]
+                    let correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>object._type == "func/bold" &&
+                        object._entities.subject == o._entities.subject &&
+                        object._entities.session == o._entities.session &&
+                        object._entities.task == o._entities.task &&
+                        object._entities.run == o._entities.run)
+                    if(correspondingFuncBold) { // should be no more than one
+                        correspondingFuncBold.forEach((boldObj:IObject)=>{
+                            o.ModifiedSeriesNumber = boldObj.ModifiedSeriesNumber
+                            o.analysisResults.section_id = boldObj.analysisResults.section_id
+                            for(let k in boldObj._entities) {
+                                if(boldObj._entities[k] !== "" && k !== "echo") {
+                                    if(k === "part" && boldObj._entities[k] === "phase") {
+                                        //pass
+                                    } else {
+                                        o._entities[k] = boldObj._entities[k]
+                                    }
+                                }
                             }
-                            if(func._exclude === false) {
+                            if(boldObj._exclude === true || correspondingFuncBold._type === "exclude") {
+                            o.exclude = true
+                            o._exclude = true
+                            o.validationWarnings = [`The corresponding func/bold #${boldObj.series_idx} is currently set to exclude from BIDS conversion. \
+                                Since this func/events is linked, it will also be excluded from conversion unless the corresponding
+                                func/bold is unexcluded. Please modify if incorrect.`]
+                            }
+                            if(boldObj._exclude === false) {
                                 o.exclude = false
                                 o._exclude = false
                                 o.validationWarnings = []
                             }
-                        }
-                    })
-    
-                    //find bold object with the same set of entities
-                    const matchingBold = this.$store.state.ezbids.objects
-                        .filter((o:IObject)=>o._type == "func/bold")
-                        ////common func/bold acquisitions are magnitude ("mag"); the part entity label can have this value or be left blank. Both convey the same information
-                        .filter((o:IObject)=>(o._entities.part == "" || o._entities.part == "mag"))
-                        .find((func:IObject)=>{
-    
-                            for(let k in o._entities) {
-                                if(o._entities[k] != func._entities[k]) return false;
-                            }
-                            return true
-                        });
-    
-                    if(matchingBold) {
-                        o.ModifiedSeriesNumber = matchingBold.ModifiedSeriesNumber;
-                        o.analysisResults.section_id = matchingBold.analysisResults.section_id;
-                        if(matchingBold._exclude) {
-                            o.validationWarnings = ["The corresponding func/bold #${matchingBold.series_idx} is currently set to exclude from BIDS conversion. \
-                            Since this func/sbref is linked, it will also be excluded from conversion. Please modify if incorrect."]
-                        }
+                        })
                     }
+                    console.log(o)
                 }
             },
     

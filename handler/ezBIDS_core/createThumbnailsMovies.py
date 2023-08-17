@@ -27,59 +27,6 @@ os.environ['MPLCONFIGDIR'] = os.getcwd() + "/configs/"
 # Functions
 
 
-# def create_movie_thumbnails(nifti_file, output_dir, object_img_array, v):
-#     """
-#     Generates a PNG for each volume of a 4D acquisition.
-
-#     Parameters
-#     ----------
-
-#     nifti_file : string
-#         path of 4D nifti file.
-
-#     output_dir: string
-#         path of folder where movie PNG files will be stored
-
-#     object_img_array: numpy.darray
-#         result of nib.load(nifti_file).dataobj
-
-#     v: int
-#         volume index
-#     """
-
-#     max_len = len(str(object_img_array.shape[3]))
-
-#     if not os.path.isfile("{}/{}.png".format(output_dir, v)):
-
-#         slice_x = object_img_array[floor(object_img_array.shape[0] / 2), :, :, v]
-#         slice_y = object_img_array[:, floor(object_img_array.shape[1] / 2), :, v]
-#         slice_z = object_img_array[:, :, floor(object_img_array.shape[2] / 2), v]
-
-#         fig, axes = plt.subplots(1, 3, figsize=(9, 3))
-#         for index, slices in enumerate([slice_x, slice_y, slice_z]):
-#             axes[index].imshow(slices.T, cmap="gray", origin="lower", aspect="auto")
-#             axes[index].axis("off")
-#         plt.tight_layout(pad=0, w_pad=0, h_pad=0)
-#         plt.close()
-
-#         fig.canvas.draw()
-
-#         w, h = fig.canvas.get_width_height()
-#         buf = np.frombuffer(fig.canvas.tostring_argb(), dtype=np.uint8)
-#         buf.shape = (w, h, 4)
-
-#         buf = np.roll(buf, 3, axis=2)
-
-#         w, h, d = buf.shape
-#         png = Image.frombytes("RGBA", (w, h), buf.tobytes())
-
-#         # Sort files in UNIX-friendly way (i.e. zero pad)
-#         v_len = len(str(v))
-#         new_v = "0" * (max_len - v_len) + str(v)
-
-#         png.save("{}/{}.png".format(output_dir, new_v))
-
-
 def create_thumbnail(nifti_file, image):
     """
     Generates a PNG for the 2nd volume of a 4D acquisition.

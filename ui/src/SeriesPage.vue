@@ -51,7 +51,34 @@
                         </el-option-group>
                     </el-select>
                     <br>
-                </el-form-item>
+                </el-form-item>  
+
+                <div v-if="ss.type">
+                    <el-form-item v-for="(v, entity) in getSomeEntities(ss.type)" :key="entity"
+                        :label="entity.toString()+'-'+(v=='required'?' *':'')" style="width: 350px">
+                        <el-popover v-if="bidsSchema.entities[entity]" :width="350"
+                            :title="bidsSchema.entities[entity].name"
+                            :content="bidsSchema.entities[entity].description">
+                            <template #reference>
+                                <el-input v-model="ss.entities[entity]" size="small" :required="v == 'required'" @change="validateAll()"/>
+                            </template>
+                        </el-popover>
+                    </el-form-item>
+                    <!-- <p style="border-top: 1px solid #eee; padding: 10px 20px;">
+                        <small>The following metadata fields are required, recommoneded, or optional for this datatype/suffix. Please enter missing required information.</small>
+                        <el-form-item v-for="(v, md) in getSomeMetadata(ss.type)" :key="md"
+                            :label="md.toString()+'-'+(v=='required'?' *':'')" label-width="350" style="width: 350px">
+                            <el-popover v-if="bidsSchema.metadata[md]" :width="350"
+                                :title="bidsSchema.metadata[md].name"
+                                :content="bidsSchema.metadata[md].description">
+                                <template #reference>
+                                    <el-input v-model="ss.md" size="small" :required="v == 'required'" @change="validateAll()"/>
+                                </template>
+                            </el-popover>
+                        </el-form-item>
+                        <p style="border-top: 1px solid #eee; padding: 10px 20px;"></p>
+                    </p> -->
+                </div>
 
                 <div v-if="ss.type && ss.type.startsWith('fmap/')">
                     <el-form-item label="IntendedFor">
@@ -88,20 +115,7 @@
                             <small>* Optional/Recommended: If fieldmap/distortion correction will be applied to this image, enter the identical text string from the B0FieldIdentifier field of the sequence(s) used to create the fieldmap/distortion estimation. Leave field blank if unclear.</small>
                         </p>
                     </el-form-item>
-                </div>              
-
-                <div v-if="ss.type">
-                    <el-form-item v-for="(v, entity) in getSomeEntities(ss.type)" :key="entity"
-                        :label="entity.toString()+'-'+(v=='required'?' *':'')" style="width: 350px">
-                        <el-popover v-if="bidsSchema.entities[entity]" :width="350"
-                            :title="bidsSchema.entities[entity].name"
-                            :content="bidsSchema.entities[entity].description">
-                            <template #reference>
-                                <el-input v-model="ss.entities[entity]" size="small" :required="v == 'required'" @change="validateAll()"/>
-                            </template>
-                        </el-popover>
-                    </el-form-item>
-                </div>
+                </div>            
 
                 <el-form-item label="Common Metadata">
                     <small>All objects under this series contain the following common metadata.</small>
@@ -197,7 +211,7 @@ export default defineComponent({
 
     computed: {
         ...mapState(['ezbids', 'bidsSchema', 'config']),
-        ...mapGetters(['getBIDSEntities', 'getURL']), //doesn't work with ts?
+        ...mapGetters(['getBIDSEntities', 'getBIDSMetadata', 'getURL']), //doesn't work with ts?
     },
 
     mounted() {
@@ -220,6 +234,11 @@ export default defineComponent({
             delete entities.session;
             return entities;
         },
+
+        // getSomeMetadata(type: string): any {
+        //     const metadata = Object.assign({}, this.getBIDSMetadata(type));
+        //     return metadata;
+        // },
 
         toggleInfo(entity: string) {
             this.showInfo[entity] = !this.showInfo[entity];
@@ -263,6 +282,26 @@ export default defineComponent({
                     if(!s.entities[k]) {
                         s.validationErrors.push("entity: "+k+" is required.");
                     }
+                }
+            }
+
+            // let metadata = this.getBIDSMetadata(s.type);
+            // for(const [key, value] of Object.entries(metadata)) {
+            //     if(value == "required") {
+            //         s.validationWarnings.push("json sidecar metadata: "+key+" is required.");
+
+            //     }
+            // }
+
+            /* Ensure direction (dir) entity labels are capitalized (e.g. AP, not ap) and match ezBIDS internal PED checks.
+            Can occur when user adds this themselves.
+            */
+            if(s.entities.direction != "") {
+                if(s.entities.direction !== s.entities.direction.toUpperCase()) {
+                    s.validationErrors.push("Please ensure that the direction entity label is fully capitalized")
+                }
+                if(s.entities.direction.toUpperCase() !== s.PED) {
+                    s.validationWarnings.push(`ezBIDS detects that the direction shoula be ${s.PED}, not ${s.entities.direction}. Please be sure before continuing`)
                 }
             }
 

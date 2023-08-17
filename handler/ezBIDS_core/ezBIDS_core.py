@@ -1987,13 +1987,15 @@ def entity_labels_identification(dataset_list_unique_series, lookup_dic):
 
             # echo
             if (unique_dic["EchoNumber"]
-                and not any(x in unique_dic["type"] for x in ["fmap/epi",
-                                                            "fmap/magnitude1",
-                                                            "fmap/magnitude2",
-                                                            "fmap/phasediff",
-                                                            "fmap/phase1",
-                                                            "fmap/phase2",
-                                                            "fmap/fieldmap"])):
+                and not any(x in unique_dic["type"]for x in
+                            [
+                                "fmap/epi",
+                                "fmap/magnitude1",
+                                "fmap/magnitude2",
+                                "fmap/phasediff",
+                                "fmap/phase1",
+                                "fmap/phase2",
+                                "fmap/fieldmap"])):
                 series_entities["echo"] = str(unique_dic["EchoNumber"])
 
             # flip
@@ -2232,7 +2234,6 @@ def modify_objects_info(dataset_list):
                     items.append({"path": item,
                                   "name": "nii.gz",
                                   "pngPaths": [],
-                                  "moviePath": None,
                                   "headers": protocol["headers"]})
 
             # Objects-level info for ezBIDS_core.json
@@ -2297,6 +2298,7 @@ def extract_series_info(dataset_list_unique_series):
             "nifti_path": unique_dic["nifti_path"],
             "series_idx": unique_dic["series_idx"],
             "AcquisitionDateTime": unique_dic["AcquisitionDateTime"],
+            "PED": unique_dic["direction"],
             "entities": unique_dic["entities"],
             "type": unique_dic["type"],
             "error": unique_dic["error"],

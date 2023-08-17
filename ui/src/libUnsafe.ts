@@ -1,27 +1,7 @@
 // @ts-nocheck
 
+import { objectToString } from "@vue/shared";
 import { isPlainObject } from "vue/node_modules/@vue/shared";
-
-// export function setB0FieldSource($root) {
-
-//     $root._organized.forEach(subGroup=>{
-//         subGroup.sess.forEach(sesGroup=>{
-
-//             let protocolObjects = sesGroup.objects
-
-//             // for(const protocol of protocolObjects) {
-//             //     Object.keys(protocol).forEach(key=>{
-//             //         if(key == "_type" && protocol[key] == "dwi/dwi") {
-
-//             // let funcObjs = protocolObjects.filter(o=>o._type == "func/bold" && o.exclude == false && (!o._entities.mag || o._entities.mag == "mag"))
-//             // let fmapObjs = protocolObjects.filter(o=>o_type.includes("fmap") && o.exclude == false)
-//             // if(funcObjs.length && fmapObjs.length) {
-//             //     funcObjs.forEach(funcObj=>{
-//             //     })
-//             // }
-//         });
-//     });
-// }
 
 //deepEqual and isPrimitive functions come from https://stackoverflow.com/a/45683145
 export function deepEqual(obj1, obj2) {
@@ -944,7 +924,6 @@ export function createEventObjects(ezbids, files) {
             object.entities.run = randRunID //set the runID to a new value, which user would then correct.
             randRunID++
         }
-
 
         //update section_id, series_idx, and ModifiedSeriesNumber
         if(sessions.length > 0) {
