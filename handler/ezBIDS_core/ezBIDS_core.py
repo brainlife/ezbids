@@ -250,13 +250,13 @@ def generate_dataset_description(DATA_DIR, bids_compliant):
         }
     ]
 
-    dataset_description_dic["SourceDatasets"] = [
-        {
-            "DOI": "n/a",
-            "URL": "n/a",
-            "Version": "n/a"
-        }
-    ]
+    # dataset_description_dic["SourceDatasets"] = [
+    #     {
+    #         "DOI": None,
+    #         "URL": None,
+    #         "Version": None
+    #     }
+    # ]
 
     # Explicit checks
     if dataset_description_dic["Name"] == "":

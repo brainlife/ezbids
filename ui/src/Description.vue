@@ -138,13 +138,13 @@ export default defineComponent({
             </div>
         </div>
         </el-form-item>
-        <el-form-item label="SourceDatasets">
+        <!-- <el-form-item label="SourceDatasets">
             <div v-if="dd.SourceDatasets && dd.SourceDatasets[0]">
                 <el-form-item v-for="(value, key) in dd.SourceDatasets[0]" :key="key" :label="key">
                     <el-input :placeholder="value" v-model="dd.SourceDatasets[0][key]" />
                 </el-form-item>
             </div>
-        </el-form-item>
+        </el-form-item> -->
         <p style="border-top: 1px solid #0002" prop="readme"/>
         <el-form-item label="README(.md)">
             <el-input type="textarea" 
