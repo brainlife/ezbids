@@ -250,6 +250,8 @@ def generate_dataset_description(DATA_DIR, bids_compliant):
         }
     ]
 
+    dataset_description_dic["SourceDatasets"] = []
+
     # dataset_description_dic["SourceDatasets"] = [
     #     {
     #         "DOI": None,
