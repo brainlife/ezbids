@@ -3,7 +3,7 @@ import { createStore } from 'vuex'
 
 import bidsEntities from '../assets/schema/objects/entities.json'
 
-// import { getFieldSeverity } from '../../../bids-validator/bids-validator/src/schema/applyRules'
+import { getFieldSeverity } from '../../../bids-validator/bids-validator/src/schema/applyRules'
 
 import { BIDSContext } from '../../../bids-validator/bids-validator/src/schema/context'
 import {
