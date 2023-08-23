@@ -34,6 +34,47 @@ router.get('/health', (req, res, next) => {
     }
     res.json({ status, message, date: new Date() });
 });
+/**
+ * @swagger
+ * paths:
+ *   /session:
+ *     post:
+ *       summary: Create a new session
+ *       description: This endpoint allows for the creation of a new session. It sets the status to 'created' and stores the request headers.
+ *       tags:
+ *         - Session
+ *       requestBody:
+ *         description: Session object to be stored
+ *         required: true
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Session'
+ *       responses:
+ *         200:
+ *           description: Returns the created session
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 $ref: '#/components/schemas/Session'
+ *         400:
+ *           description: Bad request
+ *         500:
+ *           description: Server error
+ * 
+ * components:
+ *   schemas:
+ *     Session:
+ *       type: object
+ *       properties:
+ *         status:
+ *           type: string
+ *           description: Status of the session
+ *           example: created
+ *         request_headers:
+ *           type: object
+ *           description: Headers of the request when creating the session
+ */
 router.post('/session', (req, res, next) => {
     req.body.status = "created";
     req.body.request_headers = req.headers;
