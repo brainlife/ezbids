@@ -61,7 +61,7 @@ router.get('/health', (req, res, next) => {
  *           description: Bad request
  *         500:
  *           description: Server error
- * 
+ *
  * components:
  *   schemas:
  *     Session:
@@ -103,7 +103,6 @@ router.post('/session', (req, res, next) => {
         next(err);
     });
 });
-
 /**
  * @swagger
  * paths:
@@ -215,7 +214,57 @@ router.get('/session/:session_id', (req, res, next) => {
  *         500:
  *           description: Server error
  */
-
+router.get('/session/:session_id', (req, res, next) => {
+    models.Session.findById(req.params.session_id).then(session => {
+        res.json(session);
+    }).catch(err => {
+        next(err);
+    });
+});
+/**
+ * @swagger
+ * paths:
+ *   /session/{session_id}/deface:
+ *     post:
+ *       summary: Deface a session by its ID
+ *       description: This endpoint allows defacing an existing session by its `session_id`. The session status is set to 'deface' and a status message is set.
+ *       tags:
+ *         - Session
+ *       parameters:
+ *         - in: path
+ *           name: session_id
+ *           schema:
+ *             type: string
+ *           required: true
+ *           description: The session ID to deface
+ *       requestBody:
+ *         description: Deface options and parameters
+ *         required: true
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 param1:
+ *                   type: string
+ *                 param2:
+ *                   type: string
+ *                 ...
+ *       responses:
+ *         200:
+ *           description: Successfully defaced the session
+ *           content:
+ *             text/plain:
+ *               schema:
+ *                 type: string
+ *                 example: "ok"
+ *         400:
+ *           description: Bad request
+ *         404:
+ *           description: Session not found
+ *         500:
+ *           description: Server error
+ */
 router.post('/session/:session_id/deface', (req, res, next) => {
     models.Session.findById(req.params.session_id).then(session => {
         if (!session)
@@ -229,7 +278,6 @@ router.post('/session/:session_id/deface', (req, res, next) => {
         });
     });
 });
-
 router.post('/session/:session_id/canceldeface', (req, res, next) => {
     models.Session.findById(req.params.session_id).then(session => {
         if (!session)

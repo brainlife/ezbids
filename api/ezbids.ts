@@ -11,9 +11,24 @@ import config = require("./config");
 
 //import sendSeekable = require('send-seekable');
 
+// setup swagger
+import swaggerUi = require('swagger-ui-express');
+import swaggerJsdoc = require('swagger-jsdoc');
+
+const options = {
+    definition: {
+      openapi: '3.0.0',
+      info: {
+        title: 'EZBIDS API',
+        version: '1.0.0',
+      },
+    },
+    apis: ['./controllers.js'], // files containing annotations as above
+  };
+const swaggerSpec = swaggerJsdoc(options);
 //init express
 const app: express.Application  = express();
-app.use(cors({ origin: '*' }));
+app.use(cors());
 app.use(compression());
 app.use(nocache());
 //app.use(sendSeekable);
@@ -31,7 +46,7 @@ app.use(bodyParser.json({
 }));
 
 app.use('/', require('./controllers'));
-
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 //error handling
 //app.use(expressWinston.errorLogger(config.logger.winston)); 
 app.use(function(err, req, res, next) {
@@ -64,4 +79,3 @@ models.connect(err=>{
 //increase timeout for dataset download .. (default 120s)
 //without this, places like nki/s3 will timeout
 //server.timeout = 300*1000; 
-
