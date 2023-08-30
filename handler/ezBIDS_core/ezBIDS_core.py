@@ -1552,7 +1552,8 @@ def create_lookup_info():
                                             '"EchoNumber" in unique_dic["sidecar"]',
                                             'unique_dic["EchoNumber"] == 2',
                                             '"_e2_ph" in unique_dic["json_path"]',
-                                            '"_e1_ph" not in dataset_list_unique_series[index - 2]["json_path"]'
+                                            'len(dataset_list_unique_series) > 2 and "_e1_ph" not in '
+                                            'dataset_list_unique_series[index - 2]["json_path"]'
                                         ]
                                     )
                                 elif suffix == "phase1":
@@ -1569,7 +1570,8 @@ def create_lookup_info():
                                             '"EchoNumber" in unique_dic["sidecar"]',
                                             'unique_dic["EchoNumber"] == 2',
                                             '"_e2_ph" in unique_dic["json_path"]',
-                                            '"_e1_ph" in dataset_list_unique_series[index - 2]["json_path"]'
+                                            'len(dataset_list_unique_series) > 2 and "_e1_ph" in '
+                                            'dataset_list_unique_series[index - 2]["json_path"]'
                                         ]
                                     )
                                 elif suffix in ["magnitude", "fieldmap"]:  # specific to GE scanners
