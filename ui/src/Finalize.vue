@@ -221,7 +221,8 @@ export default defineComponent({
         },
 
         sendBrainlife(pipeline?: 'DWI') {
-            window.open(`../projects#ezbids=${this.session._id}${pipeline ? '&pipeline=DWI' : ''}`, `_brainlife.${this.session._id}`);
+            const pipelineString = pipeline ? `&pipeline=${pipeline}` : '';
+            window.open(`../projects#ezbids=${this.session._id}${pipelineString}`, `_brainlife.${this.session._id}`);
         },
 
         sendOpenneuro() {
