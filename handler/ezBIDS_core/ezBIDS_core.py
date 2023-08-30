@@ -1639,7 +1639,7 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
         datatype and suffix labels.
 
     config: boolean
-        Specifies whether an ezBIDS configuation file (finalized.json) was detected in the uploaded or not
+        Specifies whether an ezBIDS configuration file (finalized.json) was detected in the uploaded or not
 
     Returns
     -------
@@ -2100,7 +2100,7 @@ def check_part_entity(dataset_list_unique_series, config):
         List of dictionaries for each unique acquisition series in dataset.
 
     config: boolean
-        Specifies whether an ezBIDS configuation file (finalized.json) was detected in the uploaded or not
+        Specifies whether an ezBIDS configuration file (finalized.json) was detected in the uploaded or not
 
     Returns
     -------
@@ -2202,7 +2202,7 @@ def modify_objects_info(dataset_list):
                 protocol["message"] = protocol["error"]
                 protocol["type"] = "exclude"
 
-            # Check for negative dimesions and exclude from BIDS conversion if they exist
+            # Check for negative dimensions and exclude from BIDS conversion if they exist
             if len([x for x in image.shape if x < 0]):
                 protocol["exclude"] = True
                 protocol["type"] = "exclude"
