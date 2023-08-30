@@ -36,9 +36,12 @@
             </p>
             <p>
                 <el-button @click="download" type="primary">Get BIDS</el-button>
+
+                <a :href="config.apihost+'/download/'+session._id+'/finalized.json'" download="finalized.json">
+                    <el-button @click="download" type="primary" style="float: right" >Download configuration/template</el-button>
+                </a>
+                <p align="right">Saves a configuration file that can be uploaded with subsequent data to save you time!</p>
             </p>
-
-
             <p>
             Or send the dataset to other cloud resources.
             </p>
@@ -99,9 +102,6 @@
         </el-collapse-item>
         <el-collapse-item title="Session" name="session">
             <pre class="text">{{session}}</pre>
-        </el-collapse-item>
-        <el-collapse-item title="Files" name="files">
-            <a :href="config.apihost+'/download/'+session._id+'/finalized.json'">finalized.json</a>
         </el-collapse-item>
     </el-collapse>
     <br>
