@@ -6,7 +6,7 @@ datatype, suffix, entity labels [acq, run, dir, etc]) based on dcm2niix output.
 This information is then displayed in the ezBIDS UI, where users can make
 edits/modifications as they see fit, before finalizing their data into a BIDS-compliant dataset.
 
-Flake8 is used for linting, which highlights sytax and style issues as defined by the PEP guide. Arguements include:
+Flake8 is used for linting, which highlights syntax and style issues as defined by the PEP guide. Arguments include:
     --max-line-length=125
     --ignore=E722,W503
 
@@ -87,7 +87,7 @@ def modify_uploaded_dataset_list(uploaded_json_list):
         from BIDS conversion
 
     config: boolean
-        Specifies whether an ezBIDS configuation file (finalized.json) was detected in the uploaded or not
+        Specifies whether an ezBIDS configuration file (finalized.json) was detected in the uploaded or not
 
     config_file: string
         Path to the ezBIDS configuration file
@@ -464,7 +464,7 @@ def generate_dataset_list(uploaded_files_list, data_type):
         list of files is generated from preprocess.sh
 
     data_type: str
-        Specifies whether the uplaoded data (if NIfTI/JSON) was converted by dcm2niix/pypet2bids.
+        Specifies whether the uploaded data (if NIfTI/JSON) was converted by dcm2niix/pypet2bids.
         If not, this value becomes "exclude", otherwise set it "".
 
     Returns
@@ -781,8 +781,8 @@ def generate_dataset_list(uploaded_files_list, data_type):
 
 def organize_dataset(dataset_list):
     """
-    Organize data files into psuedo subject (and session, if appplicable) groups.
-    This is particularily necessary when anaonymized data is provided, since crucial
+    Organize data files into pseudo subject (and session, if appplicable) groups.
+    This is particularly necessary when anaonymized data is provided, since crucial
     metadata including AcquisitionDateTime, PatientName, PatientID, etc are removed.
     Typically, these fields assist ezBIDS in determining subject (and session) mapping,
     so will try to use other metadata (AcquisitionTime, SeriesNumber, etc) to perform

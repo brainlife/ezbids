@@ -36,7 +36,7 @@ export function setVolumeThreshold($root) {
     /*
     Determine volume threshold for all func/bold acquisitions in dataset and set
     to exclude if the number of volumes does not meet the volume threshold. Threshold 
-    caluclated based on the expected number of volumes collected in a 1-minute time frame,
+    calculated based on the expected number of volumes collected in a 1-minute time frame,
     with the formula (60-sec / tr), where tr == RepetitionTime
     */
     $root.objects.forEach(o=> {

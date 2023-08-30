@@ -13,7 +13,7 @@ services:
       timeout: 10s
       retries: 5
     ports:
-      - 27417:27017 #for local debuggin
+      - 27417:27017 #for local debugging
 
   api:
     build: .
