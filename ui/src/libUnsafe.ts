@@ -330,9 +330,7 @@ export function setRun($root) {
     // Set run entity label if not already specified at Series level
 
     // Loop through subjects
-
     $root._organized.forEach(subGroup=>{
-
         // Loop through sessions
         subGroup.sess.forEach(sesGroup=>{
             // Determine series_idx values
@@ -340,13 +338,31 @@ export function setRun($root) {
             let uniqueSeriesIndices = Array.from(new Set(allSeriesIndices))
 
             uniqueSeriesIndices.forEach(si=>{
-                let seriesObjects = sesGroup.objects.filter(e=>e.series_idx == si && !e._exclude)
+                let seriesObjects = sesGroup.objects.filter(e=>e.series_idx === si && !e._exclude && e._type !== "exclude")
                 let run = 1
                 if(seriesObjects.length > 1) {
                     seriesObjects.forEach(obj=>{
-                        obj.entities.run = run.toString()
+                        obj._entities.run = run.toString()
+                        obj.entities.run = obj._entities.run
                         run++
                     });
+                } else if (seriesObjects.length == 1) {
+                    seriesObjects.forEach(obj=>{
+                        if (obj._type.startsWith("func") && !obj._exclude && obj._type !== "func/events") {
+                            obj._entities.run = "1"
+                            obj.entities.run = obj._entities.run
+                        } else if (!obj._type.startsWith("func") && obj.validationErrors.length == 0) {
+                            obj._entities.run = ""
+                            obj.entities.run = obj._entities.run
+                        }
+                    })
+                }
+                let excludedSeriesObjects = sesGroup.objects.filter(e=>e.series_idx === si && e._exclude || e._type === "exclude")
+                if(excludedSeriesObjects) {
+                    excludedSeriesObjects.forEach(excludedObj=>{
+                        excludedObj._entities.run = ""
+                        excludedObj.entities.run = excludedObj._entities.run
+                    })
                 }
             });
         });
@@ -419,6 +435,26 @@ function findMostCommonValue(arr){
           arr.filter(v => v===a).length
         - arr.filter(v => v===b).length
     ).pop();
+}
+
+export function align_entities($root) {
+    /*
+    Applied on Dataset Review page
+    There are two ways entities are stored:
+        1). entities - more top level and reflects user modifcations
+        2). _entities - more ezBIDS backend and what is automatically displayed
+    
+    Since we want to give users final say, let their edits/modifications (entities) take precedent.
+    */
+    $root.objects.forEach(o=>{
+        if (!o._exclude) {
+            for (const [key, value] of Object.entries(o.entities)) {
+                if (key !== "subject" && key !== "session" && value !== "") {
+                    o._entities[key] = value
+                }
+            }
+        }
+    });
 }
 
 export function validate_Entities_B0FieldIdentifier_B0FieldSource(entities, B0FieldIdentifier, B0FieldSource/*: Series*/) {     
@@ -821,8 +857,8 @@ export function createEventObjects(ezbids, files) {
         excplitly map it.
         */
 
-        let section_id = 1 //default value unless otherwise determined
-        let ModifiedSeriesNumber = "01" //default value unless otherwise determined
+        let section_id = 0 //default value unless otherwise determined
+        let ModifiedSeriesNumber = "00" //default value unless otherwise determined
         let sidecar = {}
 
         //create new events object
@@ -935,7 +971,7 @@ export function createEventObjects(ezbids, files) {
                     ).analysisResults.section_id
             }
             catch {
-                section_id = 1
+                section_id = section_id
             }
 
             try {
@@ -948,7 +984,7 @@ export function createEventObjects(ezbids, files) {
                 ).ModifiedSeriesNumber
             }
             catch {
-                ModifiedSeriesNumber = "01"
+                ModifiedSeriesNumber = ModifiedSeriesNumber
             }
 
         }else{
@@ -959,7 +995,7 @@ export function createEventObjects(ezbids, files) {
                     ).analysisResults.section_id
             }
             catch {
-                section_id = 1
+                section_id = section_id
             }
 
             try {
@@ -971,7 +1007,7 @@ export function createEventObjects(ezbids, files) {
                 ).ModifiedSeriesNumber
             }
             catch {
-                ModifiedSeriesNumber = "01"
+                ModifiedSeriesNumber = ModifiedSeriesNumber
             }
 
         }
