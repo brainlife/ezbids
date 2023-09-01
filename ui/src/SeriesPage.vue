@@ -33,6 +33,8 @@
         </div>
         <div v-if="ss">
             <h5>BIDS Datatype, Suffix, Entities</h5>
+            <!-- <pre>{{ ezbids.series }}</pre> -->
+            <pre>{{ getFieldsMetaData() }}</pre>
             <el-form label-width="150px">
                 <el-alert v-if="ss.message" :title="ss.message" type="warning" style="margin-bottom: 4px;"/>
                 <div style="margin-bottom: 10px;">
@@ -188,7 +190,8 @@ import { prettyBytes } from './filters'
 import { Series, IObject } from './store'
 
 import { validate_Entities_B0FieldIdentifier_B0FieldSource } from './libUnsafe'
-
+import aslYaml from "../src/assets/schema/rules/sidecars/asl.yaml";
+import petYaml from '../src/assets/schema/rules/sidecars/pet.yaml';
 // @ts-ignore
 import { Splitpanes, Pane } from 'splitpanes'
 
@@ -206,12 +209,14 @@ export default defineComponent({
         return {
             showInfo: {} as any,
             ss: null as Series|null, //selected series
+            petYaml: petYaml,
+            aslYaml: aslYaml,
         }
     },
 
     computed: {
         ...mapState(['ezbids', 'bidsSchema', 'config']),
-        ...mapGetters(['getBIDSEntities', 'getBIDSMetadata', 'getURL']), //doesn't work with ts?
+        ...mapGetters(['getBIDSEntities', 'getBIDSMetadata', 'getURL', 'getMetaDataRule']), //doesn't work with ts?
     },
 
     mounted() {
@@ -333,9 +338,33 @@ export default defineComponent({
 
         validateAll() {
             this.ezbids.series.forEach(this.validate);
-        }
-    },
-});
+        },
+        getFieldsMetaData() {
+            let requiredFields = [];
+            let recommendedFields = [];
+            for (let key in aslYaml) {
+                if (aslYaml.hasOwnProperty(key)) {
+                    const current = aslYaml[key];
+
+                    // Loop through the fields
+                    for (let field in current.fields) {
+                    if (current.fields.hasOwnProperty(field)) {
+                        const level = current.fields[field].level;
+                        
+                        // Check if the field is required or recommended
+                        if (level === 'required') {
+                        requiredFields.push({key, field});
+                        } else if (level === 'recommended') {
+                        recommendedFields.push({key, field});
+                        }
+                    }
+                    }
+                }
+            }
+            return {requiredFields, recommendedFields};
+        },
+},
+})
 
 </script>
 

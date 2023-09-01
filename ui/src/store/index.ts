@@ -13,7 +13,9 @@ import {
     SchemaTypeLike,
 } from '../../../bids-validator/bids-validator/src/types/schema'
 import { Severity } from '../../../bids-validator/bids-validator/src/types/issues'
-
+import aslYaml from '../assets/schema/rules/sidecars/asl.yaml';
+import petYaml from '../assets/schema/rules/sidecars/pet.yaml';
+import * as yaml from 'js-yaml';
 
 // export interface GenericRule {
 //     selectors?: string[]
@@ -340,6 +342,7 @@ const state = {
 
         defacingMethod: "",
         includeExcluded: true,
+        sideCar: {} as {[key: string]: any},
     },
 
     events: {
@@ -444,6 +447,42 @@ function loadDatatype(
     }
 }
 
+/* ezbids.sideCar = {
+    "anat/t1w": {
+        //yamlfile data fields for the input boxes
+        "Field1" : {
+            severity:"required/recommended/optional" //optional -> not forcing user, 
+            recommended -> ui enhancement, required -> error
+            type: "string",
+            description: "description",
+            conditional: "if Field2 == 'something' then this is required",
+            default: "default value",
+        },
+    }
+}
+*/
+
+/** 
+ * 
+ * function LoadMetaDataRules() {
+ * 2 files loaded -> 1st perf/asl -> asl.yaml and convert it to above json
+ * pet -> pet.yaml 
+ * 
+ * }
+*/
+
+async function LoadMetaDataRules() {
+    console.log("loading metadata rules");
+    console.log("aslYaml", aslYaml);
+    console.log("petYaml", petYaml);
+    state.ezbids.sideCar = {};
+    state.ezbids.sideCar["asl"] = aslYaml;
+    state.ezbids.sideCar["pet"] = petYaml;
+}
+
+LoadMetaDataRules();
+
+
 import dwiDatatype from '../assets/schema/rules/datatypes/dwi.json'
 loadDatatype("dwi", dwiDatatype, "Diffusion");
 
@@ -504,6 +543,7 @@ const store = createStore({
 
                 defacingMethod: "",
                 includeExcluded: true,
+                sideCar: {},
             };
 
             Object.assign(state.events, {
