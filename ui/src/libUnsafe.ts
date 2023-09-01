@@ -441,7 +441,7 @@ export function align_entities($root) {
     /*
     Applied on Dataset Review page
     There are two ways entities are stored:
-        1). entities - more top level and reflects user modifcations
+        1). entities - more top level and reflects user modifications
         2). _entities - more ezBIDS backend and what is automatically displayed
     
     Since we want to give users final say, let their edits/modifications (entities) take precedent.
@@ -1027,7 +1027,15 @@ map them to bids events.tsv column names. If an ezBIDS configuration (finalized.
 imaging data, those mappings are auto generated when user uploads new events timing files.
 */
 export function mapEventColumns(ezbids_events, events) {
-    if(ezbids_events.columns.onset != "") {
+    if(ezbids_events.columns.onset != "") { // configuration file specified previous events mapping
+        let expectedColumns = ezbids_events.columns
+        let eventsColumns = events[0]
+
+        for (const [key, value] of Object.entries(expectedColumns)) { // make sure currently upload events columns have what's expected from the configuration
+            if (!Object.keys(eventsColumns).includes(value) && !key.includes("Unit") & !key.includes("Logic") && value !== null) {
+                ezbids_events.columns[key] = null
+            }
+        }
         return ezbids_events.columns
     } else {
         // //we only have to return things that we found out.. (leave other things not set)
