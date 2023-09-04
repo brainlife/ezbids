@@ -150,7 +150,7 @@ export default defineComponent({
                     this.$store.commit("setPage", this.pages[idx+1]);
                     switch(this.page) {
                     case "event":
-                        // setVolumeThreshold(this.ezbids);
+                        setVolumeThreshold(this.ezbids);
                         setSectionIDs(this.ezbids);
                         funcQA(this.ezbids);
                         fmapQA(this.ezbids);

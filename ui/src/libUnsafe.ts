@@ -119,8 +119,8 @@ export function funcQA($root) {
             }
         }
 
-        //now check for corresponding func/bold == exclude, and go from there
-        if(o._type == "func/bold" && o.exclude == true && (!o._entities.mag || o._entities.mag == "mag" || o._entities.mag == "part")) {
+        //now check for corresponding func/bold === exclude, and go from there
+        if(o._type === "func/bold" && o.exclude && (!o._entities.mag || o._entities.mag == "mag" || o._entities.mag == "part")) {
             let funcBoldEntities = o._entities
             let badFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, funcBoldEntities))
             let badFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.mag == "phase" && deepEqual(Object.keys(e._entities).filter(e=>e != "part"), funcBoldEntities))
@@ -136,10 +136,10 @@ export function funcQA($root) {
         }
 
         // #2
-        if(o._type == "func/bold" && o.exclude == false && (!o._entities.mag || o._entities.mag == "mag")) {
+        if(o._type === "func/bold" && !o.exclude && (!o._entities.mag || o._entities.mag == "mag")) {
             let boldEntities = o._entities
             let boldPED = o.items[0].sidecar.PhaseEncodingDirection
-            let badSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, boldEntities) &&
+            let badSBRef = $root.objects.filter(e=>e._type === "func/sbref" && deepEqual(e._entities, boldEntities) &&
                                                 e.items[0].sidecar.PhaseEncodingDirection != boldPED).map(e=>e.idx)
             badSBRef.forEach(bad=> {
                 // $root.objects[bad].exclude = true
@@ -498,7 +498,7 @@ export function setIntendedFor($root) {
 
             // Loop through sections
             sectionIDs.forEach(s=> {
-                let section = sesGroup.objects.filter(e=>e.analysisResults.section_id == s && !e._exclude && e._type != "exclude")
+                let section = sesGroup.objects.filter(e=>e.analysisResults.section_id === s && !e._exclude && e._type != "exclude")
 
                 section.forEach(obj=>{
                     //add IntendedFor information
@@ -506,7 +506,7 @@ export function setIntendedFor($root) {
                         Object.assign(obj, {IntendedFor: []})
                         let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor
                         correspindingSeriesIntendedFor.forEach(i=>{
-                            let IntendedForIDs = section.filter(o=>o.series_idx == i && o._type != "func/events").map(o=>o.idx)
+                            let IntendedForIDs = section.filter(o=>o.series_idx === i && o._type != "func/events").map(o=>o.idx)
                             obj.IntendedFor = obj.IntendedFor.concat(IntendedForIDs)
                         });
                     }
