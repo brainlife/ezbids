@@ -5,6 +5,15 @@
                 <span v-if="o_sub.sub != ''" class="hierarchy">
                     <i class="el-icon-user-solid" style="margin-right: 2px;"/>
                     <small>sub-</small><b>{{o_sub.sub}}</b>
+                    <!-- <el-form-item label="Volume Threshold" prop="Volume Threshold">
+                        <el-input v-model="ezbids._organized.setVolumeThreshold"
+                            placeholder="Specify a volume threshold for all 4D dataset sequences" size="small" 
+                            @change="validateAll()" style="width: 80%">
+                        </el-input>
+                        <p style="margin-top: 0">
+                            <small>* Recommended/Optional: You can specify a volume threshold where any sequences in this series will be set to "exclude" if they don't reach the threshold. Useful in instances where a sequence needed to be restated. If no threshold is specified, ezBIDS will default to the expected number of volumes collected in a 1-min period.</small>
+                        </p>
+                    </el-form-item> -->
                     &nbsp;
                     <el-checkbox :value="o_sub.exclude" @change="excludeSubject(o_sub.sub.toString(), $event)">
                         <small>Exclude this subject</small>
@@ -225,7 +234,7 @@
     
     import { IObject, Session, OrganizedSession, OrganizedSubject } from './store'
     import { prettyBytes } from './filters'
-    import { setRun, setIntendedFor, align_entities, validate_Entities_B0FieldIdentifier_B0FieldSource } from './libUnsafe'
+    import { deepEqual, setRun, setIntendedFor, align_entities, validateEntities, validate_B0FieldIdentifier_B0FieldSource } from './libUnsafe'
     
     // @ts-ignore
     import { Splitpanes, Pane } from 'splitpanes'
@@ -294,6 +303,32 @@
     
                 this.$emit("mapObjects");
                 this.validateAll();
+            },
+
+            setVolumeThreshold(root:OrganizedSubject) {
+                /*
+                Determine volume threshold for all func/bold acquisitions in dataset and set
+                to exclude if the number of volumes does not meet the volume threshold. Threshold 
+                calculated based on the expected number of volumes collected in a 1-minute time frame,
+                with the formula (60-sec / tr), where tr == RepetitionTime
+                */
+                root.sess.forEach(sessGroup=>{
+                    sessGroup.objects.forEach(o=>{
+                        //update analysisResults.warnings in case user went back to Series and adjusted things
+                        if(["func/bold", "func/cbv", "dwi/dwi"].includes(o._type)) {
+                            let tr = o.items[0].sidecar.RepetitionTime
+                            let numVolumes = o.analysisResults.NumVolumes
+                            let numVolumes1min = Math.floor(60 / tr)
+                            if(numVolumes <= numVolumes1min) {
+                                o.exclude = true
+                                o.analysisResults.warnings = [`This 4D sequence contains ${numVolumes} volumes, which is \
+                                less than the threshold value of ${numVolumes1min} volumes, calculated by the expected number of \
+                                volumes in a 1 min time frame. This acquisition will thus be excluded from BIDS conversion unless \
+                                unexcluded. Please modify if incorrect.`]
+                            }
+                        }
+                    });
+                });
             },
     
             isExcluded(o: IObject) {
@@ -401,16 +436,20 @@
             validate(o: IObject|null) {
                 if(!o) return;
 
+                o.validationErrors = [];
+                o.validationWarnings = [];
+
                 setRun(this.ezbids)
 
                 setIntendedFor(this.ezbids)
-
+                
                 align_entities(this.ezbids)
+
+                validateEntities("Objects", o)
+
+                validate_B0FieldIdentifier_B0FieldSource(o)
     
                 let entities_requirement = this.getBIDSEntities(o._type);
-    
-                o.validationErrors = [];
-                o.validationWarnings = [];
     
                 //update validationWarnings
                 if(o.analysisResults.warnings?.length) {
@@ -418,9 +457,7 @@
                 }
     
                 // if(this.isExcluded(o)) return; // might return to this, but need to check if previously excluded sequences are un-excluded
-    
-                o.validationErrors = validate_Entities_B0FieldIdentifier_B0FieldSource(o.entities, o.B0FieldIdentifier, o.B0FieldSource);
-    
+        
                 if(o._type.startsWith("func/")) {
                     const series = this.ezbids.series[o.series_idx];
                     if(entities_requirement['task'] && !o.entities.task && !series?.entities.task) {
@@ -459,16 +496,44 @@
                     }
                 });
 
-                /* Ensure direction (dir) entity labels are capitalized (e.g. AP, not ap).
-                Can occur when user adds this themselves.
+                /* Imaging data implictly has a part-mag (magnitude), though this doesn't need to be explictly stated. 
+                Any phase data (part-phase) is linked to the magnitude. If part entity is specified, make sure it's
+                properly linked and has same entities (except for part) and exclusion criteria.
                 */
-                if(o._entities.direction && o._entities.direction !== "") {
-                    if(o._entities.direction !== o._entities.direction.toUpperCase()) {
-                        o.validationErrors.push("Please ensure that the phase-encoding direction entity label is fully capitalized")
+                if(o._entities.part && !["", "mag"].includes(o._entities.part)) {
+                    let correspondingFuncMag = this.ezbids.objects.filter((object:IObject)=>object._type == o._type &&
+                        object._entities.part === "mag" &&
+                        parseInt(o.SeriesNumber) === parseInt(object.SeriesNumber) + 1 &&
+                        deepEqual(Object.fromEntries(Object.entries(object._entities).filter(([key])=>key !== "part")), Object.fromEntries(Object.entries(o._entities).filter(([key])=>key !== "part"))))
+                    
+                    if(correspondingFuncMag) { // should be no more than one
+                        correspondingFuncMag.forEach((boldMag:IObject)=>{
+                            // o.analysisResults.section_id = boldObj.analysisResults.section_id
+                            for(let k in boldMag._entities) {
+                                if(boldMag._entities[k] !== "" && k !== "part") {
+                                    o._entities[k] = boldMag._entities[k]
+                                } else if(boldMag._entities[k] === "" && k !== "part") {
+                                    o._entities[k] = ""
+                                }
+                                o.entities[k] = o._entities[k]
+                            }
+                            if(boldMag._exclude === true) {
+                                o.exclude = true
+                                o._exclude = true
+                                o.validationWarnings = [`The corresponding magnitude (part-mag) #${boldMag.series_idx} is currently set to exclude from BIDS conversion. \
+                                    Since this phase (part-phase) sequence is linked, it will also be excluded from conversion unless the corresponding
+                                    magnitude (part-mag) is unexcluded. If incorrect, please modify corresponding magnitude (part-mag) (#${boldMag.series_idx}).`]
+                            }
+                            if(boldMag._exclude === false) {
+                                o.exclude = false
+                                o._exclude = false
+                                o.validationWarnings = []
+                            }
+                        })
                     }
                 }
 
-                //func/sbref are implicitly linked to a func/bold; make sure these have same entities and exclusion criteria
+                // func/sbref are implicitly linked to a func/bold; make sure these have same entities and exclusion criteria
                 if(o._type == "func/sbref") {
                     let correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>object._type === "func/bold" &&
                         parseInt(object.ModifiedSeriesNumber) === parseInt(o.ModifiedSeriesNumber) + 1) //func/sbref [should] always come right before their func/bold
@@ -585,7 +650,7 @@
     
             validateAll() {
                 this.ezbids.objects.forEach(this.validate);
-                this.ezbids.objects.forEach(this.validate); // not ideal, but need to re-validate when run entities are being updated
+                // this.ezbids.objects.forEach(this.validate); // not ideal, but need to re-validate when run entities are being updated
             },
         },
     });

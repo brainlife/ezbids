@@ -39,8 +39,7 @@ export function setVolumeThreshold($root) {
     calculated based on the expected number of volumes collected in a 1-minute time frame,
     with the formula (60-sec / tr), where tr == RepetitionTime
     */
-    $root.objects.forEach(o=> {
-
+    $root.objects.forEach(o=>{
         //update analysisResults.warnings in case user went back to Series and adjusted things
         if(o._type == "func/bold") {
             let tr = o.items[0].sidecar.RepetitionTime
@@ -57,7 +56,6 @@ export function setVolumeThreshold($root) {
         }
     });
 }
-
 
 export function setSectionIDs($root) {
     /*
@@ -325,12 +323,13 @@ export function fmapQA($root) {
     });
 }
 
-
 export function setRun($root) {
     // Set run entity label if not already specified at Series level
 
     // Loop through subjects
+
     $root._organized.forEach(subGroup=>{
+
         // Loop through sessions
         subGroup.sess.forEach(sesGroup=>{
             // Determine series_idx values
@@ -338,36 +337,151 @@ export function setRun($root) {
             let uniqueSeriesIndices = Array.from(new Set(allSeriesIndices))
 
             uniqueSeriesIndices.forEach(si=>{
-                let seriesObjects = sesGroup.objects.filter(e=>e.series_idx === si && !e._exclude && e._type !== "exclude")
+                let seriesObjects = sesGroup.objects.filter(e=>e.series_idx == si && !e._exclude)
                 let run = 1
                 if(seriesObjects.length > 1) {
                     seriesObjects.forEach(obj=>{
-                        obj._entities.run = run.toString()
-                        obj.entities.run = obj._entities.run
+                        obj.entities.run = run.toString()
                         run++
                     });
-                } else if (seriesObjects.length == 1) {
-                    seriesObjects.forEach(obj=>{
-                        if (obj._type.startsWith("func") && !obj._exclude && obj._type !== "func/events") {
-                            obj._entities.run = "1"
-                            obj.entities.run = obj._entities.run
-                        } else if (!obj._type.startsWith("func") && obj.validationErrors.length == 0) {
-                            obj._entities.run = ""
-                            obj.entities.run = obj._entities.run
-                        }
-                    })
-                }
-                let excludedSeriesObjects = sesGroup.objects.filter(e=>e.series_idx === si && e._exclude || e._type === "exclude")
-                if(excludedSeriesObjects) {
-                    excludedSeriesObjects.forEach(excludedObj=>{
-                        excludedObj._entities.run = ""
-                        excludedObj.entities.run = excludedObj._entities.run
-                    })
-                }
+                }   
             });
         });
     });
 }
+
+// export function setRun($root) {
+//     // Set run entity label if not already specified at Series level
+
+//     // Loop through subjects
+//     $root._organized.forEach(subGroup=>{
+//         // Loop through sessions
+//         subGroup.sess.forEach(sesGroup=>{
+//             // Determine series_idx values
+//             let allSeriesIndices = sesGroup.objects.map(e=>e.series_idx)
+//             let uniqueSeriesIndices = Array.from(new Set(allSeriesIndices))
+
+//             sesGroup.objects.forEach(obj=>{
+
+//                 // leave two entity labels out for now: part and run. The part entity could have a pairing (mag/phase or real/imag), and we're interested in the run entity
+                
+//                 let targetEntities = Object.fromEntries(Object.entries(obj._entities).filter(([key])=>key !== "part" && key !== "run"))
+
+//                 let initialGrouping = sesGroup.objects.filter(e=>e._type !== "exclude" &&
+//                     !e._exclude &&
+//                     e._type === obj._type &&
+//                     e._idx !== obj.idx &&
+//                     deepEqual(Object.fromEntries(Object.entries(e._entities).filter(([key])=>key !== "part" && key !== "run")), targetEntities)
+//                 )
+//                 if(initialGrouping.length) {
+//                     // Sort this new array by idx (i.e. order in which the sequences were collected in the scan)
+//                     initialGrouping.sort((a, b) => a.idx - b.idx)
+
+//                     let setRun = false
+//                     if (initialGrouping.length > 1) {
+//                         setRun = true
+//                     } else if (initialGrouping.length == 1 && initialGrouping[0]._type.includes("func")) { // might need to add conditional for not having func/events
+//                         setRun = true
+//                     }
+
+//                     if (setRun) {
+//                         let run = 1
+//                         let counter = 0
+//                         initialGrouping.forEach(obj=>{
+//                             if (obj._entities.part && ["", "mag", "real"].includes(obj._entities.part)) {
+//                                 obj._entities.run = run.toString()
+//                                 obj.entities.run = obj._entities.run
+//                                 run++
+//                             } else if (obj._entities.part && !["", "mag", "real"].includes(obj._entities.part)) {
+//                                 if (initialGrouping.length > 1) {
+//                                     let previous = initialGrouping[counter - 1]
+//                                     obj._entities.run = previous._entities.run.toString()
+//                                     obj.entities.run = obj._entities.run
+//                                 } else {
+//                                     obj._entities.run = run.toString()
+//                                     obj.entities.run = obj._entities.run
+//                                     run++
+//                                 }
+
+//                             } else {
+//                                 obj._entities.run = run.toString()
+//                                 obj.entities.run = obj._entities.run
+//                                 run++
+//                             }
+//                             counter ++
+//                         })
+//                     }
+//                 }
+//             })
+
+
+//             // uniqueSeriesIndices.forEach(si=>{
+//             //     let seriesObjects = sesGroup.objects.filter(e=>e.series_idx === si && !e._exclude && e._type !== "exclude")
+//             //     if(seriesObjects.length > 1) {
+//             //         let run = 1
+//             //         seriesObjects.forEach(obj=>{
+//             //             obj._entities.run = run.toString()
+//             //             obj.entities.run = obj._entities.run
+//             //             run++
+//             //         });
+//             //     } else if (seriesObjects.length == 1) {
+//             //         let obj = seriesObjects[0]
+//             //         let newSeriesObjects = []
+//             //         newSeriesObjects.push(obj)
+//             //         // if (obj._type.startsWith("func") && !obj._exclude && obj._type !== "func/events") { // eventually remove this line
+//             //         let identificalOtherSeriesObjs = sesGroup.objects.filter(e=>!e._exclude &&
+//             //             e.idx !== obj.idx &&
+//             //             e._type === obj._type &&
+//             //             deepEqual(e._entities, obj._entities)
+//             //         )
+
+//             //         if (identificalOtherSeriesObjs.length) {
+//             //             let run = 1
+
+//             //             identificalOtherSeriesObjs.forEach(otherSeriesObj=>{
+//             //                 newSeriesObjects.push(otherSeriesObj)
+//             //             })
+                        
+//             //             // Sort this new array by idx (i.e. order in which the sequences were collected in the scan)
+//             //             newSeriesObjects.sort((a, b) => a.idx - b.idx)
+
+//             //             newSeriesObjects.forEach(newObj=>{
+//             //                 newObj._entities.run = run.toString()
+//             //                 newObj.entities.run = newObj._entities.run
+//             //                 run++
+//             //             })
+//             //         } else {
+//             //             if (obj._type.startsWith("func") && !obj._exclude && obj._type !== "func/events") {
+//             //                 let mockObjEntities = obj._entities
+//             //                 mockObjEntities.run = "1"
+//             //                 identificalOtherSeriesObjs = sesGroup.objects.filter(e=>!e._exclude &&
+//             //                     e.idx !== obj.idx &&
+//             //                     e._type === obj._type &&
+//             //                     // deepEqual(Object.keys(e._entities).filter(e=>e !== "run"), Object.keys(obj._entities).filter(obj=>obj !== "run")) // deepEqual(e._entities, obj._entities)
+//             //                     deepEqual(e._entities, mockObjEntities)
+//             //                 )
+
+//             //                 if (!identificalOtherSeriesObjs.length) {
+//             //                     obj._entities.run = "1"
+//             //                     obj.entities.run = obj._entities.run
+//             //                 }
+//             //             // } else if (!obj._type.startsWith("func") && obj.validationErrors.length == 0) {
+//             //             //     obj._entities.run = ""
+//             //             //     obj.entities.run = obj._entities.run
+//             //             }
+//             //         }
+//             //     }
+//             //     let excludedSeriesObjects = sesGroup.objects.filter(e=>e.series_idx === si && e._exclude || e._type === "exclude")
+//             //     if(excludedSeriesObjects) {
+//             //         excludedSeriesObjects.forEach(excludedObj=>{
+//             //             excludedObj._entities.run = ""
+//             //             excludedObj.entities.run = excludedObj._entities.run
+//             //         })
+//             //     }
+//             // });
+//         });
+//     });
+// }
 
 
 export function setIntendedFor($root) {
@@ -457,34 +571,28 @@ export function align_entities($root) {
     });
 }
 
-export function validate_Entities_B0FieldIdentifier_B0FieldSource(entities, B0FieldIdentifier, B0FieldSource/*: Series*/) {     
-    const errors = [];                                                                                      
-    //validate entity (only alpha numeric values)                                                               
-    for(const k in entities) {
-        const v = entities[k];                                                                                
-        if(v && !/^[a-zA-Z0-9]*$/.test(v)) {                                                                    
-            errors.push("Entity label "+k+" contains non-alphanumeric character");                        
-        }                                                                                                       
-    }
+export function validate_B0FieldIdentifier_B0FieldSource(info) {     
+
+    let B0FieldIdentifier = info.B0FieldIdentifier
+    let B0FieldSource = info.B0FieldSource
     
-    //validate B0FieldIdentifier (only alpha numeric values and dash [-] and underscore [_])
+    //validate B0FieldIdentifier (only alpha numeric values and dash [-] and underscore [_] characters allowed)
     for(const k in B0FieldIdentifier) {
         const v = B0FieldIdentifier[k];                                                                                
         if(v && !/^[a-zA-Z0-9-_]*$/.test(v)) {                                                                    
-            errors.push("B0FieldIdentifier (#"+k+"-indexed selection) contains non-alphanumeric character(s). \
+            info.validationErrors.push("B0FieldIdentifier (#"+k+"-indexed selection) contains non-alphanumeric character(s). \
             The (dash [-] and underscore [_] characters are acceptable)");                        
         }                                                                                                       
     }
 
-    //validate B0FieldSource (only alpha numeric values and dash [-] and underscore [_])
+    //validate B0FieldSource (only alpha numeric values and dash [-] and underscore [_] characters allowed)
     for(const k in B0FieldSource) {
         const v = B0FieldSource[k];                                                                                
         if(v && !/^[a-zA-Z0-9-_]*$/.test(v)) {                                                                    
-            errors.push("B0FieldSource (#"+k+"-indexed selection) contains non-alphanumeric character(s). \
+            info.validationErrors.push("B0FieldSource (#"+k+"-indexed selection) contains non-alphanumeric character(s). \
             The (dash [-] and underscore [_] characters are acceptable)");                        
         }                                                                                                       
     }
-    return errors;                                                                                          
 }
 
 export function dwiQA($root) {
@@ -547,6 +655,70 @@ export function dwiQA($root) {
             }
         })
     })
+}
+
+export function validateEntities(level, info) {
+    /*
+    Ensure entity labels are BIDS appropriate (e.g., specific part entities labels accepted, dir entitiy
+    label capitalized, etc.)
+    */
+   let entities = info
+    if (level === "Series") {
+        entities = info.entities
+    } else if (level === "Objects") {
+        entities = info._entities
+    }
+
+    for (let k in entities) {
+        //validate entity (only alpha numeric values allowed)                                                               
+        if(entities[k] && !/^[a-zA-Z0-9]*$/.test(entities[k])) {                                                                    
+            info.validationErrors.push("Entity label "+k+" contains non-alphanumeric character(s).");                        
+        }
+        // Check specific entities                                                                                                  
+        if (k === "dir") {
+            /* 
+            Ensure direction (dir) entity labels are capitalized (e.g. AP, not ap).
+            Can occur when user adds this themselves.
+            */
+            if(entities.direction && entities.direction !== "") {
+                if(entities.direction !== entities.direction.toUpperCase()) {
+                    info.validationErrors.push("Please ensure that the phase-encoding direction (dir) entity label is fully capitalized.")
+                }
+                if (level === "Series") {
+                    if(entities.direction.toUpperCase() !== info.PED) {
+                        info.validationWarnings.push(`ezBIDS detects that the direction should be ${info.PED}, not ${entities.direction}. Please be sure before continuing`)
+                    }
+                }
+            }
+        } else if (k === "part") {
+            // Only mag, phase, real, or imag allowed
+            if(entities.part && entities.part !== "") {
+                if (!["mag", "phase", "real", "imag"].includes(entities.part)) {
+                    info.validationErrors.push("Only accepted part entity values are: mag, phase, real, imag. Must also be lower-case")
+                }
+            }
+        } else if (k === "mt") {
+            // Only on, off values allowed
+            if (entities.mt && entities.mt !== "") {
+                if (!["on", "off"].includes(entities.mt)) {
+                    info.validationErrors.push("Only accepted mt entity values are: on, off. Must also be lower-case")
+                }
+            }
+        } else if (k === "hemi") {
+            // Only L, R values allowed
+            if (entities.hemi && entities.hemi !== "") {
+                if (!["L", "R"].includes(entities.mt)) {
+                    info.validationErrors.push("Only accepted hemi entity values are: R, L.")
+                }
+            }
+        } else if (["run", "echo", "flip", "inv", "split", "chunk"].includes(k)) {
+            if (entities[k] && entities[k] !== "") {
+                if (isNaN(parseInt(entities[k]))) {
+                    info.validationErrors.push("The "+k+" entity can only contain an integer/numeric value.")
+                }
+            }
+        }
+    }
 }
 
 export function find_separator(filePath, fileData) {

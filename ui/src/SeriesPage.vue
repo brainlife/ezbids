@@ -95,7 +95,7 @@
                         </p>
                     </el-form-item>
                 </div>
-                
+
                 <div v-if="ss.type && !ss.type.includes('exclude')">
                     <el-form-item label="B0FieldIdentifier" prop="B0FieldIdentifier">
                         <el-select v-model="ss.B0FieldIdentifier" multiple filterable allow-create default-first-option
@@ -103,7 +103,7 @@
                             @change="validateAll()" style="width: 80%">
                         </el-select>
                         <p style="margin-top: 0">
-                            <small>* Optional/Recommended: If this sequence will be used for fieldmap/distortion correction, enter a text string of your choice. A good formatting suggestion is the "datatype_suffix[index]" format (e.g., <b>fmap_epi0</b>, <b>fmap_phasediff1</b>, etc). If another sequence will be used with this one for fieldmap/distortion correction, use the exact same text string there as well. Leave field blank if unclear.</small>
+                            <small>* Optional: If this sequence will be used for fieldmap/distortion correction, enter a text string of your choice. A good formatting suggestion is the "datatype_suffix[index]" format (e.g., <b>fmap_epi0</b>, <b>fmap_phasediff1</b>, etc). If another sequence will be used with this one for fieldmap/distortion correction, use the exact same text string there as well. Leave field blank if unclear.</small>
                         </p>
                     </el-form-item>
                     <el-form-item label="B0FieldSource" prop="B0FieldSource">
@@ -112,7 +112,7 @@
                             @change="validateAll()" style="width: 80%">
                         </el-select>
                         <p style="margin-top: 0">
-                            <small>* Optional/Recommended: If fieldmap/distortion correction will be applied to this image, enter the identical text string from the B0FieldIdentifier field of the sequence(s) used to create the fieldmap/distortion estimation. Leave field blank if unclear.</small>
+                            <small>* Optional: If fieldmap/distortion correction will be applied to this image, enter the identical text string from the B0FieldIdentifier field of the sequence(s) used to create the fieldmap/distortion estimation. Leave field blank if unclear.</small>
                         </p>
                     </el-form-item>
                 </div>            
@@ -187,7 +187,7 @@ import { prettyBytes } from './filters'
 
 import { Series, IObject } from './store'
 
-import { validate_Entities_B0FieldIdentifier_B0FieldSource } from './libUnsafe'
+import { validateEntities, validate_B0FieldIdentifier_B0FieldSource } from './libUnsafe'
 
 // @ts-ignore
 import { Splitpanes, Pane } from 'splitpanes'
@@ -251,7 +251,8 @@ export default defineComponent({
             s.validationWarnings = [];
 
             if(s.type != "exclude") {
-                s.validationErrors = validate_Entities_B0FieldIdentifier_B0FieldSource(s.entities, s.B0FieldIdentifier, s.B0FieldSource);
+                validateEntities("Series", s)
+                validate_B0FieldIdentifier_B0FieldSource(s);
             }
 
             //let user know if multiple series have same datatype and entity labels
@@ -292,18 +293,6 @@ export default defineComponent({
 
             //     }
             // }
-
-            /* Ensure direction (dir) entity labels are capitalized (e.g. AP, not ap) and match ezBIDS internal PED checks.
-            Can occur when user adds this themselves.
-            */
-            if(s.entities.direction != "") {
-                if(s.entities.direction !== s.entities.direction.toUpperCase()) {
-                    s.validationErrors.push("Please ensure that the direction entity label is fully capitalized")
-                }
-                if(s.entities.direction.toUpperCase() !== s.PED) {
-                    s.validationWarnings.push(`ezBIDS detects that the direction shoula be ${s.PED}, not ${s.entities.direction}. Please be sure before continuing`)
-                }
-            }
 
             if(s.type.startsWith("fmap/")) {
                 if(!s.IntendedFor) s.IntendedFor = [];
