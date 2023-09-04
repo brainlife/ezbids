@@ -256,7 +256,7 @@
             return {
                 so: null as IObject|null, //selected object
                 sess: null as OrganizedSession|null, //selected session for IntendedFor handling
-                volumeThreshold: 0 as volumeThreshold,
+                // volumeThreshold: 0 as volumeThreshold,
             }
         },
     
