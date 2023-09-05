@@ -500,7 +500,7 @@
                     }
                 });
 
-                /* Imaging data implictly has a part-mag (magnitude), though this doesn't need to be explictly stated. 
+                /* Imaging data implicitly has a part-mag (magnitude), though this doesn't need to be explicitly stated. 
                 Any phase data (part-phase) is linked to the magnitude. If part entity is specified, make sure it's
                 properly linked and has same entities (except for part) and exclusion criteria.
                 */

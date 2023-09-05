@@ -659,7 +659,7 @@ export function dwiQA($root) {
 
 export function validateEntities(level, info) {
     /*
-    Ensure entity labels are BIDS appropriate (e.g., specific part entities labels accepted, dir entitiy
+    Ensure entity labels are BIDS appropriate (e.g., specific part entities labels accepted, dir entity
     label capitalized, etc.)
     */
    let entities = info

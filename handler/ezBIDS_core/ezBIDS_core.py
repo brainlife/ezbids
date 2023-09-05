@@ -23,7 +23,7 @@ import time
 import numpy as np
 import pandas as pd
 import nibabel as nib
-from math import floor
+# from math import floor
 from datetime import date
 from natsort import natsorted
 from operator import itemgetter
@@ -95,11 +95,13 @@ def modify_uploaded_dataset_list(uploaded_json_list):
     uploaded_files_list = []
 
     # Remove Philips proprietary files in uploaded_json_list if they exist
-    uploaded_json_list = natsorted([json for json in uploaded_json_list
-                                    if "parrec" not in json.lower()
-                                    # and "finalized.json" not in json
-                                    and "ezBIDS_core.json" not in json]
-                                   )
+    uploaded_json_list = natsorted(
+        [
+            json for json in uploaded_json_list
+            if "parrec" not in json.lower()
+            and "ezBIDS_core.json" not in json
+        ]
+    )
 
     config = False
     config_file = ""
@@ -498,7 +500,7 @@ def generate_dataset_list(uploaded_files_list, data_type):
             corresponding_nifti = [x for x in nifti_list if json_file[:-4] in x if ".nii" in x][0]
         except:
             pass
-            
+
         if corresponding_nifti:
             # Phase encoding direction info
             if "PhaseEncodingDirection" in json_data:
@@ -1197,7 +1199,7 @@ def finalized_configuration(dataset_list_unique_series, subjects_information, co
             sub_info["sessions"][idx]["session"] = ref_session["session"]
 
     """
-    Find datatype, suffix, and entity labels in uploaded data based on correspondence with data referenced 
+    Find datatype, suffix, and entity labels in uploaded data based on correspondence with data referenced
     in configuration.
     """
     for unique_dic in dataset_list_unique_series:
@@ -1660,7 +1662,7 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
     common keys/labels.
     """
     for index, unique_dic in enumerate(dataset_list_unique_series):
-        # Not great to use json_path because it's only the first sequence in the series_idx group...
+        # Not ideal using json_path because it's only the first sequence in the series_idx group...
         json_path = unique_dic["json_path"]
 
         if not unique_dic["valid_image"]:
@@ -1744,119 +1746,158 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
                         f"because '{unique_dic['suffix']}' is in the file path. " \
                         f"Please modify if incorrect."
 
-        """If no luck with the json paths, try with search terms in SeriesDescription (or ProtocolName) and rules,
-        assuming an ezBIDS configuration file wasn't provided.
+        """
+        If no luck with the json paths, and assuming an ezBIDS configuration file wasn't provided, try discerning
+        datatype and suffix with dcm2niix's BidsGuess. And if that doesn't produce anything, try with search terms
+        in SeriesDescription (or ProtocolName) and rules.
         """
         if (unique_dic["finalized_match"] is False
                 and (not unique_dic["datatype"] or not unique_dic["suffix"]) and unique_dic["type"] == ""):
 
-            descriptor = unique_dic["descriptor"]
-            sd = unique_dic[descriptor]
+            json_file = unique_dic["json_path"]
+            json_data = open(json_file)
+            json_data = json.load(json_data, strict=False)
 
-            # Make easier to find search terms in the SeriesDescription (or ProtocolName)
-            sd = re.sub("[^A-Za-z0-9]+", "_", sd).lower() + "_"
-            # sd_sparse = re.sub("[^A-Za-z0-9]+", "", sd)
+            # Try discerning datatype and suffix with dcm2niix's BidsGuess
+            if "BidsGuess" in json_data:
+                bids_guess = json_data["BidsGuess"]
+                if len(bids_guess) == 2:  # should always be length of 2, but just to be safe
+                    datatype = bids_guess[0]
+                    suffix = bids_guess[1].split("_")[-1]
+                    if datatype not in [x for x in datatypes_yaml.keys()]:  # assumed to be non-BIDS data of some kind
+                        if suffix in ["localizer", "scout"] or "_i0000" in unique_dic["paths"][0]:
+                            # localizer
+                            unique_dic["message"] = "Acquisition was determined to be a localizer sequence, " \
+                                "according to dcm2niix's BidsGuess heuristic, and will not be converted to BIDS. " \
+                                "Please modify if incorrect."
+                        else:
+                            # other non-BIDS data
+                            unique_dic["message"] = "Acquisition was determined to be a non-BIDS sequence, " \
+                                "according to dcm2niix's BidsGuess heuristic, and will not be converted. " \
+                                "Please modify if incorrect."
+                        unique_dic["type"] = "exclude"
+                    else:
+                        unique_dic["datatype"] = datatype
+                        unique_dic["suffix"] = suffix
+                        unique_dic["message"] = f"Acquisition is believed to be " \
+                            f"{unique_dic['datatype']}/{unique_dic['suffix']} based on " \
+                            "the dcm2niix BidsGuess heuristic. Please modify if incorrect."
+                else:
+                    pass
 
-            cont = True
-            for datatype in lookup_dic.keys():
-                if datatype not in ["localizer", "dwi_derivatives"]:
-                    suffixes = lookup_dic[datatype].keys()
-                    for suffix in suffixes:
-                        search_terms = lookup_dic[datatype][suffix]["search_terms"]
-                        conditions = lookup_dic[datatype][suffix]["conditions"]
-                        eval_checks = [eval(t, {"sd": sd,
-                                                "unique_dic": unique_dic,
-                                                "dataset_list_unique_series": dataset_list_unique_series,
-                                                "index": index
-                                                }) for t in conditions]
-                        if any(x in sd for x in search_terms):
-                            # Search term match
-                            conditions = [
-                                (x.replace("unique_dic", "").replace('["', "").replace('"]', "").
-                                    replace("dataset_list_unique_series[index - 2]", "")) for x in conditions
-                            ]
-                            search_hit = [x for x in search_terms if re.findall(x, sd)][0]
+            """
+            If dcm2niix's BidsGuess can't give us datatype and suffix information, move on to next heuristic (search
+            terms in SeriesDescription [or ProtocolName] and rules).
+            """
+            if unique_dic["datatype"] == "" and unique_dic["suffix"] == "" and unique_dic["type"] != "exclude":
 
-                            if len([t for t in eval_checks if t is True]) == len(conditions):
-                                # Search term match, as well as all necessary conditions for datatype/suffix pair
+                descriptor = unique_dic["descriptor"]
+                sd = unique_dic[descriptor]
+
+                # Make easier to find search terms in the SeriesDescription (or ProtocolName)
+                sd = re.sub("[^A-Za-z0-9]+", "_", sd).lower() + "_"
+                # sd_sparse = re.sub("[^A-Za-z0-9]+", "", sd)
+
+                cont = True
+                for datatype in lookup_dic.keys():
+                    if datatype not in ["localizer", "dwi_derivatives"]:
+                        suffixes = lookup_dic[datatype].keys()
+                        for suffix in suffixes:
+                            search_terms = lookup_dic[datatype][suffix]["search_terms"]
+                            conditions = lookup_dic[datatype][suffix]["conditions"]
+                            eval_checks = [eval(t, {"sd": sd,
+                                                    "unique_dic": unique_dic,
+                                                    "dataset_list_unique_series": dataset_list_unique_series,
+                                                    "index": index
+                                                    }) for t in conditions]
+                            if any(x in sd for x in search_terms):
+                                # Search term match
+                                conditions = [
+                                    (x.replace("unique_dic", "").replace('["', "").replace('"]', "").
+                                        replace("dataset_list_unique_series[index - 2]", "")) for x in conditions
+                                ]
+                                search_hit = [x for x in search_terms if re.findall(x, sd)][0]
+
+                                if len([t for t in eval_checks if t is True]) == len(conditions):
+                                    # Search term match, as well as all necessary conditions for datatype/suffix pair
+                                    unique_dic["datatype"] = datatype
+                                    unique_dic["suffix"] = suffix
+                                    unique_dic["type"] = ""
+                                    if len(conditions):
+                                        condition_passes = [
+                                            f"({index+1}): {value}" for index, value in enumerate(conditions)
+                                        ]
+                                        unique_dic["message"] = f"Acquisition is believed to be {datatype}/{suffix} " \
+                                            f"because '{search_hit}' is in the {unique_dic['descriptor']} and the " \
+                                            f"following conditions are met: {condition_passes}. " \
+                                            "Please modify if incorrect."
+                                    else:
+                                        unique_dic["message"] = f"Acquisition is believed to be {datatype}/{suffix} " \
+                                            f"because '{search_hit}' is in the {unique_dic['descriptor']}. " \
+                                            "Please modify if incorrect."
+                                    cont = False
+                                    break
+                                else:
+                                    unique_dic["type"] = "exclude"
+                                    condition_fails_ind = [i for (i, v) in enumerate(eval_checks) if v is False]
+                                    condition_fails = [v for (i, v) in enumerate(conditions) if i in condition_fails_ind]
+                                    condition_fails = [
+                                        f"({index+1}): {value}" for index, value in enumerate(condition_fails)
+                                    ]
+
+                                    if (datatype in ["func", "dwi"]
+                                            and (unique_dic["nibabel_image"].ndim == 3 and unique_dic["NumVolumes"] > 1)):
+                                        """
+                                        func and dwi can also have sbref suffix pairings, so 3D dimension data with
+                                        only a single volume likely indicates that the sequence was closer to being
+                                        identified as a func (or dwi) sbref.
+                                        """
+                                        suffix = "sbref"
+
+                                    unique_dic["message"] = f"Acquisition was thought to be {datatype}/{suffix} " \
+                                        f"because '{search_hit}' is in the {unique_dic['descriptor']}, but the " \
+                                        f"following conditions were not met: {condition_fails}. Please modify " \
+                                        "if incorrect."
+
+                            elif datatype == "dwi" and suffix == "dwi" and any(".bvec" in x for x in unique_dic["paths"]):
                                 unique_dic["datatype"] = datatype
                                 unique_dic["suffix"] = suffix
-                                unique_dic["type"] = ""
-                                if len(conditions):
-                                    condition_passes = [
-                                        f"({index+1}): {value}" for index, value in enumerate(conditions)
-                                    ]
-                                    unique_dic["message"] = f"Acquisition is believed to be {datatype}/{suffix} " \
-                                        f"because '{search_hit}' is in the {unique_dic['descriptor']} and the " \
-                                        f"following conditions are met: {condition_passes}. " \
-                                        "Please modify if incorrect."
-                                else:
-                                    unique_dic["message"] = f"Acquisition is believed to be {datatype}/{suffix} " \
-                                        f"because '{search_hit}' is in the {unique_dic['descriptor']}. " \
-                                        "Please modify if incorrect."
-                                cont = False
-                                break
-                            else:
+                                unique_dic["message"] = f"Acquisition is believed to be {datatype}/{suffix} " \
+                                    "because associated bval/bvec files were found for this sequence. " \
+                                    "Please modify if incorrect."
+                        if cont is False:
+                            break
+                    else:
+                        # Localizers
+                        if datatype == "localizer":
+                            search_terms = lookup_dic[datatype]["exclude"]["search_terms"]
+                            conditions = lookup_dic["localizer"]["exclude"]["conditions"]
+                            eval_checks = [eval(t, {"sd": sd, "unique_dic": unique_dic}) for t in conditions]
+                            if (any(x in sd for x in search_terms)
+                                    or len([t for t in eval_checks if t]) == len(conditions)):
                                 unique_dic["type"] = "exclude"
-                                condition_fails_ind = [i for (i, v) in enumerate(eval_checks) if v is False]
-                                condition_fails = [v for (i, v) in enumerate(conditions) if i in condition_fails_ind]
-                                condition_fails = [
-                                    f"({index+1}): {value}" for index, value in enumerate(condition_fails)
-                                ]
-
-                                if (datatype in ["func", "dwi"]
-                                        and (unique_dic["nibabel_image"].ndim == 3 and unique_dic["NumVolumes"] > 1)):
-                                    """
-                                    func and dwi can also have sbref suffix pairings, so 3D dimension data with
-                                    only a single volume likely indicates that the sequence was closer to being
-                                    identified as a func (or dwi) sbref.
-                                    """
-                                    suffix = "sbref"
-
-                                unique_dic["message"] = f"Acquisition was thought to be {datatype}/{suffix} " \
-                                    f"because '{search_hit}' is in the {unique_dic['descriptor']}, but the " \
-                                    f"following conditions were not met: {condition_fails}. Please modify " \
-                                    "if incorrect."
-
-                        elif datatype == "dwi" and suffix == "dwi" and any(".bvec" in x for x in unique_dic["paths"]):
-                            unique_dic["datatype"] = datatype
-                            unique_dic["suffix"] = suffix
-                            unique_dic["message"] = f"Acquisition is believed to be {datatype}/{suffix} " \
-                                "because associated bval/bvec files were found for this sequence. " \
-                                "Please modify if incorrect."
-                    if cont is False:
-                        break
-                else:
-                    # Localizers
-                    if datatype == "localizer":
-                        search_terms = lookup_dic[datatype]["exclude"]["search_terms"]
-                        conditions = lookup_dic["localizer"]["exclude"]["conditions"]
-                        eval_checks = [eval(t, {"sd": sd, "unique_dic": unique_dic}) for t in conditions]
-                        if (any(x in sd for x in search_terms)
-                                or len([t for t in eval_checks if t]) == len(conditions)):
-                            unique_dic["type"] = "exclude"
-                            unique_dic["error"] = "Acquisition appears to be a localizer"
-                            unique_dic["message"] = "Acquisition is believed to be a " \
-                                "localizer and will therefore not be converted to BIDS. Please " \
-                                "modify if incorrect."
-                    # DWI derivatives (TRACEW, FA, ADC)
-                    elif datatype == "dwi_derivatives":
-                        search_terms = lookup_dic[datatype]["exclude"]["search_terms"]
-                        conditions = lookup_dic["dwi_derivatives"]["exclude"]["conditions"]
-                        eval_checks = [eval(t, {"sd": sd, "unique_dic": unique_dic}) for t in conditions]
-                        if (any(x in sd for x in search_terms)
-                                and len([t for t in eval_checks if t]) == len(conditions)):
-                            unique_dic["type"] = "exclude"
-                            unique_dic["error"] = "Acquisition appears to be a TRACEW, FA, or " \
-                                "ADC, which are unsupported by ezBIDS and will therefore not " \
-                                "be converted."
-                            unique_dic["message"] = "Acquisition is believed to be a dwi derivative " \
-                                "(TRACEW, FA, ADC), which are not supported by BIDS and will not " \
-                                "be converted. Please modify if incorrect."
+                                unique_dic["error"] = "Acquisition appears to be a localizer"
+                                unique_dic["message"] = "Acquisition is believed to be a " \
+                                    "localizer and will therefore not be converted to BIDS. Please " \
+                                    "modify if incorrect."
+                        # DWI derivatives (TRACEW, FA, ADC)
+                        elif datatype == "dwi_derivatives":
+                            search_terms = lookup_dic[datatype]["exclude"]["search_terms"]
+                            conditions = lookup_dic["dwi_derivatives"]["exclude"]["conditions"]
+                            eval_checks = [eval(t, {"sd": sd, "unique_dic": unique_dic}) for t in conditions]
+                            if (any(x in sd for x in search_terms)
+                                    and len([t for t in eval_checks if t]) == len(conditions)):
+                                unique_dic["type"] = "exclude"
+                                unique_dic["error"] = "Acquisition appears to be a TRACEW, FA, or " \
+                                    "ADC, which are unsupported by ezBIDS and will therefore not " \
+                                    "be converted."
+                                unique_dic["message"] = "Acquisition is believed to be a dwi derivative " \
+                                    "(TRACEW, FA, ADC), which are not supported by BIDS and will not " \
+                                    "be converted. Please modify if incorrect."
 
             """
             Can't determine datatype and suffix pairing, assume not BIDS-compliant acquisition,
-            unless user specifies otherwise;
+            unless user specifies otherwise.
             """
             if ((unique_dic["datatype"] == "" or unique_dic["suffix"] == "")
                     and unique_dic["type"] == "" and unique_dic["message"] is None):
@@ -1880,12 +1921,13 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
         """
         if (unique_dic["finalized_match"] is False
                 and unique_dic["datatype"] == "anat" and "NORM" not in unique_dic["ImageType"]):
-            unique_dic["message"] = unique_dic["message"] + (" Additionally, this acquisition appears to be "
-                                                             "non-normalized, potentially having poor CNR. "
-                                                             "If there is a corresponding normalized acquisition "
-                                                             "('NORM' in the ImageType metadata field), consider "
-                                                             "excluding this current one from BIDS conversion."
-                                                             )
+            unique_dic["message"] = unique_dic["message"] + (
+                " Additionally, this acquisition appears to be "
+                "non-normalized, potentially having poor CNR. "
+                "If there is a corresponding normalized acquisition "
+                "('NORM' in the ImageType metadata field), consider "
+                "excluding this current one from BIDS conversion."
+            )
 
         # Warn user about non-RMS multi-echo anatomical acquisitions
         if (unique_dic["finalized_match"] is False
@@ -2506,6 +2548,7 @@ EZBIDS = {
     "subjects": subjects_information,
     "participantsColumn": participants_column_info,
     "participantsInfo": participants_info,
+    "funcBoldVoumeThreshold": 0,
     "series": ui_series_info_list,
     "objects": objects_list,
     "events": events

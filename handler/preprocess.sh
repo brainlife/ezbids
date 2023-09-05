@@ -162,6 +162,7 @@ else
 
 
     echo "running dcm2niix"
+    echo `dcm2niix --version`
     true > $root/dcm2niix.done
     function d2n {
         #note.. this function runs inside $root (by --wd $root)
