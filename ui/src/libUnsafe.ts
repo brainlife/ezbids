@@ -41,13 +41,13 @@ export function setVolumeThreshold($root) {
     */
     $root.objects.forEach(o=>{
         //update analysisResults.warnings in case user went back to Series and adjusted things
-        if(o._type == "func/bold") {
+        if(o._type === "func/bold") {
             let tr = o.items[0].sidecar.RepetitionTime
             let numVolumes = o.analysisResults.NumVolumes
             let numVolumes1min = Math.floor(60 / tr)
-            // let numVolumes1min = 5
             if(numVolumes <= numVolumes1min) {
                 o.exclude = true
+                o._exclude = true
                 o.analysisResults.warnings = [`This func/bold sequence contains ${numVolumes} volumes, which is \
                 less than the threshold value of ${numVolumes1min} volumes, calculated by the expected number of \
                 volumes in a 1 min time frame. This acquisition will thus be excluded from BIDS conversion unless \
@@ -136,12 +136,12 @@ export function funcQA($root) {
         }
 
         // #2
-        if(o._type === "func/bold" && !o.exclude && (!o._entities.mag || o._entities.mag == "mag")) {
+        if(o._type === "func/bold" && !o.exclude && (!o._entities.mag || o._entities.mag === "mag")) {
             let boldEntities = o._entities
             let boldPED = o.items[0].sidecar.PhaseEncodingDirection
             let badSBRef = $root.objects.filter(e=>e._type === "func/sbref" && deepEqual(e._entities, boldEntities) &&
                                                 e.items[0].sidecar.PhaseEncodingDirection != boldPED).map(e=>e.idx)
-            badSBRef.forEach(bad=> {
+            badSBRef.forEach(bad=>{
                 // $root.objects[bad].exclude = true
                 $root.objects[bad].analysisResults.warnings = [`Functional sbref has a different PhaseEncodingDirection than its corresponding functional bold (#${o.series_idx}). This is likely a data error, therefore this sbref should be excluded from BIDS conversion.`]
             })
@@ -327,9 +327,7 @@ export function setRun($root) {
     // Set run entity label if not already specified at Series level
 
     // Loop through subjects
-
     $root._organized.forEach(subGroup=>{
-
         // Loop through sessions
         subGroup.sess.forEach(sesGroup=>{
             // Determine series_idx values
@@ -341,8 +339,10 @@ export function setRun($root) {
                 let run = 1
                 if(seriesObjects.length > 1) {
                     seriesObjects.forEach(obj=>{
-                        obj.entities.run = run.toString()
-                        run++
+                        if (!obj.exclude) {
+                            obj.entities.run = run.toString()
+                            run++
+                        }
                     });
                 }   
             });
@@ -506,7 +506,7 @@ export function setIntendedFor($root) {
                         Object.assign(obj, {IntendedFor: []})
                         let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor
                         correspindingSeriesIntendedFor.forEach(i=>{
-                            let IntendedForIDs = section.filter(o=>o.series_idx === i && o._type != "func/events").map(o=>o.idx)
+                            let IntendedForIDs = section.filter(o=>o.series_idx === i && o._type !== "func/events").map(o=>o.idx)
                             obj.IntendedFor = obj.IntendedFor.concat(IntendedForIDs)
                         });
                     }
@@ -713,7 +713,7 @@ export function validateEntities(level, info) {
             }
         } else if (["run", "echo", "flip", "inv", "split", "chunk"].includes(k)) {
             if (entities[k] && entities[k] !== "") {
-                if (isNaN(parseInt(entities[k]))) {
+                if(!/^[0-9]*$/.test(entities[k])) { 
                     info.validationErrors.push("The "+k+" entity can only contain an integer/numeric value.")
                 }
             }

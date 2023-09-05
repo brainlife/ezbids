@@ -5,16 +5,6 @@
                 <span v-if="o_sub.sub != ''" class="hierarchy">
                     <i class="el-icon-user-solid" style="margin-right: 2px;"/>
                     <small>sub-</small><b>{{o_sub.sub}}</b>
-                    <!-- &nbsp;
-                    <el-form-item label="Volume Threshold" prop="Volume Threshold">
-                        <el-input v-model="ezbids.funcBoldVoumeThreshold"
-                            placeholder="Specify a volume threshold for all 4D dataset sequences" size="small"
-                            @change="setVolumeThreshold(ezbids._organized)" style="width: 100%">
-                        </el-input>
-                        <p style="margin-top: 0">
-                            <small>* Recommended/Optional: You can specify a volume threshold where any sequences in this series will be set to "exclude" if they don't reach the threshold. Useful in instances where a sequence needed to be restated. If no threshold is specified, ezBIDS will default to the expected number of volumes collected in a 1-min period.</small>
-                        </p>
-                    </el-form-item> -->
                     &nbsp;
                     <el-checkbox :value="o_sub.exclude" @change="excludeSubject(o_sub.sub.toString(), $event)">
                         <small>Exclude this subject</small>
@@ -48,7 +38,7 @@
                                 <!--show validation error(s) as "error"-->
                                 <el-badge v-if="o.validationErrors.length > 0" type="danger"
                                     :value="o.validationErrors.length" style="margin-left: 5px;"/>
-    
+
                                 <!--show validation warning(s) as "warning"-->
                                 <el-badge v-if="o.validationWarnings.length > 0" type="warning"
                                     :value="o.validationWarnings.length" style="margin-left: 5px;"/>
@@ -56,6 +46,11 @@
                                 <!-- show "QC errors" as warnings-->
                                 <el-badge v-if="o._type != 'exclude' && o.analysisResults && o.analysisResults.errors && o.analysisResults.errors.length > 0" type="warning"
                                     :value="o.analysisResults.errors.length" style="margin-left: 5px"/>
+                            </span>
+                            <span v-if="isExcluded(o)">
+                                <!--show validation error(s) as "error"-->
+                                <el-badge v-if="o.validationErrors.length > 0" type="danger"
+                                    :value="o.validationErrors.length" style="margin-left: 5px;"/>
                             </span>
                         </div>
                     </div>
@@ -233,7 +228,7 @@
     import { defineComponent } from 'vue'
     import datatype from './components/datatype.vue'
     
-    import { IObject, Session, OrganizedSession, OrganizedSubject, volumeThresholdNum } from './store'
+    import { IObject, Session, OrganizedSession, OrganizedSubject } from './store'
     import { prettyBytes } from './filters'
     import { deepEqual, setRun, setIntendedFor, align_entities, validateEntities, validate_B0FieldIdentifier_B0FieldSource } from './libUnsafe'
     
@@ -241,6 +236,7 @@
     import { Splitpanes, Pane } from 'splitpanes'
     
     import 'splitpanes/dist/splitpanes.css'
+import { objectToString } from '@vue/shared'
     
     interface Section {
         [key: string]: IObject[];
@@ -256,7 +252,6 @@
             return {
                 so: null as IObject|null, //selected object
                 sess: null as OrganizedSession|null, //selected session for IntendedFor handling
-                // volumeThreshold: 0 as volumeThreshold,
             }
         },
     
@@ -306,34 +301,6 @@
                 this.$emit("mapObjects");
                 this.validateAll();
             },
-
-            // setVolumeThreshold(root:OrganizedSubject) {
-            //     /*
-            //     Determine volume threshold for all func/bold acquisitions in dataset and set
-            //     to exclude if the number of volumes does not meet the volume threshold. Threshold 
-            //     calculated based on the expected number of volumes collected in a 1-minute time frame,
-            //     with the formula (60-sec / tr), where tr == RepetitionTime
-            //     */
-            //     root.sess.forEach(sessGroup=>{
-            //         sessGroup.objects.forEach(o=>{
-            //             //update analysisResults.warnings in case user went back to Series and adjusted things
-            //             if(["func/bold", "func/cbv", "dwi/dwi"].includes(o._type)) {
-            //                 let tr = o.items[0].sidecar.RepetitionTime
-            //                 let numVolumes = o.analysisResults.NumVolumes
-            //                 let numVolumes1min = Math.floor(60 / tr)
-            //                 if(numVolumes <= numVolumes1min) {
-            //                     o.exclude = true
-            //                     o.analysisResults.warnings = [`This 4D sequence contains ${numVolumes} volumes, which is \
-            //                     less than the threshold value of ${numVolumes1min} volumes, calculated by the expected number of \
-            //                     volumes in a 1 min time frame. This acquisition will thus be excluded from BIDS conversion unless \
-            //                     unexcluded. Please modify if incorrect.`]
-            //                 }
-            //             }
-            //         });
-            //     });
-            //     this.$emit("mapObjects");
-            //     this.validateAll();
-            // },
     
             isExcluded(o: IObject) {
                 if(o.exclude) return true;
@@ -443,7 +410,7 @@
                 o.validationErrors = [];
                 o.validationWarnings = [];
 
-                setRun(this.ezbids)
+                // setRun(this.ezbids)
 
                 setIntendedFor(this.ezbids)
                 
