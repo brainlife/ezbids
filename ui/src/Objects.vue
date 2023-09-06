@@ -276,6 +276,13 @@ import { objectToString } from '@vue/shared'
         methods: {
     
             prettyBytes,
+
+            getSomeEntities(type: string): any {
+            const entities = Object.assign({}, this.getBIDSEntities(type));
+            delete entities.subject;
+            delete entities.session;
+            return entities;
+        },
     
             //subject needs to be an object
             findSessionFromString(sub: string, ses: string) {
@@ -409,7 +416,6 @@ import { objectToString } from '@vue/shared'
 
                 o.validationErrors = [];
                 o.validationWarnings = [];
-                console.log(o)
 
                 // setRun(this.ezbids)
 
@@ -422,12 +428,33 @@ import { objectToString } from '@vue/shared'
                 validate_B0FieldIdentifier_B0FieldSource(o)
 
                 setRun(this.ezbids)
-    
-                let entities_requirement = this.getBIDSEntities(o._type);
-    
+        
                 //update validationWarnings
                 if(o.analysisResults.warnings?.length) {
                     o.validationWarnings = o.analysisResults.warnings
+                }
+
+                let entities_requirement = this.getBIDSEntities(o._type);
+                for(let k in this.getSomeEntities(o._type)) {
+                    if(entities_requirement[k] === "required") {
+                        if(!o._entities[k]) {
+                            o.validationErrors.push("entity: "+k+" is required.");
+                        }
+                    }
+                }
+
+                /*
+                If user specified a specific entity label and then changed the datatype/suffix pairing to something
+                that doesn't allow that entity, we need to remove it. Otherwise, the bids-validator will complain.
+                */
+               console.log(o._type, o._entities)
+                for (let k in o._entities) {
+                    if (!["subject", "session"].includes(k)) { // this line prevents sequence ordering from being messed up
+                        if (o.entities[k] !== "" && !entities_requirement[k]) {
+                            o._entities[k] = ""
+                            o.entities[k] = ""
+                        }
+                    }
                 }
     
                 // if(this.isExcluded(o)) return; // might return to this, but need to check if previously excluded sequences are un-excluded

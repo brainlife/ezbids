@@ -277,22 +277,26 @@ export default defineComponent({
                 }
             }
 
-            let entities = this.getBIDSEntities(s.type);
+            let entities_requirement = this.getBIDSEntities(s.type);
             for(let k in this.getSomeEntities(s.type)) {
-                if(entities[k] == "required") {
+                if(entities_requirement[k] == "required") {
                     if(!s.entities[k]) {
                         s.validationErrors.push("entity: "+k+" is required.");
                     }
                 }
             }
 
-            // let metadata = this.getBIDSMetadata(s.type);
-            // for(const [key, value] of Object.entries(metadata)) {
-            //     if(value == "required") {
-            //         s.validationWarnings.push("json sidecar metadata: "+key+" is required.");
-
-            //     }
-            // }
+            /*
+            If user specified a specific entity label and then changed the datatype/suffix pairing to something
+            that doesn't allow that entity, we need to remove it. Otherwise, the bids-validator will complain.
+            */
+            for (let k in s.entities) {
+                if (!["subject", "session"].includes(k)) { // this line prevents sequence ordering from being messed up
+                    if (s.entities[k] !== "" && !entities_requirement[k]) {
+                        s.entities[k] = ""
+                    }
+                }
+            }
 
             if(s.type.startsWith("fmap/")) {
                 if(!s.IntendedFor) s.IntendedFor = [];

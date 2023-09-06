@@ -627,10 +627,10 @@ export function validateEntities(level, info) {
                     info.validationErrors.push("Only accepted part entity values are: mag, phase, real, imag. Must also be lower-case")
                 }
             }
-        } else if (k === "mt") {
+        } else if (k === "mtransfer") {
             // Only on, off values allowed
-            if (entities.mt && entities.mt !== "") {
-                if (!["on", "off"].includes(entities.mt)) {
+            if (entities.mtransfer && entities.mtransfer !== "") {
+                if (!["on", "off"].includes(entities.mtransfer)) {
                     info.validationErrors.push("Only accepted mt entity values are: on, off. Must also be lower-case")
                 }
             }
