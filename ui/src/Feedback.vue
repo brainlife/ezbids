@@ -61,6 +61,18 @@
             <b><a href="mailto:anibalsolon@utexas.edu" target="mail">Anibal S. Heinsfeld</a></b><br>
             Software Engineer
         </div>
+        <div class="avatar">
+            <img src="./assets/images/DheerajBhatia.png" width="200"/>
+            <br>
+            <b><a href="mailto:dheeraj.bhatia@austin.utexas.edu" target="mail">Dheeraj Bhatia</a></b><br>
+            Software Engineer
+        </div>
+        <div class="avatar">
+            <img src="./assets/images/NickLee.jpeg" width="200"/>
+            <br>
+            <b><a href="mailto:niconal902@gmail.com" target="mail">Nick Lee</a></b><br>
+            Software Engineer
+        </div>
     </div>
 
 </div>
