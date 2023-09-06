@@ -47,7 +47,7 @@
             </p>
             <p>                
                 <el-dropdown>
-                    <el-button style="margin-right: 25px">
+                    <el-button style="margin-right: 10px">
                         Send to <b>Brainlife.io</b>&nbsp;
                         <font-awesome-icon :icon="['fas', 'angle-down']"/>
                     </el-button>
