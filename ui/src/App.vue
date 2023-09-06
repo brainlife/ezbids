@@ -155,11 +155,11 @@ export default defineComponent({
                         funcQA(this.ezbids);
                         fmapQA(this.ezbids);
                         dwiQA(this.ezbids);
-                        setRun(this.ezbids);
+                        // setRun(this.ezbids);
                         this.mapObjects();
                         break;
                     case "object":
-                        // createEventsTSV(this.ezbids, this.events); // functionality replace by next line
+                        // createEventsTSV(this.ezbids, this.events); // functionality replaced by next line
                         createEventsTSV(this.ezbids, this.ezbids.events);
                         // setIntendedFor(this.ezbids); // Moving this into Objects.vue directly
                         break;

@@ -73,16 +73,16 @@ export function setSectionIDs($root) {
             let obj_idx = 0
             let message = ""
             let previousMessage = ""
-            protocol.forEach(obj=> {
+            protocol.forEach(obj=>{
                 if($root.series[protocol[obj_idx].series_idx]) {
                     message = $root.series[protocol[obj_idx].series_idx].message
                 }
 
-                if(obj_idx != 0 && $root.series[protocol[obj_idx - 1].series_idx]) {
+                if(obj_idx !== 0 && $root.series[protocol[obj_idx - 1].series_idx]) {
                     previousMessage = $root.series[protocol[obj_idx - 1].series_idx].message
                 }
 
-                if(obj_idx != 0 && message.includes("localizer") && (previousMessage == "" || !previousMessage.includes("localizer"))) {
+                if(obj_idx !== 0 && message.includes("localizer") && (previousMessage === "" || !previousMessage.includes("localizer"))) {
                     sectionID++;
                     obj.analysisResults.section_id = sectionID
                 }else{
@@ -323,7 +323,7 @@ export function fmapQA($root) {
     });
 }
 
-export function setRun($root) {
+export function setRun($root) { // main function
     // Set run entity label if not already specified at Series level
 
     // Loop through subjects
@@ -350,6 +350,7 @@ export function setRun($root) {
     });
 }
 
+
 // export function setRun($root) {
 //     // Set run entity label if not already specified at Series level
 
@@ -357,10 +358,6 @@ export function setRun($root) {
 //     $root._organized.forEach(subGroup=>{
 //         // Loop through sessions
 //         subGroup.sess.forEach(sesGroup=>{
-//             // Determine series_idx values
-//             let allSeriesIndices = sesGroup.objects.map(e=>e.series_idx)
-//             let uniqueSeriesIndices = Array.from(new Set(allSeriesIndices))
-
 //             sesGroup.objects.forEach(obj=>{
 
 //                 // leave two entity labels out for now: part and run. The part entity could have a pairing (mag/phase or real/imag), and we're interested in the run entity
@@ -413,76 +410,9 @@ export function setRun($root) {
 //                     }
 //                 }
 //             })
-
-
-//             // uniqueSeriesIndices.forEach(si=>{
-//             //     let seriesObjects = sesGroup.objects.filter(e=>e.series_idx === si && !e._exclude && e._type !== "exclude")
-//             //     if(seriesObjects.length > 1) {
-//             //         let run = 1
-//             //         seriesObjects.forEach(obj=>{
-//             //             obj._entities.run = run.toString()
-//             //             obj.entities.run = obj._entities.run
-//             //             run++
-//             //         });
-//             //     } else if (seriesObjects.length == 1) {
-//             //         let obj = seriesObjects[0]
-//             //         let newSeriesObjects = []
-//             //         newSeriesObjects.push(obj)
-//             //         // if (obj._type.startsWith("func") && !obj._exclude && obj._type !== "func/events") { // eventually remove this line
-//             //         let identificalOtherSeriesObjs = sesGroup.objects.filter(e=>!e._exclude &&
-//             //             e.idx !== obj.idx &&
-//             //             e._type === obj._type &&
-//             //             deepEqual(e._entities, obj._entities)
-//             //         )
-
-//             //         if (identificalOtherSeriesObjs.length) {
-//             //             let run = 1
-
-//             //             identificalOtherSeriesObjs.forEach(otherSeriesObj=>{
-//             //                 newSeriesObjects.push(otherSeriesObj)
-//             //             })
-                        
-//             //             // Sort this new array by idx (i.e. order in which the sequences were collected in the scan)
-//             //             newSeriesObjects.sort((a, b) => a.idx - b.idx)
-
-//             //             newSeriesObjects.forEach(newObj=>{
-//             //                 newObj._entities.run = run.toString()
-//             //                 newObj.entities.run = newObj._entities.run
-//             //                 run++
-//             //             })
-//             //         } else {
-//             //             if (obj._type.startsWith("func") && !obj._exclude && obj._type !== "func/events") {
-//             //                 let mockObjEntities = obj._entities
-//             //                 mockObjEntities.run = "1"
-//             //                 identificalOtherSeriesObjs = sesGroup.objects.filter(e=>!e._exclude &&
-//             //                     e.idx !== obj.idx &&
-//             //                     e._type === obj._type &&
-//             //                     // deepEqual(Object.keys(e._entities).filter(e=>e !== "run"), Object.keys(obj._entities).filter(obj=>obj !== "run")) // deepEqual(e._entities, obj._entities)
-//             //                     deepEqual(e._entities, mockObjEntities)
-//             //                 )
-
-//             //                 if (!identificalOtherSeriesObjs.length) {
-//             //                     obj._entities.run = "1"
-//             //                     obj.entities.run = obj._entities.run
-//             //                 }
-//             //             // } else if (!obj._type.startsWith("func") && obj.validationErrors.length == 0) {
-//             //             //     obj._entities.run = ""
-//             //             //     obj.entities.run = obj._entities.run
-//             //             }
-//             //         }
-//             //     }
-//             //     let excludedSeriesObjects = sesGroup.objects.filter(e=>e.series_idx === si && e._exclude || e._type === "exclude")
-//             //     if(excludedSeriesObjects) {
-//             //         excludedSeriesObjects.forEach(excludedObj=>{
-//             //             excludedObj._entities.run = ""
-//             //             excludedObj.entities.run = excludedObj._entities.run
-//             //         })
-//             //     }
-//             // });
-//         });
-//     });
+//         })
+//     })
 // }
-
 
 export function setIntendedFor($root) {
     // Apply fmap intendedFor mapping, based on user specifications on Series page.

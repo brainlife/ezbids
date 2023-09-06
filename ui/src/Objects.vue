@@ -409,6 +409,7 @@ import { objectToString } from '@vue/shared'
 
                 o.validationErrors = [];
                 o.validationWarnings = [];
+                console.log(o)
 
                 // setRun(this.ezbids)
 
@@ -419,6 +420,8 @@ import { objectToString } from '@vue/shared'
                 validateEntities("Objects", o)
 
                 validate_B0FieldIdentifier_B0FieldSource(o)
+
+                setRun(this.ezbids)
     
                 let entities_requirement = this.getBIDSEntities(o._type);
     
@@ -503,14 +506,13 @@ import { objectToString } from '@vue/shared'
                     }
                 }
 
-                // func/sbref are implicitly linked to a func/bold; make sure these have same entities and exclusion criteria
+                // func/sbref are implicitly linked to a corresponding func/bold; make sure these have same entities and exclusion criteria
                 if(o._type === "func/sbref") {
                     let correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>object._type === "func/bold" &&
                         deepEqual(object._entities, o._entities))
                     
                     if(correspondingFuncBold) { // should be no more than one
                         correspondingFuncBold.forEach((boldObj:IObject)=>{
-                            o.analysisResults.section_id = boldObj.analysisResults.section_id
                             for(let k in boldObj._entities) {
                                 if(boldObj._entities[k] !== "" && k !== "echo") {
                                     if(k === "part" && boldObj._entities[k] === "phase") {
@@ -523,14 +525,14 @@ import { objectToString } from '@vue/shared'
                                 }
                                 o.entities[k] = o._entities[k]
                             }
-                            if(boldObj._exclude === true || correspondingFuncBold._type === "exclude") {
+                            if(boldObj._exclude || correspondingFuncBold._type === "exclude") {
                                 o.exclude = true
                                 o._exclude = true
                                 o.validationWarnings = [`The corresponding func/bold #${boldObj.series_idx} is currently set to exclude from BIDS conversion. \
                                     Since this func/sbref is linked, it will also be excluded from conversion unless the corresponding
                                     func/bold is unexcluded. If incorrect, please modify corresponding func/bold (#${boldObj.series_idx}).`]
                             }
-                            if(boldObj._exclude === false) {
+                            if(!boldObj._exclude) {
                                 o.exclude = false
                                 o._exclude = false
                                 o.validationWarnings = []
@@ -621,7 +623,7 @@ import { objectToString } from '@vue/shared'
     
             validateAll() {
                 this.ezbids.objects.forEach(this.validate);
-                // this.ezbids.objects.forEach(this.validate); // not ideal, but need to re-validate when run entities are being updated
+                this.ezbids.objects.forEach(this.validate); // not ideal, but need to re-validate when run entities are being updated
             },
         },
     });

@@ -2360,63 +2360,6 @@ def extract_series_info(dataset_list_unique_series):
 
     return ui_series_info_list
 
-
-# def setVolumeThreshold(dataset_list_unique_series, objects_list):
-#     """
-#     Determine a volume threshold for all func/bold acquisitions in dataset,
-#     using the following heuristic:
-
-#     Parameters
-#     ----------
-#     dataset_list_unique_series : list
-#         List of dictionaries of unique series
-#     objects_list: list
-#         List of dictionaries of all dataset objects
-#     """
-
-#     func_series = [
-#         x for x in dataset_list_unique_series
-#         if "func" in x["type"]
-#         and x["type"] != "func/sbref"
-#         and x["RepetitionTime"] > 0
-#     ]
-
-#     if len(func_series):
-#         for func in func_series:
-#             series_idx = func["series_idx"]
-#             tr = func["RepetitionTime"]
-#             corresponding_objects_volumes = [
-#                 x["analysisResults"]["NumVolumes"] for x in objects_list if x["series_idx"] == series_idx
-#             ]
-#             minNumVolumes = min(corresponding_objects_volumes)
-#             maxNumVolumes = max(corresponding_objects_volumes)
-#             numVolumes1min = floor(60 / tr)
-
-#             if maxNumVolumes <= numVolumes1min:  # set default as # volumes after 1 minute
-#                 volumeThreshold = numVolumes1min
-#             else:
-#                 if minNumVolumes == maxNumVolumes:  # set threshold at max NumVolumes
-#                     volumeThreshold = maxNumVolumes
-#                 else:  # set threshold at 50% of max NumVolumes, or min NumVolumes if it's greater than half
-#                     half = floor(maxNumVolumes / 2)
-#                     if minNumVolumes > half:
-#                         volumeThreshold = minNumVolumes
-#                     else:
-#                         volumeThreshold = half
-
-#             volumeThreshold = 9  # temporary, but setting threshold low for debugging purposes
-
-#             # With volume threshold, exclude objects that don't pass it
-#             corresponding_objects = [x for x in objects_list if x["series_idx"] == series_idx]
-#             for obj in corresponding_objects:
-#                 if obj["analysisResults"]["NumVolumes"] < volumeThreshold:
-#                     obj["exclude"] = True
-#                     obj["analysisResults"]["errors"] = ["Acquisition is believed to be func/bold and contains "
-#                                                         f"{obj['analysisResults']['NumVolumes']} volumes, which "
-#                                                         f"is less than the threshold value of {volumeThreshold} "
-#                                                         "this acquisition will be excluded from BIDS conversion. "
-#                                                         "Please modify if incorrect"]
-
 # Begin (Apply functions)
 
 
@@ -2534,9 +2477,6 @@ for index, unique_dic in enumerate(dataset_list_unique_series):
     )
     print("")
     print("")
-
-# # Set volume threshold for func/bold acquisitions
-# setVolumeThreshold(dataset_list_unique_series, objects_list)
 
 # Extract important series information to display in ezBIDS UI
 ui_series_info_list = extract_series_info(dataset_list_unique_series)
