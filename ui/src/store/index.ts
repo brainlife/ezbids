@@ -1,63 +1,13 @@
+import perfMetadata from '../assets/schema/rules/sidecars/perf.json'
 
 import { createStore } from 'vuex'
 
 import bidsEntities from '../assets/schema/objects/entities.json'
 
-import { getFieldSeverity } from '../../../bids-validator/bids-validator/src/schema/applyRules'
-
-import { BIDSContext } from '../../../bids-validator/bids-validator/src/schema/context'
-import {
-    GenericRule,
-    GenericSchema,
-    SchemaFields,
-    SchemaTypeLike,
-} from '../../../bids-validator/bids-validator/src/types/schema'
-import { Severity } from '../../../bids-validator/bids-validator/src/types/issues'
-
-
-// export interface GenericRule {
-//     selectors?: string[]
-//     checks?: string[]
-//     columns?: Record<string, string>
-//     additional_columns?: string
-//     initial_columns?: string[]
-//     fields: Record<string, SchemaFields>
-//     issue?: SchemaIssue
-//     extensions?: string[]
-//     suffixes?: string[]
-//     stem?: string
-//     path?: string
-//     datatypes?: string[]
-//     pattern?: string
-//     name?: string
-//     format?: string
-//     required?: string
-//     index_columns?: string[]
-// }
-
-// export interface SchemaFields {
-//     level: string
-//     level_addendum?: string
-//     issue?: SchemaIssue
-// }
-
-// export interface SchemaIssue {
-//     code: string
-//     message: string
-//     level?: string
-// }
-
-// interface SchemaType {
-//     type: string
-//     enum?: string[]
-// }
-
-// interface AnyOf {
-//     anyOf: SchemaType[]
-// }
-
-// export type GenericSchema = { [key: string]: GenericRule | GenericSchema }
-// export type SchemaTypeLike = AnyOf | SchemaType
+export interface MetadataChecks {
+    MetadataField: string;
+    requirement: string;
+}
 
 export interface ContainerObject {
     Type: string;
@@ -138,6 +88,8 @@ export interface Series {
     message: string;
 
     IntendedFor?: number[]; //for storing which object id the object is intended for
+
+    metadata_requirements: [MetadataChecks];
 }
 
 export interface Session {
@@ -248,6 +200,31 @@ interface BIDSDatatypes {
     }
 }
 
+interface BIDSDatatypeMetadataOptionConditions {
+    metadata: string;
+    value: string;
+}
+
+interface BIDSDatatypeMetadataOptionMetadata {
+    name: string;
+    requirement: string | undefined;
+    description: string;
+}
+
+interface BIDSDatatypeMetadataOption {
+    value: string;
+    label: string;
+    conditions: BIDSDatatypeMetadataOptionConditions[];
+    metadata: BIDSDatatypeMetadataOptionMetadata[];
+}
+
+interface BIDSDatatypesMetadata {
+    [key: string]: {
+        label: string;
+        options: BIDSDatatypeMetadataOption[];
+    }
+}
+
 export interface OrganizedSession {
     sess: string,
     session_idx: number;
@@ -285,10 +262,19 @@ export interface ISession {
     finalize_finish_date?: string;
 }
 
+export interface RelevantMetadata {
+    modality: string;
+    datatype: string;
+    suffix: string;
+    conditions: string[];
+    metadata: string;
+}
+
 const state = {
     bidsSchema: {
         entities: bidsEntities as BIDSEntities,
         datatypes: {} as BIDSDatatypes,
+        metadata: {} as BIDSDatatypesMetadata,
     },
 
     config: {
@@ -399,32 +385,25 @@ interface checkMetadata {
     MetaDataField: string
 }
 
-// function evalJsonCheck(
-//     rule: GenericRule,
-//     context: BIDSContext,
-//     schema: GenericSchema,
-//     schemaPath: string,
-// ): void {
+interface MetadataIssues {
+    code: string;
+    message: string;
+}
 
-//     const validateMetadata: checkMetadata[] = []
+interface MetadataFields {
+    [key: string]: { // Metadata key: EchoTime, RepetitionTime, etc...
+        level: string;
+        description_addendum?: string;
+        level_addendum?: string;
+        issue?: MetadataIssues;
+    }
+}
 
-//     for (const [key, requirement] of Object.entries(rule.fields)) {
-//         const severity = getFieldSeverity(requirement, context)
-//         const keyName = schema.objects.metadata[key].name
+interface BIDSSchemaMetadata {
+    selectors: string[];
+    fields: MetadataFields[];
 
-
-//         if(severity && severity !== 'ignore' && !(keyName in context.sidecar) && !context.file.path.includes('.json') && keyName !== 'Name' && keyName !== 'BIDSVersion') {
-//             // console.log(context.modality, context.datatype, context.suffix, context.file.path, keyName)
-//             validateMetadata.push({ "modality": context.modality, 
-//                                     "datatype": context.datatype, 
-//                                     "suffix": context.suffix, 
-//                                     "filePath": context.file.path,
-//                                     "MetaDataField": keyName
-//                                 })
-//         }
-//     }
-//     console.log(validateMetadata)
-// }
+}
 
 function loadDatatype(
     modality: string,
@@ -444,6 +423,148 @@ function loadDatatype(
     }
 }
 
+// function loadDatatypeTest(
+//     modality: string,
+//     datatypes: {[key: string]: BIDSSchemaEntities},
+//     metadata: {[key: string]: BIDSSchemaMetadata},
+//     label: string) {
+
+//     // console.log("BIDS Schema")
+//     // console.log(state.bidsSchema)
+
+//     state.bidsSchema.datatypes[modality] = { label, options: [] };
+//     state.bidsSchema.metadata[modality] = { label, options: [] };
+
+//     for(const group of Object.values(datatypes)) {
+//         //datatype.forEach(group=>{
+//             group.suffixes.forEach((suffix:string)=>{
+//                 state.bidsSchema.datatypes[modality].options.push({
+//                     value: modality+"/"+suffix,
+//                     label: suffix, //bold, cbv, sbred, events, etc..
+//                     entities: group.entities, //["subject", "session", etc..]
+//                 });
+//             });
+//         }
+
+//     let counter = -1
+//     let MetadataInfo = []
+//     for(const group of Object.values(metadata)) {
+//         let modality = group.selectors[0].split("modality == ")[1]
+//         let dtype = group.selectors[1].split("datatype == ")[1]
+//         let suf = group.selectors[2].split("suffix == ")[1]
+//         let conditions = []
+//         if(group.selectors.length > 3) {
+//             for(let k in group.selectors) {
+//                 if(parseInt(k) > 2) {
+//                     conditions.push(group.selectors[k])
+//                 }
+//             }
+//         }
+//         let fields = group.fields
+//         // console.log(fields)
+//         MetadataInfo.push(modality, dtype, suf, conditions)
+
+
+//         counter = counter + 1
+
+//         let base =  {"value": "", "label": "", "conditions": Object(), "metadata": Object()}
+
+//         if(group.selectors.length > 1) {
+//             group.selectors = [group.selectors.join(",")]
+//         }
+        
+//         let datatype = ""
+//         let suffix = ""
+//         let value = ""
+//         let requirement = ""
+//         let description = ""
+//         let ConditionList = []
+//         let ConditionCounter = 0
+//         let SelectorInfo = []
+//         let FieldsInfo = []
+        
+//         for (const [index, element] of Object.entries(group)) {
+//             if(index == "selectors") {
+//                 let selector = element[0] 
+
+//                 if(selector.includes("modality")) {
+//                     datatype = selector.split("modality == ")[1].split(",")[0].split('"').join('')
+//                     suffix = datatype
+//                 }
+                
+//                 if(selector.includes("datatype")) {
+//                     datatype = selector.split("datatype == ")[1].split(",")[0].split('"').join('')
+//                     suffix = datatype
+//                 }
+
+//                 if(selector.includes("suffix")) {
+//                     suffix = selector.split("suffix == ")[1].split(",")[0].split('"').join('')
+//                 }
+
+//                 if(selector.includes("sidecar.")) {
+//                     let conditions = selector.split(",")
+//                     for(const condition of conditions) {
+//                         if(condition.includes("sidecar.") && !condition.includes(".includes")) {
+//                             let metadataCondition = condition.split("sidecar.")[1].split(" ==")[0]
+//                             let metadataConditionValue = condition.split("sidecar.")[1].split(" ==")[1].split('"').join('')
+//                             ConditionList[ConditionCounter] = {"metadata": metadataCondition, "value": metadataConditionValue}
+//                             ConditionCounter = ConditionCounter + 1
+//                         }
+//                     }
+//                 }
+//                 value = datatype + "/" + suffix
+//                 SelectorInfo.push({"value": value, "label": suffix, "conditions": ConditionList})
+
+//             } else {
+//                 let FieldsCounter = 0
+//                 for (const [MetadataField, requirementInfo] of Object.entries(element)) {
+//                     let level = requirementInfo.level
+//                     requirement = level !== undefined ? level : requirementInfo
+
+//                     if(typeof(requirementInfo) == 'object') {
+//                         for(const k of Object.keys(requirementInfo)) {
+//                             if(k == "level_addendum") {
+//                                 description = requirementInfo.level_addendum
+//                             } else if (k == "description_addendum") {
+//                                 description = requirementInfo.description_addendum
+//                             } else if (k == "issue") {
+//                                 description = requirementInfo.issue.message
+//                             } else {
+//                                 description = "No description available"
+//                             }
+//                         }
+//                     } else {
+//                         description = "No description available"
+//                     }
+
+//                     FieldsInfo[FieldsCounter] = {"name": MetadataField, "requirement": requirement, "description": description}
+//                     FieldsCounter = FieldsCounter + 1
+//                   }
+           
+
+//                 // Object.entries(group["fields"]).forEach((idx) => {
+//                 //     counter = counter + 1
+//                 //     let value = datatype + "/" + suffix
+//                 //     let MetadataField:string = idx[0]
+//                 //     let level:string = idx[1].level
+//                 //     let sublevel:string = idx[1].description_addendum
+//                 //     let addendum:string = sublevel !== undefined ? sublevel : idx[1].level_addendum
+//                 //     let requirement:string = level !== undefined ? level : idx[1]
+//                 //     let description:string = addendum !== undefined ? addendum : "No description available"
+//                 //     state.bidsSchema.metadata[MetadataField] = {"value": value, "name": MetadataField, "requirement": requirement, "description": description}
+//                 //     dan[counter] = {"value": value, "name": MetadataField, "requirement": requirement, "description": description}
+//                 // });
+//             }
+//         }
+//         base.value = SelectorInfo[0].value
+//         base.label = SelectorInfo[0].label
+//         base.conditions = SelectorInfo[0].conditions
+//         base.metadata = FieldsInfo
+//         MetadataInfo.push(base)
+//     }
+//     state.bidsSchema.metadata[modality].options = MetadataInfo
+// } 
+
 import dwiDatatype from '../assets/schema/rules/datatypes/dwi.json'
 loadDatatype("dwi", dwiDatatype, "Diffusion");
 
@@ -458,6 +579,10 @@ loadDatatype("fmap", fmapDatatype, "Field Map");
 
 import petDatatype from '../assets/schema/rules/datatypes/pet.json'
 loadDatatype("pet", petDatatype, "PET");
+
+// import perfDatatype from '../assets/schema/rules/datatypes/perf.json'
+// import perfDatatypeMetadata from '../assets/schema/rules/sidecars/perf.json'
+// loadDatatypeTest("perf", perfDatatype, perfDatatypeMetadata, "Perfusion");
 
 const store = createStore({
     state,

@@ -64,7 +64,11 @@ export default defineComponent({
 
 <template>
 <div style="padding: 20px;">
-    <p>Please enter as much information you like to include in the <b>dataset_description.json</b></p>
+    <p>Please enter as much information you like to include in the <b>dataset_description.json</b>. 
+        For specific information and examples, 
+        see <a href="https://bids-specification.readthedocs.io/en/stable/03-modality-agnostic-files.html#dataset_descriptionjson" target="_blank" >here</a> 
+        and <a href="https://github.com/bids-standard/bids-examples/blob/master/ds000117/dataset_description.json" target="_blank" >here</a>
+ </p>
     <br>
     <el-form label-width="150px" ref="descForm" :model="dd" :rules="rules">
         <el-form-item label="Dataset Name" prop="Name">

@@ -6,7 +6,7 @@ datatype, suffix, entity labels [acq, run, dir, etc]) based on dcm2niix output.
 This information is then displayed in the ezBIDS UI, where users can make
 edits/modifications as they see fit, before finalizing their data into a BIDS-compliant dataset.
 
-Flake8 is used for linting, which highlights sytax and style issues as defined by the PEP guide. Arguements include:
+Flake8 is used for linting, which highlights syntax and style issues as defined by the PEP guide. Arguments include:
     --max-line-length=125
     --ignore=E722,W503
 
@@ -23,7 +23,7 @@ import time
 import numpy as np
 import pandas as pd
 import nibabel as nib
-from math import floor
+# from math import floor
 from datetime import date
 from natsort import natsorted
 from operator import itemgetter
@@ -87,7 +87,7 @@ def modify_uploaded_dataset_list(uploaded_json_list):
         from BIDS conversion
 
     config: boolean
-        Specifies whether an ezBIDS configuation file (finalized.json) was detected in the uploaded or not
+        Specifies whether an ezBIDS configuration file (finalized.json) was detected in the uploaded or not
 
     config_file: string
         Path to the ezBIDS configuration file
@@ -95,11 +95,13 @@ def modify_uploaded_dataset_list(uploaded_json_list):
     uploaded_files_list = []
 
     # Remove Philips proprietary files in uploaded_json_list if they exist
-    uploaded_json_list = natsorted([json for json in uploaded_json_list
-                                    if "parrec" not in json.lower()
-                                    # and "finalized.json" not in json
-                                    and "ezBIDS_core.json" not in json]
-                                   )
+    uploaded_json_list = natsorted(
+        [
+            json for json in uploaded_json_list
+            if "parrec" not in json.lower()
+            and "ezBIDS_core.json" not in json
+        ]
+    )
 
     config = False
     config_file = ""
@@ -464,7 +466,7 @@ def generate_dataset_list(uploaded_files_list, data_type):
         list of files is generated from preprocess.sh
 
     data_type: str
-        Specifies whether the uplaoded data (if NIfTI/JSON) was converted by dcm2niix/pypet2bids.
+        Specifies whether the uploaded data (if NIfTI/JSON) was converted by dcm2niix/pypet2bids.
         If not, this value becomes "exclude", otherwise set it "".
 
     Returns
@@ -491,283 +493,287 @@ def generate_dataset_list(uploaded_files_list, data_type):
         json_data = json.load(json_data, strict=False)
         print(f"JSON file: {json_file}")
 
-        corresponding_nifti = [
-            x for x in nifti_list if json_file[:-4] in x
-            if ".nii" in x
-        ][0]
-
-        # Phase encoding direction info
-        if "PhaseEncodingDirection" in json_data:
-            pe_direction = json_data["PhaseEncodingDirection"]
-        else:
-            pe_direction = None
-
+        # Make sure each JSON has a corresponding NIfTI file
+        # corresponding_nifti = [x for x in nifti_list if json_file[:-4] in x if ".nii" in x][0]
+        corresponding_nifti = None
         try:
-            ornt = nib.aff2axcodes(nib.load(corresponding_nifti).affine)
-            ornt = "".join(ornt)
+            corresponding_nifti = [x for x in nifti_list if json_file[:-4] in x if ".nii" in x][0]
         except:
-            ornt = None
+            pass
 
-        if pe_direction is not None and ornt is not None:
-            proper_pe_direction = correct_pe(pe_direction, ornt)
-            ped = determine_direction(proper_pe_direction, ornt)
-        else:
-            ped = ""
+        if corresponding_nifti:
+            # Phase encoding direction info
+            if "PhaseEncodingDirection" in json_data:
+                pe_direction = json_data["PhaseEncodingDirection"]
+            else:
+                pe_direction = None
 
-        # Nifti (and bval/bvec) file(s) associated with specific json file
-        nifti_paths_for_json = [x for x in nifti_list if json_file[:-4] in x and ".json" not in x]
+            try:
+                ornt = nib.aff2axcodes(nib.load(corresponding_nifti).affine)
+                ornt = "".join(ornt)
+            except:
+                ornt = None
 
-        # Find nifti file size
-        filesize = os.stat(nifti_paths_for_json[0]).st_size
+            if pe_direction is not None and ornt is not None:
+                proper_pe_direction = correct_pe(pe_direction, ornt)
+                ped = determine_direction(proper_pe_direction, ornt)
+            else:
+                ped = ""
 
-        # Find StudyID from json
-        if "StudyID" in json_data:
-            study_id = json_data["StudyID"]
-        else:
-            study_id = ""
+            # NIfTI (and bval/bvec) file(s) associated with specific json file
+            nifti_paths_for_json = [x for x in nifti_list if json_file[:-4] in x and ".json" not in x]
 
-        """
-        Find subject_id from json, since some files contain neither
-        PatientName nor PatientID
-        """
-        if "PatientName" in json_data:
-            patient_name = json_data["PatientName"]
-        else:
-            patient_name = "n/a"
+            # Find nifti file size
+            filesize = os.stat(nifti_paths_for_json[0]).st_size
 
-        if "PatientID" in json_data:
-            patient_id = json_data["PatientID"]
-        else:
-            patient_id = "n/a"
+            # Find StudyID from json
+            if "StudyID" in json_data:
+                study_id = json_data["StudyID"]
+            else:
+                study_id = ""
 
-        # Find PatientBirthDate
-        if "PatientBirthDate" in json_data:
-            patient_birth_date = json_data["PatientBirthDate"].replace("-", "")
-        else:
-            patient_birth_date = "00000000"
+            """
+            Find subject_id from json, since some files contain neither
+            PatientName nor PatientID
+            """
+            if "PatientName" in json_data:
+                patient_name = json_data["PatientName"]
+            else:
+                patient_name = "n/a"
 
-        # Find PatientSex
-        patient_sex = "n/a"
-        if "PatientSex" in json_data:
-            if json_data["PatientSex"] in ["M", "F"]:
-                patient_sex = json_data["PatientSex"]
+            if "PatientID" in json_data:
+                patient_id = json_data["PatientID"]
+            else:
+                patient_id = "n/a"
 
-        # Find PatientAge
-        if "PatientAge" in json_data:
-            patient_age = json_data["PatientAge"]
-        else:
-            patient_age = "n/a"
+            # Find PatientBirthDate
+            if "PatientBirthDate" in json_data:
+                patient_birth_date = json_data["PatientBirthDate"].replace("-", "")
+            else:
+                patient_birth_date = "00000000"
 
-        """
-        Metadata may contain PatientBirthDate and/or PatientAge. Check either
-        to see if one truly provides accurate age information.
-        """
-        age = "n/a"
-        if "PatientAge" in json_data:
-            patient_age = json_data["PatientAge"]
-            if not patient_age.isalnum():  # if true, is alphanumeric, so not age
+            # Find PatientSex
+            patient_sex = "n/a"
+            if "PatientSex" in json_data:
+                if json_data["PatientSex"] in ["M", "F"]:
+                    patient_sex = json_data["PatientSex"]
+
+            # Find PatientAge
+            if "PatientAge" in json_data:
+                patient_age = json_data["PatientAge"]
+            else:
+                patient_age = "n/a"
+
+            """
+            Metadata may contain PatientBirthDate and/or PatientAge. Check either
+            to see if one truly provides accurate age information.
+            """
+            age = "n/a"
+            if "PatientAge" in json_data:
+                patient_age = json_data["PatientAge"]
+                if not patient_age.isalnum():  # if true, is alphanumeric, so not age
+                    try:
+                        # if age is over 100, probably made up
+                        if (isinstance(patient_age, int) or isinstance(patient_age, float)) and int(patient_age) < 100:
+                            age = patient_age
+                    except:
+                        pass
+
+            if age == "n/a" and "PatientBirthDate" in json_data:
+                patient_birth_date = json_data["PatientBirthDate"]  # ISO 8601 "YYYY-MM-DD"
                 try:
-                    # if age is over 100, probably made up
-                    if (isinstance(patient_age, int) or isinstance(patient_age, float)) and int(patient_age) < 100:
-                        age = patient_age
+                    age = int(today_date.split("-")[0]) - int(patient_birth_date.split("-")[0])
+                    - ((int(today_date.split("-")[1]), int(today_date.split("-")[2]))
+                        < (int(patient_birth_date.split("-")[2]), int(patient_birth_date.split("-")[2])))
                 except:
                     pass
 
-        if age == "n/a" and "PatientBirthDate" in json_data:
-            patient_birth_date = json_data["PatientBirthDate"]  # ISO 8601 "YYYY-MM-DD"
+            """
+            Select subject (and session, if applicable) IDs to display.
+            Subject ID precedence order if explicit subject ID is not found: PatientName > PatientID
+            """
+            sub_search_terms = ["subject", "subj", "sub"]
+            ses_search_terms = ["session", "sess", "ses"]
+
+            subject = "n/a"
+            for value in [json_file, patient_name, patient_id]:
+                for sub_term in sub_search_terms:
+                    if sub_term in value.lower():
+                        item = value.lower().split(sub_term)[-1][0]  # what character comes right after "sub"
+                        if item.isalpha() is False and item.isnumeric() is False:
+                            subject = re.split('[^a-zA-Z0-9]', value.lower().split(f"{sub_term}{item}")[-1])[0]
+                        else:
+                            subject = re.split('[^a-zA-Z0-9]', value.lower().split(f"{sub_term}")[-1])[0]
+                        break
+
+            if subject == "n/a":
+                potential_ID_fields = [patient_name, patient_id]
+                for potential_id in potential_ID_fields:
+                    if potential_id != "n/a":
+                        subject = potential_id
+                        break
+
+            if subject == "n/a":
+                directory_struct = [x for x in json_file.split("/") if ".json" not in x]
+                subject = directory_struct[-1]  # Assume folder data found in is the subject ID
+
+            session = ""
+            for value in [json_file, patient_name, patient_id]:
+                for ses_term in ses_search_terms:
+                    if ses_term in value.lower():
+                        item = value.lower().split(ses_term)[-1][0]  # what character comes right after "sub"
+                        if item.isalpha() is False and item.isnumeric() is False:
+                            session = re.split('[^a-zA-Z0-9]', value.lower().split(f"{ses_term}{item}")[-1])[0]
+                        else:
+                            session = re.split('[^a-zA-Z0-9]', value.lower().split(f"{ses_term}")[-1])[0]
+                        break
+
+            # Remove non-alphanumeric characters from subject (and session) ID(s)
+            subject = re.sub("[^A-Za-z0-9]+", "", subject)
+            session = re.sub("[^A-Za-z0-9]+", "", session)
+
+            # Find Acquisition Date & Time
+            if "AcquisitionDateTime" in json_data:
+                acquisition_date_time = json_data["AcquisitionDateTime"]
+                acquisition_date = json_data["AcquisitionDateTime"].split("T")[0]
+                acquisition_time = json_data["AcquisitionDateTime"].split("T")[-1]
+            else:
+                acquisition_date_time = "0000-00-00T00:00:00.000000"
+                acquisition_date = "0000-00-00"
+                acquisition_time = "00:00:00.000000"
+
+            if "AcquisitionTime" in json_data and acquisition_time == "00:00:00.000000":
+                acquisition_time = json_data["AcquisitionTime"]
+
+            # Find TimeZero
+            if "TimeZero" in json_data and json_data.get("ScanStart", None) == 0:
+                acquisition_time = json_data["TimeZero"]
+
+            # Find RepetitionTime
+            if "RepetitionTime" in json_data:
+                repetition_time = json_data["RepetitionTime"]
+            else:
+                repetition_time = 0
+
+            # Find EchoNumber
+            if "EchoNumber" in json_data:
+                echo_number = json_data["EchoNumber"]
+            else:
+                echo_number = None
+
+            # Find EchoTime
+            if "EchoTime" in json_data:
+                echo_time = json_data["EchoTime"] * 1000
+            else:
+                echo_time = 0
+
+            # Get the nibabel nifti image info
+            image = nib.load(json_file[:-4] + "nii.gz")
+
+            # if image.get_data_dtype() == [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]:
+            if image.get_data_dtype() in ["<i2", "<u2", "<f4", "int16", "uint16"]:
+                valid_image = True
+            else:
+                valid_image = False
+
+            # Find how many volumes are in corresponding nifti file
             try:
-                age = int(today_date.split("-")[0]) - int(patient_birth_date.split("-")[0])
-                - ((int(today_date.split("-")[1]), int(today_date.split("-")[2]))
-                    < (int(patient_birth_date.split("-")[2]), int(patient_birth_date.split("-")[2])))
+                volume_count = image.shape[3]
             except:
-                pass
+                volume_count = 1
 
-        """
-        Select subject (and session, if applicable) IDs to display.
-        Subject ID precedence order if explicit subject ID is not found: PatientName > PatientID
-        """
-        sub_search_terms = ["subject", "subj", "sub"]
-        ses_search_terms = ["session", "sess", "ses"]
+            # Find SeriesNumber
+            if "SeriesNumber" in json_data:
+                series_number = json_data["SeriesNumber"]
+            else:
+                series_number = 0
 
-        subject = "n/a"
-        for value in [json_file, patient_name, patient_id]:
-            for sub_term in sub_search_terms:
-                if sub_term in value.lower():
-                    item = value.lower().split(sub_term)[-1][0]  # what character comes right after "sub"
-                    if item.isalpha() is False and item.isnumeric() is False:
-                        subject = re.split('[^a-zA-Z0-9]', value.lower().split(f"{sub_term}{item}")[-1])[0]
-                    else:
-                        subject = re.split('[^a-zA-Z0-9]', value.lower().split(f"{sub_term}")[-1])[0]
-                    break
+            # Modified SeriesNumber, which zero pads integers < 10. Helpful for sorting purposes
+            if series_number < 10:
+                mod_series_number = '0' + str(series_number)
+            else:
+                mod_series_number = str(series_number)
 
-        if subject == "n/a":
-            potential_ID_fields = [patient_name, patient_id]
-            for potential_id in potential_ID_fields:
-                if potential_id != "n/a":
-                    subject = potential_id
-                    break
+            # Find SeriesDescription
+            if "SeriesDescription" in json_data:
+                series_description = json_data["SeriesDescription"]
+                descriptor = "SeriesDescription"
+            else:
+                series_description = "n/a"
+                descriptor = "ProtocolName"
 
-        if subject == "n/a":
-            directory_struct = [x for x in json_file.split("/") if ".json" not in x]
-            subject = directory_struct[-1]  # Assume folder data found in is the subject ID
+            # Find ProtocolName
+            if "ProtocolName" in json_data:
+                protocol_name = json_data["ProtocolName"]
+            else:
+                protocol_name = "n/a"
 
-        session = ""
-        for value in [json_file, patient_name, patient_id]:
-            for ses_term in ses_search_terms:
-                if ses_term in value.lower():
-                    item = value.lower().split(ses_term)[-1][0]  # what character comes right after "sub"
-                    if item.isalpha() is False and item.isnumeric() is False:
-                        session = re.split('[^a-zA-Z0-9]', value.lower().split(f"{ses_term}{item}")[-1])[0]
-                    else:
-                        session = re.split('[^a-zA-Z0-9]', value.lower().split(f"{ses_term}")[-1])[0]
-                    break
+            # Find ImageType
+            if "ImageType" in json_data:
+                image_type = json_data["ImageType"]
+            else:
+                image_type = []
 
-        # Remove non-alphanumeric characters from subject (and session) ID(s)
-        subject = re.sub("[^A-Za-z0-9]+", "", subject)
-        session = re.sub("[^A-Za-z0-9]+", "", session)
+            # Find ImageModality
+            if "Modality" in json_data:
+                modality = json_data["Modality"]
+            else:
+                # assume MR
+                modality = "MR"
 
-        # Find Acquisition Date & Time
-        if "AcquisitionDateTime" in json_data:
-            acquisition_date_time = json_data["AcquisitionDateTime"]
-            acquisition_date = json_data["AcquisitionDateTime"].split("T")[0]
-            acquisition_time = json_data["AcquisitionDateTime"].split("T")[-1]
-        else:
-            acquisition_date_time = "0000-00-00T00:00:00.000000"
-            acquisition_date = "0000-00-00"
-            acquisition_time = "00:00:00.000000"
+            # Relative paths of json and nifti files (per SeriesNumber)
+            paths = natsorted(nifti_paths_for_json + [json_file])
 
-        if "AcquisitionTime" in json_data and acquisition_time == "00:00:00.000000":
-            acquisition_time = json_data["AcquisitionTime"]
-
-        # Find TimeZero
-        if "TimeZero" in json_data and json_data.get("ScanStart", None) == 0:
-            acquisition_time = json_data["TimeZero"]
-
-        # Find RepetitionTime
-        if "RepetitionTime" in json_data:
-            repetition_time = json_data["RepetitionTime"]
-        else:
-            repetition_time = 0
-
-        # Find EchoNumber
-        if "EchoNumber" in json_data:
-            echo_number = json_data["EchoNumber"]
-        else:
-            echo_number = None
-
-        # Find EchoTime
-        if "EchoTime" in json_data:
-            echo_time = json_data["EchoTime"] * 1000
-        else:
-            echo_time = 0
-
-        # Get the nibabel nifti image info
-        image = nib.load(json_file[:-4] + "nii.gz")
-
-        # if image.get_data_dtype() == [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]:
-        if image.get_data_dtype() in ["<i2", "<u2", "<f4", "int16", "uint16"]:
-            valid_image = True
-        else:
-            valid_image = False
-
-        # Find how many volumes are in corresponding nifti file
-        try:
-            volume_count = image.shape[3]
-        except:
-            volume_count = 1
-
-        # Find SeriesNumber
-        if "SeriesNumber" in json_data:
-            series_number = json_data["SeriesNumber"]
-        else:
-            series_number = 0
-
-        # Modified SeriesNumber, which zero pads integers < 10. Helpful for sorting purposes
-        if series_number < 10:
-            mod_series_number = '0' + str(series_number)
-        else:
-            mod_series_number = str(series_number)
-
-        # Find SeriesDescription
-        if "SeriesDescription" in json_data:
-            series_description = json_data["SeriesDescription"]
-            descriptor = "SeriesDescription"
-        else:
-            series_description = "n/a"
-            descriptor = "ProtocolName"
-
-        # Find ProtocolName
-        if "ProtocolName" in json_data:
-            protocol_name = json_data["ProtocolName"]
-        else:
-            protocol_name = "n/a"
-
-        # Find ImageType
-        if "ImageType" in json_data:
-            image_type = json_data["ImageType"]
-        else:
-            image_type = []
-
-        # Find ImageModality
-        if "Modality" in json_data:
-            modality = json_data["Modality"]
-        else:
-            # assume MR
-            modality = "MR"
-
-        # Relative paths of json and nifti files (per SeriesNumber)
-        paths = natsorted(nifti_paths_for_json + [json_file])
-
-        # Organize all from individual SeriesNumber in dictionary
-        acquisition_info_directory = {
-            "StudyID": study_id,
-            "PatientName": patient_name,
-            "PatientID": patient_id,
-            "PatientBirthDate": patient_birth_date,
-            "PatientSex": patient_sex,
-            "PatientAge": age,
-            "subject": subject,
-            "session": session,
-            "SeriesNumber": series_number,
-            "ModifiedSeriesNumber": mod_series_number,
-            "AcquisitionDateTime": acquisition_date_time,
-            "AcquisitionDate": acquisition_date,
-            "AcquisitionTime": acquisition_time,
-            "SeriesDescription": series_description,
-            "ProtocolName": protocol_name,
-            "descriptor": descriptor,
-            "Modality": modality,
-            "ImageType": image_type,
-            "RepetitionTime": repetition_time,
-            "EchoNumber": echo_number,
-            "EchoTime": echo_time,
-            "datatype": "",
-            "suffix": "",
-            "subject_idx": 0,
-            "session_idx": 0,
-            "series_idx": 0,
-            "direction": ped,
-            "exclude": False,
-            "filesize": filesize,
-            "NumVolumes": volume_count,
-            "orientation": ornt,
-            "error": None,
-            "IntendedFor": None,
-            "B0FieldIdentifier": None,
-            "B0FieldSource": None,
-            "section_id": 1,
-            "message": None,
-            "type": data_type,
-            "nifti_path": [x for x in nifti_paths_for_json if ".nii.gz" in x][0],
-            "nibabel_image": image,
-            "valid_image": valid_image,
-            "json_path": json_file,
-            "paths": paths,
-            "headers": "",
-            "finalized_match": False,
-            "sidecar": json_data
-        }
-        dataset_list.append(acquisition_info_directory)
+            # Organize all from individual SeriesNumber in dictionary
+            acquisition_info_directory = {
+                "StudyID": study_id,
+                "PatientName": patient_name,
+                "PatientID": patient_id,
+                "PatientBirthDate": patient_birth_date,
+                "PatientSex": patient_sex,
+                "PatientAge": age,
+                "subject": subject,
+                "session": session,
+                "SeriesNumber": series_number,
+                "ModifiedSeriesNumber": mod_series_number,
+                "AcquisitionDateTime": acquisition_date_time,
+                "AcquisitionDate": acquisition_date,
+                "AcquisitionTime": acquisition_time,
+                "SeriesDescription": series_description,
+                "ProtocolName": protocol_name,
+                "descriptor": descriptor,
+                "Modality": modality,
+                "ImageType": image_type,
+                "RepetitionTime": repetition_time,
+                "EchoNumber": echo_number,
+                "EchoTime": echo_time,
+                "datatype": "",
+                "suffix": "",
+                "subject_idx": 0,
+                "session_idx": 0,
+                "series_idx": 0,
+                "direction": ped,
+                "exclude": False,
+                "filesize": filesize,
+                "NumVolumes": volume_count,
+                "orientation": ornt,
+                "error": None,
+                "IntendedFor": None,
+                "B0FieldIdentifier": None,
+                "B0FieldSource": None,
+                "section_id": 1,
+                "message": None,
+                "type": data_type,
+                "nifti_path": [x for x in nifti_paths_for_json if ".nii.gz" in x][0],
+                "nibabel_image": image,
+                "valid_image": valid_image,
+                "json_path": json_file,
+                "paths": paths,
+                "headers": "",
+                "finalized_match": False,
+                "sidecar": json_data
+            }
+            dataset_list.append(acquisition_info_directory)
 
     # Sort dataset_list of dictionaries
     dataset_list = sorted(dataset_list, key=itemgetter("AcquisitionDate",
@@ -781,8 +787,8 @@ def generate_dataset_list(uploaded_files_list, data_type):
 
 def organize_dataset(dataset_list):
     """
-    Organize data files into psuedo subject (and session, if appplicable) groups.
-    This is particularily necessary when anaonymized data is provided, since crucial
+    Organize data files into pseudo subject (and session, if appplicable) groups.
+    This is particularly necessary when anaonymized data is provided, since crucial
     metadata including AcquisitionDateTime, PatientName, PatientID, etc are removed.
     Typically, these fields assist ezBIDS in determining subject (and session) mapping,
     so will try to use other metadata (AcquisitionTime, SeriesNumber, etc) to perform
@@ -1193,7 +1199,7 @@ def finalized_configuration(dataset_list_unique_series, subjects_information, co
             sub_info["sessions"][idx]["session"] = ref_session["session"]
 
     """
-    Find datatype, suffix, and entity labels in uploaded data based on correspondence with data referenced 
+    Find datatype, suffix, and entity labels in uploaded data based on correspondence with data referenced
     in configuration.
     """
     for unique_dic in dataset_list_unique_series:
@@ -1552,7 +1558,8 @@ def create_lookup_info():
                                             '"EchoNumber" in unique_dic["sidecar"]',
                                             'unique_dic["EchoNumber"] == 2',
                                             '"_e2_ph" in unique_dic["json_path"]',
-                                            '"_e1_ph" not in dataset_list_unique_series[index - 2]["json_path"]'
+                                            'len(dataset_list_unique_series) > 2 and "_e1_ph" not in '
+                                            'dataset_list_unique_series[index - 2]["json_path"]'
                                         ]
                                     )
                                 elif suffix == "phase1":
@@ -1569,7 +1576,8 @@ def create_lookup_info():
                                             '"EchoNumber" in unique_dic["sidecar"]',
                                             'unique_dic["EchoNumber"] == 2',
                                             '"_e2_ph" in unique_dic["json_path"]',
-                                            '"_e1_ph" in dataset_list_unique_series[index - 2]["json_path"]'
+                                            'len(dataset_list_unique_series) > 2 and "_e1_ph" in '
+                                            'dataset_list_unique_series[index - 2]["json_path"]'
                                         ]
                                     )
                                 elif suffix in ["magnitude", "fieldmap"]:  # specific to GE scanners
@@ -1639,7 +1647,7 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
         datatype and suffix labels.
 
     config: boolean
-        Specifies whether an ezBIDS configuation file (finalized.json) was detected in the uploaded or not
+        Specifies whether an ezBIDS configuration file (finalized.json) was detected in the uploaded or not
 
     Returns
     -------
@@ -1654,7 +1662,7 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
     common keys/labels.
     """
     for index, unique_dic in enumerate(dataset_list_unique_series):
-        # Not great to use json_path because it's only the first sequence in the series_idx group...
+        # Not ideal using json_path because it's only the first sequence in the series_idx group...
         json_path = unique_dic["json_path"]
 
         if not unique_dic["valid_image"]:
@@ -1738,119 +1746,158 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
                         f"because '{unique_dic['suffix']}' is in the file path. " \
                         f"Please modify if incorrect."
 
-        """If no luck with the json paths, try with search terms in SeriesDescription (or ProtocolName) and rules,
-        assuming an ezBIDS configuration file wasn't provided.
+        """
+        If no luck with the json paths, and assuming an ezBIDS configuration file wasn't provided, try discerning
+        datatype and suffix with dcm2niix's BidsGuess. And if that doesn't produce anything, try with search terms
+        in SeriesDescription (or ProtocolName) and rules.
         """
         if (unique_dic["finalized_match"] is False
                 and (not unique_dic["datatype"] or not unique_dic["suffix"]) and unique_dic["type"] == ""):
 
-            descriptor = unique_dic["descriptor"]
-            sd = unique_dic[descriptor]
+            json_file = unique_dic["json_path"]
+            json_data = open(json_file)
+            json_data = json.load(json_data, strict=False)
 
-            # Make easier to find search terms in the SeriesDescription (or ProtocolName)
-            sd = re.sub("[^A-Za-z0-9]+", "_", sd).lower() + "_"
-            # sd_sparse = re.sub("[^A-Za-z0-9]+", "", sd)
+            # Try discerning datatype and suffix with dcm2niix's BidsGuess
+            if "BidsGuess" in json_data:
+                bids_guess = json_data["BidsGuess"]
+                if len(bids_guess) == 2:  # should always be length of 2, but just to be safe
+                    datatype = bids_guess[0]
+                    suffix = bids_guess[1].split("_")[-1]
+                    if datatype not in [x for x in datatypes_yaml.keys()]:  # assumed to be non-BIDS data of some kind
+                        if suffix in ["localizer", "scout"] or "_i0000" in unique_dic["paths"][0]:
+                            # localizer
+                            unique_dic["message"] = "Acquisition was determined to be a localizer sequence, " \
+                                "according to dcm2niix's BidsGuess heuristic, and will not be converted to BIDS. " \
+                                "Please modify if incorrect."
+                        else:
+                            # other non-BIDS data
+                            unique_dic["message"] = "Acquisition was determined to be a non-BIDS sequence, " \
+                                "according to dcm2niix's BidsGuess heuristic, and will not be converted. " \
+                                "Please modify if incorrect."
+                        unique_dic["type"] = "exclude"
+                    else:
+                        unique_dic["datatype"] = datatype
+                        unique_dic["suffix"] = suffix
+                        unique_dic["message"] = f"Acquisition is believed to be " \
+                            f"{unique_dic['datatype']}/{unique_dic['suffix']} based on " \
+                            "the dcm2niix BidsGuess heuristic. Please modify if incorrect."
+                else:
+                    pass
 
-            cont = True
-            for datatype in lookup_dic.keys():
-                if datatype not in ["localizer", "dwi_derivatives"]:
-                    suffixes = lookup_dic[datatype].keys()
-                    for suffix in suffixes:
-                        search_terms = lookup_dic[datatype][suffix]["search_terms"]
-                        conditions = lookup_dic[datatype][suffix]["conditions"]
-                        eval_checks = [eval(t, {"sd": sd,
-                                                "unique_dic": unique_dic,
-                                                "dataset_list_unique_series": dataset_list_unique_series,
-                                                "index": index
-                                                }) for t in conditions]
-                        if any(x in sd for x in search_terms):
-                            # Search term match
-                            conditions = [
-                                (x.replace("unique_dic", "").replace('["', "").replace('"]', "").
-                                    replace("dataset_list_unique_series[index - 2]", "")) for x in conditions
-                            ]
-                            search_hit = [x for x in search_terms if re.findall(x, sd)][0]
+            """
+            If dcm2niix's BidsGuess can't give us datatype and suffix information, move on to next heuristic (search
+            terms in SeriesDescription [or ProtocolName] and rules).
+            """
+            if unique_dic["datatype"] == "" and unique_dic["suffix"] == "" and unique_dic["type"] != "exclude":
 
-                            if len([t for t in eval_checks if t is True]) == len(conditions):
-                                # Search term match, as well as all necessary conditions for datatype/suffix pair
+                descriptor = unique_dic["descriptor"]
+                sd = unique_dic[descriptor]
+
+                # Make easier to find search terms in the SeriesDescription (or ProtocolName)
+                sd = re.sub("[^A-Za-z0-9]+", "_", sd).lower() + "_"
+                # sd_sparse = re.sub("[^A-Za-z0-9]+", "", sd)
+
+                cont = True
+                for datatype in lookup_dic.keys():
+                    if datatype not in ["localizer", "dwi_derivatives"]:
+                        suffixes = lookup_dic[datatype].keys()
+                        for suffix in suffixes:
+                            search_terms = lookup_dic[datatype][suffix]["search_terms"]
+                            conditions = lookup_dic[datatype][suffix]["conditions"]
+                            eval_checks = [eval(t, {"sd": sd,
+                                                    "unique_dic": unique_dic,
+                                                    "dataset_list_unique_series": dataset_list_unique_series,
+                                                    "index": index
+                                                    }) for t in conditions]
+                            if any(x in sd for x in search_terms):
+                                # Search term match
+                                conditions = [
+                                    (x.replace("unique_dic", "").replace('["', "").replace('"]', "").
+                                        replace("dataset_list_unique_series[index - 2]", "")) for x in conditions
+                                ]
+                                search_hit = [x for x in search_terms if re.findall(x, sd)][0]
+
+                                if len([t for t in eval_checks if t is True]) == len(conditions):
+                                    # Search term match, as well as all necessary conditions for datatype/suffix pair
+                                    unique_dic["datatype"] = datatype
+                                    unique_dic["suffix"] = suffix
+                                    unique_dic["type"] = ""
+                                    if len(conditions):
+                                        condition_passes = [
+                                            f"({index+1}): {value}" for index, value in enumerate(conditions)
+                                        ]
+                                        unique_dic["message"] = f"Acquisition is believed to be {datatype}/{suffix} " \
+                                            f"because '{search_hit}' is in the {unique_dic['descriptor']} and the " \
+                                            f"following conditions are met: {condition_passes}. " \
+                                            "Please modify if incorrect."
+                                    else:
+                                        unique_dic["message"] = f"Acquisition is believed to be {datatype}/{suffix} " \
+                                            f"because '{search_hit}' is in the {unique_dic['descriptor']}. " \
+                                            "Please modify if incorrect."
+                                    cont = False
+                                    break
+                                else:
+                                    unique_dic["type"] = "exclude"
+                                    condition_fails_ind = [i for (i, v) in enumerate(eval_checks) if v is False]
+                                    condition_fails = [v for (i, v) in enumerate(conditions) if i in condition_fails_ind]
+                                    condition_fails = [
+                                        f"({index+1}): {value}" for index, value in enumerate(condition_fails)
+                                    ]
+
+                                    if (datatype in ["func", "dwi"]
+                                            and (unique_dic["nibabel_image"].ndim == 3 and unique_dic["NumVolumes"] > 1)):
+                                        """
+                                        func and dwi can also have sbref suffix pairings, so 3D dimension data with
+                                        only a single volume likely indicates that the sequence was closer to being
+                                        identified as a func (or dwi) sbref.
+                                        """
+                                        suffix = "sbref"
+
+                                    unique_dic["message"] = f"Acquisition was thought to be {datatype}/{suffix} " \
+                                        f"because '{search_hit}' is in the {unique_dic['descriptor']}, but the " \
+                                        f"following conditions were not met: {condition_fails}. Please modify " \
+                                        "if incorrect."
+
+                            elif datatype == "dwi" and suffix == "dwi" and any(".bvec" in x for x in unique_dic["paths"]):
                                 unique_dic["datatype"] = datatype
                                 unique_dic["suffix"] = suffix
-                                unique_dic["type"] = ""
-                                if len(conditions):
-                                    condition_passes = [
-                                        f"({index+1}): {value}" for index, value in enumerate(conditions)
-                                    ]
-                                    unique_dic["message"] = f"Acquisition is believed to be {datatype}/{suffix} " \
-                                        f"because '{search_hit}' is in the {unique_dic['descriptor']} and the " \
-                                        f"following conditions are met: {condition_passes}. " \
-                                        "Please modify if incorrect."
-                                else:
-                                    unique_dic["message"] = f"Acquisition is believed to be {datatype}/{suffix} " \
-                                        f"because '{search_hit}' is in the {unique_dic['descriptor']}. " \
-                                        "Please modify if incorrect."
-                                cont = False
-                                break
-                            else:
+                                unique_dic["message"] = f"Acquisition is believed to be {datatype}/{suffix} " \
+                                    "because associated bval/bvec files were found for this sequence. " \
+                                    "Please modify if incorrect."
+                        if cont is False:
+                            break
+                    else:
+                        # Localizers
+                        if datatype == "localizer":
+                            search_terms = lookup_dic[datatype]["exclude"]["search_terms"]
+                            conditions = lookup_dic["localizer"]["exclude"]["conditions"]
+                            eval_checks = [eval(t, {"sd": sd, "unique_dic": unique_dic}) for t in conditions]
+                            if (any(x in sd for x in search_terms)
+                                    or len([t for t in eval_checks if t]) == len(conditions)):
                                 unique_dic["type"] = "exclude"
-                                condition_fails_ind = [i for (i, v) in enumerate(eval_checks) if v is False]
-                                condition_fails = [v for (i, v) in enumerate(conditions) if i in condition_fails_ind]
-                                condition_fails = [
-                                    f"({index+1}): {value}" for index, value in enumerate(condition_fails)
-                                ]
-
-                                if (datatype in ["func", "dwi"]
-                                        and (unique_dic["nibabel_image"].ndim == 3 and unique_dic["NumVolumes"] > 1)):
-                                    """
-                                    func and dwi can also have sbref suffix pairings, so 3D dimension data with
-                                    only a single volume likely indicates that the sequence was closer to being
-                                    identified as a func (or dwi) sbref.
-                                    """
-                                    suffix = "sbref"
-
-                                unique_dic["message"] = f"Acquisition was thought to be {datatype}/{suffix} " \
-                                    f"because '{search_hit}' is in the {unique_dic['descriptor']}, but the " \
-                                    f"following conditions were not met: {condition_fails}. Please modify " \
-                                    "if incorrect."
-
-                        elif datatype == "dwi" and suffix == "dwi" and any(".bvec" in x for x in unique_dic["paths"]):
-                            unique_dic["datatype"] = datatype
-                            unique_dic["suffix"] = suffix
-                            unique_dic["message"] = f"Acquisition is believed to be {datatype}/{suffix} " \
-                                "because associated bval/bvec files were found for this sequence. " \
-                                "Please modify if incorrect."
-                    if cont is False:
-                        break
-                else:
-                    # Localizers
-                    if datatype == "localizer":
-                        search_terms = lookup_dic[datatype]["exclude"]["search_terms"]
-                        conditions = lookup_dic["localizer"]["exclude"]["conditions"]
-                        eval_checks = [eval(t, {"sd": sd, "unique_dic": unique_dic}) for t in conditions]
-                        if (any(x in sd for x in search_terms)
-                                or len([t for t in eval_checks if t]) == len(conditions)):
-                            unique_dic["type"] = "exclude"
-                            unique_dic["error"] = "Acquisition appears to be a localizer"
-                            unique_dic["message"] = "Acquisition is believed to be a " \
-                                "localizer and will therefore not be converted to BIDS. Please " \
-                                "modify if incorrect."
-                    # DWI derivatives (TRACEW, FA, ADC)
-                    elif datatype == "dwi_derivatives":
-                        search_terms = lookup_dic[datatype]["exclude"]["search_terms"]
-                        conditions = lookup_dic["dwi_derivatives"]["exclude"]["conditions"]
-                        eval_checks = [eval(t, {"sd": sd, "unique_dic": unique_dic}) for t in conditions]
-                        if (any(x in sd for x in search_terms)
-                                and len([t for t in eval_checks if t]) == len(conditions)):
-                            unique_dic["type"] = "exclude"
-                            unique_dic["error"] = "Acquisition appears to be a TRACEW, FA, or " \
-                                "ADC, which are unsupported by ezBIDS and will therefore not " \
-                                "be converted."
-                            unique_dic["message"] = "Acquisition is believed to be a dwi derivative " \
-                                "(TRACEW, FA, ADC), which are not supported by BIDS and will not " \
-                                "be converted. Please modify if incorrect."
+                                unique_dic["error"] = "Acquisition appears to be a localizer"
+                                unique_dic["message"] = "Acquisition is believed to be a " \
+                                    "localizer and will therefore not be converted to BIDS. Please " \
+                                    "modify if incorrect."
+                        # DWI derivatives (TRACEW, FA, ADC)
+                        elif datatype == "dwi_derivatives":
+                            search_terms = lookup_dic[datatype]["exclude"]["search_terms"]
+                            conditions = lookup_dic["dwi_derivatives"]["exclude"]["conditions"]
+                            eval_checks = [eval(t, {"sd": sd, "unique_dic": unique_dic}) for t in conditions]
+                            if (any(x in sd for x in search_terms)
+                                    and len([t for t in eval_checks if t]) == len(conditions)):
+                                unique_dic["type"] = "exclude"
+                                unique_dic["error"] = "Acquisition appears to be a TRACEW, FA, or " \
+                                    "ADC, which are unsupported by ezBIDS and will therefore not " \
+                                    "be converted."
+                                unique_dic["message"] = "Acquisition is believed to be a dwi derivative " \
+                                    "(TRACEW, FA, ADC), which are not supported by BIDS and will not " \
+                                    "be converted. Please modify if incorrect."
 
             """
             Can't determine datatype and suffix pairing, assume not BIDS-compliant acquisition,
-            unless user specifies otherwise;
+            unless user specifies otherwise.
             """
             if ((unique_dic["datatype"] == "" or unique_dic["suffix"] == "")
                     and unique_dic["type"] == "" and unique_dic["message"] is None):
@@ -1874,12 +1921,13 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
         """
         if (unique_dic["finalized_match"] is False
                 and unique_dic["datatype"] == "anat" and "NORM" not in unique_dic["ImageType"]):
-            unique_dic["message"] = unique_dic["message"] + (" Additionally, this acquisition appears to be "
-                                                             "non-normalized, potentially having poor CNR. "
-                                                             "If there is a corresponding normalized acquisition "
-                                                             "('NORM' in the ImageType metadata field), consider "
-                                                             "excluding this current one from BIDS conversion."
-                                                             )
+            unique_dic["message"] = unique_dic["message"] + (
+                " Additionally, this acquisition appears to be "
+                "non-normalized, potentially having poor CNR. "
+                "If there is a corresponding normalized acquisition "
+                "('NORM' in the ImageType metadata field), consider "
+                "excluding this current one from BIDS conversion."
+            )
 
         # Warn user about non-RMS multi-echo anatomical acquisitions
         if (unique_dic["finalized_match"] is False
@@ -2100,7 +2148,7 @@ def check_part_entity(dataset_list_unique_series, config):
         List of dictionaries for each unique acquisition series in dataset.
 
     config: boolean
-        Specifies whether an ezBIDS configuation file (finalized.json) was detected in the uploaded or not
+        Specifies whether an ezBIDS configuration file (finalized.json) was detected in the uploaded or not
 
     Returns
     -------
@@ -2202,7 +2250,7 @@ def modify_objects_info(dataset_list):
                 protocol["message"] = protocol["error"]
                 protocol["type"] = "exclude"
 
-            # Check for negative dimesions and exclude from BIDS conversion if they exist
+            # Check for negative dimensions and exclude from BIDS conversion if they exist
             if len([x for x in image.shape if x < 0]):
                 protocol["exclude"] = True
                 protocol["type"] = "exclude"
@@ -2311,63 +2359,6 @@ def extract_series_info(dataset_list_unique_series):
         ui_series_info_list.append(ui_series_info)
 
     return ui_series_info_list
-
-
-# def setVolumeThreshold(dataset_list_unique_series, objects_list):
-#     """
-#     Determine a volume threshold for all func/bold acquisitions in dataset,
-#     using the following heuristic:
-
-#     Parameters
-#     ----------
-#     dataset_list_unique_series : list
-#         List of dictionaries of unique series
-#     objects_list: list
-#         List of dictionaries of all dataset objects
-#     """
-
-#     func_series = [
-#         x for x in dataset_list_unique_series
-#         if "func" in x["type"]
-#         and x["type"] != "func/sbref"
-#         and x["RepetitionTime"] > 0
-#     ]
-
-#     if len(func_series):
-#         for func in func_series:
-#             series_idx = func["series_idx"]
-#             tr = func["RepetitionTime"]
-#             corresponding_objects_volumes = [
-#                 x["analysisResults"]["NumVolumes"] for x in objects_list if x["series_idx"] == series_idx
-#             ]
-#             minNumVolumes = min(corresponding_objects_volumes)
-#             maxNumVolumes = max(corresponding_objects_volumes)
-#             numVolumes1min = floor(60 / tr)
-
-#             if maxNumVolumes <= numVolumes1min:  # set default as # volumes after 1 minute
-#                 volumeThreshold = numVolumes1min
-#             else:
-#                 if minNumVolumes == maxNumVolumes:  # set threshold at max NumVolumes
-#                     volumeThreshold = maxNumVolumes
-#                 else:  # set threshold at 50% of max NumVolumes, or min NumVolumes if it's greater than half
-#                     half = floor(maxNumVolumes / 2)
-#                     if minNumVolumes > half:
-#                         volumeThreshold = minNumVolumes
-#                     else:
-#                         volumeThreshold = half
-
-#             volumeThreshold = 9  # temporary, but setting threshold low for debugging purposes
-
-#             # With volume threshold, exclude objects that don't pass it
-#             corresponding_objects = [x for x in objects_list if x["series_idx"] == series_idx]
-#             for obj in corresponding_objects:
-#                 if obj["analysisResults"]["NumVolumes"] < volumeThreshold:
-#                     obj["exclude"] = True
-#                     obj["analysisResults"]["errors"] = ["Acquisition is believed to be func/bold and contains "
-#                                                         f"{obj['analysisResults']['NumVolumes']} volumes, which "
-#                                                         f"is less than the threshold value of {volumeThreshold} "
-#                                                         "this acquisition will be excluded from BIDS conversion. "
-#                                                         "Please modify if incorrect"]
 
 # Begin (Apply functions)
 
@@ -2487,9 +2478,6 @@ for index, unique_dic in enumerate(dataset_list_unique_series):
     print("")
     print("")
 
-# # Set volume threshold for func/bold acquisitions
-# setVolumeThreshold(dataset_list_unique_series, objects_list)
-
 # Extract important series information to display in ezBIDS UI
 ui_series_info_list = extract_series_info(dataset_list_unique_series)
 
@@ -2500,6 +2488,7 @@ EZBIDS = {
     "subjects": subjects_information,
     "participantsColumn": participants_column_info,
     "participantsInfo": participants_info,
+    "funcBoldVoumeThreshold": 0,
     "series": ui_series_info_list,
     "objects": objects_list,
     "events": events

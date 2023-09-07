@@ -36,19 +36,18 @@ export function setVolumeThreshold($root) {
     /*
     Determine volume threshold for all func/bold acquisitions in dataset and set
     to exclude if the number of volumes does not meet the volume threshold. Threshold 
-    caluclated based on the expected number of volumes collected in a 1-minute time frame,
+    calculated based on the expected number of volumes collected in a 1-minute time frame,
     with the formula (60-sec / tr), where tr == RepetitionTime
     */
-    $root.objects.forEach(o=> {
-
+    $root.objects.forEach(o=>{
         //update analysisResults.warnings in case user went back to Series and adjusted things
-        if(o._type == "func/bold") {
+        if(o._type === "func/bold") {
             let tr = o.items[0].sidecar.RepetitionTime
             let numVolumes = o.analysisResults.NumVolumes
             let numVolumes1min = Math.floor(60 / tr)
-            // let numVolumes1min = 5
             if(numVolumes <= numVolumes1min) {
                 o.exclude = true
+                o._exclude = true
                 o.analysisResults.warnings = [`This func/bold sequence contains ${numVolumes} volumes, which is \
                 less than the threshold value of ${numVolumes1min} volumes, calculated by the expected number of \
                 volumes in a 1 min time frame. This acquisition will thus be excluded from BIDS conversion unless \
@@ -57,7 +56,6 @@ export function setVolumeThreshold($root) {
         }
     });
 }
-
 
 export function setSectionIDs($root) {
     /*
@@ -75,16 +73,16 @@ export function setSectionIDs($root) {
             let obj_idx = 0
             let message = ""
             let previousMessage = ""
-            protocol.forEach(obj=> {
+            protocol.forEach(obj=>{
                 if($root.series[protocol[obj_idx].series_idx]) {
                     message = $root.series[protocol[obj_idx].series_idx].message
                 }
 
-                if(obj_idx != 0 && $root.series[protocol[obj_idx - 1].series_idx]) {
+                if(obj_idx !== 0 && $root.series[protocol[obj_idx - 1].series_idx]) {
                     previousMessage = $root.series[protocol[obj_idx - 1].series_idx].message
                 }
 
-                if(obj_idx != 0 && message.includes("localizer") && (previousMessage == "" || !previousMessage.includes("localizer"))) {
+                if(obj_idx !== 0 && message.includes("localizer") && (previousMessage === "" || !previousMessage.includes("localizer"))) {
                     sectionID++;
                     obj.analysisResults.section_id = sectionID
                 }else{
@@ -121,8 +119,8 @@ export function funcQA($root) {
             }
         }
 
-        //now check for corresponding func/bold == exclude, and go from there
-        if(o._type == "func/bold" && o.exclude == true && (!o._entities.mag || o._entities.mag == "mag" || o._entities.mag == "part")) {
+        //now check for corresponding func/bold === exclude, and go from there
+        if(o._type === "func/bold" && o.exclude && (!o._entities.mag || o._entities.mag == "mag" || o._entities.mag == "part")) {
             let funcBoldEntities = o._entities
             let badFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, funcBoldEntities))
             let badFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.mag == "phase" && deepEqual(Object.keys(e._entities).filter(e=>e != "part"), funcBoldEntities))
@@ -138,12 +136,12 @@ export function funcQA($root) {
         }
 
         // #2
-        if(o._type == "func/bold" && o.exclude == false && (!o._entities.mag || o._entities.mag == "mag")) {
+        if(o._type === "func/bold" && !o.exclude && (!o._entities.mag || o._entities.mag === "mag")) {
             let boldEntities = o._entities
             let boldPED = o.items[0].sidecar.PhaseEncodingDirection
-            let badSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, boldEntities) &&
+            let badSBRef = $root.objects.filter(e=>e._type === "func/sbref" && deepEqual(e._entities, boldEntities) &&
                                                 e.items[0].sidecar.PhaseEncodingDirection != boldPED).map(e=>e.idx)
-            badSBRef.forEach(bad=> {
+            badSBRef.forEach(bad=>{
                 // $root.objects[bad].exclude = true
                 $root.objects[bad].analysisResults.warnings = [`Functional sbref has a different PhaseEncodingDirection than its corresponding functional bold (#${o.series_idx}). This is likely a data error, therefore this sbref should be excluded from BIDS conversion.`]
             })
@@ -325,14 +323,11 @@ export function fmapQA($root) {
     });
 }
 
-
-export function setRun($root) {
+export function setRun($root) { // main function
     // Set run entity label if not already specified at Series level
 
     // Loop through subjects
-
     $root._organized.forEach(subGroup=>{
-
         // Loop through sessions
         subGroup.sess.forEach(sesGroup=>{
             // Determine series_idx values
@@ -344,15 +339,80 @@ export function setRun($root) {
                 let run = 1
                 if(seriesObjects.length > 1) {
                     seriesObjects.forEach(obj=>{
-                        obj.entities.run = run.toString()
-                        run++
+                        if (!obj.exclude) {
+                            obj.entities.run = run.toString()
+                            run++
+                        }
                     });
-                }
+                }   
             });
         });
     });
 }
 
+
+// export function setRun($root) {
+//     // Set run entity label if not already specified at Series level
+
+//     // Loop through subjects
+//     $root._organized.forEach(subGroup=>{
+//         // Loop through sessions
+//         subGroup.sess.forEach(sesGroup=>{
+//             sesGroup.objects.forEach(obj=>{
+
+//                 // leave two entity labels out for now: part and run. The part entity could have a pairing (mag/phase or real/imag), and we're interested in the run entity
+                
+//                 let targetEntities = Object.fromEntries(Object.entries(obj._entities).filter(([key])=>key !== "part" && key !== "run"))
+
+//                 let initialGrouping = sesGroup.objects.filter(e=>e._type !== "exclude" &&
+//                     !e._exclude &&
+//                     e._type === obj._type &&
+//                     e._idx !== obj.idx &&
+//                     deepEqual(Object.fromEntries(Object.entries(e._entities).filter(([key])=>key !== "part" && key !== "run")), targetEntities)
+//                 )
+//                 if(initialGrouping.length) {
+//                     // Sort this new array by idx (i.e. order in which the sequences were collected in the scan)
+//                     initialGrouping.sort((a, b) => a.idx - b.idx)
+
+//                     let setRun = false
+//                     if (initialGrouping.length > 1) {
+//                         setRun = true
+//                     } else if (initialGrouping.length == 1 && initialGrouping[0]._type.includes("func")) { // might need to add conditional for not having func/events
+//                         setRun = true
+//                     }
+
+//                     if (setRun) {
+//                         let run = 1
+//                         let counter = 0
+//                         initialGrouping.forEach(obj=>{
+//                             if (obj._entities.part && ["", "mag", "real"].includes(obj._entities.part)) {
+//                                 obj._entities.run = run.toString()
+//                                 obj.entities.run = obj._entities.run
+//                                 run++
+//                             } else if (obj._entities.part && !["", "mag", "real"].includes(obj._entities.part)) {
+//                                 if (initialGrouping.length > 1) {
+//                                     let previous = initialGrouping[counter - 1]
+//                                     obj._entities.run = previous._entities.run.toString()
+//                                     obj.entities.run = obj._entities.run
+//                                 } else {
+//                                     obj._entities.run = run.toString()
+//                                     obj.entities.run = obj._entities.run
+//                                     run++
+//                                 }
+
+//                             } else {
+//                                 obj._entities.run = run.toString()
+//                                 obj.entities.run = obj._entities.run
+//                                 run++
+//                             }
+//                             counter ++
+//                         })
+//                     }
+//                 }
+//             })
+//         })
+//     })
+// }
 
 export function setIntendedFor($root) {
     // Apply fmap intendedFor mapping, based on user specifications on Series page.
@@ -368,7 +428,7 @@ export function setIntendedFor($root) {
 
             // Loop through sections
             sectionIDs.forEach(s=> {
-                let section = sesGroup.objects.filter(e=>e.analysisResults.section_id == s && !e._exclude && e._type != "exclude")
+                let section = sesGroup.objects.filter(e=>e.analysisResults.section_id === s && !e._exclude && e._type != "exclude")
 
                 section.forEach(obj=>{
                     //add IntendedFor information
@@ -376,7 +436,7 @@ export function setIntendedFor($root) {
                         Object.assign(obj, {IntendedFor: []})
                         let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor
                         correspindingSeriesIntendedFor.forEach(i=>{
-                            let IntendedForIDs = section.filter(o=>o.series_idx == i && o._type != "func/events").map(o=>o.idx)
+                            let IntendedForIDs = section.filter(o=>o.series_idx === i && o._type !== "func/events").map(o=>o.idx)
                             obj.IntendedFor = obj.IntendedFor.concat(IntendedForIDs)
                         });
                     }
@@ -421,34 +481,48 @@ function findMostCommonValue(arr){
     ).pop();
 }
 
-export function validate_Entities_B0FieldIdentifier_B0FieldSource(entities, B0FieldIdentifier, B0FieldSource/*: Series*/) {     
-    const errors = [];                                                                                      
-    //validate entity (only alpha numeric values)                                                               
-    for(const k in entities) {
-        const v = entities[k];                                                                                
-        if(v && !/^[a-zA-Z0-9]*$/.test(v)) {                                                                    
-            errors.push("Entity label "+k+" contains non-alphanumeric character");                        
-        }                                                                                                       
-    }
+export function align_entities($root) {
+    /*
+    Applied on Dataset Review page
+    There are two ways entities are stored:
+        1). entities - more top level and reflects user modifications
+        2). _entities - more ezBIDS backend and what is automatically displayed
     
-    //validate B0FieldIdentifier (only alpha numeric values and dash [-] and underscore [_])
+    Since we want to give users final say, let their edits/modifications (entities) take precedent.
+    */
+    $root.objects.forEach(o=>{
+        if (!o._exclude) {
+            for (const [key, value] of Object.entries(o.entities)) {
+                if (key !== "subject" && key !== "session" && value !== "") {
+                    o._entities[key] = value
+                }
+            }
+        }
+    });
+}
+
+export function validate_B0FieldIdentifier_B0FieldSource(info) {     
+
+    let B0FieldIdentifier = info.B0FieldIdentifier
+    let B0FieldSource = info.B0FieldSource
+    
+    //validate B0FieldIdentifier (only alpha numeric values and dash [-] and underscore [_] characters allowed)
     for(const k in B0FieldIdentifier) {
         const v = B0FieldIdentifier[k];                                                                                
         if(v && !/^[a-zA-Z0-9-_]*$/.test(v)) {                                                                    
-            errors.push("B0FieldIdentifier (#"+k+"-indexed selection) contains non-alphanumeric character(s). \
+            info.validationErrors.push("B0FieldIdentifier (#"+k+"-indexed selection) contains non-alphanumeric character(s). \
             The (dash [-] and underscore [_] characters are acceptable)");                        
         }                                                                                                       
     }
 
-    //validate B0FieldSource (only alpha numeric values and dash [-] and underscore [_])
+    //validate B0FieldSource (only alpha numeric values and dash [-] and underscore [_] characters allowed)
     for(const k in B0FieldSource) {
         const v = B0FieldSource[k];                                                                                
         if(v && !/^[a-zA-Z0-9-_]*$/.test(v)) {                                                                    
-            errors.push("B0FieldSource (#"+k+"-indexed selection) contains non-alphanumeric character(s). \
+            info.validationErrors.push("B0FieldSource (#"+k+"-indexed selection) contains non-alphanumeric character(s). \
             The (dash [-] and underscore [_] characters are acceptable)");                        
         }                                                                                                       
     }
-    return errors;                                                                                          
 }
 
 export function dwiQA($root) {
@@ -511,6 +585,70 @@ export function dwiQA($root) {
             }
         })
     })
+}
+
+export function validateEntities(level, info) {
+    /*
+    Ensure entity labels are BIDS appropriate (e.g., specific part entities labels accepted, dir entity
+    label capitalized, etc.)
+    */
+   let entities = info
+    if (level === "Series") {
+        entities = info.entities
+    } else if (level === "Objects") {
+        entities = info._entities
+    }
+
+    for (let k in entities) {
+        //validate entity (only alpha numeric values allowed)                                                               
+        if(entities[k] && !/^[a-zA-Z0-9]*$/.test(entities[k])) {                                                                    
+            info.validationErrors.push("Entity label "+k+" contains non-alphanumeric character(s).");                        
+        }
+        // Check specific entities                                                                                                  
+        if (k === "dir") {
+            /* 
+            Ensure direction (dir) entity labels are capitalized (e.g. AP, not ap).
+            Can occur when user adds this themselves.
+            */
+            if(entities.direction && entities.direction !== "") {
+                if(entities.direction !== entities.direction.toUpperCase()) {
+                    info.validationErrors.push("Please ensure that the phase-encoding direction (dir) entity label is fully capitalized.")
+                }
+                if (level === "Series") {
+                    if(entities.direction.toUpperCase() !== info.PED) {
+                        info.validationWarnings.push(`ezBIDS detects that the direction should be ${info.PED}, not ${entities.direction}. Please be sure before continuing`)
+                    }
+                }
+            }
+        } else if (k === "part") {
+            // Only mag, phase, real, or imag allowed
+            if(entities.part && entities.part !== "") {
+                if (!["mag", "phase", "real", "imag"].includes(entities.part)) {
+                    info.validationErrors.push("Only accepted part entity values are: mag, phase, real, imag. Must also be lower-case")
+                }
+            }
+        } else if (k === "mtransfer") {
+            // Only on, off values allowed
+            if (entities.mtransfer && entities.mtransfer !== "") {
+                if (!["on", "off"].includes(entities.mtransfer)) {
+                    info.validationErrors.push("Only accepted mt entity values are: on, off. Must also be lower-case")
+                }
+            }
+        } else if (k === "hemi") {
+            // Only L, R values allowed
+            if (entities.hemi && entities.hemi !== "") {
+                if (!["L", "R"].includes(entities.mt)) {
+                    info.validationErrors.push("Only accepted hemi entity values are: R, L.")
+                }
+            }
+        } else if (["run", "echo", "flip", "inv", "split", "chunk"].includes(k)) {
+            if (entities[k] && entities[k] !== "") {
+                if(!/^[0-9]*$/.test(entities[k])) { 
+                    info.validationErrors.push("The "+k+" entity can only contain an integer/numeric value.")
+                }
+            }
+        }
+    }
 }
 
 export function find_separator(filePath, fileData) {
@@ -821,8 +959,8 @@ export function createEventObjects(ezbids, files) {
         excplitly map it.
         */
 
-        let section_id = 1 //default value unless otherwise determined
-        let ModifiedSeriesNumber = "01" //default value unless otherwise determined
+        let section_id = 0 //default value unless otherwise determined
+        let ModifiedSeriesNumber = "00" //default value unless otherwise determined
         let sidecar = {}
 
         //create new events object
@@ -935,7 +1073,7 @@ export function createEventObjects(ezbids, files) {
                     ).analysisResults.section_id
             }
             catch {
-                section_id = 1
+                section_id = section_id
             }
 
             try {
@@ -948,7 +1086,7 @@ export function createEventObjects(ezbids, files) {
                 ).ModifiedSeriesNumber
             }
             catch {
-                ModifiedSeriesNumber = "01"
+                ModifiedSeriesNumber = ModifiedSeriesNumber
             }
 
         }else{
@@ -959,7 +1097,7 @@ export function createEventObjects(ezbids, files) {
                     ).analysisResults.section_id
             }
             catch {
-                section_id = 1
+                section_id = section_id
             }
 
             try {
@@ -971,7 +1109,7 @@ export function createEventObjects(ezbids, files) {
                 ).ModifiedSeriesNumber
             }
             catch {
-                ModifiedSeriesNumber = "01"
+                ModifiedSeriesNumber = ModifiedSeriesNumber
             }
 
         }
@@ -991,7 +1129,15 @@ map them to bids events.tsv column names. If an ezBIDS configuration (finalized.
 imaging data, those mappings are auto generated when user uploads new events timing files.
 */
 export function mapEventColumns(ezbids_events, events) {
-    if(ezbids_events.columns.onset != "") {
+    if(ezbids_events.columns.onset != "") { // configuration file specified previous events mapping
+        let expectedColumns = ezbids_events.columns
+        let eventsColumns = events[0]
+
+        for (const [key, value] of Object.entries(expectedColumns)) { // make sure currently upload events columns have what's expected from the configuration
+            if (!Object.keys(eventsColumns).includes(value) && !key.includes("Unit") & !key.includes("Logic") && value !== null) {
+                ezbids_events.columns[key] = null
+            }
+        }
         return ezbids_events.columns
     } else {
         // //we only have to return things that we found out.. (leave other things not set)
