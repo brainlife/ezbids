@@ -54,7 +54,7 @@ else:
     bid_compliant = False
 
 
-start_time = time.time()
+start_time = time.perf_counter()
 analyzer_dir = os.getcwd()
 
 today_date = date.today().strftime("%Y-%m-%d")
@@ -2498,4 +2498,4 @@ EZBIDS = {
 with open("ezBIDS_core.json", "w") as fp:
     json.dump(EZBIDS, fp, indent=3)
 
-print(f"--- Analyzer completion time: {time.time() - start_time} seconds ---")
+print(f"--- Analyzer completion time: {time.perf_counter() - start_time} seconds ---")
