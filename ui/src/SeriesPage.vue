@@ -18,6 +18,8 @@
                 <small/>
             </el-badge>
         </div>
+        <pre>{{ aslYaml }}</pre>
+        <h1>Field END</h1>
         <pre v-if="config.debug">{{ezbids.series}}</pre>
     </pane>
 
@@ -131,6 +133,45 @@
                     </p>
                 </el-form-item>
             </el-form>
+            <div>
+                <el-button @click="showDialog = true">Edit Modality</el-button>
+                <el-dialog v-model="showDialog" title="Edit Modalities" >
+                    <el-form ref="form" :model="formData" label-position="top" label-width="200px" :inline="true" :rules="rules"> 
+                        <div>
+                            <el-row>
+                                <el-col :span="6">
+                                    <el-form-item v-for="(item, index) in fields.required" :key="'required' + index" :label="`${item.field} (required)`" :prop="item.field">
+                                        <el-input :name="item.field" v-model="formData[item.field]" ></el-input>
+                                    </el-form-item>
+                                </el-col>
+                                <el-col :span="6">
+                                    <el-form-item v-for="(item, index) in fields.recommended" :key="'recommended' + index" :label="`${item.field} (recommended)`" :prop="item.field">
+                                        <el-input :name="item.field"  v-model="formData[item.field]"></el-input>
+                                    </el-form-item>
+                                </el-col>
+
+                                <el-col :span="6">
+                                    <el-form-item v-for="(item, index) in fields.optional" :key="'optional' + index" :label="`${item.field} (optional)`" :prop="item.field">
+                                        <el-input :name="item.field"  v-model="formData[item.field]"></el-input>
+                                    </el-form-item>
+                                </el-col>
+
+                                <el-col :span="6">
+                                    <el-form-item v-for="(item, index) in fields.conditional" :key="'conditional' + index" :label="`${item.field} - ${item.condition}`" :prop="item.field">
+                                        <el-input :name="item.field" v-model="formData[item.field]"></el-input>
+                                    </el-form-item>
+                                </el-col>
+                        </el-row>
+                        </div>
+                    </el-form>
+                    <br>
+                    <span slot="footer" class="dialog-footer">
+                        <el-button @click="showDialog = false">Cancel</el-button>
+                        <el-button type="primary" @click="submitForm">Submit</el-button>
+                    </span>
+                </el-dialog>
+            </div>
+
 
             <p style="border-top: 1px solid #eee; padding: 10px 20px;">
                 <small>The following objects belongs to this series.</small>
@@ -211,6 +252,10 @@ export default defineComponent({
             ss: null as Series|null, //selected series
             petYaml: petYaml,
             aslYaml: aslYaml,
+            fields: this.getFieldsMetaData(),
+            showDialog: false,
+            rules: {},
+            formData: {},
         }
     },
 
@@ -222,6 +267,7 @@ export default defineComponent({
     mounted() {
         console.log("series mount completed");
         this.validateAll();
+        this.rules = this.generateValidationRules(this.fields);
     },
 
     methods: {
@@ -340,29 +386,173 @@ export default defineComponent({
             this.ezbids.series.forEach(this.validate);
         },
         getFieldsMetaData() {
-            let requiredFields = [];
-            let recommendedFields = [];
-            for (let key in aslYaml) {
-                if (aslYaml.hasOwnProperty(key)) {
-                    const current = aslYaml[key];
+            let result = {
+                required: [],
+                recommended: [],
+                optional: [],
+                conditional: []
+            };
 
-                    // Loop through the fields
-                    for (let field in current.fields) {
-                    if (current.fields.hasOwnProperty(field)) {
-                        const level = current.fields[field].level;
-                        
-                        // Check if the field is required or recommended
-                        if (level === 'required') {
-                        requiredFields.push({key, field});
-                        } else if (level === 'recommended') {
-                        recommendedFields.push({key, field});
-                        }
+            for (const [section, data] of Object.entries(aslYaml)) {
+                const fields = data.fields || {};
+                // fields with level 'required' or 'recommended' are included in the list
+                for (const [field, metadata] of Object.entries(fields)) {
+                    if (metadata === 'required') {
+                        result.required.push({section, field});
                     }
+                    if (metadata === 'recommended') {
+                        result.recommended.push({section, field});
+                    }
+
+                    if(metadata === 'optional') {
+                        result.optional.push({section, field});
+                    }
+
+                    //fields with level
+                    const level = metadata.level || '';
+                    if (level === 'required') {
+                        result.required.push({section, field});
+                    } else if (level === 'recommended') {
+                        result.recommended.push({section, field});
+                    } else if (level === 'optional') {
+                        result.optional.push({section, field});  // Include optional fields in the recommended list
+                    }
+
+
+                    const levelAddendum = metadata.level_addendum || '';
+                    if (levelAddendum.includes('required if') || levelAddendum.includes('required when')) {
+                        result.conditional.push({section, field, level: 'required', condition: levelAddendum});
+                    } else if (levelAddendum.includes('recommended if') || levelAddendum.includes('recommended when')) {
+                        result.conditional.push({section, field, level: 'recommended', condition: levelAddendum});
                     }
                 }
             }
-            return {requiredFields, recommendedFields};
+        
+            //remove required fields which are in conditional 
+
+            result.required = result.required.filter((item: any) => {
+                return !result.conditional.some((conditionalItem: any) => {
+                    return conditionalItem.field === item.field;
+                });
+            });
+
+            //remove recommended fields which are in conditional
+
+            result.recommended = result.recommended.filter((item: any) => {
+                return !result.conditional.some((conditionalItem: any) => {
+                    return conditionalItem.field === item.field;
+                });
+            });
+
+            // remove optional fields which are in conditional
+
+            result.optional = result.optional.filter((item: any) => {
+                return !result.conditional.some((conditionalItem: any) => {
+                    return conditionalItem.field === item.field;
+                });
+            });
+
+
+            return result;
         },
+        checkCondition(item: any) {
+            if (!item.condition) return true; // If no condition, just render it
+
+            // Here, you can expand your conditions based on your requirement. 
+            // For simplicity, I'll just show one type of condition.
+            const matches = item.condition.match(/`(\w+)` is (true|false)/);
+            if (matches) {
+                const fieldName = matches[1];
+                const expectedValue = matches[2] === 'true';
+                return this.formData[fieldName] === expectedValue;
+            }
+
+            // Add other condition checks if necessary
+            return true; // Default to show
+        },
+        submitForm() {
+            // Here, you can do whatever you want with the form data
+            // this.$refs.form.validate((valid) => {
+            //     console.log("Form validation triggered. Result:", valid);
+            //     if (valid) {
+            //         // If the form is valid
+            //         console.log(this.formData);
+            //         this.showDialog = false;
+            //     } else {
+            //         // If the form has validation errors
+            //         console.error("Validation failed.");
+            //         // Optionally: Notify the user about validation errors
+            //         // You can use Element UI's Notification or MessageBox to notify the user
+            //         this.$notify.error({
+            //             title: 'Error',
+            //             message: 'There are validation errors in the form.'
+            //         });
+
+            //         alert('There are validation errors in the form.');
+            //         return false; // Stop the form submission
+            //     }
+            // });
+
+            this.$refs.form.validate((valid) => {
+                if (valid) {
+                alert("Valid");
+                } else {
+                alert("Not Valid");
+                }
+            });
+        },
+        generateValidationRules(fieldsMetadata) {
+            const rules = {};
+            // For required fields
+            fieldsMetadata.required.forEach(item => {
+                rules[item.field] = [
+                    { required: true, message: `${item.field} is required`, trigger: 'blur' }
+                ];
+            });
+
+             // For conditional fields
+            fieldsMetadata.conditional.forEach(item => {
+                if (item.level === 'required') {
+                    rules[item.field] = [{
+                        validator: (rule, value, callback) => {
+                            // Condition: "`fieldName` is true|false"
+                            console.log(`Validating field: ${item.field}, Value: ${value}, FormData:`, this.formData, 'rules', rules);
+                            let matches = item.condition.match(/`(\w+)` is (true|false)/);
+                            if (matches) {
+                                const fieldName = matches[1];
+                                const expectedValue = matches[2] === 'true';
+                                console.log(`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
+                                if (this.formData.hasOwnProperty(fieldName) && this.formData[fieldName] === expectedValue && !value) {
+                                    console.log(`Validation failed for field ${item.field}.`);
+                                    callback(new Error('This field is required based on the condition'));
+                                    return;
+                                }
+                            }
+                            // Condition: "`fieldName` is defined as `value`"
+                            matches = item.condition.match(/`(\w+)` is defined as `(\w+)`/);
+                            if (matches) {
+                                const fieldName = matches[1];
+                                const expectedValue = matches[2];
+                                if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
+                                    callback(new Error('This field is required based on the condition'));
+                                    return;
+                                }
+                            }
+                            callback();
+                        },
+                        trigger: 'blur'
+                    }];
+                }
+            });
+
+            // No special rules for recommended as they are optional, but you can add if needed
+            console.log('Generated Rules:', rules);
+            return rules;
+
+        },
+
+
+
 },
 })
 
@@ -425,5 +615,15 @@ export default defineComponent({
 }
 h5 {
     padding: 0 20px;
+}
+.condition-text {
+    color: #999;
+    font-size: 0.8rem;
+}
+
+.dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
 }
 </style>
