@@ -574,25 +574,31 @@ import { objectToString } from '@vue/shared'
 
                 //func/events are implicitly linked to a func/bold; make sure these have same entities and exclusion criteria
                 if(o._type == "func/events") {
-                    let correspondingFuncBold:any = undefined
+                    let correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>object._type === "func/bold" &&
+                        object._entities.subject === o._entities.subject &&
+                        object._entities.session === o._entities.session &&
+                        object._entities.task === o._entities.task &&
+                        object._entities.run === o._entities.run
+                    )
+                    // Pretty sure don't need this excluded section below, now that run entity detection and assignment is betters
+                    // let correspondingFuncBold:any = undefined
 
-                    if(o.ModifiedSeriesNumber !== "00" && o.analysisResults.section_id !== 0) { // placeholder for when match with corresponding func/bold isn't yet known
-                        correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>object._type === "func/bold" &&
-                            object._entities.subject === o._entities.subject &&
-                            object._entities.session === o._entities.session &&
-                            object._entities.task === o._entities.task &&
-                            object._entities.run === o._entities.run
-                            // object.ModifiedSeriesNumber === o.ModifiedSeriesNumber &&
-                            // object.analysisResults.section_id === o.analysisResults.section_id
-                        )
-                    } else {
-                        correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>object._type === "func/bold" &&
-                            object._entities.subject === o._entities.subject &&
-                            object._entities.session === o._entities.session &&
-                            object._entities.task === o._entities.task &&
-                            object._entities.run === o._entities.run
-                        )
-                    }
+                    // if(o.ModifiedSeriesNumber !== "00" && o.analysisResults.section_id !== 0) { // placeholder for when match with corresponding func/bold isn't yet known
+                    //     correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>object._type === "func/bold" &&
+                    //         object._entities.subject === o._entities.subject &&
+                    //         object._entities.session === o._entities.session &&
+                    //         object._entities.task === o._entities.task &&
+                    //         object.ModifiedSeriesNumber === o.ModifiedSeriesNumber &&
+                    //         object.analysisResults.section_id === o.analysisResults.section_id
+                    //     )
+                    // } else {
+                    //     correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>object._type === "func/bold" &&
+                    //         object._entities.subject === o._entities.subject &&
+                    //         object._entities.session === o._entities.session &&
+                    //         object._entities.task === o._entities.task &&
+                    //         object._entities.run === o._entities.run
+                    //     )
+                    // }
 
                     if(correspondingFuncBold.length) { // should be no more than one instance
                         correspondingFuncBold.forEach((boldObj:IObject)=>{
@@ -657,7 +663,7 @@ import { objectToString } from '@vue/shared'
     
             validateAll() {
                 this.ezbids.objects.forEach(this.validate);
-                // this.ezbids.objects.forEach(this.validate); // not ideal, but need to re-validate when run entities are being updated. Do we actually need this?
+                this.ezbids.objects.forEach(this.validate); // not ideal, but need to re-validate when run entities are being updated.
             },
         },
     });
