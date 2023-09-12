@@ -674,7 +674,7 @@ import { objectToString } from '@vue/shared'
         position: fixed;
         top: 0;
         bottom: 60px;
-        left: 200px;
+        left: 160px;
         right: 0;
     
         width: inherit;

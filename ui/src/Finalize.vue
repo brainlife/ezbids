@@ -35,7 +35,7 @@
             Please download the BIDS formatted data to your local computer
             </p>
             <p>
-                <el-button @click="download" type="primary">Get BIDS</el-button>
+                <el-button @click="download" type="primary">Download BIDS</el-button>
 
                 <a :href="config.apihost+'/download/'+session._id+'/finalized.json'" download="finalized.json">
                     <el-button @click="download" type="primary" style="float: right" >Download configuration/template</el-button>

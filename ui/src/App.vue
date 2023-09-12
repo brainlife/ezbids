@@ -284,7 +284,7 @@ export default defineComponent({
         </div>
 
         <ul>
-            <li :class="{active: page == 'finalize'}">Get BIDS</li>
+            <li :class="{active: page == 'finalize'}">Access BIDS Data</li>
             <li :class="{active: page == 'feedback'}">Feedback</li>
         </ul>
 
@@ -383,12 +383,15 @@ aside h1 {
 }
 aside {
     position: fixed;
-    width: 200px;
+    width: 160px;
     top: 0;
     left: 0;
     height: 100%;
 
-    background-color: #eee;
+    // background-color: #eee;
+    background: linear-gradient(rgb(70, 188, 152), rgb(53, 150, 121), rgb(45, 113, 141), rgb(31, 82, 95), rgb(16, 45, 71));
+ 
+
     color: #333;
     h1 {
         padding: 10px;
@@ -397,11 +400,13 @@ aside {
         margin-bottom: 0px;
         padding: 10px;
         font-size: 110%;
+        color: white;
     }
     ul {
         list-style: none;
         padding-left: 0;
         margin: 0;
+        color: white;
 
         li {
             padding: 10px;
@@ -423,7 +428,7 @@ aside {
     padding: 10px;
 }
 section {
-    margin-left: 200px;
+    margin-left: 160px;
     padding-bottom: 100px;
 }
 footer {
@@ -437,7 +442,7 @@ footer {
     height: 40px;
     bottom: 0;
     right: 0;
-    left: 200px;
+    left: 160px;
     padding: 10px;
     background-color: #0003;
     z-index: 3;
