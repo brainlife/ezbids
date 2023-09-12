@@ -107,10 +107,10 @@ export function funcQA($root) {
         // #1
 
         //update analysisResults.warnings in case user went back to Series and adjusted things
-        if(o._type == "func/bold" && o.exclude == false && (!o._entities.mag || o._entities.mag == "mag")) {
+        if(o._type == "func/bold" && o.exclude == false && (!o._entities.part || o._entities.part == "mag")) {
             let funcBoldEntities = o._entities
             let goodFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, funcBoldEntities))
-            let goodFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.mag == "phase" && deepEqual(Object.keys(e._entities).filter(e=>e != "part"), funcBoldEntities))
+            let goodFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.part == "phase" && deepEqual(Object.keys(e._entities).filter(e=>e != "part"), funcBoldEntities))
 
             for(const good of [goodFuncSBRef, goodFuncBoldPhase]) {
                 good.forEach(g=>{
@@ -120,10 +120,10 @@ export function funcQA($root) {
         }
 
         //now check for corresponding func/bold === exclude, and go from there
-        if(o._type === "func/bold" && o.exclude && (!o._entities.mag || o._entities.mag == "mag" || o._entities.mag == "part")) {
+        if(o._type === "func/bold" && o.exclude && (!o._entities.part || o._entities.part == "mag" || o._entities.part == "part")) {
             let funcBoldEntities = o._entities
             let badFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, funcBoldEntities))
-            let badFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.mag == "phase" && deepEqual(Object.keys(e._entities).filter(e=>e != "part"), funcBoldEntities))
+            let badFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.part == "phase" && deepEqual(Object.keys(e._entities).filter(e=>e != "part"), funcBoldEntities))
 
             for(const bad of [badFuncSBRef, badFuncBoldPhase]) {
                 bad.forEach(b=>{
@@ -136,7 +136,7 @@ export function funcQA($root) {
         }
 
         // #2
-        if(o._type === "func/bold" && !o.exclude && (!o._entities.mag || o._entities.mag === "mag")) {
+        if(o._type === "func/bold" && !o.exclude && (!o._entities.part || o._entities.part === "mag")) {
             let boldEntities = o._entities
             let boldPED = o.items[0].sidecar.PhaseEncodingDirection
             let badSBRef = $root.objects.filter(e=>e._type === "func/sbref" && deepEqual(e._entities, boldEntities) &&
@@ -323,96 +323,89 @@ export function fmapQA($root) {
     });
 }
 
-export function setRun($root) { // main function
-    // Set run entity label if not already specified at Series level
+export function setRun($root) {
+    // Set run entity label for all objects, if appropriate.
+    // Applied on the Dataset Review page.
 
     // Loop through subjects
     $root._organized.forEach(subGroup=>{
         // Loop through sessions
         subGroup.sess.forEach(sesGroup=>{
-            // Determine series_idx values
-            let allSeriesIndices = sesGroup.objects.map(e=>e.series_idx)
-            let uniqueSeriesIndices = Array.from(new Set(allSeriesIndices))
+            sesGroup.objects.forEach(obj=>{
 
-            uniqueSeriesIndices.forEach(si=>{
-                let seriesObjects = sesGroup.objects.filter(e=>e.series_idx == si && !e._exclude)
-                let run = 1
-                if(seriesObjects.length > 1) {
-                    seriesObjects.forEach(obj=>{
-                        if (!obj.exclude) {
-                            obj.entities.run = run.toString()
-                            run++
-                        }
-                    });
-                }   
-            });
-        });
-    });
+                // leave two entity labels out for now: part and run. The part entity could have a pairing (mag/phase or real/imag), and we're interested in the run entity
+                let targetEntities = Object.fromEntries(Object.entries(obj._entities).filter(([key])=>key !== "part" && key !== "run"))
+            
+                let initialGrouping = sesGroup.objects.filter(e=>e._type !== "exclude" &&
+                    !e._exclude &&
+                    e._type === obj._type &&
+                    e._idx !== obj.idx &&
+                    deepEqual(Object.fromEntries(Object.entries(e._entities).filter(([key])=>key !== "part" && key !== "run")), targetEntities)
+                )
+
+                if (initialGrouping.length) {
+                    // Sort this new array by idx (i.e. order in which the sequences were collected in the scanner)
+                    initialGrouping.sort((a, b) => a.idx - b.idx)
+
+                    let setRun = false
+                    if (initialGrouping.length > 1) {
+                        setRun = true
+                    } else if (initialGrouping.length === 1 && initialGrouping[0]._type.includes("func")) { // might need to add conditional for not having func/events
+                        setRun = true
+                    }
+
+                    if (setRun) {
+                        let run = 1
+                        initialGrouping.forEach(o=>{
+                            if (o._entities.part && ["", "mag", "real"].includes(o._entities.part)) {
+                                o._entities.run = run.toString()
+                                o.entities.run = o._entities.run
+                                run++
+                            } else if (o._entities.part && !["", "mag", "real"].includes(o._entities.part)) {
+                                if (o._entities.part === "phase") {
+                                    let correspondingFuncMag = initialGrouping.filter(e=>e._entities.part === "mag" &&
+                                        e.idx === o.idx - 1
+                                    )
+
+                                    if (!correspondingFuncMag.length) {
+                                        o._exclude = true
+                                        o.exclude = true
+                                        o.validationWarnings = []
+                                    } else {
+                                        o._entities.run = correspondingFuncMag[0]._entities.run
+                                        o.entities.run = o._entities.run
+                                    }
+                                } else if (o._entities.part === "imag") {
+                                    let correspondingFuncReal = initialGrouping.filter(e=>e._entities.part === "real" &&
+                                        e.idx === o.idx - 1
+                                    )
+
+                                    if (!correspondingFuncReal.length) {
+                                        o._exclude = true
+                                        o.exclude = true
+                                        o.validationWarnings = []
+                                    } else {
+                                        o._entities.run = correspondingFuncMag[0]._entities.run
+                                        o.entities.run = o._entities.run
+                                    }
+                                }
+                            } else {
+                                o._entities.run = run.toString()
+                                o.entities.run = o._entities.run
+                                run++
+                            }
+                        })
+                    } else {
+                        initialGrouping.forEach(o=>{
+                            o._entities.run = ""
+                            o.entities.run = o._entities.run
+                        })
+                    }
+                }
+            })
+        })
+    })
 }
-
-
-// export function setRun($root) {
-//     // Set run entity label if not already specified at Series level
-
-//     // Loop through subjects
-//     $root._organized.forEach(subGroup=>{
-//         // Loop through sessions
-//         subGroup.sess.forEach(sesGroup=>{
-//             sesGroup.objects.forEach(obj=>{
-
-//                 // leave two entity labels out for now: part and run. The part entity could have a pairing (mag/phase or real/imag), and we're interested in the run entity
-                
-//                 let targetEntities = Object.fromEntries(Object.entries(obj._entities).filter(([key])=>key !== "part" && key !== "run"))
-
-//                 let initialGrouping = sesGroup.objects.filter(e=>e._type !== "exclude" &&
-//                     !e._exclude &&
-//                     e._type === obj._type &&
-//                     e._idx !== obj.idx &&
-//                     deepEqual(Object.fromEntries(Object.entries(e._entities).filter(([key])=>key !== "part" && key !== "run")), targetEntities)
-//                 )
-//                 if(initialGrouping.length) {
-//                     // Sort this new array by idx (i.e. order in which the sequences were collected in the scan)
-//                     initialGrouping.sort((a, b) => a.idx - b.idx)
-
-//                     let setRun = false
-//                     if (initialGrouping.length > 1) {
-//                         setRun = true
-//                     } else if (initialGrouping.length == 1 && initialGrouping[0]._type.includes("func")) { // might need to add conditional for not having func/events
-//                         setRun = true
-//                     }
-
-//                     if (setRun) {
-//                         let run = 1
-//                         let counter = 0
-//                         initialGrouping.forEach(obj=>{
-//                             if (obj._entities.part && ["", "mag", "real"].includes(obj._entities.part)) {
-//                                 obj._entities.run = run.toString()
-//                                 obj.entities.run = obj._entities.run
-//                                 run++
-//                             } else if (obj._entities.part && !["", "mag", "real"].includes(obj._entities.part)) {
-//                                 if (initialGrouping.length > 1) {
-//                                     let previous = initialGrouping[counter - 1]
-//                                     obj._entities.run = previous._entities.run.toString()
-//                                     obj.entities.run = obj._entities.run
-//                                 } else {
-//                                     obj._entities.run = run.toString()
-//                                     obj.entities.run = obj._entities.run
-//                                     run++
-//                                 }
-
-//                             } else {
-//                                 obj._entities.run = run.toString()
-//                                 obj.entities.run = obj._entities.run
-//                                 run++
-//                             }
-//                             counter ++
-//                         })
-//                     }
-//                 }
-//             })
-//         })
-//     })
-// }
 
 export function setIntendedFor($root) {
     // Apply fmap intendedFor mapping, based on user specifications on Series page.
@@ -471,8 +464,7 @@ export function setIntendedFor($root) {
 function findMostCommonValue(arr){
     /* Function comes from https://stackoverflow.com/a/20762713
 
-    This function acts as a mode (i.e. finds the most common value
-    in an array).
+    This function acts as a mode (i.e. finds the most common value in an array).
     */
 
     return arr.sort((a,b) =>

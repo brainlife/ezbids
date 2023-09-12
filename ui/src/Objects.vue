@@ -282,7 +282,7 @@ import { objectToString } from '@vue/shared'
             delete entities.subject;
             delete entities.session;
             return entities;
-        },
+            },
     
             //subject needs to be an object
             findSessionFromString(sub: string, ses: string) {
@@ -310,9 +310,15 @@ import { objectToString } from '@vue/shared'
             },
     
             isExcluded(o: IObject) {
-                if(o.exclude) return true;
-                if(o._type == "exclude") return true;
-                return o._exclude;
+                if (o.exclude) {
+                    return true;
+                } else if (o._exclude) {
+                    return true;
+                } else if (o._type === "exclude") {
+                    return true;
+                } else {
+                    return false;
+                }
             },
     
             excludeSession(sub: string, ses: string, b: boolean) {
@@ -417,8 +423,6 @@ import { objectToString } from '@vue/shared'
                 o.validationErrors = [];
                 o.validationWarnings = [];
 
-                // setRun(this.ezbids)
-
                 setIntendedFor(this.ezbids)
                 
                 align_entities(this.ezbids)
@@ -447,7 +451,6 @@ import { objectToString } from '@vue/shared'
                 If user specified a specific entity label and then changed the datatype/suffix pairing to something
                 that doesn't allow that entity, we need to remove it. Otherwise, the bids-validator will complain.
                 */
-               console.log(o._type, o._entities)
                 for (let k in o._entities) {
                     if (!["subject", "session"].includes(k)) { // this line prevents sequence ordering from being messed up
                         if (o.entities[k] !== "" && !entities_requirement[k]) {
@@ -456,9 +459,7 @@ import { objectToString } from '@vue/shared'
                         }
                     }
                 }
-    
-                // if(this.isExcluded(o)) return; // might return to this, but need to check if previously excluded sequences are un-excluded
-        
+            
                 if(o._type.startsWith("func/")) {
                     const series = this.ezbids.series[o.series_idx];
                     if(entities_requirement['task'] && !o.entities.task && !series?.entities.task) {
@@ -501,30 +502,33 @@ import { objectToString } from '@vue/shared'
                 Any phase data (part-phase) is linked to the magnitude. If part entity is specified, make sure it's
                 properly linked and has same entities (except for part) and exclusion criteria.
                 */
-                if(o._entities.part && o._entities.part !== "" && o._entities.part !== "mag") {
-                    let correspondingFuncMag = this.ezbids.objects.filter((object:IObject)=>object._type == o._type &&
+                if(o._entities.part && !["", "mag", "real"].includes(o._entities.part)) {
+                    let correspondingFuncMag = this.ezbids.objects.filter((object:IObject)=>object._type === o._type &&
                         object._entities.part === "mag" &&
-                        deepEqual(Object.fromEntries(Object.entries(object._entities).filter(([key])=>key !== "part")), Object.fromEntries(Object.entries(o._entities).filter(([key])=>key !== "part"))))
+                        object.idx === o.idx - 1) // the part-phase (or imag) sequence index (idx) should always be one more than the corresponding part-mag (or real) sequence idx, since it comes right after, right?
                     
-                    if(correspondingFuncMag) { // should be no more than one
+                    if(correspondingFuncMag.length) { // should be no more than one
                         correspondingFuncMag.forEach((boldMag:IObject)=>{
                             // o.analysisResults.section_id = boldObj.analysisResults.section_id
                             for(let k in boldMag._entities) {
-                                if(boldMag._entities[k] !== "" && k !== "part") {
-                                    o._entities[k] = boldMag._entities[k]
-                                } else if(boldMag._entities[k] === "" && k !== "part") {
-                                    o._entities[k] = ""
+                                if (k !== "part") {
+                                    if (boldMag._entities[k] !== "") {
+                                        o._entities[k] = boldMag._entities[k]
+                                    } else {
+                                        o._entities[k] = ""
+                                    }
                                 }
                                 o.entities[k] = o._entities[k]
                             }
-                            if(boldMag._exclude === true) {
+
+                            if(boldMag._exclude || boldMag._type === "exclude") {
                                 o.exclude = true
                                 o._exclude = true
                                 o.validationWarnings = [`The corresponding magnitude (part-mag) #${boldMag.series_idx} is currently set to exclude from BIDS conversion. \
                                     Since this phase (part-phase) sequence is linked, it will also be excluded from conversion unless the corresponding
                                     magnitude (part-mag) is unexcluded. If incorrect, please modify corresponding magnitude (part-mag) (#${boldMag.series_idx}).`]
                             }
-                            if(boldMag._exclude === false) {
+                            if(!boldMag._exclude) {
                                 o.exclude = false
                                 o._exclude = false
                                 o.validationWarnings = []
@@ -536,9 +540,9 @@ import { objectToString } from '@vue/shared'
                 // func/sbref are implicitly linked to a corresponding func/bold; make sure these have same entities and exclusion criteria
                 if(o._type === "func/sbref") {
                     let correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>object._type === "func/bold" &&
-                        deepEqual(object._entities, o._entities))
+                        o.idx === object.idx - 1) // the func/sbref index (idx) should always be one less than the corresponding func/bold idx, since it comes right before, right?
                     
-                    if(correspondingFuncBold) { // should be no more than one
+                        if(correspondingFuncBold.length) { // should be no more than one
                         correspondingFuncBold.forEach((boldObj:IObject)=>{
                             for(let k in boldObj._entities) {
                                 if(boldObj._entities[k] !== "" && k !== "echo") {
@@ -552,7 +556,7 @@ import { objectToString } from '@vue/shared'
                                 }
                                 o.entities[k] = o._entities[k]
                             }
-                            if(boldObj._exclude || correspondingFuncBold._type === "exclude") {
+                            if(boldObj._exclude || boldObj._type === "exclude") {
                                 o.exclude = true
                                 o._exclude = true
                                 o.validationWarnings = [`The corresponding func/bold #${boldObj.series_idx} is currently set to exclude from BIDS conversion. \
@@ -567,29 +571,30 @@ import { objectToString } from '@vue/shared'
                         })
                     }
                 }
-    
+
                 //func/events are implicitly linked to a func/bold; make sure these have same entities and exclusion criteria
                 if(o._type == "func/events") {
                     let correspondingFuncBold:any = undefined
 
                     if(o.ModifiedSeriesNumber !== "00" && o.analysisResults.section_id !== 0) { // placeholder for when match with corresponding func/bold isn't yet known
-                        correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>object._type == "func/bold" &&
-                            object._entities.subject == o._entities.subject &&
-                            object._entities.session == o._entities.session &&
-                            object._entities.task == o._entities.task &&
-                            object.ModifiedSeriesNumber == o.ModifiedSeriesNumber &&
-                            object.analysisResults.section_id == o.analysisResults.section_id
+                        correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>object._type === "func/bold" &&
+                            object._entities.subject === o._entities.subject &&
+                            object._entities.session === o._entities.session &&
+                            object._entities.task === o._entities.task &&
+                            object._entities.run === o._entities.run
+                            // object.ModifiedSeriesNumber === o.ModifiedSeriesNumber &&
+                            // object.analysisResults.section_id === o.analysisResults.section_id
                         )
                     } else {
-                        correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>object._type == "func/bold" &&
-                            object._entities.subject == o._entities.subject &&
-                            object._entities.session == o._entities.session &&
-                            object._entities.task == o._entities.task &&
-                            object._entities.run == o._entities.run
+                        correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>object._type === "func/bold" &&
+                            object._entities.subject === o._entities.subject &&
+                            object._entities.session === o._entities.session &&
+                            object._entities.task === o._entities.task &&
+                            object._entities.run === o._entities.run
                         )
                     }
 
-                    if(correspondingFuncBold) { // should be no more than one instance
+                    if(correspondingFuncBold.length) { // should be no more than one instance
                         correspondingFuncBold.forEach((boldObj:IObject)=>{
                             o.ModifiedSeriesNumber = boldObj.ModifiedSeriesNumber
                             o.analysisResults.section_id = boldObj.analysisResults.section_id
@@ -605,16 +610,16 @@ import { objectToString } from '@vue/shared'
                                 }
                                 o.entities[k] = o._entities[k]
                             }
-                            if(boldObj._exclude === true || correspondingFuncBold._type === "exclude") {
+                            if(boldObj._exclude || correspondingFuncBold._type === "exclude") {
                                 o.exclude = true
                                 o._exclude = true
-                                o._entities.run = ""
-                                o.entities.run = ""
+                                // o._entities.run = ""
+                                // o.entities.run = ""
                                 o.validationWarnings = [`The corresponding func/bold #${boldObj.series_idx} is currently set to exclude from BIDS conversion. \
                                     Since this func/events is linked, it will also be excluded from conversion unless the corresponding
                                     func/bold is unexcluded. If incorrect, please modify corresponding func/bold (#${boldObj.series_idx}).`]
                             }
-                            if(boldObj._exclude === false) {
+                            if(!boldObj._exclude) {
                                 o.exclude = false
                                 o._exclude = false
                                 o.validationWarnings = []
@@ -622,6 +627,8 @@ import { objectToString } from '@vue/shared'
                         })
                     }
                 }
+
+                if(this.isExcluded(o)) return; // might return to this, but need to check if previously excluded sequences are un-excluded
                 
                 //make sure no 2 objects are exactly alike
                 for(let o2 of this.ezbids.objects) {
@@ -650,7 +657,7 @@ import { objectToString } from '@vue/shared'
     
             validateAll() {
                 this.ezbids.objects.forEach(this.validate);
-                this.ezbids.objects.forEach(this.validate); // not ideal, but need to re-validate when run entities are being updated
+                // this.ezbids.objects.forEach(this.validate); // not ideal, but need to re-validate when run entities are being updated. Do we actually need this?
             },
         },
     });
