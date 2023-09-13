@@ -144,7 +144,7 @@
                                 </el-select>
                             </el-form-item>
                             <p style="margin-left: 200px;">
-                                <small>* Optional/Recommended: If this sequence will be used for fieldmap correction, enter a text string of your choice. A good formatting suggestion is the "datatype_suffix[index]" format (e.g., <b>fmap_epi0</b>, <b>fmap_phasediff1</b>, etc). If another sequence will be used with this one for fieldmap correction, use the exact same text string there as well. Leave field blank if unclear.</small>
+                                <small>* <b>Recommended if no IntendedFor</b>: If this sequence will be used for fieldmap correction, enter a text string of your choice. A good formatting suggestion is the "datatype_suffix[index]" format (e.g., <b>fmap_epi0</b>, <b>fmap_phasediff1</b>, etc). If another sequence will be used with this one for fieldmap correction, use the exact same text string there as well. Leave field blank if unclear.</small>
                             </p>
                         </div>
                        
@@ -156,7 +156,7 @@
                                 </el-select>
                             </el-form-item>
                             <p style="margin-left: 200px;">
-                                <small>* Optional/Recommended: If this sequence will be used for fieldmap correction, enter a text string of your choice. A good formatting suggestion is the "datatype_suffix" format (e.g., fmap_epi, fmap_phasediff). If another sequence will be used with this one for fieldmap correction, use the exact same text string there as well. Leave field blank if unclear.</small>
+                                <small>* <b>Recommended if no IntendedFor</b>: If this sequence will be used for fieldmap correction, enter a text string of your choice. A good formatting suggestion is the "datatype_suffix" format (e.g., fmap_epi, fmap_phasediff). If another sequence will be used with this one for fieldmap correction, use the exact same text string there as well. Leave field blank if unclear.</small>
                             </p>
                         </div>
                     </div>

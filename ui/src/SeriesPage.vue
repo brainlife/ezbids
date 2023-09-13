@@ -91,7 +91,7 @@
                             </el-option>
                         </el-select>
                         <p style="margin-top: 0">
-                            <small>* Optional/Recommended: select Series that this field map should be applied to. Helpful is planning on using BIDS-apps for processing (e.g., fMRIPrep).</small>
+                            <small>* <b>Recommended</b>: select Series that this field map should be applied to. Helpful is planning on using BIDS-apps for processing (e.g., fMRIPrep).</small>
                         </p>
                     </el-form-item>
                 </div>
@@ -103,7 +103,7 @@
                             @change="validateAll()" style="width: 80%">
                         </el-select>
                         <p style="margin-top: 0">
-                            <small>* Optional: If this sequence will be used for fieldmap/distortion correction, enter a text string of your choice. A good formatting suggestion is the "datatype_suffix[index]" format (e.g., <b>fmap_epi0</b>, <b>fmap_phasediff1</b>, etc). If another sequence will be used with this one for fieldmap/distortion correction, use the exact same text string there as well. Leave field blank if unclear.</small>
+                            <small>* <b>Recommended if no IntendedFor</b>: If this sequence will be used for fieldmap/distortion correction, enter a text string of your choice. A good formatting suggestion is the "datatype_suffix[index]" format (e.g., <b>fmap_epi0</b>, <b>fmap_phasediff1</b>, etc). If another sequence will be used with this one for fieldmap/distortion correction, use the exact same text string there as well. Leave field blank if unclear.</small>
                         </p>
                     </el-form-item>
                     <el-form-item label="B0FieldSource" prop="B0FieldSource">
@@ -112,7 +112,7 @@
                             @change="validateAll()" style="width: 80%">
                         </el-select>
                         <p style="margin-top: 0">
-                            <small>* Optional: If fieldmap/distortion correction will be applied to this image, enter the identical text string from the B0FieldIdentifier field of the sequence(s) used to create the fieldmap/distortion estimation. Leave field blank if unclear.</small>
+                            <small>* <b>Recommended if no IntendedFor</b>: If fieldmap/distortion correction will be applied to this image, enter the identical text string from the B0FieldIdentifier field of the sequence(s) used to create the fieldmap/distortion estimation. Leave field blank if unclear.</small>
                         </p>
                     </el-form-item>
                 </div>            
