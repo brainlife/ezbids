@@ -155,7 +155,7 @@ export default defineComponent({
                         funcQA(this.ezbids);
                         fmapQA(this.ezbids);
                         dwiQA(this.ezbids);
-                        setRun(this.ezbids); //keep here so for initial func/events mapping to corresponding func/bold
+                        setRun(this.ezbids); //keep here for initial func/events mapping to corresponding func/bold
                         this.mapObjects();
                         break;
                     case "object":
