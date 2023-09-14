@@ -376,14 +376,11 @@ export default defineComponent({
             <br>
             <br>
             <br>
-            <div class="hint">
-                <h2>Hint</h2>
+            <div class="Info">
+                <h2>Information</h2>
                 <ul style="line-height: 200%;">
-                    <li>We strongly recommend that you upload <b>non-anonymized</b> imaging data so that we can properly identify the subject/session hierarchy. If you choose to upload anonymized imaging data, ezBIDS will still attempt to identify the subject/session hierarchy; however, we cannot guarantee its success. To alleviate issues, anomymized data should therefore be organized by subject/session folders, with clear identifying information (e.g. "sub-", "ses-") in the folder name(s). Non-anonymized data does not require any organizational/naming structure.</li>
-                    <li>Once uploaded, ezBIDS will anonymize and remove any subject identifying information (and optionally deface all anatomy data) before converting to BIDS.</li>
-                    <li>If you plan on converting timing files to BIDS events.tsv format, please do not upload them here. You will be prompted later for uploading timing files.</li>
-                    <li>ezBIDS runs on a secure VM running on Jetstream cloud; HIPAA aligned cloud computing infrastructure.</li>
-                    <li>The data you upload can only be accessed through the unique URL with your session ID; all data will be purged from our system within 5 days.</li>
+                    <li>If you are new to ezBIDS, please read our <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank" ><b>User documentation</b></a></li>
+                    <li>See below for a brief ezBIDS video</li>
                 </ul>
                 <iframe width="640" height="360" src="https://www.youtube.com/embed/mY3_bmt_e80" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
             </div>
