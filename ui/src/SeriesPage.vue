@@ -18,7 +18,6 @@
                 <small/>
             </el-badge>
         </div>
-        <pre>{{ aslYaml }}</pre>
         <h1>Field END</h1>
         <pre v-if="config.debug">{{ezbids.series}}</pre>
     </pane>
@@ -35,8 +34,8 @@
         </div>
         <div v-if="ss">
             <h5>BIDS Datatype, Suffix, Entities</h5>
-            <!-- <pre>{{ ezbids.series }}</pre> -->
-            <pre>{{ getFieldsMetaData() }}</pre>
+
+            <pre>{{ getFieldsMetaData(ss.type) }}</pre>
             <el-form label-width="150px">
                 <el-alert v-if="ss.message" :title="ss.message" type="warning" style="margin-bottom: 4px;"/>
                 <div style="margin-bottom: 10px;">
@@ -133,31 +132,32 @@
                     </p>
                 </el-form-item>
             </el-form>
-            <div>
-                <el-button @click="showDialog = true">Edit Modality</el-button>
+            <div v-if="ss.type=='perf/asl'">
+                <el-button @click="initForm()">Edit Modality</el-button>
                 <el-dialog v-model="showDialog" title="Edit Modalities" >
+                    {{ rules }}
                     <el-form ref="form" :model="formData" label-position="top" label-width="200px" :inline="true" :rules="rules"> 
                         <div>
                             <el-row>
                                 <el-col :span="6">
-                                    <el-form-item v-for="(item, index) in fields.required" :key="'required' + index" :label="`${item.field} (required)`" :prop="item.field">
+                                    <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.required" :key="'required' + index" :label="`${item.field} (required)`" :prop="item.field">
                                         <el-input :name="item.field" v-model="formData[item.field]" ></el-input>
                                     </el-form-item>
                                 </el-col>
                                 <el-col :span="6">
-                                    <el-form-item v-for="(item, index) in fields.recommended" :key="'recommended' + index" :label="`${item.field} (recommended)`" :prop="item.field">
+                                    <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.recommended" :key="'recommended' + index" :label="`${item.field} (recommended)`" :prop="item.field">
                                         <el-input :name="item.field"  v-model="formData[item.field]"></el-input>
                                     </el-form-item>
                                 </el-col>
 
                                 <el-col :span="6">
-                                    <el-form-item v-for="(item, index) in fields.optional" :key="'optional' + index" :label="`${item.field} (optional)`" :prop="item.field">
+                                    <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.optional" :key="'optional' + index" :label="`${item.field} (optional)`" :prop="item.field">
                                         <el-input :name="item.field"  v-model="formData[item.field]"></el-input>
                                     </el-form-item>
                                 </el-col>
 
                                 <el-col :span="6">
-                                    <el-form-item v-for="(item, index) in fields.conditional" :key="'conditional' + index" :label="`${item.field} - ${item.condition}`" :prop="item.field">
+                                    <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.conditional" :key="'conditional' + index" :label="`${item.field} - ${item.condition}`" :prop="item.field">
                                         <el-input :name="item.field" v-model="formData[item.field]"></el-input>
                                     </el-form-item>
                                 </el-col>
@@ -165,6 +165,7 @@
                         </div>
                     </el-form>
                     <br>
+                    {{ formData  }}
                     <span slot="footer" class="dialog-footer">
                         <el-button @click="showDialog = false">Cancel</el-button>
                         <el-button type="primary" @click="submitForm">Submit</el-button>
@@ -252,10 +253,13 @@ export default defineComponent({
             ss: null as Series|null, //selected series
             petYaml: petYaml,
             aslYaml: aslYaml,
-            fields: this.getFieldsMetaData(),
+            fields: {},
             showDialog: false,
             rules: {},
-            formData: {},
+            formData: {
+                FlipAngle: '',
+                LookLocker: false,
+            },
         }
     },
 
@@ -267,7 +271,6 @@ export default defineComponent({
     mounted() {
         console.log("series mount completed");
         this.validateAll();
-        this.rules = this.generateValidationRules(this.fields);
     },
 
     methods: {
@@ -385,7 +388,17 @@ export default defineComponent({
         validateAll() {
             this.ezbids.series.forEach(this.validate);
         },
-        getFieldsMetaData() {
+        initForm() {
+            this.fields = this.getFieldsMetaData(this.ss.type);
+            this.rules = this.generateValidationRules(this.fields);
+            this.showDialog = true;
+        },
+        getFieldsMetaData(type: string) {
+            console.log("getFieldsMetaData",type);
+            let fileObject = {};
+            if(type.startsWith('pet')) fileObject = petYaml;
+            if(type == 'perf/asl') fileObject = aslYaml;
+            else return {};
             let result = {
                 required: [],
                 recommended: [],
@@ -393,7 +406,7 @@ export default defineComponent({
                 conditional: []
             };
 
-            for (const [section, data] of Object.entries(aslYaml)) {
+            for (const [section, data] of Object.entries(fileObject)) {
                 const fields = data.fields || {};
                 // fields with level 'required' or 'recommended' are included in the list
                 for (const [field, metadata] of Object.entries(fields)) {
@@ -493,6 +506,13 @@ export default defineComponent({
             //     }
             // });
 
+            //reupdate the rules based on if conditional fields which were dependent on other field have been updated and meet the requirement and then check the validation`
+
+            let newRules = this.generateValidationRules(this.fields);
+            //print difference between old and new rules
+            console.log("newRules", newRules);
+            console.log("oldRules", this.rules);
+            
             this.$refs.form.validate((valid) => {
                 if (valid) {
                 alert("Valid");
@@ -509,7 +529,7 @@ export default defineComponent({
                     { required: true, message: `${item.field} is required`, trigger: 'blur' }
                 ];
             });
-
+            console.log("fieldsMetadata", fieldsMetadata)
              // For conditional fields
             fieldsMetadata.conditional.forEach(item => {
                 if (item.level === 'required') {
@@ -517,23 +537,33 @@ export default defineComponent({
                         validator: (rule, value, callback) => {
                             // Condition: "`fieldName` is true|false"
                             console.log(`Validating field: ${item.field}, Value: ${value}, FormData:`, this.formData, 'rules', rules);
-                            let matches = item.condition.match(/`(\w+)` is (true|false)/);
+
+
+                            // let matches = item.condition.match(/`(\w+)` is (true|false)/);
+                            let matches = item.condition.match(/`(\w+)`\s+is\s+`(true|false)`/i);
                             if (matches) {
                                 const fieldName = matches[1];
                                 const expectedValue = matches[2] === 'true';
-                                console.log(`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
-                                if (this.formData.hasOwnProperty(fieldName) && this.formData[fieldName] === expectedValue && !value) {
-                                    console.log(`Validation failed for field ${item.field}.`);
+                                console.log("t/F",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`, 'value',value);
+                            
+                                if (this.formData.hasOwnProperty(fieldName) && 
+                                    Boolean(this.formData[fieldName]) == Boolean(expectedValue) && 
+                                    (value == null || value === '')) {
+                                    console.log("t/F",`Validation failed for field ${item.field}.`);
                                     callback(new Error('This field is required based on the condition'));
                                     return;
                                 }
+
                             }
                             // Condition: "`fieldName` is defined as `value`"
-                            matches = item.condition.match(/`(\w+)` is defined as `(\w+)`/);
+                            // matches = item.condition.match(/`(\w+)` is defined as `(\w+)`/);
+                            matches = item.condition.match(/`(\w+)`\s+is\s+defined\s+as\s+`(\w+)`/i);
                             if (matches) {
                                 const fieldName = matches[1];
                                 const expectedValue = matches[2];
+                                console.log("defined",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
                                 if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
+                                    console.log(`Validation failed for field ${item.field}.`);
                                     callback(new Error('This field is required based on the condition'));
                                     return;
                                 }
@@ -625,5 +655,8 @@ h5 {
     display: flex;
     justify-content: flex-end;
     align-items: center;
+}
+.editModalityInputItem {
+    margin-top: 10px;
 }
 </style>
