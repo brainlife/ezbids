@@ -490,10 +490,8 @@ def generate_dataset_list(uploaded_files_list, data_type):
     for json_file in json_list:
         json_data = open(json_file)
         json_data = json.load(json_data, strict=False)
-        print(f"JSON file: {json_file}")
 
         # Make sure each JSON has a corresponding NIfTI file
-        # corresponding_nifti = [x for x in nifti_list if json_file[:-4] in x if ".nii" in x][0]
         corresponding_nifti = None
         try:
             corresponding_nifti = [x for x in nifti_list if json_file[:-4] in x if ".nii" in x][0]
@@ -647,6 +645,13 @@ def generate_dataset_list(uploaded_files_list, data_type):
             # Find TimeZero
             if "TimeZero" in json_data and json_data.get("ScanStart", None) == 0:
                 acquisition_time = json_data["TimeZero"]
+
+            # Find Manufacturer metadata or make placehodler
+            if "Manufacturer" not in json_data:
+                manufacturer = "n/a"
+                json_data["Manufacturer"] = manufacturer
+            else:
+                manufacturer = json_data["Manufacturer"]
 
             # Find RepetitionTime
             if "RepetitionTime" in json_data:
@@ -1411,7 +1416,7 @@ def create_lookup_info():
                             elif suffix == "UNIT1":
                                 lookup_dic[datatype][suffix]["search_terms"] = [
                                     "uni"
-                                ]  # Often show up as "UNI" in sd
+                                ]  # Often appear as "UNI" in sd
                                 lookup_dic[datatype][suffix]["conditions"].extend(
                                     [
                                         '"UNI" in unique_dic["ImageType"]',
@@ -1531,7 +1536,6 @@ def create_lookup_info():
                                         [
                                             'unique_dic["NumVolumes"] <= 10',
                                             '"EchoNumber" not in unique_dic["sidecar"]',
-                                            '"Manufacturer" in unique_dic["sidecar"]',
                                             'unique_dic["sidecar"]["Manufacturer"] != "GE"'
                                         ]
                                     )
@@ -1582,7 +1586,6 @@ def create_lookup_info():
                                 elif suffix in ["magnitude", "fieldmap"]:  # specific to GE scanners
                                     lookup_dic[datatype][suffix]["conditions"].extend(
                                         [
-                                            '"Manufacturer" in unique_dic["sidecar"]',
                                             'unique_dic["sidecar"]["Manufacturer"] == "GE"'
                                         ]
                                     )
@@ -1660,9 +1663,13 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
     ezBIDS will attempt to determine datatype and suffix labels based on
     common keys/labels.
     """
+
+    print("Datatype & suffix identification")
+    print("------------------------------------")
     for index, unique_dic in enumerate(dataset_list_unique_series):
         # Not ideal using json_path because it's only the first sequence in the series_idx group...
         json_path = unique_dic["json_path"]
+        print(json_path)
 
         if not unique_dic["valid_image"]:
             """
@@ -1753,9 +1760,7 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
         if (unique_dic["finalized_match"] is False
                 and (not unique_dic["datatype"] or not unique_dic["suffix"]) and unique_dic["type"] == ""):
 
-            json_file = unique_dic["json_path"]
-            json_data = open(json_file)
-            json_data = json.load(json_data, strict=False)
+            json_data = unique_dic["sidecar"]
 
             # Try discerning datatype and suffix with dcm2niix's BidsGuess
             if "BidsGuess" in json_data:
@@ -1990,6 +1995,9 @@ def entity_labels_identification(dataset_list_unique_series, lookup_dic):
     dataset_list_unique_series : list
         updated input list
     """
+
+    print("Entity label identification")
+    print("----------------------------")
     entity_ordering = yaml.load(open(os.path.join(analyzer_dir, entity_ordering_file)), Loader=yaml.FullLoader)
 
     tb1afi_tr = 1
