@@ -202,7 +202,7 @@ else
     cat $root/list
 
     if [ ! -s $root/list ]; then
-        echo "couldn't find any dicom files. aborting"
+        echo "Could not find any DICOM files in upload. Uploaded files likely do not conform to DICOM format, aborting"
         exit 1
     fi
 

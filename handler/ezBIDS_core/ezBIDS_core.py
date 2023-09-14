@@ -23,7 +23,6 @@ import time
 import numpy as np
 import pandas as pd
 import nibabel as nib
-# from math import floor
 from datetime import date
 from natsort import natsorted
 from operator import itemgetter
@@ -107,7 +106,7 @@ def modify_uploaded_dataset_list(uploaded_json_list):
     config_file = ""
     config_file_list = [x for x in uploaded_json_list if "finalized.json" in x]
     if len(config_file_list):
-        # Ideally only one, but if multiple configurations uploaded, choose one
+        # Ideally only one config file uploaded, but if multiple configurations found, simply choose one
         config = True
         config_file = config_file_list[-1]
 
@@ -197,7 +196,7 @@ def generate_readme(DATA_DIR, bids_compliant):
             lines = []
     else:
         lines = [
-            "This data was converted using ezBIDS (https://brainlife.io/ezbids/). "
+            "This data was converted using ezBIDS (https://brainlife.io/ezbids). "
             "Additional information regarding this dataset can be entered in this file."
         ]
 
