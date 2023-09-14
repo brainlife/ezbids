@@ -230,13 +230,12 @@
     
     import { IObject, Session, OrganizedSession, OrganizedSubject } from './store'
     import { prettyBytes } from './filters'
-    import { deepEqual, setRun, setIntendedFor, align_entities, validateEntities, validate_B0FieldIdentifier_B0FieldSource } from './libUnsafe'
+    import { setRun, setIntendedFor, align_entities, validateEntities, validate_B0FieldIdentifier_B0FieldSource, fileLogicLink } from './libUnsafe'
     
     // @ts-ignore
     import { Splitpanes, Pane } from 'splitpanes'
     
     import 'splitpanes/dist/splitpanes.css'
-import { objectToString } from '@vue/shared'
     
     interface Section {
         [key: string]: IObject[];
@@ -432,6 +431,8 @@ import { objectToString } from '@vue/shared'
                 validate_B0FieldIdentifier_B0FieldSource(o)
 
                 setRun(this.ezbids)
+
+                fileLogicLink(this.ezbids, o)
         
                 //update validationWarnings
                 if(o.analysisResults.warnings?.length) {
@@ -470,8 +471,11 @@ import { objectToString } from '@vue/shared'
                 if(o._type.startsWith("fmap/")) {
                     if(!o.IntendedFor) o.IntendedFor = []; //TODO can't think of a better place to do this
                     if(o.IntendedFor.length == 0) {
-                        o.validationWarnings.push("It is recommended that field map (fmap) images have IntendedFor set to at least 1 object. \
-                        This is necessary if you plan on using processing BIDS-apps such as fMRIPrep");
+                        let warningMessage = "It is recommended that field map (fmap) images have IntendedFor set to at least 1 object. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep"
+                        if (!o.validationWarnings.includes(warningMessage)) {
+                            o.validationWarnings.push(warningMessage);
+                        }
+                        
                     }
                     //Ensure other fmap series aren't included in the IntendedFor mapping
                     if(o.IntendedFor.length > 0) {
@@ -497,142 +501,6 @@ import { objectToString } from '@vue/shared'
                         }
                     }
                 });
-
-                /* Imaging data implicitly has a part-mag (magnitude), though this doesn't need to be explicitly stated. 
-                Any phase data (part-phase) is linked to the magnitude. If part entity is specified, make sure it's
-                properly linked and has same entities (except for part) and exclusion criteria.
-                */
-                if(o._entities.part && !["", "mag", "real"].includes(o._entities.part)) {
-                    let correspondingFuncMag = this.ezbids.objects.filter((object:IObject)=>object._type === o._type &&
-                        object._entities.part === "mag" &&
-                        object.idx === o.idx - 1) // the part-phase (or imag) sequence index (idx) should always be one more than the corresponding part-mag (or real) sequence idx, since it comes right after, right?
-                    
-                    if(correspondingFuncMag.length) { // should be no more than one
-                        correspondingFuncMag.forEach((boldMag:IObject)=>{
-                            // o.analysisResults.section_id = boldObj.analysisResults.section_id
-                            for(let k in boldMag._entities) {
-                                if (k !== "part") {
-                                    if (boldMag._entities[k] !== "") {
-                                        o._entities[k] = boldMag._entities[k]
-                                    } else {
-                                        o._entities[k] = ""
-                                    }
-                                }
-                                o.entities[k] = o._entities[k]
-                            }
-
-                            if(boldMag._exclude || boldMag._type === "exclude") {
-                                o.exclude = true
-                                o._exclude = true
-                                o.validationWarnings = [`The corresponding magnitude (part-mag) #${boldMag.series_idx} is currently set to exclude from BIDS conversion. \
-                                    Since this phase (part-phase) sequence is linked, it will also be excluded from conversion unless the corresponding
-                                    magnitude (part-mag) is unexcluded. If incorrect, please modify corresponding magnitude (part-mag) (#${boldMag.series_idx}).`]
-                            }
-                            if(!boldMag._exclude) {
-                                o.exclude = false
-                                o._exclude = false
-                                o.validationWarnings = []
-                            }
-                        })
-                    }
-                }
-
-                // func/sbref are implicitly linked to a corresponding func/bold; make sure these have same entities and exclusion criteria
-                if(o._type === "func/sbref") {
-                    let correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>object._type === "func/bold" &&
-                        o.idx === object.idx - 1) // the func/sbref index (idx) should always be one less than the corresponding func/bold idx, since it comes right before, right?
-                    
-                        if(correspondingFuncBold.length) { // should be no more than one
-                        correspondingFuncBold.forEach((boldObj:IObject)=>{
-                            for(let k in boldObj._entities) {
-                                if(boldObj._entities[k] !== "" && k !== "echo") {
-                                    if(k === "part" && boldObj._entities[k] === "phase") {
-                                        //pass
-                                    } else {
-                                        o._entities[k] = boldObj._entities[k]
-                                    }
-                                } else if (boldObj._entities[k] === "") {
-                                    o._entities[k] = ""
-                                }
-                                o.entities[k] = o._entities[k]
-                            }
-                            if(boldObj._exclude || boldObj._type === "exclude") {
-                                o.exclude = true
-                                o._exclude = true
-                                o.validationWarnings = [`The corresponding func/bold #${boldObj.series_idx} is currently set to exclude from BIDS conversion. \
-                                    Since this func/sbref is linked, it will also be excluded from conversion unless the corresponding
-                                    func/bold is unexcluded. If incorrect, please modify corresponding func/bold (#${boldObj.series_idx}).`]
-                            }
-                            if(!boldObj._exclude) {
-                                o.exclude = false
-                                o._exclude = false
-                                o.validationWarnings = []
-                            }
-                        })
-                    }
-                }
-
-                //func/events are implicitly linked to a func/bold; make sure these have same entities and exclusion criteria
-                if(o._type == "func/events") {
-                    let correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>object._type === "func/bold" &&
-                        object._entities.subject === o._entities.subject &&
-                        object._entities.session === o._entities.session &&
-                        object._entities.task === o._entities.task &&
-                        object._entities.run === o._entities.run
-                    )
-                    // Pretty sure don't need this excluded section below, now that run entity detection and assignment is betters
-                    // let correspondingFuncBold:any = undefined
-
-                    // if(o.ModifiedSeriesNumber !== "00" && o.analysisResults.section_id !== 0) { // placeholder for when match with corresponding func/bold isn't yet known
-                    //     correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>object._type === "func/bold" &&
-                    //         object._entities.subject === o._entities.subject &&
-                    //         object._entities.session === o._entities.session &&
-                    //         object._entities.task === o._entities.task &&
-                    //         object.ModifiedSeriesNumber === o.ModifiedSeriesNumber &&
-                    //         object.analysisResults.section_id === o.analysisResults.section_id
-                    //     )
-                    // } else {
-                    //     correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>object._type === "func/bold" &&
-                    //         object._entities.subject === o._entities.subject &&
-                    //         object._entities.session === o._entities.session &&
-                    //         object._entities.task === o._entities.task &&
-                    //         object._entities.run === o._entities.run
-                    //     )
-                    // }
-
-                    if(correspondingFuncBold.length) { // should be no more than one instance
-                        correspondingFuncBold.forEach((boldObj:IObject)=>{
-                            o.ModifiedSeriesNumber = boldObj.ModifiedSeriesNumber
-                            o.analysisResults.section_id = boldObj.analysisResults.section_id
-                            for(let k in boldObj._entities) {
-                                if(boldObj._entities[k] !== "" && k !== "echo") {
-                                    if(k === "part" && boldObj._entities[k] === "phase") {
-                                        //pass
-                                    } else {
-                                        o._entities[k] = boldObj._entities[k]
-                                    }
-                                } else if (boldObj._entities[k] === "") {
-                                    o._entities[k] = ""
-                                }
-                                o.entities[k] = o._entities[k]
-                            }
-                            if(boldObj._exclude || correspondingFuncBold._type === "exclude") {
-                                o.exclude = true
-                                o._exclude = true
-                                // o._entities.run = ""
-                                // o.entities.run = ""
-                                o.validationWarnings = [`The corresponding func/bold #${boldObj.series_idx} is currently set to exclude from BIDS conversion. \
-                                    Since this func/events is linked, it will also be excluded from conversion unless the corresponding
-                                    func/bold is unexcluded. If incorrect, please modify corresponding func/bold (#${boldObj.series_idx}).`]
-                            }
-                            if(!boldObj._exclude) {
-                                o.exclude = false
-                                o._exclude = false
-                                o.validationWarnings = []
-                            }
-                        })
-                    }
-                }
 
                 if(this.isExcluded(o)) return; // might return to this, but need to check if previously excluded sequences are un-excluded
                 

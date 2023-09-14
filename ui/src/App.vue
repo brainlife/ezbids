@@ -20,11 +20,9 @@ import { IObject } from './store'
 import { ElNotification } from 'element-plus'
 //import 'element-plus/es/components/notification/style/css'
 
-// import { setSectionIDs, funcQA, fmapQA, dwiQA, setRun, setVolumeThreshold } from './libUnsafe'
-import { setSectionIDs, funcQA, fmapQA, dwiQA, setVolumeThreshold } from './libUnsafe'
+import { setSectionIDs, funcQA, fmapQA, dwiQA, setRun, setVolumeThreshold } from './libUnsafe'
 
 
-//import { IObjectItem } from './store'
 import { createEventsTSV } from './lib'
 
 import niivue from './components/niivue.vue'
@@ -157,13 +155,11 @@ export default defineComponent({
                         funcQA(this.ezbids);
                         fmapQA(this.ezbids);
                         dwiQA(this.ezbids);
-                        // setRun(this.ezbids); //being moved to Objects.vue directly.
+                        setRun(this.ezbids); //keep here so for intial func/events mapping to corresponding func/bold
                         this.mapObjects();
                         break;
                     case "object":
-                        // createEventsTSV(this.ezbids, this.events); // functionality replaced by next line
                         createEventsTSV(this.ezbids, this.ezbids.events);
-                        // setIntendedFor(this.ezbids); // Moving this into Objects.vue directly
                         break;
                     }
 

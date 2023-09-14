@@ -84,6 +84,8 @@ export interface Series {
     B0FieldIdentifier?: string[];
     B0FieldSource?: string[];
 
+    series_idx: number;
+
     error: string;
     message: string;
 
@@ -137,6 +139,8 @@ export interface IObject {
     validationWarnings: string[]; //right?
 
     items: [IObjectItem];
+
+    PED: string;
 
     series_idx: number;
     subject_idx: number;
@@ -272,7 +276,7 @@ export interface RelevantMetadata {
 
 const state = {
     bidsSchema: {
-        entities: bidsEntities as BIDSEntities,
+        entities: bidsEntities,
         datatypes: {} as BIDSDatatypes,
         metadata: {} as BIDSDatatypesMetadata,
     },
@@ -290,28 +294,45 @@ const state = {
     ezbids: {
         notLoaded: true,
 
-        // //pretty much straight out of bids/dataset_description.json
-        // datasetDescription: {
-        //     Name: "",
-        //     BIDSVersion: "",
-        //     DatasetType: "",
-        //     License: "",
-        //     Authors: [],
-        //     Acknowledgements: "", //"Special thanks to Korbinian Brodmann for help in formatting this dataset in BIDS. We thank Alan Lloyd Hodgkin and Andrew Huxley for helpful comments and discussions about the experiment and manuscript; Hermann Ludwig He  lmholtz for administrative support; and Claudius Galenus for providing data for the medial-to-lateral index analysis.",
-        //     HowToAcknowledge: "", //"Please cite this paper: https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
-        //     Funding: [
-        //         //"National Institute of Neuroscience Grant F378236MFH1",
-        //         //"National Institute of Neuroscience Grant 5RMZ0023106"
-        //     ],
-        //     EthicsApprovals: [
-        //         //"Army Human Research Protections Office (Protocol ARL-20098-10051, ARL 12-040, and ARL 12-041)"
-        //     ],
-        //     ReferencesAndLinks: [
-        //         //"https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",items
-        //         //"http://doi.org/1920.8/jndata.2015.7"
-        //     ],
-        //     DatasetDOI: "", //"10.0.2.3/dfjj.10"
-        // } as DatasetDescription,
+        //pretty much straight out of bids/dataset_description.json
+        datasetDescription: {
+            Name: "Untitled",
+            BIDSVersion: "1.8.0",
+            HEDVersion: [],
+            DatasetLinks: [],
+            DatasetType: "raw",
+            License: "",
+            Authors: [],
+            Acknowledgements: "", //"Special thanks to Korbinian Brodmann for help in formatting this dataset in BIDS. We thank Alan Lloyd Hodgkin and Andrew Huxley for helpful comments and discussions about the experiment and manuscript; Hermann Ludwig He  lmholtz for administrative support; and Claudius Galenus for providing data for the medial-to-lateral index analysis.",
+            HowToAcknowledge: "", //"Please cite this paper: https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
+            Funding: [
+                //"National Institute of Neuroscience Grant F378236MFH1",
+                //"National Institute of Neuroscience Grant 5RMZ0023106"
+            ],
+            EthicsApprovals: [
+                //"Army Human Research Protections Office (Protocol ARL-20098-10051, ARL 12-040, and ARL 12-041)"
+            ],
+            ReferencesAndLinks: [
+                //"https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",items
+                //"http://doi.org/1920.8/jndata.2015.7"
+            ],
+            DatasetDOI: "", //"10.0.2.3/dfjj.10"
+            GeneratedBy: {
+                Name: "ezBIDS",
+                Version: "1.0.0",
+                Description: "ezBIDS is a web-based tool for converting neuroimaging datasets to BIDS, requiring neither coding nor knowledge of the BIDS specification",
+                CodeURL: "https://brainlife.io/ezbids/",
+                Container: {
+                    Type: "docker",
+                    Tag: "brainlife/ezbids-handler",
+                } as ContainerObject
+            },
+            SourceDatasets: {
+                DOI: "",
+                URL: "",
+                Version: "",
+            } as SourceDatasetObject,
+        },
 
         readme: "",
         participantsColumn: {},
@@ -606,6 +627,8 @@ const store = createStore({
                 datasetDescription: {
                     Name: "Untitled",
                     BIDSVersion: "1.8.0",
+                    HEDVersion: [],
+                    DatasetLinks: [],
                     DatasetType: "raw",
                     License: "",
                     Authors: [],
@@ -615,7 +638,23 @@ const store = createStore({
                     EthicsApprovals: [],
                     ReferencesAndLinks: [],
                     DatasetDOI: "",
+                    GeneratedBy: {
+                        Name: "ezBIDS",
+                        Version: "1.0.0",
+                        Description: "ezBIDS is a web-based tool for converting neuroimaging datasets to BIDS, requiring neither coding nor knowledge of the BIDS specification",
+                        CodeURL: "https://brainlife.io/ezbids/",
+                        Container: {
+                            Type: "docker",
+                            Tag: "brainlife/ezbids-handler",
+                        }
+                    },
+                    SourceDatasets: {
+                        DOI: "",
+                        URL: "",
+                        Version: "",
+                    },
                 },
+
                 readme: "",
                 participantsColumn: {},
                 participantsInfo: {},
