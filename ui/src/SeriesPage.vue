@@ -33,6 +33,7 @@
         </div>
         <div v-if="ss">
             <h5>BIDS Datatype, Suffix, Entities</h5>
+            {{ ss.series_idx }}
             <!-- <pre>{{ getFieldsMetaData(ss.type) }}</pre> -->
             <el-form label-width="150px">
                 <el-alert v-if="ss.message" :title="ss.message" type="warning" style="margin-bottom: 4px;"/>
@@ -149,7 +150,6 @@
 
                                 <el-col :span="8">
                                     <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.optional" :key="'optional' + index" :label="`${item.details.display_name} (optional)`" :prop="item.field">
-                                        {{ item.details }}
                                         <el-input :name="item.field"  v-model="formData[item.field]"></el-input>
                                     </el-form-item>
                                     <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.conditional" :key="'conditional' + index" :label="conditionalLabel(item)" :prop="item.field">
@@ -235,6 +235,7 @@ import metadata_types from '../src/assets/schema/rules/sidecars/metadata_types.y
 import { Splitpanes, Pane } from 'splitpanes'
 
 import 'splitpanes/dist/splitpanes.css'
+import { inputEmits } from 'element-plus'
 
 export default defineComponent({
 
@@ -405,8 +406,23 @@ export default defineComponent({
 
             //Task 1 , load the relevant file 
 
-            //Task 2, initialize with the types 
-            //https://github.com/bids-standard/bids-specification/blob/master/src/schema/objects/metadata.yaml
+            console.log("initForm", this.ezbids.objects);
+
+            this.ezbids.objects.forEach((item: any, idx: any) => {
+                if (item.series_idx == this.ss.series_idx) {
+                    //Task 2, load the relevant file
+                    //find the item in items with .json
+                    item.items.forEach((item: any, idx: any) => {
+                        if (item.name.includes("json") && item.sidecar_json) {
+                            //load the json through sidecar_json
+                            const json = JSON.parse(item.sidecar_json);
+                            for (const [key, value] of Object.entries(json)) {
+                                if(this.formData.hasOwnProperty(key)) this.formData[key] = value;
+                            }
+                        }
+                    });
+                }
+            });
 
             //Task 3, make the validation real time 
             console.log("initForm", this.ezbids.object);
