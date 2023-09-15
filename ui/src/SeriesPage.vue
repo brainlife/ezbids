@@ -578,14 +578,30 @@ export default defineComponent({
                             if (matches) {
                                 const fieldName = matches[1];
                                 const expectedValue = matches[2];
-                                // console.log("defined",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
+                                console.log("defined",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
                                 if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
                                     console.log(`Validation failed for field ${item.field}.`);
                                     callback(new Error('This field is required based on the condition'));
                                     return;
                                 }
                             }
+
+                            // Condition: "`fieldName` is `value`"
+                            // matches = item.condition.match(/`(\w+)` is `(\w+)`/);
+                            matches = item.condition.match(/`(\w+)`\s+is\s+`(\w+)`/i);
+                            if (matches) {
+                                const fieldName = matches[1];
+                                const expectedValue = matches[2];
+                                console.log("isValue",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
+                                if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
+                                    console.log(`Validation failed for field ${item.field}.`);
+                                    callback(new Error('This field is required based on the condition'));
+                                    return;
+                                }
+                            }
+
                             callback();
+
                         },
                         trigger: 'change'
                     }];
@@ -612,7 +628,7 @@ export default defineComponent({
         },
         parseType(type) {
             if(type == 'string') return "";
-            if(type == 'number') return 0;
+            if(type == 'number') return null;
             if(type == 'boolean') return false;
             if(type == 'array') return [];
             if(type == 'object') return {};
