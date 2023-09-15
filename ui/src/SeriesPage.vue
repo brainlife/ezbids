@@ -139,21 +139,21 @@
                             <el-row>
                                 <el-col :span="8">
                                     <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.required" :key="'required' + index" :label="`${item.details.display_name}`" :prop="item.field">
-                                        <el-input :name="item.field" v-model="formData[item.field]" ></el-input>
+                                        <el-input :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" ></el-input>
                                     </el-form-item>
                                 </el-col>
                                 <el-col :span="8">
                                     <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.recommended" :key="'recommended' + index" :label="`${item.details.display_name} (recommended)`" :prop="item.field">
-                                        <el-input :name="item.field" v-model="formData[item.field]"></el-input>
+                                        <el-input :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()"></el-input>
                                     </el-form-item>
                                 </el-col>
 
                                 <el-col :span="8">
                                     <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.optional" :key="'optional' + index" :label="`${item.details.display_name} (optional)`" :prop="item.field">
-                                        <el-input :name="item.field"  v-model="formData[item.field]"></el-input>
+                                        <el-input :name="item.field"  v-model="formData[item.field]" @input="this.$refs.form.validate()"></el-input>
                                     </el-form-item>
                                     <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.conditional" :key="'conditional' + index" :label="conditionalLabel(item)" :prop="item.field">
-                                        <el-input :name="item.field" v-model="formData[item.field]"></el-input>
+                                        <el-input :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()"></el-input>
                                     </el-form-item>
                                 </el-col>
                         </el-row>
@@ -387,9 +387,7 @@ export default defineComponent({
         initForm() {
             this.fields = this.getFieldsMetaData(this.ss.type);
             this.rules = this.generateValidationRules(this.fields);
-            // (item, idx) in ezbids.objects[object.idx].items
-            // once you have types and the file , you can init the formData {}
-            //this.fields.required.field.details.type
+
             this.fields.required.forEach((item: any) => {
                 this.formData[item.field] = item.details.type;
             });
@@ -408,11 +406,10 @@ export default defineComponent({
 
             console.log("initForm", this.ezbids.objects);
 
-            this.ezbids.objects.forEach((item: any, idx: any) => {
-                if (item.series_idx == this.ss.series_idx) {
-                    //Task 2, load the relevant file
+            this.ezbids.objects.forEach((file: any, idx: any) => {
+                if (file.series_idx == this.ss.series_idx) {
                     //find the item in items with .json
-                    item.items.forEach((item: any, idx: any) => {
+                    file.items.forEach((item: any, idx: any) => {
                         if (item.name.includes("json") && item.sidecar_json) {
                             //load the json through sidecar_json
                             const json = JSON.parse(item.sidecar_json);
@@ -427,6 +424,11 @@ export default defineComponent({
             //Task 3, make the validation real time 
             console.log("initForm", this.ezbids.object);
             this.showDialog = true;
+            console.log("this.ref",this.$refs)
+            this.$nextTick(() => {
+                console.log("this.ref",this.$refs)
+                this.$refs.form.validate();
+            });
         },
         getFieldsMetaData(type: string) {
             console.log("getFieldsMetaData",type);
@@ -556,16 +558,11 @@ export default defineComponent({
                     rules[item.field] = [{
                         validator: (rule, value, callback) => {
                             // Condition: "`fieldName` is true|false"
-                            console.log(`Validating field: ${item.field}, Value: ${value}, FormData:`, this.formData, 'rules', rules);
-
-
                             // let matches = item.condition.match(/`(\w+)` is (true|false)/);
                             let matches = item.condition.match(/`(\w+)`\s+is\s+`(true|false)`/i);
                             if (matches) {
                                 const fieldName = matches[1];
-                                const expectedValue = matches[2] === 'true';
-                                // console.log("t/F",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`, 'value',value);
-                            
+                                const expectedValue = matches[2] === 'true';                            
                                 if (this.formData.hasOwnProperty(fieldName) && 
                                     Boolean(this.formData[fieldName]) == Boolean(expectedValue) && 
                                     (value == null || value === '')) {
