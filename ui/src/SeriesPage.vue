@@ -137,18 +137,18 @@
                         <div>
                             <el-row>
                                 <el-col :span="8">
-                                    <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.required" :key="'required' + index" :label="`${item.field} (required)`" :prop="item.field">
+                                    <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.required" :key="'required' + index" :label="`${item.details.display_name}`" :prop="item.field">
                                         <el-input :name="item.field" v-model="formData[item.field]" ></el-input>
                                     </el-form-item>
                                 </el-col>
                                 <el-col :span="8">
-                                    <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.recommended" :key="'recommended' + index" :label="`${item.field} (recommended)`" :prop="item.field">
-                                        <el-input :name="item.field"  v-model="formData[item.field]"></el-input>
+                                    <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.recommended" :key="'recommended' + index" :label="`${item.details.display_name} (recommended)`" :prop="item.field">
+                                        <el-input :name="item.field" v-model="formData[item.field]"></el-input>
                                     </el-form-item>
                                 </el-col>
 
                                 <el-col :span="8">
-                                    <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.optional" :key="'optional' + index" :label="`${item.field} (optional)`" :prop="item.field">
+                                    <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.optional" :key="'optional' + index" :label="`${item.details.display_name} (optional)`" :prop="item.field">
                                         {{ item.details }}
                                         <el-input :name="item.field"  v-model="formData[item.field]"></el-input>
                                     </el-form-item>
@@ -388,17 +388,18 @@ export default defineComponent({
             this.rules = this.generateValidationRules(this.fields);
             // (item, idx) in ezbids.objects[object.idx].items
             // once you have types and the file , you can init the formData {}
+            //this.fields.required.field.details.type
             this.fields.required.forEach((item: any) => {
-                this.formData[item.field] = "";
+                this.formData[item.field] = item.details.type;
             });
             this.fields.recommended.forEach((item: any) => {
-                this.formData[item.field] = "";
+                this.formData[item.field] = item.details.type;
             });
             this.fields.optional.forEach((item: any) => {
-                this.formData[item.field] = "";
+                this.formData[item.field] = item.details.type;
             });
             this.fields.conditional.forEach((item: any) => {
-                this.formData[item.field] = "";
+                this.formData[item.field] = item.details.type;
             });
             //match the pos of type and series.idx inside the ezbids.objects[]
 
@@ -520,8 +521,8 @@ export default defineComponent({
             });
         },
         conditionalLabel(item: any) {
-            if(item.level === 'required') return `${item.field}`;
-            if(item.level === 'recommended') return `${item.field} (${item.condition})`;
+            if(item.level === 'required') return `${item.details.display_name} (${item.condition})`;
+            if(item.level === 'recommended') return `${item.details.display_name} (${item.condition})`;
             return `${item.field} (${item.condition})`;
         },
         generateValidationRules(fieldsMetadata) {
@@ -585,20 +586,25 @@ export default defineComponent({
         },
         setTypeforField(details) {
             console.log("details", details);
-            if(details.type) return details.type;
+            if(details.type != null) return this.parseType(details.type);
             if(details.anyOf.length > 0) {
-                if(details.anyOf[0].type) return details.anyOf[0].type;
+                if(details.anyOf[0].type) return this.parseType(details.anyOf[0].type);
                 else {
                     details.anyOf.forEach((item: any) => {
-                        if(item.type) return item.type;
+                        if(item.type) return this.parseType(item.type);
                     });
-                    return "string";
+                    return "";
                 }
             }
         },
-
-
-
+        parseType(type) {
+            if(type == 'string') return "";
+            if(type == 'number') return 0;
+            if(type == 'boolean') return false;
+            if(type == 'array') return [];
+            if(type == 'object') return {};
+            return "";
+        }
 },
 })
 
