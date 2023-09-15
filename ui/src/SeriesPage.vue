@@ -18,7 +18,6 @@
                 <small/>
             </el-badge>
         </div>
-        <h1>Field END</h1>
         <pre v-if="config.debug">{{ezbids.series}}</pre>
     </pane>
 
@@ -34,8 +33,7 @@
         </div>
         <div v-if="ss">
             <h5>BIDS Datatype, Suffix, Entities</h5>
-
-            <pre>{{ getFieldsMetaData(ss.type) }}</pre>
+            <!-- <pre>{{ getFieldsMetaData(ss.type) }}</pre> -->
             <el-form label-width="150px">
                 <el-alert v-if="ss.message" :title="ss.message" type="warning" style="margin-bottom: 4px;"/>
                 <div style="margin-bottom: 10px;">
@@ -132,32 +130,29 @@
                     </p>
                 </el-form-item>
             </el-form>
-            <div v-if="ss.type=='perf/asl'">
+            <div v-if="ss.type=='perf/asl' || ss.type == 'pet/pet'">
                 <el-button @click="initForm()">Edit Modality</el-button>
                 <el-dialog v-model="showDialog" title="Edit Modalities" >
-                    {{ rules }}
                     <el-form ref="form" :model="formData" label-position="top" label-width="200px" :inline="true" :rules="rules"> 
                         <div>
                             <el-row>
-                                <el-col :span="6">
+                                <el-col :span="8">
                                     <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.required" :key="'required' + index" :label="`${item.field} (required)`" :prop="item.field">
                                         <el-input :name="item.field" v-model="formData[item.field]" ></el-input>
                                     </el-form-item>
                                 </el-col>
-                                <el-col :span="6">
+                                <el-col :span="8">
                                     <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.recommended" :key="'recommended' + index" :label="`${item.field} (recommended)`" :prop="item.field">
                                         <el-input :name="item.field"  v-model="formData[item.field]"></el-input>
                                     </el-form-item>
                                 </el-col>
 
-                                <el-col :span="6">
+                                <el-col :span="8">
                                     <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.optional" :key="'optional' + index" :label="`${item.field} (optional)`" :prop="item.field">
+                                        {{ item.details }}
                                         <el-input :name="item.field"  v-model="formData[item.field]"></el-input>
                                     </el-form-item>
-                                </el-col>
-
-                                <el-col :span="6">
-                                    <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.conditional" :key="'conditional' + index" :label="`${item.field} - ${item.condition}`" :prop="item.field">
+                                    <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.conditional" :key="'conditional' + index" :label="conditionalLabel(item)" :prop="item.field">
                                         <el-input :name="item.field" v-model="formData[item.field]"></el-input>
                                     </el-form-item>
                                 </el-col>
@@ -234,6 +229,8 @@ import { Series, IObject } from './store'
 import { validate_Entities_B0FieldIdentifier_B0FieldSource } from './libUnsafe'
 import aslYaml from "../src/assets/schema/rules/sidecars/asl.yaml";
 import petYaml from '../src/assets/schema/rules/sidecars/pet.yaml';
+import metadata_types from '../src/assets/schema/rules/sidecars/metadata_types.yaml';
+
 // @ts-ignore
 import { Splitpanes, Pane } from 'splitpanes'
 
@@ -257,8 +254,6 @@ export default defineComponent({
             showDialog: false,
             rules: {},
             formData: {
-                FlipAngle: '',
-                LookLocker: false,
             },
         }
     },
@@ -391,12 +386,35 @@ export default defineComponent({
         initForm() {
             this.fields = this.getFieldsMetaData(this.ss.type);
             this.rules = this.generateValidationRules(this.fields);
+            // (item, idx) in ezbids.objects[object.idx].items
+            // once you have types and the file , you can init the formData {}
+            this.fields.required.forEach((item: any) => {
+                this.formData[item.field] = "";
+            });
+            this.fields.recommended.forEach((item: any) => {
+                this.formData[item.field] = "";
+            });
+            this.fields.optional.forEach((item: any) => {
+                this.formData[item.field] = "";
+            });
+            this.fields.conditional.forEach((item: any) => {
+                this.formData[item.field] = "";
+            });
+            //match the pos of type and series.idx inside the ezbids.objects[]
+
+            //Task 1 , load the relevant file 
+
+            //Task 2, initialize with the types 
+            //https://github.com/bids-standard/bids-specification/blob/master/src/schema/objects/metadata.yaml
+
+            //Task 3, make the validation real time 
+            console.log("initForm", this.ezbids.object);
             this.showDialog = true;
         },
         getFieldsMetaData(type: string) {
             console.log("getFieldsMetaData",type);
             let fileObject = {};
-            if(type.startsWith('pet')) fileObject = petYaml;
+            if(type == 'pet/pet') fileObject = petYaml;
             if(type == 'perf/asl') fileObject = aslYaml;
             else return {};
             let result = {
@@ -410,33 +428,34 @@ export default defineComponent({
                 const fields = data.fields || {};
                 // fields with level 'required' or 'recommended' are included in the list
                 for (const [field, metadata] of Object.entries(fields)) {
-                    if (metadata === 'required') {
-                        result.required.push({section, field});
-                    }
-                    if (metadata === 'recommended') {
-                        result.recommended.push({section, field});
-                    }
+                    
+                    // get the metadata from the metadata_types.yaml
+                    const details = metadata_types[field] || {};
+                    details.type = this.setTypeforField(details);
 
-                    if(metadata === 'optional') {
-                        result.optional.push({section, field});
-                    }
+                    let fieldData = {field,details};
+
+                    if (metadata === 'required') result.required.push(fieldData);
+
+                    if (metadata === 'recommended') result.recommended.push(fieldData);
+
+                    if(metadata === 'optional') result.optional.push(fieldData);
 
                     //fields with level
                     const level = metadata.level || '';
                     if (level === 'required') {
-                        result.required.push({section, field});
+                        result.required.push(fieldData);
                     } else if (level === 'recommended') {
-                        result.recommended.push({section, field});
+                        result.recommended.push(fieldData);
                     } else if (level === 'optional') {
-                        result.optional.push({section, field});  // Include optional fields in the recommended list
+                        result.optional.push(fieldData);  // Include optional fields in the recommended list
                     }
-
 
                     const levelAddendum = metadata.level_addendum || '';
                     if (levelAddendum.includes('required if') || levelAddendum.includes('required when')) {
-                        result.conditional.push({section, field, level: 'required', condition: levelAddendum});
+                        result.conditional.push({...fieldData,level: 'required', condition: levelAddendum});
                     } else if (levelAddendum.includes('recommended if') || levelAddendum.includes('recommended when')) {
-                        result.conditional.push({section, field, level: 'recommended', condition: levelAddendum});
+                        result.conditional.push({...fieldData, level: 'recommended', condition: levelAddendum});
                     }
                 }
             }
@@ -468,21 +487,6 @@ export default defineComponent({
 
             return result;
         },
-        checkCondition(item: any) {
-            if (!item.condition) return true; // If no condition, just render it
-
-            // Here, you can expand your conditions based on your requirement. 
-            // For simplicity, I'll just show one type of condition.
-            const matches = item.condition.match(/`(\w+)` is (true|false)/);
-            if (matches) {
-                const fieldName = matches[1];
-                const expectedValue = matches[2] === 'true';
-                return this.formData[fieldName] === expectedValue;
-            }
-
-            // Add other condition checks if necessary
-            return true; // Default to show
-        },
         submitForm() {
             // Here, you can do whatever you want with the form data
             // this.$refs.form.validate((valid) => {
@@ -507,12 +511,6 @@ export default defineComponent({
             // });
 
             //reupdate the rules based on if conditional fields which were dependent on other field have been updated and meet the requirement and then check the validation`
-
-            let newRules = this.generateValidationRules(this.fields);
-            //print difference between old and new rules
-            console.log("newRules", newRules);
-            console.log("oldRules", this.rules);
-            
             this.$refs.form.validate((valid) => {
                 if (valid) {
                 alert("Valid");
@@ -521,12 +519,17 @@ export default defineComponent({
                 }
             });
         },
+        conditionalLabel(item: any) {
+            if(item.level === 'required') return `${item.field}`;
+            if(item.level === 'recommended') return `${item.field} (${item.condition})`;
+            return `${item.field} (${item.condition})`;
+        },
         generateValidationRules(fieldsMetadata) {
             const rules = {};
             // For required fields
             fieldsMetadata.required.forEach(item => {
                 rules[item.field] = [
-                    { required: true, message: `${item.field} is required`, trigger: 'blur' }
+                    { required: true, message: `${item.field} is required`, trigger: 'change' } //change checks in real time
                 ];
             });
             console.log("fieldsMetadata", fieldsMetadata)
@@ -544,7 +547,7 @@ export default defineComponent({
                             if (matches) {
                                 const fieldName = matches[1];
                                 const expectedValue = matches[2] === 'true';
-                                console.log("t/F",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`, 'value',value);
+                                // console.log("t/F",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`, 'value',value);
                             
                                 if (this.formData.hasOwnProperty(fieldName) && 
                                     Boolean(this.formData[fieldName]) == Boolean(expectedValue) && 
@@ -561,7 +564,7 @@ export default defineComponent({
                             if (matches) {
                                 const fieldName = matches[1];
                                 const expectedValue = matches[2];
-                                console.log("defined",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
+                                // console.log("defined",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
                                 if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
                                     console.log(`Validation failed for field ${item.field}.`);
                                     callback(new Error('This field is required based on the condition'));
@@ -570,7 +573,7 @@ export default defineComponent({
                             }
                             callback();
                         },
-                        trigger: 'blur'
+                        trigger: 'change'
                     }];
                 }
             });
@@ -579,6 +582,19 @@ export default defineComponent({
             console.log('Generated Rules:', rules);
             return rules;
 
+        },
+        setTypeforField(details) {
+            console.log("details", details);
+            if(details.type) return details.type;
+            if(details.anyOf.length > 0) {
+                if(details.anyOf[0].type) return details.anyOf[0].type;
+                else {
+                    details.anyOf.forEach((item: any) => {
+                        if(item.type) return item.type;
+                    });
+                    return "string";
+                }
+            }
         },
 
 
