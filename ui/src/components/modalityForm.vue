@@ -99,7 +99,6 @@ export default defineComponent({
     },
     initForm() {
         this.fields = this.getFieldsMetaData(this.ss.type);
-        console.log("fields", this.fields);
         this.rules = this.generateValidationRules(this.fields);
 
         this.fields.required.forEach((item: any) => {
@@ -116,8 +115,7 @@ export default defineComponent({
         });
         //match the pos of type and series.idx inside the ezbids.objects[]
         this.loadInitFormValues();
-        //Task 3, make the validation real time 
-        console.log("initForm", this.ezbids.object);
+        //Task validate form on load
         this.showDialog = true;
         console.log("this.ref",this.$refs)
         this.$nextTick(() => {
@@ -266,9 +264,9 @@ export default defineComponent({
                             if (matches) {
                                 const fieldName = matches[1];
                                 const expectedValue = matches[2];
-                                console.log("defined",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
+                                // console.log("defined",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
                                 if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
-                                    console.log(`Validation failed for field ${item.field}.`);
+                                    // console.log(`Validation failed for field ${item.field}.`);
                                     callback(new Error('This field is required based on the condition'));
                                     return;
                                 }
@@ -280,9 +278,9 @@ export default defineComponent({
                             if (matches) {
                                 const fieldName = matches[1];
                                 const expectedValue = matches[2];
-                                console.log("isValue",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
+                                // console.log("isValue",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
                                 if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
-                                    console.log(`Validation failed for field ${item.field}.`);
+                                    // console.log(`Validation failed for field ${item.field}.`);
                                     callback(new Error('This field is required based on the condition'));
                                     return;
                                 }
@@ -294,12 +292,12 @@ export default defineComponent({
 
                             matches = item.condition.match(/(\w+)\.fields\.(\w+)\s+==\s+['"]([\w-]+)['"]/i);
                             if (matches) {
-                                const section = matches[1];
+                                // const section = matches[1];
                                 const fieldName = matches[2];
                                 const expectedValue = matches[3];
-                                console.log("section",`Section: ${section}, Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
+                                // console.log("section",`Section: ${section}, Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
                                 if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
-                                    console.log(`Validation failed for field ${item.field}.`);
+                                    // console.log(`Validation failed for field ${item.field}.`);
                                     callback(new Error('This field is required based on the condition'));
                                     return;
                                 }
@@ -314,12 +312,11 @@ export default defineComponent({
             });
 
             // No special rules for recommended as they are optional, but you can add if needed
-            console.log('Generated Rules:', rules);
+            // console.log('Generated Rules:', rules);
             return rules;
 
         },
         setTypeforField(details: { type: null; anyOf: any[]; }) {
-            console.log("details", details);
             if(details.type != null) return this.parseType(details.type);
             if(details?.anyOf?.length > 0) {
                 if(details.anyOf[0].type) return this.parseType(details.anyOf[0].type);
