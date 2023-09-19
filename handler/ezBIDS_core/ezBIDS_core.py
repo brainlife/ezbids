@@ -2495,7 +2495,6 @@ EZBIDS = {
     "subjects": subjects_information,
     "participantsColumn": participants_column_info,
     "participantsInfo": participants_info,
-    "funcBoldVoumeThreshold": 0,
     "series": ui_series_info_list,
     "objects": objects_list,
     "events": events
