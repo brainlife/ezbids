@@ -1,22 +1,26 @@
 <template>
     <el-button @click="initForm()">Edit Modality</el-button>
     <el-dialog v-model="showDialog" title="Edit Modalities" >
-        <el-form ref="form" :model="formData" label-position="top" label-width="200px" :inline="true" :rules="rules"> 
+        <el-form ref="form" :model="formData" label-position="top" label-width="300px" :inline="true" :rules="rules"> 
             <div>
                 <el-row>
                     <el-col :span="8">
+                        <!-- // make the label recommended below and show example for boolean types, also try to enforce the types in the form -->
+                        <h4>Required</h4>
                         <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.required" :key="'required' + index" :label="`${item.details.display_name}`" :prop="item.field">
-                            <el-input :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" ></el-input>
+                        <el-input :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" ></el-input>
                         </el-form-item>
                     </el-col>
                     <el-col :span="8">
-                        <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.recommended" :key="'recommended' + index" :label="`${item.details.display_name} (recommended)`" :prop="item.field">
+                        <h4>Recommended</h4>
+                        <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.recommended" :key="'recommended' + index" :label="`${item.details.display_name}`" :prop="item.field">
                             <el-input :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()"></el-input>
                         </el-form-item>
                     </el-col>
 
                     <el-col :span="8">
-                        <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.optional" :key="'optional' + index" :label="`${item.details.display_name} (optional)`" :prop="item.field">
+                        <h4>Optional</h4>
+                        <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.optional" :key="'optional' + index" :label="`${item.details.display_name}`" :prop="item.field">
                             <el-input :name="item.field"  v-model="formData[item.field]" @input="this.$refs.form.validate()"></el-input>
                         </el-form-item>
                         <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.conditional" :key="'conditional' + index" :label="`${item.details.display_name}`" :prop="item.field">
@@ -73,10 +77,12 @@ export default defineComponent({
                             if (item.name.includes("json") && item.sidecar_json) {
                                 //create a item.sidecar to keep the new json with update old values
                                 const json = JSON.parse(item.sidecar_json);
+                                // only if value is not null, empty string or empty array or undefined
                                 for (const [key, value] of Object.entries(this.formData)) {
-                                    json[key] = value;
+                                    if(value != null && value != "" && value != undefined) json[key] = value;
                                 }
                                 item.sidecar = JSON.stringify(json);
+                                console.log("finalOutput",item.sidecar);
                             }
                         });
                     }
@@ -101,16 +107,16 @@ export default defineComponent({
         this.rules = this.generateValidationRules(this.fields);
 
         this.fields.required.forEach((item: any) => {
-            this.formData[item.field] = item.details.type;
+            this.formData[item.field] = item.details.default_value;
         });
         this.fields.recommended.forEach((item: any) => {
-            this.formData[item.field] = item.details.type;
+            this.formData[item.field] = item.details.default_value;
         });
         this.fields.optional.forEach((item: any) => {
-            this.formData[item.field] = item.details.type;
+            this.formData[item.field] = item.details.default_value;
         });
         this.fields.conditional.forEach((item: any) => {
-            this.formData[item.field] = item.details.type;
+            this.formData[item.field] = item.details.default_value;
         });
         //match the pos of type and series.idx inside the ezbids.objects[]
         this.loadInitFormValues();
@@ -130,6 +136,7 @@ export default defineComponent({
                     if (item.name.includes("json") && item.sidecar_json) {
                         //load the json through sidecar_json
                         const json = JSON.parse(item.sidecar_json);
+                        console.log("jsonOrginal",json);
                         for (const [key, value] of Object.entries(json)) {
                             if(this.formData.hasOwnProperty(key)) this.formData[key] = value;
                         }
@@ -162,7 +169,8 @@ export default defineComponent({
             for (const [field, metadata] of Object.entries(fields)) {
                 // get the metadata from the metadata_types.yaml
                 const details = metadata_types[field] || {};
-                details.type = this.setTypeforField(details);
+                details.default_value = this.setDefaultValue(details);
+                details.type = this.parseType(details);
 
                 let fieldData = {field,details};
 
@@ -247,12 +255,12 @@ export default defineComponent({
                             let matches = item.condition.match(/`(\w+)`\s+is\s+`(true|false)`/i);
                             if (matches) {
                                 const fieldName = matches[1];
-                                const expectedValue = matches[2] === 'true';                            
+                                const expectedValue = matches[2];                            
                                 if (this.formData.hasOwnProperty(fieldName) && 
-                                    Boolean(this.formData[fieldName]) == Boolean(expectedValue) && 
+                                    this.formData[fieldName] === expectedValue && expectedValue &&
                                     (value == null || value === '')) {
-                                    console.log("t/F",`Validation failed for field ${item.field}.`);
-                                    callback(new Error('This field is required based on the condition '+fieldName+' == '+expectedValue));
+                                    // console.log("t/F",`Validation failed for field ${item.field}.`,this.formData[fieldName]);
+                                    callback(new Error('This field is required based on the condition '+fieldName+' == '+expectedValue,));
                                     return;
                                 }
 
@@ -315,20 +323,33 @@ export default defineComponent({
             return rules;
 
         },
-        setTypeforField(details: { type: null; anyOf: any[]; }) {
-            if(details.type != null) return this.parseType(details.type);
+        setDefaultValue(details: { type: null; anyOf: any[]; }) {
+            if(details.type != null) return this.parseDefaultValue(details.type);
             if(details?.anyOf?.length > 0) {
-                if(details.anyOf[0].type) return this.parseType(details.anyOf[0].type);
+                if(details.anyOf[0].type) return this.parseDefaultValue(details.anyOf[0].type);
                 else {
                     details.anyOf.forEach((item: any) => {
-                        if(item.type) return this.parseType(item.type);
+                        if(item.type) return this.parseDefaultValue(item.type);
                     });
                     return "";
                 }
             }
             return "";
         },
-        parseType(type: string) {
+        parseType(details: {type: null; anyOf:any[]}) {
+            if(details.type != null) return details.type;
+            if(details?.anyOf?.length > 0) {
+                if(details.anyOf[0].type) return details.anyOf[0].type;
+                else {
+                    details.anyOf.forEach((item: any) => {
+                        if(item.type) return item.type;
+                    });
+                    return "string";
+                }
+            }
+            return "string";
+        },
+        parseDefaultValue(type: string) {
             if(type == 'string') return "";
             if(type == 'number') return null;
             if(type == 'boolean') return false;
