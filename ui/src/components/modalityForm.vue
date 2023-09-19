@@ -19,7 +19,7 @@
                         <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.optional" :key="'optional' + index" :label="`${item.details.display_name} (optional)`" :prop="item.field">
                             <el-input :name="item.field"  v-model="formData[item.field]" @input="this.$refs.form.validate()"></el-input>
                         </el-form-item>
-                        <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.conditional" :key="'conditional' + index" :label="conditionalLabel(item)" :prop="item.field">
+                        <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.conditional" :key="'conditional' + index" :label="`${item.details.display_name}`" :prop="item.field">
                             <el-input :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()"></el-input>
                         </el-form-item>
                     </el-col>
@@ -27,7 +27,6 @@
             </div>
         </el-form>
         <br>
-        {{ formData  }}
         <span slot="footer" class="dialog-footer">
             <el-button @click="showDialog = false">Cancel</el-button>
             <el-button type="primary" @click="submitForm">Submit</el-button>
@@ -253,7 +252,7 @@ export default defineComponent({
                                     Boolean(this.formData[fieldName]) == Boolean(expectedValue) && 
                                     (value == null || value === '')) {
                                     console.log("t/F",`Validation failed for field ${item.field}.`);
-                                    callback(new Error('This field is required based on the condition'));
+                                    callback(new Error('This field is required based on the condition '+fieldName+' == '+expectedValue));
                                     return;
                                 }
 
@@ -267,7 +266,7 @@ export default defineComponent({
                                 // console.log("defined",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
                                 if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
                                     // console.log(`Validation failed for field ${item.field}.`);
-                                    callback(new Error('This field is required based on the condition'));
+                                    callback(new Error('This field is required based on the condition '+fieldName+' == '+expectedValue));
                                     return;
                                 }
                             }
@@ -281,7 +280,7 @@ export default defineComponent({
                                 // console.log("isValue",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
                                 if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
                                     // console.log(`Validation failed for field ${item.field}.`);
-                                    callback(new Error('This field is required based on the condition'));
+                                    callback(new Error('This field is required based on the condition '+fieldName+' == '+expectedValue));
                                     return;
                                 }
                             }
@@ -298,7 +297,7 @@ export default defineComponent({
                                 // console.log("section",`Section: ${section}, Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
                                 if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
                                     // console.log(`Validation failed for field ${item.field}.`);
-                                    callback(new Error('This field is required based on the condition'));
+                                    callback(new Error('This field is required based on the condition '+fieldName+' == '+expectedValue));
                                     return;
                                 }
                             }
@@ -342,7 +341,17 @@ export default defineComponent({
 </script>
 <style scoped>
 .editModalityInputItem {
-    margin-top: 10px;
+    margin-top: 20px;
+}
+.condition-text {
+    color: #999;
+    font-size: 0.8rem;
+}
+
+.dialog-footer {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
 }
 </style>
 ```

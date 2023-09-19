@@ -13,8 +13,6 @@ import {
     SchemaTypeLike,
 } from '../../../bids-validator/bids-validator/src/types/schema'
 import { Severity } from '../../../bids-validator/bids-validator/src/types/issues'
-import aslYaml from '../assets/schema/rules/sidecars/asl.yaml';
-import petYaml from '../assets/schema/rules/sidecars/pet.yaml';
 import * as yaml from 'js-yaml';
 
 // export interface GenericRule {
@@ -470,17 +468,6 @@ function loadDatatype(
  * 
  * }
 */
-
-async function LoadMetaDataRules() {
-    console.log("loading metadata rules");
-    console.log("aslYaml", aslYaml);
-    console.log("petYaml", petYaml);
-    state.ezbids.sideCar = {};
-    state.ezbids.sideCar["asl"] = aslYaml;
-    state.ezbids.sideCar["pet"] = petYaml;
-}
-
-LoadMetaDataRules();
 
 
 import dwiDatatype from '../assets/schema/rules/datatypes/dwi.json'

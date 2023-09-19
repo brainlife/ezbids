@@ -417,14 +417,4 @@ export default defineComponent({
 h5 {
     padding: 0 20px;
 }
-.condition-text {
-    color: #999;
-    font-size: 0.8rem;
-}
-
-.dialog-footer {
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-}
 </style>
