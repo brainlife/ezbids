@@ -1,30 +1,112 @@
 <template>
     <el-button @click="initForm()">Edit Modality</el-button>
-    <el-dialog v-model="showDialog" title="Edit Modalities" >
+    <el-dialog v-model="showDialog" title="Edit Modalities">
         <el-form ref="form" :model="formData" label-position="top" label-width="300px" :inline="true" :rules="rules"> 
             <div>
                 <el-row>
                     <el-col :span="8">
                         <!-- // make the label recommended below and show example for boolean types, also try to enforce the types in the form -->
                         <h4>Required</h4>
-                        <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.required" :key="'required' + index" :label="`${item.details.display_name}`" :prop="item.field">
-                        <el-input :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" ></el-input>
+                        <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.required" :key="'required' + index" :label="`${item.details.display_name} ${item.details.type}`" :prop="item.field">
+                            <template #label>
+                                <span>
+                                    {{ item.details.display_name }} 
+                                    <el-tooltip placement="top">
+                                        <template #content> {{ item.details.description }}</template>
+                                        <!-- show question mark button-->
+                                        <font-awesome-icon :icon="['fas', 'info-circle']" />
+                                    </el-tooltip>
+                                </span>
+                            </template>
+                            <el-input v-if="item.details.type == 'string' || item.details.type == 'object' || item.details.type=='array'"
+                            :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+                            <el-input v-else-if="item.details.type == 'number'" type="text" inputmode="decimal" :name="item.field" :placeholder="getPlaceholderByType(item.details.type)" v-model="formData[item.field]" @input="this.$refs.form.validate()" ></el-input>
+                            <el-select v-else-if="item.details.type == 'boolean'" v-model="formData[item.field]" class="m-2" placeholder="Select" size="large">
+                                <el-option
+                                v-for="item in optionsBoolean"
+                                :key="item.value"
+                                :label="item.label"
+                                :value="item.value"
+                                />
+                            </el-select>   
                         </el-form-item>
                     </el-col>
                     <el-col :span="8">
                         <h4>Recommended</h4>
                         <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.recommended" :key="'recommended' + index" :label="`${item.details.display_name}`" :prop="item.field">
-                            <el-input :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()"></el-input>
+                            <template #label>
+                                <span>
+                                    {{ item.details.display_name }} 
+                                    <el-tooltip placement="top">
+                                        <template #content> {{ item.details.description }}</template>
+                                        <!-- show question mark button-->
+                                        <font-awesome-icon :icon="['fas', 'info-circle']" />
+                                    </el-tooltip>
+                                </span>
+                            </template>
+                            <el-input v-if="item.details.type == 'string' || item.details.type == 'object'|| item.details.type=='array'" :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+
+                            <el-input v-else-if="item.details.type == 'number'" type="text" inputmode="decimal" :name="item.field" v-model.number="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+                            <el-select v-else-if="item.details.type == 'boolean'" v-model="formData[item.field]" class="m-2" placeholder="Select" size="large">
+                                <el-option
+                                v-for="item in optionsBoolean"
+                                :key="item.value"
+                                :label="item.label"
+                                :value="item.value"
+                                />
+                            </el-select>   
                         </el-form-item>
                     </el-col>
 
                     <el-col :span="8">
                         <h4>Optional</h4>
                         <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.optional" :key="'optional' + index" :label="`${item.details.display_name}`" :prop="item.field">
-                            <el-input :name="item.field"  v-model="formData[item.field]" @input="this.$refs.form.validate()"></el-input>
+                            
+                            <template #label>
+                                <span>
+                                    {{ item.details.display_name }} 
+                                    <el-tooltip placement="top">
+                                        <template #content> {{ item.details.description }}</template>
+                                        <!-- show question mark button-->
+                                        <font-awesome-icon :icon="['fas', 'info-circle']" />
+                                    </el-tooltip>
+                                </span>
+                            </template>
+                            
+                            <el-input v-if="item.details.type == 'string' || item.details.type == 'object'|| item.details.type=='array'" :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+
+                            <el-input v-else-if="item.details.type == 'number'" type="text" inputmode="decimal" :name="item.field" v-model.number="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+                            <el-select v-else-if="item.details.type == 'boolean'" v-model="formData[item.field]" class="m-2" placeholder="Select" size="large">
+                                <el-option
+                                v-for="item in optionsBoolean"
+                                :key="item.value"
+                                :label="item.label"
+                                :value="item.value"
+                                />
+                            </el-select>   
                         </el-form-item>
                         <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.conditional" :key="'conditional' + index" :label="`${item.details.display_name}`" :prop="item.field">
-                            <el-input :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()"></el-input>
+
+                            <template #label>
+                                <span>
+                                    {{ item.details.display_name }} 
+                                    <el-tooltip placement="top">
+                                        <template #content> {{ item.details.description }}</template>
+                                        <!-- show question mark button-->
+                                        <font-awesome-icon :icon="['fas', 'info-circle']" />
+                                    </el-tooltip>
+                                </span>
+                            </template>
+                            <el-input v-if="item.details.type == 'string' || item.details.type == 'object'|| item.details.type=='array'" :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+                            <el-input v-else-if="item.details.type == 'number'" type="text" inputmode="decimal" :name="item.field" v-model.number="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+                            <el-select v-else-if="item.details.type == 'boolean'" v-model="formData[item.field]" class="m-2" placeholder="Select" size="large">
+                                <el-option
+                                v-for="item in optionsBoolean"
+                                :key="item.value"
+                                :label="item.label"
+                                :value="item.value"
+                                />
+                            </el-select>   
                         </el-form-item>
                     </el-col>
             </el-row>
@@ -32,6 +114,7 @@
         </el-form>
         <br>
         <span slot="footer" class="dialog-footer">
+            {{ formData }}
             <el-button @click="showDialog = false">Cancel</el-button>
             <el-button type="primary" @click="submitForm">Submit</el-button>
         </span>
@@ -63,6 +146,12 @@ export default defineComponent({
             conditional: []
         },
         rules: {},
+        optionsBoolean : [
+            { value: true, label: 'True' },
+            { value: false, label: 'False' },
+            // { value: null, label: 'Null'}
+        ],
+        //MoType add options 
       showDialog: false
     }
   },
@@ -79,7 +168,11 @@ export default defineComponent({
                                 const json = JSON.parse(item.sidecar_json);
                                 // only if value is not null, empty string or empty array or undefined
                                 for (const [key, value] of Object.entries(this.formData)) {
-                                    if(value != null && value != "" && value != undefined) json[key] = value;
+                                    if(value != null && value != "" && value != undefined) {
+                                        //remove quotes from string
+                                        //typecast values accordingly for number and boolean, array and object
+                                        json[key] = value;
+                                    }
                                 }
                                 item.sidecar = JSON.stringify(json);
                                 console.log("finalOutput",item.sidecar);
@@ -174,28 +267,41 @@ export default defineComponent({
 
                 let fieldData = {field,details};
 
-                if (metadata === 'required') result.required.push(fieldData);
+                
 
-                if (metadata === 'recommended') result.recommended.push(fieldData);
+                if (metadata === 'required' && !result.required.some(item=> item.field == fieldData.field)) result.required.push(fieldData);
 
-                if(metadata === 'optional') result.optional.push(fieldData);
+                if (metadata === 'recommended' && !result.recommended.some(item=> item.field == fieldData.field)) {
+                    result.recommended.push(fieldData);
+                    if(fieldData.details.display_name == 'Acquisition Voxel Size') {
+                        console.log("fieldData",fieldData);
+                        console.log(result.recommended)
+                        if(result.recommended.includes(fieldData)) {
+                            console.log("found")
+                        }
+                    }
+                }
+
+                if(metadata === 'optional' && !result.optional.some(item=> item.field == fieldData.field)) result.optional.push(fieldData);
 
                 //fields with level
                 const level = metadata.level || '';
-                if (level === 'required') {
+                if (level === 'required' && !result.required.some(item=> item.field == fieldData.field)) {
                     result.required.push(fieldData);
-                } else if (level === 'recommended') {
+                } else if (level === 'recommended' && !result.recommended.some(item=> item.field == fieldData.field)) {
                     result.recommended.push(fieldData);
-                } else if (level === 'optional') {
+                } else if (level === 'optional' && !result.optional.some(item=> item.field == fieldData.field)) {
                     result.optional.push(fieldData);  // Include optional fields in the recommended list
                 }
 
                 //fields with level_addendum
                 const levelAddendum = metadata.level_addendum || '';
                 if (levelAddendum.includes('required if') || levelAddendum.includes('required when')) {
-                    result.conditional.push({...fieldData,level: 'required', condition: levelAddendum});
+                    const obj = {...fieldData,level: 'required', condition: levelAddendum};
+                    if(!result.conditional.some(item=> item.field == fieldData.field))result.conditional.push(obj);
                 } else if (levelAddendum.includes('recommended if') || levelAddendum.includes('recommended when')) {
-                    result.conditional.push({...fieldData, level: 'recommended', condition: levelAddendum});
+                    const obj = {...fieldData, level: 'recommended', condition: levelAddendum}
+                    if(!result.conditional.some(item=> item.field == fieldData.field)) result.conditional.push(obj);
                 }
             }
         }
@@ -226,25 +332,33 @@ export default defineComponent({
             });
         });
 
-        // remove duplicate conditional fields Ex:(required if `LookLocker` is `true`)
-
-        result.conditional = result.conditional.filter((item: any, index: number, self: { findIndex: (arg0: (conditionalItem: any) => boolean) => number; }) => {
-            return index === self.findIndex((conditionalItem: any) => {
-                return conditionalItem.field === item.field;
-            });
-        });
-
         return result;
     },
     generateValidationRules(fieldsMetadata: { required: never[]; recommended: never[]; optional: never[]; conditional: never[]; }) {
             console.log("fieldsMetadata", fieldsMetadata);
-            const rules = {};   
+            const rules = {}; 
+
             // For required fields
             fieldsMetadata.required.forEach((item: { field: string | number; }) => {
                 rules[item.field] = [
                     { required: true, message: `${item.field} is required`, trigger: 'change' } //change checks in real time
                 ];
+                this.addNumericValidationRule(rules,item);
             });
+
+            // For recommended fields
+            fieldsMetadata.recommended.forEach((item: { field: string | number; }) => {
+                rules[item.field] = [];
+                this.addNumericValidationRule(rules,item);
+            });
+
+            // For optional fields
+
+            fieldsMetadata.optional.forEach((item: { field: string | number; }) => {
+                rules[item.field] = [];
+                this.addNumericValidationRule(rules,item);
+            });
+
              // For conditional fields
             fieldsMetadata.conditional.forEach((item: { level: string; field: string | number; condition: string; }) => {
                 if (item.level === 'required') {
@@ -315,6 +429,8 @@ export default defineComponent({
                         },
                         trigger: 'change'
                     }];
+
+                    this.addNumericValidationRule(rules,item);
                 }
             });
 
@@ -323,6 +439,24 @@ export default defineComponent({
             return rules;
 
         },
+        addNumericValidationRule(rules,item) {
+            if (item.details && item.details.type === 'number') {
+                if (!rules[item.field]) {
+                    rules[item.field] = [];
+                }
+                rules[item.field].push({
+                    validator: (rule, value, callback) => {
+                        if (value !=null && !this.isNumeric(value)) {
+                            callback(new Error('Please enter a valid number'));
+                        } else {
+                            callback();
+                        }
+                    },
+                    trigger: 'change'
+                });
+            }
+        },
+
         setDefaultValue(details: { type: null; anyOf: any[]; }) {
             if(details.type != null) return this.parseDefaultValue(details.type);
             if(details?.anyOf?.length > 0) {
@@ -351,12 +485,23 @@ export default defineComponent({
         },
         parseDefaultValue(type: string) {
             if(type == 'string') return "";
-            if(type == 'number') return null;
-            if(type == 'boolean') return false;
-            if(type == 'array') return [];
-            if(type == 'object') return {};
+            if(type == 'number') return undefined;
+            if(type == 'boolean') return undefined;
+            if(type == 'array') return [null]; // will help user to identify its an array
+            if(type == 'object') return {}; // will help user to identify its an object
             return "";
+        },
+        isNumeric(value) {
+            return /^(\-?\d+(\.\d+)?)?$/.test(value);
+        },
+        getPlaceholderByType(type) {
+            if(type == 'string') return "Enter string";
+            if(type == 'number') return "Enter number";
+            if(type == 'boolean') return "Select";
+            if(type == 'array') return "Enter array []";
+            if(type == 'object') return "Enter object {}";
         }
+
     }
 });
 </script>
