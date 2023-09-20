@@ -199,18 +199,12 @@ export default defineComponent({
         this.fields = this.getFieldsMetaData(this.ss.type);
         this.rules = this.generateValidationRules(this.fields);
 
-        this.fields.required.forEach((item: any) => {
-            this.formData[item.field] = item.details.default_value;
-        });
-        this.fields.recommended.forEach((item: any) => {
-            this.formData[item.field] = item.details.default_value;
-        });
-        this.fields.optional.forEach((item: any) => {
-            this.formData[item.field] = item.details.default_value;
-        });
-        this.fields.conditional.forEach((item: any) => {
-            this.formData[item.field] = item.details.default_value;
-        });
+        //set default values for all fields in the form optional, recommended, required, conditional
+        for(let field in this.fields) {
+            this.fields[field].forEach((item: any) => {
+                this.formData[item.field] = item.details.default_value;
+            });
+        }
         //match the pos of type and series.idx inside the ezbids.objects[]
         this.loadInitFormValues();
         //Task validate form on load
@@ -485,9 +479,9 @@ export default defineComponent({
         },
         parseDefaultValue(type: string) {
             if(type == 'string') return "";
-            if(type == 'number') return undefined;
+            if(type == 'number') return null;
             if(type == 'boolean') return undefined;
-            if(type == 'array') return [null]; // will help user to identify its an array
+            if(type == 'array') return []; // will help user to identify its an array
             if(type == 'object') return {}; // will help user to identify its an object
             return "";
         },
