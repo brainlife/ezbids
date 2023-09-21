@@ -1330,3 +1330,25 @@ export function fileLogicLink($root:IEzbids, o:IObject) {
         }
     }
 }
+
+// // TODO, currently no validation on Paritcipants Info page
+// export function validateParticipantsInfo($root:IEzbids) {
+//     let participantsInfo = $root.participantsInfo
+//     console.log(participantsInfo)
+//     Object.values(participantsInfo).forEach((p:any) => {
+//         let columns = Object.keys(p)
+//         for (const c of columns) {
+//             if (!c.includes("PatientName") && !c.includes("PatientID")) {
+//                 if (p[c] !== "n/a") {
+//                     if (c === "age" && !/^[0-9]*$/.test(p[c])) {
+//                         console.log("This column has non-numeric values, unallowed")
+//                     } else if (c === "sex" && !["male", "m", "M", "MALE", "Male", "female", "f", "F", "FEMALE", "Female", "other", "o", "O", "OTHER", "Other"].includes(p[c])) {
+//                         console.log("Need to select a proper 'sex' term")
+//                     } else if (c === "handedness" && !["left", "l", "L", "LEFT", "Left", "right", "r", "R", "RIGHT", "Right", "ambidextrous", "a", "A", "AMBIDEXTROUS", "Ambidextrous"].includes(p[c])) {
+//                         console.log("Need to select a proper 'handedness' term")
+//                     }
+//                 }
+//             }
+//         }
+//     })
+// }

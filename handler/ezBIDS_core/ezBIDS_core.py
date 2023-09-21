@@ -268,10 +268,6 @@ def generate_dataset_description(DATA_DIR, bids_compliant):
         Dataset description information.
     """
     dataset_description_dic = {}
-    for field in dataset_description_yaml["dataset_description"]["fields"]:
-        if "GeneratedBy" not in field:
-            dataset_description_dic[field] = ""
-
     if bids_compliant is True:
         bids_root_dir = pd.read_csv(f"{DATA_DIR}/bids_compliant.log", header=None).iloc[0][0]
         dataset_description = open(f"{bids_root_dir}/dataset_description.json")
@@ -280,6 +276,12 @@ def generate_dataset_description(DATA_DIR, bids_compliant):
         for field in dataset_description:
             if field in dataset_description_dic.keys() and "GeneratedBy" not in field:
                 dataset_description_dic[field] = dataset_description[field]
+
+    else:
+        for field in dataset_description_yaml["dataset_description"]["fields"]:
+            if "GeneratedBy" not in field:
+                dataset_description_dic[field] = ""
+        dataset_description_dic["SourceDatasets"] = []
 
     dataset_description_dic["GeneratedBy"] = [
         {
@@ -295,13 +297,11 @@ def generate_dataset_description(DATA_DIR, bids_compliant):
         }
     ]
 
-    dataset_description_dic["SourceDatasets"] = []
-
     # dataset_description_dic["SourceDatasets"] = [
     #     {
-    #         "DOI": None,
-    #         "URL": None,
-    #         "Version": None
+    #         "DOI": "",
+    #         "URL": "s3://dicoms/studies/correlates",  # Just a placeholder
+    #         "Version": ""
     #     }
     # ]
 

@@ -73,6 +73,7 @@ import { mapState } from 'vuex'
 import { defineComponent } from 'vue'
 
 import { OrganizedSubject } from './store'
+// import { validateParticipantsInfo } from './libUnsafe'
 
 //element-plus icons are bad .. replace it with fontawesome
 // @ts-ignore
@@ -134,6 +135,7 @@ export default defineComponent({
         //TODO
         validate() {
             console.log("todo - validate participant");
+            validateParticipantsInfo(this.ezbids)
         },
 
         isValid(cb: (v?: string)=>void) {
