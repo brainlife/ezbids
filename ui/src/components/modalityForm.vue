@@ -18,8 +18,18 @@
                                     </el-tooltip>
                                 </span>
                             </template>
-                            <el-input v-if="item.details.type == 'string' || item.details.type == 'object' || item.details.type=='array'"
+                            <el-input v-if="(item.details.type == 'string' || item.details.type == 'object' || item.details.type=='array') && item.details.enum == undefined"
                             :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+                            
+                            <el-select v-if="item.details.enum" v-model="formData[item.field]">
+                                <el-option
+                                    v-for="option in parseOptionsEnum(item?.details?.enum)"
+                                    :key="option.value"
+                                    :label="option.label"
+                                    :value="option.value"
+                                />
+                            </el-select>
+
                             <el-input v-else-if="item.details.type == 'number'" type="text" inputmode="decimal" :name="item.field" :placeholder="getPlaceholderByType(item.details.type)" v-model="formData[item.field]" @input="this.$refs.form.validate()" ></el-input>
                             <el-select v-else-if="item.details.type == 'boolean'" v-model="formData[item.field]" class="m-2" placeholder="Select" size="large">
                                 <el-option
@@ -44,8 +54,17 @@
                                     </el-tooltip>
                                 </span>
                             </template>
-                            <el-input v-if="item.details.type == 'string' || item.details.type == 'object'|| item.details.type=='array'" :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
-
+                            <el-input v-if="(item.details.type == 'string' || item.details.type == 'object' || item.details.type=='array') && item.details.enum == undefined"
+                            :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+                            
+                            <el-select v-if="item.details.enum" v-model="formData[item.field]">
+                                <el-option
+                                    v-for="option in parseOptionsEnum(item?.details?.enum)"
+                                    :key="option.value"
+                                    :label="option.label"
+                                    :value="option.value"
+                                />
+                            </el-select>
                             <el-input v-else-if="item.details.type == 'number'" type="text" inputmode="decimal" :name="item.field" v-model.number="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
                             <el-select v-else-if="item.details.type == 'boolean'" v-model="formData[item.field]" class="m-2" placeholder="Select" size="large">
                                 <el-option
@@ -73,8 +92,17 @@
                                 </span>
                             </template>
                             
-                            <el-input v-if="item.details.type == 'string' || item.details.type == 'object'|| item.details.type=='array'" :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
-
+                            <el-input v-if="(item.details.type == 'string' || item.details.type == 'object' || item.details.type=='array') && item.details.enum == undefined"
+                            :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+                            
+                            <el-select v-if="item.details.enum" v-model="formData[item.field]">
+                                <el-option
+                                    v-for="option in parseOptionsEnum(item?.details?.enum)"
+                                    :key="option.value"
+                                    :label="option.label"
+                                    :value="option.value"
+                                />
+                            </el-select>
                             <el-input v-else-if="item.details.type == 'number'" type="text" inputmode="decimal" :name="item.field" v-model.number="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
                             <el-select v-else-if="item.details.type == 'boolean'" v-model="formData[item.field]" class="m-2" placeholder="Select" size="large">
                                 <el-option
@@ -97,8 +125,17 @@
                                     </el-tooltip>
                                 </span>
                             </template>
-                            <el-input v-if="item.details.type == 'string' || item.details.type == 'object'|| item.details.type=='array'" :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
-                            <el-input v-else-if="item.details.type == 'number'" type="text" inputmode="decimal" :name="item.field" v-model.number="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+                            <el-input v-if="(item.details.type == 'string' || item.details.type == 'object' || item.details.type=='array') && item.details.enum == undefined"
+                            :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+                            
+                            <el-select v-if="item.details.enum" v-model="formData[item.field]">
+                                <el-option
+                                    v-for="option in parseOptionsEnum(item?.details?.enum)"
+                                    :key="option.value"
+                                    :label="option.label"
+                                    :value="option.value"
+                                />
+                            </el-select>                            <el-input v-else-if="item.details.type == 'number'" type="text" inputmode="decimal" :name="item.field" v-model.number="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
                             <el-select v-else-if="item.details.type == 'boolean'" v-model="formData[item.field]" class="m-2" placeholder="Select" size="large">
                                 <el-option
                                 v-for="item in optionsBoolean"
@@ -114,7 +151,7 @@
         </el-form>
         <br>
         <span slot="footer" class="dialog-footer">
-            {{ formData }}
+            <!-- {{ formData }} -->
             <el-button @click="showDialog = false">Cancel</el-button>
             <el-button type="primary" @click="submitForm">Submit</el-button>
         </span>
@@ -494,6 +531,29 @@ export default defineComponent({
             if(type == 'boolean') return "Select";
             if(type == 'array') return "Enter array []";
             if(type == 'object') return "Enter object {}";
+        },
+        parseOptionsEnum(enumArray) {
+            console.log("enumArray", enumArray);
+            // return enumArray;
+            let array =  enumArray.map((item: any) => {
+                if(typeof item == 'object') {
+                    // "$ref": "objects.enums.CASL.value"
+                    console.log("item", Object.keys(item));
+                    if(item['$ref']) {
+                        console.log("ref", item['$ref']);
+                        // objects.enums.CASL.value -> CASL
+                        // regex to get CASL 
+                        // const regex = /objects.enums.(\w+).value/;
+                        const regex = /objects.enums.(\w+).value/;
+                        const refObject = regex.exec(item['$ref']);
+                        return {value: refObject[1], label: refObject[1]};
+                    }
+                }
+                return {value: item, label: item};
+            });
+
+            console.log("array", array);
+            return array;
         }
 
     }
