@@ -501,7 +501,7 @@ export function validate_B0FieldIdentifier_B0FieldSource(info:Series|IObject) {
     let B0FieldIdentifier = info.B0FieldIdentifier
     let B0FieldSource = info.B0FieldSource
 
-    //validate B0FieldIdentifier (only alpha-numeric, dash [-], and underscore [_] characters allowed)
+    //validate B0FieldIdentifier (only alphanumeric, dash [-], and underscore [_] characters allowed)
     if (B0FieldIdentifier) {
         for (const k of B0FieldIdentifier) {
             if (k && !/^[a-zA-Z0-9-_]*$/.test(k)) {                                                                    
@@ -511,7 +511,7 @@ export function validate_B0FieldIdentifier_B0FieldSource(info:Series|IObject) {
         }
     }
 
-    //validate B0FieldSource (only alpha-numeric, dash [-], and underscore [_] characters allowed)
+    //validate B0FieldSource (only alphanumeric, dash [-], and underscore [_] characters allowed)
     if (B0FieldSource) {
         for (const k of B0FieldSource) {
             if (k && !/^[a-zA-Z0-9-_]*$/.test(k)) {                                                                    
