@@ -1,5 +1,5 @@
 import e from 'cors';
-import { IObject, OrganizedSession, OrganizedSubject, IEzbids, IBIDSEvent } from './store'
+import { Series, IObject, OrganizedSession, OrganizedSubject, IEzbids, IBIDSEvent } from './store'
 
 //deepEqual and isPrimitive functions come from https://stackoverflow.com/a/45683145
 export function deepEqual(obj1:any, obj2:any) {
@@ -496,27 +496,29 @@ export function align_entities($root:IEzbids) {
     });
 }
 
-export function validate_B0FieldIdentifier_B0FieldSource(o:IObject) {     
-
-    let B0FieldIdentifier = o.B0FieldIdentifier
-    let B0FieldSource = o.B0FieldSource
+export function validate_B0FieldIdentifier_B0FieldSource(info:Series|IObject) {
     
-    //validate B0FieldIdentifier (only alpha numeric values and dash [-] and underscore [_] characters allowed)
-    for (const k in B0FieldIdentifier) {
-        const v = B0FieldIdentifier[k];                                                                                
-        if (v && !/^[a-zA-Z0-9-_]*$/.test(v)) {                                                                    
-            o.validationErrors.push("B0FieldIdentifier (#"+k+"-indexed selection) contains non-alphanumeric character(s). \
-            The (dash [-] and underscore [_] characters are acceptable)");                        
-        }                                                                                                       
+    let B0FieldIdentifier = info.B0FieldIdentifier
+    let B0FieldSource = info.B0FieldSource
+
+    //validate B0FieldIdentifier (only alpha-numeric, dash [-], and underscore [_] characters allowed)
+    if (B0FieldIdentifier) {
+        for (const k of B0FieldIdentifier) {
+            if (k && !/^[a-zA-Z0-9-_]*$/.test(k)) {                                                                    
+                info.validationErrors.push("B0FieldIdentifier ("+k+" selection) contains non-alphanumeric character(s). \
+                The (dash [-] and underscore [_] characters are acceptable)");                        
+            }                                                                                                       
+        }
     }
 
-    //validate B0FieldSource (only alpha numeric values and dash [-] and underscore [_] characters allowed)
-    for (const k in B0FieldSource) {
-        const v = B0FieldSource[k];                                                                                
-        if (v && !/^[a-zA-Z0-9-_]*$/.test(v)) {                                                                    
-            o.validationErrors.push("B0FieldSource (#"+k+"-indexed selection) contains non-alphanumeric character(s). \
-            The (dash [-] and underscore [_] characters are acceptable)");                        
-        }                                                                                                       
+    //validate B0FieldSource (only alpha-numeric, dash [-], and underscore [_] characters allowed)
+    if (B0FieldSource) {
+        for (const k of B0FieldSource) {
+            if (k && !/^[a-zA-Z0-9-_]*$/.test(k)) {                                                                    
+                info.validationErrors.push("B0FieldSource (#"+k+"-indexed selection) contains non-alphanumeric character(s). \
+                The (dash [-] and underscore [_] characters are acceptable)");                        
+            }                                                                                                       
+        }
     }
 }
 
@@ -793,7 +795,6 @@ export function createEventObjects(ezbids:IEzbids, files:any) {
     const sessions = sessionsArray.filter(function(e){return e}) // remove empty strings & spaces (i.e. no session(s) present
     const tasks = Array.from(new Set(ezbids.objects.map(e=>e._entities).filter(e=>(e.part == "" || e.part == "mag") && (e.task != "" && e.task != "rest" && e.task !== undefined)).map(e=>e.task)))
     const runs = Array.from(new Set(ezbids.objects.filter(e=>e._entities.task != "" && e._entities.task != undefined).map(e=>e._entities.run)))
-    console.log("ASAASA", runs)
     const numEventFiles = files.length
 
     // Try to determine inheritance level (dataset, subject, session, or individual runs)
@@ -1100,17 +1101,14 @@ export function createEventObjects(ezbids:IEzbids, files:any) {
             }
 
         } else {
-            console.log(eventsMappingInfo)
             // series_id
             let section_id_obj = ezbids.objects.find(e=>e._entities.subject === eventsMappingInfo.subject.eventsValue &&
                 e._entities.task === eventsMappingInfo.task.eventsValue &&
                 e._entities.run === eventsMappingInfo.run.eventsValue
             )
             if (section_id_obj !== undefined) {
-                console.log("OKOKOKOKOKOK")
                 section_id = section_id_obj.analysisResults.section_id
             } else {
-                console.log("NOOOOO")
                 section_id = section_id
             }
 
