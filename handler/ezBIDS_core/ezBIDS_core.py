@@ -1828,8 +1828,8 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
             if "BidsGuess" in json_data:
                 bids_guess = json_data["BidsGuess"]
                 if len(bids_guess) == 2:  # should always be length of 2, but just to be safe
-                    datatype = bids_guess[0]
-                    suffix = bids_guess[1].split("_")[-1]
+                    datatype = str(bids_guess[0]).lower()
+                    suffix = str(bids_guess[1].split("_")[-1]).lower()
                     if datatype not in [x for x in datatypes_yaml.keys()]:  # assumed to be non-BIDS data of some kind
                         if suffix in ["localizer", "scout"] or "_i0000" in unique_dic["paths"][0]:
                             # localizer
