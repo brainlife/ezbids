@@ -230,7 +230,7 @@
     
     import { IObject, Session, OrganizedSession, OrganizedSubject } from './store'
     import { prettyBytes } from './filters'
-    import { setRun, setIntendedFor, align_entities, validateEntities, validate_B0FieldIdentifier_B0FieldSource, fileLogicLink } from './libUnsafe'
+    import { setRun, setIntendedFor, align_entities, validateEntities, validate_B0FieldIdentifier_B0FieldSource, fileLogicLink, dwiQA } from './libUnsafe'
     
     // @ts-ignore
     import { Splitpanes, Pane } from 'splitpanes'
@@ -427,6 +427,8 @@
                 align_entities(this.ezbids)
 
                 validateEntities("Objects", o)
+
+                dwiQA(this.ezbids)
 
                 validate_B0FieldIdentifier_B0FieldSource(o)
 

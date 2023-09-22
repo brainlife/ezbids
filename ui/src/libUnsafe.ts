@@ -101,36 +101,36 @@ export function funcQA($root:IEzbids) {
     from the corresponding func/bold PED.
     */
     $root.objects.forEach((o:IObject) => {
-        // #1
+        // // #1
 
-        //update analysisResults.warnings in case user went back to Series and adjusted things
-        if (o._type == "func/bold" && o.exclude == false && (!o._entities.part || o._entities.part == "mag")) {
-            let funcBoldEntities = o._entities
-            let goodFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, funcBoldEntities))
-            let goodFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.part == "phase" && deepEqual(Object.keys(e._entities).filter(e=>e != "part"), funcBoldEntities))
+        // //update analysisResults.warnings in case user went back to Series and adjusted things
+        // if (o._type == "func/bold" && o.exclude == false && (!o._entities.part || o._entities.part == "mag")) {
+        //     let funcBoldEntities = o._entities
+        //     let goodFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, funcBoldEntities))
+        //     let goodFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.part == "phase" && deepEqual(Object.keys(e._entities).filter(e=>e != "part"), funcBoldEntities))
 
-            for (const good of [goodFuncSBRef, goodFuncBoldPhase]) {
-                good.forEach((g:IObject) => {
-                    g.analysisResults.warnings = []
-                })
-            }
-        }
+        //     for (const good of [goodFuncSBRef, goodFuncBoldPhase]) {
+        //         good.forEach((g:IObject) => {
+        //             g.analysisResults.warnings = []
+        //         })
+        //     }
+        // }
 
-        //now check for corresponding func/bold === exclude, and go from there
-        if (o._type === "func/bold" && o.exclude && (!o._entities.part || o._entities.part == "mag" || o._entities.part == "part")) {
-            let funcBoldEntities = o._entities
-            let badFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, funcBoldEntities))
-            let badFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.part == "phase" && deepEqual(Object.keys(e._entities).filter(e=>e != "part"), funcBoldEntities))
+        // //now check for corresponding func/bold === exclude, and go from there
+        // if (o._type === "func/bold" && o.exclude && (!o._entities.part || o._entities.part == "mag" || o._entities.part == "part")) {
+        //     let funcBoldEntities = o._entities
+        //     let badFuncSBRef = $root.objects.filter(e=>e._type == "func/sbref" && deepEqual(e._entities, funcBoldEntities))
+        //     let badFuncBoldPhase = $root.objects.filter(e=>e._type == "func/bold" && e._entities.part == "phase" && deepEqual(Object.keys(e._entities).filter(e=>e != "part"), funcBoldEntities))
 
-            for (const bad of [badFuncSBRef, badFuncBoldPhase]) {
-                bad.forEach((b:IObject) => {
-                    o.exclude = true
-                    o.analysisResults.warnings = [`The corresponding func/bold (#${o.series_idx}) to this acquisition \
-                    has been set to exclude from BIDS conversion. Since this func/sbref is linked, it will also be \
-                    excluded from conversion. Please modify if incorrect.`]
-                })
-            }
-        }
+        //     for (const bad of [badFuncSBRef, badFuncBoldPhase]) {
+        //         bad.forEach((b:IObject) => {
+        //             o.exclude = true
+        //             o.analysisResults.warnings = [`The corresponding func/bold (#${o.series_idx}) to this acquisition \
+        //             has been set to exclude from BIDS conversion. Since this func/sbref is linked, it will also be \
+        //             excluded from conversion. Please modify if incorrect.`]
+        //         })
+        //     }
+        // }
 
         // #2
         if (o._type === "func/bold" && !o.exclude && (!o._entities.part || o._entities.part === "mag")) {
@@ -143,13 +143,6 @@ export function funcQA($root:IEzbids) {
                 $root.objects[bad].analysisResults.warnings = [`Functional sbref has a different PhaseEncodingDirection than its corresponding functional bold (#${o.series_idx}). This is likely a data error, therefore this sbref should be excluded from BIDS conversion.`]
             })
         }
-
-        // // #3
-        // if (o._type == "func/bold" && o.exclude == false) {
-        //     let boldOrientations = $root.objects.map(o=>o.analysisResults.orientation)
-
-        // }
-
     })
 }
 
@@ -346,7 +339,8 @@ export function setRun($root:IEzbids) {
                     let setRun = false
                     if (initialGrouping.length > 1) {
                         setRun = true
-                    } else if (initialGrouping.length === 1 && (initialGrouping[0]._type.includes("anat") || initialGrouping[0]._type.includes("func"))) { // might need to add conditional for not having func/events
+                    // } else if (initialGrouping.length === 1 && (initialGrouping[0]._type.includes("anat") || initialGrouping[0]._type.includes("func"))) { // might need to add conditional for not having func/events
+                    } else if (initialGrouping.length === 1 && (initialGrouping[0]._type.includes("func"))) { // might need to add conditional for not having func/events
                         setRun = true
                     }
 
@@ -424,7 +418,7 @@ export function setIntendedFor($root:IEzbids) {
                     if (obj._type.startsWith("fmap/")) {
                         Object.assign(obj, {IntendedFor: []})
                         let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor
-                        if (correspindingSeriesIntendedFor !== undefined) {
+                        if (correspindingSeriesIntendedFor !== undefined && correspindingSeriesIntendedFor !== null) {
                             correspindingSeriesIntendedFor.forEach((i:number) => {
                                 let IntendedForIDs = section.filter(o=>o.series_idx === i && o._type !== "func/events").map(o=>o.idx)
                                 if (obj.IntendedFor !== undefined) {
@@ -539,8 +533,8 @@ export function dwiQA($root:IEzbids) {
 
             for (const protocol of protocolObjects) {
                 Object.keys(protocol).forEach((key:string) => {
-                    if (key === "_type" && protocol[key] === "dwi/dwi") {
-                        dwiInfo.push({"series_idx": protocol.series_idx, "idx": protocol.idx, "direction": protocol.PED, "fmap": "N/A", "oppDWI": "N/A"})
+                    if (key === "_type" && protocol[key] === "dwi/dwi" && !protocol._exclude) {
+                        dwiInfo.push({"series_idx": protocol.series_idx, "idx": protocol.idx, "direction": protocol.PED, "fmap": false, "oppDWI": false})
                     }
 
                     if (key === "_type" && protocol[key].startsWith("fmap/")) { //check for field map(s) that might be applied to DWI acquisitions
@@ -557,25 +551,28 @@ export function dwiQA($root:IEzbids) {
                     fmapInfo.forEach(f=>{
                         dwiInfo.forEach(d=>{
                             if (f.IntendedFor.includes(d.series_idx)) {
-                                d.fmap = "yes"
+                                d.fmap = true
                             }
                             if (dwiDirs.includes(d.direction.split("").reverse().join(""))) {
-                                d.oppDWI = "yes"
+                                d.oppDWI = true
                             }
                         })
                     })
                 } else {
                     dwiInfo.forEach(d=>{
                         if (dwiDirs.includes(d.direction.split("").reverse().join(""))) {
-                            d.oppDWI = "yes"
+                            d.oppDWI = true
                         }
                     })
                 }
 
                 dwiInfo.forEach(d=>{
-                    if (d.fmap != "yes" && d.oppDWI != "yes") {
-                        let corrProtocolObj = protocolObjects.filter(e=>e.idx == d.idx)[0] //will always be an index of 1, so just grab the first (i.e. only) index
-                        corrProtocolObj.analysisResults.warnings.push("This dwi/dwi acquisition doesn't appear to have a corresponding dwi/dwi or field map acquisition with a 180 degree flipped phase encoding direction. You may wish to exclude this from BIDS conversion, unless there is a reason for keeping it.")
+                    let corrProtocolObj = protocolObjects.filter(e=>e.idx == d.idx)[0] //will always be an index of 1, so just grab the first (i.e. only) index
+                    if (!d.fmap && !d.oppDWI) {
+                        corrProtocolObj.analysisResults.warnings = ["This dwi/dwi acquisition doesn't appear to have a corresponding dwi/dwi or field map acquisition with a 180 degree flipped phase encoding direction. You may wish to exclude this from BIDS conversion, unless there is a reason for keeping it."]
+                    } else {
+                        corrProtocolObj.analysisResults.warnings = []
+
                     }
                 })
             }
@@ -1284,6 +1281,7 @@ export function fileLogicLink($root:IEzbids, o:IObject) {
     //func/events are implicitly linked to a func/bold; make sure these have same entities and exclusion criteria
     if(o._type === "func/events") {
         let correspondingFuncBold = $root.objects.filter((object:IObject)=>object._type === "func/bold" &&
+            !object._exclude &&
             object._entities.subject === o._entities.subject &&
             object._entities.session === o._entities.session &&
             object._entities.task === o._entities.task &&
