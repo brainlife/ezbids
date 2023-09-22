@@ -124,8 +124,8 @@ export function funcQA($root:IEzbids) {
 
             for (const bad of [badFuncSBRef, badFuncBoldPhase]) {
                 bad.forEach((b:IObject) => {
-                    b.exclude = true
-                    b.analysisResults.warnings = [`The corresponding func/bold (#${o.series_idx}) to this acquisition \
+                    o.exclude = true
+                    o.analysisResults.warnings = [`The corresponding func/bold (#${o.series_idx}) to this acquisition \
                     has been set to exclude from BIDS conversion. Since this func/sbref is linked, it will also be \
                     excluded from conversion. Please modify if incorrect.`]
                 })
@@ -336,7 +336,6 @@ export function setRun($root:IEzbids) {
                 let initialGrouping = sesGroup.objects.filter(e=>e._type !== "exclude" &&
                     !e._exclude &&
                     e._type === obj._type &&
-                    // e.idx !== obj.idx &&
                     deepEqual(Object.fromEntries(Object.entries(e._entities).filter(([key])=>key !== "part" && key !== "run")), targetEntities)
                 )
 
@@ -347,7 +346,7 @@ export function setRun($root:IEzbids) {
                     let setRun = false
                     if (initialGrouping.length > 1) {
                         setRun = true
-                    } else if (initialGrouping.length === 1 && initialGrouping[0]._type.includes("func")) { // might need to add conditional for not having func/events
+                    } else if (initialGrouping.length === 1 && (initialGrouping[0]._type.includes("anat") || initialGrouping[0]._type.includes("func"))) { // might need to add conditional for not having func/events
                         setRun = true
                     }
 
@@ -361,26 +360,26 @@ export function setRun($root:IEzbids) {
                             } else if (o._entities.part && !["", "mag", "real"].includes(o._entities.part)) {
                                 if (o._entities.part === "phase") {
                                     let correspondingFuncMag = initialGrouping.filter(e=>e._entities.part === "mag" &&
-                                        e.idx === o.idx - 1
+                                        ((e.idx === o.idx - 1 && e._type === "func/bold") || (e.idx === o.idx - 2 && e._type === "func/bold"))
                                     )
 
                                     if (!correspondingFuncMag.length) {
                                         o._exclude = true
                                         o.exclude = true
-                                        o.validationWarnings = []
+                                        o.validationWarnings = ["There is no corresponding func/bold (part-mag) sequence, therefore this sequence will be excluded from BIDS conversion"]
                                     } else {
                                         o._entities.run = correspondingFuncMag[0]._entities.run
                                         o.entities.run = o._entities.run
                                     }
                                 } else if (o._entities.part === "imag") {
                                     let correspondingFuncReal = initialGrouping.filter(e=>e._entities.part === "real" &&
-                                        e.idx === o.idx - 1
+                                        ((e.idx === o.idx - 1 && e._type === "func/bold") || (e.idx === o.idx - 2 && e._type === "func/bold"))
                                     )
 
                                     if (!correspondingFuncReal.length) {
                                         o._exclude = true
                                         o.exclude = true
-                                        o.validationWarnings = []
+                                        o.validationWarnings = ["There is no corresponding func/bold (part-real) sequence, therefore this sequence will be excluded from BIDS conversion"]
                                     } else {
                                         o._entities.run = correspondingFuncReal[0]._entities.run
                                         o.entities.run = o._entities.run
@@ -948,16 +947,28 @@ export function createEventObjects(ezbids:IEzbids, files:any) {
             /* 4th stage: if task eventValue can't be determined, look for task name(s) used in ezBIDS in event files
             values (not just column names).
             */
-            if (entity === "task" && eventsMappingInfo.task.eventsValue === "") {
-                const taskNames = eventsMappingInfo.task.ezBIDSvalues.map(v=>v.toLowerCase());
-                events.forEach((event:any) => {
-                    for (const key in event) {
-                        if (taskNames.includes(event[key])) {
-                            info.eventsValue = event[key];
-                            info.detectionMethod = "task identifying information was found in events file (not column name)"
+            if (entity === "task") {
+                if (eventsMappingInfo.task.eventsValue === "") {
+                    const taskNames = eventsMappingInfo.task.ezBIDSvalues.map(v=>v.toLowerCase());
+                    events.forEach((event:any) => {
+                        for (const key in event) {
+                            if (taskNames.includes(event[key])) {
+                                info.eventsValue = event[key];
+                                info.detectionMethod = "task identifying information was found in events file (not column name)"
+                            }
+                        }
+                    });
+                } else {
+                    // Make sure task id aligns correctly
+                    let ezbids_tasks:string[] = eventsMappingInfo.task.ezBIDSvalues
+                    let events_task:string = eventsMappingInfo.task.eventsValue
+                    if (ezbids_tasks.length) {
+                        let task_match_id = ezbids_tasks.map(t => t.toLowerCase()).indexOf(events_task.toLowerCase())
+                        if (task_match_id !== -1) {
+                            eventsMappingInfo.task.eventsValue = ezbids_tasks[task_match_id]
                         }
                     }
-                });
+                }
             }
         }
 
@@ -985,7 +996,13 @@ export function createEventObjects(ezbids:IEzbids, files:any) {
                 subject: "",
                 session: "",
                 task: "",
-                run: ""
+                acquisition: "",
+                ceagent: "",
+                reconstruction: "",
+                direction: "",
+                run: "",
+                echo: "",
+                part: ""
             },
             items: [
                 {
@@ -1131,7 +1148,6 @@ export function createEventObjects(ezbids:IEzbids, files:any) {
 
         eventObjects.push(object);
     });
-
     return eventObjects;
 }
 
@@ -1198,8 +1214,9 @@ export function fileLogicLink($root:IEzbids, o:IObject) {
     if(o._entities.part && !["", "mag", "real"].includes(o._entities.part)) {
         let correspondingFuncMag = $root.objects.filter((object:IObject)=>object._type === o._type &&
             object._entities.part === "mag" &&
-            object.idx === o.idx - 1) // the part-phase (or imag) sequence index (idx) should always be one more than the corresponding part-mag (or real) sequence idx, since it comes right after, right?
-        
+            ((object.idx === o.idx - 1 && object._type === "func/bold") || (object.idx === o.idx - 2 && object._type === "func/bold"))
+        )
+
         if(correspondingFuncMag.length) { // should be no more than one
             correspondingFuncMag.forEach((boldMag:IObject)=>{
                 // o.analysisResults.section_id = boldObj.analysisResults.section_id
@@ -1214,14 +1231,13 @@ export function fileLogicLink($root:IEzbids, o:IObject) {
                     o.entities[k] = o._entities[k]
                 }
 
-                if(boldMag._exclude || boldMag._type === "exclude") {
+                if(boldMag._exclude) {
                     o.exclude = true
                     o._exclude = true
                     o.validationWarnings = [`The corresponding magnitude (part-mag) #${boldMag.series_idx} is currently set to exclude from BIDS conversion. \
                         Since this phase (part-phase) sequence is linked, it will also be excluded from conversion unless the corresponding
                         magnitude (part-mag) is unexcluded. If incorrect, please modify corresponding magnitude (part-mag) (#${boldMag.series_idx}).`]
-                }
-                if(!boldMag._exclude) {
+                } else {
                     o.exclude = false
                     o._exclude = false
                     o.validationWarnings = []
@@ -1236,68 +1252,7 @@ export function fileLogicLink($root:IEzbids, o:IObject) {
             o.idx === object.idx - 1) // the func/sbref index (idx) should always be one less than the corresponding func/bold idx, since it comes right before, right?
         
             if(correspondingFuncBold.length) { // should be no more than one
-            correspondingFuncBold.forEach((boldObj:IObject)=>{
-                o.analysisResults.section_id = boldObj.analysisResults.section_id
-                for(let k in boldObj._entities) {
-                    if(boldObj._entities[k] !== "" && k !== "echo") {
-                        if(k === "part" && boldObj._entities[k] === "phase") {
-                            //pass
-                        } else {
-                            o._entities[k] = boldObj._entities[k]
-                        }
-                    } else if (boldObj._entities[k] === "") {
-                        o._entities[k] = ""
-                    }
-                    o.entities[k] = o._entities[k]
-                }
-                if(boldObj._exclude || boldObj._type === "exclude") {
-                    o.exclude = true
-                    o._exclude = true
-                    o.validationWarnings = [`The corresponding func/bold #${boldObj.series_idx} is currently set to exclude from BIDS conversion. \
-                        Since this func/sbref is linked, it will also be excluded from conversion unless the corresponding
-                        func/bold is unexcluded. If incorrect, please modify corresponding func/bold (#${boldObj.series_idx}).`]
-                }
-                if(!boldObj._exclude) {
-                    o.exclude = false
-                    o._exclude = false
-                    o.validationWarnings = []
-                }
-            })
-        }
-    }
-
-    //func/events are implicitly linked to a func/bold; make sure these have same entities and exclusion criteria
-    if(o._type == "func/events") {
-        let correspondingFuncBold = $root.objects.filter((object:IObject)=>object._type === "func/bold" &&
-            object._entities.subject === o._entities.subject &&
-            object._entities.session === o._entities.session &&
-            object._entities.task === o._entities.task &&
-            object._entities.run === o._entities.run
-        )
-        // Pretty sure don't need this excluded section below, now that run entity detection and assignment is betters
-        // let correspondingFuncBold:any = undefined
-
-        // if(o.ModifiedSeriesNumber !== "00" && o.analysisResults.section_id !== 0) { // placeholder for when match with corresponding func/bold isn't yet known
-        //     correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>object._type === "func/bold" &&
-        //         object._entities.subject === o._entities.subject &&
-        //         object._entities.session === o._entities.session &&
-        //         object._entities.task === o._entities.task &&
-        //         object.ModifiedSeriesNumber === o.ModifiedSeriesNumber &&
-        //         object.analysisResults.section_id === o.analysisResults.section_id
-        //     )
-        // } else {
-        //     correspondingFuncBold = this.ezbids.objects.filter((object:IObject)=>object._type === "func/bold" &&
-        //         object._entities.subject === o._entities.subject &&
-        //         object._entities.session === o._entities.session &&
-        //         object._entities.task === o._entities.task &&
-        //         object._entities.run === o._entities.run
-        //     )
-        // }
-
-        if(correspondingFuncBold.length) {
-            correspondingFuncBold.forEach((boldObj:IObject)=>{
-                if (!boldObj._exclude) {
-                    o.ModifiedSeriesNumber = boldObj.ModifiedSeriesNumber
+                correspondingFuncBold.forEach((boldObj:IObject)=>{
                     o.analysisResults.section_id = boldObj.analysisResults.section_id
                     for(let k in boldObj._entities) {
                         if(boldObj._entities[k] !== "" && k !== "echo") {
@@ -1311,8 +1266,48 @@ export function fileLogicLink($root:IEzbids, o:IObject) {
                         }
                         o.entities[k] = o._entities[k]
                     }
-                }
-                if(boldObj._exclude || boldObj._type === "exclude") {
+                    if(boldObj._exclude) {
+                        o.exclude = true
+                        o._exclude = true
+                        o.validationWarnings = [`The corresponding func/bold #${boldObj.series_idx} is currently set to exclude from BIDS conversion. \
+                            Since this func/sbref is linked, it will also be excluded from conversion unless the corresponding
+                            func/bold is unexcluded. If incorrect, please modify corresponding func/bold (#${boldObj.series_idx}).`]
+                    } else {
+                        o.exclude = false
+                        o._exclude = false
+                        o.validationWarnings = []
+                    }
+                })
+        }
+    }
+
+    //func/events are implicitly linked to a func/bold; make sure these have same entities and exclusion criteria
+    if(o._type === "func/events") {
+        let correspondingFuncBold = $root.objects.filter((object:IObject)=>object._type === "func/bold" &&
+            object._entities.subject === o._entities.subject &&
+            object._entities.session === o._entities.session &&
+            object._entities.task === o._entities.task &&
+            object._entities.run === o._entities.run &&
+            ["", "mag", "real"].includes(object._entities.part)
+        )
+
+        if(correspondingFuncBold.length) {
+            correspondingFuncBold.forEach((boldObj:IObject)=>{
+                if (!boldObj._exclude) {
+                    o.exclude = false
+                    o._exclude = false
+                    o.validationWarnings = []
+                    o.ModifiedSeriesNumber = boldObj.ModifiedSeriesNumber
+                    o.analysisResults.section_id = boldObj.analysisResults.section_id
+                    for(let k in boldObj._entities) {
+                        if(boldObj._entities[k] !== "") {
+                            o._entities[k] = boldObj._entities[k]
+                        } else {
+                            o._entities[k] = ""
+                        }
+                        o.entities[k] = o._entities[k]
+                    }
+                } else {
                     o.exclude = true
                     o._exclude = true
                     // o._entities.run = ""
@@ -1321,34 +1316,40 @@ export function fileLogicLink($root:IEzbids, o:IObject) {
                         Since this func/events is linked, it will also be excluded from conversion unless the corresponding
                         func/bold is unexcluded. If incorrect, please modify corresponding func/bold (#${boldObj.series_idx}).`]
                 }
-                if(!boldObj._exclude) {
-                    o.exclude = false
-                    o._exclude = false
-                    o.validationWarnings = []
-                }
             })
         }
     }
 }
 
-// // TODO, currently no validation on Paritcipants Info page
-// export function validateParticipantsInfo($root:IEzbids) {
-//     let participantsInfo = $root.participantsInfo
-//     console.log(participantsInfo)
-//     Object.values(participantsInfo).forEach((p:any) => {
-//         let columns = Object.keys(p)
-//         for (const c of columns) {
-//             if (!c.includes("PatientName") && !c.includes("PatientID")) {
-//                 if (p[c] !== "n/a") {
-//                     if (c === "age" && !/^[0-9]*$/.test(p[c])) {
-//                         console.log("This column has non-numeric values, unallowed")
-//                     } else if (c === "sex" && !["male", "m", "M", "MALE", "Male", "female", "f", "F", "FEMALE", "Female", "other", "o", "O", "OTHER", "Other"].includes(p[c])) {
-//                         console.log("Need to select a proper 'sex' term")
-//                     } else if (c === "handedness" && !["left", "l", "L", "LEFT", "Left", "right", "r", "R", "RIGHT", "Right", "ambidextrous", "a", "A", "AMBIDEXTROUS", "Ambidextrous"].includes(p[c])) {
-//                         console.log("Need to select a proper 'handedness' term")
-//                     }
-//                 }
-//             }
-//         }
-//     })
-// }
+// TODO, currently no validation on Participants Info page
+export function validateParticipantsInfo($root:IEzbids) {
+    let finalSubs = [] as number[]
+    $root._organized.forEach((sub: OrganizedSubject) => {
+        let use = false;
+        sub.sess.forEach(ses=>{
+            if(ses.objects.some(o=>!o._exclude)) use = true;
+        });
+        if(use) finalSubs.push(sub.subject_idx);
+    })
+
+    let errors:string[] = []
+    let participantsInfo:any = $root.participantsInfo
+    Object.entries($root.subjects).forEach(([key, value]) => {
+        let subject:string = value.subject
+        let columnInfo:any = participantsInfo[key]
+        Object.entries(columnInfo).forEach(([col, val]) => {
+            if (!["PatientName", "PatientID"].includes(col)) {
+                if (val !== "n/a") {
+                    if (col === "age" && !/^[0-9]*$/.test(val)) {
+                        errors.push("Subject "+subject+": The age column has non-numeric values, please fix")
+                    } else if (col === "sex" && !["male", "m", "M", "MALE", "Male", "female", "f", "F", "FEMALE", "Female", "other", "o", "O", "OTHER", "Other"].includes(val)) {
+                        errors.push("Subject "+subject+": The sex column has an improper term, please fix")
+                    } else if (col === "handedness" && !["left", "l", "L", "LEFT", "Left", "right", "r", "R", "RIGHT", "Right", "ambidextrous", "a", "A", "AMBIDEXTROUS", "Ambidextrous"].includes(val)) {
+                        errors.push("Subject "+subject+": The handedness column has an improper term, please fix")
+                    }
+                }
+            }
+        })
+    })
+    return errors
+}

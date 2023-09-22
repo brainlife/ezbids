@@ -319,7 +319,7 @@
                     return false;
                 }
             },
-    
+
             excludeSession(sub: string, ses: string, b: boolean) {
                 if(this.findSubjectFromString(sub) !== undefined && this.findSessionFromString(sub, ses) !== undefined) {
                     const session = this.findSessionFromString(sub, ses);
@@ -502,7 +502,9 @@
                     }
                 });
 
-                if(this.isExcluded(o)) return; // might return to this, but need to check if previously excluded sequences are un-excluded
+
+                if(this.isExcluded(o)) return;
+
                 
                 //make sure no 2 objects are exactly alike
                 for(let o2 of this.ezbids.objects) {
