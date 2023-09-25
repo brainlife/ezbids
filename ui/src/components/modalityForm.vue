@@ -118,7 +118,6 @@
                             <template #label>
                                 <span>
                                     {{ item.details.display_name }} 
-                                    {{ item.condition }}
                                     <el-tooltip placement="top">
                                         <template #content> {{ item.details.description }}</template>
                                         <!-- show question mark button-->
