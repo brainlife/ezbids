@@ -214,7 +214,7 @@ export default defineComponent({
                                     }
                                 }
                                 item.sidecar = JSON.stringify(json);
-                                console.log("finalOutput",item.sidecar);
+                                // console.log("finalOutput",item.sidecar);
                             }
                         });
                     }
@@ -260,7 +260,7 @@ export default defineComponent({
                     if (item.name.includes("json") && item.sidecar_json) {
                         //load the json through sidecar_json
                         const json = JSON.parse(item.sidecar_json);
-                        console.log("jsonOrginal",json);
+                        // console.log("jsonOrginal",json);
                         for (const [key, value] of Object.entries(json)) {
                             if(this.formData.hasOwnProperty(key)) this.formData[key] = value;
                         }
@@ -271,10 +271,10 @@ export default defineComponent({
     },
     getFieldsMetaData(type: string) {
         let fileObject = {};
-        if(type == 'pet/pet') {
-            console.log("petYaml", petYaml);
-            fileObject = petYaml;
-        }
+        // if(type == 'pet/pet') {
+        //     console.log("petYaml", petYaml);
+        //     fileObject = petYaml;
+        // }
         if(type == 'perf/asl') fileObject = aslYaml;
         
         let result = {
@@ -299,16 +299,7 @@ export default defineComponent({
 
                 if (metadata === 'required' && !result.required.some(item=> item.field == fieldData.field)) result.required.push(fieldData);
 
-                if (metadata === 'recommended' && !result.recommended.some(item=> item.field == fieldData.field)) {
-                    result.recommended.push(fieldData);
-                    if(fieldData.details.display_name == 'Acquisition Voxel Size') {
-                        console.log("fieldData",fieldData);
-                        console.log(result.recommended)
-                        if(result.recommended.includes(fieldData)) {
-                            console.log("found")
-                        }
-                    }
-                }
+                if (metadata === 'recommended' && !result.recommended.some(item=> item.field == fieldData.field)) result.recommended.push(fieldData);
 
                 if(metadata === 'optional' && !result.optional.some(item=> item.field == fieldData.field)) result.optional.push(fieldData);
 
@@ -361,7 +352,6 @@ export default defineComponent({
         return result;
     },
     generateValidationRules(fieldsMetadata: { required: never[]; recommended: never[]; optional: never[]; conditional: never[]; }) {
-            console.log("fieldsMetadata", fieldsMetadata);
             const rules = {}; 
 
             // For required fields
@@ -414,7 +404,6 @@ export default defineComponent({
                                 const expectedValue = matches[2];
                                 // console.log("defined",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
                                 if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
-                                    // console.log(`Validation failed for field ${item.field}.`);
                                     callback(new Error('This field is required based on the condition '+fieldName+' == '+expectedValue));
                                     return;
                                 }
@@ -428,7 +417,6 @@ export default defineComponent({
                                 const expectedValue = matches[2];
                                 // console.log("isValue",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
                                 if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
-                                    // console.log(`Validation failed for field ${item.field}.`);
                                     callback(new Error('This field is required based on the condition '+fieldName+' == '+expectedValue));
                                     return;
                                 }
@@ -445,7 +433,6 @@ export default defineComponent({
                                 const expectedValue = matches[3];
                                 // console.log("section",`Section: ${section}, Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
                                 if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
-                                    // console.log(`Validation failed for field ${item.field}.`);
                                     callback(new Error('This field is required based on the condition '+fieldName+' == '+expectedValue));
                                     return;
                                 }
