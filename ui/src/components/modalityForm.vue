@@ -213,7 +213,7 @@ export default defineComponent({
                                         json[key] = value;
                                     }
                                 }
-                                item.sidecar = JSON.stringify(json);
+                                item.sidecar_json = JSON.stringify(json);
                                 // console.log("finalOutput",item.sidecar);
                             }
                         });
