@@ -50,6 +50,17 @@ export function setVolumeThreshold($root:IEzbids) {
                 volumes in a 1 min time frame. This acquisition will thus be excluded from BIDS conversion unless \
                 unexcluded. Please modify if incorrect.`]
             }
+        } else {
+            // In case user changes sequence on dataset review to func/bold and then back; remove the volume threshold warning
+            if (o.analysisResults.warnings.length) {
+                for (const warn in o.analysisResults.warnings) {
+                    let index:number = o.analysisResults.warnings[warn].indexOf("This func/bold sequence contains")
+                    if (index !== -1) {
+                        o.analysisResults.warnings.splice(index, 1)
+                    }
+                    
+                }
+            }
         }
     });
 }
@@ -324,12 +335,12 @@ export function setRun($root:IEzbids) {
             sesGroup.objects.forEach((obj:IObject) => {
 
                 // leave two entity labels out for now: part and run. The part entity could have a pairing (mag/phase or real/imag), and we're interested in the run entity
-                let targetEntities = Object.fromEntries(Object.entries(obj._entities).filter(([key])=>key !== "part" && key !== "run"))
+                let targetEntities = Object.fromEntries(Object.entries(obj._entities).filter(([key])=>key !== "part" && key !== "run" && key !== "echo"))
 
                 let initialGrouping = sesGroup.objects.filter(e=>e._type !== "exclude" &&
                     !e._exclude &&
                     e._type === obj._type &&
-                    deepEqual(Object.fromEntries(Object.entries(e._entities).filter(([key])=>key !== "part" && key !== "run")), targetEntities)
+                    deepEqual(Object.fromEntries(Object.entries(e._entities).filter(([key])=>key !== "part" && key !== "run" && key !== "echo")), targetEntities)
                 )
 
                 if (initialGrouping.length) {
