@@ -227,6 +227,7 @@ export default defineComponent({
             }
                 
         });
+        this.showDialog = false;
         this.$emit('form-submitted', this.ezbids);
     },
     conditionalLabel(item: any) {
