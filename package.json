@@ -29,7 +29,8 @@
     "nocache": "^2.1.0",
     "node-pty": "^0.10.1",
     "range-stream": "^1.1.0",
-    "send-seekable": "^1.0.4"
+    "send-seekable": "^1.0.4",
+    "vue-router": "^4.2.5"
   },
   "devDependencies": {
     "@types/async": "^3.2.12",

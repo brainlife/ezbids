@@ -1,19 +1,21 @@
 import { createApp } from 'vue'
-
 import VueGtag from 'vue-gtag-next'
-
 import App from './App.vue'
-
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 import { library } from "@fortawesome/fontawesome-svg-core"
 import { faGithub } from "@fortawesome/free-brands-svg-icons"
-library.add(faGithub);
-import { faSpinner, faAngleLeft, faAngleRight, faAngleDown, faEye } from '@fortawesome/free-solid-svg-icons'
-library.add(faSpinner, faAngleLeft, faAngleRight, faAngleDown, faEye );
-
+import { faSpinner, faAngleLeft, faAngleRight, faAngleDown, faEye, faCircleCheck, faArrowUpRightFromSquare } from '@fortawesome/free-solid-svg-icons'
 import 'element-plus/dist/index.css'
+import store from './store';
+import { createRouter, createWebHistory } from 'vue-router';
+import LandingPage from './LandingPage.vue';
+import BaseConvertPage from './BaseConvertPage.vue';
+import NotFound from './NotFound.vue';
 
-import store from './store'
+// add icons
+library.add(faGithub);
+library.add(faSpinner, faAngleLeft, faAngleRight, faAngleDown, faEye, faCircleCheck, faArrowUpRightFromSquare );
+
 
 //move to ./types?
 //tell typescript about some global properties we are adding
@@ -24,7 +26,18 @@ declare module '@vue/runtime-core' {
     }
 }
 
+// enable routing
+const router = createRouter({
+  history: createWebHistory(),
+  routes: [
+    { path: "/", component: LandingPage },
+    { path: "/convert", component: BaseConvertPage },
+    { path: '/:pathMatch(.*)*', component: NotFound }
+  ]
+})
+
 const app = createApp(App);
+app.use(router);
 app.use(store)
 app.use(VueGtag, {
     property: {

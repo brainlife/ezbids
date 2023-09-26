@@ -1,13 +1,192 @@
+<template>
+    <div style="padding: 20px;">
+        <div v-if="!session">
+            <p>
+                Welcome to <b><span style="letter-spacing: -2px; opacity: 0.5">ez</span>BIDS</b> - an online imaging data to BIDS conversion / organizing tool.
+            </p>
+    
+            <div v-if="!starting">
+                <div class="drop-area" :class="{dragging}"
+                    @drop="dropit"
+                    @dragleave="dragging = false"
+                    @dragover="dragover">
+                    <div class="drop-area-backdrop"><b><span style="letter-spacing: -4vh;">ez</span>BIDS</b></div>
+                    <div>
+                        <b>Drag & Drop DICOM (or dcm2niix) data here to start</b>
+                        <br>
+                        <br>
+                        or
+                        <br>
+                        <br>
+                        <input type="file"
+                                webkitdirectory
+                                mozdirectory
+                                msdirectory
+                                odirectory
+                                directory
+                                multiple
+                                @change="selectit" style="font-size: 80%; width: 400px; background-color: #fff3; padding: 5px;"/>
+                    </div>
+                </div>
+    
+                <br>
+                <br>
+                <br>
+                <div class="Info">
+                    <h2>Information</h2>
+                    <ul style="line-height: 200%;">
+                        <li>If you are new to ezBIDS, please read our <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank" ><b>User documentation</b></a></li>
+                        <li>See below for a brief ezBIDS video</li>
+                    </ul>
+                    <iframe width="640" height="360" src="https://www.youtube.com/embed/mY3_bmt_e80" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                </div>
+                <br>
+                <br>
+                <br>
+            </div>
+    
+            <div v-if="starting">
+                <h3>Initializing ... </h3>
+            </div>
+        </div>
+    
+        <div v-if="session">
+            <div v-if="session.status == 'created'">
+                <p>
+                    <h3>
+                        Uploading
+                        <font-awesome-icon icon="spinner" pulse/>
+                    </h3>
+                    <small>Please do not close/refresh this page until all files are uploaded.</small>
+                </p>
+                <div v-if="failed.length > 0">
+                    <el-alert type="error">Permanently failed to upload some files</el-alert>
+                    <pre type="info" v-for="idx in failed" :key="idx" style="font-size: 80%;">{{files[idx].path}}</pre>
+                </div>
+    
+                <p>
+                    <small>Total size {{formatNumber(total_size/(1024*1024))}} MB</small>
+                    <small> | {{files.length}} Files </small>
+                    <small> ({{uploaded.length}} uploaded) </small>
+                    <small v-if="ignoreCount > 0">({{ignoreCount}} ignored) </small>
+                    <el-progress status="success"
+                        :text-inside="true"
+                        :stroke-width="24"
+                        :percentage="parseFloat(((uploaded.length/files.length)*100).toFixed(1))"/>
+                </p>
+                <div v-for="(batch, idx) in batches" :key="idx">
+                    <div v-if="batch.status != 'done'" class="batch-stat">
+                        <b style="text-transform: uppercase;">{{batch.status}}</b>
+                        batch {{(idx+1).toString()}}. {{batch.fileidx.length}} files
+                        <span> ({{formatNumber(batch.size/(1024*1024))}} MB) </span>
+                        <div style="height: 20px">
+                            <el-progress v-if="batch.evt.total"
+                                :status="batchStatus(batch)"
+                                :text-inside="true" :stroke-width="15"
+                                :percentage="parseFloat(((batch.evt.loaded/batch.evt.total)*100).toFixed(1))"/>
+                        </div>
+                    </div>
+                </div>
+            </div>
+    
+            <div v-if="['preprocessing', 'uploaded'].includes(session.status)">
+                <h3 v-if="session.dicomDone === undefined">
+                    Inflating
+                    <font-awesome-icon icon="spinner" pulse/>
+                </h3>
+                <div v-else-if="session.dicomDone < session.dicomCount">
+                    <h3>
+                        Converting DICOMS to NIfTI
+                        <font-awesome-icon icon="spinner" pulse/>
+                    </h3>
+                    <el-progress status="success"
+                        :text-inside="true"
+                        :stroke-width="24"
+                        :percentage="parseFloat((session.dicomDone*100 / session.dicomCount).toFixed(1))"/>
+                    <br>
+                </div>
+                <h3 v-else>
+                    Analyzing
+                    <font-awesome-icon icon="spinner" pulse/>
+                </h3>
+                <pre class="status">{{session.status_msg}}</pre>
+                <small>* Depending on the size of your dataset, this process might take several hours. You can shutdown your computer while we process your data (please bookmark the URL for this page to come back to it)</small>
+            </div>
+    
+            <div v-if="session.status == 'failed'">
+                <el-alert type="error">ezBIDS failed.. Please check the Debug logs and contact ezBIDS team.</el-alert>
+                <br>
+                <pre class="status">{{session.status_msg}}</pre>
+            </div>
+    
+            <div v-if="session.pre_finish_date">
+                <div v-if="ezbids.notLoaded">
+                    <h3>
+                        Loading analysis results
+                        <font-awesome-icon icon="spinner" pulse/>
+                    </h3>
+                </div>
+    
+                <div v-if="!ezbids.notLoaded && ezbids.objects.length">
+                    <h2>Analysis complete!</h2>
+                    <AnalysisErrors />
+                    <h3>Object List <small>({{ezbids.objects.length}})</small></h3>
+                    <p><small>We have identified the following objects that can be organized into BIDS structure.</small></p>
+                    <div v-for="(object, idx) in ezbids.objects" :key="idx" style="padding-bottom: 2px;">
+                        <p style="margin: 0;">
+                            <el-link @click="toggleObject(idx)">
+                                <small>
+                                    <el-tag size="mini" type="info">{{idx}}</el-tag>
+                                    {{itemPath(object.items)}}
+                                </small>
+                            </el-link>
+                        </p>
+                        <pre v-if="opened.includes(idx)" class="status">{{object}}</pre>
+                    </div>
+                </div>
+                <div v-if="!ezbids.notLoaded && !ezbids.objects.length">
+                   <el-alert type="error">We couldn't find any objects. Please upload data that contains at least 1 object.</el-alert>
+                </div>
+            </div>
+    
+            <br>
+            <el-collapse>
+                <el-collapse-item title="Debug">
+                    <ul style="list-style: none; padding-left: 0;">
+                        <li><a :href="config.apihost+'/download/'+session._id+'/preprocess.log'">preprocess.log</a></li>
+                        <li><a :href="config.apihost+'/download/'+session._id+'/preprocess.err'">preprocess.err</a></li>
+                        <li><a :href="config.apihost+'/download/'+session._id+'/dcm2niix_error'">dcm2niix_error</a></li>
+                        <li><a :href="config.apihost+'/download/'+session._id+'/list'">list</a></li>
+                        <li><a :href="config.apihost+'/download/'+session._id+'/ezBIDS_core.json'">ezBIDS_core.json</a></li>
+                    </ul>
+    
+                    <el-button @click="dump" size="mini">Dump state</el-button>
+                    <br>
+    
+                    <p v-if="ignoredFiles.length">
+                        <b>Ignored Files</b>
+                        <ul>
+                            <li v-for="(file, idx) in ignoredFiles" :key="idx"><pre>{{file.path}}</pre></li>
+                        </ul>
+                    </p>
+                </el-collapse-item>
+            </el-collapse>
+            <br>
+            <br>
+            <br>
+        </div>
+    </div>
+</template>
+
 <script>
 import { defineComponent } from 'vue'
 import { mapState } from 'vuex'
 import axios from 'axios'
-
 import { formatNumber } from './filters'
 
 export default defineComponent({
     components: {
-        analysisErrors: ()=>import('./components/analysisErrors.vue'),
+        AnalysisErrors: () => import('./components/analysisErrors.vue'),
     },
     data() {
         return {
@@ -162,8 +341,6 @@ export default defineComponent({
         async upload() {
             this.starting = false;
             this.doneUploading = false;
-
-            console.log("upload");
 
             //calculate total file size
             this.total_size = 0;
@@ -342,185 +519,6 @@ export default defineComponent({
 });
 </script>
 
-<template>
-<div style="padding: 20px;">
-    <div v-if="!session">
-        <p>
-            Welcome to <b><span style="letter-spacing: -2px; opacity: 0.5">ez</span>BIDS</b> - an online imaging data to BIDS conversion / organizing tool.
-        </p>
-
-        <div v-if="!starting">
-            <div class="drop-area" :class="{dragging}"
-                @drop="dropit"
-                @dragleave="dragging = false"
-                @dragover="dragover">
-                <div class="drop-area-backdrop"><b><span style="letter-spacing: -4vh;">ez</span>BIDS</b></div>
-                <div>
-                    <b>Drag & Drop DICOM (or dcm2niix) data here to start</b>
-                    <br>
-                    <br>
-                    or
-                    <br>
-                    <br>
-                    <input type="file"
-                            webkitdirectory
-                            mozdirectory
-                            msdirectory
-                            odirectory
-                            directory
-                            multiple
-                            @change="selectit" style="font-size: 80%; width: 400px; background-color: #fff3; padding: 5px;"/>
-                </div>
-            </div>
-
-            <br>
-            <br>
-            <br>
-            <div class="Info">
-                <h2>Information</h2>
-                <ul style="line-height: 200%;">
-                    <li>If you are new to ezBIDS, please read our <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank" ><b>User documentation</b></a></li>
-                    <li>See below for a brief ezBIDS video</li>
-                </ul>
-                <iframe width="640" height="360" src="https://www.youtube.com/embed/mY3_bmt_e80" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
-            </div>
-            <br>
-            <br>
-            <br>
-        </div>
-
-        <div v-if="starting">
-            <h3>Initializing ... </h3>
-        </div>
-    </div>
-
-    <div v-if="session">
-        <div v-if="session.status == 'created'">
-            <p>
-                <h3>
-                    Uploading
-                    <font-awesome-icon icon="spinner" pulse/>
-                </h3>
-                <small>Please do not close/refresh this page until all files are uploaded.</small>
-            </p>
-            <div v-if="failed.length > 0">
-                <el-alert type="error">Permanently failed to upload some files</el-alert>
-                <pre type="info" v-for="idx in failed" :key="idx" style="font-size: 80%;">{{files[idx].path}}</pre>
-            </div>
-
-            <p>
-                <small>Total size {{formatNumber(total_size/(1024*1024))}} MB</small>
-                <small> | {{files.length}} Files </small>
-                <small> ({{uploaded.length}} uploaded) </small>
-                <small v-if="ignoreCount > 0">({{ignoreCount}} ignored) </small>
-                <el-progress status="success"
-                    :text-inside="true"
-                    :stroke-width="24"
-                    :percentage="parseFloat(((uploaded.length/files.length)*100).toFixed(1))"/>
-            </p>
-            <div v-for="(batch, idx) in batches" :key="idx">
-                <div v-if="batch.status != 'done'" class="batch-stat">
-                    <b style="text-transform: uppercase;">{{batch.status}}</b>
-                    batch {{(idx+1).toString()}}. {{batch.fileidx.length}} files
-                    <span> ({{formatNumber(batch.size/(1024*1024))}} MB) </span>
-                    <div style="height: 20px">
-                        <el-progress v-if="batch.evt.total"
-                            :status="batchStatus(batch)"
-                            :text-inside="true" :stroke-width="15"
-                            :percentage="parseFloat(((batch.evt.loaded/batch.evt.total)*100).toFixed(1))"/>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div v-if="['preprocessing', 'uploaded'].includes(session.status)">
-            <h3 v-if="session.dicomDone === undefined">
-                Inflating
-                <font-awesome-icon icon="spinner" pulse/>
-            </h3>
-            <div v-else-if="session.dicomDone < session.dicomCount">
-                <h3>
-                    Converting DICOMS to NIfTI
-                    <font-awesome-icon icon="spinner" pulse/>
-                </h3>
-                <el-progress status="success"
-                    :text-inside="true"
-                    :stroke-width="24"
-                    :percentage="parseFloat((session.dicomDone*100 / session.dicomCount).toFixed(1))"/>
-                <br>
-            </div>
-            <h3 v-else>
-                Analyzing
-                <font-awesome-icon icon="spinner" pulse/>
-            </h3>
-            <pre class="status">{{session.status_msg}}</pre>
-            <small>* Depending on the size of your dataset, this process might take several hours. You can shutdown your computer while we process your data (please bookmark the URL for this page to come back to it)</small>
-        </div>
-
-        <div v-if="session.status == 'failed'">
-            <el-alert type="error">ezBIDS failed.. Please check the Debug logs and contact ezBIDS team.</el-alert>
-            <br>
-            <pre class="status">{{session.status_msg}}</pre>
-        </div>
-
-        <div v-if="session.pre_finish_date">
-            <div v-if="ezbids.notLoaded">
-                <h3>
-                    Loading analysis results
-                    <font-awesome-icon icon="spinner" pulse/>
-                </h3>
-            </div>
-
-            <div v-if="!ezbids.notLoaded && ezbids.objects.length">
-                <h2>Analysis complete!</h2>
-                <analysisErrors/>
-                <h3>Object List <small>({{ezbids.objects.length}})</small></h3>
-                <p><small>We have identified the following objects that can be organized into BIDS structure.</small></p>
-                <div v-for="(object, idx) in ezbids.objects" :key="idx" style="padding-bottom: 2px;">
-                    <p style="margin: 0;">
-                        <el-link @click="toggleObject(idx)">
-                            <small>
-                                <el-tag size="mini" type="info">{{idx}}</el-tag>
-                                {{itemPath(object.items)}}
-                            </small>
-                        </el-link>
-                    </p>
-                    <pre v-if="opened.includes(idx)" class="status">{{object}}</pre>
-                </div>
-            </div>
-            <div v-if="!ezbids.notLoaded && !ezbids.objects.length">
-               <el-alert type="error">We couldn't find any objects. Please upload data that contains at least 1 object.</el-alert>
-            </div>
-        </div>
-
-        <br>
-        <el-collapse>
-            <el-collapse-item title="Debug">
-                <ul style="list-style: none; padding-left: 0;">
-                    <li><a :href="config.apihost+'/download/'+session._id+'/preprocess.log'">preprocess.log</a></li>
-                    <li><a :href="config.apihost+'/download/'+session._id+'/preprocess.err'">preprocess.err</a></li>
-                    <li><a :href="config.apihost+'/download/'+session._id+'/dcm2niix_error'">dcm2niix_error</a></li>
-                    <li><a :href="config.apihost+'/download/'+session._id+'/list'">list</a></li>
-                    <li><a :href="config.apihost+'/download/'+session._id+'/ezBIDS_core.json'">ezBIDS_core.json</a></li>
-                </ul>
-
-                <el-button @click="dump" size="mini">Dump state</el-button>
-                <br>
-
-                <p v-if="ignoredFiles.length">
-                    <b>Ignored Files</b>
-                    <ul>
-                        <li v-for="(file, idx) in ignoredFiles" :key="idx"><pre>{{file.path}}</pre></li>
-                    </ul>
-                </p>
-            </el-collapse-item>
-        </el-collapse>
-        <br>
-        <br>
-        <br>
-    </div>
-</div>
-</template>
 <style lang="scss" scoped>
 .drop-area {
     background-color: #0002;

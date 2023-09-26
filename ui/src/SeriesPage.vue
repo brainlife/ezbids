@@ -211,7 +211,7 @@ export default defineComponent({
 
     computed: {
         ...mapState(['ezbids', 'bidsSchema', 'config']),
-        ...mapGetters(['getBIDSEntities', 'getBIDSMetadata', 'getURL']), //doesn't work with ts?
+        ...mapGetters(['getBIDSEntities', 'getURL']), //doesn't work with ts?
     },
 
     mounted() {
