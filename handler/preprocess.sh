@@ -126,7 +126,7 @@ else
         path=$1
 
         echo "----------------------- $path ------------------------"
-        timeout 3600 dcm2niix4pet $path
+        timeout 3600 dcm2niix4pet --silent $path
 
         #all good
         echo $path >> pet2bids.done
@@ -198,11 +198,9 @@ else
     grep -F -v *ezBIDS_core*.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
     # grep -F -v dataset_description.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
     # grep -F -v participants.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
-    
-    cat $root/list
 
     if [ ! -s $root/list ]; then
-        echo "Could not find any DICOM files in upload. Uploaded files likely do not conform to DICOM format, aborting"
+        echo "Could not find any MRI (or PET) DICOM files in upload. Uploaded files likely do not conform to DICOM format, aborting"
         exit 1
     fi
 
