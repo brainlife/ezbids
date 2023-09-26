@@ -485,6 +485,9 @@ loadDatatype("fmap", fmapDatatype, "Field Map");
 import petDatatype from '../assets/schema/rules/datatypes/pet.json'
 loadDatatype("pet", petDatatype, "PET");
 
+import perfDatatype from '../assets/schema/rules/datatypes/perf.json'
+loadDatatype("perf", perfDatatype, "Perfusion");
+
 const store = createStore({
     state,
 
