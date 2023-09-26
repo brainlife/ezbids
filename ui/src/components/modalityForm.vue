@@ -56,8 +56,6 @@
                             </template>
                             <el-input v-if="(item.details.type == 'string' || item.details.type == 'object' || item.details.type=='array') && item.details.enum == undefined"
                             :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
-
-                            {{ formData[item.field] , typeof (formData[item.field]) }}
                             
                             <el-select v-if="item.details.enum" v-model="formData[item.field]" @change="this.$refs.form.validate()">
                                 <el-option
@@ -208,12 +206,13 @@ export default defineComponent({
                                 const json = JSON.parse(item.sidecar_json);
                                 // only if value is not null, empty string or empty array or undefined
                                 for (let [key, value] of Object.entries(this.formData)) {
-                                    const type = Object.values(this.fields).flatMap(fieldArray => fieldArray).find((item: any) => item.field == key)?.details.type;
+                                    const details = Object.values(this.fields).flatMap(fieldArray => fieldArray).find((item: any) => item.field == key)?.details;
+                                    const type = details.type;
                                     if (value !== null && value !== "" && value !== undefined && !(Array.isArray(value) && value.length === 1 && value[0] === "")){
                                         if(type == 'number') value = Number(value);
                                         if(type == 'boolean') value = Boolean(value);
-                                        if(type == 'array') value = value.toString().split(',');
-                                        if(type == 'object') value = JSON.parse(value);
+                                        if(type == 'array') value = this.parseArrayValues(value,details);
+                                        if(type == 'object') value = JSON.parse(value,key);
                                         json[key] = value;
                                     }
                                 }
@@ -234,6 +233,15 @@ export default defineComponent({
         });
         this.showDialog = false;
         this.$emit('form-submitted', this.ezbids);
+    },
+    parseArrayValues(value,details){
+        // type of value is stored details.
+        // item.details.items.type
+        if(details.items.type == 'number') {
+            console.log("value",value);
+            return value.toString().split(',').map((item: any) => Number(item));
+        }
+        return value;
     },
     conditionalLabel(item: any) {
         if(item.level === 'required') return `${item.details.display_name} (${item.condition})`;
@@ -459,6 +467,8 @@ export default defineComponent({
                     this.addNumericValidationRule(rules,item);
                     this.addArrayValidationRule(rules,item);
                 }
+                this.addArrayValidationRule(rules,item);
+
             });
 
             // No special rules for recommended as they are optional, but you can add if needed
@@ -629,7 +639,11 @@ export default defineComponent({
 .dialog-footer {
     display: flex;
     justify-content: flex-end;
-    align-items: center;
+    align-items: c
+    enter;
+}
+::v-deep .el-form-item__label {
+  font-size: 14px; /* Adjust the font size as required */
 }
 </style>
 ```
