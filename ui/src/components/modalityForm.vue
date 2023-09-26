@@ -206,10 +206,13 @@ export default defineComponent({
                                 //create a item.sidecar to keep the new json with update old values
                                 const json = JSON.parse(item.sidecar_json);
                                 // only if value is not null, empty string or empty array or undefined
-                                for (const [key, value] of Object.entries(this.formData)) {
-                                    if(value != null && value != "" && value != undefined) {
-                                        //remove quotes from string
-                                        //typecast values accordingly for number and boolean, array and object
+                                for (let [key, value] of Object.entries(this.formData)) {
+                                    const type = Object.values(this.fields).flatMap(fieldArray => fieldArray).find((item: any) => item.field == key)?.details.type;
+                                    if (value !== null && value !== "" && value !== undefined && !(Array.isArray(value) && value.length === 1 && value[0] === "")){
+                                        if(type == 'number') value = Number(value);
+                                        if(type == 'boolean') value = Boolean(value);
+                                        if(type == 'array') value = value.toString().split(',');
+                                        if(type == 'object') value = JSON.parse(value);
                                         json[key] = value;
                                     }
                                 }
