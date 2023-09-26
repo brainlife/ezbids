@@ -1,12 +1,12 @@
 <template>
     <el-button @click="initForm()">Edit Modality</el-button>
     <el-dialog v-model="showDialog" title="Edit Modalities">
-        <el-form ref="form" :model="formData" label-position="top" label-width="300px" :inline="true" :rules="rules"> 
+        <el-form ref="form" :model="formData" label-position="top" label-width="500px" :inline="true" :rules="rules"> 
             <div>
                 <el-row>
                     <el-col :span="8">
                         <!-- // make the label recommended below and show example for boolean types, also try to enforce the types in the form -->
-                        <h4>Required</h4>
+                        <h3>Required</h3>
                         <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.required" :key="'required' + index" :label="`${item.details.display_name} ${item.details.type}`" :prop="item.field">
                             <template #label>
                                 <span>
@@ -42,7 +42,7 @@
                         </el-form-item>
                     </el-col>
                     <el-col :span="8">
-                        <h4>Recommended</h4>
+                        <h3>Recommended</h3>
                         <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.recommended" :key="'recommended' + index" :label="`${item.details.display_name}`" :prop="item.field">
                             <template #label>
                                 <span>
@@ -56,6 +56,8 @@
                             </template>
                             <el-input v-if="(item.details.type == 'string' || item.details.type == 'object' || item.details.type=='array') && item.details.enum == undefined"
                             :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+
+                            {{ formData[item.field] , typeof (formData[item.field]) }}
                             
                             <el-select v-if="item.details.enum" v-model="formData[item.field]" @change="this.$refs.form.validate()">
                                 <el-option
@@ -78,7 +80,7 @@
                     </el-col>
 
                     <el-col :span="8">
-                        <h4>Optional</h4>
+                        <h3>Optional</h3>
                         <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.optional" :key="'optional' + index" :label="`${item.details.display_name}`" :prop="item.field">
                             
                             <template #label>
@@ -162,10 +164,9 @@
 
 <script lang="ts">
 import aslYaml from "../../src/assets/schema/rules/sidecars/asl.yaml";
-import petYaml from '../../src/assets/schema/rules/sidecars/pet.yaml';
 
 import metadata_types from '../../src/assets/schema/rules/sidecars/metadata_types.yaml';
-import { ElMessageBox, ElMessage } from 'element-plus'
+import { ElMessageBox, ElMessage, useFocus } from 'element-plus'
 import { defineComponent } from 'vue'
 
 export default defineComponent({
@@ -297,6 +298,9 @@ export default defineComponent({
                 const details = metadata_types[field] || {};
                 details.default_value = this.setDefaultValue(details);
                 details.type = this.parseType(details);
+                if(details.type == 'array') {
+                    console.log("details",details);
+                }
 
                 let fieldData = {field,details};
 
@@ -365,12 +369,14 @@ export default defineComponent({
                     { required: true, message: `${item.field} is required`, trigger: 'change' } //change checks in real time
                 ];
                 this.addNumericValidationRule(rules,item);
+                this.addArrayValidationRule(rules,item);
             });
 
             // For recommended fields
             fieldsMetadata.recommended.forEach((item: { field: string | number; }) => {
                 rules[item.field] = [];
                 this.addNumericValidationRule(rules,item);
+                this.addArrayValidationRule(rules,item);
             });
 
             // For optional fields
@@ -378,6 +384,7 @@ export default defineComponent({
             fieldsMetadata.optional.forEach((item: { field: string | number; }) => {
                 rules[item.field] = [];
                 this.addNumericValidationRule(rules,item);
+                this.addArrayValidationRule(rules,item);
             });
 
              // For conditional fields
@@ -450,6 +457,7 @@ export default defineComponent({
                     }];
 
                     this.addNumericValidationRule(rules,item);
+                    this.addArrayValidationRule(rules,item);
                 }
             });
 
@@ -460,6 +468,7 @@ export default defineComponent({
         },
         addNumericValidationRule(rules,item) {
             if (item.details && item.details.type === 'number') {
+                console.log("itemNUMBER",item);
                 if (!rules[item.field]) {
                     rules[item.field] = [];
                 }
@@ -474,6 +483,72 @@ export default defineComponent({
                     trigger: 'change'
                 });
             }
+        },
+
+        addArrayValidationRule(rules,item) {
+            if (item.details && item.details.type === 'array') {
+                if (!rules[item.field]) {
+                    rules[item.field] = [];
+                }
+                rules[item.field].push({
+                    validator: (rule, value, callback) => {
+                        const validation = this.getArrayValidation(value,item);
+                        if (value !=null && validation !== true) {
+                            callback(new Error(validation));
+                        } else {
+                            callback();
+                        }
+                    },
+                    trigger: 'change'
+                });
+            }
+        },
+
+        getArrayValidation(value,item) {
+            // prevent user from entering [] or [""]
+            // add check to prevent from entering brackets
+            if(value.includes('[') || value.includes(']')) return "Please enter a valid entry no brackets allowed [], only comma separated values";
+          
+            if(item.details.items.type == 'number') {
+                 // If the value is a string that represents a single number or a list of numbers separated by commas
+                if(typeof value == 'string') {
+                    // If it’s a single number, try to parse it
+                    if(!isNaN(Number(value))) {
+                        value = Number(value);
+                    } 
+                    // If it's a list of numbers separated by commas
+                    else if(value.includes(',')) {
+                        // Split the string into an array of strings
+                        let stringArray = value.split(',');
+                        
+                        // Check if every item in the string array represents a number
+                        if(stringArray.every((item: any) => !isNaN(Number(item)))) {
+                            value = stringArray.map(Number); // If all are numbers, parse strings to numbers and update the value to be the number array
+                        } else {
+                            return "Every item in the list should be a number";
+                        }
+                    } else {
+                        return "The value should be a number or a list of numbers separated by commas";
+                    }
+                }
+
+                // Check if value is a number
+                if(typeof value == 'number') return true;
+                
+                // Check if value is an array
+                if(Array.isArray(value)) {
+                    // Check if array is empty
+                    if(value.length == 0) return true;
+                    // Check if array has empty string
+                    if(value.length == 1 && value[0] == "") return true;
+                    // Check if array has only number values
+                    if(value.every((item: any) => typeof item == 'number')) return true;
+                }
+                
+                return "The value should be a number or an array of numbers";
+
+            }
+            return true;
         },
 
         setDefaultValue(details: { type: null; anyOf: any[]; }) {
