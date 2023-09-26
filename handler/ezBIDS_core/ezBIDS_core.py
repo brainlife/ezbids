@@ -1832,6 +1832,14 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
                     for bids_ref_suffix in suffixes_yaml:  # in case BidsGuess not use correct suffix case format (e.g PET)
                         if bids_ref_suffix != suffix and bids_ref_suffix.lower() == suffix.lower():
                             suffix = bids_ref_suffix
+                    # Issue with BidsGuess and func/sbref identification
+                    if suffix == "bold":
+                        descriptor = unique_dic["descriptor"]
+                        sd = unique_dic[descriptor]
+                        sd = re.sub("[^A-Za-z0-9]+", "_", sd).lower() + "_"
+                        if "sbref" in sd and unique_dic["NumVolumes"] == 1:
+                            suffix = "sbref"
+
                     if datatype.lower() not in [x for x in datatypes_yaml.keys()]:  # assumed to be non-BIDS data
                         if suffix in ["localizer", "scout"] or "_i0000" in unique_dic["paths"][0]:
                             # localizer
