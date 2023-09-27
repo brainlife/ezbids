@@ -26,7 +26,7 @@ export default defineComponent({
 .landing-page-container {
     padding-bottom: 0 !important;
     height: 100%;
-    /* cant let the user make the window too small or else everything gets squished */
+    /* can't let the user make the window too small or else everything gets squished */
     min-height: 750px;
 }
 </style>
