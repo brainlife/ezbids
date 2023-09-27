@@ -21,9 +21,11 @@
                 </el-row>
                 <el-row>
                     <el-col :xs="24" :md="12">
-                        <el-button type="primary" class="hero-banner-button">
-                            <RouterLink style="text-decoration: none;" to="/convert">GET STARTED</RouterLink>
-                        </el-button>
+                        <RouterLink style="text-decoration: none" to="/convert">
+                            <el-button type="primary" class="hero-banner-button">
+                                GET STARTED
+                            </el-button>
+                        </RouterLink>
                     </el-col>
                     <el-col :xs="24" :md="12">
                         <el-button class="hero-banner-button" @click="openDocumentation" type="text">
@@ -136,6 +138,7 @@ export default defineComponent({
         height: 50px;
         font-size: 1rem;
         width: 100%;
+        color: #3782e5 !important;
     }
 
     .card-icon {
