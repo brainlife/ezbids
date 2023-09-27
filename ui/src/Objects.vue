@@ -230,7 +230,7 @@
     
     import { IObject, Session, OrganizedSession, OrganizedSubject } from './store'
     import { prettyBytes } from './filters'
-    import { setRun, setIntendedFor, align_entities, validateEntities, validate_B0FieldIdentifier_B0FieldSource, fileLogicLink, dwiQA } from './libUnsafe'
+    import { setVolumeThreshold, setRun, setIntendedFor, align_entities, validateEntities, validate_B0FieldIdentifier_B0FieldSource, fileLogicLink, dwiQA } from './libUnsafe'
     
     // @ts-ignore
     import { Splitpanes, Pane } from 'splitpanes'
@@ -422,6 +422,8 @@
                 o.validationErrors = [];
                 o.validationWarnings = [];
 
+                setVolumeThreshold(this.ezbids)
+
                 setIntendedFor(this.ezbids)
                 
                 align_entities(this.ezbids)
@@ -504,10 +506,8 @@
                     }
                 });
 
-
                 if(this.isExcluded(o)) return;
 
-                
                 //make sure no 2 objects are exactly alike
                 for(let o2 of this.ezbids.objects) {
                     if(o.idx == o2.idx) continue;
