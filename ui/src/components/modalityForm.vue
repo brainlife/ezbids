@@ -247,7 +247,6 @@ export default defineComponent({
         // type of value is stored details.
         // item.details.items.type
         if(details.items.type == 'number') {
-            console.log("valueOFArray",value);
             if(value.length > 0) return value.toString().split(',').map((item: any) => Number(item));
         }
         return value;
@@ -315,9 +314,6 @@ export default defineComponent({
                 const details = metadata_types[field] || {};
                 details.default_value = this.setDefaultValue(details);
                 details.type = this.parseType(details);
-                if(details.type == 'array') {
-                    console.log("details",details);
-                }
 
                 let fieldData = {field,details};
 
@@ -487,7 +483,6 @@ export default defineComponent({
         },
         addNumericValidationRule(rules,item) {
             if (item.details && item.details.type === 'number') {
-                console.log("itemNUMBER",item);
                 if (!rules[item.field]) {
                     rules[item.field] = [];
                 }
