@@ -130,7 +130,6 @@ export default defineComponent({
 
 #ez,
 #bids {
-    background: -webkit-linear-gradient(#eee, #e20000);
     background-clip: text;
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
@@ -184,20 +183,6 @@ export default defineComponent({
 #connector-4 rect {
     fill: #363636;
 }
-
-/* brain exists right */
-/* @keyframes disappearBrain {
-        0%,
-        45% {
-          transform: translate(0%);
-          opacity: 1;
-        }
-        60%,
-        100% {
-          transform: translate(15%);
-          opacity: 0;
-        }
-      } */
 
 /* brain disappears */
 @keyframes disappearBrain {

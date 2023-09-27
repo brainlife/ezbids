@@ -1,10 +1,10 @@
 
 <template>
-<el-container direction="vertical" style="padding-bottom: 0 !important">
-    <LandingPageHeader />
-    <LandingPageContent />
-    <LandingPageFooter />
-</el-container>
+    <el-container direction="vertical" class="landing-page-container">
+        <LandingPageHeader />
+        <LandingPageContent />
+        <LandingPageFooter />
+    </el-container>
 </template>
 
 <script lang="ts">
@@ -23,4 +23,10 @@ export default defineComponent({
 </script>
 
 <style>
+.landing-page-container {
+    padding-bottom: 0 !important;
+    height: 100%;
+    /* cant let the user make the window too small or else everything gets squished */
+    min-height: 750px;
+}
 </style>
