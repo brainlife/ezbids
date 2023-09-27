@@ -7,6 +7,7 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt update && \
     apt-get update && apt-get upgrade -y
 
+# RUN apt install -y parallel python3 python3-pip tree curl unzip git jq python libgl-dev python-numpy
 RUN apt install -y parallel python3 python3-pip tree curl unzip git jq python libgl-dev python-numpy
 
 RUN pip3 install numpy==1.23.0 nibabel==4.0.0 pandas==1.0.1 matplotlib pyyaml==5.4.1 pydicom==2.3.1 natsort pydeface && \
@@ -34,22 +35,38 @@ ENV FSLOUTPUTTYPE=NIFTI_GZ
 # #make sure fslpython is properly installed
 # RUN which imcp
 
-# certs have expired for nodesource use the hack below to get around that for install
-#### HACK Warning ####
-# unfortuanetly this seems to work the most reliably
-# see https://github.com/nodesource/distributions/issues/1266#issuecomment-938408547 and
-RUN echo "insecure" > $HOME/.curlrc \
-    && echo "Acquire::https::Verify-Peer false;" >> /etc/apt/apt.conf.d/80ssl-exceptions \ 
-    && echo "Acquire::https::Verify-Host false;" >> /etc/apt/apt.conf.d/80ssl-exceptions \
-    && curl -fsSL https://deb.nodesource.com/setup_14.x | bash - \
-    && apt install -y nodejs \ 
-    && rm -f $HOME/.curlrc \
-    && rm -f /etc/apt/apt.conf.d/80ssl-exceptions \
-    && npm --version
+# # certs have expired for nodesource use the hack below to get around that for install
+# #### HACK Warning ####
+# # unfortuanetly this seems to work the most reliably
+# # see https://github.com/nodesource/distributions/issues/1266#issuecomment-938408547 and
+# RUN echo "insecure" > $HOME/.curlrc \
+#     && echo "Acquire::https::Verify-Peer false;" >> /etc/apt/apt.conf.d/80ssl-exceptions \ 
+#     && echo "Acquire::https::Verify-Host false;" >> /etc/apt/apt.conf.d/80ssl-exceptions \
+#     && curl -fsSL https://deb.nodesource.com/setup_14.x | bash - \
+#     && apt install -y nodejs \ 
+#     && rm -f $HOME/.curlrc \
+#     && rm -f /etc/apt/apt.conf.d/80ssl-exceptions \
+#     && npm --version
 
-RUN wget https://github.com/rordenlab/dcm2niix/releases/download/v1.0.20230411/dcm2niix_lnx.zip -O /tmp/dcm2niix_lnx.zip && \
-    unzip /tmp/dcm2niix_lnx.zip && \
-    mv dcm2niix /usr/local/bin
+RUN apt-get update \
+    && apt-get install -y ca-certificates curl gnupg \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
+
+ARG NODE_MAJOR=16
+RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
+
+RUN apt-get update \
+    && apt-get install nodejs -y
+
+# RUN wget https://github.com/rordenlab/dcm2niix/releases/download/v1.0.20230411/dcm2niix_lnx.zip -O /tmp/dcm2niix_lnx.zip && \
+#     unzip /tmp/dcm2niix_lnx.zip && \
+#     mv dcm2niix /usr/local/bin
+
+RUN git clone --branch development https://github.com/rordenlab/dcm2niix.git \
+    && cd dcm2niix/console \
+    && make \
+    && mv dcm2niix /usr/local/bin
 
 # Get bids-specification from github
 RUN cd && git clone https://github.com/bids-standard/bids-specification

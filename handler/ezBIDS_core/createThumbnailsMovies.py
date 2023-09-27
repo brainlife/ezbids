@@ -7,7 +7,8 @@ Create thumbnail for 3D nifti files and movie for 4D nifti files
 
 @author: dlevitas
 """
-
+import matplotlib
+import matplotlib.pyplot as plt
 import os
 import sys
 import shutil
@@ -16,9 +17,7 @@ import pandas as pd
 import nibabel as nib
 from PIL import Image
 from math import floor
-import matplotlib
 matplotlib.use('Agg')
-import matplotlib.pyplot as plt
 plt.style.use('dark_background')
 
 os.environ['MPLCONFIGDIR'] = os.getcwd() + "/configs/"
@@ -29,16 +28,17 @@ os.environ['MPLCONFIGDIR'] = os.getcwd() + "/configs/"
 
 def create_thumbnail(nifti_file, image):
     """
-    Generates a PNG for the 2nd volume of a 4D acquisition.
+    Generates a PNG screenshot of a NIfTI data file. If data is 4D,
+    the 2nd volume is used.
 
     Parameters
     ----------
 
     nifti_file : string
-        path of 4D nifti file.
+        path of 4D NIfTI file.
 
     image: nibabel.nifti1.Nifti1Image
-        result of nib.load(nifti_file)
+        result of nib.load(nifti_file).
     """
 
     if image.ndim == 4:
@@ -80,13 +80,13 @@ def create_DWIshell_thumbnails(nifti_file, image, bval_file):
     ----------
 
     nifti_file : string
-        path of 4D nifti file.
+        path of 4D NIfTI file.
 
     image: nibabel.nifti1.Nifti1Image
-        result of nib.load(nifti_file)
+        result of nib.load(nifti_file).
 
     bval_file: string
-        path of corresponding nifti file's bval
+        path of corresponding NIfTI file's bval.
     """
 
     output_file = nifti_file.split(".nii.gz")[0] + ".png"
@@ -146,7 +146,7 @@ else:
         if image.get_data_dtype() not in ["<i2", "<u2", "<f4", "int16", "uint16"]:
             # Likely non-imaging acquisition. Example: "facMapReg" sequences in NYU_Shanghai dataset
             print(
-                f"{nifti_file} doesn't appear to be an"
+                f"{nifti_file} doesn't appear to be an "
                 "imaging acquisition and therefore will "
                 "not be converted to BIDS. Please modify "
                 "if incorrect."
@@ -156,23 +156,23 @@ else:
 
             bval_file = json_file.split(".json")[0].split("./")[-1] + ".bval"
             if not os.path.isfile("{}/{}".format(data_dir, bval_file)):
-                bval_file = "N/A"
+                bval_file = "n/a"
             else:
                 bvals = [x.split(" ") for x in pd.read_csv(bval_file).columns.tolist()][0]
                 bvals = [floor(float(x)) for x in bvals if not isinstance(x, str)]
 
                 if len(bvals) <= 1:  # just b0, so unhelpful
-                    bval_file = "N/A"
+                    bval_file = "n/a"
 
             # Create thumbnail
-            if nifti_file != "N/A":
+            if nifti_file != "n/a":
                 print("")
                 print("Creating thumbnail for {}".format(nifti_file))
                 print("")
                 create_thumbnail(nifti_file, image)
 
             # Create thumbnail of each DWI's unique shell
-            if bval_file != "N/A":
+            if bval_file != "n/a":
                 print("")
                 print("Creating thumbnail(s) for each DWI shell in {}".format(nifti_file))
                 print("")

@@ -21,7 +21,8 @@ import { ElNotification } from 'element-plus'
 //import 'element-plus/es/components/notification/style/css'
 
 import { setSectionIDs, funcQA, fmapQA, dwiQA, setRun, setVolumeThreshold } from './libUnsafe'
-//import { IObjectItem } from './store'
+
+
 import { createEventsTSV } from './lib'
 
 import niivue from './components/niivue.vue'
@@ -149,18 +150,16 @@ export default defineComponent({
                     this.$store.commit("setPage", this.pages[idx+1]);
                     switch(this.page) {
                     case "event":
-                        setVolumeThreshold(this.ezbids);
+                        // setVolumeThreshold(this.ezbids); // Move to Objects.Vue
                         setSectionIDs(this.ezbids);
                         funcQA(this.ezbids);
                         fmapQA(this.ezbids);
                         dwiQA(this.ezbids);
-                        setRun(this.ezbids);
+                        setRun(this.ezbids); //keep here for initial func/events mapping to corresponding func/bold
                         this.mapObjects();
                         break;
                     case "object":
-                        // createEventsTSV(this.ezbids, this.events); // functionality replace by next line
                         createEventsTSV(this.ezbids, this.ezbids.events);
-                        // setIntendedFor(this.ezbids); // Moving this into Objects.vue directly
                         break;
                     }
 
@@ -281,7 +280,7 @@ export default defineComponent({
         </div>
 
         <ul>
-            <li :class="{active: page == 'finalize'}">Get BIDS</li>
+            <li :class="{active: page == 'finalize'}">Access BIDS Data</li>
             <li :class="{active: page == 'feedback'}">Feedback</li>
         </ul>
 
@@ -380,12 +379,15 @@ aside h1 {
 }
 aside {
     position: fixed;
-    width: 200px;
+    width: 160px;
     top: 0;
     left: 0;
     height: 100%;
 
-    background-color: #eee;
+    // background-color: #eee;
+    background: linear-gradient(rgb(70, 188, 152), rgb(53, 150, 121), rgb(45, 113, 141), rgb(31, 82, 95), rgb(16, 45, 71));
+ 
+
     color: #333;
     h1 {
         padding: 10px;
@@ -394,11 +396,13 @@ aside {
         margin-bottom: 0px;
         padding: 10px;
         font-size: 110%;
+        color: white;
     }
     ul {
         list-style: none;
         padding-left: 0;
         margin: 0;
+        color: white;
 
         li {
             padding: 10px;
@@ -420,7 +424,7 @@ aside {
     padding: 10px;
 }
 section {
-    margin-left: 200px;
+    margin-left: 160px;
     padding-bottom: 100px;
 }
 footer {
@@ -434,7 +438,7 @@ footer {
     height: 40px;
     bottom: 0;
     right: 0;
-    left: 200px;
+    left: 160px;
     padding: 10px;
     background-color: #0003;
     z-index: 3;
