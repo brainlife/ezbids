@@ -216,7 +216,11 @@ export default defineComponent({
                                     if (value !== null && value !== "" && value !== undefined && !(Array.isArray(value) && value.length === 1 && value[0] === "")){
                                         if(type == 'number') value = Number(value);
                                         if(type == 'boolean') value = Boolean(value);
-                                        if(type == 'array') value = this.parseArrayValues(value,details);
+                                        if(type == 'array') {
+                                            value = this.parseArrayValues(value,details);
+                                             // Check if the parsed value is still an empty array
+                                            if(value.length === 0) continue; // skip to the next iteration
+                                        }
                                         if(type == 'object') value = JSON.parse(value,key);
                                         json[key] = value;
                                     }
