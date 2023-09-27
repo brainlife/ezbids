@@ -19,7 +19,7 @@ export interface GeneratedByObject {
     Version: string;
     Description: string;
     CodeURL: string;
-    Container: [ContainerObject];
+    Container: ContainerObject;
 }
 
 export interface SourceDatasetObject {
@@ -42,8 +42,8 @@ export interface DatasetDescription {
     EthicsApprovals: string[];
     ReferencesAndLinks: string[];
     DatasetDOI: string;
-    GeneratedBy: [GeneratedByObject];
-    SourceDatasets: [SourceDatasetObject];
+    GeneratedBy: GeneratedByObject;
+    SourceDatasets: SourceDatasetObject;
 }
 
 export interface PatientInfo {
@@ -332,11 +332,11 @@ const state = {
                 URL: "",
                 Version: "",
             } as SourceDatasetObject,
-        },
+        } as DatasetDescription,
 
         readme: "",
         participantsColumn: {},
-        participantsInfo: {} as {[key:string]: any}, //any?
+        participantsInfo: {},
 
         //here lives various things
         subjects: [] as Subject[],

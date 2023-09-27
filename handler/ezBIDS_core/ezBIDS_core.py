@@ -52,7 +52,6 @@ if bids_compliant == "true":
 else:
     bid_compliant = False
 
-
 start_time = time.perf_counter()
 analyzer_dir = os.getcwd()
 
@@ -268,10 +267,6 @@ def generate_dataset_description(DATA_DIR, bids_compliant):
         Dataset description information.
     """
     dataset_description_dic = {}
-    for field in dataset_description_yaml["dataset_description"]["fields"]:
-        if "GeneratedBy" not in field:
-            dataset_description_dic[field] = ""
-
     if bids_compliant is True:
         bids_root_dir = pd.read_csv(f"{DATA_DIR}/bids_compliant.log", header=None).iloc[0][0]
         dataset_description = open(f"{bids_root_dir}/dataset_description.json")
@@ -280,6 +275,12 @@ def generate_dataset_description(DATA_DIR, bids_compliant):
         for field in dataset_description:
             if field in dataset_description_dic.keys() and "GeneratedBy" not in field:
                 dataset_description_dic[field] = dataset_description[field]
+
+    else:
+        for field in dataset_description_yaml["dataset_description"]["fields"]:
+            if "GeneratedBy" not in field:
+                dataset_description_dic[field] = ""
+        dataset_description_dic["SourceDatasets"] = []
 
     dataset_description_dic["GeneratedBy"] = [
         {
@@ -295,13 +296,11 @@ def generate_dataset_description(DATA_DIR, bids_compliant):
         }
     ]
 
-    dataset_description_dic["SourceDatasets"] = []
-
     # dataset_description_dic["SourceDatasets"] = [
     #     {
-    #         "DOI": None,
-    #         "URL": None,
-    #         "Version": None
+    #         "DOI": "",
+    #         "URL": "s3://dicoms/studies/correlates",  # Just a placeholder
+    #         "Version": ""
     #     }
     # ]
 
@@ -1828,9 +1827,20 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
             if "BidsGuess" in json_data:
                 bids_guess = json_data["BidsGuess"]
                 if len(bids_guess) == 2:  # should always be length of 2, but just to be safe
-                    datatype = bids_guess[0]
+                    datatype = str(bids_guess[0]).lower()  # in case BidsGuess doesn't make datatype lowercase
                     suffix = bids_guess[1].split("_")[-1]
-                    if datatype not in [x for x in datatypes_yaml.keys()]:  # assumed to be non-BIDS data of some kind
+                    for bids_ref_suffix in suffixes_yaml:  # in case BidsGuess not use correct suffix case format (e.g PET)
+                        if bids_ref_suffix != suffix and bids_ref_suffix.lower() == suffix.lower():
+                            suffix = bids_ref_suffix
+                    # Issue with BidsGuess and func/sbref identification
+                    if suffix == "bold":
+                        descriptor = unique_dic["descriptor"]
+                        sd = unique_dic[descriptor]
+                        sd = re.sub("[^A-Za-z0-9]+", "_", sd).lower() + "_"
+                        if "sbref" in sd and unique_dic["NumVolumes"] == 1:
+                            suffix = "sbref"
+
+                    if datatype.lower() not in [x for x in datatypes_yaml.keys()]:  # assumed to be non-BIDS data
                         if suffix in ["localizer", "scout"] or "_i0000" in unique_dic["paths"][0]:
                             # localizer
                             unique_dic["message"] = "Acquisition was determined to be a localizer sequence, " \

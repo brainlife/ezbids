@@ -355,7 +355,7 @@ export default defineComponent({
                 //     }
                 // })
 
-                eventObjects.forEach(object=>{
+                eventObjects.forEach((object:any) => {
                     this.$store.commit("addObject", object);
                 });
 
@@ -400,7 +400,7 @@ export default defineComponent({
     position: fixed;
     top: 0;
     bottom: 60px;
-    left: 200px;
+    left: 160px;
     width: 350px;
     overflow: auto;
     padding: 5px 10px;

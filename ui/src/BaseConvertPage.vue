@@ -4,35 +4,35 @@
             <h1 style="font-size: 25pt"><span style="letter-spacing: -3px; opacity: 0.6;">ez</span>BIDS</h1>
 
             <ul>
-                <li :class="{active: page === 'upload'}">Upload Imaging Data</li>
-                <li :class="{active: page === 'description'}">Dataset Description</li>
+                <li :class="{ active: page === 'upload' }">Upload Imaging Data</li>
+                <li :class="{ active: page === 'description' }">Dataset Description</li>
             </ul>
 
             <div class="section">
                 <h2 class="list-header">Dataset Mappings</h2>
                 <ul>
-                    <li :class="{active: page === 'subject'}">Subjects/Sessions</li>
-                    <li :class="{active: page === 'seriespage'}">Series Mapping</li>
-                    <li :class="{active: page === 'event'}">Events</li>
+                    <li :class="{ active: page === 'subject' }">Subjects/Sessions</li>
+                    <li :class="{ active: page === 'seriespage' }">Series Mapping</li>
+                    <li :class="{ active: page === 'event' }">Events</li>
                 </ul>
             </div>
 
             <ul>
-                <li :class="{active: page === 'object'}">Dataset Review</li>
+                <li :class="{ active: page === 'object' }">Dataset Review</li>
             </ul>
 
             <div class="section">
                 <h2 class="list-header">Optional</h2>
                 <ul>
-                    <li :class="{active: page === 'deface'}">Deface</li>
-                    <li :class="{active: page === 'participant'}">Participants Info</li>
+                    <li :class="{ active: page === 'deface' }">Deface</li>
+                    <li :class="{ active: page === 'participant' }">Participants Info</li>
                 </ul>
             </div>
-            
+
 
             <ul>
-                <li :class="{active: page === 'finalize'}">Access BIDS Data</li>
-                <li :class="{active: page === 'feedback'}">Feedback</li>
+                <li :class="{ active: page === 'finalize' }">Access BIDS Data</li>
+                <li :class="{ active: page === 'feedback' }">Feedback</li>
             </ul>
 
             <p class="menu-footer" style="font-size: 150%">
@@ -42,36 +42,31 @@
             </p>
         </aside>
         <section>
-            <Upload v-if="page === 'upload'" ref="upload"/>
-            <Description v-if="page === 'description'" ref="description"/>
-            <Subject v-if="page === 'subject'" ref="subject"/>
-            <Participant v-if="page === 'participant'" ref="participant"/>
-            <SeriesPage v-if="page === 'seriespage'" ref="seriespage"
-                @niivue="openNiivue"/>
-            <Events v-if="page === 'event'" ref="event"
-                @mapObjects="mapObjects"/>
-            <Objects v-if="page === 'object'" ref="object"
-                @niivue="openNiivue"
-                @mapObjects="mapObjects"
-                @updateObject="updateObject"/>
-            <Deface v-if="page === 'deface'" ref="deface"
-                @niivue="openNiivue"/>
-            <Finalize v-if="page === 'finalize'" ref="finalize"/>
-            <Feedback v-if="page === 'feedback'" ref="feedback"/>
+            <Upload v-if="page === 'upload'" ref="upload" />
+            <Description v-if="page === 'description'" ref="description" />
+            <Subject v-if="page === 'subject'" ref="subject" />
+            <Participant v-if="page === 'participant'" ref="participant" />
+            <SeriesPage v-if="page === 'seriespage'" ref="seriespage" @niivue="openNiivue" />
+            <Events v-if="page === 'event'" ref="event" @mapObjects="mapObjects" />
+            <Objects v-if="page === 'object'" ref="object" @niivue="openNiivue" @mapObjects="mapObjects"
+                @updateObject="updateObject" />
+            <Deface v-if="page === 'deface'" ref="deface" @niivue="openNiivue" />
+            <Finalize v-if="page === 'finalize'" ref="finalize" />
+            <Feedback v-if="page === 'feedback'" ref="feedback" />
 
             <br>
             <div class="page-action" v-if="session">
                 <el-button v-if="backLabel" :type="backButtonType" @click="back">
-                    <font-awesome-icon :icon="['fas', 'angle-left']"/>
-                    {{backLabel}}
+                    <font-awesome-icon :icon="['fas', 'angle-left']" />
+                    {{ backLabel }}
                 </el-button>
                 <el-button v-if="nextLabel" type="primary" @click="next" style="float: right;">
-                    {{nextLabel}}
-                    <font-awesome-icon :icon="['fas', 'angle-right']"/>
+                    {{ nextLabel }}
+                    <font-awesome-icon :icon="['fas', 'angle-right']" />
                 </el-button>
             </div>
         </section>
-        <niivue :path="niivuePath" @close="niivuePath = undefined"/>
+        <niivue :path="niivuePath" @close="niivuePath = undefined" />
     </div>
 </template>
 
@@ -79,6 +74,7 @@
 
 import { defineComponent } from 'vue'
 import { mapState, mapGetters } from 'vuex'
+
 import Upload from './Upload.vue'
 import Description from './Description.vue'
 import Subject from './Subject.vue'
@@ -93,13 +89,15 @@ import Feedback from './Feedback.vue'
 import { IObject } from './store'
 
 //https://github.com/element-plus/element-plus/issues/436#issuecomment-961386582
-import 'element-plus/es/components/notification/style/css'
 import { ElNotification } from 'element-plus'
+import 'element-plus/es/components/notification/style/css'
 
-import { setSectionIDs, funcQA, fmapQA, dwiQA, setRun, setVolumeThreshold } from './libUnsafe'
+import { setSectionIDs, funcQA, fmapQA, dwiQA, setRun } from './libUnsafe'
+
+
 import { createEventsTSV } from './lib'
+
 import niivue from './components/niivue.vue'
-import { RouterView } from 'vue-router'
 
 export default defineComponent({
     components: {
@@ -115,7 +113,6 @@ export default defineComponent({
         Feedback,
 
         niivue,
-        RouterView
     },
 
     data() {
@@ -175,7 +172,7 @@ export default defineComponent({
 
     computed: {
         ...mapState(['session', 'ezbids', 'events', 'page']),
-        ...mapGetters(['getBIDSEntities', 'findSession', 'findSubject']),
+        ...mapGetters(['getBIDSEntities', 'getBIDSMetadata', 'findSession', 'findSubject']),
 
         backLabel(): string | null {
             switch (this.page) {
@@ -219,13 +216,13 @@ export default defineComponent({
                 if (err) {
                     console.log("page invalid");
                     console.error(err);
-                    ElNotification({ title: 'Failed', message: err, duration: 100000000 });
+                    ElNotification({ title: 'Failed', message: err });
                 } else {
                     const idx = this.pages.indexOf(this.page);
                     this.$store.commit("setPage", this.pages[idx + 1]);
                     switch (this.page) {
                         case "event":
-                            setVolumeThreshold(this.ezbids);
+                            // setVolumeThreshold(this.ezbids); // Move to Objects.Vue
                             setSectionIDs(this.ezbids);
                             funcQA(this.ezbids);
                             fmapQA(this.ezbids);
@@ -410,4 +407,5 @@ footer {
     opacity: 0.5;
     font-weight: bold;
     background-color: #0001;
-}</style>
+}
+</style>

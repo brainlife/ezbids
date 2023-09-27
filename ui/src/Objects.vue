@@ -230,7 +230,7 @@
     
     import { IObject, Session, OrganizedSession, OrganizedSubject } from './store'
     import { prettyBytes } from './filters'
-    import { setRun, setIntendedFor, align_entities, validateEntities, validate_B0FieldIdentifier_B0FieldSource, fileLogicLink } from './libUnsafe'
+    import { setVolumeThreshold, setRun, setIntendedFor, align_entities, validateEntities, validate_B0FieldIdentifier_B0FieldSource, fileLogicLink, dwiQA } from './libUnsafe'
     
     // @ts-ignore
     import { Splitpanes, Pane } from 'splitpanes'
@@ -319,7 +319,7 @@
                     return false;
                 }
             },
-    
+
             excludeSession(sub: string, ses: string, b: boolean) {
                 if(this.findSubjectFromString(sub) !== undefined && this.findSessionFromString(sub, ses) !== undefined) {
                     const session = this.findSessionFromString(sub, ses);
@@ -422,11 +422,15 @@
                 o.validationErrors = [];
                 o.validationWarnings = [];
 
+                setVolumeThreshold(this.ezbids)
+
                 setIntendedFor(this.ezbids)
                 
                 align_entities(this.ezbids)
 
                 validateEntities("Objects", o)
+
+                dwiQA(this.ezbids)
 
                 validate_B0FieldIdentifier_B0FieldSource(o)
 
@@ -502,8 +506,8 @@
                     }
                 });
 
-                if(this.isExcluded(o)) return; // might return to this, but need to check if previously excluded sequences are un-excluded
-                
+                if(this.isExcluded(o)) return;
+
                 //make sure no 2 objects are exactly alike
                 for(let o2 of this.ezbids.objects) {
                     if(o.idx == o2.idx) continue;
