@@ -4,18 +4,6 @@ import { createStore } from 'vuex'
 
 import bidsEntities from '../assets/schema/objects/entities.json'
 
-import { getFieldSeverity } from '../../../bids-validator/bids-validator/src/schema/applyRules'
-
-import { BIDSContext } from '../../../bids-validator/bids-validator/src/schema/context'
-import {
-    GenericRule,
-    GenericSchema,
-    SchemaFields,
-    SchemaTypeLike,
-} from '../../../bids-validator/bids-validator/src/types/schema'
-import { Severity } from '../../../bids-validator/bids-validator/src/types/issues'
-import * as yaml from 'js-yaml';
-
 // export interface GenericRule {
 //     selectors?: string[]
 //     checks?: string[]
@@ -142,7 +130,7 @@ export interface Series {
 
     IntendedFor?: number[]; //for storing which object id the object is intended for
 
-    metadata_requirements: [MetadataChecks];
+    // metadata_requirements: [MetadataChecks]; // Remove?
 }
 
 export interface Session {

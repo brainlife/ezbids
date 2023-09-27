@@ -194,7 +194,7 @@ import { prettyBytes } from './filters'
 
 import { Series, IObject } from './store'
 
-import { validate_Entities_B0FieldIdentifier_B0FieldSource } from './libUnsafe'
+import { validateEntities, validate_B0FieldIdentifier_B0FieldSource } from './libUnsafe'
 import aslYaml from "../src/assets/schema/rules/sidecars/asl.yaml";
 import petYaml from '../src/assets/schema/rules/sidecars/pet.yaml';
 import metadata_types from '../src/assets/schema/rules/sidecars/metadata_types.yaml';
@@ -251,11 +251,6 @@ export default defineComponent({
             delete entities.session;
             return entities;
         },
-
-        // getSomeMetadata(type: string): any {
-        //     const metadata = Object.assign({}, this.getBIDSMetadata(type));
-        //     return metadata;
-        // },
 
         toggleInfo(entity: string) {
             this.showInfo[entity] = !this.showInfo[entity];
@@ -344,7 +339,7 @@ export default defineComponent({
         validateAll() {
             this.ezbids.series.forEach(this.validate);
         },
-        submitForm(data) {
+        submitForm(data:any) { //TODO: should we make an interface for data in store/index.ts?
             console.log("submitForm", data);
             this.ezbids = data;
         },
