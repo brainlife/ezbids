@@ -2,11 +2,13 @@
     <el-button @click="initForm()">Edit Modality</el-button>
     <el-dialog v-model="showDialog" title="Edit Modalities">
         <el-form ref="form" :model="formData" label-position="top" label-width="500px" :inline="true" :rules="rules"> 
-            <div>
                 <el-row>
                     <el-col :span="8">
                         <!-- // make the label recommended below and show example for boolean types, also try to enforce the types in the form -->
-                        <h3>Required</h3>
+                        <!-- make required center -->
+                        <div class="centered-content">
+                            <h3>Required</h3>
+                        </div>                        
                         <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.required" :key="'required' + index" :label="`${item.details.display_name} ${item.details.type}`" :prop="item.field">
                             <template #label>
                                 <span>
@@ -42,7 +44,9 @@
                         </el-form-item>
                     </el-col>
                     <el-col :span="8">
-                        <h3>Recommended</h3>
+                        <div class="centered-content">
+                            <h3>Recommended</h3>
+                        </div>
                         <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.recommended" :key="'recommended' + index" :label="`${item.details.display_name}`" :prop="item.field">
                             <template #label>
                                 <span>
@@ -78,7 +82,9 @@
                     </el-col>
 
                     <el-col :span="8">
-                        <h3>Optional</h3>
+                        <div class="centered-content">
+                            <h3>Optional</h3>
+                        </div>
                         <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.optional" :key="'optional' + index" :label="`${item.details.display_name}`" :prop="item.field">
                             
                             <template #label>
@@ -149,7 +155,6 @@
                         </el-form-item>
                     </el-col>
             </el-row>
-            </div>
         </el-form>
         <br>
         <span slot="footer" class="dialog-footer">
@@ -238,8 +243,8 @@ export default defineComponent({
         // type of value is stored details.
         // item.details.items.type
         if(details.items.type == 'number') {
-            console.log("value",value);
-            return value.toString().split(',').map((item: any) => Number(item));
+            console.log("valueOFArray",value);
+            if(value.length > 0) return value.toString().split(',').map((item: any) => Number(item));
         }
         return value;
     },
@@ -643,7 +648,13 @@ export default defineComponent({
     enter;
 }
 ::v-deep .el-form-item__label {
-  font-size: 14px; /* Adjust the font size as required */
+  font-size: 12px; /* Adjust the font size as required */
+}
+.el-row {
+    width: 100%;
+}
+.centered-content {
+  text-align: center;
 }
 </style>
 ```
