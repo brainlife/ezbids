@@ -35,7 +35,7 @@
             Please download the BIDS formatted data to your local computer
             </p>
             <p>
-                <el-button @click="download" type="primary">Get BIDS</el-button>
+                <el-button @click="download" type="primary">Download BIDS</el-button>
 
                 <a :href="config.apihost+'/download/'+session._id+'/finalized.json'" download="finalized.json">
                     <el-button @click="download" type="primary" style="float: right" >Download configuration/template</el-button>
@@ -45,8 +45,19 @@
             <p>
             Or send the dataset to other cloud resources.
             </p>
-            <p>
-                <el-button @click="sendBrainlife">Send to <b>brainlife.io</b></el-button>
+            <p>                
+                <el-dropdown>
+                    <el-button style="margin-right: 10px">
+                        Send to <b>Brainlife.io</b>&nbsp;
+                        <font-awesome-icon :icon="['fas', 'angle-down']"/>
+                    </el-button>
+                    <template #dropdown>
+                        <el-dropdown-menu>
+                            <el-dropdown-item @click="sendBrainlife()">Send to brainlife</el-dropdown-item>
+                            <el-dropdown-item @click="sendBrainlife('DWI')">Send to brainlife and run DWI Pipeline</el-dropdown-item>
+                        </el-dropdown-menu>
+                    </template>
+                </el-dropdown>
                 <el-button @click="sendOpenneuro">Send to <b>OpenNeuro</b></el-button>
             </p>
 
@@ -209,8 +220,9 @@ export default defineComponent({
             URL.revokeObjectURL(link.href)
         },
 
-        sendBrainlife() {
-            window.open("../projects#ezbids:"+this.session._id, "_brainlife."+this.session._id);
+        sendBrainlife(pipeline?: 'DWI') {
+            const pipelineString = pipeline ? `&pipeline=${pipeline}` : '';
+            window.open(`../projects#ezbids=${this.session._id}${pipelineString}`, `_brainlife.${this.session._id}`);
         },
 
         sendOpenneuro() {

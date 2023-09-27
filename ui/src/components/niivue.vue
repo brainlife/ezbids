@@ -40,7 +40,7 @@ export default defineComponent({
 
     methods: {
         load() {
-            console.log("loading niivuew", this.path);
+            console.log("loading NiiVue", this.path);
             this.open = true;
             this.$nextTick(()=>{
                 console.log("canvas", this.$refs.canvas)

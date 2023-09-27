@@ -4,68 +4,52 @@ import os
 import sys
 import pydicom
 
-def find_leaf(dir):
-    leaf=True
-    hasDicom=False
 
-    #is it leaf?
-    for x in os.listdir(dir):
-        fulldir=os.path.join(dir, x)
+def find_dicomdir(dir):
+    """
+    Finds all directories that contain DICOM (or other) raw imaging data.
+    If dcm2niix output (NIfTI, JSON files) uploaded instead, ezBIDS has separate process for detecting those files.
 
-        #don't consider parent directory as leaf
-        if os.path.isdir(fulldir):
-            leaf=False
-            continue
+    Parameters
+    ----------
+    dir : string
+        root-level directory of uploaded data
+    """
 
-        #does it contain any .dcmfile?
-        if x.lower().endswith(".dcm") or x.lower().endswith(".ima") or x.lower().endswith(".img") or x.lower().startswith("mr."):
-            hasDicom=True
-        else:
-            # no explicit raw data (e.g., DICOM) extension, check using pydicom
-            try:
-                read_file = pydicom.dcmread("{}/{}".format(dir, x))
-                if read_file.Modality == "MR": # eventually need to expand this to other imaging modalities
-                    hasDicom=True
+    hasDicoms = False
+
+    for x in sorted(os.listdir(dir)):
+        full_path = os.path.join(dir, x)
+
+        if os.path.isdir(full_path):
+            for f in sorted(os.listdir(full_path)):
+                if (f.lower().endswith(".dcm") or f.lower().endswith(".ima") or f.lower().endswith(".img")
+                        or f.lower().startswith("mr.")):
+                    hasDicoms = True
+                    print(full_path)
+                    break
                 else:
-                    # Not MRI imaging modality, ignore for now
-                    pass
-            except:
-                # Doesn't appear to be raw imaging data
-                pass
+                    # no explicit raw data (e.g., DICOM) extension, check using pydicom
+                    try:
+                        read_file = pydicom.dcmread(f"{full_path}/{f}")
+                        if read_file.Modality == "MR":  # eventually need to expand this to other imaging modalities
+                            hasDicoms = True
+                            print(full_path)
+                            break
+                        else:
+                            # Not MRI imaging modality, ignore for now
+                            pass
+                    except:
+                        # Doesn't appear to be DICOM (or other raw imaging) data
+                        pass
 
-    #don't consider a leaf directory with nothing but .nii or .nii.gz
-    #otherwise dcm2niix gets run on that directory and it will fail
-    #it could still fail if directory doesn't have any dcm
-    #if leaf:
-    #    allNifty=True
-    #    for x in os.listdir(dir):
-    #        if not x.endswith(".nii") and not x.endswith(".nii.gz"):
-    #            allNifty=False
-    #            break
-    #    if allNifty:
-    #        hasDicom=False
+    if not hasDicoms:
+        for x in sorted(os.listdir(dir)):
+            full_path = os.path.join(dir, x)
+            if os.path.isdir(full_path):
+                find_dicomdir(full_path)
 
-    #if it contains DICOMDIR, treat it as leaf
-    if not leaf:
-        for x in os.listdir(dir):
-            if x.lower() == "dicomdir":
-                leaf=True
-                hasDicom=True
-
-    if leaf:
-        if hasDicom:
-            print(dir)
-        else:
-            #it's leaf but no dicom files.. let's not run dcm2niix
-            pass
-    else:
-        #recurse to all child dirs
-        for x in os.listdir(dir):
-            fulldir=os.path.join(dir, x)
-            if os.path.isdir(fulldir):
-                find_leaf(fulldir)
 
 os.chdir(sys.argv[1])
 
-find_leaf('.')
-
+find_dicomdir('.')

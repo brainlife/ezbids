@@ -6,7 +6,7 @@ set -x
 export SHELL=$(type -p bash)
 
 # We want to keep track of whether or not dcm2niix has run, with the addition of PET2BIDs 
-# dcm2niix may not be triggerd to run at all if only PET images (dicoms/ecat) are uploaded
+# dcm2niix may not be triggered to run at all if only PET images (dicoms/ecat) are uploaded
 
 DCM2NIIX_RUN=false
 PET2BIDS_RUN=false
@@ -64,6 +64,7 @@ fi
 
 echo "*dcm2niix*" >> $test_root/.bidsignore
 echo "*preprocess*" >> $test_root/.bidsignore
+echo "*pet2bids*" >> $test_root/.bidsignore
 echo "*list" >> $test_root/.bidsignore
 echo "*nii_files" >> $test_root/.bidsignore
 echo "*ezBIDS_core.json" >> $test_root/.bidsignore
@@ -93,11 +94,12 @@ if [ $bids_compliant == "true" ]; then
     touch $root/dcm2niix_error
     
     #find products
-    (cd $root && find . -mindepth 2 -type f \( -name "*.json" \) > list)
-    # remove irrelevant json files (ezBIDS_core.json, dataset_description.json, participants.json) if found
+    (cd $root && find . -maxdepth 9 -type f \( -name "*.json" \) > list)
+
+    # remove irrelevant json files (e.g., ezBIDS_core.json, etc) if found
     grep -F -v ezBIDS_core.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
-    grep -F -v dataset_description.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
-    grep -F -v participants.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
+    # grep -F -v dataset_description.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
+    # grep -F -v participants.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
 
     echo "running ezBIDS_core (may take several minutes, depending on size of data)"
     python3 "./ezBIDS_core/ezBIDS_core.py" $root
@@ -124,7 +126,7 @@ else
         path=$1
 
         echo "----------------------- $path ------------------------"
-        timeout 3600 dcm2niix4pet $path
+        timeout 3600 dcm2niix4pet --silent $path
 
         #all good
         echo $path >> pet2bids.done
@@ -147,7 +149,7 @@ else
     echo "Removing PET directories from dcm2niix list"
     comm -12  ${root}/dcm2niix.list ${root}/pet2bids.list > ${root}/remove_from_dcm2niix_list.list
     for folder in $(cat ${root}/remove_from_dcm2niix_list.list); do
-        # use sed to remove any lines that contain the folder name while escaping special characters (slashs and dots mostly)
+        # use sed to remove any lines that contain the folder name while escaping special characters (slashes and dots mostly)
         sed -i "/${folder//\//\\/}/d" ${root}/dcm2niix.list > ${root}/tmpfile && mv ${root}/tmpfile ${root}/dcm2niix.list
     done
     [ -e ${root}/remove_from_dcm2niix_list.list ] && rm ${root}/remove_from_dcm2niix_list.list
@@ -160,6 +162,7 @@ else
 
 
     echo "running dcm2niix"
+    echo `dcm2niix --version`
     true > $root/dcm2niix.done
     function d2n {
         #note.. this function runs inside $root (by --wd $root)
@@ -189,16 +192,15 @@ else
 
     #find products
     echo "searching for products in $root"
-    (cd $root && find . -type f \( -name "*.json" \) > list)
-    # remove irrelevant json files (ezBIDS_core.json, dataset_description.json, participants.json) if found
-    grep -F -v ezBIDS_core.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
-    grep -F -v dataset_description.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
-    grep -F -v participants.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
-    
-    cat $root/list
+    (cd $root && find . -maxdepth 9 -type f \( -name "*.json" \) > list)
+
+    # remove irrelevant json files (e.g., ezBIDS_core.json, etc) if found
+    grep -F -v *ezBIDS_core*.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
+    # grep -F -v dataset_description.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
+    # grep -F -v participants.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
 
     if [ ! -s $root/list ]; then
-        echo "couldn't find any dicom files. aborting"
+        echo "Could not find any MRI (or PET) DICOM files in upload. Uploaded files likely do not conform to DICOM format, aborting"
         exit 1
     fi
 

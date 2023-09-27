@@ -1,3 +1,4 @@
+import perfMetadata from '../assets/schema/rules/sidecars/perf.json'
 
 import { createStore } from 'vuex'
 
@@ -69,7 +70,7 @@ export interface GeneratedByObject {
     Version: string;
     Description: string;
     CodeURL: string;
-    Container: [ContainerObject];
+    Container: ContainerObject;
 }
 
 export interface SourceDatasetObject {
@@ -92,8 +93,8 @@ export interface DatasetDescription {
     EthicsApprovals: string[];
     ReferencesAndLinks: string[];
     DatasetDOI: string;
-    GeneratedBy: [GeneratedByObject];
-    SourceDatasets: [SourceDatasetObject];
+    GeneratedBy: GeneratedByObject;
+    SourceDatasets: SourceDatasetObject;
 }
 
 export interface PatientInfo {
@@ -134,10 +135,14 @@ export interface Series {
     B0FieldIdentifier?: string[];
     B0FieldSource?: string[];
 
+    series_idx: number;
+
     error: string;
     message: string;
 
     IntendedFor?: number[]; //for storing which object id the object is intended for
+
+    metadata_requirements: [MetadataChecks];
 }
 
 export interface Session {
@@ -185,6 +190,8 @@ export interface IObject {
     validationWarnings: string[]; //right?
 
     items: [IObjectItem];
+
+    PED: string;
 
     series_idx: number;
     subject_idx: number;
@@ -248,6 +255,31 @@ interface BIDSDatatypes {
     }
 }
 
+interface BIDSDatatypeMetadataOptionConditions {
+    metadata: string;
+    value: string;
+}
+
+interface BIDSDatatypeMetadataOptionMetadata {
+    name: string;
+    requirement: string | undefined;
+    description: string;
+}
+
+interface BIDSDatatypeMetadataOption {
+    value: string;
+    label: string;
+    conditions: BIDSDatatypeMetadataOptionConditions[];
+    metadata: BIDSDatatypeMetadataOptionMetadata[];
+}
+
+interface BIDSDatatypesMetadata {
+    [key: string]: {
+        label: string;
+        options: BIDSDatatypeMetadataOption[];
+    }
+}
+
 export interface OrganizedSession {
     sess: string,
     session_idx: number;
@@ -285,10 +317,19 @@ export interface ISession {
     finalize_finish_date?: string;
 }
 
+export interface RelevantMetadata {
+    modality: string;
+    datatype: string;
+    suffix: string;
+    conditions: string[];
+    metadata: string;
+}
+
 const state = {
     bidsSchema: {
-        entities: bidsEntities as BIDSEntities,
+        entities: bidsEntities,
         datatypes: {} as BIDSDatatypes,
+        metadata: {} as BIDSDatatypesMetadata,
     },
 
     config: {
@@ -304,32 +345,49 @@ const state = {
     ezbids: {
         notLoaded: true,
 
-        // //pretty much straight out of bids/dataset_description.json
-        // datasetDescription: {
-        //     Name: "",
-        //     BIDSVersion: "",
-        //     DatasetType: "",
-        //     License: "",
-        //     Authors: [],
-        //     Acknowledgements: "", //"Special thanks to Korbinian Brodmann for help in formatting this dataset in BIDS. We thank Alan Lloyd Hodgkin and Andrew Huxley for helpful comments and discussions about the experiment and manuscript; Hermann Ludwig He  lmholtz for administrative support; and Claudius Galenus for providing data for the medial-to-lateral index analysis.",
-        //     HowToAcknowledge: "", //"Please cite this paper: https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
-        //     Funding: [
-        //         //"National Institute of Neuroscience Grant F378236MFH1",
-        //         //"National Institute of Neuroscience Grant 5RMZ0023106"
-        //     ],
-        //     EthicsApprovals: [
-        //         //"Army Human Research Protections Office (Protocol ARL-20098-10051, ARL 12-040, and ARL 12-041)"
-        //     ],
-        //     ReferencesAndLinks: [
-        //         //"https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",items
-        //         //"http://doi.org/1920.8/jndata.2015.7"
-        //     ],
-        //     DatasetDOI: "", //"10.0.2.3/dfjj.10"
-        // } as DatasetDescription,
+        //pretty much straight out of bids/dataset_description.json
+        datasetDescription: {
+            Name: "Untitled",
+            BIDSVersion: "1.8.0",
+            HEDVersion: [],
+            DatasetLinks: [],
+            DatasetType: "raw",
+            License: "",
+            Authors: [],
+            Acknowledgements: "", //"Special thanks to Korbinian Brodmann for help in formatting this dataset in BIDS. We thank Alan Lloyd Hodgkin and Andrew Huxley for helpful comments and discussions about the experiment and manuscript; Hermann Ludwig He  lmholtz for administrative support; and Claudius Galenus for providing data for the medial-to-lateral index analysis.",
+            HowToAcknowledge: "", //"Please cite this paper: https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
+            Funding: [
+                //"National Institute of Neuroscience Grant F378236MFH1",
+                //"National Institute of Neuroscience Grant 5RMZ0023106"
+            ],
+            EthicsApprovals: [
+                //"Army Human Research Protections Office (Protocol ARL-20098-10051, ARL 12-040, and ARL 12-041)"
+            ],
+            ReferencesAndLinks: [
+                //"https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",items
+                //"http://doi.org/1920.8/jndata.2015.7"
+            ],
+            DatasetDOI: "", //"10.0.2.3/dfjj.10"
+            GeneratedBy: {
+                Name: "ezBIDS",
+                Version: "1.0.0",
+                Description: "ezBIDS is a web-based tool for converting neuroimaging datasets to BIDS, requiring neither coding nor knowledge of the BIDS specification",
+                CodeURL: "https://brainlife.io/ezbids/",
+                Container: {
+                    Type: "docker",
+                    Tag: "brainlife/ezbids-handler",
+                } as ContainerObject
+            },
+            SourceDatasets: {
+                DOI: "",
+                URL: "",
+                Version: "",
+            } as SourceDatasetObject,
+        } as DatasetDescription,
 
         readme: "",
         participantsColumn: {},
-        participantsInfo: {} as {[key:string]: any}, //any?
+        participantsInfo: {},
 
         //here lives various things
         subjects: [] as Subject[],
@@ -400,32 +458,25 @@ interface checkMetadata {
     MetaDataField: string
 }
 
-// function evalJsonCheck(
-//     rule: GenericRule,
-//     context: BIDSContext,
-//     schema: GenericSchema,
-//     schemaPath: string,
-// ): void {
+interface MetadataIssues {
+    code: string;
+    message: string;
+}
 
-//     const validateMetadata: checkMetadata[] = []
+interface MetadataFields {
+    [key: string]: { // Metadata key: EchoTime, RepetitionTime, etc...
+        level: string;
+        description_addendum?: string;
+        level_addendum?: string;
+        issue?: MetadataIssues;
+    }
+}
 
-//     for (const [key, requirement] of Object.entries(rule.fields)) {
-//         const severity = getFieldSeverity(requirement, context)
-//         const keyName = schema.objects.metadata[key].name
+interface BIDSSchemaMetadata {
+    selectors: string[];
+    fields: MetadataFields[];
 
-
-//         if(severity && severity !== 'ignore' && !(keyName in context.sidecar) && !context.file.path.includes('.json') && keyName !== 'Name' && keyName !== 'BIDSVersion') {
-//             // console.log(context.modality, context.datatype, context.suffix, context.file.path, keyName)
-//             validateMetadata.push({ "modality": context.modality, 
-//                                     "datatype": context.datatype, 
-//                                     "suffix": context.suffix, 
-//                                     "filePath": context.file.path,
-//                                     "MetaDataField": keyName
-//                                 })
-//         }
-//     }
-//     console.log(validateMetadata)
-// }
+}
 
 function loadDatatype(
     modality: string,
@@ -469,7 +520,6 @@ function loadDatatype(
  * }
 */
 
-
 import dwiDatatype from '../assets/schema/rules/datatypes/dwi.json'
 loadDatatype("dwi", dwiDatatype, "Diffusion");
 
@@ -487,6 +537,7 @@ loadDatatype("pet", petDatatype, "PET");
 
 import perfDatatype from '../assets/schema/rules/datatypes/perf.json'
 loadDatatype("perf", perfDatatype, "Perfusion");
+
 
 const store = createStore({
     state,
@@ -510,6 +561,8 @@ const store = createStore({
                 datasetDescription: {
                     Name: "Untitled",
                     BIDSVersion: "1.8.0",
+                    HEDVersion: [],
+                    DatasetLinks: [],
                     DatasetType: "raw",
                     License: "",
                     Authors: [],
@@ -519,7 +572,23 @@ const store = createStore({
                     EthicsApprovals: [],
                     ReferencesAndLinks: [],
                     DatasetDOI: "",
+                    GeneratedBy: {
+                        Name: "ezBIDS",
+                        Version: "1.0.0",
+                        Description: "ezBIDS is a web-based tool for converting neuroimaging datasets to BIDS, requiring neither coding nor knowledge of the BIDS specification",
+                        CodeURL: "https://brainlife.io/ezbids/",
+                        Container: {
+                            Type: "docker",
+                            Tag: "brainlife/ezbids-handler",
+                        }
+                    },
+                    SourceDatasets: {
+                        DOI: "",
+                        URL: "",
+                        Version: "",
+                    },
                 },
+
                 readme: "",
                 participantsColumn: {},
                 participantsInfo: {},
