@@ -21,6 +21,40 @@ const models = require("./models");
 console.debug(config.multer);
 const upload = multer(config.multer);
 const router = express.Router();
+/**
+ * @swagger
+ * paths:
+ *  /health:
+ *    get:
+ *      summary: Health check
+ *      description: This endpoint allows for the health check of the server. It checks to see if the workdir is accessible.
+ *      tags:
+ *        - Health
+ *      responses:
+ *        '200':
+ *          description: Returns the health status
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  status:
+ *                    type: string
+ *                  timestamp:
+ *                    type: string
+ *                    format: date-time
+ *        '503':
+ *          description: Service is unhealthy
+ *          content:
+ *            application/json:
+ *              schema:
+ *                type: object
+ *                properties:
+ *                  status:
+ *                    type: string
+ *                  error:
+ *                    type: string
+ */
 router.get('/health', (req, res, next) => {
     let status = "ok";
     let message = "";
@@ -34,6 +68,40 @@ router.get('/health', (req, res, next) => {
     }
     res.json({ status, message, date: new Date() });
 });
+/**
+ * @swagger
+ * paths:
+ *   /session/{session_id}:
+ *     post:
+ *       summary: Post a session by its ID
+ *       description: This endpoint retrieves a session by its `session_id`.
+ *       tags:
+ *         - Session
+ *       parameters:
+ *         - in: path
+ *           name: session_id
+ *           schema:
+ *             type: string
+ *           required: true
+ *           description: The session ID to retrieve
+ *       responses:
+ *         200:
+ *           description: Returns the requested session
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 $ref: '#/components/schemas/Session'
+ *         400:
+ *           description: Bad request
+ *         404:
+ *           description: Session not found
+ *         500:
+ *           description: Server error
+ *
+ * components:
+ *   schemas:
+ *    Session: $ref: '#/components/schemas/Session'
+ */
 router.post('/session', (req, res, next) => {
     req.body.status = "created";
     req.body.request_headers = req.headers;
@@ -44,6 +112,66 @@ router.post('/session', (req, res, next) => {
         next(err);
     });
 });
+/**
+ * @swagger
+ * paths:
+ *   /session/{session_id}:
+ *     get:
+ *       summary: Retrieve a session by its ID
+ *       description: This endpoint retrieves a session by its `session_id`.
+ *       tags:
+ *         - Session
+ *       parameters:
+ *         - in: path
+ *           name: session_id
+ *           schema:
+ *             type: string
+ *           required: true
+ *           description: The session ID to retrieve
+ *       responses:
+ *         200:
+ *           description: Returns the requested session
+ *           content:
+ *             application/json:
+ *               schema:
+ *                 $ref: '#/components/schemas/Session'
+ *         400:
+ *           description: Bad request
+ *         404:
+ *           description: Session not found
+ *         500:
+ *           description: Server error
+ *
+ * components:
+ *   schemas:
+ *     Session:
+ *       type: object
+ *       properties:
+ *         create_date:
+ *           type: string
+ *           format: date-time
+ *           description: Creation date of the session
+ *           example: '2023-01-01T00:00:00Z'
+ *         update_date:
+ *           type: string
+ *           format: date-time
+ *           description: Last update date of the session
+ *           example: '2023-01-02T00:00:00Z'
+ *         status:
+ *           type: string
+ *           description: Status of the session
+ *           example: created
+ *         status_msg:
+ *           type: string
+ *           description: Status message for the session
+ *         request_headers:
+ *           type: object
+ *           description: Headers of the request when creating the session
+ *         upload_finish_date:
+ *           type: string
+ *           format: date-time
+ *           description: Finish date of file upload
+ */
 router.get('/session/:session_id', (req, res, next) => {
     models.Session.findById(req.params.session_id).then(session => {
         res.json(session);
@@ -51,6 +179,39 @@ router.get('/session/:session_id', (req, res, next) => {
         next(err);
     });
 });
+/**
+ * @swagger
+ * paths:
+ *   /session/{session_id}/deface:
+ *     post:
+ *       summary: Deface a session by its ID
+ *       description: This endpoint allows defacing an existing session by its `session_id`.
+ *       tags:
+ *         - Session
+ *       parameters:
+ *         - in: path
+ *           name: session_id
+ *           schema:
+ *             type: string
+ *           required: true
+ *           description: The session ID to deface
+ *       requestBody:
+ *         description: Deface options and parameters
+ *         required: true
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *       responses:
+ *         200:
+ *           description: Successfully defaced the session
+ *         400:
+ *           description: Bad request
+ *         404:
+ *           description: Session not found
+ *         500:
+ *           description: Server error
+ */
 router.post('/session/:session_id/deface', (req, res, next) => {
     models.Session.findById(req.params.session_id).then(session => {
         if (!session)
@@ -64,6 +225,32 @@ router.post('/session/:session_id/deface', (req, res, next) => {
         });
     });
 });
+/**
+ * @swagger
+ * paths:
+ *   /session/{session_id}/canceldeface:
+ *     post:
+ *       summary: Cancel the deface operation for a session by its ID
+ *       description: This endpoint allows cancelling the defacing of an existing session by its `session_id`.
+ *       tags:
+ *         - Session
+ *       parameters:
+ *         - in: path
+ *           name: session_id
+ *           schema:
+ *             type: string
+ *           required: true
+ *           description: The session ID whose defacing is to be cancelled
+ *       responses:
+ *         200:
+ *           description: Successfully cancelled defacing for the session
+ *         400:
+ *           description: Bad request
+ *         404:
+ *           description: Session not found
+ *         500:
+ *           description: Server error
+ */
 router.post('/session/:session_id/canceldeface', (req, res, next) => {
     models.Session.findById(req.params.session_id).then(session => {
         if (!session)
@@ -84,6 +271,32 @@ router.post('/session/:session_id/canceldeface', (req, res, next) => {
         });
     });
 });
+/**
+ * @swagger
+ * paths:
+ *   /session/{session_id}/resetdeface:
+ *     post:
+ *       summary: Reset the deface status for a session by its ID
+ *       description: This endpoint allows resetting the deface status for a session by its `session_id`.
+ *       tags:
+ *         - Session
+ *       parameters:
+ *         - in: path
+ *           name: session_id
+ *           schema:
+ *             type: string
+ *           required: true
+ *           description: The session ID whose deface status is to be reset
+ *       responses:
+ *         200:
+ *           description: Successfully reset defacing for the session
+ *         400:
+ *           description: Bad request
+ *         404:
+ *           description: Session not found
+ *         500:
+ *           description: Server error
+ */
 router.post('/session/:session_id/resetdeface', (req, res, next) => {
     models.Session.findById(req.params.session_id).then(session => {
         if (!session)
