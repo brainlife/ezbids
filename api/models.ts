@@ -1,12 +1,10 @@
+import mongoose from "mongoose";
 
-import mongoose = require("mongoose");
-import config  = require("./config");
-
-if(config.mongoose_debug) mongoose.set("debug", true);
+if (process.env.MONGOOSE_DEBUG === 'true') mongoose.set("debug", true);
 
 export function connect(cb) {
     console.debug("connecting to mongo");
-    mongoose.connect(config.mongodb, {
+    mongoose.connect(process.env.MONGO_URL, {
 
         /* this really screwed up warehouse db..
         readPreference: 'nearest',
@@ -35,7 +33,7 @@ export function disconnect(cb) {
 // upload sessions
 //
 
-var sessionSchema = mongoose.Schema({
+const sessionSchema = mongoose.Schema({
 
     create_date: { type: Date, default: Date.now },
     update_date: { type: Date, default: Date.now },
@@ -88,9 +86,9 @@ sessionSchema.pre('save', function(next) {
     this.update_date = Date.now();
     next();
 });
-export let Session = mongoose.model("Session", sessionSchema);
+export const Session = mongoose.model("Session", sessionSchema);
 
-var ezbidsSchema = mongoose.Schema({
+const ezbidsSchema = mongoose.Schema({
     _session_id: mongoose.Schema.Types.ObjectId, 
 
     original: mongoose.Schema.Types.Mixed,
@@ -99,6 +97,6 @@ var ezbidsSchema = mongoose.Schema({
     create_date: { type: Date, default: Date.now },
     update_date: { type: Date },
 });
-export let ezBIDS = mongoose.model("ezBIDS", ezbidsSchema);
+export const ezBIDS = mongoose.model("ezBIDS", ezbidsSchema);
 
 

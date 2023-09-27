@@ -1,5 +1,9 @@
 FROM neurodebian:nd20.04-non-free
 
+ARG USER=docker
+ARG UID
+ARG GID
+
 SHELL ["/bin/bash", "-c"]
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -35,25 +39,11 @@ ENV FSLOUTPUTTYPE=NIFTI_GZ
 # #make sure fslpython is properly installed
 # RUN which imcp
 
-# # certs have expired for nodesource use the hack below to get around that for install
-# #### HACK Warning ####
-# # unfortuanetly this seems to work the most reliably
-# # see https://github.com/nodesource/distributions/issues/1266#issuecomment-938408547 and
-# RUN echo "insecure" > $HOME/.curlrc \
-#     && echo "Acquire::https::Verify-Peer false;" >> /etc/apt/apt.conf.d/80ssl-exceptions \ 
-#     && echo "Acquire::https::Verify-Host false;" >> /etc/apt/apt.conf.d/80ssl-exceptions \
-#     && curl -fsSL https://deb.nodesource.com/setup_14.x | bash - \
-#     && apt install -y nodejs \ 
-#     && rm -f $HOME/.curlrc \
-#     && rm -f /etc/apt/apt.conf.d/80ssl-exceptions \
-#     && npm --version
-
+ARG NODE_MAJOR=16
 RUN apt-get update \
     && apt-get install -y ca-certificates curl gnupg \
     && mkdir -p /etc/apt/keyrings \
     && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
-
-ARG NODE_MAJOR=16
 RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
 
 RUN apt-get update \
@@ -72,8 +62,9 @@ RUN git clone --branch development https://github.com/rordenlab/dcm2niix.git \
 RUN cd && git clone https://github.com/bids-standard/bids-specification
 
 #install ROBEX
-ADD https://www.nitrc.org/frs/download.php/5994/ROBEXv12.linux64.tar.gz//?i_agree=1&download_now=1 /
-RUN tar -xzf /ROBEXv12.linux64.tar.gz
+RUN mkdir /ROBEX && \
+    curl -SL 'https://www.nitrc.org/frs/download.php/5994/ROBEXv12.linux64.tar.gz//?i_agree=1&download_now=1' | \
+    tar -xvzC /ROBEX
 ENV PATH /ROBEX:$PATH
 
 ENV NODE_PATH $NVM_DIR/v$NODE_VERSION/lib/node_modules
@@ -83,6 +74,18 @@ ENV PATH $NVM_DIR/v$NODE_VERSION/bin:$PATH
 RUN npm install -g bids-validator@1.11.0
 RUN git clone https://github.com/bids-standard/bids-validator
 
-# install source code from local
+RUN groupadd -g "${GID}" ${USER} || true
+RUN useradd --create-home --no-log-init -u "${UID}" -g "${GID}" ${USER} || true
+
+COPY . /app
+RUN chown -R ${UID}:${GID} /app
+
+WORKDIR /app/api
+RUN npm install
+
 WORKDIR /app/handler
-RUN npm -g install pm2
+RUN npm install
+
+USER ${UID}:${GID}
+
+CMD [ "npm", "run", "dev" ]

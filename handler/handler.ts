@@ -1,3 +1,4 @@
+require('dotenv').config({ path:'../.env' })
 
 const { spawn } = require('child_process');
 import fs = require('fs');
@@ -45,7 +46,7 @@ function run() {
 }
 
 async function handle_uploaded(session) {
-    let workdir = config.workdir+"/"+session._id;
+    let workdir = process.env.WORK_DIR + "/"+session._id;
 
     session.pre_begin_date = new Date();
     session.pre_end_date = undefined;
@@ -127,13 +128,13 @@ async function handle_deface(session) {
 }
 
 function handle(session, script, name, cb_monitor, cb_finish) {
-    let workdir = config.workdir+"/"+session._id;
+    let workdir = process.env.WORK_DIR + "/"+session._id;
     console.log("handling session "+session._id, name);
     return new Promise((resolve, reject)=>{
         session.save().then(()=>{
             try {
                 let monitor;
-                let workdir = config.workdir+"/"+session._id;
+                let workdir = process.env.WORK_DIR + "/"+session._id;
                 const p = spawn(script, [workdir], {cwd: __dirname, detached: true});
                 const logout = fs.openSync(workdir+"/"+name+".log", "w");
                 const errout = fs.openSync(workdir+"/"+name+".err", "w");

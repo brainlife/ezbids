@@ -4,11 +4,9 @@ set -ex
 
 git submodule update --init --recursive
 
-(cd api && npm install)
-(cd ui && npm install)
-
-mkdir -p /tmp/upload
-mkdir -p /tmp/workdir
+# export UID=$(id -u)
+export UID
+export GID=$(id -g)
 
 # ok docker compose is now included in docker as an option for docker
 if [[ $(command -v docker-compose) ]]; then 

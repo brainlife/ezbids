@@ -1,5 +1,2 @@
-ui
-handler
-workdir
-test
-bids-specification
+node_modules
+volumes
