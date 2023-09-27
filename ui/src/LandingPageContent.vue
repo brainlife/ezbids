@@ -21,8 +21,8 @@
                 </el-row>
                 <el-row>
                     <el-col :xs="24" :md="12">
-                        <RouterLink style="text-decoration: none" to="/convert">
-                            <el-button type="primary" class="hero-banner-button">
+                        <RouterLink style="text-decoration: none;" to="/convert">
+                            <el-button type="primary" style="color: white !important" class="hero-banner-button">
                                 GET STARTED
                             </el-button>
                         </RouterLink>
