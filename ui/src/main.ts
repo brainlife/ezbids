@@ -8,8 +8,10 @@ import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 import { library } from "@fortawesome/fontawesome-svg-core"
 import { faGithub } from "@fortawesome/free-brands-svg-icons"
 library.add(faGithub);
-import { faSpinner, faAngleLeft, faAngleRight, faAngleDown, faEye } from '@fortawesome/free-solid-svg-icons'
-library.add(faSpinner, faAngleLeft, faAngleRight, faAngleDown, faEye );
+
+import { faSpinner, faAngleLeft, faAngleRight, faEye, faCircleInfo } from '@fortawesome/free-solid-svg-icons'
+library.add(faSpinner, faAngleLeft, faAngleRight, faEye, faCircleInfo );
+
 
 import 'element-plus/dist/index.css'
 
