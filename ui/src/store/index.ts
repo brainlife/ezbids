@@ -394,24 +394,24 @@ const state = {
             //these are just for typescript definitions.
             //real initial values should come from mapEventColumns()
 
-            onsetLogic: "",
+            onsetLogic: "eq",
             onset: null, //will be set to column name in event
             onset2: null, //will be set to column name in event
             onsetUnit: "sec",
 
-            durationLogic: "",
+            durationLogic: "eq",
             duration: null,
             duration2: null, //used in case durationLogic is "subtract" or "add"
             durationUnit: "sec",
 
-            sampleLogic: "",
+            sampleLogic: "eq",
             sample: null,
             sample2: null,
             sampleUnit: "samples",
 
             trialType: null,
 
-            responseTimeLogic: "",
+            responseTimeLogic: "eq",
             responseTime: null,
             responseTime2: null,
             responseTimeUnit: "sec",
