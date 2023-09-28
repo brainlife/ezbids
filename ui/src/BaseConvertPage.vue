@@ -29,7 +29,6 @@
                 </ul>
             </div>
 
-
             <ul>
                 <li :class="{ active: page === 'finalize' }">Access BIDS Data</li>
                 <li :class="{ active: page === 'feedback' }">Feedback</li>
@@ -48,13 +47,12 @@
             <Participant v-if="page === 'participant'" ref="participant" />
             <SeriesPage v-if="page === 'seriespage'" ref="seriespage" @niivue="openNiivue" />
             <Events v-if="page === 'event'" ref="event" @mapObjects="mapObjects" />
-            <Objects v-if="page === 'object'" ref="object" @niivue="openNiivue" @mapObjects="mapObjects"
-                @updateObject="updateObject" />
+            <Objects v-if="page === 'object'" ref="object" @niivue="openNiivue" @mapObjects="mapObjects" @updateObject="updateObject" />
             <Deface v-if="page === 'deface'" ref="deface" @niivue="openNiivue" />
             <Finalize v-if="page === 'finalize'" ref="finalize" />
             <Feedback v-if="page === 'feedback'" ref="feedback" />
 
-            <br>
+            <br />
             <div class="page-action" v-if="session">
                 <el-button v-if="backLabel" :type="backButtonType" @click="back">
                     <font-awesome-icon :icon="['fas', 'angle-left']" />
@@ -71,33 +69,31 @@
 </template>
 
 <script lang="ts">
+import { defineComponent } from 'vue';
+import { mapState, mapGetters } from 'vuex';
 
-import { defineComponent } from 'vue'
-import { mapState, mapGetters } from 'vuex'
+import Upload from './Upload.vue';
+import Description from './Description.vue';
+import Subject from './Subject.vue';
+import Participant from './Participant.vue';
+import SeriesPage from './SeriesPage.vue';
+import Objects from './Objects.vue';
+import Events from './Events.vue';
+import Deface from './Deface.vue';
+import Finalize from './Finalize.vue';
+import Feedback from './Feedback.vue';
 
-import Upload from './Upload.vue'
-import Description from './Description.vue'
-import Subject from './Subject.vue'
-import Participant from './Participant.vue'
-import SeriesPage from './SeriesPage.vue'
-import Objects from './Objects.vue'
-import Events from './Events.vue'
-import Deface from './Deface.vue'
-import Finalize from './Finalize.vue'
-import Feedback from './Feedback.vue'
-
-import { IObject } from './store'
+import { IObject } from './store';
 
 //https://github.com/element-plus/element-plus/issues/436#issuecomment-961386582
-import { ElNotification } from 'element-plus'
-import 'element-plus/es/components/notification/style/css'
+import { ElNotification } from 'element-plus';
+import 'element-plus/es/components/notification/style/css';
 
-import { setSectionIDs, funcQA, fmapQA, dwiQA, setRun } from './libUnsafe'
+import { setSectionIDs, funcQA, fmapQA, dwiQA, setRun, setVolumeThreshold } from './libUnsafe';
 
+import { createEventsTSV } from './lib';
 
-import { createEventsTSV } from './lib'
-
-import niivue from './components/niivue.vue'
+import niivue from './components/niivue.vue';
 
 export default defineComponent({
     components: {
@@ -118,56 +114,44 @@ export default defineComponent({
     data() {
         return {
             //page order
-            pages: [
-                "upload",
-                "description",
-                "subject",
-                "seriespage",
-                "event",
-                "object",
-                "deface",
-                "participant",
-                "finalize",
-                "feedback",
-            ],
+            pages: ['upload', 'description', 'subject', 'seriespage', 'event', 'object', 'deface', 'participant', 'finalize', 'feedback'],
 
             //item to open in niivue
             //niivueItem: undefined as IObjectItem|undefined,
             niivuePath: undefined as string | undefined,
-        }
+        };
     },
 
     async created() {
-
-        this.$store.commit("reset");
+        this.$store.commit('reset');
         if (location.hash) {
-            await this.$store.dispatch("reload", location.hash.substring(1));
+            await this.$store.dispatch('reload', location.hash.substring(1));
             this.mapObjects();
-            this.$store.commit("organizeObjects");
-            this.$store.dispatch("loadDefaceStatus");
+            this.$store.commit('organizeObjects');
+            this.$store.dispatch('loadDefaceStatus');
         }
 
         window.setInterval(async () => {
             if (this.session) {
                 switch (this.session.status) {
-                    case "analyzed":
-                    case "finished":
+                    case 'analyzed':
+                    case 'finished':
                         break;
-                    case "defacing":
-                        this.$store.dispatch("loadDefaceStatus");
-                        this.$store.dispatch("loadSession", this.session._id);
+                    case 'defacing':
+                        this.$store.dispatch('loadDefaceStatus');
+                        this.$store.dispatch('loadSession', this.session._id);
                         break;
                     default:
                         //deface
                         //defaced
-                        this.$store.dispatch("loadSession", this.session._id);
+                        this.$store.dispatch('loadSession', this.session._id);
                 }
 
                 if (this.ezbids.notLoaded) {
-                    await this.$store.dispatch("loadEzbids");
+                    await this.$store.dispatch('loadEzbids');
                 }
             }
-        }, 5000)
+        }, 5000);
     },
 
     computed: {
@@ -176,53 +160,52 @@ export default defineComponent({
 
         backLabel(): string | null {
             switch (this.page) {
-                case "upload":
-                    if (this.session) return "Re-Upload"; //TODO - looks like this is broken
+                case 'upload':
+                    if (this.session) return 'Re-Upload'; //TODO - looks like this is broken
                     return null;
                 default:
-                    return "Back";
+                    return 'Back';
             }
         },
 
         backButtonType(): string {
             switch (this.page) {
-                case "upload":
-                    return "warning";
+                case 'upload':
+                    return 'warning';
                 default:
-                    return "info";
+                    return 'info';
             }
         },
 
         nextLabel(): string | null {
             switch (this.page) {
-                case "upload":
-                    return (this.session && this.session.pre_finish_date && !this.ezbids.notLoaded) ? "Next" : null;
-                case "feedback":
+                case 'upload':
+                    return this.session && this.session.pre_finish_date && !this.ezbids.notLoaded ? 'Next' : null;
+                case 'feedback':
                     return null;
                 default:
-                    return "Next";
+                    return 'Next';
             }
         },
     },
 
     methods: {
-
         next() {
             this.mapObjects();
-            this.$store.commit("organizeObjects");
+            this.$store.commit('organizeObjects');
 
             // @ts-ignore
             this.$refs[this.page].isValid((err: string) => {
                 if (err) {
-                    console.log("page invalid");
+                    console.log('page invalid');
                     console.error(err);
                     ElNotification({ title: 'Failed', message: err });
                 } else {
                     const idx = this.pages.indexOf(this.page);
-                    this.$store.commit("setPage", this.pages[idx + 1]);
+                    this.$store.commit('setPage', this.pages[idx + 1]);
                     switch (this.page) {
-                        case "event":
-                            // setVolumeThreshold(this.ezbids); // Move to Objects.Vue
+                        case 'event':
+                            setVolumeThreshold(this.ezbids); // Don't move to Objects.Vue, means you can't un-exclude it on the page
                             setSectionIDs(this.ezbids);
                             funcQA(this.ezbids);
                             fmapQA(this.ezbids);
@@ -230,7 +213,7 @@ export default defineComponent({
                             setRun(this.ezbids); //keep here for initial func/events mapping to corresponding func/bold
                             this.mapObjects();
                             break;
-                        case "object":
+                        case 'object':
                             createEventsTSV(this.ezbids, this.ezbids.events);
                             break;
                     }
@@ -244,12 +227,12 @@ export default defineComponent({
         back() {
             const idx = this.pages.indexOf(this.page);
             if (idx == 0) {
-                if (confirm("Do you really want to start over?")) {
-                    document.location.hash = "";
+                if (confirm('Do you really want to start over?')) {
+                    document.location.hash = '';
                     document.location.reload();
                 }
             } else {
-                this.$store.commit("setPage", this.pages[idx - 1]);
+                this.$store.commit('setPage', this.pages[idx - 1]);
             }
         },
 
@@ -257,11 +240,11 @@ export default defineComponent({
             this.mapObject(o);
             // @ts-ignore
             this.$refs.object.validateAll(); //I need to validate the entire list.. so I can detect collision
-            this.$store.commit("organizeObjects");
+            this.$store.commit('organizeObjects');
         },
 
         openNiivue(path: string) {
-            console.log("opening niivue", path);
+            console.log('opening niivue', path);
             this.niivuePath = path;
         },
 
@@ -273,11 +256,10 @@ export default defineComponent({
         //but.. we want to preserve the information set on object itself, so let's stored flatten information on _entities instead of
         //directly applying them to entities.
         mapObject(o: IObject) {
-
             const series = this.$store.state.ezbids.series[o.series_idx];
             if (series) {
                 //func/events doesn't have any series
-                o._SeriesDescription = series.SeriesDescription.replace('_RR', ""); //helps in objects view
+                o._SeriesDescription = series.SeriesDescription.replace('_RR', ''); //helps in objects view
                 o._type = series.type;
             }
             if (o.type) o._type = o.type; //object level override
@@ -286,7 +268,7 @@ export default defineComponent({
             const e = Object.assign({}, this.getBIDSEntities(o._type));
             for (let k in e) {
                 if (series) e[k] = series.entities[k];
-                else e[k] = ""; //no series, no default entity values
+                else e[k] = ''; //no series, no default entity values
             }
 
             //apply overrides from the object
@@ -295,7 +277,7 @@ export default defineComponent({
             }
 
             o._exclude = o.exclude;
-            if (o._type == "exclude") o._exclude = true;
+            if (o._type == 'exclude') o._exclude = true;
 
             const subject = this.findSubject(o);
             if (subject.exclude) o._exclude = true;
@@ -315,9 +297,8 @@ export default defineComponent({
 
             o._entities = e;
         },
-    }
+    },
 });
-
 </script>
 
 <style scoped lang="scss">
@@ -335,7 +316,6 @@ aside {
 
     // background-color: #eee;
     background: linear-gradient(rgb(70, 188, 152), rgb(53, 150, 121), rgb(45, 113, 141), rgb(31, 82, 95), rgb(16, 45, 71));
-
 
     color: #333;
 
@@ -373,7 +353,6 @@ aside {
             list-style: inside;
         }
     }
-
 }
 
 .menu-footer {
@@ -386,7 +365,7 @@ section {
 }
 
 footer {
-    background-color: #B3C0D1;
+    background-color: #b3c0d1;
     color: #333;
     line-height: 60px;
 }

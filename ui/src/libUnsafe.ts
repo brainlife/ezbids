@@ -51,7 +51,7 @@ export function setVolumeThreshold($root:IEzbids) {
                 unexcluded. Please modify if incorrect.`]
             }
         } else {
-            // In case user changes sequence on dataset review to func/bold and then back; remove the volume threshold warning
+            // In case user changes sequence on dataset review to func/bold and then back, remove the volume threshold warning
             if (o.analysisResults.warnings.length) {
                 for (const warn in o.analysisResults.warnings) {
                     let index:number = o.analysisResults.warnings[warn].indexOf("This func/bold sequence contains")
