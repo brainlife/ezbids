@@ -16,13 +16,15 @@
                         ezBIDS requires neither coding proficiency nor knowledge of BIDS in
                         order to get started. It is the first BIDS tool to offer guided
                         standardization, support for task events conversion, and
-                        interoperability with OpenNeuro and brainlife.io.
+                        interoperability with <a href="https://openneuro.org" class="link" target="_blank">OpenNeuro</a>
+                        and <a href="https://brainlife.io" class="link" target="_blank">brainlife.io</a>
                     </p>
                 </el-row>
                 <el-row>
                     <el-col :xs="24" :md="12">
                         <RouterLink style="text-decoration: none;" to="/convert">
-                            <el-button type="primary" style="color: white !important" class="hero-banner-button">
+                            <el-button type="primary" style="color: white !important; font-weight: bold;"
+                                class="hero-banner-button">
                                 GET STARTED
                             </el-button>
                         </RouterLink>
@@ -79,8 +81,12 @@
                         <el-icon class="card-icon">
                             <font-awesome-icon :icon="['fas', 'circle-check']" />
                         </el-icon>
-                        Multiple data management options: download BIDS data to local
-                        system, or transfer to either OpenNeuro or brainlife.io.
+                        <span>
+                            Multiple data management options: download BIDS data to local
+                            system, or transfer to either <a href="https://openneuro.org" class="link"
+                                target="_blank">OpenNeuro</a>
+                            or <a href="https://brainlife.io" class="link" target="_blank">brainlife.io</a>.
+                        </span>
                     </div>
                 </el-card>
             </el-col>
@@ -233,6 +239,17 @@ export default defineComponent({
 
     .card {
         font-size: var(--el-font-size-extra-large);
+    }
+}
+
+.link {
+    color: #3782e5;
+    text-decoration: none;
+    display: inline;
+
+    &:hover {
+        text-decoration: underline;
+        opacity: 0.8;
     }
 }
 
