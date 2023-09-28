@@ -1,6 +1,6 @@
 <template>
-    <el-button @click="initForm()">Edit Modality</el-button>
-    <el-dialog v-model="showDialog" title="Edit Modalities">
+    <el-button @click="initForm()">Edit Metadata</el-button>
+    <el-dialog v-model="showDialog" title="Relevant Metadata">
         <el-form ref="form" :model="formData" label-position="top" label-width="500px" :inline="true" :rules="rules"> 
                 <el-row>
                     <el-col :span="8">

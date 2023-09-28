@@ -130,7 +130,7 @@
                     </p>
                 </el-form-item>
                 <br/>
-                <el-form-item v-if="ss.type=='perf/asl'"  label="Edit Modalities">
+                <el-form-item v-if="ss.type=='perf/asl'"  label="Relevant Metadata">
                     <ModalityForm :ss="ss" :ezbids="ezbids"
                 @form-submitted="submitForm"/>
                 </el-form-item>
