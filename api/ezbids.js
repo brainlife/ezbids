@@ -9,9 +9,23 @@ const nocache = require("nocache");
 const models = require("./models");
 const config = require("./config");
 //import sendSeekable = require('send-seekable');
+// setup swagger
+const swaggerUi = require("swagger-ui-express");
+const swaggerJsdoc = require("swagger-jsdoc");
+const options = {
+    definition: {
+        openapi: '3.0.0',
+        info: {
+            title: 'EZBIDS API',
+            version: '1.0.0',
+        },
+    },
+    apis: ['./controllers.js'], // files containing annotations as above
+};
+const swaggerSpec = swaggerJsdoc(options);
 //init express
 const app = express();
-app.use(cors({ origin: '*' }));
+app.use(cors());
 app.use(compression());
 app.use(nocache());
 //app.use(sendSeekable);
@@ -25,6 +39,7 @@ app.use(bodyParser.json({
     type: "application/json",
 }));
 app.use('/', require('./controllers'));
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 //error handling
 //app.use(expressWinston.errorLogger(config.logger.winston)); 
 app.use(function (err, req, res, next) {

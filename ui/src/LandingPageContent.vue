@@ -1,4 +1,3 @@
-
 <template>
     <!-- subtract 62px for the header and 10 vh for the footer -->
     <el-main class="main">
@@ -7,24 +6,22 @@
             <el-col :xs="24" :md="10" class="landing-page-col">
                 <el-row>
                     <h1 class="hero-banner-title">
-                        Convert neuroimaging data and associated metadata to the BIDS
-                        standard
+                        Convert neuroimaging data and associated metadata to the BIDS standard
                     </h1>
                 </el-row>
                 <el-row>
                     <p class="hero-banner-description">
-                        ezBIDS requires neither coding proficiency nor knowledge of BIDS in
-                        order to get started. It is the first BIDS tool to offer guided
-                        standardization, support for task events conversion, and
-                        interoperability with <a href="https://openneuro.org" class="link" target="_blank">OpenNeuro</a>
-                        and <a href="https://brainlife.io" class="link" target="_blank">brainlife.io</a>
+                        ezBIDS requires neither coding proficiency nor knowledge of BIDS in order to get started. It is the first BIDS tool to offer guided
+                        standardization, support for task events conversion, and interoperability with
+                        <a href="https://openneuro.org" class="link" target="_blank">OpenNeuro</a>
+                        and
+                        <a href="https://brainlife.io" class="link" target="_blank">brainlife.io</a>
                     </p>
                 </el-row>
                 <el-row>
                     <el-col :xs="24" :md="12">
                         <RouterLink style="text-decoration: none;" to="/convert">
-                            <el-button type="primary" style="color: white !important; font-weight: bold;"
-                                class="hero-banner-button">
+                            <el-button type="primary" style="color: white !important; font-weight: bold;" class="hero-banner-button">
                                 GET STARTED
                             </el-button>
                         </RouterLink>
@@ -82,10 +79,10 @@
                             <font-awesome-icon :icon="['fas', 'circle-check']" />
                         </el-icon>
                         <span>
-                            Multiple data management options: download BIDS data to local
-                            system, or transfer to either <a href="https://openneuro.org" class="link"
-                                target="_blank">OpenNeuro</a>
-                            or <a href="https://brainlife.io" class="link" target="_blank">brainlife.io</a>.
+                            Multiple data management options: download BIDS data to local system, or transfer to either
+                            <a href="https://openneuro.org" class="link" target="_blank">OpenNeuro</a>
+                            or
+                            <a href="https://brainlife.io" class="link" target="_blank">brainlife.io</a>.
                         </span>
                     </div>
                 </el-card>
@@ -93,10 +90,10 @@
         </el-row>
     </el-main>
 </template>
-    
+
 <script lang="ts">
-import { defineComponent } from "vue";
-import LandingPageAnimation from "./LandingPageAnimation.vue";
+import { defineComponent } from 'vue';
+import LandingPageAnimation from './LandingPageAnimation.vue';
 export default defineComponent({
     components: {
         LandingPageAnimation: LandingPageAnimation,

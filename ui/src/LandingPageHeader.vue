@@ -1,4 +1,3 @@
-
 <template>
     <el-affix>
         <el-header class="header">
@@ -24,21 +23,21 @@
         </el-header>
     </el-affix>
 </template>
-    
+
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { RouterLink } from 'vue-router';
 
 export default defineComponent({
     components: {
-        RouterLink: RouterLink
+        RouterLink: RouterLink,
     },
     methods: {
         openBrainLifeTeamPage() {
-            window.open("https://brainlife.io/team/", "_blank");
-        }
-    }
-})
+            window.open('https://brainlife.io/team/', '_blank');
+        },
+    },
+});
 </script>
 
 <style scoped>
@@ -52,7 +51,7 @@ export default defineComponent({
 .header {
     background-color: white;
     height: 62px;
-    padding: 0
+    padding: 0;
 }
 
 .menu {

@@ -20,6 +20,7 @@ Object.values(bidsEntitiesOrdered).forEach(order => {
 });
 info.entityMappings = newEntityOrdering;
 const datasetName = info.datasetDescription.Name;
+
 mkdirp.sync(root + "/bids/" + datasetName);
 fs.writeFileSync(root + "/bids/" + datasetName + "/finalized.json", JSON.stringify(info, null, 4)); //copy the finalized.json
 fs.writeFileSync(root + "/bids/" + datasetName + "/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
@@ -140,6 +141,23 @@ async.forEachOf(info.objects, (o, idx, next_o) => {
             }
         });
     }
+
+    function handlePerf() {
+        o.items.forEach(item => {
+            let derivatives = null;
+            switch (item.name) {
+                case "nii.gz":
+                    handleItem(item, suffix + ".nii.gz", derivatives);
+                    break;
+                case "json":
+                    handleItem(item, suffix + ".json", derivatives);
+                    break;
+                default:
+                    console.error("unknown Perfusion item name", item.name);
+            }
+        });
+    }
+
     function handleAnat() {
         /*
         - suffixes:
@@ -399,6 +417,9 @@ async.forEachOf(info.objects, (o, idx, next_o) => {
             break;
         case "dwi":
             handleDwi();
+            break;
+        case "perf":
+            handlePerf();
             break;
         case "pet":
             handlePET();

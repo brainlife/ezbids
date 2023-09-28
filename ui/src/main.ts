@@ -4,7 +4,7 @@ import App from './App.vue'
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 import { library } from "@fortawesome/fontawesome-svg-core"
 import { faGithub } from "@fortawesome/free-brands-svg-icons"
-import { faSpinner, faAngleLeft, faAngleRight, faAngleDown, faEye, faCircleCheck, faArrowUpRightFromSquare } from '@fortawesome/free-solid-svg-icons'
+import { faSpinner, faAngleLeft, faAngleRight, faAngleDown, faEye, faCircleCheck, faArrowUpRightFromSquare, faCircleInfo } from '@fortawesome/free-solid-svg-icons'
 import 'element-plus/dist/index.css'
 import store from './store';
 import { createRouter, createWebHistory } from 'vue-router';
@@ -14,16 +14,16 @@ import NotFound from './NotFound.vue';
 
 // add icons
 library.add(faGithub);
-library.add(faSpinner, faAngleLeft, faAngleRight, faAngleDown, faEye, faCircleCheck, faArrowUpRightFromSquare );
+library.add(faSpinner, faAngleLeft, faAngleRight, faAngleDown, faEye, faCircleCheck, faArrowUpRightFromSquare, faCircleInfo);
 
 
 //move to ./types?
 //tell typescript about some global properties we are adding
 declare module '@vue/runtime-core' {
-    export interface ComponentCustomProperties {
-      $validate: (data: object, rule: object) => boolean
-      $store: typeof store
-    }
+  export interface ComponentCustomProperties {
+    $validate: (data: object, rule: object) => boolean
+    $store: typeof store
+  }
 }
 
 // enable routing
@@ -40,9 +40,9 @@ const app = createApp(App);
 app.use(router);
 app.use(store)
 app.use(VueGtag, {
-    property: {
-      id: "G-J5H19RMNCT"
-    }
+  property: {
+    id: "G-J5H19RMNCT"
+  }
 });
 
 app.component("font-awesome-icon", FontAwesomeIcon)

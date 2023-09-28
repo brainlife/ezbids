@@ -1,4 +1,3 @@
-
 <template>
     <el-container direction="vertical" class="landing-page-container">
         <LandingPageHeader />
@@ -11,15 +10,15 @@
 import { defineComponent } from 'vue';
 import LandingPageHeader from './LandingPageHeader.vue';
 import LandingPageContent from './LandingPageContent.vue';
-import LandingPageFooter from './LandingPageFooter.vue'
+import LandingPageFooter from './LandingPageFooter.vue';
 
 export default defineComponent({
     components: {
         LandingPageHeader: LandingPageHeader,
         LandingPageContent: LandingPageContent,
-        LandingPageFooter: LandingPageFooter
-    }
-})
+        LandingPageFooter: LandingPageFooter,
+    },
+});
 </script>
 
 <style>

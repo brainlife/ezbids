@@ -4,10 +4,49 @@ import { createStore } from 'vuex'
 
 import bidsEntities from '../assets/schema/objects/entities.json'
 
-export interface MetadataChecks {
-    MetadataField: string;
-    requirement: string;
-}
+// export interface GenericRule {
+//     selectors?: string[]
+//     checks?: string[]
+//     columns?: Record<string, string>
+//     additional_columns?: string
+//     initial_columns?: string[]
+//     fields: Record<string, SchemaFields>
+//     issue?: SchemaIssue
+//     extensions?: string[]
+//     suffixes?: string[]
+//     stem?: string
+//     path?: string
+//     datatypes?: string[]
+//     pattern?: string
+//     name?: string
+//     format?: string
+//     required?: string
+//     index_columns?: string[]
+// }
+
+// export interface SchemaFields {
+//     level: string
+//     level_addendum?: string
+//     issue?: SchemaIssue
+// }
+
+// export interface SchemaIssue {
+//     code: string
+//     message: string
+//     level?: string
+// }
+
+// interface SchemaType {
+//     type: string
+//     enum?: string[]
+// }
+
+// interface AnyOf {
+//     anyOf: SchemaType[]
+// }
+
+// export type GenericSchema = { [key: string]: GenericRule | GenericSchema }
+// export type SchemaTypeLike = AnyOf | SchemaType
 
 export interface ContainerObject {
     Type: string;
@@ -91,7 +130,7 @@ export interface Series {
 
     IntendedFor?: number[]; //for storing which object id the object is intended for
 
-    metadata_requirements: [MetadataChecks];
+    // metadata_requirements: [MetadataChecks]; // Remove?
 }
 
 export interface Session {
@@ -347,6 +386,7 @@ const state = {
 
         defacingMethod: "",
         includeExcluded: true,
+        sideCar: {} as {[key: string]: any},
     },
 
     events: {
@@ -444,147 +484,29 @@ function loadDatatype(
     }
 }
 
-// function loadDatatypeTest(
-//     modality: string,
-//     datatypes: {[key: string]: BIDSSchemaEntities},
-//     metadata: {[key: string]: BIDSSchemaMetadata},
-//     label: string) {
+/* ezbids.sideCar = {
+    "anat/t1w": {
+        //yamlfile data fields for the input boxes
+        "Field1" : {
+            severity:"required/recommended/optional" //optional -> not forcing user, 
+            recommended -> ui enhancement, required -> error
+            type: "string",
+            description: "description",
+            conditional: "if Field2 == 'something' then this is required",
+            default: "default value",
+        },
+    }
+}
+*/
 
-//     // console.log("BIDS Schema")
-//     // console.log(state.bidsSchema)
-
-//     state.bidsSchema.datatypes[modality] = { label, options: [] };
-//     state.bidsSchema.metadata[modality] = { label, options: [] };
-
-//     for(const group of Object.values(datatypes)) {
-//         //datatype.forEach(group=>{
-//             group.suffixes.forEach((suffix:string)=>{
-//                 state.bidsSchema.datatypes[modality].options.push({
-//                     value: modality+"/"+suffix,
-//                     label: suffix, //bold, cbv, sbred, events, etc..
-//                     entities: group.entities, //["subject", "session", etc..]
-//                 });
-//             });
-//         }
-
-//     let counter = -1
-//     let MetadataInfo = []
-//     for(const group of Object.values(metadata)) {
-//         let modality = group.selectors[0].split("modality == ")[1]
-//         let dtype = group.selectors[1].split("datatype == ")[1]
-//         let suf = group.selectors[2].split("suffix == ")[1]
-//         let conditions = []
-//         if(group.selectors.length > 3) {
-//             for(let k in group.selectors) {
-//                 if(parseInt(k) > 2) {
-//                     conditions.push(group.selectors[k])
-//                 }
-//             }
-//         }
-//         let fields = group.fields
-//         // console.log(fields)
-//         MetadataInfo.push(modality, dtype, suf, conditions)
-
-
-//         counter = counter + 1
-
-//         let base =  {"value": "", "label": "", "conditions": Object(), "metadata": Object()}
-
-//         if(group.selectors.length > 1) {
-//             group.selectors = [group.selectors.join(",")]
-//         }
-        
-//         let datatype = ""
-//         let suffix = ""
-//         let value = ""
-//         let requirement = ""
-//         let description = ""
-//         let ConditionList = []
-//         let ConditionCounter = 0
-//         let SelectorInfo = []
-//         let FieldsInfo = []
-        
-//         for (const [index, element] of Object.entries(group)) {
-//             if(index == "selectors") {
-//                 let selector = element[0] 
-
-//                 if(selector.includes("modality")) {
-//                     datatype = selector.split("modality == ")[1].split(",")[0].split('"').join('')
-//                     suffix = datatype
-//                 }
-                
-//                 if(selector.includes("datatype")) {
-//                     datatype = selector.split("datatype == ")[1].split(",")[0].split('"').join('')
-//                     suffix = datatype
-//                 }
-
-//                 if(selector.includes("suffix")) {
-//                     suffix = selector.split("suffix == ")[1].split(",")[0].split('"').join('')
-//                 }
-
-//                 if(selector.includes("sidecar.")) {
-//                     let conditions = selector.split(",")
-//                     for(const condition of conditions) {
-//                         if(condition.includes("sidecar.") && !condition.includes(".includes")) {
-//                             let metadataCondition = condition.split("sidecar.")[1].split(" ==")[0]
-//                             let metadataConditionValue = condition.split("sidecar.")[1].split(" ==")[1].split('"').join('')
-//                             ConditionList[ConditionCounter] = {"metadata": metadataCondition, "value": metadataConditionValue}
-//                             ConditionCounter = ConditionCounter + 1
-//                         }
-//                     }
-//                 }
-//                 value = datatype + "/" + suffix
-//                 SelectorInfo.push({"value": value, "label": suffix, "conditions": ConditionList})
-
-//             } else {
-//                 let FieldsCounter = 0
-//                 for (const [MetadataField, requirementInfo] of Object.entries(element)) {
-//                     let level = requirementInfo.level
-//                     requirement = level !== undefined ? level : requirementInfo
-
-//                     if(typeof(requirementInfo) == 'object') {
-//                         for(const k of Object.keys(requirementInfo)) {
-//                             if(k == "level_addendum") {
-//                                 description = requirementInfo.level_addendum
-//                             } else if (k == "description_addendum") {
-//                                 description = requirementInfo.description_addendum
-//                             } else if (k == "issue") {
-//                                 description = requirementInfo.issue.message
-//                             } else {
-//                                 description = "No description available"
-//                             }
-//                         }
-//                     } else {
-//                         description = "No description available"
-//                     }
-
-//                     FieldsInfo[FieldsCounter] = {"name": MetadataField, "requirement": requirement, "description": description}
-//                     FieldsCounter = FieldsCounter + 1
-//                   }
-           
-
-//                 // Object.entries(group["fields"]).forEach((idx) => {
-//                 //     counter = counter + 1
-//                 //     let value = datatype + "/" + suffix
-//                 //     let MetadataField:string = idx[0]
-//                 //     let level:string = idx[1].level
-//                 //     let sublevel:string = idx[1].description_addendum
-//                 //     let addendum:string = sublevel !== undefined ? sublevel : idx[1].level_addendum
-//                 //     let requirement:string = level !== undefined ? level : idx[1]
-//                 //     let description:string = addendum !== undefined ? addendum : "No description available"
-//                 //     state.bidsSchema.metadata[MetadataField] = {"value": value, "name": MetadataField, "requirement": requirement, "description": description}
-//                 //     dan[counter] = {"value": value, "name": MetadataField, "requirement": requirement, "description": description}
-//                 // });
-//             }
-//         }
-//         base.value = SelectorInfo[0].value
-//         base.label = SelectorInfo[0].label
-//         base.conditions = SelectorInfo[0].conditions
-//         base.metadata = FieldsInfo
-//         MetadataInfo.push(base)
-//     }
-//     state.bidsSchema.metadata[modality].options = MetadataInfo
-// } 
+/** 
+ * 
+ * function LoadMetaDataRules() {
+ * 2 files loaded -> 1st perf/asl -> asl.yaml and convert it to above json
+ * pet -> pet.yaml 
+ * 
+ * }
+*/
 
 import dwiDatatype from '../assets/schema/rules/datatypes/dwi.json'
 loadDatatype("dwi", dwiDatatype, "Diffusion");
@@ -601,9 +523,9 @@ loadDatatype("fmap", fmapDatatype, "Field Map");
 import petDatatype from '../assets/schema/rules/datatypes/pet.json'
 loadDatatype("pet", petDatatype, "PET");
 
-// import perfDatatype from '../assets/schema/rules/datatypes/perf.json'
-// import perfDatatypeMetadata from '../assets/schema/rules/sidecars/perf.json'
-// loadDatatypeTest("perf", perfDatatype, perfDatatypeMetadata, "Perfusion");
+import perfDatatype from '../assets/schema/rules/datatypes/perf.json'
+loadDatatype("perf", perfDatatype, "Perfusion");
+
 
 const store = createStore({
     state,
@@ -668,6 +590,7 @@ const store = createStore({
 
                 defacingMethod: "",
                 includeExcluded: true,
+                sideCar: {},
             };
 
             Object.assign(state.events, {

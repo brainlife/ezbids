@@ -33,8 +33,9 @@
         </div>
         <div v-if="ss">
             <h5>BIDS Datatype, Suffix, Entities</h5>
+            <!-- <pre>{{ getFieldsMetaData(ss.type) }}</pre> -->
             <el-form label-width="150px">
-                <el-alert v-if="ss.message" :title="ss.message" type="warning" style="margin-bottom: 4px;"/>
+                <el-alert v-if="ss.message" :title="ss.message" type="info" show-icon style="margin-bottom: 4px;"/>
                 <div style="margin-bottom: 10px;">
                     <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in ss.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
                     <el-alert show-icon :closable="false" type="warning" v-for="(warn, idx) in ss.validationWarnings" :key="idx" :title="warn" style="margin-bottom: 4px;"/>
@@ -128,6 +129,11 @@
                         {{ss.RepetitionTime}}</small></el-tag>&nbsp;
                     </p>
                 </el-form-item>
+                <br/>
+                <el-form-item v-if="ss.type=='perf/asl'"  label="Edit Modalities">
+                    <ModalityForm :ss="ss" :ezbids="ezbids"
+                @form-submitted="submitForm"/>
+                </el-form-item>
             </el-form>
 
             <p style="border-top: 1px solid #eee; padding: 10px 20px;">
@@ -182,12 +188,16 @@ import { defineComponent } from 'vue'
 
 import showfile from './components/showfile.vue'
 import datatype from './components/datatype.vue'
+import ModalityForm from './components/modalityForm.vue'
 
 import { prettyBytes } from './filters'
 
 import { Series, IObject } from './store'
 
 import { validateEntities, validate_B0FieldIdentifier_B0FieldSource } from './libUnsafe'
+import aslYaml from "../src/assets/schema/rules/sidecars/asl.yaml";
+import petYaml from '../src/assets/schema/rules/sidecars/pet.yaml';
+import metadata_types from '../src/assets/schema/rules/sidecars/metadata_types.yaml';
 
 // @ts-ignore
 import { Splitpanes, Pane } from 'splitpanes'
@@ -206,12 +216,19 @@ export default defineComponent({
         return {
             showInfo: {} as any,
             ss: null as Series|null, //selected series
+            petYaml: petYaml,
+            aslYaml: aslYaml,
+            fields: {},
+            showDialog: false,
+            rules: {},
+            formData: {
+            },
         }
     },
 
     computed: {
         ...mapState(['ezbids', 'bidsSchema', 'config']),
-        ...mapGetters(['getBIDSEntities', 'getURL']), //doesn't work with ts?
+        ...mapGetters(['getBIDSEntities', 'getURL', 'getMetaDataRule']), //doesn't work with ts?
     },
 
     mounted() {
@@ -234,11 +251,6 @@ export default defineComponent({
             delete entities.session;
             return entities;
         },
-
-        // getSomeMetadata(type: string): any {
-        //     const metadata = Object.assign({}, this.getBIDSMetadata(type));
-        //     return metadata;
-        // },
 
         toggleInfo(entity: string) {
             this.showInfo[entity] = !this.showInfo[entity];
@@ -326,9 +338,13 @@ export default defineComponent({
 
         validateAll() {
             this.ezbids.series.forEach(this.validate);
-        }
-    },
-});
+        },
+        submitForm(data:any) { //TODO: should we make an interface for data in store/index.ts?
+            console.log("submitForm", data);
+            this.ezbids = data;
+        },
+},
+})
 
 </script>
 
