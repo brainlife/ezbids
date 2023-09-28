@@ -35,7 +35,7 @@
             <h5>BIDS Datatype, Suffix, Entities</h5>
             <!-- <pre>{{ getFieldsMetaData(ss.type) }}</pre> -->
             <el-form label-width="150px">
-                <el-alert v-if="ss.message" :title="ss.message" type="warning" style="margin-bottom: 4px;"/>
+                <el-alert v-if="ss.message" :title="ss.message" type="info" show-icon style="margin-bottom: 4px;"/>
                 <div style="margin-bottom: 10px;">
                     <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in ss.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
                     <el-alert show-icon :closable="false" type="warning" v-for="(warn, idx) in ss.validationWarnings" :key="idx" :title="warn" style="margin-bottom: 4px;"/>
