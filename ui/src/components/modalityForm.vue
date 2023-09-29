@@ -297,7 +297,7 @@ export default defineComponent({
         //     console.log("petYaml", petYaml);
         //     fileObject = petYaml;
         // }
-        if(type == 'perf/asl') fileObject = aslYaml;
+        if(type == 'perf/asl' || 'perf/m0scan') fileObject = aslYaml;
         
         let result = {
             required: [],

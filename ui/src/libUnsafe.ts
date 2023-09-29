@@ -340,6 +340,7 @@ export function setRun($root:IEzbids) {
                 let initialGrouping = sesGroup.objects.filter(e=>e._type !== "exclude" &&
                     !e._exclude &&
                     e._type === obj._type &&
+                    e._type !== "func/events" && // let users specify the run number for func/events files
                     deepEqual(Object.fromEntries(Object.entries(e._entities).filter(([key])=>key !== "part" && key !== "run" && key !== "echo")), targetEntities)
                 )
 
