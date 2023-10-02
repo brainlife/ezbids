@@ -439,6 +439,31 @@ export function setIntendedFor($root:IEzbids) {
                             });
                         }
                     }
+                    // if (obj._type.startsWith("fmap/") || obj._type === "perf/m0scan") {
+                    //     if (!obj.IntendedFor) {
+                    //         Object.assign(obj, {IntendedFor: []})
+                    //     }
+
+                    //     let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor
+                    //     if (correspindingSeriesIntendedFor !== undefined && correspindingSeriesIntendedFor !== null) {
+                    //         correspindingSeriesIntendedFor.forEach((i:number) => {
+                    //             let IntendedForIDs = section.filter(o=>o.series_idx === i && o._type !== "func/events").map(o=>o.idx)
+                    //             if (obj.IntendedFor !== undefined) {
+                    //                 IntendedForIDs.forEach((IntendedForID:number) => {
+                    //                     if (!obj.IntendedFor?.includes(IntendedForID)) {
+                    //                         obj.IntendedFor = obj.IntendedFor?.concat(IntendedForIDs)
+                    //                     }
+
+                    //                     let IntendedForObj = sesGroup.objects.filter(e=>e.idx === IntendedForID)[0]
+                    //                     console.log(IntendedForObj)
+                    //                     if (IntendedForObj._exclude || IntendedForObj._type === "exclude") {
+                    //                         obj.IntendedFor = obj.IntendedFor?.filter(e=>e === IntendedForID)
+                    //                     }
+                    //                 })
+                    //             }
+                    //         });
+                    //     }
+                    // }
 
                     // check B0FieldIdentifier and B0FieldSource information
                     if (obj._type && !obj._type.includes('exclude') && !obj._type.includes('events')) {

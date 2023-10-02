@@ -81,7 +81,7 @@
                     </p> -->
                 </div>
 
-                <div v-if="ss.type && ss.type.startsWith('fmap/')">
+                <div v-if="ss.type && (ss.type.startsWith('fmap/') || ss.type === 'perf/m0scan')">
                     <el-form-item label="IntendedFor">
                         <el-select v-model="ss.IntendedFor" required multiple filterable
                             placeholder="Please select Series" size="small"
@@ -92,7 +92,7 @@
                             </el-option>
                         </el-select>
                         <p style="margin-top: 0">
-                            <small>* <b>Recommended</b>: select Series that this field map should be applied to. Helpful is planning on using BIDS-apps for processing (e.g., fMRIPrep).</small>
+                            <small>* <b>Recommended (Required if perf/m0scan)</b>: select Series that this sequence should be applied to.</small>
                         </p>
                     </el-form-item>
                 </div>
@@ -310,15 +310,19 @@ export default defineComponent({
                 }
             }
 
-            if(s.type.startsWith("fmap/")) {
+            if(s.type.startsWith("fmap/") || s.type === "perf/m0scan") {
                 if(!s.IntendedFor) s.IntendedFor = [];
                 if(s.IntendedFor.length == 0) {
-                    s.validationWarnings.push("It is recommended that field map (fmap) images have IntendedFor set to at least 1 series ID. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep");
+                    if(s.type.startsWith("fmap/")) {
+                        s.validationWarnings.push("It is recommended that field map (fmap) images have IntendedFor set to at least 1 series ID. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep");
+                    } else if (s.type === "perf/m0scan") {
+                        s.validationErrors.push("It is required that perfusion m0scan images have IntendedFor set to at least 1 series ID.");
+                    }
                 }
-                //Ensure other fmap series aren't included in the IntendedFor mapping
+                //Ensure other fmap or perf/m0scan series aren't included in the IntendedFor mapping
                 if(s.IntendedFor.length > 0) {
                     s.IntendedFor.forEach(i=>{
-                        if(this.ezbids.series[i].type.startsWith("fmap/")) {
+                        if(this.ezbids.series[i].type.startsWith("fmap/") || this.ezbids.series[i].type === "perf/m0scan") {
                             s.validationErrors.push("The selected series (#"+i+") appears to be a field map (fmap), which isn't allowed in the IntendedFor mapping. Please remove this series, or, if it isn't a field map, please correct it.")
                         }
                     })
