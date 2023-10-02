@@ -62,10 +62,9 @@ RUN git clone --branch development https://github.com/rordenlab/dcm2niix.git \
 RUN cd && git clone https://github.com/bids-standard/bids-specification
 
 #install ROBEX
-RUN mkdir /ROBEX && \
-    curl -SL 'https://www.nitrc.org/frs/download.php/5994/ROBEXv12.linux64.tar.gz//?i_agree=1&download_now=1' | \
-    tar -xvzC /ROBEX
-ENV PATH /ROBEX:$PATH
+RUN curl -SL 'https://www.nitrc.org/frs/download.php/5994/ROBEXv12.linux64.tar.gz//?i_agree=1&download_now=1' | \
+    tar -xvzC /opt ROBEX
+ENV PATH /opt/ROBEX:$PATH
 
 ENV NODE_PATH $NVM_DIR/v$NODE_VERSION/lib/node_modules
 ENV PATH $NVM_DIR/v$NODE_VERSION/bin:$PATH
