@@ -98,19 +98,11 @@ brainlife.io is publicly funded and for the sustainability of the project it is 
 ### Citations
 We ask that you the following articles when publishing papers that used data, code or other resources created by the brainlife.io community.
 
-1. Levias, D. et al. **In review**
-
-### This repo was bootstrapped by
-
-```
-npm init vite@latest ui2 -- --template vue-ts
-```
+1. Levitas, D. et al. **In review**
 
 ### Development Environment
 
-A local development instance of ezBIDS can be launched by first git cloning this repo, then running `./dev.sh` on a docker enabled machine. When everything is built/running, you should be able to reach the dev instance at http://localhost:3000/
-
-
+A local development instance of ezBIDS can be launched by first git cloning this repo, then running `./dev.sh` on a docker enabled machine.
+When everything is built/running, you should be able to reach the dev instance at http://localhost:3000/
 
 Copyright © 2022 brainlife.io at University of Texas at Austin
-

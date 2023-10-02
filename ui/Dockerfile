@@ -1,7 +1,7 @@
 FROM node:16
 
-COPY . /ui
-WORKDIR /ui
+COPY . /home/node/ui
+WORKDIR /home/node/ui
 
 RUN npm install
 
