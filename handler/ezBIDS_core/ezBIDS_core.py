@@ -1313,9 +1313,13 @@ def finalized_configuration(dataset_list_unique_series, subjects_information, co
             """
             If metadata information was added in, find it and add to the json file.
             """
-            ref_object = [x for x in config_dataset_list_objects if x["series_idx"] == ref_series_idx]
-            if len(ref_object):  # should only be length of 1, but just to be sure
-                ref_sidecar = ref_object[0]["items"][0]["sidecar"]
+            ref_object = [
+                x for x in config_dataset_list_objects
+                if "series_idx" in x.keys()
+                and x["series_idx"] == ref_series_idx
+            ]
+            if len(ref_object):  # If len > 1, just take the 1st instance
+                ref_sidecar = [x["sidecar"] for x in ref_object[0]["items"] if x["name"] == "json"][0]
                 for field in ref_sidecar:
                     value = ref_sidecar[field]
                     if field not in sidecar and field not in anonymized_sidecar_fields:
