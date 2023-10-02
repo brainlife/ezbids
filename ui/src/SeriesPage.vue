@@ -33,8 +33,9 @@
         </div>
         <div v-if="ss">
             <h5>BIDS Datatype, Suffix, Entities</h5>
+            <!-- <pre>{{ getFieldsMetaData(ss.type) }}</pre> -->
             <el-form label-width="150px">
-                <el-alert v-if="ss.message" :title="ss.message" type="warning" style="margin-bottom: 4px;"/>
+                <el-alert v-if="ss.message" :title="ss.message" type="info" show-icon style="margin-bottom: 4px;"/>
                 <div style="margin-bottom: 10px;">
                     <el-alert show-icon :closable="false" type="error" v-for="(error, idx) in ss.validationErrors" :key="idx" :title="error" style="margin-bottom: 4px;"/>
                     <el-alert show-icon :closable="false" type="warning" v-for="(warn, idx) in ss.validationWarnings" :key="idx" :title="warn" style="margin-bottom: 4px;"/>
@@ -80,7 +81,7 @@
                     </p> -->
                 </div>
 
-                <div v-if="ss.type && ss.type.startsWith('fmap/')">
+                <div v-if="ss.type && (ss.type.startsWith('fmap/') || ss.type === 'perf/m0scan')">
                     <el-form-item label="IntendedFor">
                         <el-select v-model="ss.IntendedFor" required multiple filterable
                             placeholder="Please select Series" size="small"
@@ -91,7 +92,7 @@
                             </el-option>
                         </el-select>
                         <p style="margin-top: 0">
-                            <small>* <b>Recommended</b>: select Series that this field map should be applied to. Helpful is planning on using BIDS-apps for processing (e.g., fMRIPrep).</small>
+                            <small>* <b>Recommended (Required if perf/m0scan)</b>: select Series that this sequence should be applied to.</small>
                         </p>
                     </el-form-item>
                 </div>
@@ -127,6 +128,11 @@
                         <el-tag type="info" size="mini"><small>RepetitionTime:
                         {{ss.RepetitionTime}}</small></el-tag>&nbsp;
                     </p>
+                </el-form-item>
+                <br/>
+                <el-form-item v-if="ss.type=='perf/asl' || 'perf/m0scan'"  label="Relevant Metadata">
+                    <ModalityForm :ss="ss" :ezbids="ezbids"
+                @form-submitted="submitForm"/>
                 </el-form-item>
             </el-form>
 
@@ -182,12 +188,16 @@ import { defineComponent } from 'vue'
 
 import showfile from './components/showfile.vue'
 import datatype from './components/datatype.vue'
+import ModalityForm from './components/modalityForm.vue'
 
 import { prettyBytes } from './filters'
 
 import { Series, IObject } from './store'
 
 import { validateEntities, validate_B0FieldIdentifier_B0FieldSource } from './libUnsafe'
+import aslYaml from "../src/assets/schema/rules/sidecars/asl.yaml";
+import petYaml from '../src/assets/schema/rules/sidecars/pet.yaml';
+import metadata_types from '../src/assets/schema/rules/sidecars/metadata_types.yaml';
 
 // @ts-ignore
 import { Splitpanes, Pane } from 'splitpanes'
@@ -206,12 +216,19 @@ export default defineComponent({
         return {
             showInfo: {} as any,
             ss: null as Series|null, //selected series
+            petYaml: petYaml,
+            aslYaml: aslYaml,
+            fields: {},
+            showDialog: false,
+            rules: {},
+            formData: {
+            },
         }
     },
 
     computed: {
         ...mapState(['ezbids', 'bidsSchema', 'config']),
-        ...mapGetters(['getBIDSEntities', 'getBIDSMetadata', 'getURL']), //doesn't work with ts?
+        ...mapGetters(['getBIDSEntities', 'getBIDSMetadata', 'getURL', 'getMetaDataRule']), //doesn't work with ts?
     },
 
     mounted() {
@@ -234,11 +251,6 @@ export default defineComponent({
             delete entities.session;
             return entities;
         },
-
-        // getSomeMetadata(type: string): any {
-        //     const metadata = Object.assign({}, this.getBIDSMetadata(type));
-        //     return metadata;
-        // },
 
         toggleInfo(entity: string) {
             this.showInfo[entity] = !this.showInfo[entity];
@@ -298,15 +310,19 @@ export default defineComponent({
                 }
             }
 
-            if(s.type.startsWith("fmap/")) {
+            if(s.type.startsWith("fmap/") || s.type === "perf/m0scan") {
                 if(!s.IntendedFor) s.IntendedFor = [];
                 if(s.IntendedFor.length == 0) {
-                    s.validationWarnings.push("It is recommended that field map (fmap) images have IntendedFor set to at least 1 series ID. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep");
+                    if(s.type.startsWith("fmap/")) {
+                        s.validationWarnings.push("It is recommended that field map (fmap) images have IntendedFor set to at least 1 series ID. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep");
+                    } else if (s.type === "perf/m0scan") {
+                        s.validationErrors.push("It is required that perfusion m0scan images have IntendedFor set to at least 1 series ID.");
+                    }
                 }
-                //Ensure other fmap series aren't included in the IntendedFor mapping
+                //Ensure other fmap or perf/m0scan series aren't included in the IntendedFor mapping
                 if(s.IntendedFor.length > 0) {
                     s.IntendedFor.forEach(i=>{
-                        if(this.ezbids.series[i].type.startsWith("fmap/")) {
+                        if(this.ezbids.series[i].type.startsWith("fmap/") || this.ezbids.series[i].type === "perf/m0scan") {
                             s.validationErrors.push("The selected series (#"+i+") appears to be a field map (fmap), which isn't allowed in the IntendedFor mapping. Please remove this series, or, if it isn't a field map, please correct it.")
                         }
                     })
@@ -326,9 +342,13 @@ export default defineComponent({
 
         validateAll() {
             this.ezbids.series.forEach(this.validate);
-        }
-    },
-});
+        },
+        submitForm(data:any) { //TODO: should we make an interface for data in store/index.ts?
+            console.log("submitForm", data);
+            this.ezbids = data;
+        },
+},
+})
 
 </script>
 

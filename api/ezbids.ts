@@ -9,8 +9,24 @@ import nocache from 'nocache';
 import * as models from "./models";
 import controllers from "./controllers";
 
+// setup swagger
+import swaggerUi = require('swagger-ui-express');
+import swaggerJsdoc = require('swagger-jsdoc');
 
-const app: express.Application = express();
+const options = {
+    definition: {
+      openapi: '3.0.0',
+      info: {
+        title: 'EZBIDS API',
+        version: '1.0.0',
+      },
+    },
+    apis: ['./controllers.js'], // files containing annotations as above
+  };
+const swaggerSpec = swaggerJsdoc(options);
+
+//init express
+const app: express.Application  = express();
 app.use(cors({ origin: '*' }));
 app.use(compression());
 app.use(nocache());
@@ -29,6 +45,9 @@ app.use(bodyParser.json({
 
 app.use('/', controllers);
 
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+//error handling
+//app.use(expressWinston.errorLogger(config.logger.winston)); 
 app.use(function(err, req, res, next) {
     if(typeof err == "string") err = { message: err };
     if(!err.name || err.name != "UnauthorizedError") {

@@ -25,7 +25,9 @@
     "nocache": "^2.1.0",
     "node-pty": "^0.10.1",
     "range-stream": "^1.1.0",
-    "send-seekable": "^1.0.4"
+    "send-seekable": "^1.0.4",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0"
   },
   "devDependencies": {
     "@types/async": "^3.2.12",

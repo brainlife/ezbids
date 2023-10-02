@@ -15,6 +15,7 @@
         "@niivue/niivue": "^0.36.0",
         "axios": "^0.24",
         "element-plus": "^1.2.0-beta.6",
+        "js-yaml": "^4.1.0",
         "lint": "^0.7.0",
         "numeral": "^2.0.6",
         "splitpanes": "^3.1.1",
@@ -25,6 +26,8 @@
         "vuex": "^4.0.2"
     },
     "devDependencies": {
+        "@modyfi/vite-plugin-yaml": "^1.0.4",
+        "@types/js-yaml": "^4.0.5",
         "@types/node": "^16.11.38",
         "@types/vue-router": "^2.0.0",
         "@vitejs/plugin-vue": "^2.3.3",

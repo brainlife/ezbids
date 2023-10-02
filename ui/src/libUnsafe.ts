@@ -51,7 +51,7 @@ export function setVolumeThreshold($root:IEzbids) {
                 unexcluded. Please modify if incorrect.`]
             }
         } else {
-            // In case user changes sequence on dataset review to func/bold and then back; remove the volume threshold warning
+            // In case user changes sequence on dataset review to func/bold and then back, remove the volume threshold warning
             if (o.analysisResults.warnings.length) {
                 for (const warn in o.analysisResults.warnings) {
                     let index:number = o.analysisResults.warnings[warn].indexOf("This func/bold sequence contains")
@@ -340,6 +340,7 @@ export function setRun($root:IEzbids) {
                 let initialGrouping = sesGroup.objects.filter(e=>e._type !== "exclude" &&
                     !e._exclude &&
                     e._type === obj._type &&
+                    e._type !== "func/events" && // let users specify the run number for func/events files
                     deepEqual(Object.fromEntries(Object.entries(e._entities).filter(([key])=>key !== "part" && key !== "run" && key !== "echo")), targetEntities)
                 )
 
@@ -438,6 +439,31 @@ export function setIntendedFor($root:IEzbids) {
                             });
                         }
                     }
+                    // if (obj._type.startsWith("fmap/") || obj._type === "perf/m0scan") {
+                    //     if (!obj.IntendedFor) {
+                    //         Object.assign(obj, {IntendedFor: []})
+                    //     }
+
+                    //     let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor
+                    //     if (correspindingSeriesIntendedFor !== undefined && correspindingSeriesIntendedFor !== null) {
+                    //         correspindingSeriesIntendedFor.forEach((i:number) => {
+                    //             let IntendedForIDs = section.filter(o=>o.series_idx === i && o._type !== "func/events").map(o=>o.idx)
+                    //             if (obj.IntendedFor !== undefined) {
+                    //                 IntendedForIDs.forEach((IntendedForID:number) => {
+                    //                     if (!obj.IntendedFor?.includes(IntendedForID)) {
+                    //                         obj.IntendedFor = obj.IntendedFor?.concat(IntendedForIDs)
+                    //                     }
+
+                    //                     let IntendedForObj = sesGroup.objects.filter(e=>e.idx === IntendedForID)[0]
+                    //                     console.log(IntendedForObj)
+                    //                     if (IntendedForObj._exclude || IntendedForObj._type === "exclude") {
+                    //                         obj.IntendedFor = obj.IntendedFor?.filter(e=>e === IntendedForID)
+                    //                     }
+                    //                 })
+                    //             }
+                    //         });
+                    //     }
+                    // }
 
                     // check B0FieldIdentifier and B0FieldSource information
                     if (obj._type && !obj._type.includes('exclude') && !obj._type.includes('events')) {

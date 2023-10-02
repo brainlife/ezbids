@@ -122,7 +122,7 @@
                         </el-form-item>
                     </div>
     
-                    <div v-if="so._type.startsWith('fmap/')" class="border-top">
+                    <div v-if="so._type.startsWith('fmap/') || so._type === 'perf/m0scan'" class="border-top">
                         <br>
                         <el-form-item label="IntendedFor">
                             <el-select v-model="so.IntendedFor" multiple placeholder="Select Object" style="width: 100%" @change="update(so)">
@@ -230,7 +230,7 @@
     
     import { IObject, Session, OrganizedSession, OrganizedSubject } from './store'
     import { prettyBytes } from './filters'
-    import { setVolumeThreshold, setRun, setIntendedFor, align_entities, validateEntities, validate_B0FieldIdentifier_B0FieldSource, fileLogicLink, dwiQA } from './libUnsafe'
+    import { setRun, setIntendedFor, align_entities, validateEntities, validate_B0FieldIdentifier_B0FieldSource, fileLogicLink, dwiQA } from './libUnsafe'
     
     // @ts-ignore
     import { Splitpanes, Pane } from 'splitpanes'
@@ -360,7 +360,7 @@
                 if(!o) return;
                 this.$emit("updateObject", o);
             },
-    
+           
             isValid(cb: (err?: string)=>void) {
                 this.$emit("mapObjects");
                 this.validateAll();
@@ -422,8 +422,6 @@
                 o.validationErrors = [];
                 o.validationWarnings = [];
 
-                setVolumeThreshold(this.ezbids)
-
                 setIntendedFor(this.ezbids)
                 
                 align_entities(this.ezbids)
@@ -472,13 +470,18 @@
                     }
                 }
     
-                if(o._type.startsWith("fmap/")) {
-                    if(!o.IntendedFor) o.IntendedFor = []; //TODO can't think of a better place to do this
+                if(o._type.startsWith("fmap/") || o._type === "perf/m0scan") {
+                    if(!o.IntendedFor) o.IntendedFor = [];
                     if(o.IntendedFor.length == 0) {
-                        let warningMessage = "It is recommended that field map (fmap) images have IntendedFor set to at least 1 object. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep"
-                        if (!o.validationWarnings.includes(warningMessage)) {
-                            o.validationWarnings.push(warningMessage);
+                        if(o._type.startsWith("fmap/")) {
+                            o.validationWarnings.push("It is recommended that field map (fmap) images have IntendedFor set to at least 1 series ID. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep");
+                        } else if (o.type === "perf/m0scan") {
+                            o.validationErrors.push("It is required that perfusion m0scan images have IntendedFor set to at least 1 series ID.");
                         }
+                        // let warningMessage = "It is recommended that these images have IntendedFor set to at least 1 object. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep"
+                        // if (!o.validationWarnings.includes(warningMessage)) {
+                        //     o.validationWarnings.push(warningMessage);
+                        // }
                         
                     }
                     //Ensure other fmap series aren't included in the IntendedFor mapping
