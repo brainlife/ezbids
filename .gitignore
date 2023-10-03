@@ -6,6 +6,7 @@ volumes/*
 # local env files
 .env.local
 .env.*.local
+.env
 
 # Log files
 npm-debug.log*
@@ -27,7 +28,3 @@ testdata
 barn
 nohup.out
 tsc.log
-
-api/config.json
-
-handler/container/ROBEXv12.linux64.tar.gz
