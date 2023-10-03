@@ -1203,6 +1203,7 @@ def finalized_configuration(dataset_list_unique_series, subjects_information, co
     participants_column_info = config_data["participantsColumn"]
     subjects_sessions_info = config_data["subjects"]
     config_dataset_list_unique_series = config_data["series"]
+    config_dataset_list_objects = config_data["objects"]
 
     # Try to determine subject (and session) mapping from what's in the configuration
     match_start_index = None
@@ -1213,6 +1214,20 @@ def finalized_configuration(dataset_list_unique_series, subjects_information, co
     ref_session_info = ref_subject_info["sessions"]
     ref_subject_id = ref_subject_info["subject"]
     ref_patient_info = ref_subject_info["PatientInfo"][-1]  # Get most recent information
+
+    anonymized_sidecar_fields = [
+        "SeriesInstanceUID",
+        "StudyInstanceUID",
+        "ReferringPhysicianName",
+        "StudyID",
+        "PatientName",
+        "PatientID",
+        "AccessionNumber",
+        "PatientBirthDate",
+        "PatientSex",
+        "PatientWeight",
+        "AcquisitionDateTime"
+    ]
 
     for sub_info in subjects_information:
         sub = sub_info["subject"]
@@ -1258,6 +1273,7 @@ def finalized_configuration(dataset_list_unique_series, subjects_information, co
         et = unique_dic["EchoTime"]
         rt = unique_dic["RepetitionTime"]
         it = unique_dic["ImageType"]
+        sidecar = unique_dic["sidecar"]
 
         """
         Don't use series_idx as identifier because the uploaded data might not contain the same data as
@@ -1278,6 +1294,7 @@ def finalized_configuration(dataset_list_unique_series, subjects_information, co
             ref_B0FieldIdentifier = config_series_ref["B0FieldIdentifier"]
             ref_B0FieldSource = config_series_ref["B0FieldSource"]
             ref_message = config_series_ref["message"]
+            ref_series_idx = config_series_ref["series_idx"]
 
             unique_dic["type"] = ref_type
             unique_dic["entities"] = ref_entities
@@ -1292,6 +1309,24 @@ def finalized_configuration(dataset_list_unique_series, subjects_information, co
             else:
                 unique_dic["message"] = "Datatype, suffix, and entity information was determined based on match "\
                     "with corresponding data in ezBIDS configuration (finalized.json) file. Please modify if incorrect"
+
+            """
+            If metadata information was added in, find it and add to the json file.
+            """
+            ref_object = [
+                x for x in config_dataset_list_objects
+                if "series_idx" in x.keys()
+                and x["series_idx"] == ref_series_idx
+            ]
+            if len(ref_object):  # If len > 1, just take the 1st instance
+                ref_sidecar = [x["sidecar"] for x in ref_object[0]["items"] if x["name"] == "json"][0]
+                for field in ref_sidecar:
+                    value = ref_sidecar[field]
+                    if field not in sidecar and field not in anonymized_sidecar_fields:
+                        sidecar[field] = value
+
+                unique_dic["sidecar"] = sidecar
+
     """
     If events.tsv files (for func/bold) are referenced in the configuration, grab this information and display
     it on the Events page if user uploads event timing data again.
@@ -2491,6 +2526,7 @@ dataset_list, dataset_list_unique_series = determine_unique_series(dataset_list,
 if config is True:
     readme, dataset_description_dic, participants_column_info, dataset_list_unique_series, subjects_information, events = \
         finalized_configuration(dataset_list_unique_series, subjects_information, config_file)
+
 else:
     # README
     readme = generate_readme(DATA_DIR, bids_compliant)
