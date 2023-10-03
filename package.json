@@ -1,42 +1,43 @@
 {
-  "name": "ezbids",
-  "version": "1.1.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "uidev": "cd ui && lite-server",
-    "tsc": "tsc",
-    "dev": "ts-node-dev --respawn --transpileOnly ./api/ezbids.ts",
-    "prod": "tsc && node ./build/ezbids.js",
-    "deploy": "ssh -t hayashis@test.brainlife.io \"sudo su - -c 'cd /root/docker/ezbids && ./update.sh'\"",
-    "deploy-prod": "ssh -t -J hayashis@brainlife.io ubuntu@ezbids \"sudo su - -c 'cd /root/docker/ezbids && ./update.sh'\""
-  },
-  "author": "",
-  "license": "MIT",
-  "dependencies": {
-    "@types/express": "^4.17.13",
-    "archiver": "^5.3.0",
-    "async": "^3.2.3",
-    "body-parser": "^1.19.2",
-    "compression": "^1.7.4",
-    "cors": "^2.8.5",
-    "express": "^4.17.3",
-    "express-fileupload": "^1.3.1",
-    "mkdirp": "^1.0.4",
-    "mongoose": "^6.2.7",
-    "multer": "^1.4.4",
-    "nan": "^2.17.0",
-    "nocache": "^2.1.0",
-    "node-pty": "^0.10.1",
-    "range-stream": "^1.1.0",
-    "send-seekable": "^1.0.4",
-    "swagger-jsdoc": "^6.2.8",
-    "swagger-ui-express": "^5.0.0"
-  },
-  "devDependencies": {
-    "@types/async": "^3.2.12",
-    "@types/cors": "^2.8.12",
-    "@types/node": "^16.11.26",
-    "typescript": "^4.7.2"
-  }
+    "name": "ezbids",
+    "version": "1.1.0",
+    "description": "",
+    "main": "index.js",
+    "scripts": {
+        "uidev": "cd ui && lite-server",
+        "tsc": "tsc",
+        "dev": "ts-node-dev --respawn --transpileOnly ./api/ezbids.ts",
+        "prod": "tsc && node ./build/ezbids.js",
+        "deploy": "ssh -t hayashis@test.brainlife.io \"sudo su - -c 'cd /root/docker/ezbids && ./update.sh'\"",
+        "deploy-prod": "ssh -t -J hayashis@brainlife.io ubuntu@ezbids \"sudo su - -c 'cd /root/docker/ezbids && ./update.sh'\""
+    },
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@types/express": "^4.17.13",
+        "archiver": "^5.3.0",
+        "async": "^3.2.3",
+        "body-parser": "^1.19.2",
+        "compression": "^1.7.4",
+        "cors": "^2.8.5",
+        "express": "^4.17.3",
+        "express-fileupload": "^1.3.1",
+        "mkdirp": "^1.0.4",
+        "mongoose": "^6.2.7",
+        "multer": "^1.4.4",
+        "nan": "^2.17.0",
+        "nocache": "^2.1.0",
+        "node-pty": "^0.10.1",
+        "range-stream": "^1.1.0",
+        "send-seekable": "^1.0.4",
+        "vue-router": "^4.2.5",
+        "swagger-jsdoc": "^6.2.8",
+        "swagger-ui-express": "^5.0.0"
+    },
+    "devDependencies": {
+        "@types/async": "^3.2.12",
+        "@types/cors": "^2.8.12",
+        "@types/node": "^16.11.26",
+        "typescript": "^4.7.2"
+    }
 }

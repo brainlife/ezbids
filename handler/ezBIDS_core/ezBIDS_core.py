@@ -839,7 +839,7 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
 
 def organize_dataset(dataset_list):
     """
-    Organize data files into pseudo subject (and session, if appplicable) groups.
+    Organize data files into pseudo subject (and session, if applicable) groups.
     This is particularly necessary when anaonymized data is provided, since crucial
     metadata including AcquisitionDateTime, PatientName, PatientID, etc are removed.
     Typically, these fields assist ezBIDS in determining subject (and session) mapping,
