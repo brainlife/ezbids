@@ -276,7 +276,7 @@ export default defineComponent({
             }, 1000);
         },
 
-        //Unlike file input(directory) selecter, I have to do some convoluted thing to get all the files that user drops...
+        // Unlike file input(directory) selector, I have to do some convoluted thing to get all the files that user drops...
         async listDropFiles(items) {
             this.files = [];
 
