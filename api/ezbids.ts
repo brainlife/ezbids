@@ -10,8 +10,8 @@ import * as models from "./models";
 import controllers from "./controllers";
 
 // setup swagger
-import swaggerUi = require('swagger-ui-express');
-import swaggerJsdoc = require('swagger-jsdoc');
+import swaggerUi from 'swagger-ui-express';
+import swaggerJsdoc from 'swagger-jsdoc' ;
 
 const options = {
     definition: {
@@ -21,7 +21,7 @@ const options = {
         version: '1.0.0',
       },
     },
-    apis: ['./controllers.js'], // files containing annotations as above
+    apis: ['./controllers.ts'], // files containing annotations as above
   };
 const swaggerSpec = swaggerJsdoc(options);
 
