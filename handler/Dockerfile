@@ -78,6 +78,7 @@ RUN useradd --create-home --no-log-init -u "${UID}" -g "${GID}" ${USER} || true
 
 COPY . /app
 RUN chown -R ${UID}:${GID} /app
+RUN chown -R ${UID}:${GID} ~
 
 WORKDIR /app/api
 RUN npm install
