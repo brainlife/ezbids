@@ -20,10 +20,10 @@
                                     </el-tooltip>
                                 </span>
                             </template>
-                            <el-input v-if="(item.details.type == 'string' || item.details.type == 'object' || item.details.type=='array') && item.details.enum == undefined"
+                            <el-input v-if="inputType(item) == 'input'"
                             :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
                             
-                            <el-select v-if="item.details.enum" v-model="formData[item.field]" @change="this.$refs.form.validate()">
+                            <el-select v-if="inputType(item) == 'select-enum'" v-model="formData[item.field]" @change="this.$refs.form.validate()">
                                 <el-option
                                     v-for="option in parseOptionsEnum(item?.details?.enum)"
                                     :key="option.value"
@@ -32,8 +32,9 @@
                                 />
                             </el-select>
 
-                            <el-input v-else-if="item.details.type == 'number'" type="text" inputmode="decimal" :name="item.field" :placeholder="getPlaceholderByType(item.details.type)" v-model="formData[item.field]" @input="this.$refs.form.validate()" ></el-input>
-                            <el-select v-else-if="item.details.type == 'boolean'" @change="this.$refs.form.validate()" v-model="formData[item.field]" class="m-2" placeholder="Select" size="large">
+                            <el-input v-else-if="inputType(item) =='input-number'" type="text" inputmode="decimal" :name="item.field" :placeholder="getPlaceholderByType(item.details.type)" v-model="formData[item.field]" @input="this.$refs.form.validate()" ></el-input>
+
+                            <el-select v-else-if="inputType(item) == 'select-boolean'" @change="this.$refs.form.validate()" v-model="formData[item.field]" class="m-2" placeholder="Select" size="large">
                                 <el-option
                                 v-for="item in optionsBoolean"
                                 :key="item.value"
@@ -243,6 +244,12 @@ export default defineComponent({
         this.showDialog = false;
         this.$emit('form-submitted', this.ezbids);
     },
+    inputType(item) {
+        if((item.details.type == 'string' || item.detail.type == 'object' || item.details.type == 'array') && item.details.enum == undefined) return "input";
+        if(item.details.type == 'number') return "input-number";
+        if(item.details.type == 'boolean') return "select-boolean";
+        if(item.details.enum) return "select-enum";
+    }
     parseArrayValues(value,details){
         // type of value is stored details.
         // item.details.items.type
@@ -609,7 +616,8 @@ export default defineComponent({
             if(type == 'array') return "Enter array []";
             if(type == 'object') return "Enter object {}";
         },
-        parseOptionsEnum(enumArray) {
+        parseOptionsEnum(enumArray: any[]) {
+
             // return enumArray;
             const array =  enumArray.map((item: any) => {
                 if(typeof item == 'object') {
@@ -620,7 +628,21 @@ export default defineComponent({
                         // const regex = /objects.enums.(\w+).value/;
                         const regex = /objects.enums.(\w+).value/;
                         const refObject = regex.exec(item['$ref']);
-                        return {value: refObject[1], label: refObject[1]};
+                        parseOptionsEnum(enumArray: any[]) {
+                            const array =  enumArray.map((item: any) => {
+                                if(typeof item == 'object') {
+                                    if(item['$ref']) {
+                                        const regex = /objects.enums.(\w+).value/;
+                                        const refObject = regex.exec(item['$ref']);
+                                        if(refObject !== null) {
+                                            return {value: refObject[1], label: refObject[1]};
+                                        }
+                                    }
+                                }
+                                return {value: item, label: item};
+                            });
+                            return array;
+                        }
                     }
                 }
                 return {value: item, label: item};
