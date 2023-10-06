@@ -28,7 +28,7 @@ declare module '@vue/runtime-core' {
 
 // enable routing
 const router = createRouter({
-  history: createWebHistory(),
+  history: createWebHistory('/ezbids'),
   routes: [
     { path: "/", component: LandingPage },
     { path: "/convert", component: BaseConvertPage },
