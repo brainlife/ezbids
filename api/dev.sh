@@ -4,4 +4,4 @@
 RED='\033[0;31m'
 
 tsc-watch --onSuccess "pm2 start ezbids.js --attach --watch --ignore-watch=\"*.log test *.sh ui bin example .git **/*.ts\"" \
-          --onFailure "echo -e ${RED}URGENT: TRANSPILE TO JAVASCRIPT FAILED!"
+          --onFailure "echo -e ${RED}URGENT: TRANSPILE TO JAVASCRIPT FAILED! & exit 5"
