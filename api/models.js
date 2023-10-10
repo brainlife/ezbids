@@ -8,21 +8,19 @@ if (config.mongoose_debug)
 function connect(cb) {
     console.debug("connecting to mongo");
     mongoose.connect(config.mongodb, {
-        /* this really screwed up warehouse db..
-        readPreference: 'nearest',
-        writeConcern: {
-            w: 'majority', //isn't this the default?
-        },
-        readConcernLevel: 'majority',//prevents read to grab stale data from secondary
-        */
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        //auto_reconnect: true, //isn't this the default?
+    /* this really screwed up warehouse db..
+    readPreference: 'nearest',
+    writeConcern: {
+        w: 'majority', //isn't this the default?
+    },
+    readConcernLevel: 'majority',//prevents read to grab stale data from secondary
+    */
+    //auto_reconnect: true, //isn't this the default?
     }, err => {
         if (err)
             return cb(err);
         console.log("connected to mongo");
-        cb();
+        cb(null);
     });
 }
 exports.connect = connect;
@@ -34,7 +32,7 @@ exports.disconnect = disconnect;
 //
 // upload sessions
 //
-var sessionSchema = mongoose.Schema({
+var sessionSchema = new mongoose.Schema({
     create_date: { type: Date, default: Date.now },
     update_date: { type: Date, default: Date.now },
     request_headers: mongoose.Schema.Types.Mixed,
@@ -71,11 +69,11 @@ var sessionSchema = mongoose.Schema({
     //removed: { type: Boolean, default: false },
 });
 sessionSchema.pre('save', function (next) {
-    this.update_date = Date.now();
+    this.update_date = new Date();
     next();
 });
 exports.Session = mongoose.model("Session", sessionSchema);
-var ezbidsSchema = mongoose.Schema({
+var ezbidsSchema = new mongoose.Schema({
     _session_id: mongoose.Schema.Types.ObjectId,
     original: mongoose.Schema.Types.Mixed,
     updated: mongoose.Schema.Types.Mixed,

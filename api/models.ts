@@ -1,10 +1,10 @@
 
 import mongoose = require("mongoose");
-import config  = require("./config");
+import config = require("./config");
 
-if(config.mongoose_debug) mongoose.set("debug", true);
+if (config.mongoose_debug) mongoose.set("debug", true);
 
-export function connect(cb) {
+export function connect(cb: mongoose.CallbackWithoutResult) {
     console.debug("connecting to mongo");
     mongoose.connect(config.mongodb, {
 
@@ -15,14 +15,11 @@ export function connect(cb) {
         },
         readConcernLevel: 'majority',//prevents read to grab stale data from secondary
         */
-
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
         //auto_reconnect: true, //isn't this the default?
-    }, err=>{
-        if(err) return cb(err);
+    }, err => {
+        if (err) return cb(err);
         console.log("connected to mongo");
-        cb();
+        cb(null);
     });
 }
 
@@ -35,7 +32,7 @@ export function disconnect(cb) {
 // upload sessions
 //
 
-var sessionSchema = mongoose.Schema({
+var sessionSchema = new mongoose.Schema({
 
     create_date: { type: Date, default: Date.now },
     update_date: { type: Date, default: Date.now },
@@ -47,10 +44,10 @@ var sessionSchema = mongoose.Schema({
     pre_begin_date: Date, //when preprocessing is started
     pre_finish_date: Date, //when preprocessing is finished
 
-    deface_begin_date: Date, 
-    deface_finish_date: Date, 
+    deface_begin_date: Date,
+    deface_finish_date: Date,
 
-    finalize_begin_date: Date, 
+    finalize_begin_date: Date,
     finalize_finish_date: Date,
 
     status: String, //just message to show to the user
@@ -84,14 +81,14 @@ var sessionSchema = mongoose.Schema({
 
     //removed: { type: Boolean, default: false },
 });
-sessionSchema.pre('save', function(next) {
-    this.update_date = Date.now();
+sessionSchema.pre('save', function (next) {
+    this.update_date = new Date()
     next();
 });
 export let Session = mongoose.model("Session", sessionSchema);
 
-var ezbidsSchema = mongoose.Schema({
-    _session_id: mongoose.Schema.Types.ObjectId, 
+var ezbidsSchema = new mongoose.Schema({
+    _session_id: mongoose.Schema.Types.ObjectId,
 
     original: mongoose.Schema.Types.Mixed,
     updated: mongoose.Schema.Types.Mixed,

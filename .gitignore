@@ -29,3 +29,11 @@ tsc.log
 api/config.json
 
 handler/container/ROBEXv12.linux64.tar.gz
+
+api/auth.pub
+api/auth.js
+api/auth.js.map
+api/ezbids.js.map
+api/models.js.map
+api/config.js.map
+api/controllers.js.map
