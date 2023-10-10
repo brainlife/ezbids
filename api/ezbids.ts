@@ -47,7 +47,7 @@ app.use(bodyParser.json({
 
 app.use('/', require('./controllers'));
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-//error handling
+//error handlin
 //app.use(expressWinston.errorLogger(config.logger.winston)); 
 app.use(function (err, req, res, next) {
     if (typeof err == "string") err = { message: err };
@@ -69,7 +69,7 @@ process.on('uncaughtException', err => {
 
 models.connect(err => {
     if (err) throw err;
-    var port = process.env.PORT || config.express.port || '8081';
+    var port = parseInt(process.env.PORT || config.express.port || '8082');
     var host = process.env.HOST || config.express.host || 'localhost';
     var server = app.listen(port, host, function () {
         console.log("warehouse api service running on %s:%d in %s mode", host, port, app.settings.env);

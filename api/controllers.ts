@@ -1,17 +1,15 @@
 
 import express = require('express');
-import multer  = require('multer');
+import multer = require('multer');
 import path = require('path');
 import fs = require('fs');
 import mkdirp = require('mkdirp');
 import archiver = require('archiver');
 import async = require('async');
+import { validateWithJWTConfig } from './auth'
 
 import config = require('./config');
 import models = require('./models');
-import { isFunction } from 'util';
-import { fstat } from 'fs';
-
 import rangeStream = require('range-stream');
 
 console.debug(config.multer);
@@ -58,12 +56,12 @@ router.get('/health', (req, res, next) => {
 
     //check to see if we can access the workdir
     try {
-        fs.writeFileSync(config.workdir+'/health.txt', "test")
+        fs.writeFileSync(config.workdir + '/health.txt', "test")
     } catch (err) {
         status = "failed";
         message = err;
     }
-    res.json({status, message, date: new Date()});
+    res.json({ status, message, date: new Date() });
 });
 
 /**
@@ -100,13 +98,13 @@ router.get('/health', (req, res, next) => {
  *   schemas:
  *    Session: $ref: '#/components/schemas/Session'
  */
-router.post('/session', (req, res, next)=>{
+router.post('/session', validateWithJWTConfig(), (req, res, next) => {
     req.body.status = "created";
     req.body.request_headers = req.headers;
     let session = new models.Session(req.body);
-    session.save().then(_session=>{ //mongoose contains err on the 1st argument of resolve!? odd.
+    session.save().then(_session => { //mongoose contains err on the 1st argument of resolve!? odd.
         res.json(_session);
-    }).catch(err=>{
+    }).catch(err => {
         next(err);
     });
 });
@@ -212,14 +210,14 @@ router.get('/session/:session_id', (req, res, next) => {
  *         500:
  *           description: Server error
  */
-router.post('/session/:session_id/deface', (req, res, next)=>{
-    models.Session.findById(req.params.session_id).then(session=>{
-        if(!session) return next("no such session");
+router.post('/session/:session_id/deface', (req, res, next) => {
+    models.Session.findById(req.params.session_id).then(session => {
+        if (!session) return next("no such session");
 
-        fs.writeFile(config.workdir+"/"+session._id+"/deface.json", JSON.stringify(req.body), err=>{
+        fs.writeFile(config.workdir + "/" + session._id + "/deface.json", JSON.stringify(req.body), err => {
             session.status = "deface";
             session.status_msg = "Waiting to be defaced";
-            session.save().then(()=>{
+            session.save().then(() => {
                 res.send("ok");
             });
         });
@@ -252,14 +250,14 @@ router.post('/session/:session_id/deface', (req, res, next)=>{
  *         500:
  *           description: Server error
  */
-router.post('/session/:session_id/canceldeface', (req, res, next)=>{
-    models.Session.findById(req.params.session_id).then(session=>{
-        if(!session) return next("no such session");
+router.post('/session/:session_id/canceldeface', (req, res, next) => {
+    models.Session.findById(req.params.session_id).then(session => {
+        if (!session) return next("no such session");
 
         //request deface.cancel by writing out "deface.cancel" file
         console.debug("writing .cancel");
-        fs.writeFile(config.workdir+"/"+session._id+"/.cancel", "", err=>{
-            if(err) console.error(err);
+        fs.writeFile(config.workdir + "/" + session._id + "/.cancel", "", err => {
+            if (err) console.error(err);
 
             session.status_msg = "requested to cancel defacing";
 
@@ -267,7 +265,7 @@ router.post('/session/:session_id/canceldeface', (req, res, next)=>{
             //be necessary.. but right not kill() doesn't work.. so
             session.deface_begin_date = undefined;
             session.status = "analyzed";
-            session.save().then(()=>{
+            session.save().then(() => {
                 res.send("ok");
             });
         });
@@ -300,23 +298,23 @@ router.post('/session/:session_id/canceldeface', (req, res, next)=>{
  *         500:
  *           description: Server error
  */
-router.post('/session/:session_id/resetdeface', (req, res, next)=>{
-    models.Session.findById(req.params.session_id).then(session=>{
-        if(!session) return next("no such session");
+router.post('/session/:session_id/resetdeface', (req, res, next) => {
+    models.Session.findById(req.params.session_id).then(session => {
+        if (!session) return next("no such session");
         try {
-            const workdir = config.workdir+"/"+session._id;
+            const workdir = config.workdir + "/" + session._id;
             console.log("removing deface output");
-            if(fs.existsSync(workdir+"/deface.finished")) {
-                fs.unlinkSync(workdir+"/deface.finished");
+            if (fs.existsSync(workdir + "/deface.finished")) {
+                fs.unlinkSync(workdir + "/deface.finished");
             }
-            if(fs.existsSync(workdir+"/deface.failed")) {
-                fs.unlinkSync(workdir+"/deface.failed");
+            if (fs.existsSync(workdir + "/deface.failed")) {
+                fs.unlinkSync(workdir + "/deface.failed");
             }
             session.status = "analyzed";
             session.status_msg = "reset defacing";
             session.deface_begin_date = undefined;
             session.deface_finish_date = undefined;
-            session.save().then(()=>{
+            session.save().then(() => {
                 res.send("ok");
             });
         } catch (err) {
@@ -327,20 +325,22 @@ router.post('/session/:session_id/resetdeface', (req, res, next)=>{
 });
 
 
-router.post('/session/:session_id/finalize', (req, res, next)=>{
-    models.Session.findById(req.params.session_id).then(session=>{
-        if(!session) return next("no such session");
-        fs.writeFile(config.workdir+"/"+session._id+"/finalized.json", JSON.stringify(req.body), err=>{
-            models.ezBIDS.findOneAndUpdate({_session_id: req.params.session_id}, {$set: {
+router.post('/session/:session_id/finalize', (req, res, next) => {
+    models.Session.findById(req.params.session_id).then(session => {
+        if (!session) return next("no such session");
+        fs.writeFile(config.workdir + "/" + session._id + "/finalized.json", JSON.stringify(req.body), err => {
+            models.ezBIDS.findOneAndUpdate({ _session_id: req.params.session_id }, {
+                $set: {
 
-                //TODO - store this somewhere for book keeping
-                //updated: req.body, //finalized.json could exceed 16MB 
+                    //TODO - store this somewhere for book keeping
+                    //updated: req.body, //finalized.json could exceed 16MB 
 
-                update_date: new Date(),
-            }}).then(err=>{
+                    update_date: new Date(),
+                }
+            }).then(err => {
                 session.status = "finalized";
                 session.status_msg = "Waiting to be finalized";
-                session.save().then(()=>{
+                session.save().then(() => {
                     res.send("ok");
                 });
             });
@@ -349,30 +349,30 @@ router.post('/session/:session_id/finalize', (req, res, next)=>{
 });
 
 //download finalized(updated) content
-router.get('/session/:session_id/updated', (req, res, next)=>{
-    models.ezBIDS.findOne({_session_id: req.params.session_id}).then(ezbids=>{
-        if(!ezbids) return next("no such session or ezbids not finalized");
-        if(!ezbids.updated) return next("not yet finalized");
+router.get('/session/:session_id/updated', (req, res, next) => {
+    models.ezBIDS.findOne({ _session_id: req.params.session_id }).then(ezbids => {
+        if (!ezbids) return next("no such session or ezbids not finalized");
+        if (!ezbids.updated) return next("not yet finalized");
         res.json(ezbids.updated);
     });
 });
 
 //let user download files within session (like the .png image generated by analyzer)
-router.get('/download/:session_id/*', (req, res, next)=>{
-    models.Session.findById(req.params.session_id).then(session=>{
-        const basepath = config.workdir+"/"+session._id;
+router.get('/download/:session_id/*', (req, res, next) => {
+    models.Session.findById(req.params.session_id).then(session => {
+        const basepath = config.workdir + "/" + session._id;
 
         //validate path so it will be inside the basepath
-        const fullpath = path.resolve(basepath+"/"+req.params[0]);
-        if(!fullpath.startsWith(basepath)) return next("invalid path");
+        const fullpath = path.resolve(basepath + "/" + req.params[0]);
+        if (!fullpath.startsWith(basepath)) return next("invalid path");
 
         //TODO - if requested path is a file, thenstream
         const stats = fs.lstatSync(fullpath);
-        if(stats.isFile()) {
-            res.setHeader('Content-disposition', 'attachment; filename='+path.basename(fullpath));
+        if (stats.isFile()) {
+            res.setHeader('Content-disposition', 'attachment; filename=' + path.basename(fullpath));
             fs.createReadStream(fullpath).pipe(res);
-        } else if(stats.isDirectory()) {
-            res.setHeader('Content-disposition', 'attachment; filename='+path.basename(fullpath)+".zip");
+        } else if (stats.isDirectory()) {
+            res.setHeader('Content-disposition', 'attachment; filename=' + path.basename(fullpath) + ".zip");
             const archive = archiver('zip', {
                 zlib: { level: 0 }
             });
@@ -381,23 +381,23 @@ router.get('/download/:session_id/*', (req, res, next)=>{
             archive.pipe(res);
 
         } else next("weird file");
-    }).catch(err=>{
+    }).catch(err => {
         next(err);
     });
 });
 
-router.post('/upload-multi/:session_id', upload.any(), (req:any, res, next)=>{
+router.post('/upload-multi/:session_id', upload.any(), (req: any, res, next) => {
 
     //when a single file is uploaded paths becomes just a string. convert it to an array of 1
     let paths = req.body["paths"];
-    if(!Array.isArray(paths)) paths = [paths];
+    if (!Array.isArray(paths)) paths = [paths];
     //same for mtimes
     let mtimes = req.body["mtimes"];
-    if(!Array.isArray(mtimes)) mtimes = [mtimes];
+    if (!Array.isArray(mtimes)) mtimes = [mtimes];
 
-    models.Session.findById(req.params.session_id).then(async session=>{
+    models.Session.findById(req.params.session_id).then(async session => {
         let idx = -1;
-        async.eachSeries(req.files, (file, next_file)=>{
+        async.eachSeries(req.files, (file: any, next_file) => {
             idx++;
             const src_path = file.path;
             /* //file
@@ -412,39 +412,39 @@ router.post('/upload-multi/:session_id', upload.any(), (req:any, res, next)=>{
 11|ezbids- |   size: 147882
 11|ezbids- | }
             */
-            const dirty_path = config.workdir+"/"+req.params.session_id+"/"+paths[idx];
+            const dirty_path = config.workdir + "/" + req.params.session_id + "/" + paths[idx];
             const dest_path = path.resolve(dirty_path);
-            const mtime = mtimes[idx]/1000; //browser uses msec.. filesystem uses sec since epoch
+            const mtime = mtimes[idx] / 1000; //browser uses msec.. filesystem uses sec since epoch
 
-            if(!dest_path.startsWith(config.workdir)) return next_file("invalid path:", dest_path);
+            if (!dest_path.startsWith(config.workdir)) return next_file(new Error(`invalid path: ${dest_path}`));
             const destdir = path.dirname(dest_path);
 
             //move the file over to workdir
             const made = mkdirp.sync(destdir);
             fs.renameSync(src_path, dest_path);
-            if(mtime) fs.utimesSync(dest_path, mtime, mtime);
+            if (mtime) fs.utimesSync(dest_path, mtime, mtime);
             next_file();
-        }, err=>{
-            if(err) return next(err);
+        }, err => {
+            if (err) return next(err);
             res.send("ok");
         });
 
-    }).catch(err=>{
+    }).catch(err => {
         console.error(err);
         next(err);
     });
 });
 
 //done uploading.
-router.patch('/session/uploaded/:session_id', (req, res, next)=>{
+router.patch('/session/uploaded/:session_id', (req, res, next) => {
     models.Session.findByIdAndUpdate(req.params.session_id, {
         status: "uploaded",
         status_msg: "Waiting in the queue..",
         upload_finish_date: new Date()
-    }).then(session=>{
-        if(!session) return next("no such session");
+    }).then(session => {
+        if (!session) return next("no such session");
         res.send("ok");
-    }).catch(err=>{
+    }).catch(err => {
         console.error(err);
         next(err);
     });

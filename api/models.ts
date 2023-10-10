@@ -1,13 +1,12 @@
 
-import mongoose = require("mongoose");
-import config = require("./config");
+import { set, connect as mongooseConnect, disconnect as mongooseDisconnect, CallbackWithoutResult, Schema, model } from "mongoose";
+import { mongodb, mongoose_debug } from "./config"
 
-if (config.mongoose_debug) mongoose.set("debug", true);
+if (mongoose_debug) set("debug", true);
 
-export function connect(cb: mongoose.CallbackWithoutResult) {
+export function connect(cb: CallbackWithoutResult) {
     console.debug("connecting to mongo");
-    mongoose.connect(config.mongodb, {
-
+    mongooseConnect(mongodb, {
         /* this really screwed up warehouse db..
         readPreference: 'nearest',
         writeConcern: {
@@ -24,7 +23,7 @@ export function connect(cb: mongoose.CallbackWithoutResult) {
 }
 
 export function disconnect(cb) {
-    mongoose.disconnect(cb);
+    mongooseDisconnect(cb);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -32,12 +31,12 @@ export function disconnect(cb) {
 // upload sessions
 //
 
-var sessionSchema = new mongoose.Schema({
+var sessionSchema = new Schema({
 
     create_date: { type: Date, default: Date.now },
     update_date: { type: Date, default: Date.now },
 
-    request_headers: mongoose.Schema.Types.Mixed,
+    request_headers: Schema.Types.Mixed,
 
     upload_finish_date: Date, //when all files are uploaded
 
@@ -85,17 +84,17 @@ sessionSchema.pre('save', function (next) {
     this.update_date = new Date()
     next();
 });
-export let Session = mongoose.model("Session", sessionSchema);
+export let Session = model("Session", sessionSchema);
 
-var ezbidsSchema = new mongoose.Schema({
-    _session_id: mongoose.Schema.Types.ObjectId,
+var ezbidsSchema = new Schema({
+    _session_id: Schema.Types.ObjectId,
 
-    original: mongoose.Schema.Types.Mixed,
-    updated: mongoose.Schema.Types.Mixed,
+    original: Schema.Types.Mixed,
+    updated: Schema.Types.Mixed,
 
     create_date: { type: Date, default: Date.now },
     update_date: { type: Date },
 });
-export let ezBIDS = mongoose.model("ezBIDS", ezbidsSchema);
+export let ezBIDS = model("ezBIDS", ezbidsSchema);
 
 

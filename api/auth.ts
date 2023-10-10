@@ -3,7 +3,7 @@ import * as fs from 'fs';
 
 const pubkey = fs.readFileSync(__dirname + "/auth.pub", "ascii").trim();
 
-export const getJWT = (options?: Params) => {
+export const validateWithJWTConfig = (options?: Params) => {
     return expressjwt({
         secret: pubkey,
         algorithms: ['RS256'],
