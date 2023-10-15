@@ -14,7 +14,13 @@
                             TEAM
                         </el-menu-item>
                         <el-menu-item index="2" class="menu-item">
-                            <RouterLink style="text-decoration: none;" to="/convert">GET STARTED</RouterLink>
+                            <el-button
+                                @click="redirectToBrainlifeAuth"
+                                type="text"
+                                style="font-size: var(--el-font-size-extra-large); font-family: unset; color: #3482e9;"
+                                >LOG IN / REGISTER</el-button
+                            >
+                            <!-- <RouterLink style="text-decoration: none;" to="/convert">LOG IN / REGISTER</RouterLink> -->
                         </el-menu-item>
                     </el-menu>
                 </el-col>
@@ -27,14 +33,27 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { RouterLink } from 'vue-router';
+import { mapState } from 'vuex';
 
 export default defineComponent({
+    computed: {
+        ...mapState(['config']),
+    },
     components: {
         RouterLink: RouterLink,
     },
     methods: {
         openBrainLifeTeamPage() {
             window.open('https://brainlife.io/team/', '_blank');
+        },
+        redirectToBrainlifeAuth() {
+            sessionStorage.setItem('auth_redirect', window.location.href);
+            window.location.href = (this.config as {
+                apihost: string;
+                authSignIn: string;
+                authSignOut: string;
+                debug: boolean;
+            }).authSignIn;
         },
     },
 });
