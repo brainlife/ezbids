@@ -9,7 +9,8 @@
         "dev": "ts-node-dev --respawn --transpileOnly ./api/ezbids.ts",
         "prod": "tsc && node ./build/ezbids.js",
         "deploy": "ssh -t hayashis@test.brainlife.io \"sudo su - -c 'cd /root/docker/ezbids && ./update.sh'\"",
-        "deploy-prod": "ssh -t -J hayashis@brainlife.io ubuntu@ezbids \"sudo su - -c 'cd /root/docker/ezbids && ./update.sh'\""
+        "deploy-prod": "ssh -t -J hayashis@brainlife.io ubuntu@ezbids \"sudo su - -c 'cd /root/docker/ezbids && ./update.sh'\"",
+        "style-check": "prettier --config .prettierrc 'ui/index.html'"
     },
     "author": "",
     "license": "MIT",
@@ -30,14 +31,15 @@
         "node-pty": "^0.10.1",
         "range-stream": "^1.1.0",
         "send-seekable": "^1.0.4",
-        "vue-router": "^4.2.5",
         "swagger-jsdoc": "^6.2.8",
-        "swagger-ui-express": "^5.0.0"
+        "swagger-ui-express": "^5.0.0",
+        "vue-router": "^4.2.5"
     },
     "devDependencies": {
         "@types/async": "^3.2.12",
         "@types/cors": "^2.8.12",
         "@types/node": "^16.11.26",
+        "prettier": "^3.0.3",
         "typescript": "^4.7.2"
     }
 }
