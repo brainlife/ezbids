@@ -2,9 +2,7 @@ version: "3"
 
 services:
     mongodb:
-        # NICKTODO REMOVE THIS AFTER TESTING
-        networks:
-            - brainlife
+        container_name: brainlife_ezbids-mongodb
         image: mongo:4.4.15
         platform: linux/amd64
         volumes:
@@ -15,14 +13,11 @@ services:
             timeout: 10s
             retries:
                 5
-                # NICKTODO REMOVE THIS AFTER TESTING
-        # ports:
-        #     - 27417:27017 #for local debugging
+        ports:
+            - 27417:27017 #for local debugging
 
     api:
-        # NICKTODO REMOVE THIS AFTER TESTING
-        networks:
-            - brainlife
+        container_name: brainlife_ezbids-api
         build: .
         platform: linux/amd64
         volumes:
@@ -36,14 +31,13 @@ services:
         working_dir: /app/api
         command:
             ./dev.sh
-            # NICKTODO REMOVE THIS AFTER TESTING
+        environment:
+            MONGO_CONNECTION_STRING: mongodb://mongodb:27017/ezbids
         ports:
             - 8082:8082 #localhost runs on local browser to it needs to access api via host port
 
     handler:
-        # NICKTODO REMOVE THIS AFTER TESTING
-        networks:
-            - brainlife
+        container_name: brainlife_ezbids-handler
         build: ./handler
         platform: linux/amd64
         volumes:
@@ -58,9 +52,7 @@ services:
         command: pm2 start handler.js --attach --watch --ignore-watch "ui **/node_modules"
 
     ui:
-        # NICKTODO REMOVE THIS AFTER TESTING
-        networks:
-            - brainlife
+        container_name: brainlife_ezbids-ui
         build: ./ui
         platform: linux/amd64
         volumes:
@@ -72,7 +64,3 @@ services:
             # NICKTODO REMOVE THIS AFTER TESTING
         ports:
             - 3000:3000 #vite wants to be exposed on the host for HMR?
-
-networks:
-    brainlife:
-        external: true

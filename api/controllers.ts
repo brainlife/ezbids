@@ -99,6 +99,7 @@ router.get('/health', (req, res, next) => {
  *    Session: $ref: '#/components/schemas/Session'
  */
 router.post('/session', validateWithJWTConfig(), (req, res, next) => {
+    console.log((req as any).auth);
     req.body.status = "created";
     req.body.request_headers = req.headers;
     let session = new models.Session(req.body);
@@ -170,6 +171,7 @@ router.post('/session', validateWithJWTConfig(), (req, res, next) => {
  *           description: Finish date of file upload
  */
 router.get('/session/:session_id', (req, res, next) => {
+    if (!req.params.session_id) return next("session is empty")
     models.Session.findById(req.params.session_id).then(session => {
         res.json(session);
     }).catch(err => {

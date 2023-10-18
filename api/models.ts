@@ -5,7 +5,7 @@ import { mongodb, mongoose_debug } from "./config"
 if (mongoose_debug) set("debug", true);
 
 export function connect(cb: CallbackWithoutResult) {
-    console.debug("connecting to mongo");
+    console.debug("connecting to mongo via: " + mongodb);
     mongooseConnect(mongodb, {
         /* this really screwed up warehouse db..
         readPreference: 'nearest',
@@ -17,7 +17,7 @@ export function connect(cb: CallbackWithoutResult) {
         //auto_reconnect: true, //isn't this the default?
     }, err => {
         if (err) return cb(err);
-        console.log("connected to mongo");
+        console.log("connected to mongo via: " + mongodb);
         cb(null);
     });
 }

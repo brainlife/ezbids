@@ -4,17 +4,14 @@ import App from './App.vue'
 import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
 import { library } from "@fortawesome/fontawesome-svg-core"
 import { faGithub } from "@fortawesome/free-brands-svg-icons"
-import { faSpinner, faAngleLeft, faAngleRight, faAngleDown, faEye, faCircleCheck, faArrowUpRightFromSquare, faCircleInfo } from '@fortawesome/free-solid-svg-icons'
+import { faSpinner, faAngleLeft, faAngleRight, faAngleDown, faEye, faCircleCheck, faArrowUpRightFromSquare, faCircleInfo, faUsers } from '@fortawesome/free-solid-svg-icons'
 import 'element-plus/dist/index.css'
 import store from './store';
-import { createRouter, createWebHistory } from 'vue-router';
-import LandingPage from './LandingPage.vue';
-import BaseConvertPage from './BaseConvertPage.vue';
-import NotFound from './NotFound.vue';
+import router from './routes'
+
 
 // add icons
-library.add(faGithub);
-library.add(faSpinner, faAngleLeft, faAngleRight, faAngleDown, faEye, faCircleCheck, faArrowUpRightFromSquare, faCircleInfo);
+library.add(faSpinner, faGithub, faAngleLeft, faAngleRight, faAngleDown, faEye, faCircleCheck, faArrowUpRightFromSquare, faCircleInfo, faUsers);
 
 
 //move to ./types?
@@ -25,16 +22,6 @@ declare module '@vue/runtime-core' {
     $store: typeof store
   }
 }
-
-// enable routing
-const router = createRouter({
-  history: createWebHistory(),
-  routes: [
-    { path: "/", component: LandingPage },
-    { path: "/convert", component: BaseConvertPage },
-    { path: '/:pathMatch(.*)*', component: NotFound }
-  ]
-})
 
 const app = createApp(App);
 app.use(router);

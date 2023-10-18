@@ -20,11 +20,9 @@
                 </el-row>
                 <el-row>
                     <el-col :xs="24" :md="12">
-                        <RouterLink style="text-decoration: none;" to="/convert">
-                            <el-button type="primary" style="color: white !important; font-weight: bold;" class="hero-banner-button">
-                                GET STARTED
-                            </el-button>
-                        </RouterLink>
+                        <el-button @click="onClickGetStarted" type="primary" style="color: white !important; font-weight: bold;" class="hero-banner-button">
+                            GET STARTED
+                        </el-button>
                     </el-col>
                     <el-col :xs="24" :md="12">
                         <el-button class="hero-banner-button" @click="openDocumentation" type="text">
@@ -93,15 +91,34 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import { mapState } from 'vuex';
 import LandingPageAnimation from './LandingPageAnimation.vue';
+import { hasJWT } from './lib';
 export default defineComponent({
     components: {
         LandingPageAnimation: LandingPageAnimation,
+    },
+    computed: {
+        ...mapState(['config']),
     },
     methods: {
         openDocumentation() {
             window.open(`https://brainlife.io/docs/using_ezBIDS/`);
         },
+        onClickGetStarted() {
+            if (hasJWT()) {
+                this.$router.push('/convert')
+                return;
+            }
+
+            sessionStorage.setItem('auth_redirect', window.location.href);
+            window.location.href = (this.config as {
+                apihost: string;
+                authSignIn: string;
+                authSignOut: string;
+                debug: boolean;
+            }).authSignIn;
+        }
     },
 });
 </script>

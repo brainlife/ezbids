@@ -18,7 +18,7 @@
                                 @click="redirectToBrainlifeAuth"
                                 type="text"
                                 style="font-size: var(--el-font-size-extra-large); font-family: unset; color: #3482e9;"
-                                >LOG IN / REGISTER</el-button
+                                >{{ hasJWT ? "GET STARTED" : "LOG IN / REGISTER"}}</el-button
                             >
                             <!-- <RouterLink style="text-decoration: none;" to="/convert">LOG IN / REGISTER</RouterLink> -->
                         </el-menu-item>
@@ -34,10 +34,14 @@
 import { defineComponent } from 'vue';
 import { RouterLink } from 'vue-router';
 import { mapState } from 'vuex';
+import { hasJWT } from './lib';
 
 export default defineComponent({
     computed: {
         ...mapState(['config']),
+        hasJWT() {
+            return hasJWT();
+        }
     },
     components: {
         RouterLink: RouterLink,
@@ -47,6 +51,11 @@ export default defineComponent({
             window.open('https://brainlife.io/team/', '_blank');
         },
         redirectToBrainlifeAuth() {
+            if (hasJWT()) {
+                this.$router.push('/convert')
+                return;
+            }
+
             sessionStorage.setItem('auth_redirect', window.location.href);
             window.location.href = (this.config as {
                 apihost: string;

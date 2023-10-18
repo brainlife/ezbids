@@ -28,10 +28,7 @@
                                 @change="selectit" style="font-size: 80%; width: 400px; background-color: #fff3; padding: 5px;"/>
                     </div>
                 </div>
-    
-                <br>
-                <br>
-                <br>
+
                 <div class="Info">
                     <h2>Information</h2>
                     <ul style="line-height: 200%;">
@@ -214,7 +211,6 @@ export default defineComponent({
     mounted() {
         console.log("mounted Upload.vue");
     },
-
     computed: {
         ...mapState(['session', 'config', 'ezbids']),
 
@@ -521,6 +517,7 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .drop-area {
+    z-index: -1;
     background-color: #0002;
     color: #999;
     padding: 25px;

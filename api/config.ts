@@ -1,5 +1,5 @@
 'use strict';
-export const mongodb = "mongodb://mongodb:27017/ezbids";
+export const mongodb = process.env.MONGO_CONNECTION_STRING || "mongodb://mongodb:27017/ezbids";
 export const mongoose_debug = true;
 //multer incoming upload directory
 export const multer = {

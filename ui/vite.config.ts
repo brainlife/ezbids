@@ -14,7 +14,7 @@ export default defineConfig({
     },
   },
   */
-  base: '/ezbids',
+  base: '/ezbids/',
   plugins: [
     vue(), /*vueI18nPlugin*/
 

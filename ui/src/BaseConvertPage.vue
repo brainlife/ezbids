@@ -39,6 +39,8 @@
                     <font-awesome-icon :icon="['fab', 'github']" />
                 </a>
             </p>
+            
+            <ManageUsersDialog></ManageUsersDialog>
         </aside>
         <section>
             <Upload v-if="page === 'upload'" ref="upload" />
@@ -82,7 +84,7 @@ import Events from './Events.vue';
 import Deface from './Deface.vue';
 import Finalize from './Finalize.vue';
 import Feedback from './Feedback.vue';
-
+import ManageUsersDialog from './components/dialogs/ManageUsersDialog.vue'
 import { IObject } from './store';
 
 //https://github.com/element-plus/element-plus/issues/436#issuecomment-961386582
@@ -107,6 +109,7 @@ export default defineComponent({
         Participant,
         Finalize,
         Feedback,
+        ManageUsersDialog: ManageUsersDialog,
 
         niivue,
     },
