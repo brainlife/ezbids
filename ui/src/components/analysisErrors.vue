@@ -15,15 +15,16 @@
 
 import { defineComponent } from 'vue'
 import { mapState } from 'vuex'
+import axios from '../axios.instance';
 //import axios from 'axios'
 
 export default defineComponent({
     props: [],
     async mounted() {
         const url = this.config.apihost+'/download/'+this.session._id+'/dcm2niix_error';
-        const res = await fetch(url);
+        const res = await axios.get(url);
         this.errors = "Failed to load dcm2niix error log";
-        if(res.status == 200) this.errors = await res.text();
+        if(res.status == 200) this.errors = await res.data;
     },
     data() {
         return {

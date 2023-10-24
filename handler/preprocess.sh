@@ -109,7 +109,7 @@ else
     echo "Making sure all NIfTI files are in .nii.gz format"
     touch $root/nii_files
     find $root -name "*.nii" > $root/nii_files
-    [ -s $root/nii_files ] && gzip $(cat $root/nii_files)
+    [ -s $root/nii_files ] && gzip --force $(cat $root/nii_files)
 
     echo "processing $root"
 

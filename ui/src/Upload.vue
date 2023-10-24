@@ -178,8 +178,8 @@
 <script>
 import { defineComponent } from 'vue'
 import { mapState } from 'vuex'
-import axios from 'axios'
 import { formatNumber } from './filters'
+import axios from './axios.instance';
 
 export default defineComponent({
     components: {
@@ -225,6 +225,19 @@ export default defineComponent({
     },
 
     methods: {
+        downloadPreProcess() {
+            axios.get(`${this.config.apihost}/download/${this.session._id}/preprocess.log`, {
+                headers: {
+                    'Content-Type': 'text/html'
+                }
+            }).then((res) => {
+                console.log({
+                    res
+                })
+            }).catch((err) => {
+                console.log(err)
+            })
+        },
 
         formatNumber,
 
@@ -351,15 +364,11 @@ export default defineComponent({
             }
 
             //create new session
-            console.log("creating new session");
-            const res = await fetch(this.config.apihost+'/session', {
-                method: "POST",
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-            });
-            this.$store.commit('setSession', await res.json());
-
+            const res = await axios.post(`${this.config.apihost}/session`, {
+                headers: { 'Content-Type': 'application/json' }
+            })
+            console.log("created new session");
+            this.$store.commit('setSession', await res.data);
             this.processFiles();
         },
 
@@ -458,10 +467,9 @@ export default defineComponent({
             this.doneUploading = true;
 
             //mark the session as uploaded
-            await fetch(this.config.apihost+'/session/uploaded/'+this.session._id, {
-                method: "PATCH",
-                headers: {'Content-Type': 'application/json'},
-            });
+            await axios.patch(`${this.config.apihost}/session/uploaded/${this.session._id}`, {
+                headers: { 'Content-Type': 'application/json' }
+            })
 
             //construct a good dataset description from the file paths
             const f = this.files[0];
@@ -517,7 +525,7 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .drop-area {
-    z-index: -1;
+    z-index: 0;
     background-color: #0002;
     color: #999;
     padding: 25px;

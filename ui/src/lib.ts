@@ -104,6 +104,9 @@ export function createEventsTSV(ezbids: IEzbids, events: IEvents) {
 }
 
 export function hasJWT() {
-    const jwt = localStorage.getItem("jwt");
-    return !!jwt;
+    return !!retrieveJWT();
+}
+
+export function retrieveJWT() {
+    return localStorage.getItem('jwt')
 }

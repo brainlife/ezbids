@@ -114,8 +114,7 @@
 import { mapState } from 'vuex'
 import { defineComponent } from 'vue'
 import showfile from './components/showfile.vue'
-
-import { OrganizedSubject } from './store'
+import axios from './axios.instance'
 
 import { ElNotification } from 'element-plus'
 
@@ -166,11 +165,7 @@ export default defineComponent({
                 entityMappings[key] = this.bidsSchema.entities[key].entity;
             }
 
-
-            fetch(this.config.apihost+'/session/'+this.session._id+'/finalize', {
-                method: "POST",
-                headers: { 'Content-Type': 'application/json; charset=UTF-8' },
-                body: JSON.stringify({
+            axios.post(`${this.config.apihost}/session/${this.session._id}/finalize`, {
                     //basically we just need everything except _organized
 
                     //we store these so we can reload the session later
@@ -187,10 +182,9 @@ export default defineComponent({
                     readme: this.ezbids.readme,
                     participantsColumn: this.ezbids.participantsColumn,
                     participantInfo: this.ezbids.participantsInfo,
-                }),
-            }).then(res=>res.text()).then(status=>{
-                   if(cb) cb((status=="ok")?null:status);
-            });
+            }).then((res) => {
+                if (cb) cb(res.data === 'ok' ? null : res.data)
+            })
         },
 
         /*
@@ -222,7 +216,7 @@ export default defineComponent({
 
         sendBrainlife(pipeline?: 'DWI') {
             const pipelineString = pipeline ? `&pipeline=${pipeline}` : '';
-            window.open(`../projects#ezbids=${this.session._id}${pipelineString}`, `_brainlife.${this.session._id}`);
+            window.open(`https://brainlife.io/projects#ezbids=${this.session._id}${pipelineString}`, `_brainlife.${this.session._id}`);
         },
 
         sendOpenneuro() {

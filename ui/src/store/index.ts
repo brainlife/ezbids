@@ -3,6 +3,7 @@ import perfMetadata from '../assets/schema/rules/sidecars/perf.json'
 import { createStore } from 'vuex'
 
 import bidsEntities from '../assets/schema/objects/entities.json'
+import axios from '../axios.instance'
 
 // export interface GenericRule {
 //     selectors?: string[]
@@ -283,7 +284,8 @@ export interface OrganizedSubject {
 
 export interface ISession {
     _id: string;
-
+    ownerId: number;
+    allowedUsers: number[];
     create_date: string; //"2021-08-27T21:24:21.610Z"
     dicomCount: number; //2
     dicomDone: number; //2
@@ -322,6 +324,7 @@ const state = {
 
     config: {
         apihost: import.meta.env.VITE_APIHOST || "/api/ezbids",
+        authhost: process.env.NODE_ENV === 'development' ? 'http://localhost:8080/api/auth' : '/api/auth',
         authSignIn: '/auth/#!/signin',
         authSignOut: '/auth/#!/signout',
         debug: (process.env.NODE_ENV == "development" ? true : false),
@@ -658,6 +661,11 @@ const store = createStore({
             state.ezbids.datasetDescription.Name = v;
         },
 
+        updateSessionAllowedUsers(state, updatedUsers) {
+            if (!state.session) return;
+            state.session.allowedUsers = updatedUsers
+        },
+
         organizeObjects(state) {
             //mapObjects() must be called before calling this action (for _entities)
 
@@ -732,18 +740,15 @@ const store = createStore({
 
         async loadSession(context) {
             if (!context.state.session) return;
-            const res = await fetch(context.state.config.apihost + '/session/' + context.state.session._id, {
-                method: "GET",
-                headers: { 'Content-Type': 'application/json' },
-            });
-            context.commit("setSession", await res.json());
+            const res = await axios.get(`${context.state.config.apihost}/session/${context.state.session._id}`);
+            context.commit("setSession", res.data);
         },
 
         async loadEzbids(context) {
             if (!context.state.session || !context.state.session.pre_finish_date) return;
-            const res = await fetch(context.state.config.apihost + '/download/' + context.state.session._id + '/ezBIDS_core.json');
+            const res = await axios.get(`${context.state.config.apihost}/download/${context.state.session._id}/ezBIDS_core.json`)
             if (res.status == 200) {
-                const conf = await res.json();
+                const conf = await res.data;
                 conf.notLoaded = false;
                 context.commit("updateEzbids", conf);
             } else {
@@ -753,9 +758,9 @@ const store = createStore({
 
         async loadEzbidsUpdated(context) {
             if (!context.state.session || !context.state.session.pre_finish_date) return;
-            const res = await fetch(context.state.config.apihost + '/session/' + context.state.session._id + '/updated');
+            const res = await axios.get(`${context.state.config.apihost}/session/${context.state.session._id}/updated`)
             if (res.status == 200) {
-                const updated = await res.json();
+                const updated = await res.data;
                 context.commit("updateEzbids", updated);
                 context.commit("updateEvents", updated.events);
                 context.commit("setPage", "finalize");
@@ -767,22 +772,22 @@ const store = createStore({
         async loadDefaceStatus(context) {
             if (!context.state.session) return;
 
-            const finished = await fetch(context.state.config.apihost + '/download/' + context.state.session._id + '/deface.finished');
+            const finished = await axios.get(`${context.state.config.apihost}/download/${context.state.session._id}/deface.finished`)
             if (finished.status == 200) {
-                const finishedText = await finished.text();
-                const idxs = finishedText.trim().split("\n").filter(v => !!v).map(v => parseInt(v));
-                idxs.forEach(idx => {
+                const finishedText = await finished.data;
+                const idxs = finishedText.trim().split("\n").filter((v) => !!v).map((v) => parseInt(v));
+                idxs.forEach((idx) => {
                     let o = context.state.ezbids.objects.find(o => o.idx == idx);
                     if (!o) console.error("can't find", idx);
                     else o.defaced = true;
                 });
             } else console.log("couldn't load deface.finished - mayber not yet defaced");
 
-            const failed = await fetch(context.state.config.apihost + '/download/' + context.state.session._id + '/deface.failed');
+            const failed = await axios.get(`${context.state.config.apihost}/download/${context.state.session._id}/deface.failed`);
             if (failed.status == 200) {
-                const failedText = await failed.text();
+                const failedText = await failed.data;
                 const idxs = failedText.trim().split("\n").filter(v => !!v).map(v => parseInt(v));
-                idxs.forEach(idx => {
+                idxs.forEach((idx) => {
                     let o = context.state.ezbids.objects.find(o => o.idx === idx);
                     if (!o) console.error("can't find", idx);
                     else o.defaceFailed = true;

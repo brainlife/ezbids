@@ -10,6 +10,7 @@ const convert = new Convert();
 
 import { mapState } from 'vuex'
 import { defineComponent } from 'vue'
+import axios from 'axios';
 
 export default defineComponent({
     props: {
@@ -33,9 +34,9 @@ export default defineComponent({
     },
 
     mounted() {
-        fetch(this.config.apihost+'/download/'+this.session._id+'/'+this.path/*+"?t="+new Date().getTime()*/).then(res=>res.text()).then(data=>{
-            this.content = convert.toHtml(data);
-        });
+        axios.get(`${this.config.apihost}/download/${this.session._id}/${this.path}`).then((res) => {
+            this.content = convert.toHtml(res.data);
+        })
 
         if(this.tall) {
             this.maxHeight = "400px";

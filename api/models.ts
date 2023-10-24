@@ -36,6 +36,9 @@ var sessionSchema = new Schema({
     create_date: { type: Date, default: Date.now },
     update_date: { type: Date, default: Date.now },
 
+    ownerId: Schema.Types.Number,
+    allowedUsers: [Schema.Types.Number],
+
     request_headers: Schema.Types.Mixed,
 
     upload_finish_date: Date, //when all files are uploaded
