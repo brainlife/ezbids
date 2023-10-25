@@ -573,15 +573,26 @@ export default defineComponent({
             return rules;
 
         },
-        addNumericValidationRule(rules,item) {
+        addNumericValidationRule(rules, item) {
             if (item.details && item.details.type === 'number') {
                 if (!rules[item.field]) {
                     rules[item.field] = [];
                 }
                 rules[item.field].push({
                     validator: (rule, value, callback) => {
-                        if (value !=null && !this.isNumeric(value)) {
-                            callback(new Error('Please enter a valid number'));
+                        if (value != null) {
+                            if (value.includes(',')) {
+                                // Validate for comma-separated numbers
+                                if (!value.split(',').every(part => this.isNumeric(part.trim()))) {
+                                    callback(new Error('Please enter a valid number or a comma-separated list of numbers'));
+                                } else {
+                                    callback();
+                                }
+                            } else if (!this.isNumeric(value)) {
+                                callback(new Error('Please enter a valid number'));
+                            } else {
+                                callback();
+                            }
                         } else {
                             callback();
                         }
@@ -589,7 +600,8 @@ export default defineComponent({
                     trigger: 'change'
                 });
             }
-        },
+    },
+
 
         addArrayValidationRule(rules,item) {
             if (item.details && item.details.type === 'array') {
