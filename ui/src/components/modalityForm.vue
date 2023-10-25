@@ -328,7 +328,7 @@ export default defineComponent({
         this.$emit('form-submitted', this.ezbids);
     },
     inputType(item) {
-        console.log("itemDetails",item.details);
+        // console.log("itemDetails",item.details);
         if(item.details?.anyOf?.length) return "select-type"; 
         if((item.details.type == 'string' || item.details.type == 'object' || item.details.type == 'array') && item.details.enum == undefined) return "input";
         if(item.details.type == 'number') return "input-number";
@@ -728,10 +728,9 @@ export default defineComponent({
             return array;
         },
         updateDetailsType(item,newValue) {
-            console.log("upitemWhole",item.details, "itemSelected",newValue);
             const extractedData = item.details.anyOf.find((item: any) => item.type == newValue);
             if(extractedData.items){ 
-                console.log("upextractedData",extractedData);
+                // console.log("upextractedData",extractedData);
                 item.details.items = extractedData.items;
             }
             // item.details.type = newValue;
