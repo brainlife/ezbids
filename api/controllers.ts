@@ -6,7 +6,7 @@ import mkdirp from 'mkdirp';
 import archiver from 'archiver';
 import async from 'async';
 
-import * as models from './models';
+import { models } from 'ezbids-shared';
 
 const upload = multer({
     dest: process.env.UPLOAD_DIR,
@@ -384,7 +384,7 @@ router.get('/download/:session_id/*', (req, res, next)=>{
     });
 });
 
-router.post('/upload-multi/:session_id', upload.any(), (req:any, res, next)=>{
+router.post('/upload-multi/:session_id', upload.any(), (req, res, next)=>{
 
     //when a single file is uploaded paths becomes just a string. convert it to an array of 1
     let paths = req.body["paths"];
@@ -395,7 +395,7 @@ router.post('/upload-multi/:session_id', upload.any(), (req:any, res, next)=>{
 
     models.Session.findById(req.params.session_id).then(async session=>{
         let idx = -1;
-        async.eachSeries(req.files, (file, next_file)=>{
+        async.eachSeries(req.files as Express.Multer.File[], (file, next_file)=>{
             idx++;
             const src_path = file.path;
             /* //file
@@ -414,7 +414,9 @@ router.post('/upload-multi/:session_id', upload.any(), (req:any, res, next)=>{
             const dest_path = path.resolve(dirty_path);
             const mtime = mtimes[idx]/1000; //browser uses msec.. filesystem uses sec since epoch
 
-            if(!dest_path.startsWith(process.env.WORK_DIR ) ) return next_file("invalid path:", dest_path);
+            if (!dest_path.startsWith(process.env.WORK_DIR))
+                return next_file(new Error("invalid path: " + dest_path));
+
             const destdir = path.dirname(dest_path);
 
             //move the file over to workdir
@@ -448,4 +450,4 @@ router.patch('/session/uploaded/:session_id', (req, res, next)=>{
     });
 });
 
-module.exports = router;
+export default router;

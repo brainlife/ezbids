@@ -1,16 +1,16 @@
-#!/usr/bin/env node
+import * as fs from 'fs';
+import mkdirp from 'mkdirp';
+import * as async from 'async';
+import { schema } from './shared';
 
-const fs = require('fs');
-const mkdirp = require('mkdirp');
-const async = require('async');
-const bidsEntitiesOrdered = require('../ui/src/assets/schema/rules/entities.json')
+const { rules: { entities: bidsEntitiesOrdered } } = schema;
 
 //import { IObject, Subject, Session, OrganizedSession } from '../ui/src/store'
 
 const root = process.argv[2];
 if(!root) throw "please specify root directory";
 
-const info = JSON.parse(fs.readFileSync(root+"/finalized.json"));
+const info = JSON.parse(fs.readFileSync(root + "/finalized.json", "utf8"));
 
 //order the entityMappings correctly, as specified by the BIDS specification
 let newEntityOrdering = {};
@@ -74,7 +74,7 @@ for(let rec of tsv) {
 fs.closeSync(tsvf);
 
 //handle each objects
-async.forEachOf(info.objects, (o, idx, next_o)=>{
+async.forEachOf(info.objects, (o: any, idx, next_o)=>{
 
     if(o._type == "exclude" || o._exclude) {
         o._type = "excluded/obj"+o.idx;

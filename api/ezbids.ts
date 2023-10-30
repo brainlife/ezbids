@@ -6,7 +6,8 @@ import compression from  'compression';
 import cors from 'cors';
 import nocache from 'nocache';
 
-import * as models from "./models";
+import { models } from 'ezbids-shared';
+
 import controllers from "./controllers";
 
 // setup swagger
@@ -49,11 +50,11 @@ app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 //error handling
 //app.use(expressWinston.errorLogger(config.logger.winston)); 
 app.use(function(err, req, res, next) {
-    if(typeof err == "string") err = { message: err };
-    if(!err.name || err.name != "UnauthorizedError") {
+    if (typeof err === "string") err = { message: err };
+    if (!err.name || err.name != "UnauthorizedError") {
         console.error(err);
     }
-    if(err.stack) err.stack = "hidden"; //don't sent call stack to UI - for security reason
+    if (err.stack) err.stack = "hidden"; //don't sent call stack to UI - for security reason
     res.status(err.status || 500);
     res.json(err);
 });
@@ -64,8 +65,8 @@ process.on('uncaughtException', err=>{
 });
 
 models.connect(err=>{
-  if(err) throw err;
-  const port = process.env.PORT || '8081';
+  if (err) throw err;
+  const port = +(process.env.PORT || '8082');
   const host = process.env.HOST || 'localhost';
   app.listen(port, host, function() {
     console.log("ezbids api service running on %s:%d in %s mode", host, port, app.settings.env);

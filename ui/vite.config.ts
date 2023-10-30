@@ -22,7 +22,7 @@ export default defineConfig({
         resolvers: [ElementPlusResolver()],
         
       }),
-      ViteYaml(), // you may configure the plugin by passing in an object with the options listed below
+      ViteYaml(),
   ],
   build: {
     sourcemap: true,

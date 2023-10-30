@@ -17,7 +17,7 @@ rootDir="$root/bids/$datasetName"
 rm -rf $root/bids
 
 echo "converting output to bids"
-./convert.js $root
+npm run convert $root
 
 echo "output bids directory structure"
 tree "$rootDir" > $root/tree.log

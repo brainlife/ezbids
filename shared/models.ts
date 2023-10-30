@@ -4,20 +4,7 @@ if (process.env.MONGOOSE_DEBUG === 'true') mongoose.set("debug", true);
 
 export function connect(cb) {
     console.debug("connecting to mongo");
-    mongoose.connect(process.env.MONGO_URL, {
-
-        /* this really screwed up warehouse db..
-        readPreference: 'nearest',
-        writeConcern: {
-            w: 'majority', //isn't this the default?
-        },
-        readConcernLevel: 'majority',//prevents read to grab stale data from secondary
-        */
-
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        //auto_reconnect: true, //isn't this the default?
-    }, err=>{
+    mongoose.connect(process.env.MONGO_URL, {}, err=>{
         if(err) return cb(err);
         console.log("connected to mongo");
         cb();
@@ -33,7 +20,7 @@ export function disconnect(cb) {
 // upload sessions
 //
 
-const sessionSchema = mongoose.Schema({
+const sessionSchema = new mongoose.Schema({
 
     create_date: { type: Date, default: Date.now },
     update_date: { type: Date, default: Date.now },
@@ -83,12 +70,12 @@ const sessionSchema = mongoose.Schema({
     //removed: { type: Boolean, default: false },
 });
 sessionSchema.pre('save', function(next) {
-    this.update_date = Date.now();
+    this.update_date = new Date(Date.now());
     next();
 });
 export const Session = mongoose.model("Session", sessionSchema);
 
-const ezbidsSchema = mongoose.Schema({
+const ezbidsSchema = new mongoose.Schema({
     _session_id: mongoose.Schema.Types.ObjectId, 
 
     original: mongoose.Schema.Types.Mixed,

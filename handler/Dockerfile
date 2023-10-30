@@ -1,4 +1,4 @@
-FROM neurodebian:nd20.04-non-free
+FROM neurodebian:nd20.04-non-free as base
 
 ARG USER=docker
 ARG UID
@@ -80,6 +80,9 @@ COPY . /app
 RUN chown -R ${UID}:${GID} /app
 RUN chown -R ${UID}:${GID} ~
 
+WORKDIR /app/shared
+RUN npm install
+
 WORKDIR /app/api
 RUN npm install
 
@@ -89,3 +92,10 @@ RUN npm install
 USER ${UID}:${GID}
 
 CMD [ "npm", "run", "dev" ]
+
+
+FROM base as production
+
+RUN npm run build
+
+CMD [ "node", "./build/handler/handler.js" ]

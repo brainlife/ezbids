@@ -1,9 +1,19 @@
 {
     "compilerOptions": {
-        "target": "ES6",
+        "composite": true,
+        "outDir": "build",
+        "target": "es5",
         "alwaysStrict": true,
+        "allowJs": true,
         "sourceMap": true,
-        "module": "CommonJS",
-        "esModuleInterop": true
-    }
+        "esModuleInterop": true,
+        "module": "commonjs",
+        "moduleResolution": "node",
+    },
+    "hooks": [
+    // "../shared/ts-hooks/schema.js"
+    ],
+    "references": [
+        { "path": "../shared", "composite": true }
+    ]
 }

@@ -1,5 +1,3 @@
-import perfMetadata from '../assets/schema/rules/sidecars/perf.json'
-
 import { createStore } from 'vuex'
 
 import bidsEntities from '../assets/schema/objects/entities.json'

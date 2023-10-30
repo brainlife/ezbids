@@ -1,10 +1,11 @@
 {
     "compilerOptions": {
+        "outDir": "build",
         "target": "ES6",
         "alwaysStrict": true,
         "sourceMap": true,
         "module": "CommonJS",
         "esModuleInterop": true,
-        "allowSyntheticDefaultImports": true
+        "resolveJsonModule": true
     }
 }

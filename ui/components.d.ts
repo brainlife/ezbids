@@ -32,6 +32,8 @@ declare module 'vue' {
     ElTable: typeof import('element-plus/es')['ElTable']
     ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
     ElTag: typeof import('element-plus/es')['ElTag']
+    ElTooltip: typeof import('element-plus/es')['ElTooltip']
+    ModalityForm: typeof import('./src/components/modalityForm.vue')['default']
     Niivue: typeof import('./src/components/niivue.vue')['default']
     Showfile: typeof import('./src/components/showfile.vue')['default']
   }

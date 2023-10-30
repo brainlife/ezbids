@@ -19,6 +19,7 @@ services:
     build:
       context: ./
       dockerfile: ./api/Dockerfile
+      target: base
       args:
         UID: ${UID}
         GID: ${GID}
@@ -26,6 +27,7 @@ services:
     volumes:
       - ./api:/app/api
       - /app/api/node_modules
+      - ./shared:/app/api/shared
       - .env.dev:/app/.env
       - ./volumes:/app/volumes
     depends_on:
@@ -41,6 +43,7 @@ services:
     build: 
       context: ./
       dockerfile: ./handler/Dockerfile
+      target: base
       args:
         UID: ${UID}
         GID: ${GID}
@@ -48,6 +51,7 @@ services:
     volumes:
       - ./handler:/app/handler
       - /app/handler/node_modules
+      - ./shared:/app/handler/shared
       - .env.dev:/app/.env
       - ./volumes:/app/volumes
     depends_on:
@@ -61,6 +65,7 @@ services:
     platform: linux/amd64
     volumes:
       - ./ui:/ui
+      - ./shared:/app/ui/shared
       - /ui/node_modules
     environment:
       VITE_APIHOST: http://localhost:8082

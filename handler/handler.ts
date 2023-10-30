@@ -1,10 +1,9 @@
 require('dotenv').config({ path:'../.env' })
 
-const { spawn } = require('child_process');
-import fs = require('fs');
+import { spawn } from 'child_process';
+import * as fs from 'fs';
 
-import config = require('../api/config');
-import models = require('../api/models');
+import { models } from 'ezbids-shared';
 
 console.log("---------------------------------------")
 console.log(" starting ezbids-handler");

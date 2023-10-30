@@ -1,8 +1,9 @@
 FROM node:16
 
-COPY . /home/node/ui
-WORKDIR /home/node/ui
+COPY . /ui
+WORKDIR /ui
 
 RUN npm install
+RUN chown -R node:node /ui
 
 CMD [ "npm", "run", "dev" ]
