@@ -49,13 +49,11 @@
     
         <div v-if="session">
             <div v-if="session.status == 'created'">
-                <p>
-                    <h3>
-                        Uploading
-                        <font-awesome-icon icon="spinner" pulse/>
-                    </h3>
-                    <small>Please do not close/refresh this page until all files are uploaded.</small>
-                </p>
+                <h3>
+                    Uploading
+                    <font-awesome-icon icon="spinner" pulse/>
+                </h3>
+                <small>Please do not close/refresh this page until all files are uploaded.</small>
                 <div v-if="failed.length > 0">
                     <el-alert type="error">Permanently failed to upload some files</el-alert>
                     <pre type="info" v-for="idx in failed" :key="idx" style="font-size: 80%;">{{files[idx].path}}</pre>
@@ -150,16 +148,14 @@
             <el-collapse>
                 <el-collapse-item title="Debug">
                     <ul style="list-style: none; padding-left: 0;">
-                        <el-button @click="downloadPreProcess">Download preprocess.log</el-button>
-                        <li><a :href="config.apihost+'/download/'+session._id+'/test'">download test</a></li>
-                        <li><a :href="config.apihost+'/download/'+session._id+'/preprocess.log'">preprocess.log</a></li>
-                        <li><a :href="config.apihost+'/download/'+session._id+'/preprocess.err'">preprocess.err</a></li>
-                        <li><a :href="config.apihost+'/download/'+session._id+'/dcm2niix_error'">dcm2niix_error</a></li>
-                        <li><a :href="config.apihost+'/download/'+session._id+'/list'">list</a></li>
-                        <li><a :href="config.apihost+'/download/'+session._id+'/ezBIDS_core.json'">ezBIDS_core.json</a></li>
+                        <el-button style="width: 168px" type="warning" size="mini" @click="downloadFile('preprocess.log')">Download preprocess.log</el-button>
+                        <el-button type="warning" size="mini" @click="downloadFile('preprocess.err')">Download preprocess.err</el-button>
+                        <el-button type="warning" size="mini" @click="downloadFile('dcm2niix_error')">Download dcm2niix_error</el-button>
+                        <el-button type="warning" size="mini" @click="downloadFile('list')">Download list</el-button>
+                        <el-button type="warning" size="mini" @click="downloadFile('ezBIDS_core.json')">Download ezBIDS_core.json</el-button>
                     </ul>
     
-                    <el-button @click="dump" size="mini">Dump state</el-button>
+                    <el-button type="info" @click="dump" style="width: 168px" size="mini">Dump state</el-button>
                     <br>
     
                     <p v-if="ignoredFiles.length">
@@ -228,24 +224,13 @@ export default defineComponent({
     },
 
     methods: {
-        async downloadPreProcess(fileName) {
+        async downloadFile(fileName) {
+            if (!fileName) return;
             try {
                 const res = await axios.get(`${this.config.apihost}/download/${this.session._id}/token`)
-                console.log(res);
                 const shortLivedJWT = res.data;
 
                 window.location.href = `${this.config.apihost}/download/${this.session._id}/${fileName}?token=${shortLivedJWT}`;
-                // axios.get(`${this.config.apihost}/download/${this.session._id}/preprocess.log`).then((res) => {
-    
-                //     console.log({
-                //         headers: res
-                //     })
-                // }).catch((err) => {
-                //     console.log(err)
-                // })
-    
-                // const response = await axios.get(`${this.config.apihost}/download/${this.session._id}/preprocess.log`, { responseType: 'stream' });
-                // console.log({response})
             } catch (e) {
                 console.error(e)
                 ElNotification({

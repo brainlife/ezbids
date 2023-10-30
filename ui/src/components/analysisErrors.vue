@@ -21,10 +21,14 @@ import axios from '../axios.instance';
 export default defineComponent({
     props: [],
     async mounted() {
-        const jwt = await axios.get(`${this.config.apihost}/download/${this.session._id}/token`);
-        const res = await axios.get(`${this.config.apihost}/download/${this.session._id}/dcm2niix_error?token=${jwt.data}`);
-        this.errors = "Failed to load dcm2niix error log";
-        if(res.status == 200) this.errors = await res.data;
+        try {
+            const jwt = await axios.get(`${this.config.apihost}/download/${this.session._id}/token`);
+            const res = await axios.get(`${this.config.apihost}/download/${this.session._id}/dcm2niix_error?token=${jwt.data}`);
+            this.errors = "Failed to load dcm2niix error log";
+            if(res.status == 200) this.errors = await res.data;
+        } catch (e) {
+            console.error(e)
+        }
     },
     data() {
         return {

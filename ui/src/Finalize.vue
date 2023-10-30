@@ -34,17 +34,9 @@
             <p>
             Please download the BIDS formatted data to your local computer
             </p>
-            <p>
-                <el-button @click="download" type="primary">Download BIDS</el-button>
-
-                <a :href="config.apihost+'/download/'+session._id+'/finalized.json'" download="finalized.json">
-                    <el-button @click="download" type="primary" style="float: right" >Download configuration/template</el-button>
-                </a>
-                <p align="right">Saves a configuration file that can be uploaded with subsequent data to save you time!</p>
-            </p>
-            <p>
-            Or send the dataset to other cloud resources.
-            </p>
+            <el-button @click="download(`bids/${ezbids.datasetDescription.Name}`)" style="width: 250px" type="primary">Download BIDS</el-button>
+            <el-button @click="download(`finalized.json`)" style="width: 250px" type="primary">Download configuration/template</el-button>
+            <p>Or send the dataset to other cloud resources.</p>
             <p>                
                 <el-dropdown>
                     <el-button style="margin-right: 10px">
@@ -196,8 +188,20 @@ export default defineComponent({
         },
         */
 
-        download() {
-            document.location.href = this.config.apihost+'/download/'+this.session._id+'/bids/'+this.ezbids.datasetDescription.Name;
+        async download(fileName: string) {
+            if (!fileName) return;
+            try {
+                const res = await axios.get(`${this.config.apihost}/download/${this.session._id}/token`)
+                const shortLivedJWT = res.data;
+
+                window.location.href = `${this.config.apihost}/download/${this.session._id}/${fileName}?token=${shortLivedJWT}`;
+            } catch (e) {
+                console.error(e)
+                ElNotification({
+                    message: 'there was an error downloading the file',
+                    type: 'error'
+                })
+            }
         },
 
         downloadSubjectMapping() {

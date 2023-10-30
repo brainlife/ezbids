@@ -25,12 +25,7 @@ export default defineComponent({
     },
     watch: {
         path: function(oldPath, newPath) {
-            axios.get<string>(`${this.config.apihost}/download/${this.session._id}/token`).then((res) => {
-                this.pathWithToken = `${this.getURL(newPath)}?token=${res.data}`
-                console.log(this.pathWithToken)
-            }).catch((err) => {
-                console.error(err)
-            })
+            this.updatePathWithToken();
         }
     },
     methods: {
@@ -42,14 +37,17 @@ export default defineComponent({
         getURL(path: string | undefined) {
             if (!path) return '';
             return `${this.config.apihost}/download/${this.session._id}/${path}`
+        },
+        updatePathWithToken() {
+            axios.get<string>(`${this.config.apihost}/download/${this.session._id}/token`).then((res) => {
+                this.pathWithToken = `${this.getURL(this.path)}?token=${res.data}`
+            }).catch((err) => {
+                console.error(err)
+            })
         }
     },
     mounted() {
-        axios.get<string>(`${this.config.apihost}/download/${this.session._id}/token`).then((res) => {
-            this.pathWithToken = `${this.getURL(this.path)}?token=${res.data}`
-        }).catch((err) => {
-            console.error(err)
-        })
+        this.updatePathWithToken();
     }
 })
 </script>

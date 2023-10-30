@@ -41,14 +41,10 @@ export default defineComponent({
 
     methods: {
         load() {
-            console.log("loading NiiVue", this.path);
-
             axios.get(`${this.config.apihost}/download/${this.session._id}/token`).then((res) => {
                 const url = `${this.config.apihost}/download/${this.session._id}/${this.path}?token=${res.data}`;
-
                 this.open = true;
                 this.$nextTick(()=>{
-                    console.log("canvas", this.$refs.canvas)
                     nv.attachToCanvas(this.$refs.canvas);
                     nv.loadVolumes([{
                         url: url,
