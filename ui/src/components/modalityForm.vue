@@ -398,7 +398,6 @@ export default defineComponent({
     getFieldsMetaData(type: string) {
         let fileObject = {};
         if(type == 'perf/asl' || 'perf/m0scan') fileObject = aslYaml;
-        
         let result = {
             required: [],
             recommended: [],
@@ -410,6 +409,11 @@ export default defineComponent({
             const fields = data.fields || {};
             // fields with level 'required' or 'recommended' are included in the list
             for (const [field, metadata] of Object.entries(fields)) {
+                // Skip the IntendedFor field in the ASL sidecar
+                if (fileObject === aslYaml && field === 'IntendedFor') {
+                    continue;
+                }
+
                 // get the metadata from the metadata_types.yaml
                 const details = metadata_types[field] || {};
                 details.default_value = this.setDefaultValue(details);
