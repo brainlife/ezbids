@@ -20,6 +20,7 @@
                                     </el-tooltip>
                                 </span>
                             </template>
+
                             <el-input v-if="inputType(item) == 'input'"
                             :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
                             
@@ -33,6 +34,7 @@
                             </el-select>
 
                             <el-input v-if="inputType(item) =='input-number'" type="text" inputmode="decimal" :name="item.field" :placeholder="getPlaceholderByType(item.details.type)" v-model="formData[item.field]" @input="this.$refs.form.validate()" ></el-input>
+
                             <el-select v-if="inputType(item) == 'select-boolean'" @change="this.$refs.form.validate()" v-model="formData[item.field]" class="m-2" placeholder="Select" size="large">
                                 <el-option
                                 v-for="item in optionsBoolean"
@@ -81,6 +83,7 @@
                                     </el-tooltip>
                                 </span>
                             </template>
+
                             <el-input v-if="inputType(item) == 'input'" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
                             
                             <el-select  v-if="inputType(item) == 'select-enum'" v-model="formData[item.field]" @change="this.$refs.form.validate()">
@@ -91,7 +94,10 @@
                                     :value="option.value"
                                 />
                             </el-select>
-                            <el-input v-if="inputType(item) =='input-number'" type="text" inputmode="decimal" :name="item.field" v-model.number="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+
+                            <el-input v-if="inputType(item) =='input-number'" type="text" inputmode="decimal" :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+
+
                             <el-select v-if="inputType(item) == 'select-boolean'" v-model="formData[item.field]" class="m-2" @change="this.$refs.form.validate()" placeholder="Select" size="large">
                                 <el-option
                                 v-for="item in optionsBoolean"
@@ -107,7 +113,7 @@
                                        <el-input v-if="formatType(item.details.type) == 'string' || formatType(item.details.type) == 'object' || formatType(item.details.type) == 'array'"
                                        :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
 
-                                       <el-input v-if="formatType(item.details.type) == 'number'" type="text" inputmode="decimal" :name="item.field" :placeholder="getPlaceholderByType(formatType(item.details.type))" v-model="formData[item.field]" @input="this.$refs.form.validate()" ></el-input>                                                   
+                                       <el-input v-if="formatType(item.details.type) == 'number'" type="text" inputmode="decimal" :name="item.field" :placeholder="getPlaceholderByType(formatType(item.details.type))" v-model="formData[item.field]" @input="this.$refs.form.validate()" ></el-input>
                                     </el-col>
                                     <el-col :span="8">
                                         <el-select class="m-2" placeholder="Select Type" size="small" v-model="item.details.type" @change="updateDetailsType(item, $event)">
@@ -140,7 +146,7 @@
                                     </el-tooltip>
                                 </span>
                             </template>
-                            
+
                             <el-input  v-if="inputType(item) == 'input'" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
                             
                             <el-select v-if="inputType(item) == 'select-enum'" v-model="formData[item.field]" @change="this.$refs.form.validate()">
@@ -151,7 +157,9 @@
                                     :value="option.value"
                                 />
                             </el-select>
-                            <el-input v-if="inputType(item) =='input-number'" type="text" inputmode="decimal" :name="item.field" v-model.number="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+
+                            <el-input v-if="inputType(item) =='input-number'" type="text" inputmode="decimal" :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+
                             <el-select v-if="inputType(item) == 'select-boolean'" v-model="formData[item.field]" class="m-2" @change="this.$refs.form.validate()" placeholder="Select" size="large">
                                 <el-option
                                 v-for="item in optionsBoolean"
@@ -167,7 +175,8 @@
                                        <el-input v-if="formatType(item.details.type) == 'string' || formatType(item.details.type) == 'object' || formatType(item.details.type) == 'array'"
                                        :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(formatType(item.details.type))"></el-input>
 
-                                       <el-input v-if="formatType(item.details.type) == 'number'" type="text" inputmode="decimal" :name="item.field" :placeholder="getPlaceholderByType(formatType(item.details.type))" v-model="formData[item.field]" @input="this.$refs.form.validate()" ></el-input>                                                   
+                                       <el-input v-if="formatType(item.details.type) == 'number'" type="text" inputmode="decimal" :name="item.field" :placeholder="getPlaceholderByType(formatType(item.details.type))" v-model="formData[item.field]" @input="this.$refs.form.validate()" ></el-input>
+
                                     </el-col>
                                     <el-col :span="8">
                                         <el-select class="m-2" placeholder="Select Type" size="small" v-model="item.details.type" @change="updateDetailsType(item, $event)">
@@ -182,6 +191,8 @@
                                 </el-row>
                             </div>
                         </el-form-item>
+
+                        <h3>Conditional</h3>
                         <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.conditional" :key="'conditional' + index" :label="`${item.details.display_name}`" :prop="item.field">
 
                             <template #label>
@@ -195,7 +206,7 @@
                                 </span>
                             </template>
                             <el-input v-if="inputType(item) == 'input'"
-                            :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+                            :name="item.field" v-model="formData[item.field]" @change="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
                             
                             <el-select v-if="inputType(item) == 'select-enum'" v-model="formData[item.field]" @change="this.$refs.form.validate()">
                                 <el-option
@@ -205,8 +216,9 @@
                                     :value="option.value"
                                 />
                             </el-select>   
-                            
-                            <el-input v-if="inputType(item) =='input-number'" type="text" inputmode="decimal" :name="item.field" v-model.number="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+
+                            <el-input v-if="inputType(item) =='input-number'" type="text" inputmode="decimal" :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+
                             <el-select v-if="inputType(item) == 'select-boolean'" v-model="formData[item.field]" @change="this.$refs.form.validate()" class="m-2" placeholder="Select" size="large">
                                 <el-option
                                 v-for="item in optionsBoolean"
@@ -219,10 +231,12 @@
                             <div v-if="inputType(item) =='select-type'">
                                 <el-row :gutter="5">
                                     <el-col :span="16">
+
                                        <el-input v-if="formatType(item.details.type) == 'string' || formatType(item.details.type) == 'object' || formatType(item.details.type) == 'array'"
                                        :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(formatType(item.details.type))"></el-input>
 
-                                       <el-input v-if="formatType(item.details.type) == 'number'" type="text" inputmode="decimal" :name="item.field" :placeholder="getPlaceholderByType(formatType(item.details.type))" v-model="formData[item.field]" @input="this.$refs.form.validate()" ></el-input>                                                   
+                                       <el-input v-if="formatType(item.details.type) == 'number'" type="text" inputmode="decimal" :name="item.field" :placeholder="getPlaceholderByType(formatType(item.details.type))" v-model="formData[item.field]" @input="this.$refs.form.validate()" ></el-input>
+
                                     </el-col>
                                     <el-col :span="8">
                                         <el-select class="m-2" placeholder="Select Type" size="small" v-model="item.details.type" @change="updateDetailsType(item, $event)">
@@ -355,7 +369,7 @@ export default defineComponent({
         //set default values for all fields in the form optional, recommended, required, conditional
         for(let field in this.fields) {
             this.fields[field].forEach((item: any) => {
-                this.formData[item.field] = item.details.default_value;
+                this.formData[item.field] = item.details.default_value || undefined;
             });
         }
         //match the pos of type and series.idx inside the ezbids.objects[]
@@ -374,7 +388,6 @@ export default defineComponent({
                     if (item.name.includes("json") && item.sidecar_json) {
                         //load the json through sidecar_json
                         const json = JSON.parse(item.sidecar_json);
-                        // console.log("jsonOrginal",json);
                         for (const [key, value] of Object.entries(json)) {
                             if(this.formData.hasOwnProperty(key)) this.formData[key] = value;
                         }
@@ -385,10 +398,6 @@ export default defineComponent({
     },
     getFieldsMetaData(type: string) {
         let fileObject = {};
-        // if(type == 'pet/pet') {
-        //     console.log("petYaml", petYaml);
-        //     fileObject = petYaml;
-        // }
         if(type == 'perf/asl' || 'perf/m0scan') fileObject = aslYaml;
         
         let result = {
@@ -438,7 +447,7 @@ export default defineComponent({
                 }
             }
         }
-    
+
         //remove required fields which are in conditional 
 
         result.required = result.required.filter((item: any) => {
@@ -564,6 +573,7 @@ export default defineComponent({
                     this.addNumericValidationRule(rules,item);
                     this.addArrayValidationRule(rules,item);
                 }
+                this.addNumericValidationRule(rules,item);
                 this.addArrayValidationRule(rules,item);
 
             });
@@ -574,32 +584,36 @@ export default defineComponent({
 
         },
         addNumericValidationRule(rules, item) {
-            if (item.details && item.details.type === 'number') {
-                if (!rules[item.field]) {
-                    rules[item.field] = [];
-                }
-                rules[item.field].push({
-                    validator: (rule, value, callback) => {
-                        if (value != null) {
-                            if (value.includes(',')) {
-                                // Validate for comma-separated numbers
-                                if (!value.split(',').every(part => this.isNumeric(part.trim()))) {
-                                    callback(new Error('Please enter a valid number or a comma-separated list of numbers'));
-                                } else {
-                                    callback();
-                                }
-                            } else if (!this.isNumeric(value)) {
-                                callback(new Error('Please enter a valid number'));
+        console.log("Doing Numeric Validation");
+        if (item.details && item.details.type === 'number') {
+            if (!rules[item.field]) {
+                rules[item.field] = [];
+            }
+            rules[item.field].push({
+                validator: (rule, value, callback) => {
+                    if(value == null) value = this.formData[item.field];
+                    let stringValue = `${value}`; // Convert value to string
+                    if (stringValue !== "null" && stringValue !== "undefined" && stringValue !== ""
+                    ) {
+                        if (stringValue.includes(',')) {
+                            // Validate for comma-separated numbers
+                            if (!stringValue.split(',').every(part => this.isNumeric(part.trim()))) {
+                                callback(new Error('Please enter a valid number or a comma-separated list of numbers'));
                             } else {
                                 callback();
                             }
+                        } else if (!this.isNumeric(stringValue)) {
+                            callback(new Error('Please enter a valid number'));
                         } else {
                             callback();
                         }
-                    },
-                    trigger: 'change'
-                });
-            }
+                    } else {
+                        callback();
+                    }
+                },
+                trigger: 'change'
+            });
+        }
     },
 
 
@@ -704,7 +718,8 @@ export default defineComponent({
             return "";
         },
         isNumeric(value) {
-            return /^(\-?\d+(\.\d+)?)?$/.test(value);
+            // return /^(\-?\d+(\.\d+)?)?$/.test(value);
+            return /^-?\d+(\.\d+)?$/.test(value);
         },
         getPlaceholderByType(type) {
             if(type == 'string') return "Enter string";
