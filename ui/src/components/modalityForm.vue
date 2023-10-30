@@ -192,7 +192,6 @@
                             </div>
                         </el-form-item>
 
-                        <h3>Conditional</h3>
                         <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.conditional" :key="'conditional' + index" :label="`${item.details.display_name}`" :prop="item.field">
 
                             <template #label>
