@@ -115,7 +115,7 @@ export default defineComponent({
             this.dialogIsVisible = false
         },
         handleSelectProfile(profile: Profile) {
-            if (!this.session) return;
+            if (!this.session || !this.session.allowedUsers) return;
             if (!profile?.sub || !profile?.email) return;
 
             this.userInput = '';
@@ -170,7 +170,7 @@ export default defineComponent({
                 return lowercaseEmail.includes(transformedQuery) || lowerCaseFullname.includes(transformedQuery);
             });
 
-            const alreadySharedWithList: number[] = [this.session?.ownerId , ...(this.session.allowedUsers || [])]
+            const alreadySharedWithList: number[] = [this.session?.ownerId , ...(this.session?.allowedUsers || [])]
             cb(results.filter((result) => result?.sub ? !alreadySharedWithList.includes(result.sub) : false));
             return;
         }

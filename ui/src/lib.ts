@@ -1,4 +1,5 @@
 import { IEzbids, IEvents, IBIDSEvent } from './store'
+import axios from './axios.instance';
 //import { parseEvents } from './libUnsafe'
 
 export function createEventsTSV(ezbids: IEzbids, events: IEvents) {

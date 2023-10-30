@@ -204,9 +204,7 @@
                             <div v-if="item.pngPaths">
                                 <p v-for="(path, idx) in item.pngPaths" :key="idx">
                                     <pre style="margin-bottom: 0">{{path}}</pre>
-                                    <a :href="getURL(path)">
-                                        <img style="width: 100%" :src="getURL(path)"/>
-                                    </a>
+                                    <AsyncImageLink :path="path" />
                                 </p>
                             </div>
                         </div>
@@ -232,6 +230,8 @@
     import { prettyBytes } from './filters'
     import { setRun, setIntendedFor, align_entities, validateEntities, validate_B0FieldIdentifier_B0FieldSource, fileLogicLink, dwiQA } from './libUnsafe'
     
+    import AsyncImageLink from './components/AsyncImageLink.vue';
+
     // @ts-ignore
     import { Splitpanes, Pane } from 'splitpanes'
     
@@ -245,6 +245,7 @@
         components: {
             datatype,
             Splitpanes, Pane,
+            AsyncImageLink
         },
     
         data() {
@@ -260,7 +261,7 @@
     
         computed: {
             ...mapState(['ezbids', 'config', 'bidsSchema', 'events']),
-            ...mapGetters(['getBIDSEntities', 'getURL', 'findSubject', 'findSession', 'findSubjectFromString']),
+            ...mapGetters(['getBIDSEntities', 'findSubject', 'findSession', 'findSubjectFromString']),
     
             totalIssues() {
                 let count = 0;

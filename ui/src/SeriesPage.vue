@@ -157,10 +157,8 @@
                     <div v-for="(item, itemIdx) in ezbids.objects[object.idx].items" :key="itemIdx">
                         <div v-if="item.pngPaths">
                             <p v-for="(path, idx) in item.pngPaths" :key="idx">
-                                <pre style="margin-bottom: 0">{{path}}</pre>
-                                <a :href="getURL(path)">
-                                    <img style="width: 100%" :src="getURL(path)"/>
-                                </a>
+                                <pre>{{path}}</pre>
+                                <AsyncImageLink :path="path" />
                             </p>
                             <el-button type="info" @click="$emit('niivue', item.path)" size="small">
                                 <font-awesome-icon :icon="['fas', 'eye']"/>
@@ -198,11 +196,13 @@ import { validateEntities, validate_B0FieldIdentifier_B0FieldSource } from './li
 import aslYaml from "../src/assets/schema/rules/sidecars/asl.yaml";
 import petYaml from '../src/assets/schema/rules/sidecars/pet.yaml';
 import metadata_types from '../src/assets/schema/rules/sidecars/metadata_types.yaml';
+import AsyncImageLink from './components/AsyncImageLink.vue'
 
 // @ts-ignore
 import { Splitpanes, Pane } from 'splitpanes'
 
 import 'splitpanes/dist/splitpanes.css'
+import axios from './axios.instance'
 
 export default defineComponent({
 
@@ -210,6 +210,7 @@ export default defineComponent({
         datatype,
         showfile,
         Splitpanes, Pane,
+        AsyncImageLink,
     },
 
     data() {
@@ -227,8 +228,8 @@ export default defineComponent({
     },
 
     computed: {
-        ...mapState(['ezbids', 'bidsSchema', 'config']),
-        ...mapGetters(['getBIDSEntities', 'getURL', 'getMetaDataRule']), //doesn't work with ts?
+        ...mapState(['ezbids', 'session', 'bidsSchema', 'config']),
+        ...mapGetters(['getBIDSEntities', 'getMetaDataRule']), //doesn't work with ts?
     },
 
     mounted() {
@@ -237,7 +238,6 @@ export default defineComponent({
     },
 
     methods: {
-
         prettyBytes,
 
         getObjectsFromSeries(series: Series): IObject[] {

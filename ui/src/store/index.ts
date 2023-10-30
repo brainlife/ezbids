@@ -529,6 +529,7 @@ import petDatatype from '../assets/schema/rules/datatypes/pet.json'
 loadDatatype("pet", petDatatype, "PET");
 
 import perfDatatype from '../assets/schema/rules/datatypes/perf.json'
+import { ElNotification } from 'element-plus';
 loadDatatype("perf", perfDatatype, "Perfusion");
 
 
@@ -746,53 +747,68 @@ const store = createStore({
 
         async loadEzbids(context) {
             if (!context.state.session || !context.state.session.pre_finish_date) return;
-            const res = await axios.get(`${context.state.config.apihost}/download/${context.state.session._id}/ezBIDS_core.json`)
-            if (res.status == 200) {
-                const conf = await res.data;
-                conf.notLoaded = false;
-                context.commit("updateEzbids", conf);
-            } else {
-                console.log("no ezBIDS_core.json yet");
+            try {
+                const jwtRes = await axios.get(`${context.state.config.apihost}/download/${context.state.session._id}/token`);
+                const res = await axios.get(`${context.state.config.apihost}/download/${context.state.session._id}/ezBIDS_core.json?token=${jwtRes.data}`);
+                if (res.status === 200) {
+                    const conf = await res.data;
+                    conf.notLoaded = false;
+                    context.commit("updateEzbids", conf);
+                }
+            } catch (e) {
+                console.error(e);
+                ElNotification({
+                    message: 'There was an error loading ezBIDS',
+                    type: 'error'
+                })
             }
         },
 
         async loadEzbidsUpdated(context) {
             if (!context.state.session || !context.state.session.pre_finish_date) return;
-            const res = await axios.get(`${context.state.config.apihost}/session/${context.state.session._id}/updated`)
-            if (res.status == 200) {
-                const updated = await res.data;
-                context.commit("updateEzbids", updated);
-                context.commit("updateEvents", updated.events);
-                context.commit("setPage", "finalize");
-            } else {
-                console.log("ezbids not yet finalized");
+            try {
+                const res = await axios.get(`${context.state.config.apihost}/session/${context.state.session._id}/updated`)
+                if (res.status == 200) {
+                    const updated = await res.data;
+                    context.commit("updateEzbids", updated);
+                    context.commit("updateEvents", updated.events);
+                    context.commit("setPage", "finalize");
+                }
+            } catch (e) {
+                console.error(e)
             }
         },
 
         async loadDefaceStatus(context) {
             if (!context.state.session) return;
 
-            const finished = await axios.get(`${context.state.config.apihost}/download/${context.state.session._id}/deface.finished`)
-            if (finished.status == 200) {
-                const finishedText = await finished.data;
-                const idxs = finishedText.trim().split("\n").filter((v) => !!v).map((v) => parseInt(v));
-                idxs.forEach((idx) => {
-                    let o = context.state.ezbids.objects.find(o => o.idx == idx);
-                    if (!o) console.error("can't find", idx);
-                    else o.defaced = true;
-                });
-            } else console.log("couldn't load deface.finished - mayber not yet defaced");
+            try {
+                let jwtRes = await axios.get(`${context.state.config.apihost}/download/${context.state.session._id}/token`);
+                const finished = await axios.get(`${context.state.config.apihost}/download/${context.state.session._id}/deface.finished?token=${jwtRes.data}`);
+                if (finished.status == 200) {
+                    const finishedText = await finished.data;
+                    const idxs = finishedText.trim().split("\n").filter((v) => !!v).map((v) => parseInt(v));
+                    idxs.forEach((idx) => {
+                        let o = context.state.ezbids.objects.find(o => o.idx == idx);
+                        if (!o) console.error("can't find", idx);
+                        else o.defaced = true;
+                    });
+                }
 
-            const failed = await axios.get(`${context.state.config.apihost}/download/${context.state.session._id}/deface.failed`);
-            if (failed.status == 200) {
-                const failedText = await failed.data;
-                const idxs = failedText.trim().split("\n").filter(v => !!v).map(v => parseInt(v));
-                idxs.forEach((idx) => {
-                    let o = context.state.ezbids.objects.find(o => o.idx === idx);
-                    if (!o) console.error("can't find", idx);
-                    else o.defaceFailed = true;
-                });
-            } else console.log("couldn't load deface.finished - maybe not yet defaced");
+                jwtRes = await axios.get(`${context.state.config.apihost}/download/${context.state.session._id}/token`);
+                const failed = await axios.get(`${context.state.config.apihost}/download/${context.state.session._id}/deface.failed?token=${jwtRes.data}`);
+                if (failed.status == 200) {
+                    const failedText = await failed.data;
+                    const idxs = failedText.trim().split("\n").filter(v => !!v).map(v => parseInt(v));
+                    idxs.forEach((idx) => {
+                        let o = context.state.ezbids.objects.find(o => o.idx === idx);
+                        if (!o) console.error("can't find", idx);
+                        else o.defaceFailed = true;
+                    });
+                }
+            } catch (e) {
+                console.error(e);
+            }
         }
     },
 
@@ -822,12 +838,6 @@ const store = createStore({
 
         findSubjectFromString: (state) => (sub: string): (Subject | undefined) => {
             return state.ezbids.subjects.find((s: Subject) => s.subject == sub);
-        },
-
-        getURL: (state) => (path: string | undefined) => {
-            if (!path) return undefined;
-            if (!state.session) return undefined;
-            return state.config.apihost + "/download/" + state.session._id + "/" + path;
         },
     },
 })

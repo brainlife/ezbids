@@ -1,5 +1,5 @@
 <template>
-<pre v-html="content" :style="{maxHeight, height}"/>
+<pre v-html="content" :style="{maxHeight, height}" />
 </template>
 
 <script lang="ts">
@@ -10,7 +10,7 @@ const convert = new Convert();
 
 import { mapState } from 'vuex'
 import { defineComponent } from 'vue'
-import axios from 'axios';
+import axios from '../axios.instance';
 
 export default defineComponent({
     props: {
@@ -34,8 +34,14 @@ export default defineComponent({
     },
 
     mounted() {
-        axios.get(`${this.config.apihost}/download/${this.session._id}/${this.path}`).then((res) => {
-            this.content = convert.toHtml(res.data);
+        axios.get(`${this.config.apihost}/download/${this.session._id}/token`).then((res) => {
+            const shortLivedJWT = res.data;
+            return axios.get(`${this.config.apihost}/download/${this.session._id}/${this.path}?token=${shortLivedJWT}`)
+        }).then((res) => {
+            const text = JSON.stringify(res.data, undefined, 4);
+            this.content = convert.toHtml(text);
+        }).catch((err) => {
+            console.error(err)
         })
 
         if(this.tall) {

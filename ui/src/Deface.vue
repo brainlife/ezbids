@@ -74,9 +74,7 @@
                 <el-radio v-model="anat.defaceSelection" label="original">Use Original</el-radio>
                 <div v-for="(item, itemIdx) in anat.items" :key="itemIdx">
                     <div v-if="item.pngPaths">
-                        <a :href="getURL(item.pngPaths[0])">
-                            <img style="width: 100%" :src="getURL(item.pngPaths[0])"/>
-                        </a>
+                        <AsyncImageLink :path="item.pngPaths[0]" />
                         <el-button type="info" @click="$emit('niivue', item.path)" style="position: absolute; top: 50px; left: 5px" size="small">
                             <font-awesome-icon :icon="['fas', 'eye']"/>
                             NiiVue
@@ -87,9 +85,7 @@
             <td width="40%" style="position: relative">
                 <el-radio v-model="anat.defaceSelection" label="defaced">Use Defaced (when finish defacing)</el-radio>
                 <div v-if="anat.defaced">
-                    <a :href="getURL(getDefacedURL(anat)+'.png')" v-if="anat.defaced">
-                        <img style="width: 100%" :src="getURL(getDefacedURL(anat)+'.png')+'?nocache='+Date.now()"/>
-                    </a>
+                    <AsyncImageLink :path="`${getDefacedURL(anat)}.png`" />
                     <el-button type="info" @click="$emit('niivue', getDefacedURL(anat))" style="position: absolute; top: 50px; left: 5px;" size="small">
                         <font-awesome-icon :icon="['fas', 'eye']"/>
                         NiiVue
@@ -118,11 +114,13 @@ import niivue from './components/niivue.vue'
 import { IObject } from './store'
 import { ElNotification } from 'element-plus'
 import axios from './axios.instance';
+import AsyncImageLink from './components/AsyncImageLink.vue'
 
 export default defineComponent({
     components: {
         datatype,
         niivue,
+        AsyncImageLink
     },
 
     /*
@@ -141,7 +139,7 @@ export default defineComponent({
 
     computed: {
         ...mapState(['ezbids', 'config', 'session', 'bidsSchema']),
-        ...mapGetters(['getBIDSEntities', 'getURL']),
+        ...mapGetters(['getBIDSEntities']),
 
         isDefacing() {
             if(!this.$store.state.session) return false;

@@ -150,6 +150,8 @@
             <el-collapse>
                 <el-collapse-item title="Debug">
                     <ul style="list-style: none; padding-left: 0;">
+                        <el-button @click="downloadPreProcess">Download preprocess.log</el-button>
+                        <li><a :href="config.apihost+'/download/'+session._id+'/test'">download test</a></li>
                         <li><a :href="config.apihost+'/download/'+session._id+'/preprocess.log'">preprocess.log</a></li>
                         <li><a :href="config.apihost+'/download/'+session._id+'/preprocess.err'">preprocess.err</a></li>
                         <li><a :href="config.apihost+'/download/'+session._id+'/dcm2niix_error'">dcm2niix_error</a></li>
@@ -180,6 +182,7 @@ import { defineComponent } from 'vue'
 import { mapState } from 'vuex'
 import { formatNumber } from './filters'
 import axios from './axios.instance';
+import { ElNotification } from 'element-plus';
 
 export default defineComponent({
     components: {
@@ -225,18 +228,31 @@ export default defineComponent({
     },
 
     methods: {
-        downloadPreProcess() {
-            axios.get(`${this.config.apihost}/download/${this.session._id}/preprocess.log`, {
-                headers: {
-                    'Content-Type': 'text/html'
-                }
-            }).then((res) => {
-                console.log({
-                    res
+        async downloadPreProcess(fileName) {
+            try {
+                const res = await axios.get(`${this.config.apihost}/download/${this.session._id}/token`)
+                console.log(res);
+                const shortLivedJWT = res.data;
+
+                window.location.href = `${this.config.apihost}/download/${this.session._id}/${fileName}?token=${shortLivedJWT}`;
+                // axios.get(`${this.config.apihost}/download/${this.session._id}/preprocess.log`).then((res) => {
+    
+                //     console.log({
+                //         headers: res
+                //     })
+                // }).catch((err) => {
+                //     console.log(err)
+                // })
+    
+                // const response = await axios.get(`${this.config.apihost}/download/${this.session._id}/preprocess.log`, { responseType: 'stream' });
+                // console.log({response})
+            } catch (e) {
+                console.error(e)
+                ElNotification({
+                    message: 'there was an error downloading the file',
+                    type: 'error'
                 })
-            }).catch((err) => {
-                console.log(err)
-            })
+            }
         },
 
         formatNumber,
