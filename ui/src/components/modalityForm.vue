@@ -587,7 +587,6 @@ export default defineComponent({
 
         },
         addNumericValidationRule(rules, item) {
-        console.log("Doing Numeric Validation");
         if (item.details && item.details.type === 'number') {
             if (!rules[item.field]) {
                 rules[item.field] = [];
