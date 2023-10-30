@@ -298,47 +298,49 @@ export default defineComponent({
   methods: {
     submitForm() {
         this.$refs.form.validate((valid: any) => {
-            if (valid) {
-                this.ezbids.objects.forEach((file: any, idx: any) => {
-                    if (file.series_idx == this.ss.series_idx) {
-                        //find the item in items with .json
-                        file.items.forEach((item: any, idx: any) => {
-                            if (item.name.includes("json") && item.sidecar_json) {
-                                //create a item.sidecar to keep the new json with update old values
-                                const json = JSON.parse(item.sidecar_json);
-                                // only if value is not null, empty string or empty array or undefined
-                                for (let [key, value] of Object.entries(this.formData)) {
-                                    const details = Object.values(this.fields).flatMap(fieldArray => fieldArray).find((item: any) => item.field == key)?.details;
-                                    const type = details.type;
-                                    if (value !== null && value !== "" && value !== undefined && !(Array.isArray(value) && value.length === 1 && value[0] === "")){
-                                        if(type == 'number') value = Number(value);
-                                        if(type == 'boolean') value = Boolean(value);
-                                        if(type == 'array') {
-                                            value = this.parseArrayValues(value,details);
-                                             // Check if the parsed value is still an empty array
-                                            if(value.length === 0) continue; // skip to the next iteration
-                                        }
-                                        if(type == 'object') value = JSON.parse(value,key);
-                                        json[key] = value;
-                                    }
-                                }
-
-                                item.sidecar_json = JSON.stringify(json, null, 2);
-                                // console.log("finalOutput",item.sidecar);
-                            }
-                        });
-                    }
-                });
-            } else {
+            if (!valid) {
                 ElMessageBox.alert('Please fill all the required fields', 'Warning', {
                     confirmButtonText: 'OK',
                     type: 'warning'
                 });
             }
-                
+
         });
+        this.createJSONOutput();
         this.showDialog = false;
         this.$emit('form-submitted', this.ezbids);
+    },
+    createJSONOutput() {
+        this.ezbids.objects.forEach((file: any, idx: any) => {
+            if (file.series_idx == this.ss.series_idx) {
+                //find the item in items with .json
+                file.items.forEach((item: any, idx: any) => {
+                    if (item.name.includes("json") && item.sidecar_json) {
+                        //create a item.sidecar to keep the new json with update old values
+                        const json = JSON.parse(item.sidecar_json);
+                        // only if value is not null, empty string or empty array or undefined
+                        for (let [key, value] of Object.entries(this.formData)) {
+                            const details = Object.values(this.fields).flatMap(fieldArray => fieldArray).find((item: any) => item.field == key)?.details;
+                            const type = details.type;
+                            if (value !== null && value !== "" && value !== undefined && !(Array.isArray(value) && value.length === 1 && value[0] === "")){
+                                if(type == 'number') value = Number(value);
+                                if(type == 'boolean') value = Boolean(value);
+                                if(type == 'array') {
+                                    value = this.parseArrayValues(value,details);
+                                        // Check if the parsed value is still an empty array
+                                    if(value.length === 0) continue; // skip to the next iteration
+                                }
+                                if(type == 'object') value = JSON.parse(value,key);
+                                json[key] = value;
+                            }
+                        }
+
+                        item.sidecar_json = JSON.stringify(json, null, 2);
+                        // console.log("finalOutput",item.sidecar);
+                    }
+                });
+            }
+        });
     },
     inputType(item) {
         // console.log("itemDetails",item.details);
