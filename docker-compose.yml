@@ -48,6 +48,8 @@ services:
                 condition: service_healthy
             api:
                 condition: service_healthy
+        environment:
+            MONGO_CONNECTION_STRING: mongodb://mongodb:27017/ezbids
         tty: true #turn on color for bids-validator output
         command: pm2 start handler.js --attach --watch --ignore-watch "ui **/node_modules"
 

@@ -111,7 +111,7 @@ export default defineComponent({
                 return;
             }
 
-            sessionStorage.setItem('auth_redirect', window.location.href);
+            sessionStorage.setItem('auth_redirect', `${window.location.href}convert`);
             window.location.href = (this.config as {
                 apihost: string;
                 authSignIn: string;
