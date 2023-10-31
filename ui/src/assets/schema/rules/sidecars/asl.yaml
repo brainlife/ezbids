@@ -33,25 +33,25 @@ MRIASLCommonMetadataFields:
     LabelingEfficiency: optional
     LabelingDuration:
       level: optional
-      level_addendum: required if `ArterialSpinLabelingType` is `CASL`
+      level_addendum: required if `ArterialSpinLabelingType` is in [`PCASL`,`CASL`,`PASL`]
     LabelingPulseAverageGradient:
       level: optional
       level_addendum: recommended if `ArterialSpinLabelingType` is `CASL`
     LabelingPulseMaximumGradient:
       level: optional
-      level_addendum: recommended if `ArterialSpinLabelingType` is `CASL`    
+      level_addendum: recommended if `ArterialSpinLabelingType` is `CASL`
     LabelingPulseAverageB1:
       level: optional
-      level_addendum: recommended if `ArterialSpinLabelingType` is `CASL`    
+      level_addendum: recommended if `ArterialSpinLabelingType` is `CASL`
     LabelingPulseDuration:
       level: optional
-      level_addendum: required if `ArterialSpinLabelingType` is `CASL`    
+      level_addendum: required if `ArterialSpinLabelingType` is `CASL`
     LabelingPulseFlipAngle:
       level: optional
-      level_addendum: recommended if `ArterialSpinLabelingType` is `CASL`    
+      level_addendum: recommended if `ArterialSpinLabelingType` is `CASL`
     LabelingPulseInterval:
       level: optional
-      level_addendum: recommended if `ArterialSpinLabelingType` is `CASL`    
+      level_addendum: recommended if `ArterialSpinLabelingType` is `CASL`
 
 MRIASLCommonMetadataFieldsM0TypeRec:
   selectors:
@@ -141,28 +141,10 @@ MRIASLPcaslSpecific:
   fields:
     PCASLType:
       level: recommended
-      level_addendum: if `ArterialSpinLabelingType` is `"PCASL"`
-    # LabelingDuration:
-    #   level: required
-    #   level_addendum: required if `ArterialSpinLabelingType` is `PCASL`
-    # LabelingPulseAverageGradient:
-    #   level: optional
-    #   level_addendum: recommended if `ArterialSpinLabelingType` is `"PCASL"`
-    # LabelingPulseMaximumGradient:
-    #   level: optional
-    #   level_addendum: recommended if `ArterialSpinLabelingType` is `"PCASL"`    
-    # LabelingPulseAverageB1:
-    #   level: optional
-    #   level_addendum: recommended if `ArterialSpinLabelingType` is `"PCASL"`    
-    # LabelingPulseDuration:
-    #   level: optional
-    #   level_addendum: required if `ArterialSpinLabelingType` is `"PCASL"`   
-    # LabelingPulseFlipAngle:
-    #   level: optional
-    #   level_addendum: recommended if `ArterialSpinLabelingType` is `"PCASL"`   
-    # LabelingPulseInterval:
-    #   level: optional
-    #   level_addendum: recommended if `ArterialSpinLabelingType` is `"PCASL"`   
+      level_addendum: if `ArterialSpinLabelingType` is `PCASL`
+    LabelingDuration:
+      level: optional
+      level_addendum: required if `ArterialSpinLabelingType` is `PCASL`
 
 MRIASLCaslSpecific:
   selectors:

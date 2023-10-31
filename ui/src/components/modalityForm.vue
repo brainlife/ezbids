@@ -574,6 +574,36 @@ export default defineComponent({
                                 }
                             }
 
+                            // required if `ArterialSpinLabelingType` is `PCASL` or `CASL`
+                            matches = item.condition.match(/`(\w+)`\s+is\s+`(\w+)`\s+or\s+`(\w+)`/);
+                            if(matches) {
+                                const fieldName = matches[1];
+                                const expectedValue1 = matches[2];
+                                const expectedValue2 = matches[3];
+
+                                if(this.formData.hasOwnProperty(fieldName) && (String(this.formData[fieldName]) === expectedValue1 || String(this.formData[fieldName]) === expectedValue2) && !value) {
+                                    callback(new Error('This field is required based on the condition '+fieldName+' == '+expectedValue1+' or '+expectedValue2));
+                                    return;
+                                }
+                            }
+
+                            // required if required if `ArterialSpinLabelingType` is in [`PCASL`,`CASL`,`PASL`]
+                            // is either PCASL or CASL or any other value without brackets
+                            matches = item.condition.match(/`(\w+)`\s+is\s+in\s+\[(`([\w-]+)`(,\s*`([\w-]+)`)*\s*)+\]/);
+                            if(matches) {
+                                // console.log("matches",matches,this.formData.hasOwnProperty(fieldName), String(this.formData[fieldName]), expectedValues, !value);
+                                const fieldName = matches[1];
+                                const expectedValues = matches[2].split(',').map((item: any) => item.trim());
+                                //get rid of backticks
+                                expectedValues.forEach((item: any, index: any) => {
+                                    expectedValues[index] = item.replace(/`/g,'');
+                                });
+                                if(this.formData.hasOwnProperty(fieldName) && expectedValues.includes(String(this.formData[fieldName])) && !value) {
+                                    callback(new Error('This field is required based on the condition '+fieldName+' == '+expectedValues.join(' or ')));
+                                    return;
+                                }
+                            }
+
                             callback();
 
                         },
