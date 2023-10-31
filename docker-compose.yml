@@ -61,6 +61,5 @@ services:
             VITE_APIHOST: http://localhost:8082
         healthcheck:
             test: ["CMD", "curl", "-f", "http://localhost:3000"]
-            # NICKTODO REMOVE THIS AFTER TESTING
         ports:
             - 3000:3000 #vite wants to be exposed on the host for HMR?

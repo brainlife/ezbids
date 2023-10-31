@@ -98,7 +98,6 @@ export default defineComponent({
             return allowedUserList.map((allowedUserSub) => this.profiles.find((profile) => profile.sub === allowedUserSub));
         },
         shareSessionButtonIsVisible() {
-            return true; // NICKTODO: remove this
             if (!this.session) return false;
 
             const jwt = retrieveJWT();

@@ -28,7 +28,7 @@ axiosInstance.interceptors.response.use(
     (err) => {
         if (err.response) {
             if (err.response.status === 401) {
-                // router.push('/') // NICKTODO: add this back
+                router.push('/')
                 ElNotification({
                     title: 'Unauthorized access',
                     message: '',
