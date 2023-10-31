@@ -415,6 +415,10 @@ export default defineComponent({
                 if (fileObject === aslYaml && field === 'IntendedFor') {
                     continue;
                 }
+                // Skip all metadata in perf/m0scan except for RepetitionTimePreparation
+                if (fileObject === aslYaml && type === "perf/m0scan" && field !== "RepetitionTimePreparation") {
+                    continue;
+                }
 
                 // get the metadata from the metadata_types.yaml
                 const details = metadata_types[field] || {};
