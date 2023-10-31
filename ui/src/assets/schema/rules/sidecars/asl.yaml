@@ -32,7 +32,7 @@ MRIASLCommonMetadataFields:
     LookLocker: optional
     LabelingEfficiency: optional
     LabelingDuration:
-      level: required
+      level: optional
       level_addendum: required if `ArterialSpinLabelingType` is `CASL`
     LabelingPulseAverageGradient:
       level: optional
@@ -144,7 +144,7 @@ MRIASLPcaslSpecific:
       level_addendum: if `ArterialSpinLabelingType` is `"PCASL"`
     # LabelingDuration:
     #   level: required
-    #   level_addendum: required if `ArterialSpinLabelingType` is `"PCASL"`
+    #   level_addendum: required if `ArterialSpinLabelingType` is `PCASL`
     # LabelingPulseAverageGradient:
     #   level: optional
     #   level_addendum: recommended if `ArterialSpinLabelingType` is `"PCASL"`

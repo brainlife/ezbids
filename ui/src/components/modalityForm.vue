@@ -408,7 +408,8 @@ export default defineComponent({
         };
 
         for (const [section, data] of Object.entries(fileObject)) {
-            const fields = data.fields || {};
+            const fields = data.fields || {}
+            
             // fields with level 'required' or 'recommended' are included in the list
             for (const [field, metadata] of Object.entries(fields)) {
                 // Skip the IntendedFor field in the ASL sidecar
@@ -416,7 +417,7 @@ export default defineComponent({
                     continue;
                 }
                 // Skip all metadata in perf/m0scan except for RepetitionTimePreparation
-                if (fileObject === aslYaml && type === "perf/m0scan" && field !== "RepetitionTimePreparation") {
+                if (type === "perf/m0scan" && field !== "RepetitionTimePreparation") {
                     continue;
                 }
 
@@ -526,7 +527,7 @@ export default defineComponent({
                                     this.formData[fieldName] === expectedValue && expectedValue &&
                                     (value == null || value === '')) {
                                     // console.log("t/F",`Validation failed for field ${item.field}.`,this.formData[fieldName]);
-                                    callback(new Error('This field is required based on the condition '+fieldName+' == '+expectedValue,));
+                                    callback(new Error('This field is required based on the condition '+fieldName+' == '+expectedValue));
                                     return;
                                 }
 
