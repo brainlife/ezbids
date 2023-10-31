@@ -6,12 +6,6 @@
         "build": "vite build --base=/ezbids/",
         "serve": "vite preview"
     },
-    "prettier": {
-        "tabWidth": 4,
-        "singleQuote": true,
-        "trailingComma": "es5",
-        "printWidth": 160
-    },
     "dependencies": {
         "@element-plus/icons": "0.0.11",
         "@fortawesome/fontawesome-svg-core": "^1.3.0",

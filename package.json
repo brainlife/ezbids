@@ -10,10 +10,16 @@
         "prod": "tsc && node ./build/ezbids.js",
         "deploy": "ssh -t hayashis@test.brainlife.io \"sudo su - -c 'cd /root/docker/ezbids && ./update.sh'\"",
         "deploy-prod": "ssh -t -J hayashis@brainlife.io ubuntu@ezbids \"sudo su - -c 'cd /root/docker/ezbids && ./update.sh'\"",
-        "style-check": "prettier --config .prettierrc 'ui/index.html'"
+        "style-check": "prettier --config .prettierrc.json './ui/index.html'"
     },
     "author": "",
     "license": "MIT",
+    "lint-staged": {
+        "**/*.{js,jsx,json}": [
+            "eslint . --fix",
+            "prettier --write ."
+        ]
+    },
     "dependencies": {
         "@types/express": "^4.17.13",
         "archiver": "^5.3.0",
@@ -39,6 +45,7 @@
         "@types/async": "^3.2.12",
         "@types/cors": "^2.8.12",
         "@types/node": "^16.11.26",
+        "lint-staged": "^15.0.2",
         "prettier": "^3.0.3",
         "typescript": "^4.7.2"
     }
