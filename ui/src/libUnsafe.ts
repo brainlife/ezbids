@@ -1315,7 +1315,7 @@ export function fileLogicLink($root:IEzbids, o:IObject) {
         }
     }
 
-    //func/events are implicitly linked to a func/bold; make sure these have same entities and exclusion criteria
+    // func/events are implicitly linked to a func/bold; make sure these have same entities and exclusion criteria
     if(o._type === "func/events") {
         let correspondingFuncBold = $root.objects.filter((object:IObject)=>object._type === "func/bold" &&
             !object._exclude &&

@@ -222,12 +222,12 @@ export default defineComponent({
 
         sendBrainlife(pipeline?: 'DWI') {
             const pipelineString = pipeline ? `&pipeline=${pipeline}` : '';
-            window.open(`../projects#ezbids=${this.session._id}${pipelineString}`, `_brainlife.${this.session._id}`);
+            window.open(`https://brainlife.io/projects#ezbids=${this.session._id}${pipelineString}`, `_brainlife.${this.session._id}`);
         },
 
         sendOpenneuro() {
             const url = this.config.apihost+'/download/'+this.session._id+'/bids/'+this.ezbids.datasetDescription.Name;
-            const fullurl = new URL(url, document.baseURI).href; 
+            const fullurl = new URL(url, document.baseURI).href;
             window.open("https://openneuro.org/import?url="+encodeURI(fullurl));
         },
 
