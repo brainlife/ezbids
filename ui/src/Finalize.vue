@@ -225,7 +225,7 @@ export default defineComponent({
 
         sendOpenneuro() {
             const url = this.config.apihost+'/download/'+this.session._id+'/bids/'+this.ezbids.datasetDescription.Name;
-            const fullurl = new URL(url, document.baseURI).href; 
+            const fullurl = new URL(url, document.baseURI).href;
             window.open("https://openneuro.org/import?url="+encodeURI(fullurl));
         },
 
