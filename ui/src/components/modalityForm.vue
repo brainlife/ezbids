@@ -290,9 +290,7 @@ export default defineComponent({
         optionsBoolean : [
             { value: true, label: 'True' },
             { value: false, label: 'False' },
-            // { value: null, label: 'Null'}
         ],
-        //MoType add options 
       showDialog: false
     }
   },
@@ -337,14 +335,12 @@ export default defineComponent({
                         }
 
                         item.sidecar_json = JSON.stringify(json, null, 2);
-                        // console.log("finalOutput",item.sidecar);
                     }
                 });
             }
         });
     },
     inputType(item) {
-        // console.log("itemDetails",item.details);
         if(item.details?.anyOf?.length) return "select-type"; 
         if((item.details.type == 'string' || item.details.type == 'object' || item.details.type == 'array') && item.details.enum == undefined) return "input";
         if(item.details.type == 'number') return "input-number";
@@ -523,11 +519,9 @@ export default defineComponent({
                             if (matches) {
                                 const fieldName = matches[1];
                                 const expectedValue = matches[2];  
-                                // console.log("true/false",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);                          
                                 if (this.formData.hasOwnProperty(fieldName) && 
                                     this.formData[fieldName] === expectedValue && expectedValue &&
                                     (value == null || value === '')) {
-                                    // console.log("t/F",`Validation failed for field ${item.field}.`,this.formData[fieldName]);
                                     callback(new Error('This field is required based on the condition '+fieldName+' == '+expectedValue));
                                     return;
                                 }
@@ -539,7 +533,6 @@ export default defineComponent({
                             if (matches) {
                                 const fieldName = matches[1];
                                 const expectedValue = matches[2];
-                                // console.log("defined",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
                                 if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
                                     callback(new Error('This field is required based on the condition '+fieldName+' == '+expectedValue));
                                     return;
@@ -552,7 +545,6 @@ export default defineComponent({
                             if (matches) {
                                 const fieldName = matches[1];
                                 const expectedValue = matches[2];
-                                // console.log("isValue",`Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
                                 if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
                                     callback(new Error('This field is required based on the condition '+fieldName+' == '+expectedValue));
                                     return;
@@ -568,7 +560,6 @@ export default defineComponent({
                                 // const section = matches[1];
                                 const fieldName = matches[2];
                                 const expectedValue = matches[3];
-                                // console.log("section",`Section: ${section}, Field to check: ${fieldName}, Expected: ${expectedValue}, Current: ${this.formData[fieldName]}`);
                                 if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
                                     callback(new Error('This field is required based on the condition '+fieldName+' == '+expectedValue));
                                     return;
@@ -592,7 +583,6 @@ export default defineComponent({
                             // is either PCASL or CASL or any other value without brackets
                             matches = item.condition.match(/`(\w+)`\s+is\s+in\s+\[(`([\w-]+)`(,\s*`([\w-]+)`)*\s*)+\]/);
                             if(matches) {
-                                // console.log("matches",matches,this.formData.hasOwnProperty(fieldName), String(this.formData[fieldName]), expectedValues, !value);
                                 const fieldName = matches[1];
                                 const expectedValues = matches[2].split(',').map((item: any) => item.trim());
                                 //get rid of backticks
@@ -620,7 +610,6 @@ export default defineComponent({
             });
 
             // No special rules for recommended as they are optional, but you can add if needed
-            // console.log('Generated Rules:', rules);
             return rules;
 
         },
@@ -784,7 +773,6 @@ export default defineComponent({
                     if(item['$ref']) {
                         // objects.enums.CASL.value -> CASL
                         // regex to get CASL 
-                        // const regex = /objects.enums.(\w+).value/;
                         const regex = /objects.enums.(\w+).value/;
                         const refObject = regex.exec(item['$ref']);
                         return {value: refObject[1], label: refObject[1]};
@@ -797,10 +785,8 @@ export default defineComponent({
         updateDetailsType(item,newValue) {
             const extractedData = item.details.anyOf.find((item: any) => item.type == newValue);
             if(extractedData.items){ 
-                // console.log("upextractedData",extractedData);
                 item.details.items = extractedData.items;
             }
-            // item.details.type = newValue;
         },
 
     }
