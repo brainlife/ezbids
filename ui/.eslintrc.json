@@ -1,0 +1,29 @@
+{
+    "root": true,
+    "extends": [
+        "plugin:vue/vue3-recommended",
+        "plugin:vue/vue3-essential",
+        "plugin:vue/vue3-strongly-recommended",
+        "prettier"
+    ],
+    "plugins": ["@typescript-eslint", "prettier"],
+    "parser": "vue-eslint-parser",
+    "parserOptions": {
+        "parser": "@typescript-eslint/parser",
+        "sourceType": "module"
+    },
+    "rules": {
+        "no-console": "error",
+        "no-duplicate-imports": "error",
+        "prettier/prettier": "error",
+        "vue/no-unused-vars": "error",
+        "vue/first-attribute-linebreak": [
+            "warn",
+            {
+                "singleline": "beside",
+                "multiline": "below"
+            }
+        ],
+        "vue/multi-word-component-names": "warn"
+    }
+}
