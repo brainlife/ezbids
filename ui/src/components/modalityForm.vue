@@ -3,72 +3,73 @@
     <el-dialog v-model="showDialog" title="Relevant Metadata">
         <el-form ref="form" :model="formData" label-position="top" label-width="500px" :inline="true" :rules="rules"> 
                 <el-row>
-                    <el-col :span="8">
+                    <el-col :span="8" class="grid-content ep-bg-purple" >
                         <!-- // make the label recommended below and show example for boolean types, also try to enforce the types in the form -->
-                        <!-- make required center -->
-                        <div class="centered-content">
-                            <h3>Required</h3>
-                        </div>                        
-                        <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.required" :key="'required' + index" :label="`${item.details.display_name} ${item.details.type}`" :prop="item.field">
-                            <template #label>
-                                <span>
-                                    {{ item.details.display_name }} 
-                                    <el-tooltip placement="top">
-                                        <template #content> {{ item.details.description }}</template>
-                                        <!-- show question mark button-->
-                                        <font-awesome-icon :icon="['fas', 'info-circle']" />
-                                    </el-tooltip>
-                                </span>
-                            </template>
-
-                            <el-input v-if="inputType(item) == 'input'"
-                            :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
-                            
-                            <el-select v-if="inputType(item) == 'select-enum'" v-model="formData[item.field]" @change="this.$refs.form.validate()">
-                                <el-option
-                                    v-for="option in parseOptionsEnum(item?.details?.enum)"
-                                    :key="option.value"
-                                    :label="option.label"
-                                    :value="option.value"
-                                />
-                            </el-select>
-
-                            <el-input v-if="inputType(item) =='input-number'" type="text" inputmode="decimal" :name="item.field" :placeholder="getPlaceholderByType(item.details.type)" v-model="formData[item.field]" @input="this.$refs.form.validate()" ></el-input>
-
-                            <el-select v-if="inputType(item) == 'select-boolean'" @change="this.$refs.form.validate()" v-model="formData[item.field]" class="m-2" placeholder="Select" size="large">
-                                <el-option
-                                v-for="item in optionsBoolean"
-                                :key="item.value"
-                                :label="item.label"
-                                :value="item.value"
-                                />
-                            </el-select>  
-                            
-                            <!-- if inputType == select-type then show the options in the select box and change the type of the input box to select and add the place holder and add the validation rules -->
-                            <div v-if="inputType(item) =='select-type'">
-                                <el-row :gutter="5">
-                                    <el-col :span="16">
-                                       <el-input v-if="formatType(item.details.type) == 'string' || formatType(item.details.type) == 'object' || formatType(item.details.type) == 'array'"
-                                       :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
-
-                                       <el-input v-if="formatType(item.details.type) == 'number'" type="text" inputmode="decimal" :name="item.field" :placeholder="getPlaceholderByType(formatType(item.details.type))" v-model="formData[item.field]" @input="this.$refs.form.validate()" ></el-input>                                                   
-                                    </el-col>
-                                    <el-col :span="8">
-                                        <el-select class="m-2" placeholder="Select Type" size="small" v-model="item.details.type" @change="updateDetailsType(item, $event)">
-                                            <el-option
-                                            v-for="typeOption in item.details.anyOf"
-                                            :key="typeOption.value"
-                                            :label="typeOption.format ? `${typeOption.type} (${typeOption.format})` : typeOption.type"
-                                            :value="typeOption.format ? `${typeOption.type} (${typeOption.format})` : typeOption.type"
-                                            />
-                                        </el-select>
-                                    </el-col>
-                                </el-row>
+                        <!-- shadow-->
+                            <div class="centered-content">
+                                <h3>Required</h3>
                             </div>
+                            <el-form-item class="editModalityInputItem" v-for="(item, index) in fields.required" :key="'required' + index" :label="`${item.details.display_name} ${item.details.type}`" :prop="item.field">
+                                <template #label>
+                                    <span>
+                                        {{ item.details.display_name }}
+                                        <el-tooltip placement="top">
+                                            <template #content> {{ item.details.description }}</template>
+                                            <!-- show question mark button-->
+                                            <font-awesome-icon :icon="['fas', 'info-circle']" />
+                                        </el-tooltip>
+                                    </span>
+                                </template>
 
-                        </el-form-item>
+                                <el-input v-if="inputType(item) == 'input'"
+                                :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)" class="input-fullwidth"></el-input>
+
+                                <el-select v-if="inputType(item) == 'select-enum'" v-model="formData[item.field]" @change="this.$refs.form.validate()">
+                                    <el-option
+                                        v-for="option in parseOptionsEnum(item?.details?.enum)"
+                                        :key="option.value"
+                                        :label="option.label"
+                                        :value="option.value"
+                                    />
+                                </el-select>
+
+                                <el-input v-if="inputType(item) =='input-number'" type="text" inputmode="decimal" :name="item.field" :placeholder="getPlaceholderByType(item.details.type)" v-model="formData[item.field]" @input="this.$refs.form.validate()" class="input-fullwidth" ></el-input>
+
+                                <el-select v-if="inputType(item) == 'select-boolean'" @change="this.$refs.form.validate()" v-model="formData[item.field]" class="m-2" placeholder="Select" size="large">
+                                    <el-option
+                                    v-for="item in optionsBoolean"
+                                    :key="item.value"
+                                    :label="item.label"
+                                    :value="item.value"
+                                    />
+                                </el-select>
+
+                                <!-- if inputType == select-type then show the options in the select box and change the type of the input box to select and add the place holder and add the validation rules -->
+                                <div v-if="inputType(item) =='select-type'">
+                                    <el-row :gutter="5">
+                                        <el-col :span="16">
+                                        <el-input v-if="formatType(item.details.type) == 'string' || formatType(item.details.type) == 'object' || formatType(item.details.type) == 'array'"
+                                        :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)" ></el-input>
+
+                                        <el-input v-if="formatType(item.details.type) == 'number'" type="text" inputmode="decimal" :name="item.field" :placeholder="getPlaceholderByType(formatType(item.details.type))" v-model="formData[item.field]" @input="this.$refs.form.validate()" ></el-input>
+                                        </el-col>
+                                        <el-col :span="8">
+                                            <el-select class="m-2" placeholder="Select Type" size="small" v-model="item.details.type" @change="updateDetailsType(item, $event)">
+                                                <el-option
+                                                v-for="typeOption in item.details.anyOf"
+                                                :key="typeOption.value"
+                                                :label="typeOption.format ? `${typeOption.type} (${typeOption.format})` : typeOption.type"
+                                                :value="typeOption.format ? `${typeOption.type} (${typeOption.format})` : typeOption.type"
+                                                />
+                                            </el-select>
+                                        </el-col>
+                                    </el-row>
+                                </div>
+
+                            </el-form-item>
                     </el-col>
-                    <el-col :span="8">
+
+                    <el-col :span="8" class="grid-content ep-bg-orange">
                         <div class="centered-content">
                             <h3>Recommended</h3>
                         </div>
@@ -84,7 +85,7 @@
                                 </span>
                             </template>
 
-                            <el-input v-if="inputType(item) == 'input'" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+                            <el-input v-if="inputType(item) == 'input'" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)" class="input-fullwidth"></el-input>
                             
                             <el-select  v-if="inputType(item) == 'select-enum'" v-model="formData[item.field]" @change="this.$refs.form.validate()">
                                 <el-option
@@ -95,7 +96,7 @@
                                 />
                             </el-select>
 
-                            <el-input v-if="inputType(item) =='input-number'" type="text" inputmode="decimal" :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)"></el-input>
+                            <el-input v-if="inputType(item) =='input-number'" type="text" inputmode="decimal" :name="item.field" v-model="formData[item.field]" @input="this.$refs.form.validate()" :placeholder="getPlaceholderByType(item.details.type)" class="input-fullwidth"></el-input>
 
 
                             <el-select v-if="inputType(item) == 'select-boolean'" v-model="formData[item.field]" class="m-2" @change="this.$refs.form.validate()" placeholder="Select" size="large">
@@ -130,7 +131,7 @@
                         </el-form-item>
                     </el-col>
 
-                    <el-col :span="8">
+                    <el-col :span="8" class="grid-content ep-bg-optional">
                         <div class="centered-content">
                             <h3>Optional</h3>
                         </div>
@@ -828,6 +829,29 @@ export default defineComponent({
 }
 .centered-content {
   text-align: center;
+}
+
+.ep-bg-purple {
+    background: #fff0f0;
+    padding-left: 10px;
+}
+
+.ep-bg-orange {
+    background: #ffeec1;
+    padding-left: 10px;
+}
+
+.ep-bg-optional {
+    background: #c2c2c29a;
+    padding-left: 10px;
+}
+
+.grid-content {
+    border-radius: 4px;
+}
+
+.input-fullwidth {
+    padding-right: 10px;
 }
 </style>
 ```
