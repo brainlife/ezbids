@@ -3,7 +3,7 @@
     <el-dialog v-model="showDialog" title="Relevant Metadata">
         <el-form ref="form" :model="formData" label-position="top" label-width="500px" :inline="true" :rules="rules"> 
                 <el-row>
-                    <el-col :span="8" class="grid-content ep-bg-purple" >
+                    <el-col :span="8" class="grid-content required-bg" >
                         <!-- // make the label recommended below and show example for boolean types, also try to enforce the types in the form -->
                         <!-- shadow-->
                             <div class="centered-content">
@@ -69,7 +69,7 @@
                             </el-form-item>
                     </el-col>
 
-                    <el-col :span="8" class="grid-content ep-bg-orange">
+                    <el-col :span="8" class="grid-content recommended-bg">
                         <div class="centered-content">
                             <h3>Recommended</h3>
                         </div>
@@ -131,7 +131,7 @@
                         </el-form-item>
                     </el-col>
 
-                    <el-col :span="8" class="grid-content ep-bg-optional">
+                    <el-col :span="8" class="grid-content optional-bg">
                         <div class="centered-content">
                             <h3>Optional</h3>
                         </div>
@@ -817,18 +817,19 @@ export default defineComponent({
   text-align: center;
 }
 
-.ep-bg-purple {
-    background: #fff0f0;
+.required-bg{
+    background: #ebf5ff;
     padding-left: 10px;
 }
 
-.ep-bg-orange {
-    background: #ffeec1;
+.recommended-bg {
+    background: #e5ebf7;
     padding-left: 10px;
 }
 
-.ep-bg-optional {
-    background: #c2c2c29a;
+.optional-bg {
+    background: #ebf5ff;
+
     padding-left: 10px;
 }
 
