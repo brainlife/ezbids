@@ -574,16 +574,16 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
             else:
                 study_id = ""
 
-            # Find subject_id from json, since some files contain neither PatientName nor PatientID
-            if "PatientName" in json_data:
-                patient_name = json_data["PatientName"]
-            else:
-                patient_name = "n/a"
-
+            # Find subject_id from json, since some files contain neither PatientID nor PatientName
             if "PatientID" in json_data:
                 patient_id = json_data["PatientID"]
             else:
                 patient_id = "n/a"
+
+            if "PatientName" in json_data:
+                patient_name = json_data["PatientName"]
+            else:
+                patient_name = "n/a"
 
             # Find PatientBirthDate
             if "PatientBirthDate" in json_data:
@@ -629,13 +629,13 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
 
             """
             Select subject (and session, if applicable) IDs to display.
-            Subject ID precedence order if explicit subject ID is not found: PatientName > PatientID
+            Subject ID precedence order if explicit subject ID is not found: PatientID > PatientName
             """
             sub_search_terms = ["subject", "subj", "sub"]
             ses_search_terms = ["session", "sess", "ses"]
 
             subject = "n/a"
-            for value in [json_file, patient_name, patient_id]:
+            for value in [json_file, patient_id, patient_name]:
                 for sub_term in sub_search_terms:
                     if sub_term in value.lower():
                         item = value.lower().split(sub_term)[-1][0]  # what character comes right after "sub"
@@ -646,7 +646,7 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
                         break
 
             if subject == "n/a":
-                potential_ID_fields = [patient_name, patient_id]
+                potential_ID_fields = [patient_id, patient_name]
                 for potential_id in potential_ID_fields:
                     if potential_id != "n/a":
                         subject = potential_id
@@ -657,7 +657,7 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
                 subject = directory_struct[-1]  # Assume folder data found in is the subject ID
 
             session = ""
-            for value in [json_file, patient_name, patient_id]:
+            for value in [json_file, patient_id, patient_name]:
                 for ses_term in ses_search_terms:
                     if ses_term in value.lower():
                         item = value.lower().split(ses_term)[-1][0]  # what character comes right after "sub"
@@ -779,8 +779,8 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
             # Organize all from individual SeriesNumber in dictionary
             acquisition_info_directory = {
                 "StudyID": study_id,
-                "PatientName": patient_name,
                 "PatientID": patient_id,
+                "PatientName": patient_name,
                 "PatientBirthDate": patient_birth_date,
                 "PatientSex": patient_sex,
                 "PatientAge": age,
@@ -841,7 +841,7 @@ def organize_dataset(dataset_list):
     """
     Organize data files into pseudo subject (and session, if applicable) groups.
     This is particularly necessary when anaonymized data is provided, since crucial
-    metadata including AcquisitionDateTime, PatientName, PatientID, etc are removed.
+    metadata including AcquisitionDateTime, PatientID, PatientName, etc are removed.
     Typically, these fields assist ezBIDS in determining subject (and session) mapping,
     so will try to use other metadata (AcquisitionTime, SeriesNumber, etc) to perform
     this important mapping. This is very brittle, so users should be informed before
@@ -870,8 +870,8 @@ def organize_dataset(dataset_list):
     for index, unique_dic in enumerate(dataset_list):
         if unique_dic["subject"] == "n/a":
             if (unique_dic["AcquisitionDateTime"] == "0000-00-00T00:00:00.000000"
-                    and unique_dic["PatientName"] == "n/a"
-                    and unique_dic["PatientID"] == "n/a"):
+                    and unique_dic["PatientID"] == "n/a"
+                    and unique_dic["PatientName"] == "n/a"):
                 # Likely working with anonymized data, so not obvious what subject/session mapping should be
                 if index == 0:
                     subj = pseudo_sub
@@ -949,13 +949,13 @@ def determine_subj_ses_IDs(dataset_list, bids_compliant):
 
             participants_info = {}
             participants_info_columns = ([x for x in participants_info_data.columns if x != "participant_id"]
-                                         + ["PatientName", "PatientID"])
+                                         + ["PatientID", "PatientName"])
 
             for len_index in range(len(participants_info_data)):
                 participants_info[str(len_index)] = dict.fromkeys(participants_info_columns)
 
                 for col in participants_info_columns:
-                    if col not in ["PatientName", "PatientID"]:
+                    if col not in ["PatientID", "PatientName"]:
                         participants_info[str(len_index)][col] = str(participants_info_data[col].iloc[len_index])
                     else:
                         if "sub-" in participants_info_data["participant_id"].iloc[len_index]:
@@ -963,15 +963,15 @@ def determine_subj_ses_IDs(dataset_list, bids_compliant):
                         else:
                             participant_id = participants_info_data["participant_id"].iloc[len_index]
 
-                        participants_info[str(len_index)]["PatientName"] = str(participant_id)
                         participants_info[str(len_index)]["PatientID"] = str(participant_id)
+                        participants_info[str(len_index)]["PatientName"] = str(participant_id)
         else:
             phenotype_info = list(
                 {
                     "sex": x["PatientSex"],
                     "age": x["PatientAge"],
-                    "PatientName": x["PatientName"],
-                    "PatientID": x["PatientID"]
+                    "PatientName": x["PatientID"],
+                    "PatientID": x["PatientName"]
                 } for x in sub_dics_list)[0]
 
             participants_info.update({str(x["subject_idx"]): phenotype_info})
@@ -1010,15 +1010,15 @@ def determine_subj_ses_IDs(dataset_list, bids_compliant):
             dic["session_idx"] = session_idx_counter
             session_idx_counter += 1
 
-        # Pair patient information (PatientName, PatientID, PatientBirthDate) with corresponding session information
+        # Pair patient information (PatientID, PatientName, PatientBirthDate) with corresponding session information
         patient_info = []
         for ses_info in unique_ses_date_times:
             patient_dic = {
-                "PatientName": [
-                    x["PatientName"] for x in sub_dics_list if x["session"] == ses_info["session"]
-                    and x["AcquisitionDate"] == ses_info["AcquisitionDate"]][0],
                 "PatientID": [
                     x["PatientID"] for x in sub_dics_list if x["session"] == ses_info["session"]
+                    and x["AcquisitionDate"] == ses_info["AcquisitionDate"]][0],
+                "PatientName": [
+                    x["PatientName"] for x in sub_dics_list if x["session"] == ses_info["session"]
                     and x["AcquisitionDate"] == ses_info["AcquisitionDate"]][0],
                 "PatientBirthDate": [
                     x["PatientBirthDate"] for x in sub_dics_list if x["session"] == ses_info["session"]
@@ -1220,8 +1220,8 @@ def finalized_configuration(dataset_list_unique_series, subjects_information, co
         "StudyInstanceUID",
         "ReferringPhysicianName",
         "StudyID",
-        "PatientName",
         "PatientID",
+        "PatientName",
         "AccessionNumber",
         "PatientBirthDate",
         "PatientSex",
