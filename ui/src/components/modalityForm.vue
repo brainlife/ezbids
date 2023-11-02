@@ -668,7 +668,9 @@ export default defineComponent({
         getArrayValidation(value,item) {
             // prevent user from entering [] or [""]
             // add check to prevent from entering brackets
-            if(value.includes('[') || value.includes(']')) return "Please enter a valid entry no brackets allowed [], only comma separated values";
+            // if(value.includes('[') || value.includes(']')) return "Please enter a valid entry no brackets allowed [], only comma separated values";
+            if(["[", "]", "{", "}"].includes(value)) return "Please enter a valid entry no brackets allowed [], only comma separated values";
+
           
             if(item.details.items.type == 'number') {
                  // If the value is a string that represents a single number or a list of numbers separated by commas
