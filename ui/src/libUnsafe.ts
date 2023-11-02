@@ -427,7 +427,7 @@ export function setIntendedFor($root:IEzbids) {
 
                 section.forEach((obj:IObject) => {
                     //add IntendedFor information
-                    if (obj._type.startsWith("fmap/")) {
+                    if (obj._type.startsWith("fmap/") || obj._type === "perf/m0scan") {
                         Object.assign(obj, {IntendedFor: []})
                         let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor
                         if (correspindingSeriesIntendedFor !== undefined && correspindingSeriesIntendedFor !== null) {
