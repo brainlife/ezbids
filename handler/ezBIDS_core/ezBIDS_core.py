@@ -86,7 +86,7 @@ def modify_uploaded_dataset_list(uploaded_json_list):
         from BIDS conversion.
 
     config : boolean
-        True if an ezBIDS configuration file (*finalized.json) was detected in the upload.
+        True if an ezBIDS configuration file (*ezBIDS_template.json) was detected in the upload.
 
     config_file : string
         Path to the ezBIDS configuration file, if config == True. Otherwise, set as empty string.
@@ -105,7 +105,7 @@ def modify_uploaded_dataset_list(uploaded_json_list):
     config = False
     config_file = ""
     exclude_data = False
-    config_file_list = [x for x in uploaded_json_list if "finalized.json" in x]
+    config_file_list = [x for x in uploaded_json_list if "ezBIDS_template.json" in x]
     if len(config_file_list):
         # Ideally only one config file uploaded, but if multiple configurations found, simply choose one
         config = True
@@ -1304,11 +1304,11 @@ def finalized_configuration(dataset_list_unique_series, subjects_information, co
             unique_dic["finalized_match"] = True
             if "localizer" in ref_message:
                 unique_dic["message"] = "Datatype, suffix, and entity information was determined based on match "\
-                    "with corresponding data in ezBIDS configuration (finalized.json) file. This data is believed to "\
+                    "with corresponding data in ezBIDS configuration (ezBIDS_template.json) file. This data is believed to "\
                     "be a localizer. Please modify if incorrect"
             else:
                 unique_dic["message"] = "Datatype, suffix, and entity information was determined based on match "\
-                    "with corresponding data in ezBIDS configuration (finalized.json) file. Please modify if incorrect"
+                    "with corresponding data in ezBIDS configuration (ezBIDS_template.json) file. Please modify if incorrect"
 
             """
             If metadata information was added in, find it and add to the json file.
@@ -1746,7 +1746,7 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
         datatype and suffix labels.
 
     config : boolean
-        True if an ezBIDS configuration file (*finalized.json) was detected in the upload
+        True if an ezBIDS configuration file (*ezBIDS_template.json) was detected in the upload
 
     Returns
     -------
@@ -2265,7 +2265,7 @@ def check_part_entity(dataset_list_unique_series, config):
         dictionaries of acquisitions with a unique series group ID.
 
     config : boolean
-        True if an ezBIDS configuration file (*finalized.json) was detected in the upload.
+        True if an ezBIDS configuration file (*ezBIDS_template.json) was detected in the upload.
 
     Returns
     -------

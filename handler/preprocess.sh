@@ -61,6 +61,7 @@ if [ -f $test_root/.bidsignore]; then
 else
     echo "*finalized.json" >> $test_root/.bidsignore
 fi
+echo "*template.json" >> $test_root/.bidsignore
 
 echo "*dcm2niix*" >> $test_root/.bidsignore
 echo "*preprocess*" >> $test_root/.bidsignore
