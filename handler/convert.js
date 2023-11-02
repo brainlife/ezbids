@@ -150,6 +150,38 @@ async.forEachOf(info.objects, (o, idx, next_o) => {
                     handleItem(item, suffix + ".nii.gz", derivatives);
                     break;
                 case "json":
+                    //handle IntendedFor
+                    if (o.IntendedFor) {
+                        item.sidecar.IntendedFor = [];
+                        for (let idx of o.IntendedFor) {
+                            const io = info.objects[idx];
+                            //this should not happen, but ezBIDS_core.json could be corrupted..
+                            if (!io) {
+                                console.error("can't find object with ", idx);
+                                continue;
+                            }
+                            //if intended object is excluded, skip it
+                            if (io._type == "exclude") continue;
+
+                            const iomodality = io._type.split("/")[0];
+                            const suffix = io._type.split("/")[1];
+                            //construct a path relative to the subject
+                            let path = "";
+                            if (io._entities.session)
+                                path += "ses-" + io._entities.session + "/";
+                            path += iomodality + "/";
+                            let tokens = [];
+                            //for(let k in io._entities) {
+                            for (let k in info.entityMappings) {
+                                const sk = info.entityMappings[k];
+                                if (io._entities[k])
+                                    tokens.push(sk + "-" + io._entities[k]);
+                            }
+                            path += tokens.join("_");
+                            path += "_" + suffix + ".nii.gz"; //TODO - not sure if this is robust enough..
+                            item.sidecar.IntendedFor.push(path);
+                        }
+                    }
                     handleItem(item, suffix + ".json", derivatives);
                     break;
                 default:
