@@ -3,7 +3,7 @@
     <div v-if="session.status == 'analyzed' || session.status == 'defaced'">
         <p>Your dataset is now ready to be converted to BIDS! Please click the button below to generate BIDS structure.</p>
         <p>
-            <el-checkbox v-model="ezbids.includeExcluded">Save all acquisitions set to 'exclude' in an /excluded directory in output BIDS structure</el-checkbox>
+            <el-checkbox v-model="ezbids.includeExcluded">Save all acquisitions set to 'exclude' in an excluded directory in output BIDS structure</el-checkbox>
         </p>
         <br>
         <el-button @click="finalize" type="success">Finalize</el-button>
@@ -37,7 +37,7 @@
             <p>
                 <el-button @click="download" type="primary">Download BIDS</el-button>
 
-                <a :href="config.apihost+'/download/'+session._id+'/finalized.json'" download="finalized.json">
+                <a :href="config.apihost+'/download/'+session._id+'/ezBIDS_template.json'" download="ezBIDS_template.json">
                     <el-button @click="download" type="primary" style="float: right" >Download configuration/template</el-button>
                 </a>
                 <p align="right">Saves a configuration file that can be uploaded with subsequent data to save you time!</p>
