@@ -968,7 +968,7 @@ export default defineComponent({
             if (extractedData.items) {
                 item.details.items = extractedData.items;
             }
-            console.log('item.details.type', newValue, 'item.details.items', item.details.items);
+
             item.details.type = newValue;
         },
     },
