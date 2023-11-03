@@ -220,7 +220,6 @@ export function fmapQA($root:IEzbids) {
                 https://bids-specification.readthedocs.io/en/stable/99-appendices/11-qmri.html
                 */
 
-                let fmapM0scan = section.filter(o=>o._type === "fmap/m0scan") //pair
                 let fmapTB1DAM = section.filter(o=>o._type === "fmap/TB1DAM") //pair
                 let fmapTB1EPI = section.filter(o=>o._type === "fmap/TB1EPI") //pair
                 let fmapTB1AFI = section.filter(o=>o._type === "fmap/TB1AFI") //pair
@@ -295,7 +294,7 @@ export function fmapQA($root:IEzbids) {
                 }
 
                 // several of the quantitative MRI field maps come in pairs, so validate them the same way
-                for (const fmap of [fmapM0scan, fmapTB1EPI, fmapTB1AFI, fmapTB1TFL, fmapTB1RFM, fmapRB1COR, fmapTB1SRGE, fmapTB1DAM]) {
+                for (const fmap of [fmapTB1EPI, fmapTB1AFI, fmapTB1TFL, fmapTB1RFM, fmapRB1COR, fmapTB1SRGE, fmapTB1DAM]) {
                     if (fmap.length) {
                         if (fmap.length < 2) {
                             fmap.forEach((o:IObject) => {
@@ -335,7 +334,9 @@ export function setRun($root:IEzbids) {
             sesGroup.objects.forEach((obj:IObject) => {
 
                 // leave two entity labels out for now: part and run. The part entity could have a pairing (mag/phase or real/imag), and we're interested in the run entity
-                let targetEntities = Object.fromEntries(Object.entries(obj._entities).filter(([key])=>key !== "part" && key !== "run" && key !== "echo"))
+
+                let targetEntities = Object.fromEntries(Object.entries(obj._entities).filter(([key])=>key !== "part" && key !== "run" && key !== "echo")) // REFERENCE
+                // let targetEntities = Object.fromEntries(Object.entries(obj._entities).filter(([key])=>key !== "part" && key !== "run"))
 
                 let initialGrouping = sesGroup.objects.filter(e=>e._type !== "exclude" &&
                     !e._exclude &&
@@ -359,42 +360,82 @@ export function setRun($root:IEzbids) {
                     if (setRun) {
                         let run = 1
                         initialGrouping.forEach((o:IObject) => {
-                            if (o._entities.part && ["", "mag", "real"].includes(o._entities.part)) {
-                                o._entities.run = run.toString()
-                                o.entities.run = o._entities.run
-                                run++
-                            } else if (o._entities.part && !["", "mag", "real"].includes(o._entities.part)) {
-                                if (o._entities.part === "phase") {
-                                    let correspondingFuncMag = initialGrouping.filter(e=>e._entities.part === "mag" &&
-                                        ((e.idx === o.idx - 1 && e._type === "func/bold") || (e.idx === o.idx - 2 && e._type === "func/bold"))
-                                    )
-
-                                    if (!correspondingFuncMag.length) {
-                                        o._exclude = true
-                                        o.exclude = true
-                                        o.validationWarnings = ["There is no corresponding func/bold (part-mag) sequence, therefore this sequence will be excluded from BIDS conversion"]
-                                    } else {
-                                        o._entities.run = correspondingFuncMag[0]._entities.run
+                            if (o._entities.part) {
+                                if (["mag", "real"].includes(o._entities.part)) {
+                                    if (o._entities.echo) {
+                                        if (o._entities.echo === "1") {
+                                            o._entities.run = run.toString()
+                                            o.entities.run = o._entities.run
+                                            run++
+                                        } else { // echo > 1
+                                            o._entities.run = (run-1).toString()
+                                            o.entities.run = o._entities.run
+                                        }
+                                    } else { // no echo entity
+                                        o._entities.run = run.toString()
                                         o.entities.run = o._entities.run
+                                        run++
                                     }
-                                } else if (o._entities.part === "imag") {
-                                    let correspondingFuncReal = initialGrouping.filter(e=>e._entities.part === "real" &&
-                                        ((e.idx === o.idx - 1 && e._type === "func/bold") || (e.idx === o.idx - 2 && e._type === "func/bold"))
-                                    )
+                                } else if (["phase", "imag"].includes(o._entities.part)) { // part entity is "phase" or "imag"
 
-                                    if (!correspondingFuncReal.length) {
-                                        o._exclude = true
-                                        o.exclude = true
-                                        o.validationWarnings = ["There is no corresponding func/bold (part-real) sequence, therefore this sequence will be excluded from BIDS conversion"]
+                                    let corresponding_part = ""
+                                    if (o._entities.part === "phase") {
+                                        corresponding_part = "mag"
                                     } else {
-                                        o._entities.run = correspondingFuncReal[0]._entities.run
-                                        o.entities.run = o._entities.run
+                                        corresponding_part = "real"
+                                    }
+
+                                    if (o._entities.echo) {
+                                        let correspondingFuncMag = initialGrouping.filter(e=>e._entities.part === corresponding_part &&
+                                            e._type === o._type &&
+                                            e._entities.echo === o._entities.echo
+                                        )
+
+                                        if (!correspondingFuncMag.length) {
+                                            o._exclude = true
+                                            o.exclude = true
+                                            o.validationWarnings = ["There is no corresponding "+o._type+" (part-"+corresponding_part+", echo-"+o._entities.echo+") sequence, therefore this sequence will be excluded from BIDS conversion"]
+                                        } else {
+                                            let correspondingFuncMagFinal = correspondingFuncMag.filter(e=>e.ModifiedSeriesNumber === (Number(o.ModifiedSeriesNumber) - 1).toString())
+                                            if (!correspondingFuncMagFinal.length) {
+                                                o._exclude = true
+                                                o.exclude = true
+                                                o.validationWarnings = ["There is no corresponding "+o._type+" (part-part-"+corresponding_part+") sequence, therefore this sequence will be excluded from BIDS conversion"]
+                                            } else {
+                                                o._entities.run = correspondingFuncMagFinal[0]._entities.run
+                                                o.entities.run = o._entities.run
+                                            }
+                                        }
+                                    } else { // no echo entity
+                                        let correspondingFuncMag = initialGrouping.filter(e=>e._entities.part === corresponding_part &&
+                                            ((e.idx === o.idx - 1 && e._type === o._type) || (e.idx === o.idx - 2 && e._type === o._type))
+                                        )
+
+                                        if (!correspondingFuncMag.length) {
+                                            o._exclude = true
+                                            o.exclude = true
+                                            o.validationWarnings = ["There is no corresponding "+o._type+" (part-part-"+corresponding_part+") sequence, therefore this sequence will be excluded from BIDS conversion"]
+                                        } else {
+                                            o._entities.run = correspondingFuncMag[0]._entities.run
+                                            o.entities.run = o._entities.run
+                                        }
                                     }
                                 }
-                            } else {
-                                o._entities.run = run.toString()
-                                o.entities.run = o._entities.run
-                                run++
+                            } else { // no part entity
+                                if (o._entities.echo) {
+                                    if (o._entities.echo === "1") {
+                                        o._entities.run = run.toString()
+                                        o.entities.run = o._entities.run
+                                        run++
+                                    } else {
+                                        o._entities.run = (run-1).toString()
+                                        o.entities.run = o._entities.run
+                                    }
+                                } else {
+                                    o._entities.run = run.toString()
+                                    o.entities.run = o._entities.run
+                                    run++
+                                }
                             }
                         })
                     } else {
@@ -408,6 +449,92 @@ export function setRun($root:IEzbids) {
         })
     })
 }
+
+// export function setRun($root:IEzbids) { // REFERENCE
+//     // Set run entity label for all objects, if appropriate.
+//     // Applied on the Dataset Review page.
+
+//     // Loop through subjects
+//     $root._organized.forEach((subGroup:OrganizedSubject) => {
+//         // Loop through sessions
+//         subGroup.sess.forEach((sesGroup:OrganizedSession) => {
+//             sesGroup.objects.forEach((obj:IObject) => {
+
+//                 // leave two entity labels out for now: part and run. The part entity could have a pairing (mag/phase or real/imag), and we're interested in the run entity
+//                 let targetEntities = Object.fromEntries(Object.entries(obj._entities).filter(([key])=>key !== "part" && key !== "run" && key !== "echo"))
+
+//                 let initialGrouping = sesGroup.objects.filter(e=>e._type !== "exclude" &&
+//                     !e._exclude &&
+//                     e._type === obj._type &&
+//                     e._type !== "func/events" && // let users specify the run number for func/events files
+//                     deepEqual(Object.fromEntries(Object.entries(e._entities).filter(([key])=>key !== "part" && key !== "run" && key !== "echo")), targetEntities)
+//                 )
+//                 // console.log(initialGrouping)
+
+//                 if (initialGrouping.length) {
+//                     // Sort this new array by idx (i.e. order in which the sequences were collected in the scanner)
+//                     initialGrouping.sort((a, b) => a.idx - b.idx)
+
+//                     let setRun = false
+//                     if (initialGrouping.length > 1) {
+//                         setRun = true
+//                     // } else if (initialGrouping.length === 1 && (initialGrouping[0]._type.includes("anat") || initialGrouping[0]._type.includes("func"))) { // might need to add conditional for not having func/events
+//                     } else if (initialGrouping.length === 1 && (initialGrouping[0]._type.includes("func"))) { // might need to add conditional for not having func/events
+//                         setRun = true
+//                     }
+
+//                     if (setRun) {
+//                         let run = 1
+//                         initialGrouping.forEach((o:IObject) => {
+//                             if (o._entities.part && ["", "mag", "real"].includes(o._entities.part)) {
+//                                 o._entities.run = run.toString()
+//                                 o.entities.run = o._entities.run
+//                                 run++
+//                             } else if (o._entities.part && !["", "mag", "real"].includes(o._entities.part)) {
+//                                 if (o._entities.part === "phase") {
+//                                     let correspondingFuncMag = initialGrouping.filter(e=>e._entities.part === "mag" &&
+//                                         ((e.idx === o.idx - 1 && e._type === "func/bold") || (e.idx === o.idx - 2 && e._type === "func/bold"))
+//                                     )
+
+//                                     if (!correspondingFuncMag.length) {
+//                                         o._exclude = true
+//                                         o.exclude = true
+//                                         o.validationWarnings = ["There is no corresponding func/bold (part-mag) sequence, therefore this sequence will be excluded from BIDS conversion"]
+//                                     } else {
+//                                         o._entities.run = correspondingFuncMag[0]._entities.run
+//                                         o.entities.run = o._entities.run
+//                                     }
+//                                 } else if (o._entities.part === "imag") {
+//                                     let correspondingFuncReal = initialGrouping.filter(e=>e._entities.part === "real" &&
+//                                         ((e.idx === o.idx - 1 && e._type === "func/bold") || (e.idx === o.idx - 2 && e._type === "func/bold"))
+//                                     )
+
+//                                     if (!correspondingFuncReal.length) {
+//                                         o._exclude = true
+//                                         o.exclude = true
+//                                         o.validationWarnings = ["There is no corresponding func/bold (part-real) sequence, therefore this sequence will be excluded from BIDS conversion"]
+//                                     } else {
+//                                         o._entities.run = correspondingFuncReal[0]._entities.run
+//                                         o.entities.run = o._entities.run
+//                                     }
+//                                 }
+//                             } else {
+//                                 o._entities.run = run.toString()
+//                                 o.entities.run = o._entities.run
+//                                 run++
+//                             }
+//                         })
+//                     } else {
+//                         initialGrouping.forEach((o:IObject) => {
+//                             o._entities.run = ""
+//                             o.entities.run = o._entities.run
+//                         })
+//                     }
+//                 }
+//             })
+//         })
+//     })
+// }
 
 export function setIntendedFor($root:IEzbids) {
     // Apply fmap intendedFor mapping, based on user specifications on Series page.
@@ -439,31 +566,6 @@ export function setIntendedFor($root:IEzbids) {
                             });
                         }
                     }
-                    // if (obj._type.startsWith("fmap/") || obj._type === "perf/m0scan") {
-                    //     if (!obj.IntendedFor) {
-                    //         Object.assign(obj, {IntendedFor: []})
-                    //     }
-
-                    //     let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor
-                    //     if (correspindingSeriesIntendedFor !== undefined && correspindingSeriesIntendedFor !== null) {
-                    //         correspindingSeriesIntendedFor.forEach((i:number) => {
-                    //             let IntendedForIDs = section.filter(o=>o.series_idx === i && o._type !== "func/events").map(o=>o.idx)
-                    //             if (obj.IntendedFor !== undefined) {
-                    //                 IntendedForIDs.forEach((IntendedForID:number) => {
-                    //                     if (!obj.IntendedFor?.includes(IntendedForID)) {
-                    //                         obj.IntendedFor = obj.IntendedFor?.concat(IntendedForIDs)
-                    //                     }
-
-                    //                     let IntendedForObj = sesGroup.objects.filter(e=>e.idx === IntendedForID)[0]
-                    //                     console.log(IntendedForObj)
-                    //                     if (IntendedForObj._exclude || IntendedForObj._type === "exclude") {
-                    //                         obj.IntendedFor = obj.IntendedFor?.filter(e=>e === IntendedForID)
-                    //                     }
-                    //                 })
-                    //             }
-                    //         });
-                    //     }
-                    // }
 
                     // check B0FieldIdentifier and B0FieldSource information
                     if (obj._type && !obj._type.includes('exclude') && !obj._type.includes('events')) {
@@ -658,8 +760,10 @@ export function validateEntities(level:string, info:any) {
                     }
                     for (const i of values) {
                         if (i !== "imag") {
-                            if (entities[k] === i && level === "Series" && !info.ImageType.includes(i.toUpperCase())) {
-                                info.validationWarnings.push(`ezBIDS detects that this image is not part-${i}. Please verify before continuing`)
+                            if (i !== "mag") {
+                                if (entities[k] === i && level === "Series" && !info.ImageType.includes(i.toUpperCase())) {
+                                    info.validationWarnings.push(`ezBIDS detects that this image is not part-${i}. Please verify before continuing`)
+                                }
                             }
                         } else {
                             if (entities[k] === i && level === "Series" && !info.ImageType.includes("IMAGINARY")) {
@@ -1245,7 +1349,7 @@ export function fileLogicLink($root:IEzbids, o:IObject) {
     Any phase data (part-phase) is linked to the magnitude. If part entity is specified, make sure it's
     properly linked and has same entities (except for part) and exclusion criteria.
     */
-    if(o._entities.part && !["", "mag", "real"].includes(o._entities.part)) {
+    if(o._entities.part && !["mag", "real"].includes(o._entities.part)) {
         let correspondingFuncMag = $root.objects.filter((object:IObject)=>object._type === o._type &&
             object._entities.part === "mag" &&
             ((object.idx === o.idx - 1 && object._type === "func/bold") || (object.idx === o.idx - 2 && object._type === "func/bold"))
@@ -1255,7 +1359,7 @@ export function fileLogicLink($root:IEzbids, o:IObject) {
             correspondingFuncMag.forEach((boldMag:IObject)=>{
                 // o.analysisResults.section_id = boldObj.analysisResults.section_id
                 for(let k in boldMag._entities) {
-                    if (k !== "part") {
+                    if (k !== "part" && k !== "echo") {
                         if (boldMag._entities[k] !== "") {
                             o._entities[k] = boldMag._entities[k]
                         } else {
