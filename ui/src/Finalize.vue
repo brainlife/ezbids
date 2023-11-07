@@ -38,7 +38,7 @@
                 <el-button @click="download" type="primary">Download BIDS</el-button>
 
                 <a :href="config.apihost+'/download/'+session._id+'/ezBIDS_template.json'" download="ezBIDS_template.json">
-                    <el-button @click="download" type="primary" style="float: right" >Download configuration/template</el-button>
+                    <el-button @click="download" type="primary" style="float: right" >Download ezBIDS Template</el-button>
                 </a>
                 <p align="right">Saves a configuration file that can be uploaded with subsequent data to save you time!</p>
             </p>
