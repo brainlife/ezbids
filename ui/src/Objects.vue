@@ -422,17 +422,17 @@
                 o.validationErrors = [];
                 o.validationWarnings = [];
 
-                setIntendedFor(this.ezbids)
+                // setIntendedFor(this.ezbids)
                 
-                align_entities(this.ezbids)
+                // align_entities(this.ezbids)
 
                 validateEntities("Objects", o)
 
-                dwiQA(this.ezbids)
+                // dwiQA(this.ezbids)
 
                 validate_B0FieldIdentifier_B0FieldSource(o)
 
-                setRun(this.ezbids)
+                // setRun(this.ezbids)
 
                 fileLogicLink(this.ezbids, o)
         
@@ -537,6 +537,10 @@
             },
     
             validateAll() {
+                setIntendedFor(this.ezbids)
+                align_entities(this.ezbids)
+                dwiQA(this.ezbids)
+                setRun(this.ezbids)
                 this.ezbids.objects.forEach(this.validate);
                 this.ezbids.objects.forEach(this.validate); // not ideal, but need to re-validate when run entities are being updated.
             },
