@@ -9,7 +9,10 @@
         "dev": "ts-node-dev --respawn --transpileOnly ./api/ezbids.ts",
         "prod": "tsc && node ./build/ezbids.js",
         "deploy": "ssh -t hayashis@test.brainlife.io \"sudo su - -c 'cd /root/docker/ezbids && ./update.sh'\"",
-        "deploy-prod": "ssh -t -J hayashis@brainlife.io ubuntu@ezbids \"sudo su - -c 'cd /root/docker/ezbids && ./update.sh'\""
+        "deploy-prod": "ssh -t -J hayashis@brainlife.io ubuntu@ezbids \"sudo su - -c 'cd /root/docker/ezbids && ./update.sh'\"",
+        "style-check": "prettier --config .prettierrc.json --check",
+        "lint-check": "eslint --ext .ts,.vue,.js",
+        "lint-staged": "lint-staged --config .lintstagedrc.json"
     },
     "author": "",
     "license": "MIT",
@@ -30,7 +33,6 @@
         "node-pty": "^0.10.1",
         "range-stream": "^1.1.0",
         "send-seekable": "^1.0.4",
-        "vue-router": "^4.2.5",
         "swagger-jsdoc": "^6.2.8",
         "swagger-ui-express": "^5.0.0"
     },
@@ -38,6 +40,14 @@
         "@types/async": "^3.2.12",
         "@types/cors": "^2.8.12",
         "@types/node": "^16.11.26",
+        "@typescript-eslint/eslint-plugin": "^6.9.1",
+        "@typescript-eslint/parser": "^6.9.1",
+        "eslint": "^8.52.0",
+        "eslint-config-prettier": "^9.0.0",
+        "eslint-plugin-prettier": "^5.0.1",
+        "husky": "^8.0.3",
+        "lint-staged": "^15.0.2",
+        "prettier": "^3.0.3",
         "typescript": "^4.7.2"
     }
 }
