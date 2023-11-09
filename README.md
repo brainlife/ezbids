@@ -123,6 +123,8 @@ There are a few safeguards active:
 2. We use husky to run a git precommit hook and run a prettier style check on staged files
 3. A `.vscode/settings.json` file is attached to this repository, which configures VSCode to allow formatting of files on save and on paste.
 
+Make sure that you run npm install to install husky if you have not already.
+
 > You can run `npm run lint-staged` at any time in order to run a style check on the staged files.
 > `lint-staged` makes a call to prettier and eslint to check if there are any files that do not adhere to the code standard.
 > It does NOT overwrite any files.
@@ -131,8 +133,8 @@ There are a few safeguards active:
 
 VS Code Recommendations:
 
-1. Install the Prettier VS Code extension (esbenp.prettier-vscode). This will allow you to format files based on prettier rules.
-2. Install the eslint VS Code extension (dbaeumer.vscode-eslint). This will allow you to see lint errors as you're writing code.
-3. Install the Volar extension (vue.volar). This provides Vue language features.
+1. Install the Prettier VS Code extension `esbenp.prettier-vscode`. This will allow you to format files based on prettier rules.
+2. Install the eslint VS Code extension `dbaeumer.vscode-eslint`. This will allow you to see lint errors as you're writing code.
+3. Install the Volar extension `vue.volar`. This provides Vue language features.
 
 > Note: The recommended extensions to install for this project should appear as a notification in the bottom right corner of the VSCode screen the very first time you open the project. You can also open the command palette and go to "Show Recommended Extensions." Alternatively, you can directly navigate to `.vscode/extensions.json` and install the listed extensions.
