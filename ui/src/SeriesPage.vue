@@ -283,7 +283,7 @@ export default defineComponent({
                     }
                     if(same) {
                         const sameseries = s2.series_idx;
-                        s.validationWarnings.push("This series contains the same datatype, suffix and entity labels as series #"+sameseries+". We advise setting different entity label(s) to differentiate between the series.");
+                        s.validationWarnings.push("This series contains the same datatype, suffix and entity labels as series #"+sameseries+", consider setting different entity label(s) to differentiate between the series. If not, ezBIDS will automatically apply the run entity label to differentiate.");
                         break;
                     }
                 }
