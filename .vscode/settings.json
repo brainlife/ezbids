@@ -1,0 +1,8 @@
+{
+    "eslint.validate": ["javascript", "vue", "typescript"],
+    // "editor.defaultFormatter": "dbaeumer.vscode-eslint",
+    "[vue]": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode"
+    }
+}

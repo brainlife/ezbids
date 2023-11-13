@@ -1,126 +1,143 @@
 <template>
-<div style="padding: 20px;">
-    <div v-if="session.status == 'analyzed' || session.status == 'defaced'">
-        <p>Your dataset is now ready to be converted to BIDS! Please click the button below to generate BIDS structure.</p>
-        <p>
-            <el-checkbox v-model="ezbids.includeExcluded">Save all acquisitions set to 'exclude' in an /excluded directory in output BIDS structure</el-checkbox>
-        </p>
-        <br>
-        <el-button @click="finalize" type="success">Finalize</el-button>
-    </div>
-
-    <!--
-    <div v-if="session.status == 'bidsing'">
-        <h3>
-            Finalizing
-            <font-awesome-icon icon="spinner" pulse/>
-        </h3>
-    </div>
-    -->
-
-    <div v-else-if="session.status == 'finalized' || (session.finalize_begin_date && !session.finalize_finish_date)">
-        <h3>
-            Converting to BIDS 
-            <font-awesome-icon icon="spinner" pulse/>
-        </h3>
-        <p><small><i>{{session.status_msg}}</i></small></p>
-    </div>
-
-    <div v-else-if="session.finalize_finish_date">
-        <div class="download">
-            <br>
-            <el-button @click="session.status = 'analyzed'" type="success" style="float: right" size="small">Rerun Finalize Step</el-button>
-            <h3 style="margin-top: 0;">All Done!</h3>
+    <div style="padding: 20px">
+        <div v-if="session.status == 'analyzed' || session.status == 'defaced'">
             <p>
-            Please download the BIDS formatted data to your local computer
+                Your dataset is now ready to be converted to BIDS! Please click the button below to generate BIDS
+                structure.
             </p>
-            <el-button @click="download(`bids/${ezbids.datasetDescription.Name}`)" style="width: 250px" type="primary">Download BIDS</el-button>
-            <el-button @click="download(`finalized.json`)" style="width: 250px" type="primary">Download configuration/template</el-button>
-            <p>Or send the dataset to other cloud resources.</p>
-            <p>                
-                <el-dropdown>
-                    <el-button style="margin-right: 10px">
-                        Send to <b>Brainlife.io</b>&nbsp;
-                        <font-awesome-icon :icon="['fas', 'angle-down']"/>
-                    </el-button>
-                    <template #dropdown>
-                        <el-dropdown-menu>
-                            <el-dropdown-item @click="sendBrainlife()">Send to brainlife</el-dropdown-item>
-                            <el-dropdown-item @click="sendBrainlife('DWI')">Send to brainlife and run DWI Pipeline</el-dropdown-item>
-                        </el-dropdown-menu>
-                    </template>
-                </el-dropdown>
-                <el-button @click="sendOpenneuro">Send to <b>OpenNeuro</b></el-button>
+            <p>
+                <el-checkbox v-model="ezbids.includeExcluded">
+                    Save all acquisitions set to 'exclude' in an excluded directory in output BIDS structure
+                </el-checkbox>
             </p>
-
-            <p style="background-color: #0001; padding: 20px; padding-top: 10px;">
-                If you have re-named the original DICOM patient names for your BIDS subject/session names,
-                you can download the mapping file.
-                <el-button type="text" @click="downloadSubjectMapping">Download Subject Mapping (.json)</el-button>
-                <br>
-                <small>* may contain sensitive PHI data. Please make sure to store the mapping file in a secure location.</small>
-            </p>
-
+            <br />
+            <el-button type="success" @click="finalize">Finalize</el-button>
         </div>
 
-        <br>
-        <el-row>
-            <el-col :span="12">
-                <h4>BIDS Structure</h4>
-                <showfile path="tree.log" style="margin-right: 15px;" :tall="true"/>
-            </el-col>
-            <el-col :span="12">
-                <h4>bids-validator output</h4>
-                <showfile path="validator.log" :tall="true"/>
-            </el-col>
-        </el-row>
-    </div>
+        <div
+            v-else-if="session.status == 'finalized' || (session.finalize_begin_date && !session.finalize_finish_date)"
+        >
+            <h3>
+                Converting to BIDS
+                <font-awesome-icon icon="spinner" pulse />
+            </h3>
+            <p>
+                <small
+                    ><i>{{ session.status_msg }}</i></small
+                >
+            </p>
+        </div>
 
-    <div v-if="session.status == 'failed'">
-        <p>Failed to convert to BIDS</p>
-        <el-button @click="finalize" type="success" style="float: right" size="small">Rerun Finalize Step</el-button>
-        <p><small><i>{{session.status_msg}}</i></small></p>
-    </div>
+        <div v-else-if="session.finalize_finish_date">
+            <div class="download">
+                <br />
+                <el-button type="success" style="float: right" size="small" @click="session.status = 'analyzed'"
+                    >Rerun Finalize Step</el-button
+                >
+                <h3 style="margin-top: 0">All Done!</h3>
+                <p>Please download the BIDS formatted data to your local computer</p>
+                <el-button
+                    style="width: 250px"
+                    type="primary"
+                    @click="download(`bids/${ezbids.datasetDescription.Name}`)"
+                    >Download BIDS</el-button
+                >
+                <el-button style="width: 250px" type="primary" @click="download(`finalized.json`)"
+                    >Download configuration/template</el-button
+                >
+                <p>Or send the dataset to other cloud resources.</p>
+                <p>
+                    <el-dropdown>
+                        <el-button style="margin-right: 10px">
+                            Send to <b>Brainlife.io</b>&nbsp;
+                            <font-awesome-icon :icon="['fas', 'angle-down']" />
+                        </el-button>
+                        <template #dropdown>
+                            <el-dropdown-menu>
+                                <el-dropdown-item @click="sendBrainlife()">Send to brainlife</el-dropdown-item>
+                                <el-dropdown-item @click="sendBrainlife('DWI')"
+                                    >Send to brainlife and run DWI Pipeline</el-dropdown-item
+                                >
+                            </el-dropdown-menu>
+                        </template>
+                    </el-dropdown>
+                    <el-button @click="sendOpenneuro">Send to <b>OpenNeuro</b></el-button>
+                </p>
 
-    <br>
-    <br>
-    <h4>Debugging</h4>
-    <el-collapse v-model="activeLogs">
-        <el-collapse-item title="BIDS Conversion Log" name="bids.log" v-if="session.status == 'finished'">
-            <showfile path="bids.log" />
-        </el-collapse-item>
-        <el-collapse-item title="BIDS Conversion Error Log" name="bids.err" v-if="session.status == 'finished'">
-            <showfile path="bids.err"/>
-        </el-collapse-item>
-        <el-collapse-item title="Session" name="session">
-            <pre class="text">{{session}}</pre>
-        </el-collapse-item>
-    </el-collapse>
-    <br>
-    <br>
-</div>
+                <p style="background-color: #0001; padding: 20px; padding-top: 10px">
+                    If you have re-named the original DICOM patient names for your BIDS subject/session names, you can
+                    download the mapping file.
+                    <el-button type="text" @click="downloadSubjectMapping">Download Subject Mapping (.json)</el-button>
+                    <br />
+                    <small
+                        >* may contain sensitive PHI data. Please make sure to store the mapping file in a secure
+                        location.</small
+                    >
+                </p>
+            </div>
+
+            <br />
+            <el-row>
+                <el-col :span="12">
+                    <h4>BIDS Structure</h4>
+                    <showfile path="tree.log" style="margin-right: 15px" :tall="true" />
+                </el-col>
+                <el-col :span="12">
+                    <h4>bids-validator output</h4>
+                    <showfile path="validator.log" :tall="true" />
+                </el-col>
+            </el-row>
+        </div>
+
+        <div v-if="session.status == 'failed'">
+            <p>Failed to convert to BIDS</p>
+            <el-button type="success" style="float: right" size="small" @click="finalize"
+                >Rerun Finalize Step</el-button
+            >
+            <p>
+                <small
+                    ><i>{{ session.status_msg }}</i></small
+                >
+            </p>
+        </div>
+
+        <br />
+        <br />
+        <h4>Debugging</h4>
+        <el-collapse v-model="activeLogs">
+            <el-collapse-item v-if="session.status == 'finished'" title="BIDS Conversion Log" name="bids.log">
+                <showfile path="bids.log" />
+            </el-collapse-item>
+            <el-collapse-item v-if="session.status == 'finished'" title="BIDS Conversion Error Log" name="bids.err">
+                <showfile path="bids.err" />
+            </el-collapse-item>
+            <el-collapse-item title="Session" name="session">
+                <pre class="text">{{ session }}</pre>
+            </el-collapse-item>
+        </el-collapse>
+        <br />
+        <br />
+    </div>
 </template>
 
 <script lang="ts">
+import { mapState } from 'vuex';
+import { defineComponent } from 'vue';
+import showfile from './components/showfile.vue';
+import axios from './axios.instance';
 
-import { mapState } from 'vuex'
-import { defineComponent } from 'vue'
-import showfile from './components/showfile.vue'
-import axios from './axios.instance'
-
-import { ElNotification } from 'element-plus'
+import { ElNotification } from 'element-plus';
 
 export default defineComponent({
-
     components: {
-        showfile
+        showfile,
     },
 
     data() {
         return {
             submitting: false, //prevent double submit
             activeLogs: [],
-        }
+        };
     },
 
     computed: {
@@ -129,35 +146,39 @@ export default defineComponent({
 
     mounted() {
         //TODO - update this to do this on demand
-        //this.rerun(); 
+        //this.rerun();
         //this.finalize();
     },
 
     methods: {
-
         finalize() {
-            this.session.status = "finalized";
+            this.session.status = 'finalized';
             delete this.session.finalize_begin_date;
             delete this.session.finalize_finish_date;
 
             this.submitting = true;
-            this.dofinalize((err:string|null)=>{
-                if(err) ElNotification({ title: 'Failed', message: 'Failed to finalize:'+err});
-                if(err) console.error(err);
+            this.dofinalize((err: string | null) => {
+                if (err)
+                    ElNotification({
+                        title: 'Failed',
+                        message: 'Failed to finalize:' + err,
+                    });
+                if (err) console.error(err);
                 this.submitting = false;
-                this.$store.dispatch("loadSession", this.session._id);
+                this.$store.dispatch('loadSession', this.session._id);
             });
         },
 
-        dofinalize(cb: (err: string|null)=>void) {
+        dofinalize(cb: (err: string | null) => void) {
             //TODO - why can't server just look up the bids schema by itself!?
             //mapping between things like like "subject" to "sub"
-            const entityMappings = {} as {[key: string]: string};
-            for(const key in this.bidsSchema.entities) {
+            const entityMappings = {} as { [key: string]: string };
+            for (const key in this.bidsSchema.entities) {
                 entityMappings[key] = this.bidsSchema.entities[key].entity;
             }
 
-            axios.post(`${this.config.apihost}/session/${this.session._id}/finalize`, {
+            axios
+                .post(`${this.config.apihost}/session/${this.session._id}/finalize`, {
                     //basically we just need everything except _organized
 
                     //we store these so we can reload the session later
@@ -174,9 +195,10 @@ export default defineComponent({
                     readme: this.ezbids.readme,
                     participantsColumn: this.ezbids.participantsColumn,
                     participantInfo: this.ezbids.participantsInfo,
-            }).then((res) => {
-                if (cb) cb(res.data === 'ok' ? null : res.data)
-            })
+                })
+                .then((res) => {
+                    if (cb) cb(res.data === 'ok' ? null : res.data);
+                });
         },
 
         /*
@@ -191,21 +213,21 @@ export default defineComponent({
         async download(fileName: string) {
             if (!fileName) return;
             try {
-                const res = await axios.get(`${this.config.apihost}/download/${this.session._id}/token`)
+                const res = await axios.get(`${this.config.apihost}/download/${this.session._id}/token`);
                 const shortLivedJWT = res.data;
 
                 window.location.href = `${this.config.apihost}/download/${this.session._id}/${fileName}?token=${shortLivedJWT}`;
             } catch (e) {
-                console.error(e)
+                console.error(e);
                 ElNotification({
                     message: 'there was an error downloading the file',
-                    type: 'error'
-                })
+                    type: 'error',
+                });
             }
         },
 
         downloadSubjectMapping() {
-            this.downloadMapping(JSON.stringify(this.ezbids.subjects, null, 2), "subject_mappings.json");
+            this.downloadMapping(JSON.stringify(this.ezbids.subjects, null, 2), 'subject_mappings.json');
         },
 
         //un-refactor this?
@@ -214,23 +236,27 @@ export default defineComponent({
             const link = document.createElement('a');
             link.href = URL.createObjectURL(blob);
             link.download = name;
-            link.click()
-            URL.revokeObjectURL(link.href)
+            link.click();
+            URL.revokeObjectURL(link.href);
         },
 
         sendBrainlife(pipeline?: 'DWI') {
             const pipelineString = pipeline ? `&pipeline=${pipeline}` : '';
-            window.open(`https://brainlife.io/projects#ezbids=${this.session._id}${pipelineString}`, `_brainlife.${this.session._id}`);
+            window.open(
+                `https://brainlife.io/projects#ezbids=${this.session._id}${pipelineString}`,
+                `_brainlife.${this.session._id}`
+            );
         },
 
         sendOpenneuro() {
-            const url = this.config.apihost+'/download/'+this.session._id+'/bids/'+this.ezbids.datasetDescription.Name;
+            const url =
+                this.config.apihost + '/download/' + this.session._id + '/bids/' + this.ezbids.datasetDescription.Name;
             const fullurl = new URL(url, document.baseURI).href;
-            window.open("https://openneuro.org/import?url="+encodeURI(fullurl));
+            window.open('https://openneuro.org/import?url=' + encodeURI(fullurl));
         },
 
-        isValid(cb: (err?: string)=>void) {
-            if(this.session.status != 'finished') return cb("Please finalize the page first");
+        isValid(cb: (err?: string) => void) {
+            if (this.session.status != 'finished') return cb('Please finalize the page first');
             cb();
         },
     },
@@ -246,13 +272,16 @@ export default defineComponent({
 }
 .mappings p {
     cursor: pointer;
-    color: #409EFF;
+    color: #409eff;
 }
 .mappings p:hover {
     text-decoration: underline;
 }
 p.btn {
-    background-color: white; padding: 5px; border-radius: 4px; display: inline-block;
+    background-color: white;
+    padding: 5px;
+    border-radius: 4px;
+    display: inline-block;
     transition: background-color 0.3s;
     padding: 5px 10px;
 }
@@ -262,5 +291,3 @@ p.btn:hover {
     cursor: pointer;
 }
 </style>
-
-
