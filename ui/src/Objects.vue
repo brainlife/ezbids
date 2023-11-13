@@ -230,7 +230,7 @@
     
     import { IObject, Session, OrganizedSession, OrganizedSubject } from './store'
     import { prettyBytes } from './filters'
-    import { setRun, setIntendedFor, align_entities, validateEntities, validate_B0FieldIdentifier_B0FieldSource, fileLogicLink, dwiQA } from './libUnsafe'
+    import { setRun, setIntendedFor, alignEntities, validateEntities, validate_B0FieldIdentifier_B0FieldSource, fileLogicLink, dwiQA } from './libUnsafe'
     
     // @ts-ignore
     import { Splitpanes, Pane } from 'splitpanes'
@@ -424,7 +424,7 @@
 
                 // setIntendedFor(this.ezbids)
                 
-                // align_entities(this.ezbids)
+                // alignEntities(this.ezbids)
 
                 validateEntities("Objects", o)
 
@@ -511,38 +511,39 @@
 
                 if(this.isExcluded(o)) return;
 
-                //make sure no 2 objects are exactly alike
-                for(let o2 of this.ezbids.objects) {
-                    if(o.idx == o2.idx) continue;
-                    if(this.isExcluded(o2)) continue;
-                    if(o._type != o2._type) continue;
+                // NOTE: don't need this section if setRun() functionality is in place, prevents conflicts
+
+                // //make sure no 2 objects are exactly alike
+                // for(let o2 of this.ezbids.objects) {
+                //     if(o.idx == o2.idx) continue;
+                //     if(this.isExcluded(o2)) continue;
+                //     if(o._type != o2._type) continue;
     
-                    let same = o2;
-                    for(let k in o._entities) {
-                        if(o._entities[k] != o2._entities[k]) {
-                            same = undefined;
-                            break;
-                        }
-                    }
-                    if(same) {
-                        const sameseries = this.ezbids.series[same.series_idx];
-                        let sameidx = undefined;
-                        if(sameseries) sameidx = sameseries.series_idx;
-                        o.validationErrors.push("This object looks exactly like another object with Series #"+sameidx+
-                            ". We can not convert this object to BIDS as they will overwrite each other. "+
-                            "Please set entities such as 'run' to make them all unique (across subjects/sessions).");
-                        break;
-                    }
-                }
+                //     let same = o2;
+                //     for(let k in o._entities) {
+                //         if(o._entities[k] != o2._entities[k]) {
+                //             same = undefined;
+                //             break;
+                //         }
+                //     }
+                //     if(same) {
+                //         const sameseries = this.ezbids.series[same.series_idx];
+                //         let sameidx = undefined;
+                //         if(sameseries) sameidx = sameseries.series_idx;
+                //         o.validationErrors.push("This object looks exactly like another object with Series #"+sameidx+
+                //             ". We can not convert this object to BIDS as they will overwrite each other. "+
+                //             "Please set entities such as 'run' to make them all unique (across subjects/sessions).");
+                //         break;
+                //     }
+                // }
             },
     
             validateAll() {
                 setIntendedFor(this.ezbids)
-                align_entities(this.ezbids)
+                alignEntities(this.ezbids)
                 dwiQA(this.ezbids)
                 setRun(this.ezbids)
                 this.ezbids.objects.forEach(this.validate);
-                this.ezbids.objects.forEach(this.validate); // not ideal, but need to re-validate when run entities are being updated.
             },
         },
     });

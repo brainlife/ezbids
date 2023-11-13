@@ -522,7 +522,7 @@ function findMostCommonValue(arr:any){
     ).pop();
 }
 
-export function align_entities($root:IEzbids) {
+export function alignEntities($root:IEzbids) {
     /*
     Applied on Dataset Review page
     There are two ways entities are stored:
