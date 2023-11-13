@@ -59,7 +59,7 @@
                 </el-autocomplete>
             </div>
             <template #footer>
-                <el-button @click="handleClose" type="danger">Close Dialog</el-button>
+                <el-button type="danger" @click="handleClose">Close Dialog</el-button>
             </template>
         </el-dialog>
     </div>
@@ -171,7 +171,6 @@ export default defineComponent({
                     allowedUsers: updatedUsers,
                 })
                 .then((res) => {
-                    console.log(res);
                     this.$store.commit('updateSessionAllowedUsers', updatedUsers);
                 })
                 .catch((err) => {

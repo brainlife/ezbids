@@ -1,25 +1,35 @@
+import {
+    set,
+    connect as mongooseConnect,
+    disconnect as mongooseDisconnect,
+    CallbackWithoutResult,
+    Schema,
+    model,
+} from 'mongoose';
+import { mongodb, mongoose_debug } from './config';
 
-import { set, connect as mongooseConnect, disconnect as mongooseDisconnect, CallbackWithoutResult, Schema, model } from "mongoose";
-import { mongodb, mongoose_debug } from "./config"
-
-if (mongoose_debug) set("debug", true);
+if (mongoose_debug) set('debug', true);
 
 export function connect(cb: CallbackWithoutResult) {
-    console.debug("connecting to mongo via: " + mongodb);
-    mongooseConnect(mongodb, {
-        /* this really screwed up warehouse db..
+    console.debug('connecting to mongo via: ' + mongodb);
+    mongooseConnect(
+        mongodb,
+        {
+            /* this really screwed up warehouse db..
         readPreference: 'nearest',
         writeConcern: {
             w: 'majority', //isn't this the default?
         },
         readConcernLevel: 'majority',//prevents read to grab stale data from secondary
         */
-        //auto_reconnect: true, //isn't this the default?
-    }, err => {
-        if (err) return cb(err);
-        console.log("connected to mongo via: " + mongodb);
-        cb(null);
-    });
+            //auto_reconnect: true, //isn't this the default?
+        },
+        (err) => {
+            if (err) return cb(err);
+            console.debug('connected to mongo via: ' + mongodb);
+            return cb(null);
+        }
+    );
 }
 
 export function disconnect(cb) {
@@ -31,8 +41,7 @@ export function disconnect(cb) {
 // upload sessions
 //
 
-var sessionSchema = new Schema({
-
+const sessionSchema = new Schema({
     create_date: { type: Date, default: Date.now },
     update_date: { type: Date, default: Date.now },
 
@@ -84,12 +93,12 @@ var sessionSchema = new Schema({
     //removed: { type: Boolean, default: false },
 });
 sessionSchema.pre('save', function (next) {
-    this.update_date = new Date()
+    this.update_date = new Date();
     next();
 });
-export let Session = model("Session", sessionSchema);
+export const Session = model('Session', sessionSchema);
 
-var ezbidsSchema = new Schema({
+const ezbidsSchema = new Schema({
     _session_id: Schema.Types.ObjectId,
 
     original: Schema.Types.Mixed,
@@ -98,6 +107,4 @@ var ezbidsSchema = new Schema({
     create_date: { type: Date, default: Date.now },
     update_date: { type: Date },
 });
-export let ezBIDS = model("ezBIDS", ezbidsSchema);
-
-
+export const ezBIDS = model('ezBIDS', ezbidsSchema);

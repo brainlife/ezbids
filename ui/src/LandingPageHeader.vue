@@ -1,13 +1,13 @@
 <template>
     <el-affix>
         <el-header class="header">
-            <el-row style="align-items: center;">
+            <el-row style="align-items: center">
                 <el-col :xs="0" :md="1" />
                 <el-col :xs="24" :md="22">
                     <el-menu class="menu" :ellipsis="false" mode="horizontal">
                         <el-menu-item index="0" class="menu-item">ezBIDS</el-menu-item>
                         <div style="flex-grow: 1"></div>
-                        <el-menu-item @click="openBrainLifeTeamPage" index="1" class="menu-item">
+                        <el-menu-item index="1" class="menu-item" @click="openBrainLifeTeamPage">
                             <el-icon>
                                 <font-awesome-icon :icon="['fas', 'arrow-up-right-from-square']" />
                             </el-icon>
@@ -15,12 +15,11 @@
                         </el-menu-item>
                         <el-menu-item index="2" class="menu-item">
                             <el-button
-                                @click="redirectToBrainlifeAuth"
                                 type="text"
-                                style="font-size: var(--el-font-size-extra-large); font-family: unset; color: #3482e9;"
-                                >{{ hasJWT ? "GET STARTED" : "LOG IN / REGISTER"}}</el-button
+                                style="font-size: var(--el-font-size-extra-large); font-family: unset; color: #3482e9"
+                                @click="redirectToBrainlifeAuth"
+                                >{{ hasJWT ? 'GET STARTED' : 'LOG IN / REGISTER' }}</el-button
                             >
-                            <!-- <RouterLink style="text-decoration: none;" to="/convert">LOG IN / REGISTER</RouterLink> -->
                         </el-menu-item>
                     </el-menu>
                 </el-col>
@@ -32,7 +31,6 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { RouterLink } from 'vue-router';
 import { mapState } from 'vuex';
 import { hasJWT } from './lib';
 
@@ -41,10 +39,7 @@ export default defineComponent({
         ...mapState(['config']),
         hasJWT() {
             return hasJWT();
-        }
-    },
-    components: {
-        RouterLink: RouterLink,
+        },
     },
     methods: {
         openBrainLifeTeamPage() {
@@ -52,17 +47,19 @@ export default defineComponent({
         },
         redirectToBrainlifeAuth() {
             if (hasJWT()) {
-                this.$router.push('/convert')
+                this.$router.push('/convert');
                 return;
             }
 
             sessionStorage.setItem('auth_redirect', `${window.location.href}convert`);
-            window.location.href = (this.config as {
-                apihost: string;
-                authSignIn: string;
-                authSignOut: string;
-                debug: boolean;
-            }).authSignIn;
+            window.location.href = (
+                this.config as {
+                    apihost: string;
+                    authSignIn: string;
+                    authSignOut: string;
+                    debug: boolean;
+                }
+            ).authSignIn;
         },
     },
 });

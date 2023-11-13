@@ -1,4 +1,3 @@
-
 import * as express from 'express';
 import { Request } from 'express-jwt';
 import { signJWT, validateWithJWTConfig, verifyJWT } from './auth';
@@ -13,6 +12,7 @@ import async = require('async');
 
 import config = require('./config');
 import models = require('./models');
+import { JwtPayload } from 'jsonwebtoken';
 
 console.debug(config.multer);
 const upload = multer(config.multer);
@@ -52,15 +52,15 @@ const router = express.Router();
  *                  error:
  *                    type: string
  */
-router.get('/health', (req, res, next) => {
-    let status = "ok";
-    let message = "";
+router.get('/health', (req, res) => {
+    let status = 'ok';
+    let message = '';
 
     //check to see if we can access the workdir
     try {
-        fs.writeFileSync(config.workdir + '/health.txt', "test")
+        fs.writeFileSync(config.workdir + '/health.txt', 'test');
     } catch (err) {
-        status = "failed";
+        status = 'failed';
         message = err;
     }
     res.json({ status, message, date: new Date() });
@@ -103,19 +103,23 @@ router.get('/health', (req, res, next) => {
 router.post('/session', validateWithJWTConfig(), (req: Request, res: express.Response, next) => {
     if (!req.auth.sub) res.sendStatus(HTTP_STATUS.BAD_REQUEST);
 
-    req.body.status = "created";
+    req.body.status = 'created';
     req.body.request_headers = req.headers;
-    let session = new models.Session({
+    const session = new models.Session({
         ...req.body,
         ownerId: req.auth.sub,
-        allowedUsers: []
+        allowedUsers: [],
     });
-    session.save().then((_session) => { //mongoose contains err on the 1st argument of resolve!? odd.
-        res.json(_session);
-    }).catch((err) => {
-        console.error(err)
-        return next(err);
-    });
+    session
+        .save()
+        .then((_session) => {
+            //mongoose contains err on the 1st argument of resolve!? odd.
+            res.json(_session);
+        })
+        .catch((err) => {
+            console.error(err);
+            return next(err);
+        });
 });
 
 /**
@@ -149,20 +153,23 @@ router.post('/session', validateWithJWTConfig(), (req: Request, res: express.Res
  *                  description: Server error
  */
 router.patch('/session/:session_id', validateWithJWTConfig(), (req: Request, res: express.Response, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, true).then((session) => {
-        session.allowedUsers = req.body.allowedUsers;
-        return session.save()
-    }).then(() => {
-        res.send('ok')
-    }).catch((err: HttpError) => {
-        console.error(err)
-        if (err.statusCode) {
-            res.sendStatus(err.statusCode);
-        } else {
-            return next(err)
-        }
-    })
-})
+    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, true)
+        .then((session) => {
+            session.allowedUsers = req.body.allowedUsers;
+            return session.save();
+        })
+        .then(() => {
+            res.send('ok');
+        })
+        .catch((err: HttpError) => {
+            console.error(err);
+            if (err.statusCode) {
+                return res.sendStatus(err.statusCode);
+            } else {
+                return next(err);
+            }
+        });
+});
 
 /**
  * @swagger
@@ -225,16 +232,18 @@ router.patch('/session/:session_id', validateWithJWTConfig(), (req: Request, res
  *           description: Finish date of file upload
  */
 router.get('/session/:session_id', validateWithJWTConfig(), (req: Request, res, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false).then((session) => {
-        res.json(session);
-    }).catch((err: HttpError) => {
-        console.error(err)
-        if (err.statusCode) {
-            res.sendStatus(err.statusCode);
-        } else {
-            return next(err)
-        }
-    })
+    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false)
+        .then((session) => {
+            res.json(session);
+        })
+        .catch((err: HttpError) => {
+            console.error(err);
+            if (err.statusCode) {
+                return res.sendStatus(err.statusCode);
+            } else {
+                return next(err);
+            }
+        });
 });
 
 /**
@@ -271,22 +280,27 @@ router.get('/session/:session_id', validateWithJWTConfig(), (req: Request, res, 
  *           description: Server error
  */
 router.post('/session/:session_id/deface', validateWithJWTConfig(), (req: Request, res, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false).then((session) => {
-        fs.writeFile(`${config.workdir}/${session._id}/deface.json`, JSON.stringify(req.body), (err) => {
-            session.status = "deface";
-            session.status_msg = "Waiting to be defaced";
-            session.save().then(() => {
-                res.send("ok");
-            }).catch((err) => console.error(err))
+    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false)
+        .then((session) => {
+            fs.writeFile(`${config.workdir}/${session._id}/deface.json`, JSON.stringify(req.body), () => {
+                session.status = 'deface';
+                session.status_msg = 'Waiting to be defaced';
+                session
+                    .save()
+                    .then(() => {
+                        res.send('ok');
+                    })
+                    .catch((err) => console.error(err));
+            });
         })
-    }).catch((err: HttpError) => {
-        console.error(err)
-        if (err.statusCode) {
-            res.sendStatus(err.statusCode);
-        } else {
-            return next(err)
-        }
-    })
+        .catch((err: HttpError) => {
+            console.error(err);
+            if (err.statusCode) {
+                return res.sendStatus(err.statusCode);
+            } else {
+                return next(err);
+            }
+        });
 });
 
 /**
@@ -316,28 +330,33 @@ router.post('/session/:session_id/deface', validateWithJWTConfig(), (req: Reques
  *           description: Server error
  */
 router.post('/session/:session_id/canceldeface', validateWithJWTConfig(), (req: Request, res, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false).then((session) => {
-        fs.writeFile(`${config.workdir}/${session._id}/.cancel`, '', (err) => {
-            if (err) console.error(err);
+    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false)
+        .then((session) => {
+            fs.writeFile(`${config.workdir}/${session._id}/.cancel`, '', (err) => {
+                if (err) console.error(err);
 
-            session.status_msg = "requested to cancel defacing";
+                session.status_msg = 'requested to cancel defacing';
 
-            //handler should set the status when the job is killed so this shouldn't
-            //be necessary.. but right now kill() doesn't work.. so
-            session.deface_begin_date = undefined;
-            session.status = "analyzed";
-            session.save().then(() => {
-                res.send("ok");
-            }).catch((err) => console.error(err))
+                //handler should set the status when the job is killed so this shouldn't
+                //be necessary.. but right now kill() doesn't work.. so
+                session.deface_begin_date = undefined;
+                session.status = 'analyzed';
+                session
+                    .save()
+                    .then(() => {
+                        res.send('ok');
+                    })
+                    .catch((err) => console.error(err));
+            });
+        })
+        .catch((err: HttpError) => {
+            console.error(err);
+            if (err.statusCode) {
+                return res.sendStatus(err.statusCode);
+            } else {
+                return next(err);
+            }
         });
-    }).catch((err: HttpError) => {
-        console.error(err)
-        if (err.statusCode) {
-            res.sendStatus(err.statusCode);
-        } else {
-            return next(err)
-        }
-    })
 });
 
 /**
@@ -367,82 +386,100 @@ router.post('/session/:session_id/canceldeface', validateWithJWTConfig(), (req: 
  *           description: Server error
  */
 router.post('/session/:session_id/resetdeface', validateWithJWTConfig(), (req: Request, res, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false).then((session) => {
-        const workdir = `${config.workdir}/${session._id}`;
-        if (fs.existsSync(workdir + "/deface.finished")) {
-            fs.unlinkSync(workdir + "/deface.finished");
-        }
-        if (fs.existsSync(workdir + "/deface.failed")) {
-            fs.unlinkSync(workdir + "/deface.failed");
-        }
-        session.status = "analyzed";
-        session.status_msg = "reset defacing";
-        session.deface_begin_date = undefined;
-        session.deface_finish_date = undefined;
-        return session.save();
-    }).then(() => {
-        res.send("ok");
-    }).catch((err: HttpError) => {
-        console.error(err)
-        if (err.statusCode) {
-            res.sendStatus(err.statusCode);
-        } else {
-            return next(err)
-        }
-    })
+    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false)
+        .then((session) => {
+            const workdir = `${config.workdir}/${session._id}`;
+            if (fs.existsSync(workdir + '/deface.finished')) {
+                fs.unlinkSync(workdir + '/deface.finished');
+            }
+            if (fs.existsSync(workdir + '/deface.failed')) {
+                fs.unlinkSync(workdir + '/deface.failed');
+            }
+            session.status = 'analyzed';
+            session.status_msg = 'reset defacing';
+            session.deface_begin_date = undefined;
+            session.deface_finish_date = undefined;
+            return session.save();
+        })
+        .then(() => {
+            res.send('ok');
+        })
+        .catch((err: HttpError) => {
+            console.error(err);
+            if (err.statusCode) {
+                return res.sendStatus(err.statusCode);
+            } else {
+                return next(err);
+            }
+        });
 });
 
 router.post('/session/:session_id/finalize', validateWithJWTConfig(), (req: Request, res, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false).then((session) => {
-        fs.writeFile(`${config.workdir}/${session._id}/finalized.json`, JSON.stringify(req.body), (err) => {
-            if (err) console.error(err)
-            models.ezBIDS.findOneAndUpdate({ _session_id: session._id }, {
-                $set: {
-                    //TODO - store this somewhere for book keeping
-                    //updated: req.body, //finalized.json could exceed 16MB 
-                    update_date: new Date(),
-                }
-            }).then(() => {
-                session.status = "finalized";
-                session.status_msg = "Waiting to be finalized";
-                session.save().then(() => {
-                    res.send("ok");
-                }).catch((err) => { console.error(err) })
+    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false)
+        .then((session) => {
+            fs.writeFile(`${config.workdir}/${session._id}/finalized.json`, JSON.stringify(req.body), (err) => {
+                if (err) console.error(err);
+                models.ezBIDS
+                    .findOneAndUpdate(
+                        { _session_id: session._id },
+                        {
+                            $set: {
+                                //TODO - store this somewhere for book keeping
+                                //updated: req.body, //finalized.json could exceed 16MB
+                                update_date: new Date(),
+                            },
+                        }
+                    )
+                    .then(() => {
+                        session.status = 'finalized';
+                        session.status_msg = 'Waiting to be finalized';
+                        session
+                            .save()
+                            .then(() => {
+                                res.send('ok');
+                            })
+                            .catch((err) => {
+                                console.error(err);
+                            });
+                    });
             });
+        })
+        .catch((err: HttpError) => {
+            console.error(err);
+            if (err.statusCode) {
+                return res.sendStatus(err.statusCode);
+            } else {
+                return next(err);
+            }
         });
-    }).catch((err: HttpError) => {
-        console.error(err)
-        if (err.statusCode) {
-            res.sendStatus(err.statusCode);
-        } else {
-            return next(err)
-        }
-    })
 });
 
 //download finalized(updated) content
 router.get('/session/:session_id/updated', validateWithJWTConfig(), (req: Request, res, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false).then((session) => {
-        return models.ezBIDS.findOne({ _session_id: session._id })
-    }).then((ezBIDS) => {
-        if (!ezBIDS) {
-            res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'no such session or ezBIDS not finalized' })
-            return;
-        }
-        if (!ezBIDS.updated) {
-            res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'not yet finalized' })
-            return;
-        }
+    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false)
+        .then((session) => {
+            return models.ezBIDS.findOne({ _session_id: session._id });
+        })
+        .then((ezBIDS) => {
+            if (!ezBIDS) {
+                res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'no such session or ezBIDS not finalized' });
+                return;
+            }
+            if (!ezBIDS.updated) {
+                res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'not yet finalized' });
+                return;
+            }
 
-        res.status(HTTP_STATUS.OK).json(ezBIDS.updated)
-    }).catch((err: HttpError) => {
-        console.error(err)
-        if (err.statusCode) {
-            res.sendStatus(err.statusCode);
-        } else {
-            return next(err)
-        }
-    });
+            res.status(HTTP_STATUS.OK).json(ezBIDS.updated);
+        })
+        .catch((err: HttpError) => {
+            console.error(err);
+            if (err.statusCode) {
+                return res.sendStatus(err.statusCode);
+            } else {
+                return next(err);
+            }
+        });
 });
 
 /**
@@ -450,126 +487,139 @@ router.get('/session/:session_id/updated', validateWithJWTConfig(), (req: Reques
  * The user is authenticated via this route, receives a shortlived JWT, and then submits it in the URL here: /download/:session_id/*
  */
 router.get('/download/:session_id/token', validateWithJWTConfig(), (req: Request, res, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false).then((session) => {
-        const JWT = signJWT({ sessionId: session._id.toString() });
-        res.send(JWT);
-    }).catch((err: HttpError) => {
-        console.error(err)
-        if (err.statusCode) {
-            res.sendStatus(err.statusCode);
-        } else {
-            return next(err)
-        }
-    });
-})
+    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false)
+        .then((session) => {
+            const JWT = signJWT({ sessionId: session._id.toString() });
+            res.send(JWT);
+        })
+        .catch((err: HttpError) => {
+            console.error(err);
+            if (err.statusCode) {
+                return res.sendStatus(err.statusCode);
+            } else {
+                return next(err);
+            }
+        });
+});
 
 //let user download files within session (like the .png image generated by analyzer)
 router.get('/download/:session_id/*', (req, res, next) => {
     const jwt = req?.query?.token as string;
     if (!jwt) {
-        res.sendStatus(HTTP_STATUS.BAD_REQUEST)
+        res.sendStatus(HTTP_STATUS.BAD_REQUEST);
         return;
     }
 
     let validJWTPayload;
     try {
-        validJWTPayload = verifyJWT(jwt);
+        validJWTPayload = verifyJWT(jwt) as JwtPayload;
+        if (validJWTPayload === undefined) throw new Error('invalid - did not receive a jwt to verify');
     } catch (e) {
         res.sendStatus(HTTP_STATUS.UNAUTHORIZED);
         return;
     }
 
-    models.Session.findById((validJWTPayload as any)?.sessionId).then((session) => {
-        const basepath = config.workdir + "/" + session._id;
+    models.Session.findById(validJWTPayload?.sessionId)
+        .then((session) => {
+            const basepath = config.workdir + '/' + session._id;
 
-        //validate path so it will be inside the basepath
-        const fullpath = path.resolve(basepath + "/" + req.params[0]);
-        if (!fullpath.startsWith(basepath)) return next("invalid path");
+            //validate path so it will be inside the basepath
+            const fullpath = path.resolve(basepath + '/' + req.params[0]);
+            if (!fullpath.startsWith(basepath)) return next('invalid path');
 
-        //TODO - if requested path is a file, thenstream 
-        const stats = fs.lstatSync(fullpath);
-        if (stats.isFile()) {
-            res.setHeader('Content-disposition', 'attachment; filename=' + path.basename(fullpath));
-            res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
-            fs.createReadStream(fullpath).pipe(res);
-        } else if (stats.isDirectory()) {
-            res.setHeader('Content-disposition', 'attachment; filename=' + path.basename(fullpath) + ".zip");
-            res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
-            const archive = archiver('zip', {
-                zlib: { level: 0 }
-            });
-            archive.directory(fullpath, 'bids');
-            archive.finalize();
-            archive.pipe(res);
-
-        } else next("weird file");
-    }).catch((err) => {
-        if (err?.code === 'ENOENT') {
-            res.status(HTTP_STATUS.NOT_FOUND).json(err);
-            return;
-        }
-        next(err);
-    });
+            //TODO - if requested path is a file, thenstream
+            const stats = fs.lstatSync(fullpath);
+            if (stats.isFile()) {
+                res.setHeader('Content-disposition', 'attachment; filename=' + path.basename(fullpath));
+                res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+                return fs.createReadStream(fullpath).pipe(res);
+            } else if (stats.isDirectory()) {
+                res.setHeader('Content-disposition', 'attachment; filename=' + path.basename(fullpath) + '.zip');
+                res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+                const archive = archiver('zip', {
+                    zlib: { level: 0 },
+                });
+                archive.directory(fullpath, 'bids');
+                archive.finalize();
+                return archive.pipe(res);
+            } else return next('weird file');
+        })
+        .catch((err) => {
+            if (err?.code === 'ENOENT') {
+                return res.status(HTTP_STATUS.NOT_FOUND).json(err);
+            } else {
+                return next(err);
+            }
+        });
 });
 
 router.post('/upload-multi/:session_id', validateWithJWTConfig(), upload.any(), (req: any, res, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false).then(async (session) => {
+    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false)
+        .then(async (session) => {
+            //when a single file is uploaded paths becomes just a string. convert it to an array of 1
+            let paths = req.body.paths;
+            if (!Array.isArray(paths)) paths = [paths];
+            //same for mtimes
+            let mtimes = req.body.mtimes;
+            if (!Array.isArray(mtimes)) mtimes = [mtimes];
 
-        //when a single file is uploaded paths becomes just a string. convert it to an array of 1
-        let paths = req.body["paths"];
-        if (!Array.isArray(paths)) paths = [paths];
-        //same for mtimes
-        let mtimes = req.body["mtimes"];
-        if (!Array.isArray(mtimes)) mtimes = [mtimes];
+            let idx = -1;
+            async.eachSeries(
+                req.files,
+                (file: any, nextFile) => {
+                    idx++;
+                    const srcPath = file.path;
+                    const dirtyPath = `${config.workdir}/${session._id}/${paths[idx]}`;
+                    const destPath = path.resolve(dirtyPath);
+                    const mtime = mtimes[idx] / 1000; //browser uses msec.. filesystem uses sec since epoch
 
-        let idx = -1;
-        async.eachSeries(req.files, (file: any, next_file) => {
-            idx++;
-            const src_path = file.path;
-            const dirty_path = `${config.workdir}/${session._id}/${paths[idx]}`
-            const dest_path = path.resolve(dirty_path);
-            const mtime = mtimes[idx] / 1000; //browser uses msec.. filesystem uses sec since epoch
+                    if (!destPath.startsWith(config.workdir)) {
+                        return nextFile(new Error(`invalid path: ${destPath}`));
+                    }
+                    const destdir = path.dirname(destPath);
 
-            if (!dest_path.startsWith(config.workdir)) return next_file(new Error(`invalid path: ${dest_path}`));
-            const destdir = path.dirname(dest_path);
-
-            //move the file over to workdir
-            const made = mkdirp.sync(destdir);
-            fs.renameSync(src_path, dest_path);
-            if (mtime) fs.utimesSync(dest_path, mtime, mtime);
-            next_file();
-        }, (err) => {
-            if (err) return next(err);
-            res.send("ok");
+                    //move the file over to workdir
+                    mkdirp.sync(destdir);
+                    fs.renameSync(srcPath, destPath);
+                    if (mtime) fs.utimesSync(destPath, mtime, mtime);
+                    return nextFile();
+                },
+                (err) => {
+                    if (err) return next(err);
+                    return res.send('ok');
+                }
+            );
+        })
+        .catch((err: HttpError) => {
+            console.error(err);
+            if (err.statusCode) {
+                return res.sendStatus(err.statusCode);
+            } else {
+                return next(err);
+            }
         });
-
-    }).catch((err: HttpError) => {
-        console.error(err)
-        if (err.statusCode) {
-            res.sendStatus(err.statusCode);
-        } else {
-            return next(err)
-        }
-    });
 });
 
 //done uploading.
 router.patch('/session/uploaded/:session_id', validateWithJWTConfig(), (req: Request, res, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false).then((session) => {
-        session.status = "uploaded";
-        session.status_msg = "Waiting in the queue..";
-        session.upload_finish_date = new Date();
-        return session.save();
-    }).then(() => {
-        res.send('ok');
-    }).catch((err: HttpError) => {
-        console.error(err)
-        if (err.statusCode) {
-            res.sendStatus(err.statusCode);
-        } else {
-            return next(err)
-        }
-    });
+    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false)
+        .then((session) => {
+            session.status = 'uploaded';
+            session.status_msg = 'Waiting in the queue..';
+            session.upload_finish_date = new Date();
+            return session.save();
+        })
+        .then(() => {
+            res.send('ok');
+        })
+        .catch((err: HttpError) => {
+            console.error(err);
+            if (err.statusCode) {
+                return res.sendStatus(err.statusCode);
+            } else {
+                return next(err);
+            }
+        });
 });
 
 module.exports = router;

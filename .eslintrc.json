@@ -12,14 +12,15 @@
         "prettier"
     ],
     "rules": {
-        "no-console": "error",
+        "no-console": ["warn", { "allow": ["warn", "error", "debug"] }],
+        "@typescript-eslint/no-explicit-any": "warn",
         "no-duplicate-imports": "error",
         "prettier/prettier": "error",
         "no-self-compare": "error",
         "no-use-before-define": "error",
         "consistent-return": "error",
-        "max-depth": ["error", { "max": 4 }],
-        "max-nested-callbacks": ["error", { "max": 4 }],
+        "max-depth": ["warn", { "max": 4 }],
+        "max-nested-callbacks": ["warn", { "max": 4 }],
         "eqeqeq": "error",
         "camelcase": "warn",
         "default-case": "warn",
