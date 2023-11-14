@@ -2136,6 +2136,18 @@ def entity_labels_identification(dataset_list_unique_series, lookup_dic):
 
             # If BIDS naming convention isn't detected, do a more thorough check for certain entities labels
 
+            # Specific code for Nigerian dataset only (revert these changes once dataset is converted)
+            sd = re.sub("[^A-Za-z0-9]+", "", sd).lower()
+            if sd[-1] == "c":
+                series_entities["ceagent"] = "gadolinium"
+            if any(x in sd for x in ["axial", "ax", "axi"]):
+                series_entities["acquisition"] = "axial"
+            if any(x in sd for x in ["cor", "coronal"]):
+                series_entities["acquisition"] = "coronal"
+            if any(x in sd for x in ["sag", "sagittal"]):
+                series_entities["acquisition"] = "sagittal"
+            
+
             # task
             func_rest_keys = ["rest", "rsfmri", "fcmri"]
             if any(x in re.sub("[^A-Za-z0-9]+", "", sd).lower() for x in func_rest_keys) and not series_entities["task"]:
