@@ -41,7 +41,34 @@ export function disconnect(cb) {
 // upload sessions
 //
 
-const sessionSchema = new Schema({
+export interface ISession {
+    create_date: Date;
+    update_date: Date;
+
+    ownerId: number;
+    allowedUsers: number[];
+
+    request_headers: any;
+    upload_finish_date: Date;
+
+    pre_begin_date: Date;
+    pre_finish_date: Date;
+
+    deface_begin_date: Date;
+    deface_finish_date: Date;
+
+    finalize_begin_date: Date;
+    finalize_finish_date: Date;
+
+    status: string;
+
+    dicomCount: number;
+    dicomDone: number;
+
+    status_msg: string;
+}
+
+const sessionSchema = new Schema<ISession>({
     create_date: { type: Date, default: Date.now },
     update_date: { type: Date, default: Date.now },
 

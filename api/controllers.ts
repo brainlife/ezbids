@@ -1,8 +1,8 @@
 import * as express from 'express';
 import { Request } from 'express-jwt';
+import { JwtPayload } from 'jsonwebtoken';
 import { signJWT, validateWithJWTConfig, verifyJWT } from './auth';
-import { HttpError } from './controllers.errors';
-import { HTTP_STATUS, userCanAccessSession } from './controllers.utils';
+import { EzBIDSAuthRequestObject, HTTP_STATUS, validateUserCanAccessSession } from './controllers.utils';
 import multer = require('multer');
 import path = require('path');
 import fs = require('fs');
@@ -12,7 +12,6 @@ import async = require('async');
 
 import config = require('./config');
 import models = require('./models');
-import { JwtPayload } from 'jsonwebtoken';
 
 console.debug(config.multer);
 const upload = multer(config.multer);
@@ -152,24 +151,23 @@ router.post('/session', validateWithJWTConfig(), (req: Request, res: express.Res
  *              500:
  *                  description: Server error
  */
-router.patch('/session/:session_id', validateWithJWTConfig(), (req: Request, res: express.Response, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, true)
-        .then((session) => {
-            session.allowedUsers = req.body.allowedUsers;
-            return session.save();
-        })
-        .then(() => {
-            res.send('ok');
-        })
-        .catch((err: HttpError) => {
-            console.error(err);
-            if (err.statusCode) {
-                return res.sendStatus(err.statusCode);
-            } else {
+router.patch(
+    '/session/:session_id',
+    validateWithJWTConfig(),
+    validateUserCanAccessSession(true),
+    (req: EzBIDSAuthRequestObject, res, next) => {
+        const session = req.ezBIDS.session;
+        session.allowedUsers = req.body.allowedUsers;
+        return session
+            .save()
+            .then(() => {
+                res.send('ok');
+            })
+            .catch((err) => {
                 return next(err);
-            }
-        });
-});
+            });
+    }
+);
 
 /**
  * @swagger
@@ -231,20 +229,14 @@ router.patch('/session/:session_id', validateWithJWTConfig(), (req: Request, res
  *           format: date-time
  *           description: Finish date of file upload
  */
-router.get('/session/:session_id', validateWithJWTConfig(), (req: Request, res, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false)
-        .then((session) => {
-            res.json(session);
-        })
-        .catch((err: HttpError) => {
-            console.error(err);
-            if (err.statusCode) {
-                return res.sendStatus(err.statusCode);
-            } else {
-                return next(err);
-            }
-        });
-});
+router.get(
+    '/session/:session_id',
+    validateWithJWTConfig(),
+    validateUserCanAccessSession(false),
+    (req: EzBIDSAuthRequestObject, res) => {
+        return res.json(req.ezBIDS.session);
+    }
+);
 
 /**
  * @swagger
@@ -279,29 +271,24 @@ router.get('/session/:session_id', validateWithJWTConfig(), (req: Request, res, 
  *         500:
  *           description: Server error
  */
-router.post('/session/:session_id/deface', validateWithJWTConfig(), (req: Request, res, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false)
-        .then((session) => {
-            fs.writeFile(`${config.workdir}/${session._id}/deface.json`, JSON.stringify(req.body), () => {
-                session.status = 'deface';
-                session.status_msg = 'Waiting to be defaced';
-                session
-                    .save()
-                    .then(() => {
-                        res.send('ok');
-                    })
-                    .catch((err) => console.error(err));
-            });
-        })
-        .catch((err: HttpError) => {
-            console.error(err);
-            if (err.statusCode) {
-                return res.sendStatus(err.statusCode);
-            } else {
-                return next(err);
-            }
+router.post(
+    '/session/:session_id/deface',
+    validateWithJWTConfig(),
+    validateUserCanAccessSession(false),
+    (req: EzBIDSAuthRequestObject, res, next) => {
+        const session = req.ezBIDS.session;
+        fs.writeFile(`${config.workdir}/${session._id}/deface.json`, JSON.stringify(req.body), () => {
+            session.status = 'deface';
+            session.status_msg = 'Waiting to be defaced';
+            session
+                .save()
+                .then(() => {
+                    return res.send('ok');
+                })
+                .catch((err) => next(err));
         });
-});
+    }
+);
 
 /**
  * @swagger
@@ -329,35 +316,31 @@ router.post('/session/:session_id/deface', validateWithJWTConfig(), (req: Reques
  *         500:
  *           description: Server error
  */
-router.post('/session/:session_id/canceldeface', validateWithJWTConfig(), (req: Request, res, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false)
-        .then((session) => {
-            fs.writeFile(`${config.workdir}/${session._id}/.cancel`, '', (err) => {
-                if (err) console.error(err);
+router.post(
+    '/session/:session_id/canceldeface',
+    validateWithJWTConfig(),
+    validateUserCanAccessSession(false),
+    (req: EzBIDSAuthRequestObject, res, next) => {
+        const session = req.ezBIDS.session;
 
-                session.status_msg = 'requested to cancel defacing';
+        fs.writeFile(`${config.workdir}/${session._id}/.cancel`, '', (err) => {
+            if (err) console.error(err);
 
-                //handler should set the status when the job is killed so this shouldn't
-                //be necessary.. but right now kill() doesn't work.. so
-                session.deface_begin_date = undefined;
-                session.status = 'analyzed';
-                session
-                    .save()
-                    .then(() => {
-                        res.send('ok');
-                    })
-                    .catch((err) => console.error(err));
-            });
-        })
-        .catch((err: HttpError) => {
-            console.error(err);
-            if (err.statusCode) {
-                return res.sendStatus(err.statusCode);
-            } else {
-                return next(err);
-            }
+            session.status_msg = 'requested to cancel defacing';
+
+            //handler should set the status when the job is killed so this shouldn't
+            //be necessary.. but right now kill() doesn't work.. so
+            session.deface_begin_date = undefined;
+            session.status = 'analyzed';
+            session
+                .save()
+                .then(() => {
+                    return res.send('ok');
+                })
+                .catch((err) => next(err));
         });
-});
+    }
+);
 
 /**
  * @swagger
@@ -385,122 +368,109 @@ router.post('/session/:session_id/canceldeface', validateWithJWTConfig(), (req: 
  *         500:
  *           description: Server error
  */
-router.post('/session/:session_id/resetdeface', validateWithJWTConfig(), (req: Request, res, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false)
-        .then((session) => {
-            const workdir = `${config.workdir}/${session._id}`;
-            if (fs.existsSync(workdir + '/deface.finished')) {
-                fs.unlinkSync(workdir + '/deface.finished');
-            }
-            if (fs.existsSync(workdir + '/deface.failed')) {
-                fs.unlinkSync(workdir + '/deface.failed');
-            }
-            session.status = 'analyzed';
-            session.status_msg = 'reset defacing';
-            session.deface_begin_date = undefined;
-            session.deface_finish_date = undefined;
-            return session.save();
-        })
-        .then(() => {
-            res.send('ok');
-        })
-        .catch((err: HttpError) => {
-            console.error(err);
-            if (err.statusCode) {
-                return res.sendStatus(err.statusCode);
-            } else {
-                return next(err);
-            }
-        });
-});
+router.post(
+    '/session/:session_id/resetdeface',
+    validateWithJWTConfig(),
+    validateUserCanAccessSession(false),
+    (req: EzBIDSAuthRequestObject, res, next) => {
+        const session = req.ezBIDS.session;
 
-router.post('/session/:session_id/finalize', validateWithJWTConfig(), (req: Request, res, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false)
-        .then((session) => {
-            fs.writeFile(`${config.workdir}/${session._id}/finalized.json`, JSON.stringify(req.body), (err) => {
-                if (err) console.error(err);
-                models.ezBIDS
-                    .findOneAndUpdate(
-                        { _session_id: session._id },
-                        {
-                            $set: {
-                                //TODO - store this somewhere for book keeping
-                                //updated: req.body, //finalized.json could exceed 16MB
-                                update_date: new Date(),
-                            },
-                        }
-                    )
-                    .then(() => {
-                        session.status = 'finalized';
-                        session.status_msg = 'Waiting to be finalized';
-                        session
-                            .save()
-                            .then(() => {
-                                res.send('ok');
-                            })
-                            .catch((err) => {
-                                console.error(err);
-                            });
-                    });
-            });
-        })
-        .catch((err: HttpError) => {
-            console.error(err);
-            if (err.statusCode) {
-                return res.sendStatus(err.statusCode);
-            } else {
-                return next(err);
-            }
+        const workdir = `${config.workdir}/${session._id}`;
+        if (fs.existsSync(workdir + '/deface.finished')) {
+            fs.unlinkSync(workdir + '/deface.finished');
+        }
+        if (fs.existsSync(workdir + '/deface.failed')) {
+            fs.unlinkSync(workdir + '/deface.failed');
+        }
+        session.status = 'analyzed';
+        session.status_msg = 'reset defacing';
+        session.deface_begin_date = undefined;
+        session.deface_finish_date = undefined;
+        session
+            .save()
+            .then(() => {
+                return res.send('ok');
+            })
+            .catch((err) => next(err));
+    }
+);
+
+router.post(
+    '/session/:session_id/finalize',
+    validateWithJWTConfig(),
+    validateUserCanAccessSession(false),
+    (req: EzBIDSAuthRequestObject, res, next) => {
+        const session = req.ezBIDS.session;
+
+        fs.writeFile(`${config.workdir}/${session._id}/finalized.json`, JSON.stringify(req.body), (err) => {
+            if (err) console.error(err);
+            models.ezBIDS
+                .findOneAndUpdate(
+                    { _session_id: session._id },
+                    {
+                        $set: {
+                            //TODO - store this somewhere for book keeping
+                            //updated: req.body, //finalized.json could exceed 16MB
+                            update_date: new Date(),
+                        },
+                    }
+                )
+                .then(() => {
+                    session.status = 'finalized';
+                    session.status_msg = 'Waiting to be finalized';
+                    session
+                        .save()
+                        .then(() => {
+                            res.send('ok');
+                        })
+                        .catch((err) => next(err));
+                })
+                .catch((err) => next(err));
         });
-});
+    }
+);
 
 //download finalized(updated) content
-router.get('/session/:session_id/updated', validateWithJWTConfig(), (req: Request, res, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false)
-        .then((session) => {
-            return models.ezBIDS.findOne({ _session_id: session._id });
-        })
-        .then((ezBIDS) => {
-            if (!ezBIDS) {
-                res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'no such session or ezBIDS not finalized' });
-                return;
-            }
-            if (!ezBIDS.updated) {
-                res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'not yet finalized' });
-                return;
-            }
+router.get(
+    '/session/:session_id/updated',
+    validateWithJWTConfig(),
+    validateUserCanAccessSession(false),
+    (req: EzBIDSAuthRequestObject, res, next) => {
+        const session = req.ezBIDS.session;
 
-            res.status(HTTP_STATUS.OK).json(ezBIDS.updated);
-        })
-        .catch((err: HttpError) => {
-            console.error(err);
-            if (err.statusCode) {
-                return res.sendStatus(err.statusCode);
-            } else {
-                return next(err);
-            }
-        });
-});
+        models.ezBIDS
+            .findOne({ _session_id: session._id })
+            .then((ezBIDS) => {
+                if (!ezBIDS) {
+                    return res
+                        .status(HTTP_STATUS.NOT_FOUND)
+                        .json({ message: 'no such session or ezBIDS not finalized' });
+                }
+
+                if (!ezBIDS.updated) {
+                    return res.status(HTTP_STATUS.NOT_FOUND).json({ message: 'not yet finalized' });
+                }
+
+                return res.status(HTTP_STATUS.OK).json(ezBIDS.updated);
+            })
+            .catch((err) => next(err));
+    }
+);
 
 /**
  * This route exists in order to authenticate users trying to download server files via /download/:session_id/*
  * The user is authenticated via this route, receives a shortlived JWT, and then submits it in the URL here: /download/:session_id/*
  */
-router.get('/download/:session_id/token', validateWithJWTConfig(), (req: Request, res, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false)
-        .then((session) => {
-            const JWT = signJWT({ sessionId: session._id.toString() });
-            res.send(JWT);
-        })
-        .catch((err: HttpError) => {
-            console.error(err);
-            if (err.statusCode) {
-                return res.sendStatus(err.statusCode);
-            } else {
-                return next(err);
-            }
-        });
-});
+router.get(
+    '/download/:session_id/token',
+    validateWithJWTConfig(),
+    validateUserCanAccessSession(false),
+    (req: EzBIDSAuthRequestObject, res) => {
+        const session = req.ezBIDS.session;
+        const JWT = signJWT({ sessionId: session._id.toString() });
+        return res.send(JWT);
+    }
+);
 
 //let user download files within session (like the .png image generated by analyzer)
 router.get('/download/:session_id/*', (req, res, next) => {
@@ -553,73 +523,69 @@ router.get('/download/:session_id/*', (req, res, next) => {
         });
 });
 
-router.post('/upload-multi/:session_id', validateWithJWTConfig(), upload.any(), (req: any, res, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false)
-        .then(async (session) => {
-            //when a single file is uploaded paths becomes just a string. convert it to an array of 1
-            let paths = req.body.paths;
-            if (!Array.isArray(paths)) paths = [paths];
-            //same for mtimes
-            let mtimes = req.body.mtimes;
-            if (!Array.isArray(mtimes)) mtimes = [mtimes];
+router.post(
+    '/upload-multi/:session_id',
+    validateWithJWTConfig(),
+    validateUserCanAccessSession(false),
+    upload.any(),
+    (req: any, res, next) => {
+        const session = req.ezBIDS.session;
 
-            let idx = -1;
-            async.eachSeries(
-                req.files,
-                (file: any, nextFile) => {
-                    idx++;
-                    const srcPath = file.path;
-                    const dirtyPath = `${config.workdir}/${session._id}/${paths[idx]}`;
-                    const destPath = path.resolve(dirtyPath);
-                    const mtime = mtimes[idx] / 1000; //browser uses msec.. filesystem uses sec since epoch
+        //when a single file is uploaded paths becomes just a string. convert it to an array of 1
+        let paths = req.body.paths;
+        if (!Array.isArray(paths)) paths = [paths];
+        //same for mtimes
+        let mtimes = req.body.mtimes;
+        if (!Array.isArray(mtimes)) mtimes = [mtimes];
 
-                    if (!destPath.startsWith(config.workdir)) {
-                        return nextFile(new Error(`invalid path: ${destPath}`));
-                    }
-                    const destdir = path.dirname(destPath);
+        let idx = -1;
+        async.eachSeries(
+            req.files,
+            (file: any, nextFile) => {
+                idx++;
+                const srcPath = file.path;
+                const dirtyPath = `${config.workdir}/${session._id}/${paths[idx]}`;
+                const destPath = path.resolve(dirtyPath);
+                const mtime = mtimes[idx] / 1000; //browser uses msec.. filesystem uses sec since epoch
 
-                    //move the file over to workdir
-                    mkdirp.sync(destdir);
-                    fs.renameSync(srcPath, destPath);
-                    if (mtime) fs.utimesSync(destPath, mtime, mtime);
-                    return nextFile();
-                },
-                (err) => {
-                    if (err) return next(err);
-                    return res.send('ok');
+                if (!destPath.startsWith(config.workdir)) {
+                    return nextFile(new Error(`invalid path: ${destPath}`));
                 }
-            );
-        })
-        .catch((err: HttpError) => {
-            console.error(err);
-            if (err.statusCode) {
-                return res.sendStatus(err.statusCode);
-            } else {
-                return next(err);
+                const destdir = path.dirname(destPath);
+
+                //move the file over to workdir
+                mkdirp.sync(destdir);
+                fs.renameSync(srcPath, destPath);
+                if (mtime) fs.utimesSync(destPath, mtime, mtime);
+                return nextFile();
+            },
+            (err) => {
+                if (err) return next(err);
+                return res.send('ok');
             }
-        });
-});
+        );
+    }
+);
 
 //done uploading.
-router.patch('/session/uploaded/:session_id', validateWithJWTConfig(), (req: Request, res, next) => {
-    userCanAccessSession(req.params.session_id, req.auth.sub as unknown as number, false)
-        .then((session) => {
-            session.status = 'uploaded';
-            session.status_msg = 'Waiting in the queue..';
-            session.upload_finish_date = new Date();
-            return session.save();
-        })
-        .then(() => {
-            res.send('ok');
-        })
-        .catch((err: HttpError) => {
-            console.error(err);
-            if (err.statusCode) {
-                return res.sendStatus(err.statusCode);
-            } else {
+router.patch(
+    '/session/uploaded/:session_id',
+    validateWithJWTConfig(),
+    validateUserCanAccessSession(false),
+    (req: EzBIDSAuthRequestObject, res, next) => {
+        const session = req.ezBIDS.session;
+        session.status = 'uploaded';
+        session.status_msg = 'Waiting in the queue..';
+        session.upload_finish_date = new Date();
+        session
+            .save()
+            .then(() => {
+                return res.send('ok');
+            })
+            .catch((err) => {
                 return next(err);
-            }
-        });
-});
+            });
+    }
+);
 
 module.exports = router;

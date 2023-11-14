@@ -1,7 +1,7 @@
-// import { NextFunction, Response } from 'express';
-// import { Request } from 'express-jwt';
-import { BadRequestHttpError, NotFoundHttpError, UnauthorizedHttpError } from './controllers.errors';
-import { Session } from './models';
+import { NextFunction, Response } from 'express';
+import { Request } from 'express-jwt';
+import { ISession, Session } from './models';
+import { Types, Document } from 'mongoose';
 
 export enum HTTP_STATUS {
     OK = 200,
@@ -11,43 +11,51 @@ export enum HTTP_STATUS {
     INTERNAL_SERVER_ERROR = 500,
 }
 
-// export const test = (onlyOwnerCanAccess: boolean) => {
-//     return (req: Request, res: Response, next: NextFunction) => {
-//         const sessionId = req.params.session_id;
-//         const userId = req.auth.sub as unknown as number;
-//         if (!sessionId || !userId) return Promise.reject(new BadRequestHttpError('bad request'));
+export type EzBIDSAuthRequestObject = Request & {
+    ezBIDS: {
+        session: Document<unknown, any, ISession> &
+            Omit<
+                ISession & {
+                    _id: Types.ObjectId;
+                },
+                never
+            >;
+    };
+};
 
-//         return Session.findById(sessionId).then((session) => {
-//             if (!session) throw new NotFoundHttpError('could not find session with ID: ' + sessionId);
+export const validateUserCanAccessSession = (onlyOwnerCanAccess: boolean) => {
+    return (req: EzBIDSAuthRequestObject, res: Response, next: NextFunction) => {
+        const sessionId = req.params.session_id;
+        const userId = req.auth.sub as unknown as number;
 
-//             const isOwner = userId === (session.ownerId || '');
-//             const isInAllowedUserList = session.allowedUsers.some((allowedUser) => allowedUser === userId);
-
-//             if (onlyOwnerCanAccess && !isOwner) {
-//                 throw new UnauthorizedHttpError('unauthorized user');
-//             } else if (!onlyOwnerCanAccess && !isOwner && !isInAllowedUserList) {
-//                 throw new UnauthorizedHttpError('unauthorized user');
-//             }
-
-//             return session;
-//         });
-//     };
-// };
-
-export const userCanAccessSession = (sessionId: string, userId: number, onlyOwnerCanAccess: boolean) => {
-    if (!sessionId || !userId) return Promise.reject(new BadRequestHttpError('bad request'));
-    return Session.findById(sessionId).then((session) => {
-        if (!session) throw new NotFoundHttpError('could not find session with ID: ' + sessionId);
-
-        const isOwner = userId === (session.ownerId || '');
-        const isInAllowedUserList = session.allowedUsers.some((allowedUser) => allowedUser === userId);
-
-        if (onlyOwnerCanAccess && !isOwner) {
-            throw new UnauthorizedHttpError('unauthorized user');
-        } else if (!onlyOwnerCanAccess && !isOwner && !isInAllowedUserList) {
-            throw new UnauthorizedHttpError('unauthorized user');
+        if (!sessionId || !userId) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({ err: 'No sessionId or userId found' });
         }
 
-        return session;
-    });
+        return Session.findById(sessionId)
+            .then((session) => {
+                if (!session)
+                    return res
+                        .status(HTTP_STATUS.BAD_REQUEST)
+                        .json({ err: 'Could not find session with ID: ' + sessionId });
+
+                const isOwner = userId === (session.ownerId || '');
+                const isInAllowedUserList = session.allowedUsers.some((allowedUser) => allowedUser === userId);
+
+                if (onlyOwnerCanAccess && !isOwner) {
+                    return res.status(HTTP_STATUS.UNAUTHORIZED).json({ err: 'unauthorized' });
+                } else if (!onlyOwnerCanAccess && !isOwner && !isInAllowedUserList) {
+                    return res.status(HTTP_STATUS.UNAUTHORIZED).json({ err: 'unauthorized' });
+                }
+
+                req.ezBIDS = {
+                    session,
+                };
+                return next();
+            })
+            .catch((err) => {
+                console.error(err);
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send({ err: 'internal server error' });
+            });
+    };
 };

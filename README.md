@@ -124,6 +124,7 @@ There are a few safeguards active:
 3. A `.vscode/settings.json` file is attached to this repository, which configures VSCode to allow formatting of files on save and on paste.
 
 Make sure that you run npm install to install husky if you have not already.
+*You must run npm run prepare-husky* the firs time you touch the project in order to initialize git hooks.
 
 > You can run `npm run lint-staged` at any time in order to run a style check on the staged files.
 > `lint-staged` makes a call to prettier and eslint to check if there are any files that do not adhere to the code standard.
