@@ -74,9 +74,7 @@
                 <el-radio v-model="anat.defaceSelection" label="original">Use Original</el-radio>
                 <div v-for="(item, itemIdx) in anat.items" :key="itemIdx">
                     <div v-if="item.pngPaths">
-                        <a :href="getURL(item.pngPaths[0])">
-                            <img style="width: 100%" :src="getURL(item.pngPaths[0])"/>
-                        </a>
+                        <AsyncImageLink :path="item.pngPaths[0]" />
                         <el-button type="info" @click="$emit('niivue', item.path)" style="position: absolute; top: 50px; left: 5px" size="small">
                             <font-awesome-icon :icon="['fas', 'eye']"/>
                             NiiVue
@@ -87,9 +85,7 @@
             <td width="40%" style="position: relative">
                 <el-radio v-model="anat.defaceSelection" label="defaced">Use Defaced (when finish defacing)</el-radio>
                 <div v-if="anat.defaced">
-                    <a :href="getURL(getDefacedURL(anat)+'.png')" v-if="anat.defaced">
-                        <img style="width: 100%" :src="getURL(getDefacedURL(anat)+'.png')+'?nocache='+Date.now()"/>
-                    </a>
+                    <AsyncImageLink :path="`${getDefacedURL(anat)}.png`" />
                     <el-button type="info" @click="$emit('niivue', getDefacedURL(anat))" style="position: absolute; top: 50px; left: 5px;" size="small">
                         <font-awesome-icon :icon="['fas', 'eye']"/>
                         NiiVue
@@ -115,15 +111,16 @@ import { mapState, mapGetters, } from 'vuex'
 import { defineComponent } from 'vue'
 import datatype from './components/datatype.vue'
 import niivue from './components/niivue.vue'
-
 import { IObject } from './store'
-
 import { ElNotification } from 'element-plus'
+import axios from './axios.instance';
+import AsyncImageLink from './components/AsyncImageLink.vue'
 
 export default defineComponent({
     components: {
         datatype,
         niivue,
+        AsyncImageLink
     },
 
     /*
@@ -142,7 +139,7 @@ export default defineComponent({
 
     computed: {
         ...mapState(['ezbids', 'config', 'session', 'bidsSchema']),
-        ...mapGetters(['getBIDSEntities', 'getURL']),
+        ...mapGetters(['getBIDSEntities']),
 
         isDefacing() {
             if(!this.$store.state.session) return false;
@@ -177,25 +174,19 @@ export default defineComponent({
         },
 
         cancel() {
-            fetch(this.config.apihost+'/session/'+this.session._id+'/canceldeface', {
-                method: "POST",
-                headers: {'Content-Type': 'application/json; charset=UTF-8'},
-            }).then(res=>res.text()).then(status=>{
-                if(status != "ok") {
+            axios.post(`${this.config.apihost}/session/${this.session._id}/canceldeface`).then((res) => {
+                if (res.data !== 'ok') {
                     ElNotification({ title: 'Failed', message: 'Failed to cancel defacing'});
                 } else {
                     ElNotification({ title: 'Success', message: 'Requested to cancel defacing..'});
                 }
                 this.$store.dispatch("loadSession", this.session._id);
-            });
+            })
         },
 
         reset() {
-            fetch(this.config.apihost+'/session/'+this.session._id+'/resetdeface', {
-                method: "POST",
-                headers: {'Content-Type': 'application/json; charset=UTF-8'},
-            }).then(res=>res.text()).then(status=>{
-                if(status != "ok") {
+            axios.post(`${this.config.apihost}/session/${this.session._id}/resetdeface`).then((res) => {
+                if (res.data !== 'ok') {
                     ElNotification({ title: 'Failed', message: 'Failed to reset defacing'});
                 }
                 this.anatObjects.forEach((anat: IObject)=>{
@@ -204,7 +195,7 @@ export default defineComponent({
                     anat.defaceSelection = "defaced";
                 });
                 this.$store.dispatch("loadSession", this.session._id);
-            });
+            })
         },
 
         runDeface() {
@@ -217,20 +208,15 @@ export default defineComponent({
                 delete o.defaced;
             });
 
-            fetch(this.config.apihost+'/session/'+this.session._id+'/deface', {
-                method: "POST",
-                headers: {'Content-Type': 'application/json; charset=UTF-8'},
-                body: JSON.stringify({
-                    list,
-                    method: this.ezbids.defacingMethod,
-                }),
-            }).then(res=>res.text()).then(status=>{
-                if(status != "ok") {
+            axios.post(`${this.config.apihost}/session/${this.session._id}/deface`, {
+                list,
+                method: this.ezbids.defacingMethod
+            }).then((res) => {
+                if (res.data !== 'ok') {
                     ElNotification({ title: 'Failed', message: 'Failed to submit deface request'});
                 }
                 this.$store.dispatch("loadSession", this.session._id);
-                //this.$root.pollSession();
-            });
+            })
         },
 
         isValid(cb: (v?: string)=>void) {

@@ -7,10 +7,11 @@
 <script lang="ts">
 
 import { defineComponent } from 'vue'
-import { mapGetters, } from 'vuex'
+import { mapState, } from 'vuex'
 
 // @ts-ignore
 import { Niivue } from '@niivue/niivue'
+import axios from '../axios.instance';
 
 const nv = new Niivue({
     dragAndDropEnabled: false
@@ -35,24 +36,26 @@ export default defineComponent({
     },
 
     computed: {
-        ...mapGetters(['getURL']),
+        ...mapState(['session', 'config'])
     },
 
     methods: {
         load() {
-            console.log("loading NiiVue", this.path);
-            this.open = true;
-            this.$nextTick(()=>{
-                console.log("canvas", this.$refs.canvas)
-                nv.attachToCanvas(this.$refs.canvas);
-                nv.loadVolumes([{
-                    url: this.getURL(this.path),
-                    volume: {hdr: null, img: null},
-                    colorMap: "gray",
-                    opacity: 1,
-                    visible: true,
-                }]);
+            axios.get(`${this.config.apihost}/download/${this.session._id}/token`).then((res) => {
+                const url = `${this.config.apihost}/download/${this.session._id}/${this.path}?token=${res.data}`;
+                this.open = true;
+                this.$nextTick(()=>{
+                    nv.attachToCanvas(this.$refs.canvas);
+                    nv.loadVolumes([{
+                        url: url,
+                        volume: {hdr: null, img: null},
+                        colorMap: "gray",
+                        opacity: 1,
+                        visible: true,
+                    }]);
+                })
             })
+
         },
 
         close() {

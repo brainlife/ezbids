@@ -279,7 +279,7 @@ export default defineComponent({
 
     computed: {
         ...mapState(['ezbids', 'config', 'bidsSchema', 'events']),
-        ...mapGetters(['getBIDSEntities', 'getURL', 'findSubject']),
+        ...mapGetters(['getBIDSEntities', 'findSubject']),
 
         columns() {
             return this.ezbids.events.columns;

@@ -13,14 +13,13 @@
         "sourceType": "module"
     },
     "rules": {
-        "no-console": "error",
         "no-duplicate-imports": "error",
         "prettier/prettier": "error",
         "vue/no-unused-vars": "error",
         "vue/first-attribute-linebreak": [
             "warn",
             {
-                "singleline": "beside",
+                "singleline": "ignore",
                 "multiline": "below"
             }
         ],

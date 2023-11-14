@@ -6,11 +6,11 @@
     <small>Define phenotypical keys stored for this study (optional).</small>
     <br><br>
     <el-form>
-        <div v-for="(column, idx) in ezbids.participantsColumn" :key="key" class="columnEditor">
+        <div v-for="(column, idx) in ezbids.participantsColumn" :key="idx" class="columnEditor">
             <span style="float: right">
                 <el-button type="danger" @click="remove(idx)" size="mini"><Remove style="width: 16px;"/></el-button>
             </span>
-            <b>{{key}}</b>
+            <b>{{idx}}</b>
             <br>
             <br clear="both">
             <el-form-item label="Long Name">
@@ -118,6 +118,8 @@ export default defineComponent({
     methods: {
         addNewColumn() {
             if(!this.newcolumn) return;
+            if (this.ezbids.participantsColumn && this.ezbids.participantsColumn[this.newcolumn]) return;
+
             this.ezbids.participantsColumn[this.newcolumn] = {
                 LongName: "",
                 Description: "",

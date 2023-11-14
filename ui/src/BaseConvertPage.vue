@@ -34,11 +34,29 @@
                 <li :class="{ active: page === 'feedback' }">Feedback</li>
             </ul>
 
-            <p class="menu-footer" style="font-size: 150%">
-                <a href="https://github.com/brainlife/ezbids" target="github">
-                    <font-awesome-icon :icon="['fab', 'github']" />
-                </a>
-            </p>
+            <div class="menu-footer">
+                <el-tooltip content="Open brainlife">
+                    <a href="https://brainlife.io" target="_blank" style="display: flex">
+                        <img src="./assets/bl_logo.png" class="menu-footer-icon" alt="brainlife logo" />
+                    </a>
+                </el-tooltip>
+                <el-tooltip content="Open github">
+                    <a href="https://github.com/brainlife/ezbids" target="github">
+                        <font-awesome-icon class="menu-footer-icon" :icon="['fab', 'github']" />
+                    </a>
+                </el-tooltip>
+                <el-tooltip content="Open documentation">
+                    <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank">
+                        <font-awesome-icon class="menu-footer-icon" :icon="['fa', 'book']" />
+                    </a>
+                </el-tooltip>
+            </div>
+            
+            <ManageUsersDialog></ManageUsersDialog>
+
+            <div style="width: 135px; padding: 0 10px">
+                <el-button @click="handleSignout" style="color: black; width: 100%; font-family: inherit">Signout</el-button>
+            </div>
         </aside>
         <section>
             <Upload v-if="page === 'upload'" ref="upload" />
@@ -82,7 +100,7 @@ import Events from './Events.vue';
 import Deface from './Deface.vue';
 import Finalize from './Finalize.vue';
 import Feedback from './Feedback.vue';
-
+import ManageUsersDialog from './components/dialogs/ManageUsersDialog.vue'
 import { IObject } from './store';
 
 //https://github.com/element-plus/element-plus/issues/436#issuecomment-961386582
@@ -107,6 +125,7 @@ export default defineComponent({
         Participant,
         Finalize,
         Feedback,
+        ManageUsersDialog: ManageUsersDialog,
 
         niivue,
     },
@@ -155,7 +174,7 @@ export default defineComponent({
     },
 
     computed: {
-        ...mapState(['session', 'ezbids', 'events', 'page']),
+        ...mapState(['session', 'ezbids', 'events', 'page', 'config']),
         ...mapGetters(['getBIDSEntities', 'getBIDSMetadata', 'findSession', 'findSubject']),
 
         backLabel(): string | null {
@@ -297,6 +316,9 @@ export default defineComponent({
 
             o._entities = e;
         },
+        handleSignout() {
+            document.location.href = this.config.authSignOut;
+        }
     },
 });
 </script>
@@ -356,7 +378,24 @@ aside {
 }
 
 .menu-footer {
-    padding: 10px;
+    padding: 14px;
+    display: flex;
+    justify-content: space-between;
+    
+    svg:hover {
+        color: lightgray !important;
+    }
+
+    img:hover {
+        opacity: 0.8 !important;
+    }
+
+    .menu-footer-icon {
+        font-size: 2rem;
+        color: white;
+        width: 32px;
+        height: 32px;
+    }
 }
 
 section {

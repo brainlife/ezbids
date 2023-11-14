@@ -14,15 +14,16 @@ export default defineConfig({
     },
   },
   */
+  base: '/ezbids/',
   plugins: [
-      vue(), /*vueI18nPlugin*/
+    vue(), /*vueI18nPlugin*/
 
-      //it works on dev but dist package doesn't contain all element ui stuff
-      Components({
-        resolvers: [ElementPlusResolver()],
-        
-      }),
-      ViteYaml(), // you may configure the plugin by passing in an object with the options listed below
+    //it works on dev but dist package doesn't contain all element ui stuff
+    Components({
+      resolvers: [ElementPlusResolver()],
+
+    }),
+    ViteYaml(), // you may configure the plugin by passing in an object with the options listed below
   ],
   build: {
     sourcemap: true,

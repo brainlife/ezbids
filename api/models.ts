@@ -1,33 +1,39 @@
+import {
+    set,
+    connect as mongooseConnect,
+    disconnect as mongooseDisconnect,
+    CallbackWithoutResult,
+    Schema,
+    model,
+} from 'mongoose';
+import { mongodb, mongoose_debug } from './config';
 
-import mongoose = require("mongoose");
-import config  = require("./config");
+if (mongoose_debug) set('debug', true);
 
-if(config.mongoose_debug) mongoose.set("debug", true);
-
-export function connect(cb) {
-    console.debug("connecting to mongo");
-    mongoose.connect(config.mongodb, {
-
-        /* this really screwed up warehouse db..
+export function connect(cb: CallbackWithoutResult) {
+    console.debug('connecting to mongo via: ' + mongodb);
+    mongooseConnect(
+        mongodb,
+        {
+            /* this really screwed up warehouse db..
         readPreference: 'nearest',
         writeConcern: {
             w: 'majority', //isn't this the default?
         },
         readConcernLevel: 'majority',//prevents read to grab stale data from secondary
         */
-
-        useNewUrlParser: true,
-        useUnifiedTopology: true,
-        //auto_reconnect: true, //isn't this the default?
-    }, err=>{
-        if(err) return cb(err);
-        console.log("connected to mongo");
-        cb();
-    });
+            //auto_reconnect: true, //isn't this the default?
+        },
+        (err) => {
+            if (err) return cb(err);
+            console.debug('connected to mongo via: ' + mongodb);
+            return cb(null);
+        }
+    );
 }
 
 export function disconnect(cb) {
-    mongoose.disconnect(cb);
+    mongooseDisconnect(cb);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -35,22 +41,51 @@ export function disconnect(cb) {
 // upload sessions
 //
 
-var sessionSchema = mongoose.Schema({
+export interface ISession {
+    create_date: Date;
+    update_date: Date;
 
+    ownerId: number;
+    allowedUsers: number[];
+
+    request_headers: any;
+    upload_finish_date: Date;
+
+    pre_begin_date: Date;
+    pre_finish_date: Date;
+
+    deface_begin_date: Date;
+    deface_finish_date: Date;
+
+    finalize_begin_date: Date;
+    finalize_finish_date: Date;
+
+    status: string;
+
+    dicomCount: number;
+    dicomDone: number;
+
+    status_msg: string;
+}
+
+const sessionSchema = new Schema<ISession>({
     create_date: { type: Date, default: Date.now },
     update_date: { type: Date, default: Date.now },
 
-    request_headers: mongoose.Schema.Types.Mixed,
+    ownerId: Schema.Types.Number,
+    allowedUsers: [Schema.Types.Number],
+
+    request_headers: Schema.Types.Mixed,
 
     upload_finish_date: Date, //when all files are uploaded
 
     pre_begin_date: Date, //when preprocessing is started
     pre_finish_date: Date, //when preprocessing is finished
 
-    deface_begin_date: Date, 
-    deface_finish_date: Date, 
+    deface_begin_date: Date,
+    deface_finish_date: Date,
 
-    finalize_begin_date: Date, 
+    finalize_begin_date: Date,
     finalize_finish_date: Date,
 
     status: String, //just message to show to the user
@@ -84,21 +119,19 @@ var sessionSchema = mongoose.Schema({
 
     //removed: { type: Boolean, default: false },
 });
-sessionSchema.pre('save', function(next) {
-    this.update_date = Date.now();
+sessionSchema.pre('save', function (next) {
+    this.update_date = new Date();
     next();
 });
-export let Session = mongoose.model("Session", sessionSchema);
+export const Session = model('Session', sessionSchema);
 
-var ezbidsSchema = mongoose.Schema({
-    _session_id: mongoose.Schema.Types.ObjectId, 
+const ezbidsSchema = new Schema({
+    _session_id: Schema.Types.ObjectId,
 
-    original: mongoose.Schema.Types.Mixed,
-    updated: mongoose.Schema.Types.Mixed,
+    original: Schema.Types.Mixed,
+    updated: Schema.Types.Mixed,
 
     create_date: { type: Date, default: Date.now },
     update_date: { type: Date },
 });
-export let ezBIDS = mongoose.model("ezBIDS", ezbidsSchema);
-
-
+export const ezBIDS = model('ezBIDS', ezbidsSchema);
