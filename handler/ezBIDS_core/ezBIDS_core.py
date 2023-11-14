@@ -532,6 +532,9 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
 
     print("Determining unique acquisitions in dataset")
     print("------------------------------------------")
+    sub_info_list_id = "01"
+    sub_info_list = []
+
     for json_file in json_list:
         json_data = open(json_file)
         json_data = json.load(json_data, strict=False)
@@ -627,62 +630,23 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
                 except:
                     pass
 
-            """
-            Select subject (and session, if applicable) IDs to display.
-            Subject ID precedence order if explicit subject ID is not found: PatientID > PatientName
-            """
-            sub_search_terms = ["subject", "subj", "sub"]
-            ses_search_terms = ["session", "sess", "ses"]
-
-            subject = "n/a"
-            for value in [json_file, patient_id, patient_name]:
-                for sub_term in sub_search_terms:
-                    if sub_term in value.lower():
-                        item = value.lower().split(sub_term)[-1][0]  # what character comes right after "sub"
-                        if item.isalpha() is False and item.isnumeric() is False:
-                            subject = re.split('[^a-zA-Z0-9]', value.lower().split(f"{sub_term}{item}")[-1])[0]
-                        else:
-                            subject = re.split('[^a-zA-Z0-9]', value.lower().split(f"{sub_term}")[-1])[0]
-                        break
-
-            if subject == "n/a":
-                potential_ID_fields = [patient_id, patient_name]
-                for potential_id in potential_ID_fields:
-                    if potential_id != "n/a":
-                        subject = potential_id
-                        break
-
-            if subject == "n/a":
-                directory_struct = [x for x in json_file.split("/") if ".json" not in x]
-                subject = directory_struct[-1]  # Assume folder data found in is the subject ID
-
-            session = ""
-            for value in [json_file, patient_id, patient_name]:
-                for ses_term in ses_search_terms:
-                    if ses_term in value.lower():
-                        item = value.lower().split(ses_term)[-1][0]  # what character comes right after "sub"
-                        if item.isalpha() is False and item.isnumeric() is False:
-                            session = re.split('[^a-zA-Z0-9]', value.lower().split(f"{ses_term}{item}")[-1])[0]
-                        else:
-                            session = re.split('[^a-zA-Z0-9]', value.lower().split(f"{ses_term}")[-1])[0]
-                        break
-
-            # Remove non-alphanumeric characters from subject (and session) ID(s)
-            subject = re.sub("[^A-Za-z0-9]+", "", subject)
-            session = re.sub("[^A-Za-z0-9]+", "", session)
-
-            # Find Acquisition Date & Time
+            # Find AcquisitionDateTime
             if "AcquisitionDateTime" in json_data:
                 acquisition_date_time = json_data["AcquisitionDateTime"]
-                acquisition_date = json_data["AcquisitionDateTime"].split("T")[0]
-                acquisition_time = json_data["AcquisitionDateTime"].split("T")[-1]
             else:
                 acquisition_date_time = "0000-00-00T00:00:00.000000"
-                acquisition_date = "0000-00-00"
-                acquisition_time = "00:00:00.000000"
 
-            if "AcquisitionTime" in json_data and acquisition_time == "00:00:00.000000":
+            # Find AcquisitionDate
+            if "AcquisitionDate" in json_data:
+                acquisition_date = json_data["AcquisitionDate"]
+            else:
+                acquisition_date = "0000-00-00"
+
+            # Find AcquisitionTime
+            if "AcquisitionTime" in json_data:
                 acquisition_time = json_data["AcquisitionTime"]
+            else:
+                acquisition_time = acquisition_time = "00:00:00.000000"
 
             # Find TimeZero
             if "TimeZero" in json_data and json_data.get("ScanStart", None) == 0:
@@ -776,7 +740,59 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
             # Relative paths of json and nifti files (per SeriesNumber)
             paths = natsorted(nifti_paths_for_json + [json_file])
 
-            # Organize all from individual SeriesNumber in dictionary
+            """
+            Select subject (and session, if applicable) IDs to display.
+            """
+            if patient_id == "n/a" and patient_name == "n/a" and patient_birth_date == "00000000":
+                # Completely anonymized data, assume folder is the subject ID
+                folder = [x for x in json_file.split("/") if ".json" not in x][-1]
+            else:
+                folder = "n/a"
+
+            sub_info = {
+                "PatientID": patient_id,
+                "PatientName": patient_name,
+                "PatientBirthDate": patient_birth_date,
+                "Folder": folder,
+                "Subject": sub_info_list_id,
+            }
+            sub_info_list.append(sub_info)
+
+            if len(sub_info_list) == 1:
+                pass
+            else:
+                if sub_info != sub_info_list[len(sub_info_list) - 2]:
+                    sub_info_list_id = int(sub_info_list_id) + 1
+                    if sub_info_list_id > 9:
+                        sub_info_list_id = str(sub_info_list_id)
+                    else:
+                        sub_info_list_id = "0" + str(sub_info_list_id)
+                    sub_info_list[-1]["Subject"] = sub_info_list_id
+
+            subject = sub_info["Subject"]
+
+            # Check if subject (and session) ID(s) explicitly specified
+            sub_search_term = "sub-"
+            ses_search_term = "ses-"
+
+            for value in [json_file, patient_id, patient_name]:
+                if sub_search_term in value.lower():
+                    subject = re.split('[^a-zA-Z0-9]', value.lower().split(f"{sub_search_term}")[-1])[0]
+                    break
+
+            session = ""
+            for value in [json_file, patient_id, patient_name]:
+                if ses_search_term in value.lower():
+                    session = re.split('[^a-zA-Z0-9]', value.lower().split(f"{ses_search_term}")[-1])[0]
+                    break
+
+            # Remove non-alphanumeric characters from subject (and session) ID(s)
+            subject = re.sub("[^A-Za-z0-9]+", "", subject)
+            session = re.sub("[^A-Za-z0-9]+", "", session)
+
+            """
+            Organize all from individual SeriesNumber in dictionary
+            """
             acquisition_info_directory = {
                 "StudyID": study_id,
                 "PatientID": patient_id,
@@ -820,6 +836,7 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
                 "nibabel_image": image,
                 "valid_image": valid_image,
                 "json_path": json_file,
+                "file_directory": "/".join([x for x in json_file.split("/") if ".json" not in x]),
                 "paths": paths,
                 "headers": "",
                 "finalized_match": False,
@@ -1022,6 +1039,9 @@ def determine_sub_ses_IDs(dataset_list, bids_compliant):
                     and x["AcquisitionDate"] == ses_info["AcquisitionDate"]][0],
                 "PatientBirthDate": [
                     x["PatientBirthDate"] for x in sub_dics_list if x["session"] == ses_info["session"]
+                    and x["AcquisitionDate"] == ses_info["AcquisitionDate"]][0],
+                "file_directory": [
+                    x["file_directory"] for x in sub_dics_list if x["session"] == ses_info["session"]
                     and x["AcquisitionDate"] == ses_info["AcquisitionDate"]][0]
             }
             patient_info.append(patient_dic)

@@ -26,6 +26,7 @@
                     <b>PatientID</b> {{info.PatientID}}<br>
                     <b>PatientName</b> {{info.PatientName}}<br>
                     <b>PatientBirthDate</b> {{info.PatientBirthDate||'(not set)'}}<br>
+                    <b>Directory</b> {{info.file_directory}}<br>
                 </p>
                 </div>
             </template>
