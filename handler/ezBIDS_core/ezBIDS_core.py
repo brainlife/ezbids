@@ -2157,15 +2157,37 @@ def entity_labels_identification(dataset_list_unique_series, lookup_dic):
             # If BIDS naming convention isn't detected, do a more thorough check for certain entities labels
 
             # Specific code for Nigerian dataset only (revert these changes once dataset is converted)
-            sd = re.sub("[^A-Za-z0-9]+", "", sd).lower()
-            if sd[-1] == "c":
-                series_entities["ceagent"] = "gadolinium"
-            if any(x in sd for x in ["axial", "ax", "axi"]):
-                series_entities["acquisition"] = "axial"
-            if any(x in sd for x in ["cor", "coronal"]):
-                series_entities["acquisition"] = "coronal"
-            if any(x in sd for x in ["sag", "sagittal"]):
-                series_entities["acquisition"] = "sagittal"
+            # if "ABDN" in unique_dic["json_path"]:
+            if "ABDN" in unique_dic["json_path"]:
+                sd = re.sub("[^A-Za-z0-9]+", "", sd).lower()
+                if sd[-1] == "c":
+                    series_entities["ceagent"] = "gadolinium"
+                if any(x in sd for x in ["axial", "ax", "axi"]):
+                    series_entities["acquisition"] = "axial"
+                if any(x in sd for x in ["cor", "coronal"]):
+                    series_entities["acquisition"] = "coronal"
+                if any(x in sd for x in ["sag", "sagittal"]):
+                    series_entities["acquisition"] = "sagittal"
+
+                if ("t1" in sd or "t1w" in sd) and "gre" not in sd:
+                    unique_dic["datatype"] = "anat"
+                    unique_dic["suffix"] = "T1w"
+                    unique_dic["type"] = "anat/T1w"
+                if ("t2" in sd or "t2w" in sd) and "gre" not in sd:
+                    if "flair" in sd:
+                        unique_dic["datatype"] = "anat"
+                        unique_dic["suffix"] = "FLAIR"
+                        unique_dic["type"] = "anat/FLAIR"
+                    else:
+                        unique_dic["datatype"] = "anat"
+                        unique_dic["suffix"] = "T2w"
+                        unique_dic["type"] = "anat/T2w"
+                if "oblcor" in sd:
+                    unique_dic["type"] = "exclude"
+                if "array" in sd:
+                    unique_dic["type"] = "exclude"
+
+
             
 
             # task
