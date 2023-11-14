@@ -381,31 +381,29 @@ export default defineComponent({
                 validate_B0FieldIdentifier_B0FieldSource(s);
             }
 
-            //let user know if multiple series have same datatype and entity labels
-            if (s.type != 'exclude') {
-                for (let s2 of this.ezbids.series) {
-                    if (s == s2) continue;
-                    if (s.type != s2.type) continue;
-                    if (s2.type == 'exclude') continue;
+            // DON'T REALLY NEED THIS if setRun() functionality is in place
 
-                    let same = s2;
-                    for (let e in s.entities) {
-                        if (s.entities[e] != s2.entities[e]) {
-                            same = undefined;
-                            break;
-                        }
-                    }
-                    if (same) {
-                        const sameseries = s2.series_idx;
-                        s.validationWarnings.push(
-                            'This series contains the same datatype, suffix and entity labels as series #' +
-                                sameseries +
-                                ', consider setting different entity label(s) to differentiate between the series. If not, ezBIDS will automatically apply the run entity label to differentiate.'
-                        );
-                        break;
-                    }
-                }
-            }
+            // //let user know if multiple series have same datatype and entity labels
+            // if(s.type != "exclude") {
+            //     for(let s2 of this.ezbids.series) {
+            //         if(s == s2) continue;
+            //         if(s.type != s2.type) continue;
+            //         if(s2.type == "exclude") continue;
+
+            //         let same = s2;
+            //         for(let e in s.entities) {
+            //             if(s.entities[e] != s2.entities[e]) {
+            //                 same = undefined;
+            //                 break;
+            //             }
+            //         }
+            //         if(same) {
+            //             const sameseries = s2.series_idx;
+            //             s.validationWarnings.push("This series contains the same datatype, suffix and entity labels as series #"+sameseries+", consider setting different entity label(s) to differentiate between the series. If not, ezBIDS will automatically apply the run entity label to differentiate.");
+            //             break;
+            //         }
+            //     }
+            // }
 
             let entities_requirement = this.getBIDSEntities(s.type);
             for (let k in this.getSomeEntities(s.type)) {
