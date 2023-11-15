@@ -68,7 +68,7 @@ fs.closeSync(tsvf);
 async.forEachOf(info.objects, (o, idx, next_o) => {
     if (o._type == "exclude" || o._exclude) {
         o._type = "excluded/obj" + o.idx;
-        o._entities.description = o._SeriesDescription; //inject series desc to filename
+        o._entities.description = o._SeriesDescription.replace(/[^0-9a-z]/gi, ''); //inject series desc to filename, remove non-alphanum chars
     }
     let typeTokens = o._type.split("/");
     let modality = typeTokens[0]; //func, dwi, anat, etc.. (or exclude)
