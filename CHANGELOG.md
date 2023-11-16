@@ -10,7 +10,7 @@ to the codebase. This provides details regarding recent enhancements [ENH] and f
 ### Enhancements
 [ENH] Add login page (PR 94)
 [ENH] Enable users to enter metadata to the JSON sidecars, currently only available for perfusion (PR 99)
-[ENH] Enable user to initialize DWI pipepline on brainlife.io from ezBIDS (PR 87)
+[ENH] Enable user to initialize DWI pipeline on brainlife.io from ezBIDS (PR 87)
 [ENH] Add login functionality to ezBIDS (PR 101)
 [ENH] Add dcm2niix's BIDSGuess heuristic to ezBIDS Core (issue 88)
 [ENH] Enabler faster checks on Dataset Review page, preventing lagging with larger dataset (commit bde5212)
