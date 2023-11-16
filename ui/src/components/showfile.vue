@@ -1,5 +1,5 @@
 <template>
-    <pre :style="{ maxHeight, height }" v-html="content" />
+    <pre v-html="content" :style="{ maxHeight, height }" />
 </template>
 
 <script lang="ts">
