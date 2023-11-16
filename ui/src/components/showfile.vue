@@ -1,15 +1,14 @@
 <template>
-<pre v-html="content" :style="{maxHeight, height}" />
+    <pre :style="{ maxHeight, height }" v-html="content" />
 </template>
 
 <script lang="ts">
-
 // @ts-ignore
 import Convert from 'ansi-to-html';
 const convert = new Convert();
 
-import { mapState } from 'vuex'
-import { defineComponent } from 'vue'
+import { mapState } from 'vuex';
+import { defineComponent } from 'vue';
 import axios from '../axios.instance';
 
 export default defineComponent({
@@ -17,16 +16,16 @@ export default defineComponent({
         path: String,
         tall: {
             type: Boolean,
-            default: false
+            default: false,
         },
     },
 
     data() {
         return {
-            content: "",
-            maxHeight: "200px",
-            height: "200px",
-        }
+            content: '',
+            maxHeight: '200px',
+            height: '200px',
+        };
     },
 
     computed: {
@@ -34,23 +33,28 @@ export default defineComponent({
     },
 
     mounted() {
-        axios.get(`${this.config.apihost}/download/${this.session._id}/token`).then((res) => {
-            const shortLivedJWT = res.data;
-            return axios.get(`${this.config.apihost}/download/${this.session._id}/${this.path}?token=${shortLivedJWT}`)
-        }).then((res) => {
-            const text = JSON.stringify(res.data, undefined, 4);
-            this.content = convert.toHtml(text);
-        }).catch((err) => {
-            console.error(err)
-        })
+        axios
+            .get(`${this.config.apihost}/download/${this.session._id}/token`)
+            .then((res) => {
+                const shortLivedJWT = res.data;
+                return axios.get(
+                    `${this.config.apihost}/download/${this.session._id}/${this.path}?token=${shortLivedJWT}`
+                );
+            })
+            .then((res) => {
+                const text = JSON.stringify(res.data, undefined, 4);
+                this.content = convert.toHtml(text);
+            })
+            .catch((err) => {
+                console.error(err);
+            });
 
-        if(this.tall) {
-            this.maxHeight = "400px";
-            this.height = "400px";
+        if (this.tall) {
+            this.maxHeight = '400px';
+            this.height = '400px';
         }
     },
 });
-
 </script>
 <style scoped>
 pre {
