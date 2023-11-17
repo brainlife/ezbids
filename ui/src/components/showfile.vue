@@ -42,8 +42,8 @@ export default defineComponent({
                 );
             })
             .then((res) => {
-                const text = JSON.stringify(res.data, undefined, 4);
-                this.content = convert.toHtml(text);
+                // data from the BE will have newlines which informs indentation in the frontend
+                this.content = convert.toHtml(res.data);
             })
             .catch((err) => {
                 console.error(err);
