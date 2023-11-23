@@ -119,8 +119,9 @@ export default defineComponent({
         },
     },
     mounted() {
+        // TODO this should not be cached, we should only show the user once the full email has been typed (for privacy)
         axios
-            .get<{ count: number; profiles: Profile[] }>(`${this.config.authhost}/profile/list`)
+            .get<{ count: number; profiles: Profile[] }>(`${this.config.authhost}/profile/list?limit=6000`)
             .then((res) => {
                 this.profiles = res?.data?.profiles ? [...res.data.profiles] : [];
             })
