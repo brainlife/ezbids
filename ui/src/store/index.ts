@@ -790,6 +790,7 @@ const store = createStore({
                 if (finished.status == 200) {
                     const finishedText = await finished.data;
                     const idxs = finishedText
+                        .toString()
                         .trim()
                         .split('\n')
                         .filter((v: any) => !!v)
