@@ -191,7 +191,6 @@ export default defineComponent({
         getDefacedURL(anat: IObject) {
             //find the image path first
             let item = anat.items.find((i) => i.path.endsWith('.nii.gz'));
-            console.log(anat.items);
             if (!item) return null;
 
             //guess the image path
