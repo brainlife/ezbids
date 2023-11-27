@@ -341,7 +341,7 @@ const state = {
         //pretty much straight out of bids/dataset_description.json
         datasetDescription: {
             Name: 'Untitled',
-            BIDSVersion: '1.8.0',
+            BIDSVersion: '1.9.0',
             HEDVersion: [],
             DatasetLinks: [],
             DatasetType: 'raw',

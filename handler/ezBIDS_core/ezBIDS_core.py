@@ -308,7 +308,7 @@ def generate_dataset_description(DATA_DIR, bids_compliant):
         dataset_description_dic["Name"] = "Untitled"
 
     if dataset_description_dic["BIDSVersion"] == "":
-        dataset_description_dic["BIDSVersion"] = "1.8.0"
+        dataset_description_dic["BIDSVersion"] = "1.9.0"
 
     if dataset_description_dic["DatasetType"] == "":
         dataset_description_dic["DatasetType"] = "raw"
