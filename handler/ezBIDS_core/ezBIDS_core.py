@@ -343,17 +343,28 @@ def generate_participants_columns(DATA_DIR, bids_compliant):
         participants_column_info = json.load(participants_column_info, strict=False)
     else:
         participants_column_info = {
+            "species": {
+                "Description": "species of the participant(s)",
+            },
             "sex": {
-                "LongName": "gender",
-                "Description": "generic gender field",
+                "Description": "Sex of the participant(s)",
                 "Levels": {
                     "M": "male",
-                    "F": "female"
+                    "F": "female",
+                    "O": "other"
                 }
             },
             "age": {
-                "LongName": "age",
-                "Units": "years"
+                "Description": "Age of the participant(s)",
+                "Units": "year",
+            },
+            "handedness": {
+                "Description": "Dominant hand of the participant(s)",
+                "Levels": {
+                    "Left": "Left",
+                    "Right": "Right",
+                    "Ambidextrous": "Ambidextrous"
+                }
             }
         }
     return participants_column_info
@@ -594,6 +605,9 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
             else:
                 patient_birth_date = "00000000"
 
+            # Assume patient_species is homo sapiens
+            patient_species = "homo sapiens"
+
             # Find PatientSex
             patient_sex = "n/a"
             if "PatientSex" in json_data:
@@ -605,6 +619,9 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
                 patient_age = json_data["PatientAge"]
             else:
                 patient_age = "n/a"
+
+            # Patient handedness
+            patient_handedness = "n/a"
 
             """
             Metadata may contain PatientBirthDate and/or PatientAge. Check either
@@ -798,8 +815,10 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
                 "PatientID": patient_id,
                 "PatientName": patient_name,
                 "PatientBirthDate": patient_birth_date,
+                "PatientSpecies": patient_species,
                 "PatientSex": patient_sex,
                 "PatientAge": age,
+                "PatientHandedness": patient_handedness,
                 "subject": subject,
                 "session": session,
                 "SeriesNumber": series_number,
@@ -959,7 +978,7 @@ def determine_sub_ses_IDs(dataset_list, bids_compliant):
             x["subject_idx"] = subject_idx_counter
         subject_idx_counter += 1
 
-        # Organize phenotype (e.g., sex, age) information
+        # Organize phenotype (e.g., species, sex, age, handedness) information
         bids_root_dir = pd.read_csv(f"{DATA_DIR}/bids_compliant.log", header=None).iloc[0][0]
         if bids_compliant is True and os.path.isfile(f"{bids_root_dir}/participants.tsv"):
             participants_info_data = pd.read_csv(f"{bids_root_dir}/participants.tsv", sep="\t")
@@ -985,8 +1004,10 @@ def determine_sub_ses_IDs(dataset_list, bids_compliant):
         else:
             phenotype_info = list(
                 {
+                    "species": x["PatientSpecies"],
                     "sex": x["PatientSex"],
                     "age": x["PatientAge"],
+                    "handedness": x["PatientHandedness"],
                     "PatientName": x["PatientID"],
                     "PatientID": x["PatientName"]
                 } for x in sub_dics_list)[0]
@@ -1078,7 +1099,7 @@ def determine_sub_ses_IDs(dataset_list, bids_compliant):
         subject_ids_info = {
             "subject": sub,
             "PatientInfo": patient_info,
-            "phenotype": list({"sex": x["PatientSex"], "age": x["PatientAge"]} for x in sub_dics_list)[0],
+            "phenotype": list({"species": x["PatientSpecies"], "sex": x["PatientSex"], "age": x["PatientAge"], "handedness": x["PatientHandedness"]} for x in sub_dics_list)[0],
             "exclude": False,
             "sessions": [
                 {k: v for k, v in d.items()
@@ -1874,7 +1895,7 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
         in SeriesDescription (or ProtocolName) and rules.
         """
         if (unique_dic["finalized_match"] is False
-                and (not unique_dic["datatype"] or not unique_dic["suffix"]) and unique_dic["type"] == ""):
+                and (unique_dic["datatype"] == "" or unique_dic["suffix"] == "") and unique_dic["type"] == ""):
 
             json_data = unique_dic["sidecar"]
 
@@ -1920,7 +1941,7 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
             If dcm2niix's BidsGuess can't give us datatype and suffix information, move on to next heuristic (search
             terms in SeriesDescription [or ProtocolName] and rules).
             """
-            if unique_dic["datatype"] == "" and unique_dic["suffix"] == "" and unique_dic["type"] != "exclude":
+            if (unique_dic["datatype"] == "" or unique_dic["suffix"] == "") and unique_dic["type"] != "exclude":
 
                 descriptor = unique_dic["descriptor"]
                 sd = unique_dic[descriptor]
@@ -2186,9 +2207,6 @@ def entity_labels_identification(dataset_list_unique_series, lookup_dic):
                     unique_dic["type"] = "exclude"
                 if "array" in sd:
                     unique_dic["type"] = "exclude"
-
-
-            
 
             # task
             func_rest_keys = ["rest", "rsfmri", "fcmri"]
@@ -2548,8 +2566,6 @@ def extract_series_info(dataset_list_unique_series):
     return ui_series_info_list
 
 # Begin (Apply functions)
-
-
 print("########################################")
 print("Beginning conversion process of uploaded dataset")
 print("########################################")
