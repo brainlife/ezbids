@@ -1,127 +1,152 @@
 <template>
-<div style="padding: 20px;">
-    <el-form v-if="anatObjects.length && !isDefacing">
-        <p>
-            If you'd like to deface all anatomical images, please select a defacing method and click <b>Run Deface</b> button. Defaced images will be reoriented via FSL's <i>reorient2std</i> function to ensure proper defacing.
-        </p>
-        <p>
-            Otherwise, you can skip this page.
-        </p>
+    <div style="padding: 20px">
+        <el-form v-if="anatObjects.length && !isDefacing">
+            <p>
+                If you'd like to deface all anatomical images, please select a defacing method and click
+                <b>Run Deface</b> button. Defaced images will be reoriented via FSL's <i>reorient2std</i> function to
+                ensure proper defacing.
+            </p>
+            <p>Otherwise, you can skip this page.</p>
 
-        <el-form-item>
-            <b>Defacing Method </b>
-            <br>
-            <el-select v-model="ezbids.defacingMethod" placeholder="Select a defacing method" style="width: 300px;" @change="changeMethod">
-                <el-option value="" label="Don't Deface (use original)"/>
-                <el-option value="quickshear" label="Quickshear (recommended)"/>
-                <el-option value="pydeface" label="pyDeface (more common but takes much longer time)"/>
-            </el-select>
-        </el-form-item>
-        <!--sub options-->
-        <p v-if="ezbids.defacingMethod == 'quickshear'">
-            <small>* Use ROBEX and QuickShear Average processing time. 1-min per image</small>
-        </p>
-        <p v-if="ezbids.defacingMethod == 'pydeface'">
-            <small>* pydeface uses FSL to align facial mask template. 5-min per image</small>
-        </p>
-    </el-form>
+            <el-form-item>
+                <b>Defacing Method </b>
+                <br />
+                <el-select
+                    v-model="ezbids.defacingMethod"
+                    placeholder="Select a defacing method"
+                    style="width: 300px"
+                    @change="changeMethod"
+                >
+                    <el-option value="" label="Don't Deface (use original)" />
+                    <el-option value="quickshear" label="Quickshear (recommended)" />
+                    <el-option value="pydeface" label="pyDeface (more common but takes much longer time)" />
+                </el-select>
+            </el-form-item>
+            <!--sub options-->
+            <p v-if="ezbids.defacingMethod == 'quickshear'">
+                <small>* Use ROBEX and QuickShear Average processing time. ~1 min per image</small>
+            </p>
+            <p v-if="ezbids.defacingMethod == 'pydeface'">
+                <small>* pydeface uses FSL to align facial mask template. ~5 min per image</small>
+            </p>
+        </el-form>
 
-    <el-form>
-        <el-form-item>
-            <el-button v-if="!isDefacing && ezbids.defacingMethod && !session.deface_finish_date" @click="runDeface" type="success">Run Deface</el-button>
-            <el-button @click="cancel" v-if="isDefacing" type="warning">Cancel Defacing</el-button>
-            <el-button @click="reset" v-if="session.deface_begin_date && session.deface_finish_date">Reset Deface</el-button>
-        </el-form-item>
-    </el-form>
+        <el-form>
+            <el-form-item>
+                <el-button
+                    v-if="!isDefacing && ezbids.defacingMethod && !session.deface_finish_date"
+                    type="success"
+                    @click="runDeface"
+                    >Run Deface</el-button
+                >
+                <el-button v-if="isDefacing" type="warning" @click="cancel">Cancel Defacing</el-button>
+                <el-button v-if="session.deface_begin_date && session.deface_finish_date" @click="reset"
+                    >Reset Deface</el-button
+                >
+            </el-form-item>
+        </el-form>
 
-    <br>
-    <el-alert v-if="anatObjects.length == 0" type="warning">No anatomy files to deface. Please skip this step.</el-alert>
-    <div v-if="anatObjects.length && ezbids.defacingMethod">
-        <div v-if="session.status == 'deface' || session.status == 'defacing'">
-            <h3>Running <b>{{ezbids.defacingMethod}}</b> ...</h3>
-            <pre class="status">{{session.status_msg}}</pre>
+        <br />
+        <el-alert v-if="anatObjects.length == 0" type="warning"
+            >No anatomy files to deface. Please skip this step.</el-alert
+        >
+        <div v-if="anatObjects.length && ezbids.defacingMethod">
+            <div v-if="session.status == 'deface' || session.status == 'defacing'">
+                <h3>
+                    Running <b>{{ ezbids.defacingMethod }}</b> ...
+                </h3>
+                <pre class="status">{{ session.status_msg }}</pre>
+            </div>
+            <div v-if="session.deface_finish_date">
+                <el-alert type="success" show-icon>
+                    Defacing completed! Please check the defacing results and proceed to the next page.
+                </el-alert>
+            </div>
+            <div v-if="session.status == 'failed'">
+                Failed!
+                <pre class="status">{{ session.status_msg }}</pre>
+            </div>
         </div>
-        <div v-if="session.deface_finish_date">
-            <el-alert type="success" show-icon>
-                Defacing completed! Please check the defacing results and proceed to the next page.
-            </el-alert>
-        </div>
-        <div v-if="session.status == 'failed'">
-            Failed!
-            <pre class="status">{{session.status_msg}}</pre>
-        </div>
-    </div>
 
-    <table v-if="session.deface_begin_date" class="table">
-        <thead>
-            <tr>
-                <th></th>
-                <th>Original</th>
-                <th>Defaced</th>
-            </tr>
-        </thead>
-        <tr v-for="anat in anatObjects" :key="anat.idx">
-            <td>
-                <div style="margin-bottom: 0; font-size: 85%; line-height: 200%;">
-                    <span><small>sub</small> {{anat._entities.subject}} </span>
-                    <span v-if="anat._entities.session">/ <small>ses</small> {{anat._entities.session}} </span>
-                </div>
-                <el-tag type="info" size="mini">#{{anat.series_idx}}</el-tag>
-                &nbsp;
-                <datatype :type="anat._type" :series_idx="anat.series_idx" :entities="anat.entities"/>
-            </td>
-            <td width="40%" style="position: relative">
-                <el-radio v-model="anat.defaceSelection" label="original">Use Original</el-radio>
-                <div v-for="(item, itemIdx) in anat.items" :key="itemIdx">
-                    <div v-if="item.pngPaths">
-                        <AsyncImageLink :path="item.pngPaths[0]" />
-                        <el-button type="info" @click="$emit('niivue', item.path)" style="position: absolute; top: 50px; left: 5px" size="small">
-                            <font-awesome-icon :icon="['fas', 'eye']"/>
+        <table v-if="session.deface_begin_date" class="table">
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Original</th>
+                    <th>Defaced</th>
+                </tr>
+            </thead>
+            <tr v-for="anat in anatObjects" :key="anat.idx">
+                <td>
+                    <div style="margin-bottom: 0; font-size: 85%; line-height: 200%">
+                        <span><small>sub</small> {{ anat._entities.subject }} </span>
+                        <span v-if="anat._entities.session">/ <small>ses</small> {{ anat._entities.session }} </span>
+                    </div>
+                    <el-tag type="info" size="mini">#{{ anat.series_idx }}</el-tag>
+                    &nbsp;
+                    <datatype :type="anat._type" :series_idx="anat.series_idx" :entities="anat.entities" />
+                </td>
+                <td width="40%" style="position: relative">
+                    <el-radio v-model="anat.defaceSelection" label="original">Use Original</el-radio>
+                    <div v-for="(item, itemIdx) in anat.items" :key="itemIdx">
+                        <div v-if="item.pngPaths">
+                            <AsyncImageLink :path="item.pngPaths[0]" />
+                            <el-button
+                                type="info"
+                                style="position: absolute; top: 50px; left: 5px"
+                                size="small"
+                                @click="$emit('niivue', item.path)"
+                            >
+                                <font-awesome-icon :icon="['fas', 'eye']" />
+                                NiiVue
+                            </el-button>
+                        </div>
+                    </div>
+                </td>
+                <td width="40%" style="position: relative">
+                    <el-radio v-model="anat.defaceSelection" label="defaced"
+                        >Use Defaced (when finish defacing)</el-radio
+                    >
+                    <div v-if="anat.defaced">
+                        <AsyncImageLink :path="`${getDefacedURL(anat)}.png`" />
+                        <el-button
+                            type="info"
+                            style="position: absolute; top: 50px; left: 5px"
+                            size="small"
+                            @click="$emit('niivue', getDefacedURL(anat))"
+                        >
+                            <font-awesome-icon :icon="['fas', 'eye']" />
                             NiiVue
                         </el-button>
                     </div>
-                </div>
-            </td>
-            <td width="40%" style="position: relative">
-                <el-radio v-model="anat.defaceSelection" label="defaced">Use Defaced (when finish defacing)</el-radio>
-                <div v-if="anat.defaced">
-                    <AsyncImageLink :path="`${getDefacedURL(anat)}.png`" />
-                    <el-button type="info" @click="$emit('niivue', getDefacedURL(anat))" style="position: absolute; top: 50px; left: 5px;" size="small">
-                        <font-awesome-icon :icon="['fas', 'eye']"/>
-                        NiiVue
-                    </el-button>
-                </div>
-                <p v-if="session.status == 'defacing' && !anat.defaced" class="missingThumb">
-                <small>
-                    Defacing 
-                    <font-awesome-icon icon="spinner" pulse/>
-                </small>
-                </p>
-                <p v-if="anat.defaceFailed" class="missingThumb fail"><small>Defacing Failed</small></p>
-            </td>
-        </tr>
-    </table>
-
-</div>
+                    <p v-if="session.status == 'defacing' && !anat.defaced" class="missingThumb">
+                        <small>
+                            Defacing
+                            <font-awesome-icon icon="spinner" pulse />
+                        </small>
+                    </p>
+                    <p v-if="anat.defaceFailed" class="missingThumb fail"><small>Defacing Failed</small></p>
+                </td>
+            </tr>
+        </table>
+    </div>
 </template>
 
 <script lang="ts">
-
-import { mapState, mapGetters, } from 'vuex'
-import { defineComponent } from 'vue'
-import datatype from './components/datatype.vue'
-import niivue from './components/niivue.vue'
-import { IObject } from './store'
-import { ElNotification } from 'element-plus'
+import { mapState, mapGetters } from 'vuex';
+import { defineComponent } from 'vue';
+import datatype from './components/datatype.vue';
+import { IObject } from './store';
+import { ElNotification } from 'element-plus';
 import axios from './axios.instance';
-import AsyncImageLink from './components/AsyncImageLink.vue'
+import AsyncImageLink from './components/AsyncImageLink.vue';
 
 export default defineComponent({
     components: {
         datatype,
-        niivue,
-        AsyncImageLink
+        AsyncImageLink,
     },
+    emits: ['niivue'],
 
     /*
     data() {
@@ -129,115 +154,117 @@ export default defineComponent({
         }
     },
     */
-
-    mounted() {
-        //initialize all anat to use defaced image by default
-        this.anatObjects.forEach((o:IObject)=>{
-            if(!o.defaceSelection) o.defaceSelection = "defaced";
-        });
-    },
-
     computed: {
         ...mapState(['ezbids', 'config', 'session', 'bidsSchema']),
         ...mapGetters(['getBIDSEntities']),
 
         isDefacing() {
-            if(!this.$store.state.session) return false;
-            return ["deface", "defacing"].includes(this.$store.state.session.status);
+            if (!this.$store.state.session) return false;
+            return ['deface', 'defacing'].includes(this.$store.state.session.status);
         },
 
         anatObjects() {
-            return this.$store.state.ezbids.objects.filter((o:IObject)=>o._type.startsWith('anat') && !o._exclude)
-        }
+            return this.$store.state.ezbids.objects.filter((o: IObject) => o._type.startsWith('anat') && !o._exclude);
+        },
+    },
+
+    mounted() {
+        //initialize all anat to use defaced image by default
+        this.anatObjects.forEach((o: IObject) => {
+            if (!o.defaceSelection) o.defaceSelection = 'defaced';
+        });
     },
 
     methods: {
         changeMethod() {
-            if(this.ezbids.defacingMethod) {
-                this.anatObjects.forEach((o:IObject)=>{
-                    o.defaceSelection = "defaced";
+            if (this.ezbids.defacingMethod) {
+                this.anatObjects.forEach((o: IObject) => {
+                    o.defaceSelection = 'defaced';
                 });
             } else {
-                this.anatObjects.forEach((o:IObject)=>{
-                    o.defaceSelection = "original";
+                this.anatObjects.forEach((o: IObject) => {
+                    o.defaceSelection = 'original';
                 });
             }
         },
 
         getDefacedURL(anat: IObject) {
             //find the image path first
-            let item = anat.items.find(i=>i.path.endsWith(".nii.gz"));
-            if(!item) return null;
+            let item = anat.items.find((i) => i.path.endsWith('.nii.gz'));
+            console.log(anat.items);
+            if (!item) return null;
 
             //guess the image path
-            return item.path+".defaced.nii.gz";
+            return item.path + '.defaced.nii.gz';
         },
 
         cancel() {
             axios.post(`${this.config.apihost}/session/${this.session._id}/canceldeface`).then((res) => {
                 if (res.data !== 'ok') {
-                    ElNotification({ title: 'Failed', message: 'Failed to cancel defacing'});
+                    ElNotification({ title: 'Failed', message: 'Failed to cancel defacing' });
                 } else {
-                    ElNotification({ title: 'Success', message: 'Requested to cancel defacing..'});
+                    ElNotification({ title: 'Success', message: 'Requested to cancel defacing..' });
                 }
-                this.$store.dispatch("loadSession", this.session._id);
-            })
+                this.$store.dispatch('loadSession', this.session._id);
+            });
         },
 
         reset() {
             axios.post(`${this.config.apihost}/session/${this.session._id}/resetdeface`).then((res) => {
                 if (res.data !== 'ok') {
-                    ElNotification({ title: 'Failed', message: 'Failed to reset defacing'});
+                    ElNotification({ title: 'Failed', message: 'Failed to reset defacing' });
                 }
-                this.anatObjects.forEach((anat: IObject)=>{
+                this.anatObjects.forEach((anat: IObject) => {
                     delete anat.defaced;
                     delete anat.defaceFailed;
-                    anat.defaceSelection = "defaced";
+                    anat.defaceSelection = 'defaced';
                 });
-                this.$store.dispatch("loadSession", this.session._id);
-            })
+                this.$store.dispatch('loadSession', this.session._id);
+            });
         },
 
         runDeface() {
-            const list = this.anatObjects.map((o:IObject)=>{
-                return {idx: o.idx, path: o.items.find(i=>i.path?.endsWith(".nii.gz"))?.path};
+            const list = this.anatObjects.map((o: IObject) => {
+                return { idx: o.idx, path: o.items.find((i) => i.path?.endsWith('.nii.gz'))?.path };
             });
 
             //reset current status for all stats (in case it's ran previously)
-            this.anatObjects.forEach((o:IObject)=>{
+            this.anatObjects.forEach((o: IObject) => {
                 delete o.defaced;
             });
 
-            axios.post(`${this.config.apihost}/session/${this.session._id}/deface`, {
-                list,
-                method: this.ezbids.defacingMethod
-            }).then((res) => {
-                if (res.data !== 'ok') {
-                    ElNotification({ title: 'Failed', message: 'Failed to submit deface request'});
-                }
-                this.$store.dispatch("loadSession", this.session._id);
-            })
+            axios
+                .post(`${this.config.apihost}/session/${this.session._id}/deface`, {
+                    list,
+                    method: this.ezbids.defacingMethod,
+                })
+                .then((res) => {
+                    if (res.data !== 'ok') {
+                        ElNotification({ title: 'Failed', message: 'Failed to submit deface request' });
+                    }
+                    this.$store.dispatch('loadSession', this.session._id);
+                });
         },
 
-        isValid(cb: (v?: string)=>void) {
-            if(!this.ezbids.defacingMethod) return cb();
-            if(!this.session.deface_begin_date) {
-                return cb("Please run deface");
+        isValid(cb: (v?: string) => void) {
+            if (!this.ezbids.defacingMethod) return cb();
+            if (!this.session.deface_begin_date) {
+                return cb('Please run deface');
             }
-            if(this.session.deface_begin_date && this.session.status == "failed") {
+            if (this.session.deface_begin_date && this.session.status == 'failed') {
                 //let's assume it's the defacing that failed
                 let err = undefined;
-                this.anatObjects.forEach((o:IObject)=>{
-                    if(o.defaceSelection == "defaced" && !o.defaced) err = "Please set to use original image for deface-failed images";
+                this.anatObjects.forEach((o: IObject) => {
+                    if (o.defaceSelection == 'defaced' && !o.defaced)
+                        err = 'Please set to use original image for deface-failed images';
                 });
                 return cb(err);
             }
-            if(!this.session.deface_finish_date) {
-                return cb("Please wait for defacing to finish");
+            if (!this.session.deface_finish_date) {
+                return cb('Please wait for defacing to finish');
             }
             cb();
         },
-
     },
 });
 </script>
@@ -249,8 +276,6 @@ export default defineComponent({
     left: 210px;
     right: 0;
     overflow: auto;
-}
-.table {
 }
 .table td {
     border-top: 1px solid #eee;
@@ -286,4 +311,3 @@ pre.status {
     border-radius: 5px;
 }
 </style>
-

@@ -2,9 +2,7 @@
     <el-footer class="footer">
         <el-row style="height: 100%">
             <el-col :span="1"></el-col>
-            <el-col :span="23" class="disclaimer">
-                © Pestillilab. All rights reserved.
-            </el-col>
+            <el-col :span="23" class="disclaimer"> © Pestillilab. All rights reserved. </el-col>
         </el-row>
     </el-footer>
 </template>

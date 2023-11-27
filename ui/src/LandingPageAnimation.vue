@@ -4,19 +4,31 @@
             <g id="file-4" style="--order: 3">
                 <g id="file-4_2">
                     <path d="M148 175V161V147H154H160V153V159H166H172V167V175H160H148Z" fill="black" />
-                    <path d="M163 156V152C163 149.8 163.134 148 163.297 148C163.46 148 165.352 149.8 167.5 152L171.406 156H167.203H163Z" fill="black" />
+                    <path
+                        d="M163 156V152C163 149.8 163.134 148 163.297 148C163.46 148 165.352 149.8 167.5 152L171.406 156H167.203H163Z"
+                        fill="black"
+                    />
                 </g>
             </g>
             <g id="file-3" style="--order: 2">
                 <g id="file-3_2">
                     <path d="M148 136V122V108H154H160V114V120H166H172V128V136H160H148Z" fill="black" />
-                    <path d="M163 117V113C163 110.8 163.134 109 163.297 109C163.46 109 165.352 110.8 167.5 113L171.406 117H167.203H163Z" fill="black" />
+                    <path
+                        d="M163 117V113C163 110.8 163.134 109 163.297 109C163.46 109 165.352 110.8 167.5 113L171.406 117H167.203H163Z"
+                        fill="black"
+                    />
                 </g>
             </g>
             <g id="file-2" style="--order: 1">
                 <g id="file-2_2">
-                    <path d="M148 98V84V70H154H160V75.45V80.9L165.75 81.2L171.5 81.5L171.79 89.75L172.081 98H160.04H148Z" fill="black" />
-                    <path d="M163 79V74.297V69.594L167 73.5C169.2 75.648 171 77.765 171 78.203C171 78.641 169.2 79 167 79H163Z" fill="black" />
+                    <path
+                        d="M148 98V84V70H154H160V75.45V80.9L165.75 81.2L171.5 81.5L171.79 89.75L172.081 98H160.04H148Z"
+                        fill="black"
+                    />
+                    <path
+                        d="M163 79V74.297V69.594L167 73.5C169.2 75.648 171 77.765 171 78.203C171 78.641 169.2 79 167 79H163Z"
+                        fill="black"
+                    />
                 </g>
             </g>
             <g id="file-1" style="--order: 1">
@@ -98,9 +110,22 @@
                 </g>
             </g>
             <defs>
-                <filter id="filter0_d_0_1" x="0" y="7.62939e-05" width="104" height="204.585" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                <filter
+                    id="filter0_d_0_1"
+                    x="0"
+                    y="7.62939e-05"
+                    width="104"
+                    height="204.585"
+                    filterUnits="userSpaceOnUse"
+                    color-interpolation-filters="sRGB"
+                >
                     <feFlood flood-opacity="0" result="BackgroundImageFix" />
-                    <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
+                    <feColorMatrix
+                        in="SourceAlpha"
+                        type="matrix"
+                        values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"
+                        result="hardAlpha"
+                    />
                     <feOffset dy="4" />
                     <feGaussianBlur stdDeviation="2" />
                     <feComposite in2="hardAlpha" operator="out" />
@@ -108,9 +133,22 @@
                     <feBlend mode="normal" in2="BackgroundImageFix" result="effect1_dropShadow_0_1" />
                     <feBlend mode="normal" in="SourceGraphic" in2="effect1_dropShadow_0_1" result="shape" />
                 </filter>
-                <filter id="filter1_d_0_1" x="96" y="2" width="104" height="204.585" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+                <filter
+                    id="filter1_d_0_1"
+                    x="96"
+                    y="2"
+                    width="104"
+                    height="204.585"
+                    filterUnits="userSpaceOnUse"
+                    color-interpolation-filters="sRGB"
+                >
                     <feFlood flood-opacity="0" result="BackgroundImageFix" />
-                    <feColorMatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha" />
+                    <feColorMatrix
+                        in="SourceAlpha"
+                        type="matrix"
+                        values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0"
+                        result="hardAlpha"
+                    />
                     <feOffset dy="4" />
                     <feGaussianBlur stdDeviation="2" />
                     <feComposite in2="hardAlpha" operator="out" />

@@ -11,8 +11,9 @@
                 </el-row>
                 <el-row>
                     <p class="hero-banner-description">
-                        ezBIDS requires neither coding proficiency nor knowledge of BIDS in order to get started. It is the first BIDS tool to offer guided
-                        standardization, support for task events conversion, and interoperability with
+                        ezBIDS requires neither coding proficiency nor knowledge of BIDS in order to get started. It is
+                        the first BIDS tool to offer guided standardization, support for task events conversion, and
+                        interoperability with
                         <a href="https://openneuro.org" class="link" target="_blank">OpenNeuro</a>
                         and
                         <a href="https://brainlife.io" class="link" target="_blank">brainlife.io</a>
@@ -20,12 +21,17 @@
                 </el-row>
                 <el-row>
                     <el-col :xs="24" :md="12">
-                        <el-button @click="onClickGetStarted" type="primary" style="color: white !important; font-weight: bold;" class="hero-banner-button">
+                        <el-button
+                            type="primary"
+                            style="color: white !important; font-weight: bold"
+                            class="hero-banner-button"
+                            @click="onClickGetStarted"
+                        >
                             GET STARTED
                         </el-button>
                     </el-col>
                     <el-col :xs="24" :md="12">
-                        <el-button class="hero-banner-button" @click="openDocumentation" type="text">
+                        <el-button class="hero-banner-button" type="text" @click="openDocumentation">
                             <el-icon>
                                 <font-awesome-icon :icon="['fas', 'arrow-up-right-from-square']" />
                             </el-icon>
@@ -107,18 +113,20 @@ export default defineComponent({
         },
         onClickGetStarted() {
             if (hasJWT()) {
-                this.$router.push('/convert')
+                this.$router.push('/convert');
                 return;
             }
 
             sessionStorage.setItem('auth_redirect', `${window.location.href}convert`);
-            window.location.href = (this.config as {
-                apihost: string;
-                authSignIn: string;
-                authSignOut: string;
-                debug: boolean;
-            }).authSignIn;
-        }
+            window.location.href = (
+                this.config as {
+                    apihost: string;
+                    authSignIn: string;
+                    authSignOut: string;
+                    debug: boolean;
+                }
+            ).authSignIn;
+        },
     },
 });
 </script>

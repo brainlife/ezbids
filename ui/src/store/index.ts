@@ -1,9 +1,7 @@
-import perfMetadata from '../assets/schema/rules/sidecars/perf.json'
+import { createStore } from 'vuex';
 
-import { createStore } from 'vuex'
-
-import bidsEntities from '../assets/schema/objects/entities.json'
-import axios from '../axios.instance'
+import bidsEntities from '../assets/schema/objects/entities.json';
+import axios from '../axios.instance';
 
 // export interface GenericRule {
 //     selectors?: string[]
@@ -82,7 +80,7 @@ export interface DatasetDescription {
     EthicsApprovals: string[];
     ReferencesAndLinks: string[];
     DatasetDOI: string;
-    GeneratedBy: GeneratedByObject;
+    GeneratedBy: [GeneratedByObject];
     SourceDatasets: SourceDatasetObject;
 }
 
@@ -145,7 +143,7 @@ export interface IBIDSEvent {
     onset: number;
     duration: number;
     sample?: number;
-    trial_type?: string,
+    trial_type?: string;
     response_time?: number;
     value?: string | number;
     HED?: string;
@@ -212,7 +210,7 @@ export interface IObject {
 
     defaced?: boolean;
     defaceFailed?: boolean;
-    defaceSelection: "original" | "defaced"
+    defaceSelection: 'original' | 'defaced';
 }
 
 interface BIDSSchemaEntities {
@@ -222,13 +220,14 @@ interface BIDSSchemaEntities {
 }
 
 interface BIDSEntities {
-    [key: string]: { //task, subject, session, etc..
+    [key: string]: {
+        //task, subject, session, etc..
         name: string;
         entity: string;
         description: string;
         type: string;
-        format: string
-    }
+        format: string;
+    };
 }
 
 interface BIDSDatatypeOption {
@@ -238,10 +237,11 @@ interface BIDSDatatypeOption {
 }
 
 interface BIDSDatatypes {
-    [key: string]: { //anat, dwi, etc..
+    [key: string]: {
+        //anat, dwi, etc..
         label: string; //modality label
         options: BIDSDatatypeOption[];
-    }
+    };
 }
 
 interface BIDSDatatypeMetadataOptionConditions {
@@ -266,14 +266,14 @@ interface BIDSDatatypesMetadata {
     [key: string]: {
         label: string;
         options: BIDSDatatypeMetadataOption[];
-    }
+    };
 }
 
 export interface OrganizedSession {
-    sess: string,
+    sess: string;
     session_idx: number;
-    objects: IObject[], //all object under this subject/session
-    AcquisitionDate: string, //TODO.. should be Date?
+    objects: IObject[]; //all object under this subject/session
+    AcquisitionDate: string; //TODO.. should be Date?
 }
 
 export interface OrganizedSubject {
@@ -323,15 +323,15 @@ const state = {
     },
 
     config: {
-        apihost: import.meta.env.VITE_APIHOST || "/api/ezbids",
+        apihost: import.meta.env.VITE_APIHOST || '/api/ezbids',
         authhost: process.env.NODE_ENV === 'development' ? 'http://localhost:8080/api/auth' : '/api/auth',
         authSignIn: '/auth/#!/signin',
         authSignOut: '/auth/#!/signout',
-        debug: (process.env.NODE_ENV == "development" ? true : false),
+        debug: process.env.NODE_ENV == 'development' ? true : false,
     },
 
     session: null as ISession | null,
-    page: "upload",
+    page: 'upload',
 
     //current state of the session
     //WATCH OUT - this gets wiped out when we load ezBIDS_core.json from analyzer
@@ -340,15 +340,15 @@ const state = {
 
         //pretty much straight out of bids/dataset_description.json
         datasetDescription: {
-            Name: "Untitled",
-            BIDSVersion: "1.8.0",
+            Name: 'Untitled',
+            BIDSVersion: '1.8.0',
             HEDVersion: [],
             DatasetLinks: [],
-            DatasetType: "raw",
-            License: "",
+            DatasetType: 'raw',
+            License: '',
             Authors: [],
-            Acknowledgements: "", //"Special thanks to Korbinian Brodmann for help in formatting this dataset in BIDS. We thank Alan Lloyd Hodgkin and Andrew Huxley for helpful comments and discussions about the experiment and manuscript; Hermann Ludwig He  lmholtz for administrative support; and Claudius Galenus for providing data for the medial-to-lateral index analysis.",
-            HowToAcknowledge: "", //"Please cite this paper: https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
+            Acknowledgements: '', //"Special thanks to Korbinian Brodmann for help in formatting this dataset in BIDS. We thank Alan Lloyd Hodgkin and Andrew Huxley for helpful comments and discussions about the experiment and manuscript; Hermann Ludwig He  lmholtz for administrative support; and Claudius Galenus for providing data for the medial-to-lateral index analysis.",
+            HowToAcknowledge: '', //"Please cite this paper: https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",
             Funding: [
                 //"National Institute of Neuroscience Grant F378236MFH1",
                 //"National Institute of Neuroscience Grant 5RMZ0023106"
@@ -360,25 +360,28 @@ const state = {
                 //"https://www.ncbi.nlm.nih.gov/pubmed/001012092119281",items
                 //"http://doi.org/1920.8/jndata.2015.7"
             ],
-            DatasetDOI: "", //"10.0.2.3/dfjj.10"
-            GeneratedBy: {
-                Name: "ezBIDS",
-                Version: "1.0.0",
-                Description: "ezBIDS is a web-based tool for converting neuroimaging datasets to BIDS, requiring neither coding nor knowledge of the BIDS specification",
-                CodeURL: "https://brainlife.io/ezbids/",
-                Container: {
-                    Type: "docker",
-                    Tag: "brainlife/ezbids-handler",
-                } as ContainerObject
-            },
+            DatasetDOI: '', //"10.0.2.3/dfjj.10"
+            GeneratedBy: [
+                {
+                    Name: 'ezBIDS',
+                    Version: '1.0.0',
+                    Description:
+                        'ezBIDS is a web-based tool for converting neuroimaging datasets to BIDS, requiring neither coding nor knowledge of the BIDS specification',
+                    CodeURL: 'https://brainlife.io/ezbids/',
+                    Container: {
+                        Type: 'docker',
+                        Tag: 'brainlife/ezbids-handler',
+                    } as ContainerObject,
+                },
+            ],
             SourceDatasets: {
-                DOI: "",
-                URL: "",
-                Version: "",
+                DOI: '',
+                URL: '',
+                Version: '',
             } as SourceDatasetObject,
         } as DatasetDescription,
 
-        readme: "",
+        readme: '',
         participantsColumn: {},
         participantsInfo: {},
 
@@ -389,7 +392,7 @@ const state = {
 
         _organized: [] as OrganizedSubject[], //above things are organized into subs/ses/run/object hierarchy for quick access
 
-        defacingMethod: "",
+        defacingMethod: '',
         includeExcluded: true,
         sideCar: {} as { [key: string]: any },
     },
@@ -399,27 +402,27 @@ const state = {
             //these are just for typescript definitions.
             //real initial values should come from mapEventColumns()
 
-            onsetLogic: "eq",
+            onsetLogic: 'eq',
             onset: null, //will be set to column name in event
             onset2: null, //will be set to column name in event
-            onsetUnit: "sec",
+            onsetUnit: 'sec',
 
-            durationLogic: "eq",
+            durationLogic: 'eq',
             duration: null,
             duration2: null, //used in case durationLogic is "subtract" or "add"
-            durationUnit: "sec",
+            durationUnit: 'sec',
 
-            sampleLogic: "eq",
+            sampleLogic: 'eq',
             sample: null,
             sample2: null,
-            sampleUnit: "samples",
+            sampleUnit: 'samples',
 
             trialType: null,
 
-            responseTimeLogic: "eq",
+            responseTimeLogic: 'eq',
             responseTime: null,
             responseTime2: null,
-            responseTimeUnit: "sec",
+            responseTimeUnit: 'sec',
 
             value: null,
 
@@ -429,8 +432,8 @@ const state = {
         },
 
         trialTypes: {
-            longName: "Event category",
-            desc: "Indicator of type of action that is expected",
+            longName: 'Event category',
+            desc: 'Indicator of type of action that is expected',
             levels: {} as { [key: string]: string }, //description for each trialType values
         },
 
@@ -438,17 +441,16 @@ const state = {
         sampleValues: {} as { [key: string]: string[] },
         loaded: false,
     },
-}
+};
 export type IEzbids = typeof state.ezbids;
 export type IEvents = typeof state.events;
 
-
 interface checkMetadata {
-    modality: string,
-    datatype: string,
-    suffix: string,
-    filePath: string,
-    MetaDataField: string
+    modality: string;
+    datatype: string;
+    suffix: string;
+    filePath: string;
+    MetaDataField: string;
 }
 
 interface MetadataIssues {
@@ -457,33 +459,29 @@ interface MetadataIssues {
 }
 
 interface MetadataFields {
-    [key: string]: { // Metadata key: EchoTime, RepetitionTime, etc...
+    [key: string]: {
+        // Metadata key: EchoTime, RepetitionTime, etc...
         level: string;
         description_addendum?: string;
         level_addendum?: string;
         issue?: MetadataIssues;
-    }
+    };
 }
 
 interface BIDSSchemaMetadata {
     selectors: string[];
     fields: MetadataFields[];
-
 }
 
-function loadDatatype(
-    modality: string,
-    datatypes: { [key: string]: BIDSSchemaEntities },
-    label: string) {
-
+function loadDatatype(modality: string, datatypes: { [key: string]: BIDSSchemaEntities }, label: string) {
     state.bidsSchema.datatypes[modality] = { label, options: [] };
     for (const group of Object.values(datatypes)) {
         //datatype.forEach(group=>{
         group.suffixes.forEach((suffix: string) => {
             state.bidsSchema.datatypes[modality].options.push({
-                value: modality + "/" + suffix,
+                value: modality + '/' + suffix,
                 label: suffix, //bold, cbv, sbref, events, etc..
-                entities: group.entities,   //["subject", "session", etc..]
+                entities: group.entities, //["subject", "session", etc..]
             });
         });
     }
@@ -504,34 +502,24 @@ function loadDatatype(
 }
 */
 
-/** 
- * 
- * function LoadMetaDataRules() {
- * 2 files loaded -> 1st perf/asl -> asl.yaml and convert it to above json
- * pet -> pet.yaml 
- * 
- * }
-*/
+import dwiDatatype from '../assets/schema/rules/datatypes/dwi.json';
+loadDatatype('dwi', dwiDatatype, 'Diffusion');
 
-import dwiDatatype from '../assets/schema/rules/datatypes/dwi.json'
-loadDatatype("dwi", dwiDatatype, "Diffusion");
+import anatDatatype from '../assets/schema/rules/datatypes/anat.json';
+loadDatatype('anat', anatDatatype, 'Anatomical');
 
-import anatDatatype from '../assets/schema/rules/datatypes/anat.json'
-loadDatatype("anat", anatDatatype, "Anatomical");
+import funcDatatype from '../assets/schema/rules/datatypes/func.json';
+loadDatatype('func', funcDatatype, 'Functional');
 
-import funcDatatype from '../assets/schema/rules/datatypes/func.json'
-loadDatatype("func", funcDatatype, "Functional");
+import fmapDatatype from '../assets/schema/rules/datatypes/fmap.json';
+loadDatatype('fmap', fmapDatatype, 'Field Map');
 
-import fmapDatatype from '../assets/schema/rules/datatypes/fmap.json'
-loadDatatype("fmap", fmapDatatype, "Field Map");
+import petDatatype from '../assets/schema/rules/datatypes/pet.json';
+loadDatatype('pet', petDatatype, 'PET');
 
-import petDatatype from '../assets/schema/rules/datatypes/pet.json'
-loadDatatype("pet", petDatatype, "PET");
-
-import perfDatatype from '../assets/schema/rules/datatypes/perf.json'
+import perfDatatype from '../assets/schema/rules/datatypes/perf.json';
 import { ElNotification } from 'element-plus';
-loadDatatype("perf", perfDatatype, "Perfusion");
-
+loadDatatype('perf', perfDatatype, 'Perfusion');
 
 const store = createStore({
     state,
@@ -548,42 +536,45 @@ const store = createStore({
 
         reset(state) {
             state.session = null;
-            state.page = "upload"; //current page
+            state.page = 'upload'; //current page
             state.ezbids = {
                 notLoaded: true,
 
                 datasetDescription: {
-                    Name: "Untitled",
-                    BIDSVersion: "1.8.0",
+                    Name: 'Untitled',
+                    BIDSVersion: '1.9.0',
                     HEDVersion: [],
                     DatasetLinks: [],
-                    DatasetType: "raw",
-                    License: "",
+                    DatasetType: 'raw',
+                    License: '',
                     Authors: [],
-                    Acknowledgements: "",
-                    HowToAcknowledge: "",
+                    Acknowledgements: '',
+                    HowToAcknowledge: '',
                     Funding: [],
                     EthicsApprovals: [],
                     ReferencesAndLinks: [],
-                    DatasetDOI: "",
-                    GeneratedBy: {
-                        Name: "ezBIDS",
-                        Version: "1.0.0",
-                        Description: "ezBIDS is a web-based tool for converting neuroimaging datasets to BIDS, requiring neither coding nor knowledge of the BIDS specification",
-                        CodeURL: "https://brainlife.io/ezbids/",
-                        Container: {
-                            Type: "docker",
-                            Tag: "brainlife/ezbids-handler",
-                        }
-                    },
+                    DatasetDOI: '',
+                    GeneratedBy: [
+                        {
+                            Name: 'ezBIDS',
+                            Version: '1.0.0',
+                            Description:
+                                'ezBIDS is a web-based tool for converting neuroimaging datasets to BIDS, requiring neither coding nor knowledge of the BIDS specification',
+                            CodeURL: 'https://brainlife.io/ezbids/',
+                            Container: {
+                                Type: 'docker',
+                                Tag: 'brainlife/ezbids-handler',
+                            },
+                        },
+                    ],
                     SourceDatasets: {
-                        DOI: "",
-                        URL: "",
-                        Version: "",
+                        DOI: '',
+                        URL: '',
+                        Version: '',
                     },
                 },
 
-                readme: "",
+                readme: '',
                 participantsColumn: {},
                 participantsInfo: {},
 
@@ -594,7 +585,7 @@ const store = createStore({
 
                 _organized: [], //above things are organized into subs/ses/run/object hierarchy for quick access
 
-                defacingMethod: "",
+                defacingMethod: '',
                 includeExcluded: true,
                 sideCar: {},
             };
@@ -617,17 +608,17 @@ const store = createStore({
                 */
             });
 
-            state.ezbids.subjects.forEach(s => {
+            state.ezbids.subjects.forEach((s) => {
                 s.validationErrors = [];
                 s.validationWarnings = [];
-                s.exclude = !!(s.exclude);
+                s.exclude = !!s.exclude;
             });
 
             state.ezbids.objects.forEach((o: IObject) => {
-                o.exclude = !!(o.exclude);
+                o.exclude = !!o.exclude;
                 o.validationErrors = [];
                 o.validationWarnings = [];
-                o.items.forEach(item => {
+                o.items.forEach((item) => {
                     if (item.sidecar) {
                         //anonymize..
                         let sidecar = Object.assign({}, item.sidecar);
@@ -664,7 +655,7 @@ const store = createStore({
 
         updateSessionAllowedUsers(state, updatedUsers) {
             if (!state.session) return;
-            state.session.allowedUsers = updatedUsers
+            state.session.allowedUsers = updatedUsers;
         },
 
         organizeObjects(state) {
@@ -682,7 +673,8 @@ const store = createStore({
 
                 const amodseriesnum = a.ModifiedSeriesNumber;
                 const bmodseriesnum = b.ModifiedSeriesNumber;
-                if (amodseriesnum && bmodseriesnum && amodseriesnum != bmodseriesnum) return amodseriesnum.localeCompare(bmodseriesnum);
+                if (amodseriesnum && bmodseriesnum && amodseriesnum != bmodseriesnum)
+                    return amodseriesnum.localeCompare(bmodseriesnum);
 
                 const apath = a.items[0].path;
                 const bpath = b.items[0].path;
@@ -699,24 +691,24 @@ const store = createStore({
                 let sub = o._entities.subject;
                 let sess = o._entities.session;
 
-                let subGroup = state.ezbids._organized.find(s => s.sub == sub);
+                let subGroup = state.ezbids._organized.find((s) => s.sub == sub);
                 if (!subGroup) {
                     subGroup = {
                         sub,
                         subject_idx: o.subject_idx,
                         sess: [],
-                    }
+                    };
                     state.ezbids._organized.push(subGroup);
                 }
 
-                let sesGroup = subGroup.sess.find(s => s.sess == sess);
+                let sesGroup = subGroup.sess.find((s) => s.sess == sess);
                 if (!sesGroup) {
                     sesGroup = {
                         sess,
                         session_idx: o.session_idx,
                         AcquisitionDate: o.AcquisitionDate,
                         objects: [],
-                    }
+                    };
                     subGroup.sess.push(sesGroup);
                 }
                 sesGroup.objects.push(o);
@@ -730,52 +722,58 @@ const store = createStore({
 
     actions: {
         async reload(context, id) {
-            context.commit("reset");
-            context.commit("setSession", {
+            context.commit('reset');
+            context.commit('setSession', {
                 _id: id,
             });
-            await context.dispatch("loadSession");
-            await context.dispatch("loadEzbids"); //might not yet exist
-            await context.dispatch("loadEzbidsUpdated"); //might not yet exist
+            await context.dispatch('loadSession');
+            await context.dispatch('loadEzbids'); //might not yet exist
+            await context.dispatch('loadEzbidsUpdated'); //might not yet exist
         },
 
         async loadSession(context) {
             if (!context.state.session) return;
             const res = await axios.get(`${context.state.config.apihost}/session/${context.state.session._id}`);
-            context.commit("setSession", res.data);
+            context.commit('setSession', res.data);
         },
 
         async loadEzbids(context) {
             if (!context.state.session || !context.state.session.pre_finish_date) return;
             try {
-                const jwtRes = await axios.get(`${context.state.config.apihost}/download/${context.state.session._id}/token`);
-                const res = await axios.get(`${context.state.config.apihost}/download/${context.state.session._id}/ezBIDS_core.json?token=${jwtRes.data}`);
+                const jwtRes = await axios.get(
+                    `${context.state.config.apihost}/download/${context.state.session._id}/token`
+                );
+                const res = await axios.get(
+                    `${context.state.config.apihost}/download/${context.state.session._id}/ezBIDS_core.json?token=${jwtRes.data}`
+                );
                 if (res.status === 200) {
                     const conf = await res.data;
                     conf.notLoaded = false;
-                    context.commit("updateEzbids", conf);
+                    context.commit('updateEzbids', conf);
                 }
             } catch (e) {
                 console.error(e);
                 ElNotification({
                     message: 'There was an error loading ezBIDS',
-                    type: 'error'
-                })
+                    type: 'error',
+                });
             }
         },
 
         async loadEzbidsUpdated(context) {
             if (!context.state.session || !context.state.session.pre_finish_date) return;
             try {
-                const res = await axios.get(`${context.state.config.apihost}/session/${context.state.session._id}/updated`)
+                const res = await axios.get(
+                    `${context.state.config.apihost}/session/${context.state.session._id}/updated`
+                );
                 if (res.status == 200) {
                     const updated = await res.data;
-                    context.commit("updateEzbids", updated);
-                    context.commit("updateEvents", updated.events);
-                    context.commit("setPage", "finalize");
+                    context.commit('updateEzbids', updated);
+                    context.commit('updateEvents', updated.events);
+                    context.commit('setPage', 'finalize');
                 }
             } catch (e) {
-                console.error(e)
+                console.error(e);
             }
         },
 
@@ -783,25 +781,39 @@ const store = createStore({
             if (!context.state.session) return;
 
             try {
-                let jwtRes = await axios.get(`${context.state.config.apihost}/download/${context.state.session._id}/token`);
-                const finished = await axios.get(`${context.state.config.apihost}/download/${context.state.session._id}/deface.finished?token=${jwtRes.data}`);
+                let jwtRes = await axios.get(
+                    `${context.state.config.apihost}/download/${context.state.session._id}/token`
+                );
+                const finished = await axios.get(
+                    `${context.state.config.apihost}/download/${context.state.session._id}/deface.finished?token=${jwtRes.data}`
+                );
                 if (finished.status == 200) {
                     const finishedText = await finished.data;
-                    const idxs = finishedText.trim().split("\n").filter((v) => !!v).map((v) => parseInt(v));
-                    idxs.forEach((idx) => {
-                        let o = context.state.ezbids.objects.find(o => o.idx == idx);
+                    const idxs = finishedText
+                        .trim()
+                        .split('\n')
+                        .filter((v: any) => !!v)
+                        .map((v: string) => parseInt(v));
+                    idxs.forEach((idx: number) => {
+                        let o = context.state.ezbids.objects.find((o) => o.idx == idx);
                         if (!o) console.error("can't find", idx);
                         else o.defaced = true;
                     });
                 }
 
                 jwtRes = await axios.get(`${context.state.config.apihost}/download/${context.state.session._id}/token`);
-                const failed = await axios.get(`${context.state.config.apihost}/download/${context.state.session._id}/deface.failed?token=${jwtRes.data}`);
+                const failed = await axios.get(
+                    `${context.state.config.apihost}/download/${context.state.session._id}/deface.failed?token=${jwtRes.data}`
+                );
                 if (failed.status == 200) {
                     const failedText = await failed.data;
-                    const idxs = failedText.trim().split("\n").filter(v => !!v).map(v => parseInt(v));
-                    idxs.forEach((idx) => {
-                        let o = context.state.ezbids.objects.find(o => o.idx === idx);
+                    const idxs = failedText
+                        .trim()
+                        .split('\n')
+                        .filter((v: any) => !!v)
+                        .map((v: string) => parseInt(v));
+                    idxs.forEach((idx: number) => {
+                        let o = context.state.ezbids.objects.find((o) => o.idx === idx);
                         if (!o) console.error("can't find", idx);
                         else o.defaceFailed = true;
                     });
@@ -809,37 +821,43 @@ const store = createStore({
             } catch (e) {
                 console.error(e);
             }
-        }
+        },
     },
 
     getters: {
         //from "anat/t1w", return entities object {subject: required, session: optional, etc..}
         getBIDSEntities: (state) => (type: string) => {
             if (!type) return {};
-            const modality = type.split("/")[0];
-            const suffix = type.split("/")[1];
+            const modality = type.split('/')[0];
+            const suffix = type.split('/')[1];
             let datatype = state.bidsSchema.datatypes[modality];
             if (!datatype) return {};
 
             //find the option that contains our suffix
-            const option = datatype.options.find(option => option.value == type);
+            const option = datatype.options.find((option) => option.value == type);
 
             return option?.entities;
         },
 
         //find a session inside sub hierarchy
-        findSession: (state) => (sub: Subject, o: IObject): (Session | undefined) => {
-            return sub.sessions[o.session_idx];
-        },
+        findSession:
+            (state) =>
+            (sub: Subject, o: IObject): Session | undefined => {
+                return sub.sessions[o.session_idx];
+            },
 
-        findSubject: (state) => (o: IObject): (Subject | undefined) => {
-            return state.ezbids.subjects[o.subject_idx];
-        },
+        findSubject:
+            (state) =>
+            (o: IObject): Subject | undefined => {
+                return state.ezbids.subjects[o.subject_idx];
+            },
 
-        findSubjectFromString: (state) => (sub: string): (Subject | undefined) => {
-            return state.ezbids.subjects.find((s: Subject) => s.subject == sub);
-        },
+        findSubjectFromString:
+            (state) =>
+            (sub: string): Subject | undefined => {
+                return state.ezbids.subjects.find((s: Subject) => s.subject == sub);
+            },
     },
-})
+});
 
 export default store;

@@ -1,11 +1,11 @@
 <template>
     <div style="padding: 20px">
         <p>
-            Please map DICOM PatientID to BIDS Subject ID. You can also specify AcquisitionDate/session mappings for
-            each subject. The mapping table can be downloaded later for future references.
+            Please map DICOM PatientID to BIDS subject ID. You can also specify session (AcquisitionDate) mappings for
+            each subject, if appropriate. A mapping table can be downloaded later for future references.
         </p>
 
-        <el-dropdown @command="resetSubjects" style="float: right; margin: 10px" size="small">
+        <el-dropdown style="float: right; margin: 10px" size="small" @command="resetSubjects">
             <el-button type="primary" size="small">
                 Reset Subject Mapping <i class="el-icon-arrow-down el-icon--right"></i>
             </el-button>
@@ -38,7 +38,7 @@
                         v-model="scope.row.exclude"
                         title="Exclude all objects from BIDS output for this subject"
                     >
-                        Exclude this patient / subject
+                        Exclude this subject
                     </el-checkbox>
                     <el-input v-model.trim="scope.row.subject" size="small" @change="validate(scope.row)">
                         <template #prepend>sub-</template>
@@ -57,7 +57,7 @@
                                             v-model="sessionScope.row.exclude"
                                             title="Exclude all objects for this session"
                                         >
-                                            Exclude this acquisition / session
+                                            Exclude this session
                                         </el-checkbox>
                                         <el-input
                                             v-model.trim="sessionScope.row.session"
@@ -74,11 +74,11 @@
                     </el-table>
 
                     <el-alert
+                        v-for="(error, idx) in scope.row.validationErrors"
+                        :key="idx"
                         show-icon
                         :closable="false"
                         type="error"
-                        v-for="(error, idx) in scope.row.validationErrors"
-                        :key="idx"
                         :title="error"
                         style="margin-bottom: 4px"
                     />
@@ -108,13 +108,13 @@ export default defineComponent({
         },
     },
     */
+    computed: {
+        ...mapState(['ezbids', 'config']),
+    },
+
     created() {
         console.log('Subject create');
         this.validateAll();
-    },
-
-    computed: {
-        ...mapState(['ezbids', 'config']),
     },
 
     methods: {
