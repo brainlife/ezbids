@@ -1,7 +1,7 @@
 <template>
     <div>
         <aside>
-            <h1 style="font-size: 25pt"><span style="letter-spacing: -3px; opacity: 0.6;">ez</span>BIDS</h1>
+            <h1 style="font-size: 25pt"><span style="letter-spacing: -3px; opacity: 0.6">ez</span>BIDS</h1>
 
             <ul>
                 <li :class="{ active: page === 'upload' }">Upload Imaging Data</li>
@@ -51,11 +51,12 @@
                     </a>
                 </el-tooltip>
             </div>
-            
             <ManageUsersDialog></ManageUsersDialog>
 
             <div style="width: 135px; padding: 0 10px">
-                <el-button @click="handleSignout" style="color: black; width: 100%; font-family: inherit">Signout</el-button>
+                <el-button style="color: black; width: 100%; font-family: inherit" @click="handleSignout"
+                    >Signout</el-button
+                >
             </div>
         </aside>
         <section>
@@ -65,18 +66,24 @@
             <Participant v-if="page === 'participant'" ref="participant" />
             <SeriesPage v-if="page === 'seriespage'" ref="seriespage" @niivue="openNiivue" />
             <Events v-if="page === 'event'" ref="event" @mapObjects="mapObjects" />
-            <Objects v-if="page === 'object'" ref="object" @niivue="openNiivue" @mapObjects="mapObjects" @updateObject="updateObject" />
+            <Objects
+                v-if="page === 'object'"
+                ref="object"
+                @niivue="openNiivue"
+                @mapObjects="mapObjects"
+                @updateObject="updateObject"
+            />
             <Deface v-if="page === 'deface'" ref="deface" @niivue="openNiivue" />
             <Finalize v-if="page === 'finalize'" ref="finalize" />
             <Feedback v-if="page === 'feedback'" ref="feedback" />
 
             <br />
-            <div class="page-action" v-if="session">
+            <div v-if="session" class="page-action">
                 <el-button v-if="backLabel" :type="backButtonType" @click="back">
                     <font-awesome-icon :icon="['fas', 'angle-left']" />
                     {{ backLabel }}
                 </el-button>
-                <el-button v-if="nextLabel" type="primary" @click="next" style="float: right;">
+                <el-button v-if="nextLabel" type="primary" style="float: right" @click="next">
                     {{ nextLabel }}
                     <font-awesome-icon :icon="['fas', 'angle-right']" />
                 </el-button>
@@ -100,7 +107,7 @@ import Events from './Events.vue';
 import Deface from './Deface.vue';
 import Finalize from './Finalize.vue';
 import Feedback from './Feedback.vue';
-import ManageUsersDialog from './components/dialogs/ManageUsersDialog.vue'
+import ManageUsersDialog from './components/dialogs/ManageUsersDialog.vue';
 import { IObject } from './store';
 
 //https://github.com/element-plus/element-plus/issues/436#issuecomment-961386582
@@ -133,44 +140,23 @@ export default defineComponent({
     data() {
         return {
             //page order
-            pages: ['upload', 'description', 'subject', 'seriespage', 'event', 'object', 'deface', 'participant', 'finalize', 'feedback'],
+            pages: [
+                'upload',
+                'description',
+                'subject',
+                'seriespage',
+                'event',
+                'object',
+                'deface',
+                'participant',
+                'finalize',
+                'feedback',
+            ],
 
             //item to open in niivue
             //niivueItem: undefined as IObjectItem|undefined,
             niivuePath: undefined as string | undefined,
         };
-    },
-
-    async created() {
-        this.$store.commit('reset');
-        if (location.hash) {
-            await this.$store.dispatch('reload', location.hash.substring(1));
-            this.mapObjects();
-            this.$store.commit('organizeObjects');
-            this.$store.dispatch('loadDefaceStatus');
-        }
-
-        window.setInterval(async () => {
-            if (this.session) {
-                switch (this.session.status) {
-                    case 'analyzed':
-                    case 'finished':
-                        break;
-                    case 'defacing':
-                        this.$store.dispatch('loadDefaceStatus');
-                        this.$store.dispatch('loadSession', this.session._id);
-                        break;
-                    default:
-                        //deface
-                        //defaced
-                        this.$store.dispatch('loadSession', this.session._id);
-                }
-
-                if (this.ezbids.notLoaded) {
-                    await this.$store.dispatch('loadEzbids');
-                }
-            }
-        }, 5000);
     },
 
     computed: {
@@ -206,6 +192,38 @@ export default defineComponent({
                     return 'Next';
             }
         },
+    },
+
+    async created() {
+        this.$store.commit('reset');
+        if (location.hash) {
+            await this.$store.dispatch('reload', location.hash.substring(1));
+            this.mapObjects();
+            this.$store.commit('organizeObjects');
+            this.$store.dispatch('loadDefaceStatus');
+        }
+
+        window.setInterval(async () => {
+            if (this.session) {
+                switch (this.session.status) {
+                    case 'analyzed':
+                    case 'finished':
+                        break;
+                    case 'defacing':
+                        this.$store.dispatch('loadDefaceStatus');
+                        this.$store.dispatch('loadSession', this.session._id);
+                        break;
+                    default:
+                        //deface
+                        //defaced
+                        this.$store.dispatch('loadSession', this.session._id);
+                }
+
+                if (this.ezbids.notLoaded) {
+                    await this.$store.dispatch('loadEzbids');
+                }
+            }
+        }, 5000);
     },
 
     methods: {
@@ -318,7 +336,7 @@ export default defineComponent({
         },
         handleSignout() {
             document.location.href = this.config.authSignOut;
-        }
+        },
     },
 });
 </script>
@@ -337,7 +355,13 @@ aside {
     height: 100%;
 
     // background-color: #eee;
-    background: linear-gradient(rgb(70, 188, 152), rgb(53, 150, 121), rgb(45, 113, 141), rgb(31, 82, 95), rgb(16, 45, 71));
+    background: linear-gradient(
+        rgb(70, 188, 152),
+        rgb(53, 150, 121),
+        rgb(45, 113, 141),
+        rgb(31, 82, 95),
+        rgb(16, 45, 71)
+    );
 
     color: #333;
 
@@ -381,7 +405,7 @@ aside {
     padding: 14px;
     display: flex;
     justify-content: space-between;
-    
+
     svg:hover {
         color: lightgray !important;
     }
