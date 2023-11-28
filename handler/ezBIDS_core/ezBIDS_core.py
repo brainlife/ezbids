@@ -343,9 +343,9 @@ def generate_participants_columns(DATA_DIR, bids_compliant):
         participants_column_info = json.load(participants_column_info, strict=False)
     else:
         participants_column_info = {
-            "species": {
-                "Description": "species of the participant(s)",
-            },
+            # "species": {
+            #     "Description": "species of the participant(s)",
+            # },
             "sex": {
                 "Description": "Sex of the participant(s)",
                 "Levels": {
@@ -357,15 +357,15 @@ def generate_participants_columns(DATA_DIR, bids_compliant):
             "age": {
                 "Description": "Age of the participant(s)",
                 "Units": "year",
-            },
-            "handedness": {
-                "Description": "Dominant hand of the participant(s)",
-                "Levels": {
-                    "Left": "Left",
-                    "Right": "Right",
-                    "Ambidextrous": "Ambidextrous"
-                }
             }
+            # "handedness": {
+            #     "Description": "Dominant hand of the participant(s)",
+            #     "Levels": {
+            #         "Left": "Left",
+            #         "Right": "Right",
+            #         "Ambidextrous": "Ambidextrous"
+            #     }
+            # }
         }
     return participants_column_info
 
