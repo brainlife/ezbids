@@ -3,24 +3,24 @@ From: node:16
 Stage: spython-base
 
 %files
-. /ui
+    . /ui
+
 %post
-
-SHELL=/bin/bash
-export SHELL
-
-mkdir -p /ui
-cd /ui
-
-npm install
+    mkdir -p /ui
+    cd /ui
+    npm install
+    # Hacky solution for dealing with path issue
+    cp singularity_vite node_modules/.bin/vite
+    exec npm run dev "$@"
 
 %runscript
-cd /ui
-# exec $SHELL npm run dev "$@"
-# exec npm run dev "$@"
-npm run dev
+    cd /ui
+    # exec /bin/bash npm run dev "$@"
+    exec npm run dev "$@"
+    # exec npm run dev
+
 %startscript
-cd /ui
-# exec $SHELL npm run dev "$@"
-# exec npm run dev "$@"
-npm run dev
+    cd /ui
+    # exec /bin/bash npm run dev "$@"
+    exec npm run dev "$@"
+    # npm run dev
