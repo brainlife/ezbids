@@ -1,0 +1,26 @@
+Bootstrap: docker
+From: node:16
+Stage: spython-base
+
+%files
+. /ui
+%post
+
+SHELL=/bin/bash
+export SHELL
+
+mkdir -p /ui
+cd /ui
+
+npm install
+
+%runscript
+cd /ui
+# exec $SHELL npm run dev "$@"
+# exec npm run dev "$@"
+npm run dev
+%startscript
+cd /ui
+# exec $SHELL npm run dev "$@"
+# exec npm run dev "$@"
+npm run dev
