@@ -5,15 +5,16 @@ instances:
         container_name: brainlife_ezbids-mongodb
         image: docker://mongo:4.4.15
         platform: linux/amd64
+        volumes:
+            - :/data/db
         healthcheck:
             test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
             interval: 10s
             timeout: 10s
-            retries:
-                5
+            retries: 5
         ports:
             - 27417:27017 #for local debugging
-        command: mkdir -p /data/db
+        # command: mkdir -p /data/db
 
     api:
         container_name: brainlife_ezbids-api

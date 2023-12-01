@@ -21,10 +21,5 @@ npm run prepare-husky
 #     docker compose up
 # fi
 
-if [[ $(command -v singularity-compose) ]]; then 
-    # if the older version is installed use the dash
-    singularity-compose --debug up --read_only --no-resolv
-else
-    # if the newer version is installed don't use the dash
-    singularity compose --debug up --read_only --no-resolv
-fi
+# Use singularity-compose instead of docker-compose
+singularity-compose --debug up --read_only --no-resolv
