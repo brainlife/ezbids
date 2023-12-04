@@ -1,8 +1,8 @@
 <template>
     <div style="padding: 20px">
         <p>
-            Please map DICOM PatientID to BIDS subject ID. You can also specify session (AcquisitionDate) mappings for
-            each subject, if appropriate. A mapping table can be downloaded later for future references.
+            Please map DICOM subject ID to BIDS subject ID. You can also specify session (AcquisitionDate) mappings for
+            each subject, if appropriate. A mapping table can be downloaded at the end for future reference.
         </p>
 
         <el-dropdown style="float: right; margin: 10px" size="small" @command="resetSubjects">

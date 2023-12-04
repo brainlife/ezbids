@@ -3,10 +3,9 @@
         <el-form v-if="anatObjects.length && !isDefacing">
             <p>
                 If you'd like to deface all anatomical images, please select a defacing method and click
-                <b>Run Deface</b> button. Defaced images will be reoriented via FSL's <i>reorient2std</i> function to
-                ensure proper defacing.
+                <b>Run Deface</b> button. Otherwise, you can skip this page.
             </p>
-            <p>Otherwise, you can skip this page.</p>
+            <p>Defaced images will be reoriented via FSL's <i>reorient2std</i> function to ensure proper defacing.</p>
 
             <el-form-item>
                 <b>Defacing Method </b>

@@ -41,8 +41,8 @@
             <div v-if="!ss" style="padding: 20px">
                 <div class="hint">
                     <p>
-                        Please update how you'd like to map each dicom SeriesDescription to BIDS datatype, suffix,
-                        entities.
+                        Please update (if necessary) how you'd like to map each dicom SeriesDescription to BIDS
+                        datatype, suffix, entities.
                     </p>
                     <p>
                         The information you specify here will be applied to all subjects that uses matching

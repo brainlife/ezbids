@@ -42,17 +42,21 @@
                     <h2>Information</h2>
                     <ul style="line-height: 200%">
                         <li>
-                            If you are new to ezBIDS, please read our
+                            If you are new to ezBIDS, please view our
+                            <a href="https://brainlife.io/docs/tutorial/ezBIDS/" target="_blank"
+                                ><b>ezBIDS tutorial</b></a
+                            >
+                            and
                             <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank"
-                                ><b>User documentation</b></a
+                                ><b>user documentation</b></a
                             >
                         </li>
-                        <li>See below for a brief ezBIDS video</li>
+                        <li>See below for a brief ezBIDS tutorial video</li>
                     </ul>
                     <iframe
                         width="640"
                         height="360"
-                        src="https://www.youtube.com/embed/mY3_bmt_e80"
+                        src="https://youtu.be/L8rWA8qgnpo"
                         title="YouTube video player"
                         frameborder="0"
                         allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
@@ -75,7 +79,7 @@
                     Uploading
                     <font-awesome-icon icon="spinner" pulse />
                 </h3>
-                <small>Please do not close/refresh this page until all files are uploaded.</small>
+                <small>Please do not close or refresh this page until all files are uploaded.</small>
                 <div v-if="failed.length > 0">
                     <el-alert type="error">Permanently failed to upload some files</el-alert>
                     <pre v-for="idx in failed" :key="idx" type="info" style="font-size: 80%">{{ files[idx].path }}</pre>
@@ -163,7 +167,8 @@
                     </h3>
                     <p>
                         <small
-                            >We have identified the following objects that can be organized into BIDS structure.</small
+                            >We have identified the following files (objects) that can be organized into BIDS
+                            structure.</small
                         >
                     </p>
                     <div v-for="(object, idx) in ezbids.objects" :key="idx" style="padding-bottom: 2px">

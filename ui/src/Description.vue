@@ -59,7 +59,7 @@ export default defineComponent({
     <div style="padding: 20px">
         <p>
             Please enter as much information you like to include in the <b>dataset_description.json</b>. For specific
-            For specific information and examples, see
+            information and examples, see
             <a
                 href="https://bids-specification.readthedocs.io/en/stable/03-modality-agnostic-files.html#dataset_descriptionjson"
                 target="_blank"
