@@ -22,4 +22,4 @@ npm run prepare-husky
 # fi
 
 # Use singularity-compose instead of docker-compose
-singularity-compose --debug up --read_only --no-resolv
+singularity-compose --debug up --no-resolv
