@@ -12,14 +12,15 @@ mkdir -p /tmp/workdir
 
 npm run prepare-husky
 
-# # ok docker compose is now included in docker as an option for docker
-# if [[ $(command -v docker-compose) ]]; then 
-#     # if the older version is installed use the dash
-#     docker-compose up
-# else
-#     # if the newer version is installed don't use the dash
-#     docker compose up
-# fi
-
 # Use singularity-compose instead of docker-compose
+
+# Helpful commentary on mongodb container build with Singularity: https://stackoverflow.com/questions/70746228/singularity-mongodb-container-in-background-mode
+if [ ! -d $PWD/data/db ]; then
+    mkdir -p $PWD/data/db
+fi
+
+if [ ! -f $PWD/mongodb/mongodb.sif ]; then # Will eventually be redundant and can remove
+    ./mongodb/mongodb_setup.sh
+fi
+
 singularity-compose --debug up --no-resolv

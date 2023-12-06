@@ -1,20 +1,45 @@
 version: "2.0"
 
 instances:
-    mongodb:
-        container_name: brainlife_ezbids-mongodb
-        image: docker://mongo:4.4.15
-        platform: linux/amd64
-        volumes:
-            - :/data/db
-        # healthcheck:
-        #     test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
-        #     interval: 10s
-        #     timeout: 10s
-        #     retries: 5
-        ports:
-            - 27417:27017 #for local debugging
-        # command: mkdir -p /data/db
+    # mongodb: # ORIGINAL
+    #     container_name: brainlife_ezbids-mongodb
+    #     image: docker://mongo:4.4.15
+    #     platform: linux/amd64
+    #     volumes:
+    #         - /tmp:/tmp
+    #     # healthcheck:
+    #     #     test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
+    #     #     interval: 10s
+    #     #     timeout: 10s
+    #     #     retries: 5
+    #     ports:
+    #         - 27417:27017 #for local debugging
+    #     post:
+    #         command:
+    #             - "mongod --dbpath /tmp"
+    #         # command: ["mongod --dbpath /tmp"]
+
+    # mongodb:  # NEW BUT STILL BAD
+    #     container_name: brainlife_ezbids-mongodb
+    #     build:
+    #         context: ./mongodb
+    #         options:
+    #             - fakeroot
+    #     platform: linux/amd64
+    #     volumes:
+    #         - ./data/db:/data/db
+    #     command:
+    #         ./mongodb_setup.sh
+    #     # healthcheck:
+    #     #     test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
+    #     #     interval: 10s
+    #     #     timeout: 10s
+    #     #     retries: 5
+    #     ports:
+    #         - 27417:27017 #for local debugging
+    #     # post:
+    #     #     command: ["echo", "Finished mongodb initialization"]
+    #             # - "mongod --dbpath /tmp"
 
     api:
         container_name: brainlife_ezbids-api

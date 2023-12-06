@@ -1,0 +1,5 @@
+Bootstrap: docker
+From: mongo:4.4.15
+
+%startscript
+    exec /usr/bin/mongo "$@"
