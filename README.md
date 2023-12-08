@@ -22,7 +22,6 @@ Helpful links:
 2. [ezBIDS tutorial](https://brainlife.io/docs/tutorial/ezBIDS/)
 3. [ezBIDS tutorial video](https://www.youtube.com/embed/L8rWA8qgnpo)
 4. [ezBIDS user documentation](https://brainlife.io/docs/using_ezBIDS/)
-5. [ezBIDS GitHub repo](https://github.com/brainlife/ezbids)
 
 ### Usage
 To access the ezBIDS web service, please visit https://brainlife.io/ezbids
