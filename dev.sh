@@ -20,7 +20,15 @@ if [ ! -d $PWD/data/db ]; then
 fi
 
 if [ ! -f $PWD/mongodb/mongodb.sif ]; then # Will eventually be redundant and can remove
+    echo "building mongodb"
     ./mongodb/mongodb_setup.sh
 fi
+
+# if [ ! -f ${PWD}/api.sif ]; then
+#     echo "building api"
+#     singularity build --fakeroot $PWD/api.sif Singularity
+
+#     singularity instance start --bind /tmp,./api:/app/api $PWD/api.sif brainlife_ezbids-api
+# fi
 
 singularity-compose --debug up --no-resolv

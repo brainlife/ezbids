@@ -11,10 +11,15 @@ Stage: spython-base
     npm install -g pm2 typescript tsc-watch
     npm install
 
+%environment
+    MONGO_CONNECTION_STRING=mongodb://mongodb:27017/ezbids
+
 %runscript
-    cd /app
+    # cd /app
+    cd /app/api
     exec /bin/bash "$@"
 
 %startscript
-    cd /app
+    # cd /app
+    cd /app/api
     exec /bin/bash "$@"

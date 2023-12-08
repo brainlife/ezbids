@@ -51,51 +51,46 @@ instances:
         volumes:
             - ./api:/app/api
             - /tmp:/tmp
-        depends_on:
-            mongodb:
-                condition: service_healthy
-        # healthcheck:
-        #     test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
-        working_dir: /app/api
-        command:
-            ./dev.sh
-        environment:
-            MONGO_CONNECTION_STRING: mongodb://mongodb:27017/ezbids
+        # depends_on:
+        #     mongodb:
+        #         condition: service_healthy
+        post:
+            command: ["/bin/bash", "./dev.sh"] # This seems to cause the npm install to freeze
         ports:
             - 8082:8082 #localhost runs on local browser to it needs to access api via host port
 
-    handler:
-        container_name: brainlife_ezbids-handler
-        build:
-          context: ./handler
-          options:
-            - fakeroot
-        platform: linux/amd64
-        volumes:
-            - .:/app
-            - /tmp:/tmp
-        depends_on:
-            mongodb:
-                condition: service_healthy
-            api:
-                condition: service_healthy
-        environment:
-            MONGO_CONNECTION_STRING: mongodb://mongodb:27017/ezbids
-        tty: true #turn on color for bids-validator output
-        command: pm2 start handler.js --attach --watch --ignore-watch "ui **/node_modules"
+    # handler:
+    #     container_name: brainlife_ezbids-handler
+    #     build:
+    #       context: ./handler
+    #       options:
+    #         - fakeroot
+    #     platform: linux/amd64
+    #     volumes:
+    #         - .:/app
+    #         - /tmp:/tmp
+    #     depends_on:
+    #         mongodb:
+    #             condition: service_healthy
+    #         api:
+    #             condition: service_healthy
+    #     environment:
+    #         MONGO_CONNECTION_STRING: mongodb://mongodb:27017/ezbids
+    #     tty: true #turn on color for bids-validator output
+    #     command: pm2 start handler.js --attach --watch --ignore-watch "ui **/node_modules"
 
-    ui:
-        container_name: brainlife_ezbids-ui
-        build:
-          context: ./ui
-          options:
-            - fakeroot
-        platform: linux/amd64
-        volumes:
-            - ./ui/src:/ui/src #don't copy node_modules which might be compiled for mac (vite won't work)
-        environment:
-            VITE_APIHOST: http://localhost:8082
-        # healthcheck:
-        #     test: ["CMD", "curl", "-f", "http://localhost:3000"]
-        ports:
-            - 3000:3000 #vite wants to be exposed on the host for HMR?
+    # ui:
+    #     container_name: brainlife_ezbids-ui
+    #     build:
+    #       context: ./ui
+    #       options:
+    #         - fakeroot
+    #     platform: linux/amd64
+    #     volumes:
+    #         - ./ui/src:/ui/src #don't copy node_modules which might be compiled for mac (vite won't work)
+    #     environment:
+    #         VITE_APIHOST: http://localhost:8082
+    #     # healthcheck:
+    #     #     test: ["CMD", "curl", "-f", "http://localhost:3000"]
+    #     ports:
+    #         - 3000:3000 #vite wants to be exposed on the host for HMR?
