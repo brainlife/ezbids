@@ -6,7 +6,7 @@ The secure, cloud-based service for the semi-automated mapping of entire session
 
 ### About
 
-This is the development repository for a semi-supervised neuroimaging data files to [BIDS](https://bids.neuroimaging.io/) conversion web service. The web service is hosted securely at [brainlife.io/ezbods](https://brainlife.io/ezbids).
+This is the development repository for a semi-supervised neuroimaging data files to [BIDS](https://bids.neuroimaging.io/) conversion web service. The web service is hosted securely at [brainlife.io/ezbids](https://brainlife.io/ezbids).
 
 Unlike other BIDS converters, ezBIDS eliminates the need for code, and command line interfaces and automatically generates heuristic and configuration files (called ezBIDS Templates).
 
