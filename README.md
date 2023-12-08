@@ -6,21 +6,26 @@ The secure, cloud-based service for the semi-automated mapping of entire session
 
 ### About
 
-This is the development repository for a semi-supervised neuroimaging data files to [BIDS](https://bids.neuroimaging.io/) conversion web service. The web service is hosted securely at [brainlife.io/ezbods](https://brainlife.io/ezbids). Documentation and Tutorials will  
+This is the development repository for a semi-supervised neuroimaging data files to [BIDS](https://bids.neuroimaging.io/) conversion web service. The web service is hosted securely at [brainlife.io/ezbods](https://brainlife.io/ezbids).
 
 Unlike other BIDS converters, ezBIDS eliminates the need for code, and command line interfaces and automatically generates heuristic and configuration files (called ezBIDS Templates).
 
-An inferential process analyzes the directory structure and sidecars of the data uploaded to provide an *educated guess* about the data types and content. A web-browser user interface presents the users with a *first guess* mapping of the uploaded data files into a BIDS structure. Finally, users provided with the opportunity to verify the *first guess* and modify the information provided as needed so as to best match the final BIDS structure. 
+An inferential process analyzes the directory structure and sidecars of the data uploaded to provide a *first guess* about the data types and content. A web-browser user interface presents the users with a *first guess* mapping of the uploaded data files into a BIDS structure. Finally, users provided with the opportunity to verify the *first guess* and modify the information provided as needed so as to best match the final BIDS structure. 
 
 Data from all major scanner vendors can be directly uploaded to ezBIDS. ezBIDS provides options for the defacing of anatomical acquisitions.
 
 The BIDS output can be downloaded back to the user's computer, or uploaded to open repositories such as
-[brainlife.io](https://brainlife.io/), or in the future, [OpenNeuro](https://openneuro.org/).
+[brainlife.io](https://brainlife.io/), or in the future, [OpenNeuro.org](https://openneuro.org/).
+
+Helpful links:
+1. [ezBIDS website](https://brainlife.io/ezbids) (Chrome or Firefox browser preferred)
+2. [ezBIDS tutorial](https://brainlife.io/docs/tutorial/ezBIDS/)
+3. [ezBIDS tutorial video](https://www.youtube.com/embed/L8rWA8qgnpo)
+4. [ezBIDS user documentation](https://brainlife.io/docs/using_ezBIDS/)
+5. [ezBIDS GitHub repo](https://github.com/brainlife/ezbids)
 
 ### Usage
-To access the ezBIDS web service, please visit https://brainlife.io/ezbids (Chrome or Firefox browser preferred).
-
-A video demonstration of how to use ezBIDS can be found [here](https://www.youtube.com/watch?v=mY3_bmt_e80).
+To access the ezBIDS web service, please visit https://brainlife.io/ezbids
 
 Users do not need to organize their uploaded data in any specific manner, so long as the data is non-anonymized. The uploaded data can contain any number of sub-folders, and users and may compress (e.g. zip, tar) their upload directory if users so choose. ezBIDS permits two types of data uploads:
 
@@ -79,10 +84,16 @@ The API then store this information as `finalized.json` in workdir, and copy the
 Once session status becomes "finished", user will be then allowed to download the final "bids" directory via the download API, or send to other cloud resources
 
 ### Authors
-
--   [Soichi Hayashi](soichih@gmail.com)
--   [Daniel Levitas](dlevitas@iu.edu)
+-   [Daniel Levitas](djlevitas208@gmail.com)*
+-   [Soichi Hayashi](soichih@gmail.com)*
+-   [Sophia Vinci-Booher](sophia.vinci-booher@vanderbilt.edu)
+-   [Anibal Heinsfeld](anibalsolon@utexas.edu)
+-   [Dheeraj Bhatia](dheeraj.bhatia@utexas.edu)
+-   [Nicholas Lee](niconal902@gmail.com)
+-   [Anthony Galassi](niconal902@gmail.com)
+-   [Guiomar Niso](guiomar.niso@ctb.upm.es)
 -   [Franco Pestilli](pestilli@utexas.edu)
+* Both authors contributed equally to this work
 
 ### Funding Acknowledgement
 
@@ -99,7 +110,7 @@ brainlife.io is publicly funded and for the sustainability of the project it is 
 
 We ask that you the following articles when publishing papers that used data, code or other resources created by the brainlife.io community.
 
-1. Levias, D. et al. **In review**
+1. Levitas, D. et al. **In review**
 
 ### This repo was bootstrapped by
 
