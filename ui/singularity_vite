@@ -4,7 +4,6 @@
 Fixes issue when only running npm install on ui container.
 Specifically, line 47 is originally require('../dist/node/cli');
   but needs to be require('../vite/dist/node/cli');
-
 This file (corrected) is simply copied and replaces the incorrect file.
 */
 const { performance } = require('perf_hooks');

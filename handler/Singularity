@@ -105,6 +105,7 @@ Stage: spython-base
     export PATH=/ROBEX:$PATH
     export NODE_PATH=$NVM_DIR/v$NODE_VERSION/lib/node_modules
     export PATH=$NVM_DIR/v$NODE_VERSION/bin:$PATH
+    export MONGO_CONNECTION_STRING=mongodb://mongodb:27017/ezbids
 
 %runscript
     cd /app/handler

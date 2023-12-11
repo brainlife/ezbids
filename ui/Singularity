@@ -8,19 +8,23 @@ Stage: spython-base
 %post
     mkdir -p /ui
     cd /ui
+    # npm i ts-node-dev --save-dev
     npm install
     # Hacky solution for dealing with path issue
-    cp singularity_vite node_modules/.bin/vite
+    # cp $PWD/ui/singularity_vite node_modules/.bin/vite
+    cp $PWD/singularity_vite node_modules/.bin/vite
     exec npm run dev "$@"
+
+%environment
+    export VITE_APIHOST=http://localhost:8082
+    export PORT=3000
 
 %runscript
     cd /ui
     # exec /bin/bash npm run dev "$@"
     exec npm run dev "$@"
-    # exec npm run dev
 
 %startscript
     cd /ui
     # exec /bin/bash npm run dev "$@"
     exec npm run dev "$@"
-    # npm run dev

@@ -12,7 +12,8 @@ Stage: spython-base
     npm install
 
 %environment
-    MONGO_CONNECTION_STRING=mongodb://mongodb:27017/ezbids
+    export MONGO_CONNECTION_STRING=mongodb://mongodb:27017/ezbids
+    export PORT=8082
 
 %runscript
     # cd /app
