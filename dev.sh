@@ -21,7 +21,6 @@ if [ ! -d $PWD/data/db ]; then
     mkdir -p $PWD/data/db
 fi
 
-
 if [ ! -f $PWD/mongodb/mongodb.sif ]; then # Will eventually be redundant and can remove
     echo "building mongodb"
     singularity build --arch "amd64" --fakeroot --disable-cache $PWD/mongodb/mongodb.sif $PWD/mongodb/Singularity
