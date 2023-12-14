@@ -3,17 +3,16 @@ From: node:16
 Stage: spython-base
 
 %files
-    . /ui
+    ./ui /ui
 
-%post
-    mkdir -p /ui
-    cd /ui
-    # npm i ts-node-dev --save-dev
-    npm install
-    # Hacky solution for dealing with path issue
+# %post
+#     mkdir -p /ui
+#     ls /ui
+    # cd /ui
+    # npm install
+    # # Hacky solution for dealing with path issue
     # cp $PWD/ui/singularity_vite node_modules/.bin/vite
-    cp $PWD/singularity_vite node_modules/.bin/vite
-    exec npm run dev "$@"
+    # exec npm run dev "$@"
 
 %environment
     export VITE_APIHOST=http://localhost:8082
@@ -21,10 +20,12 @@ Stage: spython-base
 
 %runscript
     cd /ui
+    npm install
     # exec /bin/bash npm run dev "$@"
     exec npm run dev "$@"
 
 %startscript
     cd /ui
+    npm install
     # exec /bin/bash npm run dev "$@"
     exec npm run dev "$@"

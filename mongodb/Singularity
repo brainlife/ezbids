@@ -1,5 +1,10 @@
 Bootstrap: docker
 From: mongo:4.4.15
 
+%runscript
+    # mongod --dbpath $PWD/data/db
+    exec /usr/bin/mongod "$@"
+
 %startscript
-    exec /usr/bin/mongo "$@"
+    # mongod --dbpath $PWD/data/db
+    exec /usr/bin/mongod "$@"

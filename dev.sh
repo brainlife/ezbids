@@ -19,13 +19,14 @@ export SINGULARITY_CACHEDIR=/tmp
 # Helpful commentary on mongodb container build with Singularity: https://stackoverflow.com/questions/70746228/singularity-mongodb-container-in-background-mode
 if [ ! -d $PWD/data/db ]; then
     mkdir -p $PWD/data/db
+    chmod -R 777 $PWD/data/db
 fi
 
 if [ ! -f $PWD/mongodb/mongodb.sif ]; then # Will eventually be redundant and can remove
     echo "building mongodb"
     singularity build --arch "amd64" --fakeroot --disable-cache $PWD/mongodb/mongodb.sif $PWD/mongodb/Singularity
     singularity instance start --bind ./data/db:/data/db $PWD/mongodb/mongodb.sif brainlife_ezbids-mongodb
-    # singularity run instance://brainlife_ezbids-mongodb # This seems to run mongodb in the foreground, meaning can't move on to building other containers
+    # singularity run instance://brainlife_ezbids-mongodb # This seems to run mongodb in the foreground, meaning can't move on to building other containers . But need it to generate files in data/db
 fi
 
 if [ ! -f $PWD/api/api.sif ]; then
@@ -43,9 +44,8 @@ fi
 
 if [ ! -f $PWD/ui/ui.sif ]; then
     echo "building ui"
-    cd ui
-    singularity build --arch "amd64" --fakeroot --disable-cache $PWD/ui.sif $PWD/Singularity
-    singularity instance start --bind ./src:/ui/src $PWD/ui.sif brainlife_ezbids-ui
+    singularity build --arch "amd64" --fakeroot --disable-cache $PWD/ui/ui.sif $PWD/ui/Singularity
+    singularity instance start --bind ./ui/src:/ui/src $PWD/ui/ui.sif brainlife_ezbids-ui
 fi
 
 # # Only need this line below if there's un-commented stuff in the yml file

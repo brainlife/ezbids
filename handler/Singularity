@@ -114,3 +114,4 @@ Stage: spython-base
 %startscript
     cd /app/handler
     exec /bin/bash "$@"
+    pm2 start handler.js --attach --watch --ignore-watch "ui **/node_modules"

@@ -37,10 +37,12 @@ instances:
     #     container_name: brainlife_ezbids-mongodb
     #     image: docker://mongo:4.4.15
     #     platform: linux/amd64
-    #     post:
-    #         command: [ "/bin/bash", "./mongodb/mongodb_setup.sh"]
+    #     volumes:
+    #         - ./data/db:/data/db
     #     ports:
     #         - 27417:27017 #for local debugging
+    #     # run:
+    #     #     background: true # Does this actually run things in the background
 
 
     # api:
