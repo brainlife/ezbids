@@ -630,13 +630,8 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
             age = "n/a"
             if "PatientAge" in json_data:
                 patient_age = json_data["PatientAge"]
-                if not patient_age.isalnum():  # if true, is alphanumeric, so not age
-                    try:
-                        # if age is over 100, probably made up
-                        if (isinstance(patient_age, int) or isinstance(patient_age, float)) and int(patient_age) < 100:
-                            age = patient_age
-                    except:
-                        pass
+                if (isinstance(patient_age, int) or isinstance(patient_age, float)):
+                    age = patient_age
 
             if age == "n/a" and "PatientBirthDate" in json_data:
                 patient_birth_date = json_data["PatientBirthDate"]  # ISO 8601 "YYYY-MM-DD"
@@ -1099,7 +1094,13 @@ def determine_sub_ses_IDs(dataset_list, bids_compliant):
         subject_ids_info = {
             "subject": sub,
             "PatientInfo": patient_info,
-            "phenotype": list({"species": x["PatientSpecies"], "sex": x["PatientSex"], "age": x["PatientAge"], "handedness": x["PatientHandedness"]} for x in sub_dics_list)[0],
+            "phenotype": list(
+                {
+                    "species": x["PatientSpecies"],
+                    "sex": x["PatientSex"],
+                    "age": x["PatientAge"],
+                    "handedness": x["PatientHandedness"]
+                } for x in sub_dics_list)[0],
             "exclude": False,
             "sessions": [
                 {k: v for k, v in d.items()
@@ -1345,11 +1346,11 @@ def template_configuration(dataset_list_unique_series, subjects_information, con
             unique_dic["finalized_match"] = True
             if "localizer" in ref_message:
                 unique_dic["message"] = "Datatype, suffix, and entity information was determined based on match "\
-                    "with corresponding data in ezBIDS configuration (ezBIDS_template.json) file. This data is believed to "\
-                    "be a localizer. Please modify if incorrect"
+                    "with corresponding data in ezBIDS configuration (ezBIDS_template.json) file. This data is "\
+                    "believe to be a localizer. Please modify if incorrect"
             else:
                 unique_dic["message"] = "Datatype, suffix, and entity information was determined based on match "\
-                    "with corresponding data in ezBIDS configuration (ezBIDS_template.json) file. Please modify if incorrect"
+                    "with corresponding data in ezBIDS configuration file. Please modify if incorrect"
 
             """
             If metadata information was added in, find it and add to the json file.
@@ -1905,7 +1906,7 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
                 if len(bids_guess) == 2:  # should always be length of 2, but just to be safe
                     datatype = str(bids_guess[0]).lower()  # in case BidsGuess doesn't make datatype lowercase
                     suffix = bids_guess[1].split("_")[-1]
-                    for bids_ref_suffix in suffixes_yaml:  # in case BidsGuess not use correct suffix case format (e.g PET)
+                    for bids_ref_suffix in suffixes_yaml:  # in case BidsGuess not use proper suffix case format (e.g PET)
                         if bids_ref_suffix != suffix and bids_ref_suffix.lower() == suffix.lower():
                             suffix = bids_ref_suffix
                     # Issue with BidsGuess and func/sbref identification
@@ -2564,6 +2565,7 @@ def extract_series_info(dataset_list_unique_series):
         ui_series_info_list.append(ui_series_info)
 
     return ui_series_info_list
+
 
 # Begin (Apply functions)
 print("########################################")
