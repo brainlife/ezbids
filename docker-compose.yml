@@ -33,6 +33,7 @@ services:
             ./dev.sh
         environment:
             MONGO_CONNECTION_STRING: mongodb://mongodb:27017/ezbids
+            BRAINLIFE_AUTHENTICATION: ${BRAINLIFE_AUTHENTICATION}
         ports:
             - 8082:8082 #localhost runs on local browser to it needs to access api via host port
 

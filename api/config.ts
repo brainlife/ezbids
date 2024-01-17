@@ -11,3 +11,5 @@ export const express = {
     host: '0.0.0.0',
     port: '8082',
 };
+
+export const authentication = process.env.BRAINLIFE_AUTHENTICATION === 'true';

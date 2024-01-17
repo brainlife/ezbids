@@ -2,6 +2,19 @@
 
 set -ex
 
+BRAINLIFE_AUTHENTICATION=true
+while getopts "d:" flag; do
+ case $flag in
+   d)
+     BRAINLIFE_AUTHENTICATION=false
+   ;;
+   \?)
+   ;;
+ esac
+done
+
+export BRAINLIFE_AUTHENTICATION
+
 git submodule update --init --recursive
 
 (cd api && npm install)

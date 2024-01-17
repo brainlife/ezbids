@@ -1,16 +1,26 @@
 import { Params, expressjwt } from 'express-jwt';
 import * as fs from 'fs';
 import * as jwt from 'jsonwebtoken';
+import * as config from './config';
 
 const pubkey = fs.readFileSync(__dirname + '/auth.pub', 'ascii').trim();
 const ezbidsPrivateKey = fs.readFileSync(`${__dirname}/ezbids.key`, 'ascii').trim();
 const ezbidsPublicKey = fs.readFileSync(`${__dirname}/ezbids.pub`, 'ascii').trim();
 export const validateWithJWTConfig = (options?: Params) => {
-    return expressjwt({
-        secret: pubkey,
-        algorithms: ['RS256'],
-        ...options,
-    });
+    if (config.authentication) {
+        return expressjwt({
+            secret: pubkey,
+            algorithms: ['RS256'],
+            ...options,
+        });
+    } else {
+        return (req: any, res: any, next: any) => {
+            req.user = {
+                sub: 0,
+            };
+            next();
+        };
+    }
 };
 
 export const verifyJWT = (jwtToVerify?: string): string | jwt.JwtPayload | undefined => {
