@@ -2,7 +2,9 @@
     <el-footer class="footer">
         <el-row style="height: 100%">
             <el-col :span="1"></el-col>
-            <el-col :span="23" class="disclaimer"> © Pestillilab. All rights reserved. </el-col>
+            <el-col :span="23" class="disclaimer">
+                ©&nbsp;<a href="https://pestillilab.github.io/">Pestilli Lab</a>. All rights reserved.
+            </el-col>
         </el-row>
     </el-footer>
 </template>
@@ -26,5 +28,9 @@ export default defineComponent({});
     height: 100%;
     display: flex;
     align-items: center;
+}
+.disclaimer a {
+    color: white;
+    text-decoration: none;
 }
 </style>
