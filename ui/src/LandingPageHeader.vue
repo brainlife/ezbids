@@ -18,7 +18,7 @@
                                 type="text"
                                 style="font-size: var(--el-font-size-extra-large); font-family: unset; color: #3482e9"
                                 @click="redirectToBrainlifeAuth"
-                                >{{ hasJWT ? 'GET STARTED' : 'LOG IN / REGISTER' }}</el-button
+                                >{{ !hasAuth || hasJWT ? 'GET STARTED' : 'LOG IN / REGISTER' }}</el-button
                             >
                         </el-menu-item>
                     </el-menu>
@@ -32,11 +32,14 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapState } from 'vuex';
-import { hasJWT } from './lib';
+import { hasJWT, hasAuth } from './lib';
 
 export default defineComponent({
     computed: {
         ...mapState(['config']),
+        hasAuth() {
+            return hasAuth();
+        },
         hasJWT() {
             return hasJWT();
         },
@@ -46,7 +49,7 @@ export default defineComponent({
             window.open('https://brainlife.io/team/', '_blank');
         },
         redirectToBrainlifeAuth() {
-            if (hasJWT()) {
+            if (!hasAuth() || hasJWT()) {
                 this.$router.push('/convert');
                 return;
             }

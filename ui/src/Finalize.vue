@@ -47,7 +47,7 @@
                 >
                 <p>Or send the dataset to other cloud resources.</p>
                 <p>
-                    <el-dropdown>
+                    <el-dropdown v-if="hasAuth">
                         <el-button style="margin-right: 10px">
                             Send to <b>Brainlife.io</b>&nbsp;
                             <font-awesome-icon :icon="['fas', 'angle-down']" />
@@ -127,6 +127,7 @@ import showfile from './components/showfile.vue';
 import axios from './axios.instance';
 
 import { ElNotification } from 'element-plus';
+import { hasAuth } from './lib';
 
 export default defineComponent({
     components: {
@@ -142,6 +143,9 @@ export default defineComponent({
 
     computed: {
         ...mapState(['ezbids', 'config', 'bidsSchema', 'session', 'events']),
+        hasAuth() {
+            return hasAuth();
+        },
     },
 
     mounted() {

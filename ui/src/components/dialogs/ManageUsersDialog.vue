@@ -5,9 +5,7 @@
                 :value="allowedUserProfiles.length === 0 ? undefined : allowedUserProfiles.length"
                 style="width: 135px"
             >
-                <el-button class="share-session-button" type="primary" @click="dialogIsVisible = true">
-                    Share session
-                </el-button>
+                <el-button class="share-session-button" type="primary" @click="handleOpen"> Share session </el-button>
             </el-badge>
         </div>
         <el-dialog
@@ -118,18 +116,27 @@ export default defineComponent({
             return decoded.sub === this.session.ownerId;
         },
     },
-    mounted() {
-        // TODO this should not be cached, we should only show the user once the full email has been typed (for privacy)
-        axios
-            .get<{ count: number; profiles: Profile[] }>(`${this.config.authhost}/profile/list?limit=6000`)
-            .then((res) => {
-                this.profiles = res?.data?.profiles ? [...res.data.profiles] : [];
-            })
-            .catch((e) => {
-                console.error(e);
-            });
-    },
     methods: {
+        handleOpen() {
+            this.dialogIsVisible = true;
+
+            if (this.profiles.length > 0) return;
+
+            this.isLoading = true;
+
+            // TODO this should not be cached, we should only show the user once the full email has been typed (for privacy)
+            axios
+                .get<{ count: number; profiles: Profile[] }>(`${this.config.authhost}/profile/list?limit=6000`)
+                .then((res) => {
+                    this.profiles = res?.data?.profiles ? [...res.data.profiles] : [];
+                })
+                .catch((e) => {
+                    console.error(e);
+                })
+                .finally(() => {
+                    this.isLoading = false;
+                });
+        },
         handleClose() {
             this.dialogIsVisible = false;
         },

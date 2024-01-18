@@ -51,7 +51,8 @@
                     </a>
                 </el-tooltip>
             </div>
-            <ManageUsersDialog></ManageUsersDialog>
+
+            <ManageUsersDialog v-if="hasAuth"></ManageUsersDialog>
 
             <div style="width: 135px; padding: 0 10px">
                 <el-button style="color: black; width: 100%; font-family: inherit" @click="handleSignout"
@@ -109,14 +110,13 @@ import Finalize from './Finalize.vue';
 import Feedback from './Feedback.vue';
 import ManageUsersDialog from './components/dialogs/ManageUsersDialog.vue';
 import { IObject } from './store';
+import { hasAuth, createEventsTSV } from './lib';
 
 //https://github.com/element-plus/element-plus/issues/436#issuecomment-961386582
 import { ElNotification } from 'element-plus';
 import 'element-plus/es/components/notification/style/css';
 
 import { setSectionIDs, funcQA, fmapQA, dwiQA, setRun, setVolumeThreshold } from './libUnsafe';
-
-import { createEventsTSV } from './lib';
 
 import niivue from './components/niivue.vue';
 
@@ -162,6 +162,10 @@ export default defineComponent({
     computed: {
         ...mapState(['session', 'ezbids', 'events', 'page', 'config']),
         ...mapGetters(['getBIDSEntities', 'getBIDSMetadata', 'findSession', 'findSubject']),
+
+        hasAuth() {
+            return hasAuth();
+        },
 
         backLabel(): string | null {
             switch (this.page) {

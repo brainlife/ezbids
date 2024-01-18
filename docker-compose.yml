@@ -62,6 +62,7 @@ services:
             - ./ui/src:/ui/src #don't copy node_modules which might be compiled for mac (vite won't work)
         environment:
             VITE_APIHOST: http://localhost:8082
+            VITE_BRAINLIFE_AUTHENTICATION: ${BRAINLIFE_AUTHENTICATION}
         healthcheck:
             test: ["CMD", "curl", "-f", "http://localhost:3000"]
         ports:
