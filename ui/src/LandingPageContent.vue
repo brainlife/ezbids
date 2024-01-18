@@ -99,7 +99,7 @@
 import { defineComponent } from 'vue';
 import { mapState } from 'vuex';
 import LandingPageAnimation from './LandingPageAnimation.vue';
-import { hasJWT } from './lib';
+import { hasJWT, hasAuth } from './lib';
 export default defineComponent({
     components: {
         LandingPageAnimation: LandingPageAnimation,
@@ -112,7 +112,7 @@ export default defineComponent({
             window.open(`https://brainlife.io/docs/using_ezBIDS/`);
         },
         onClickGetStarted() {
-            if (hasJWT()) {
+            if (!hasAuth() || hasJWT()) {
                 this.$router.push('/convert');
                 return;
             }
