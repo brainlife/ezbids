@@ -517,6 +517,9 @@ loadDatatype('fmap', fmapDatatype, 'Field Map');
 import petDatatype from '../assets/schema/rules/datatypes/pet.json';
 loadDatatype('pet', petDatatype, 'PET');
 
+import megDatatype from '../assets/schema/rules/datatypes/meg.json';
+loadDatatype('meg', megDatatype, 'MEG');
+
 import perfDatatype from '../assets/schema/rules/datatypes/perf.json';
 import { ElNotification } from 'element-plus';
 loadDatatype('perf', perfDatatype, 'Perfusion');
@@ -634,6 +637,15 @@ const store = createStore({
                         delete sidecar.PatientSex;
                         delete sidecar.PatientWeight;
                         delete sidecar.AcquisitionDateTime;
+
+                        // Don't need this (I think) if we're relying on MNE-BIDS
+                        // if (sidecar.Modality === 'MEG') {
+                        //     delete sidecar.AcquisitionDate;
+                        //     delete sidecar.AcquisitionTime;
+                        //     delete sidecar.Modality;
+                        //     delete sidecar.ConversionSoftware;
+                        //     delete sidecar.SeriesDescription;
+                        // }
 
                         item['sidecar_json'] = JSON.stringify(sidecar, null, 4);
                     }

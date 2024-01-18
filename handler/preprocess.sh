@@ -195,8 +195,22 @@ else
     echo "searching for products in $root"
     (cd $root && find . -maxdepth 9 -type f \( -name "*.json" \) > list)
 
+    # find non MRI and PET (i.e. MEG) products
+    MEG_extensions=("*.ds" "*.fif" "*.sqd" "*.con" "*.raw" "*.ave" "*.mrk" "*.kdf" "*.mhd" "*.trg" "*.chn" "*.dat")
+    for ext in ${MEG_extensions[*]}
+    do
+        if [[ $ext == "*.ds" ]]
+        then
+            find_type=d
+        else
+            find_type=f
+        fi
+
+        (cd $root && find . -maxdepth 9 -type $find_type \( -name $ext \) >> list)
+    done
+
     # remove irrelevant json files (e.g., ezBIDS_core.json, etc) if found
-    grep -F -v *ezBIDS_core*.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
+    grep -F -v ezBIDS_core.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
     # grep -F -v dataset_description.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
     # grep -F -v participants.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
 
