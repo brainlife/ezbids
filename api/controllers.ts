@@ -100,10 +100,9 @@ router.get('/health', (req, res) => {
  *    Session: $ref: '#/components/schemas/Session'
  */
 router.post('/session', validateWithJWTConfig(), (req: Request, res: express.Response, next) => {
-    if (!req.auth.sub) res.sendStatus(HTTP_STATUS.BAD_REQUEST);
-
     req.body.status = 'created';
     req.body.request_headers = req.headers;
+
     const session = new models.Session({
         ...req.body,
         ownerId: req.auth.sub,

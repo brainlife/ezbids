@@ -3,9 +3,10 @@ import * as fs from 'fs';
 import * as jwt from 'jsonwebtoken';
 import * as config from './config';
 
-const pubkey = fs.readFileSync(__dirname + '/auth.pub', 'ascii').trim();
+const pubkey = config.authentication ? fs.readFileSync(__dirname + '/auth.pub', 'ascii').trim() : null;
 const ezbidsPrivateKey = fs.readFileSync(`${__dirname}/ezbids.key`, 'ascii').trim();
 const ezbidsPublicKey = fs.readFileSync(`${__dirname}/ezbids.pub`, 'ascii').trim();
+
 export const validateWithJWTConfig = (options?: Params) => {
     if (config.authentication) {
         return expressjwt({
@@ -15,9 +16,10 @@ export const validateWithJWTConfig = (options?: Params) => {
         });
     } else {
         return (req: any, res: any, next: any) => {
-            req.user = {
+            req.auth = {
                 sub: 0,
             };
+
             next();
         };
     }

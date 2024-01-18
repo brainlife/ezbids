@@ -2,6 +2,7 @@ import { NextFunction, Response } from 'express';
 import { Request } from 'express-jwt';
 import { ISession, Session } from './models';
 import { Types, Document } from 'mongoose';
+import * as config from './config';
 
 export enum HTTP_STATUS {
     OK = 200,
@@ -28,24 +29,30 @@ export const validateUserCanAccessSession = (onlyOwnerCanAccess: boolean) => {
         const sessionId = req.params.session_id;
         const userId = req.auth.sub as unknown as number;
 
-        if (!sessionId || !userId) {
-            return res.status(HTTP_STATUS.BAD_REQUEST).json({ err: 'No sessionId or userId found' });
+        if (!sessionId) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({ err: 'No sessionId found' });
+        }
+
+        if (config.authentication && !userId) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({ err: 'No userId found' });
         }
 
         return Session.findById(sessionId)
             .then((session) => {
                 if (!session)
                     return res
-                        .status(HTTP_STATUS.BAD_REQUEST)
+                        .status(HTTP_STATUS.NOT_FOUND)
                         .json({ err: 'Could not find session with ID: ' + sessionId });
 
-                const isOwner = userId === (session.ownerId || '');
-                const isInAllowedUserList = session.allowedUsers.some((allowedUser) => allowedUser === userId);
+                if (config.authentication) {
+                    const isOwner = userId === (session.ownerId || '');
+                    const isInAllowedUserList = session.allowedUsers.some((allowedUser) => allowedUser === userId);
 
-                if (onlyOwnerCanAccess && !isOwner) {
-                    return res.status(HTTP_STATUS.UNAUTHORIZED).json({ err: 'unauthorized' });
-                } else if (!onlyOwnerCanAccess && !isOwner && !isInAllowedUserList) {
-                    return res.status(HTTP_STATUS.UNAUTHORIZED).json({ err: 'unauthorized' });
+                    if (onlyOwnerCanAccess && !isOwner) {
+                        return res.status(HTTP_STATUS.UNAUTHORIZED).json({ err: 'unauthorized' });
+                    } else if (!onlyOwnerCanAccess && !isOwner && !isInAllowedUserList) {
+                        return res.status(HTTP_STATUS.UNAUTHORIZED).json({ err: 'unauthorized' });
+                    }
                 }
 
                 req.ezBIDS = {
