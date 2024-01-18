@@ -25,6 +25,8 @@ mkdir -p /tmp/workdir
 
 npm run prepare-husky
 
+./generate_keys.sh
+
 # ok docker compose is now included in docker as an option for docker
 if [[ $(command -v docker-compose) ]]; then 
     # if the older version is installed use the dash
