@@ -109,7 +109,7 @@ brainlife.io is publicly funded and for the sustainability of the project it is 
 
 We ask that you the following articles when publishing papers that used data, code or other resources created by the brainlife.io community.
 
-1. Levitas, D. et al. **In review**
+1. Levitas, Daniel, et al. "ezBIDS: Guided standardization of neuroimaging data interoperable with major data archives and platforms." arXiv preprint arXiv:2311.04912 (2023).
 
 ### This repo was bootstrapped by
 
@@ -119,7 +119,10 @@ npm init vite@latest ui2 -- --template vue-ts
 
 ### Development Environment
 
-A local development instance of ezBIDS can be launched by first git cloning this repo, then running `./dev.sh` on a docker enabled machine. When everything is built/running, you should be able to reach the dev instance at http://localhost:3000/
+Users are free to create a local installation of ezBIDS; however, several steps are first needed:
+1. Have [Docker](https://docs.docker.com/engine/install/) and [docker-compose](https://docs.docker.com/compose/install/) installed on your machine or server.
+2. Clone this repository to your machine or server (i.e. `git clone https://github.com/brainlife/ezbids`)
+3. Execute the setup script `./dev.sh -d`. Once everything is built and running, you should be able to reach the installable ezBIDS instance at http://localhost:3000/ezbids
 
 Copyright © 2022 brainlife.io at University of Texas at Austin
 
