@@ -3,7 +3,7 @@
 set -ex
 
 BRAINLIFE_AUTHENTICATION=true
-while getopts "d:" flag; do
+while getopts "d" flag; do
  case $flag in
    d)
      BRAINLIFE_AUTHENTICATION=false
