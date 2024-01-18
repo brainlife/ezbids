@@ -17,13 +17,52 @@ import pandas as pd
 import nibabel as nib
 from PIL import Image
 from math import floor
+from natsort import natsorted
 matplotlib.use('Agg')
 plt.style.use('dark_background')
 
 os.environ['MPLCONFIGDIR'] = os.getcwd() + "/configs/"
 
+DATA_DIR = sys.argv[1]
+
 
 # Functions
+
+def create_MEG_thumbnail():
+    """
+    Generate a simple visualization of the MEG data.
+    """
+    import mne.viz
+
+    uploaded_json_list = natsorted(pd.read_csv("list", header=None, lineterminator='\n').to_numpy().flatten().tolist())
+
+    MEG_extensions = [".ds", ".fif", ".sqd", ".con", ".raw", ".ave", ".mrk", ".kdf", ".mhd", ".trg", ".chn", ".dat"]
+
+    """
+    Get the MEG data organized
+    """
+    data_files = [x.split("./")[-1] for x in uploaded_json_list]
+    MEG_data_files = []
+    for data in data_files:
+        if any(x in data for x in MEG_extensions):
+            MEG_data_files.append(data)
+
+    if len(MEG_data_files):
+        for meg in MEG_data_files:
+            fname = f"{DATA_DIR}/{meg}"
+            raw = mne.io.read_raw(fname, verbose=0)
+            mne.viz.set_browser_backend('matplotlib', verbose=None)
+
+            png_types = ["channels", "psd"]
+            for png_type in png_types:
+                output_file = fname.split(".")[0] + f"_{png_type}.png"
+
+                if png_type == "channels":
+                    fig = raw.plot()
+                elif png_type == "psd":
+                    fig = raw.compute_psd().plot()
+
+                fig.savefig(output_file, bbox_inches='tight')
 
 
 def create_thumbnail(nifti_file, image):
@@ -118,7 +157,7 @@ def create_DWIshell_thumbnails(nifti_file, image, bval_file):
 
         w, h, d = buf.shape
         png = Image.frombytes("RGBA", (w, h), buf.tobytes())
-        png.save("{}_shell-{}.png".format(output_file, bval))
+        png.save(f"{output_file}_shell-{bval}.png")
 
 
 # Begin:
@@ -133,14 +172,16 @@ print("")
 print(nifti_file)
 print("")
 
-if not os.path.isfile("{}/{}".format(data_dir, nifti_file)):  # no corresponding nifti, so don't process
-    print("{} does not have a corresponding NIfTI file, cannot process".format(json_file))
+create_MEG_thumbnail()
+
+if not os.path.isfile(f"{data_dir}/{nifti_file}"):  # no corresponding nifti, so don't process
+    print(f"{json_file} does not have a corresponding NIfTI file, cannot process")
 else:
     output_dir = nifti_file.split(".nii.gz")[0]
     image = nib.load(nifti_file)
 
     if len([x for x in image.shape if x < 0]):  # image has negative dimension(s), cannot process
-        print("{} has negative dimension(s), cannot process".format(nifti_file))
+        print(f"{nifti_file} has negative dimension(s), cannot process")
     else:
         # if image.get_data_dtype() == [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]:
         if image.get_data_dtype() not in ["<i2", "<u2", "<f4", "int16", "uint16"]:
@@ -155,7 +196,7 @@ else:
             # object_img_array = image.dataobj[:]
 
             bval_file = json_file.split(".json")[0].split("./")[-1] + ".bval"
-            if not os.path.isfile("{}/{}".format(data_dir, bval_file)):
+            if not os.path.isfile(f"{data_dir}/{bval_file}"):
                 bval_file = "n/a"
             else:
                 bvals = [x.split(" ") for x in pd.read_csv(bval_file).columns.tolist()][0]
@@ -167,14 +208,14 @@ else:
             # Create thumbnail
             if nifti_file != "n/a":
                 print("")
-                print("Creating thumbnail for {}".format(nifti_file))
+                print(f"Creating thumbnail for {nifti_file}")
                 print("")
                 create_thumbnail(nifti_file, image)
 
             # Create thumbnail of each DWI's unique shell
             if bval_file != "n/a":
                 print("")
-                print("Creating thumbnail(s) for each DWI shell in {}".format(nifti_file))
+                print(f"Creating thumbnail(s) for each DWI shell in {nifti_file}")
                 print("")
                 create_DWIshell_thumbnails(nifti_file, image, bval_file)
 

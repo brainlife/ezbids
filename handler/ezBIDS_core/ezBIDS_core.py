@@ -6,10 +6,6 @@ datatype, suffix, entity labels [acq, run, dir, etc]) based on dcm2niix output.
 This information is then displayed in the ezBIDS UI, where users can make
 edits/modifications as they see fit, before finalizing their data into a BIDS-compliant dataset.
 
-Flake8 is used for linting, which highlights syntax and style issues as defined by the PEP guide. Arguments include:
-    --max-line-length=125
-    --ignore=E722,W503
-
 @author: dlevitas
 """
 
@@ -17,17 +13,18 @@ from __future__ import division
 import os
 import re
 import sys
+import mne
 import json
 import yaml
 import time
 import numpy as np
 import pandas as pd
 import nibabel as nib
+from pathlib import Path
 from datetime import date
 from natsort import natsorted
 from operator import itemgetter
 from urllib.request import urlopen
-from pathlib import Path
 
 DATA_DIR = sys.argv[1]
 
@@ -44,7 +41,9 @@ entity_ordering_file = str(BIDS_SCHEMA_DIR / Path("rules/entities.yaml"))
 
 cog_atlas_url = "http://cognitiveatlas.org/api/v-alpha/task"
 
-accepted_datatypes = ["anat", "dwi", "fmap", "func", "perf", "pet"]  # Will add others later
+accepted_datatypes = ["anat", "dwi", "fmap", "func", "perf", "pet", "meg"]  # Will add others later
+
+MEG_extensions = [".ds", ".fif", ".sqd", ".con", ".raw", ".ave", ".mrk", ".kdf", ".mhd", ".trg", ".chn", ".dat"]
 
 bids_compliant = pd.read_csv(f"{DATA_DIR}/bids_compliant.log", header=None).iloc[1][0]
 if bids_compliant == "true":
@@ -60,6 +59,307 @@ today_date = date.today().strftime("%Y-%m-%d")
 os.chdir(DATA_DIR)
 
 # Functions
+
+
+def _sidecar_json(raw, task, manufacturer, fname, datatype, emptyroom_fname=None, overwrite=True):
+    """Create a sidecar json file depending on the suffix and save it.
+
+    The sidecar json file provides meta data about the data
+    of a certain datatype.
+
+    MNE-BIDS function: https://github.com/mne-tools/mne-bids/blob/main/mne_bids/write.py#L777
+
+    Parameters
+    ----------
+    raw : mne.io.Raw
+        The data as MNE-Python Raw object.
+    task : str
+        Name of the task the data is based on.
+    manufacturer : str
+        Manufacturer of the acquisition system. For MEG also used to define the
+        coordinate system for the MEG sensors.
+    fname : str | mne_bids.BIDSPath
+        Filename to save the sidecar json to.
+    datatype : str
+        Type of the data as in ALLOWED_ELECTROPHYSIO_DATATYPE.
+    emptyroom_fname : str | mne_bids.BIDSPath
+        For MEG recordings, the path to an empty-room data file to be
+        associated with ``raw``. Only supported for MEG.
+    overwrite : bool
+        Whether to overwrite the existing file.
+        Defaults to False.
+
+    """
+    from mne import Epochs
+    from mne.io import BaseRaw
+    from mne.utils import logger
+    from mne.io.constants import FIFF
+    from mne.chpi import get_chpi_info
+    from collections import OrderedDict
+    from mne.channels.channels import _get_meg_system
+    from mne_bids.config import IGNORED_CHANNELS
+    from mne_bids.utils import (_write_json, _infer_eeg_placement_scheme)
+
+    sfreq = raw.info["sfreq"]
+    try:
+        powerlinefrequency = raw.info["line_freq"]
+        powerlinefrequency = "n/a" if powerlinefrequency is None else powerlinefrequency
+    except KeyError:
+        raise ValueError(
+            "PowerLineFrequency parameter is required in the sidecar files. "
+            "Please specify it in info['line_freq'] before saving to BIDS, "
+            "e.g. by running: "
+            "    raw.info['line_freq'] = 60"
+            "in your script, or by passing: "
+            "    --line_freq 60 "
+            "in the command line for a 60 Hz line frequency. If the frequency "
+            "is unknown, set it to None"
+        )
+
+    if isinstance(raw, BaseRaw):
+        rec_type = "continuous"
+    elif isinstance(raw, Epochs):
+        rec_type = "epoched"
+    else:
+        rec_type = "n/a"
+
+    # determine whether any channels have to be ignored:
+    n_ignored = len(
+        [
+            ch_name
+            for ch_name in IGNORED_CHANNELS.get(manufacturer, list())
+            if ch_name in raw.ch_names
+        ]
+    )
+    # all ignored channels are trigger channels at the moment...
+
+    n_megchan = len([ch for ch in raw.info["chs"] if ch["kind"] == FIFF.FIFFV_MEG_CH])
+    n_megrefchan = len(
+        [ch for ch in raw.info["chs"] if ch["kind"] == FIFF.FIFFV_REF_MEG_CH]
+    )
+    n_eegchan = len([ch for ch in raw.info["chs"] if ch["kind"] == FIFF.FIFFV_EEG_CH])
+    n_ecogchan = len([ch for ch in raw.info["chs"] if ch["kind"] == FIFF.FIFFV_ECOG_CH])
+    n_seegchan = len([ch for ch in raw.info["chs"] if ch["kind"] == FIFF.FIFFV_SEEG_CH])
+    n_eogchan = len([ch for ch in raw.info["chs"] if ch["kind"] == FIFF.FIFFV_EOG_CH])
+    n_ecgchan = len([ch for ch in raw.info["chs"] if ch["kind"] == FIFF.FIFFV_ECG_CH])
+    n_emgchan = len([ch for ch in raw.info["chs"] if ch["kind"] == FIFF.FIFFV_EMG_CH])
+    n_miscchan = len([ch for ch in raw.info["chs"] if ch["kind"] == FIFF.FIFFV_MISC_CH])
+    n_stimchan = (
+        len([ch for ch in raw.info["chs"] if ch["kind"] == FIFF.FIFFV_STIM_CH])
+        - n_ignored
+    )
+    n_dbschan = len([ch for ch in raw.info["chs"] if ch["kind"] == FIFF.FIFFV_DBS_CH])
+    nirs_channels = [ch for ch in raw.info["chs"] if ch["kind"] == FIFF.FIFFV_FNIRS_CH]
+    n_nirscwchan = len(nirs_channels)
+    n_nirscwsrc = len(
+        np.unique([ch["ch_name"].split(" ")[0].split("_")[0] for ch in nirs_channels])
+    )
+    n_nirscwdet = len(
+        np.unique([ch["ch_name"].split(" ")[0].split("_")[1] for ch in nirs_channels])
+    )
+
+    # Set DigitizedLandmarks to True if any of LPA, RPA, NAS are found
+    # Set DigitizedHeadPoints to True if any "Extra" points are found
+    # (DigitizedHeadPoints done for Neuromag MEG files only)
+    digitized_head_points = False
+    digitized_landmark = False
+    if datatype == "meg" and raw.info["dig"] is not None:
+        for dig_point in raw.info["dig"]:
+            if dig_point["kind"] in [
+                FIFF.FIFFV_POINT_NASION,
+                FIFF.FIFFV_POINT_RPA,
+                FIFF.FIFFV_POINT_LPA,
+            ]:
+                digitized_landmark = True
+            elif dig_point["kind"] == FIFF.FIFFV_POINT_EXTRA and str(
+                raw.filenames[0]
+            ).endswith(".fif"):
+                digitized_head_points = True
+    software_filters = {
+        "SpatialCompensation": {"GradientOrder": raw.compensation_grade}
+    }
+
+    # Compile cHPI information, if any.
+    system, _ = _get_meg_system(raw.info)
+    chpi = None
+    hpi_freqs = []
+    if datatype == "meg":
+        # We need to handle different data formats differently
+        if system == "CTF_275":
+            try:
+                mne.chpi.extract_chpi_locs_ctf(raw)
+                chpi = True
+            except RuntimeError:
+                chpi = False
+                logger.info("Could not find cHPI information in raw data.")
+        elif system == "KIT":
+            try:
+                mne.chpi.extract_chpi_locs_kit(raw)
+                chpi = True
+            except (RuntimeError, ValueError):
+                chpi = False
+                logger.info("Could not find cHPI information in raw data.")
+        elif system in ["122m", "306m"]:
+            n_active_hpi = mne.chpi.get_active_chpi(raw, on_missing="ignore")
+            chpi = bool(n_active_hpi.sum() > 0)
+            if chpi:
+                hpi_freqs, _, _ = get_chpi_info(info=raw.info, on_missing="ignore")
+                hpi_freqs = list(hpi_freqs)
+
+    # Define datatype-specific JSON dictionaries
+    ch_info_json_common = [
+        ("TaskName", task),
+        ("Manufacturer", manufacturer),
+        ("PowerLineFrequency", powerlinefrequency),
+        ("SamplingFrequency", sfreq),
+        ("SoftwareFilters", "n/a"),
+        ("RecordingDuration", raw.times[-1]),
+        ("RecordingType", rec_type),
+    ]
+
+    ch_info_json_meg = [
+        ("DewarPosition", "n/a"),
+        ("DigitizedLandmarks", digitized_landmark),
+        ("DigitizedHeadPoints", digitized_head_points),
+        ("MEGChannelCount", n_megchan),
+        ("MEGREFChannelCount", n_megrefchan),
+        ("SoftwareFilters", software_filters),
+    ]
+
+    if chpi is not None:
+        ch_info_json_meg.append(("ContinuousHeadLocalization", chpi))
+        ch_info_json_meg.append(("HeadCoilFrequency", hpi_freqs))
+
+    if emptyroom_fname is not None:
+        ch_info_json_meg.append(("AssociatedEmptyRoom", str(emptyroom_fname)))
+
+    ch_info_json_eeg = [
+        ("EEGReference", "n/a"),
+        ("EEGGround", "n/a"),
+        ("EEGPlacementScheme", _infer_eeg_placement_scheme(raw)),
+        ("Manufacturer", manufacturer),
+    ]
+
+    ch_info_json_ieeg = [
+        ("iEEGReference", "n/a"),
+        ("ECOGChannelCount", n_ecogchan),
+        ("SEEGChannelCount", n_seegchan + n_dbschan),
+    ]
+
+    ch_info_json_nirs = [("Manufacturer", manufacturer)]
+
+    ch_info_ch_counts = [
+        ("EEGChannelCount", n_eegchan),
+        ("EOGChannelCount", n_eogchan),
+        ("ECGChannelCount", n_ecgchan),
+        ("EMGChannelCount", n_emgchan),
+        ("MiscChannelCount", n_miscchan),
+        ("TriggerChannelCount", n_stimchan),
+    ]
+
+    ch_info_ch_counts_nirs = [
+        ("NIRSChannelCount", n_nirscwchan),
+        ("NIRSSourceOptodeCount", n_nirscwsrc),
+        ("NIRSDetectorOptodeCount", n_nirscwdet),
+    ]
+
+    # Stitch together the complete JSON dictionary
+    ch_info_json = ch_info_json_common
+    if datatype == "meg":
+        append_datatype_json = ch_info_json_meg
+    elif datatype == "eeg":
+        append_datatype_json = ch_info_json_eeg
+    elif datatype == "ieeg":
+        append_datatype_json = ch_info_json_ieeg
+    elif datatype == "nirs":
+        append_datatype_json = ch_info_json_nirs
+        ch_info_ch_counts.extend(ch_info_ch_counts_nirs)
+
+    ch_info_json += append_datatype_json
+    ch_info_json += ch_info_ch_counts
+    ch_info_json = OrderedDict(ch_info_json)
+
+    _write_json(fname, ch_info_json, overwrite)
+
+
+def generate_MEG_json_sidecars(uploaded_json_list):
+    """
+    Get the MEG data organized
+    """
+    data_files = [x.split("./")[-1] for x in uploaded_json_list]
+    MEG_data_files = []
+    for data in data_files:
+        include = True
+        if any(x in data for x in MEG_extensions):
+            if ".ds" in str(Path(data).parent):
+                # don't want subfolders or files to get caught, the ".ds" folder is essentially the data
+                include = False
+
+            if include is True:
+                MEG_data_files.append(data)
+
+    if len(MEG_data_files):
+        """
+        Generate the JSON metadata
+        """
+        from mne_bids.path import _parse_ext
+        from mne_bids.sidecar_updates import _update_sidecar
+        from mne_bids.config import MANUFACTURERS
+
+        for meg in MEG_data_files:
+            fname = f"{DATA_DIR}/{meg}"
+            json_output_name = fname.split(".")[0] + ".json"
+            raw = mne.io.read_raw(fname, verbose=0)
+            acquisition_date_time = raw.info["meas_date"].strftime("%Y-%m-%dT%H:%M:%S.%f")
+            acquisition_date = acquisition_date_time.split("T")[0]
+            acquisition_time = acquisition_date_time.split("T")[-1]
+            datatype = "meg"  # assume meg datatype for now
+            task = "unknown"  # set placeholder label for task entity
+
+            # get the manufacturer from the file in the Raw object
+            _, ext = _parse_ext(raw.filenames[0])
+            manufacturer = MANUFACTURERS.get(ext, "")
+
+            # check a few parameters
+            data_id = raw.info["subject_info"]["his_id"]
+
+            if (
+                ("noise" in fname.lower() or "emptyroom" in fname.lower())
+                or ("noise" in data_id.lower() or "emptyroom" in data_id.lower())
+            ):
+                sub = "sub-emptyroom"
+                ses = "ses-" + str(raw.info["meas_date"].strftime("%Y%m%d"))
+                task = "noise"
+            else:
+                sub = data_id
+                ses = None
+
+            # Create the JSON sidecar
+            _sidecar_json(raw, task, manufacturer, json_output_name, datatype, emptyroom_fname=None, overwrite=True)
+
+            # Add some fields to the sidecar
+            if ses is not None:
+                _update_sidecar(json_output_name, "PatientID", f"{sub}_{ses}")
+            else:
+                _update_sidecar(json_output_name, "PatientID", sub)
+            _update_sidecar(json_output_name, "AcquisitionDateTime", acquisition_date_time)
+            _update_sidecar(json_output_name, "AcquisitionDate", acquisition_date)
+            _update_sidecar(json_output_name, "AcquisitionTime", acquisition_time)
+            _update_sidecar(json_output_name, "Modality", "MEG")
+            _update_sidecar(json_output_name, "ConversionSoftware", "MNE-BIDS")
+            _update_sidecar(json_output_name, "SeriesDescription", fname)
+
+            # Replace the MEG data files in the list file with the newly generated JSON sidecar names
+            substring = json_output_name.split(".json")[0].split("/")[-1]
+            corresponding_data = [x for x in uploaded_json_list if substring in x][0]
+            idx = uploaded_json_list.index(corresponding_data)
+            uploaded_json_list.pop(idx)
+            replacement = "./" + corresponding_data.split("./")[-1].split(".")[0] + ".json"
+            uploaded_json_list.append(replacement)
+
+            print("")
+
+    return natsorted(uploaded_json_list)
 
 
 def modify_uploaded_dataset_list(uploaded_json_list):
@@ -116,17 +416,19 @@ def modify_uploaded_dataset_list(uploaded_json_list):
             json_data = open(json_file)
             json_data = json.load(json_data, strict=False)
 
-            # Only want json files with corresponding nifti (and bval/bvec) and if the files come from dcm2niix
-            if ("ConversionSoftware" in json_data and ("dcm2niix" in json_data["ConversionSoftware"]
-                                                       or "pypet2bids" in json_data["ConversionSoftware"])):
+            # Only want json files with corresponding nifti (and bval/bvec) and if the files come accepted software
+            if ("ConversionSoftware" in json_data
+                    and any(x for x in ["dcm2niix", "pypet2bids", "MNE-BIDS"] if x == json_data["ConversionSoftware"])):
+
                 json_dir = os.path.dirname(json_file)
                 grouped_files = [
                     json_dir + "/" + x for x in os.listdir(json_dir)
                     if os.path.basename(json_file)[:-4] in x
                 ]
+
                 # Check that both .nii.gz and .nii aren't in the same group. Redundant, so remove .nii file if found
                 if len([x for x in grouped_files if ".nii" in x]) == 2:
-                    grouped_files = [x for x in grouped_files if x[-4:] != ".nii"]
+                    grouped_files = [x for x in grouped_files if not x.endswith(".nii")]
 
                 # If json comes with imaging data (NIfTI, bval/bvec) add it to list for processing
                 if len(grouped_files) > 1:
@@ -134,7 +436,7 @@ def modify_uploaded_dataset_list(uploaded_json_list):
             else:
                 exclude_data = True
                 print(
-                    f"{json_file} was not generated from dcm2niix or pypet2bids. "
+                    f"{json_file} was not generated from dcm2niix, pypet2bids, or MNE-BIDS. "
                     "ezBIDS requires NIfTI/JSON file provenance to be from one "
                     "of these two, thus this will not be converted by ezBIDS."
                 )
@@ -142,12 +444,12 @@ def modify_uploaded_dataset_list(uploaded_json_list):
             exclude_data = True
             print(
                 f"{json_file} has improper JSON syntax, possibly because "
-                "uploaded data was converted by older dcm2niix version. "
+                "uploaded data was converted by older dcm2niix version or other software. "
                 "Will not be converted by ezBIDS."
             )
 
-    # Flatten uploaded_dataset_list
-    uploaded_files_list = [file for sublist in uploaded_files_list for file in sublist]
+    # Flatten uploaded_files_list
+    uploaded_files_list = natsorted([file for sublist in uploaded_files_list for file in sublist])
 
     return uploaded_files_list, exclude_data, config, config_file
 
@@ -534,13 +836,16 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
     dataset_list = []
 
     # Get separate nifti and json (i.e. sidecar) lists
-    json_list = [x for x in uploaded_files_list if ".json" in x]
-    nifti_list = [
-        x for x in uploaded_files_list if ".nii.gz" in x
-        or ".bval" in x
-        or ".bvec" in x
-    ]
+    json_list = natsorted([x for x in uploaded_files_list if ".json" in x])
 
+    nifti_list = natsorted([
+        x for x in uploaded_files_list if x.endswith(".nii.gz")
+        or x.endswith(".bval")
+        or x.endswith(".bvec")
+        or x.endswith(tuple(MEG_extensions))
+    ])
+
+    print("")
     print("Determining unique acquisitions in dataset")
     print("------------------------------------------")
     sub_info_list_id = "01"
@@ -553,7 +858,13 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
         # Make sure each JSON has a corresponding NIfTI file
         corresponding_nifti = None
         try:
-            corresponding_nifti = [x for x in nifti_list if json_file[:-4] in x if ".nii" in x][0]
+            if json_data["Modality"] != "MEG":
+                corresponding_nifti = [x for x in nifti_list if json_file[:-4] in x and x.endswith(".nii.gz")][0]
+            else:
+                corresponding_nifti = [
+                    x for x in nifti_list if json_file[:-4] in x
+                    and x.endswith(tuple(MEG_extensions))
+                ][0]
         except:
             pass
 
@@ -570,7 +881,7 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
             except:
                 ornt = None
 
-            if pe_direction is not None and ornt is not None:
+            if pe_direction is not None and ornt is not None and json_data["Modality"] != "MEG":
                 proper_pe_direction = correct_pe(pe_direction, ornt)
                 ped = determine_direction(proper_pe_direction, ornt)
             else:
@@ -695,19 +1006,26 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
                 echo_time = 0
 
             # Get the nibabel nifti image info
-            image = nib.load(json_file[:-4] + "nii.gz")
-
-            # if image.get_data_dtype() == [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]:
-            if image.get_data_dtype() in ["<i2", "<u2", "<f4", "int16", "uint16"]:
+            if json_data["Modality"] == "MEG":
+                image = "n/a"
                 valid_image = True
-            else:
-                valid_image = False
-
-            # Find how many volumes are in corresponding nifti file
-            try:
-                volume_count = image.shape[3]
-            except:
                 volume_count = 1
+                ndim = 4
+            else:
+                image = nib.load(json_file[:-4] + "nii.gz")
+                ndim = image.ndim
+
+                # if image.get_data_dtype() == [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]:
+                if image.get_data_dtype() in ["<i2", "<u2", "<f4", "int16", "uint16"]:
+                    valid_image = True
+                else:
+                    valid_image = False
+
+                # Find how many volumes are in corresponding nifti file
+                try:
+                    volume_count = image.shape[3]
+                except:
+                    volume_count = 1
 
             # Find SeriesNumber
             if "SeriesNumber" in json_data:
@@ -807,6 +1125,12 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
             subject = re.sub("[^A-Za-z0-9]+", "", subject)
             session = re.sub("[^A-Za-z0-9]+", "", session)
 
+            # Find NIfTI path
+            try:
+                nifti_path = [x for x in nifti_paths_for_json if x.endswith(".nii.gz")][0]
+            except:
+                nifti_path = [x for x in nifti_paths_for_json if x.endswith(tuple(MEG_extensions))][0]
+
             """
             Organize all from individual SeriesNumber in dictionary
             """
@@ -851,8 +1175,9 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
                 "section_id": 1,
                 "message": None,
                 "type": data_type,
-                "nifti_path": [x for x in nifti_paths_for_json if ".nii.gz" in x][0],
+                "nifti_path": nifti_path,
                 "nibabel_image": image,
+                "ndim": ndim,
                 "valid_image": valid_image,
                 "json_path": json_file,
                 "file_directory": "/".join([x for x in json_file.split("/") if ".json" not in x]),
@@ -1099,7 +1424,8 @@ def determine_sub_ses_IDs(dataset_list, bids_compliant):
         subject_ids_info = {
             "subject": sub,
             "PatientInfo": patient_info,
-            "phenotype": list({"species": x["PatientSpecies"], "sex": x["PatientSex"], "age": x["PatientAge"], "handedness": x["PatientHandedness"]} for x in sub_dics_list)[0],
+            "phenotype": list({"species": x["PatientSpecies"], "sex": x["PatientSex"], "age": x["PatientAge"],
+                               "handedness": x["PatientHandedness"]} for x in sub_dics_list)[0],
             "exclude": False,
             "sessions": [
                 {k: v for k, v in d.items()
@@ -1433,6 +1759,9 @@ def create_lookup_info():
                 elif datatype == "pet":
                     # Only keep imaging suffixes
                     suffixes = [x for x in suffixes if x == "pet"]
+                elif datatype == "meg":
+                    # MEG files are weird, can have calibration and crosstalk files with the same datatype/suffix pair
+                    suffixes = [x for x in suffixes if x == "meg" and key == "meg"]
 
                 for suffix in suffixes:
 
@@ -1463,7 +1792,7 @@ def create_lookup_info():
                         if datatype == "anat":
                             lookup_dic[datatype][suffix]["conditions"].extend(
                                 [
-                                    'unique_dic["nibabel_image"].ndim == 3',
+                                    'unique_dic["ndim"] == 3',
 
                                 ]
                             )
@@ -1591,7 +1920,7 @@ def create_lookup_info():
                                 if suffix == "bold":
                                     lookup_dic[datatype][suffix]["conditions"].extend(
                                         [
-                                            'unique_dic["nibabel_image"].ndim == 4',
+                                            'unique_dic["ndim"] == 4',
                                             'unique_dic["NumVolumes"] > 1',
                                             'unique_dic["RepetitionTime"] > 0',
                                             'not any(x in unique_dic["ImageType"] '
@@ -1603,7 +1932,7 @@ def create_lookup_info():
                                         [
                                             '"DIFFUSION" not in unique_dic["ImageType"]',
                                             '"sbref" in sd and unique_dic["NumVolumes"] == 1',
-                                            'unique_dic["nibabel_image"].ndim == 3',
+                                            'unique_dic["ndim"] == 3',
                                             'not any(x in unique_dic["ImageType"] '
                                             'for x in ["DERIVED", "PERFUSION", "DIFFUSION", "ASL", "UNI"])'
                                         ]
@@ -1632,7 +1961,7 @@ def create_lookup_info():
                                             'any(".bvec" in x for x in unique_dic["paths"])',
                                             # '"DIFFUSION" in unique_dic["ImageType"]',
                                             'not any(x in sd for x in ["trace", "_fa_", "adc"])',
-                                            'unique_dic["nibabel_image"].ndim == 3',
+                                            'unique_dic["ndim"] == 3',
                                             '("b0" in sd or "bzero" in sd or "sbref" in sd) '
                                             'and unique_dic["NumVolumes"] == 1'
                                         ]
@@ -1754,6 +2083,30 @@ def create_lookup_info():
                                         'or unique_dic["Modality"] == "PT"'
                                     ]
                                 )
+                        elif datatype == "meg":
+                            if suffix == "meg":
+                                lookup_dic[datatype][suffix]["search_terms"].extend(
+                                    [
+                                        "_ds_",
+                                        "_fif_",
+                                        "_sqd_",
+                                        "_con_",
+                                        "_raw_",
+                                        "_ave_",
+                                        "_mrk_",
+                                        "_kdf_",
+                                        "_mhd_",
+                                        "_trg_",
+                                        "_chn_",
+                                        "_dat_"
+                                    ]
+                                )
+                                lookup_dic[datatype][suffix]["conditions"].extend(
+                                    [
+                                        '"MNE-BIDS" in unique_dic["sidecar"]["ConversionSoftware"] '
+                                        'and unique_dic["Modality"] == "MEG"'
+                                    ]
+                                )
 
     # Add  DWI derivatives (TRACEW, FA, ADC) to lookup dictionary
     lookup_dic["dwi_derivatives"] = {
@@ -1795,6 +2148,7 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
         A modified version of dataset_list, where this list contains only the
         dictionaries of acquisitions with a unique series group ID.
     """
+    print("")
     print("Datatype & suffix identification")
     print("------------------------------------")
     """
@@ -1998,7 +2352,7 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
                                     ]
 
                                     if (datatype in ["func", "dwi"]
-                                            and (unique_dic["nibabel_image"].ndim == 3 and unique_dic["NumVolumes"] > 1)):
+                                            and (unique_dic["ndim"] == 3 and unique_dic["NumVolumes"] > 1)):
                                         """
                                         func and dwi can also have sbref suffix pairings, so 3D dimension data with
                                         only a single volume likely indicates that the sequence was closer to being
@@ -2145,7 +2499,7 @@ def entity_labels_identification(dataset_list_unique_series, lookup_dic):
         A modified version of dataset_list, where this list contains only the
         dictionaries of acquisitions with a unique series group ID.
     """
-
+    print("")
     print("Entity label identification")
     print("----------------------------")
     entity_ordering = yaml.load(open(os.path.join(analyzer_dir, entity_ordering_file)), Loader=yaml.FullLoader)
@@ -2167,7 +2521,8 @@ def entity_labels_identification(dataset_list_unique_series, lookup_dic):
                     entity = entities_yaml[key]['entity']
                     if f"_{entity}_" in sd:
                         # series_entities[key] = re.split(regex, sd.split(f"{entity}_")[-1])[0].replace("_", "")
-                        series_entities[key] = re.split('_', sd.split(f"{entity}_")[-1])[0]
+                        # series_entities[key] = re.split('_', sd.split(f"{entity}_")[-1])[0] Used as of 12/13/23
+                        series_entities[key] = re.split('[^a-zA-Z0-9]', re.split('_', sd.split(f"{entity}_")[-1])[0])[0]
                     elif f"_{entity}-" in json_path:
                         series_entities[key] = re.split('[^a-zA-Z0-9]', json_path.split(f"{entity}-")[-1])[0]
                     else:
@@ -2175,38 +2530,41 @@ def entity_labels_identification(dataset_list_unique_series, lookup_dic):
                 else:
                     series_entities[key] = ""
 
+                # MEG data was given a placeholder task entity label, so remove it
+                if key == "task" and series_entities["task"] == "unknown":
+                    series_entities["task"] = ""
+
             # If BIDS naming convention isn't detected, do a more thorough check for certain entities labels
 
-            # Specific code for Nigerian dataset only (revert these changes once dataset is converted)
+            # # Specific code for Nigerian dataset only (revert these changes once dataset is converted)
             # if "ABDN" in unique_dic["json_path"]:
-            if "ABDN" in unique_dic["json_path"]:
-                sd = re.sub("[^A-Za-z0-9]+", "", sd).lower()
-                if sd[-1] == "c":
-                    series_entities["ceagent"] = "gadolinium"
-                if any(x in sd for x in ["axial", "ax", "axi"]):
-                    series_entities["acquisition"] = "axial"
-                if any(x in sd for x in ["cor", "coronal"]):
-                    series_entities["acquisition"] = "coronal"
-                if any(x in sd for x in ["sag", "sagittal"]):
-                    series_entities["acquisition"] = "sagittal"
+            #     sd = re.sub("[^A-Za-z0-9]+", "", sd).lower()
+            #     if sd[-1] == "c":
+            #         series_entities["ceagent"] = "gadolinium"
+            #     if any(x in sd for x in ["axial", "ax", "axi"]):
+            #         series_entities["acquisition"] = "axial"
+            #     if any(x in sd for x in ["cor", "coronal"]):
+            #         series_entities["acquisition"] = "coronal"
+            #     if any(x in sd for x in ["sag", "sagittal"]):
+            #         series_entities["acquisition"] = "sagittal"
 
-                if ("t1" in sd or "t1w" in sd) and "gre" not in sd:
-                    unique_dic["datatype"] = "anat"
-                    unique_dic["suffix"] = "T1w"
-                    unique_dic["type"] = "anat/T1w"
-                if ("t2" in sd or "t2w" in sd) and "gre" not in sd:
-                    if "flair" in sd:
-                        unique_dic["datatype"] = "anat"
-                        unique_dic["suffix"] = "FLAIR"
-                        unique_dic["type"] = "anat/FLAIR"
-                    else:
-                        unique_dic["datatype"] = "anat"
-                        unique_dic["suffix"] = "T2w"
-                        unique_dic["type"] = "anat/T2w"
-                if "oblcor" in sd:
-                    unique_dic["type"] = "exclude"
-                if "array" in sd:
-                    unique_dic["type"] = "exclude"
+            #     if ("t1" in sd or "t1w" in sd) and "gre" not in sd:
+            #         unique_dic["datatype"] = "anat"
+            #         unique_dic["suffix"] = "T1w"
+            #         unique_dic["type"] = "anat/T1w"
+            #     if ("t2" in sd or "t2w" in sd) and "gre" not in sd:
+            #         if "flair" in sd:
+            #             unique_dic["datatype"] = "anat"
+            #             unique_dic["suffix"] = "FLAIR"
+            #             unique_dic["type"] = "anat/FLAIR"
+            #         else:
+            #             unique_dic["datatype"] = "anat"
+            #             unique_dic["suffix"] = "T2w"
+            #             unique_dic["type"] = "anat/T2w"
+            #     if "oblcor" in sd:
+            #         unique_dic["type"] = "exclude"
+            #     if "array" in sd:
+            #         unique_dic["type"] = "exclude"
 
             # task
             func_rest_keys = ["rest", "rsfmri", "fcmri"]
@@ -2218,6 +2576,10 @@ def entity_labels_identification(dataset_list_unique_series, lookup_dic):
                 ]
                 if len(match_index):
                     series_entities["task"] = cog_atlas_tasks[match_index[0]]
+
+            if (any(x in re.sub("[^A-Za-z0-9]+", "", sd).lower() for x in ["noise", "emptyroom"])
+                    or series_entities["subject"] == "emptyroom"):  # for MEG data
+                series_entities["task"] = "noise"
 
             # dir (required for fmap/epi and highly recommended for dwi/dwi)
             if any(x in unique_dic["type"] for x in ["fmap/epi", "dwi/dwi"]):
@@ -2265,6 +2627,12 @@ def entity_labels_identification(dataset_list_unique_series, lookup_dic):
                     series_entities["acquisition"] = "head"
                 elif "Body" in unique_dic["sidecar"]["ReceiveCoilName"]:
                     series_entities["acquisition"] = "body"
+
+            if unique_dic["sidecar"]["Manufacturer"] in ["Elekta", "Neuromag", "MEGIN"]:  # For specific MEG instances
+                if unique_dic["SeriesDescription"].endswith(".dat"):  # calibration file
+                    series_entities["acquisition"] = "calibration"
+                elif unique_dic["SeriesDescription"].endswith(".fif"):  # crosstalk file
+                    series_entities["acquisition"] = "crosstalk"
 
             # inversion
             if (any(x in unique_dic["type"] for x in ["anat/MP2RAGE", "anat/IRT1"])
@@ -2435,29 +2803,32 @@ def modify_objects_info(dataset_list):
         additional information.
         """
         for protocol in scan_protocol:
-            image = protocol["nibabel_image"]
-            protocol["headers"] = str(image.header).splitlines()[1:]
+            if protocol["nibabel_image"] == "n/a":
+                protocol["headers"] = "n/a"
+            else:
+                image = protocol["nibabel_image"]
+                protocol["headers"] = str(image.header).splitlines()[1:]
 
-            object_img_array = image.dataobj
-            # PET images are scaled, type will be float <f4
-            if (object_img_array.dtype not in ["<i2", "<u2", "int16", "uint16"]
-                    and protocol.get("sidecar", {}).get("Modality", "") != "PT"):
-                # Weird edge case where data array is RGB instead of integer
-                protocol["exclude"] = True
-                protocol["error"] = "The data array for this " \
-                    "acquisition is improper, suggesting that " \
-                    "this isn't an imaging file or is a non-BIDS " \
-                    "specified acquisition and will not be converted. " \
-                    "Please modify if incorrect."
-                protocol["message"] = protocol["error"]
-                protocol["type"] = "exclude"
+                object_img_array = image.dataobj
+                # PET images are scaled, type will be float <f4
+                if (object_img_array.dtype not in ["<i2", "<u2", "int16", "uint16"]
+                        and protocol.get("sidecar", {}).get("Modality", "") != "PT"):
+                    # Weird edge case where data array is RGB instead of integer
+                    protocol["exclude"] = True
+                    protocol["error"] = "The data array for this " \
+                        "acquisition is improper, suggesting that " \
+                        "this isn't an imaging file or is a non-BIDS " \
+                        "specified acquisition and will not be converted. " \
+                        "Please modify if incorrect."
+                    protocol["message"] = protocol["error"]
+                    protocol["type"] = "exclude"
 
-            # Check for negative dimensions and exclude from BIDS conversion if they exist
-            if len([x for x in image.shape if x < 0]):
-                protocol["exclude"] = True
-                protocol["type"] = "exclude"
-                protocol["error"] = "Image contains negative dimension(s) and cannot be converted to BIDS format"
-                protocol["message"] = "Image contains negative dimension(s) and cannot be converted to BIDS format"
+                # Check for negative dimensions and exclude from BIDS conversion if they exist
+                if len([x for x in image.shape if x < 0]):
+                    protocol["exclude"] = True
+                    protocol["type"] = "exclude"
+                    protocol["error"] = "Image contains negative dimension(s) and cannot be converted to BIDS format"
+                    protocol["message"] = "Image contains negative dimension(s) and cannot be converted to BIDS format"
 
             if protocol["error"]:
                 protocol["error"] = [protocol["error"]]
@@ -2485,6 +2856,12 @@ def modify_objects_info(dataset_list):
                 elif ".nii.gz" in item:
                     items.append({"path": item,
                                   "name": "nii.gz",
+                                  "pngPaths": [],
+                                  "headers": protocol["headers"]})
+                elif any(x in item for x in MEG_extensions):
+                    name = Path(item).suffix
+                    items.append({"path": item,
+                                  "name": name,
                                   "pngPaths": [],
                                   "headers": protocol["headers"]})
 
@@ -2565,6 +2942,7 @@ def extract_series_info(dataset_list_unique_series):
 
     return ui_series_info_list
 
+
 # Begin (Apply functions)
 print("########################################")
 print("Beginning conversion process of uploaded dataset")
@@ -2572,7 +2950,16 @@ print("########################################")
 print("")
 
 # Load dataframe containing all uploaded files
-uploaded_json_list = pd.read_csv("list", header=None, lineterminator='\n').to_numpy().flatten().tolist()
+uploaded_json_list = natsorted(pd.read_csv("list", header=None, lineterminator='\n').to_numpy().flatten().tolist())
+
+# Update the JSON list with the MEG json files we generate, if MEG data was provided
+uploaded_json_list = generate_MEG_json_sidecars(uploaded_json_list)
+
+# # Save and then reload the list file if dealing with MEG data
+# with open("list", "w") as f:
+#     for line in uploaded_json_list:
+#         f.write(f"{line}\n")
+# uploaded_json_list = natsorted(pd.read_csv("list", header=None, lineterminator='\n').to_numpy().flatten().tolist())
 
 # Filter uploaded files list for files that ezBIDS can't use and check for ezBIDS configuration file
 uploaded_files_list, exclude_data, config, config_file = modify_uploaded_dataset_list(uploaded_json_list)
@@ -2650,6 +3037,7 @@ dataset_list_unique_series = datatype_suffix_identification(dataset_list_unique_
 # Identify entity label information
 dataset_list_unique_series = entity_labels_identification(dataset_list_unique_series, lookup_dic)
 
+print("")
 print("--------------------------")
 print("ezBIDS sequence message")
 print("--------------------------")

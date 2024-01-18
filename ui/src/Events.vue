@@ -3,13 +3,15 @@
         <div v-if="!events.loaded">
             <p>If you'd like to include task events/timing data with your BIDS datasets, you can upload them here.</p>
             <p>
-                Please skip this page if you do not have events data, or if your events data is not set up where each
-                row pertains to an individual trial. An exception is E-Prime txt files, which are allowed.
+                Please skip this page if working with MEG data, if you do not have events data, or if your events data
+                are not set up where each row pertains to an individual trial. An exception is E-Prime txt files, which
+                are allowed for functional BOLD data.
             </p>
             <p>
                 Only the following file extensions will be accepted by ezBIDS: <b>.csv</b>, <b>.tsv</b>, <b>.txt</b>,
                 <b>.out</b>, and <b>.xlsx</b>. Uploaded files with other extensions will be ignored.
             </p>
+
             <br />
 
             <!-- <el-button @click="open">Select Directory</el-button> -->
