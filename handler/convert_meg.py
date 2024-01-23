@@ -10,8 +10,8 @@ Regarding emptyroom recordings and their BIDS specification, there are 4 scenari
 3). One or very few noise recordings per full dataset
 4). No noise recordings in entire dataset
 
-Given the difficulty in determing the various ways imaging data may match with emptyroom data, will have a separate
-sub-emptyroom folder. This will makes things simplier.
+Given the difficulty in determining the various ways imaging data may match with emptyroom data, will have a separate
+sub-emptyroom folder. This will makes things simpler for now.
 """
 
 import sys
