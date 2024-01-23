@@ -23,10 +23,8 @@ plt.style.use('dark_background')
 
 os.environ['MPLCONFIGDIR'] = os.getcwd() + "/configs/"
 
-DATA_DIR = sys.argv[1]
-
-
 # Functions
+
 
 def create_MEG_thumbnail():
     """
@@ -35,8 +33,6 @@ def create_MEG_thumbnail():
     import mne.viz
 
     uploaded_json_list = natsorted(pd.read_csv("list", header=None, lineterminator='\n').to_numpy().flatten().tolist())
-
-    MEG_extensions = [".ds", ".fif", ".sqd", ".con", ".raw", ".ave", ".mrk", ".kdf", ".mhd", ".trg", ".chn", ".dat"]
 
     """
     Get the MEG data organized
@@ -49,7 +45,7 @@ def create_MEG_thumbnail():
 
     if len(MEG_data_files):
         for meg in MEG_data_files:
-            fname = f"{DATA_DIR}/{meg}"
+            fname = f"{data_dir}/{meg}"
             raw = mne.io.read_raw(fname, verbose=0)
             mne.viz.set_browser_backend('matplotlib', verbose=None)
 
@@ -163,19 +159,15 @@ def create_DWIshell_thumbnails(nifti_file, image, bval_file):
 # Begin:
 data_dir = sys.argv[1]
 json_file = sys.argv[2]
+MEG_extensions = [".ds", ".fif", ".sqd", ".con", ".raw", ".ave", ".mrk", ".kdf", ".mhd", ".trg", ".chn", ".dat"]
 os.chdir(data_dir)
 
-json_list = pd.read_csv("list", header=None, lineterminator="\n").to_numpy().flatten().tolist()
-
 nifti_file = json_file.split(".json")[0] + ".nii.gz"
-print("")
-print(nifti_file)
-print("")
 
 create_MEG_thumbnail()
 
-if not os.path.isfile(f"{data_dir}/{nifti_file}"):  # no corresponding nifti, so don't process
-    print(f"{json_file} does not have a corresponding NIfTI file, cannot process")
+if not os.path.isfile(f"{data_dir}/{nifti_file}"):
+    print(f"{json_file} does not have a corresponding NIfTI file, cannot generate screenshot")
 else:
     output_dir = nifti_file.split(".nii.gz")[0]
     image = nib.load(nifti_file)
