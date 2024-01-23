@@ -234,7 +234,6 @@ else
     echo "running ezBIDS_core (may take several minutes, depending on size of data)"
     python3 "./ezBIDS_core/ezBIDS_core.py" $root
 
-
     echo "generating thumbnails for 3/4D acquisitions (may take several minutes, depending on size of dataset)"
     cat $root/list | parallel --linebuffer -j 6 --progress python3 "./ezBIDS_core/createThumbnailsMovies.py" $root
 

@@ -298,7 +298,10 @@ def generate_MEG_json_sidecars(uploaded_json_list):
             if include is True:
                 MEG_data_files.append(data)
 
+    non_MEG_data_files = [f"./{x}" for x in data_files if x not in MEG_data_files]
+
     if len(MEG_data_files):
+        list_files = []
         """
         Generate the JSON metadata
         """
@@ -307,6 +310,22 @@ def generate_MEG_json_sidecars(uploaded_json_list):
         from mne_bids.config import MANUFACTURERS
 
         for meg in MEG_data_files:
+            ext = Path(meg).suffix
+            # Often find extra periods (".") in MEG file names. Should only have 1, denoting the file extension
+            if len([x for x in meg if "." in x]) > 1:
+                meg_split_list = meg.split(".")
+                if f"_raw{ext}" not in meg:
+                    new_meg = "_".join(meg_split_list[:-1]) + "_raw." + meg_split_list[-1]
+                else:
+                    new_meg = "_".join(meg_split_list[:-1]) + "." + meg_split_list[-1]
+
+                # change the file names
+                idx = uploaded_json_list.index(f"./{meg}")
+                uploaded_json_list.pop(idx)
+                uploaded_json_list = natsorted(uploaded_json_list + [f"./{new_meg}"])
+                os.system(f"mv {meg} {new_meg}")
+                meg = new_meg
+
             fname = f"{DATA_DIR}/{meg}"
             json_output_name = fname.split(".")[0] + ".json"
             raw = mne.io.read_raw(fname, verbose=0)
@@ -321,7 +340,10 @@ def generate_MEG_json_sidecars(uploaded_json_list):
             manufacturer = MANUFACTURERS.get(ext, "")
 
             # check a few parameters
-            data_id = raw.info["subject_info"]["his_id"]
+            try:
+                data_id = raw.info["subject_info"]["his_id"]
+            except:
+                data_id = "na"
 
             if (
                 ("noise" in fname.lower() or "emptyroom" in fname.lower())
@@ -351,13 +373,18 @@ def generate_MEG_json_sidecars(uploaded_json_list):
 
             # Replace the MEG data files in the list file with the newly generated JSON sidecar names
             substring = json_output_name.split(".json")[0].split("/")[-1]
-            corresponding_data = [x for x in uploaded_json_list if substring in x][0]
+            corresponding_data = [x for x in uploaded_json_list if f"/{substring}" in x][0]
             idx = uploaded_json_list.index(corresponding_data)
             uploaded_json_list.pop(idx)
-            replacement = "./" + corresponding_data.split("./")[-1].split(".")[0] + ".json"
-            uploaded_json_list.append(replacement)
+            json_replacement = "./" + corresponding_data.split("./")[-1].split(".")[0] + ".json"
+            list_replacement = "./" + corresponding_data.split("./")[-1].split(".")[0] + ext
+            uploaded_json_list.append(json_replacement)
+            list_files.append(list_replacement)
 
-            print("")
+        # Save to list file
+        with open("list", "w") as f:
+            for line in list_files + non_MEG_data_files:
+                f.write(f"{line}\n")
 
     return natsorted(uploaded_json_list)
 
@@ -2098,7 +2125,8 @@ def create_lookup_info():
                                         "_mhd_",
                                         "_trg_",
                                         "_chn_",
-                                        "_dat_"
+                                        "_dat_",
+                                        "emptyroom"
                                     ]
                                 )
                                 lookup_dic[datatype][suffix]["conditions"].extend(
@@ -2629,10 +2657,13 @@ def entity_labels_identification(dataset_list_unique_series, lookup_dic):
                     series_entities["acquisition"] = "body"
 
             if unique_dic["sidecar"]["Manufacturer"] in ["Elekta", "Neuromag", "MEGIN"]:  # For specific MEG instances
-                if unique_dic["SeriesDescription"].endswith(".dat"):  # calibration file
-                    series_entities["acquisition"] = "calibration"
-                elif unique_dic["SeriesDescription"].endswith(".fif"):  # crosstalk file
-                    series_entities["acquisition"] = "crosstalk"
+                sds = [x["SeriesDescription"] for x in dataset_list_unique_series]
+                # For MEG data, certain systems contain crosstalk and calibration file pairs
+                if any(".fif" in x for x in sds) and any(".dat" in x for x in sds):
+                    if unique_dic["SeriesDescription"].endswith(".dat"):  # calibration file
+                        series_entities["acquisition"] = "calibration"
+                    elif unique_dic["SeriesDescription"].endswith(".fif"):  # crosstalk file
+                        series_entities["acquisition"] = "crosstalk"
 
             # inversion
             if (any(x in unique_dic["type"] for x in ["anat/MP2RAGE", "anat/IRT1"])
@@ -2954,12 +2985,6 @@ uploaded_json_list = natsorted(pd.read_csv("list", header=None, lineterminator='
 
 # Update the JSON list with the MEG json files we generate, if MEG data was provided
 uploaded_json_list = generate_MEG_json_sidecars(uploaded_json_list)
-
-# # Save and then reload the list file if dealing with MEG data
-# with open("list", "w") as f:
-#     for line in uploaded_json_list:
-#         f.write(f"{line}\n")
-# uploaded_json_list = natsorted(pd.read_csv("list", header=None, lineterminator='\n').to_numpy().flatten().tolist())
 
 # Filter uploaded files list for files that ezBIDS can't use and check for ezBIDS configuration file
 uploaded_files_list, exclude_data, config, config_file = modify_uploaded_dataset_list(uploaded_json_list)

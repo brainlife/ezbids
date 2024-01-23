@@ -27,7 +27,7 @@ with open("ezBIDS_core.json", "r") as ezBIDS_json:
     ezBIDS = json.load(ezBIDS_json)
 
 for json_file in json_list:
-    if any(x in json_file for x in MEG_extensions):
+    if json_file.endswith(tuple(MEG_extensions)):
         nifti_file = json_file
     else:
         nifti_file = json_file.split(".json")[0] + ".nii.gz"
@@ -36,6 +36,7 @@ for json_file in json_list:
         for obj in ezBIDS["objects"]:
             for item in obj["items"]:
                 path = item["path"]
+
                 if path == nifti_file:
                     files = [
                         os.path.join(os.path.dirname(nifti_file), x) for x in os.listdir(os.path.dirname(nifti_file))

@@ -310,7 +310,7 @@
                         <el-form-item v-if="item.sidecar" label="sidecar">
                             <el-input v-model="item.sidecar_json" type="textarea" rows="10" @blur="update(so)" />
                         </el-form-item>
-                        <el-form-item v-if="item.headers" label="Nifti Headers (readonly)">
+                        <el-form-item v-if="item.headers" label="Nifti Headers (read-only)">
                             <pre class="headers">{{ item.headers }}</pre>
                         </el-form-item>
                         <el-form-item v-if="item.eventsBIDS" label="eventsBIDS">
