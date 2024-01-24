@@ -579,7 +579,6 @@ export default defineComponent({
                                     json[key] = value;
                                 }
                             }
-
                             item.sidecar_json = JSON.stringify(json, null, 2);
                         }
                     });
@@ -615,8 +614,9 @@ export default defineComponent({
             return `${item.field} (${item.condition})`;
         },
         initForm() {
-            console.log(this)
-            this.fields = this.getFieldsMetaData(this.ss.type);
+            let type_str = this.ss.type || this.ss._type;
+            this.fields = this.getFieldsMetaData(type_str);
+            // this.fields = this.getFieldsMetaData(this.ss.type);
             this.rules = this.generateValidationRules(this.fields);
 
             //set default values for all fields in the form optional, recommended, required, conditional
@@ -651,8 +651,11 @@ export default defineComponent({
         },
         getFieldsMetaData(type: string) {
             let fileObject = {};
-            if (type == 'perf/asl' || 'perf/m0scan') fileObject = aslYaml;
-            if (type.startsWith('pet')) fileObject = petYaml;
+            if (['perf/asl', 'perf/m0scan'].includes(type)) {
+                fileObject = aslYaml;
+            } else if (type.startsWith('pet')) {
+                fileObject = petYaml;
+            }
             let result = {
                 required: [],
                 recommended: [],
@@ -1008,8 +1011,9 @@ export default defineComponent({
         getArrayValidation(value, item) {
             // prevent user from entering [] or [""]
             // add check to prevent from entering brackets
-            if (value.includes('[') || value.includes(']'))
+            if (value.includes('[') || value.includes(']')) {
                 return 'Please enter a valid entry no brackets allowed [], only comma separated values';
+            }
 
             if (item.details.items.type == 'number') {
                 // If the value is a string that represents a single number or a list of numbers separated by commas

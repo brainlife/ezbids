@@ -284,6 +284,12 @@
                                     same text string there as well. Leave field blank if unclear.</small
                                 >
                             </p>
+                            <el-form-item
+                                v-if="['perf/asl', 'perf/m0scan'].includes(so._type) || so._type.startsWith('pet/')"
+                                label="Relevant Metadata"
+                            >
+                                <ModalityForm :ss="so" :ezbids="ezbids" @form-submitted="submitForm" />
+                            </el-form-item>
                         </div>
                     </div>
 
@@ -374,6 +380,11 @@
 import { mapState, mapGetters } from 'vuex';
 import { defineComponent } from 'vue';
 import datatype from './components/datatype.vue';
+import ModalityForm from './components/modalityForm.vue';
+
+import aslYaml from '../src/assets/schema/rules/sidecars/asl.yaml';
+import petYaml from '../src/assets/schema/rules/sidecars/pet.yaml';
+import metadata_types from '../src/assets/schema/rules/sidecars/metadata_types.yaml';
 
 import { IObject, Session, OrganizedSession, OrganizedSubject } from './store';
 import { prettyBytes } from './filters';
@@ -411,6 +422,13 @@ export default defineComponent({
         return {
             so: null as IObject | null, //selected object
             sess: null as OrganizedSession | null, //selected session for IntendedFor handling
+            showInfo: {} as any,
+            petYaml: petYaml,
+            aslYaml: aslYaml,
+            fields: {},
+            showDialog: false,
+            rules: {},
+            formData: {},
         };
     },
 
@@ -712,6 +730,11 @@ export default defineComponent({
             dwiQA(this.ezbids);
             setRun(this.ezbids);
             this.ezbids.objects.forEach(this.validate);
+        },
+
+        submitForm(data: any) {
+            //TODO: should we make an interface for data in store/index.ts?
+            this.ezbids = data;
         },
     },
 });
