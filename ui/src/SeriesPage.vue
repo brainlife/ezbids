@@ -461,7 +461,7 @@ export default defineComponent({
             }
 
             // Alert users to check relevant metadata ("Edit Metadata" button for any perf sequences)
-            if (s.type.startsWith('perf')) {
+            if (s.type.startsWith('perf/') || s.type.startsWith('pet/')) {
                 s.validationWarnings.push(
                     "Please check to ensure that all necessary metadata is provided, by clicking on the 'Edit Metadata' button below"
                 );
