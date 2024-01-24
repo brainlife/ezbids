@@ -444,8 +444,17 @@ def modify_uploaded_dataset_list(uploaded_json_list):
             json_data = json.load(json_data, strict=False)
 
             # Only want json files with corresponding nifti (and bval/bvec) and if the files come accepted software
-            if ("ConversionSoftware" in json_data
-                    and any(x for x in ["dcm2niix", "pypet2bids", "MNE-BIDS"] if x == json_data["ConversionSoftware"])):
+            if "ConversionSoftware" in json_data:
+                ref_softwares = ["dcm2niix", "pypet2bids", "MNE-BIDS"]
+                # ConversionSoftware could be string or list type
+                if isinstance(json_data["ConversionSoftware"], str):
+                    if not any(x for x in ref_softwares if x == json_data["ConversionSoftware"]):
+                        break
+                elif isinstance(json_data["ConversionSoftware"], list):
+                    if not any(x for x in ref_softwares if x in json_data["ConversionSoftware"]):
+                        break
+                else:
+                    break
 
                 json_dir = os.path.dirname(json_file)
                 grouped_files = [
