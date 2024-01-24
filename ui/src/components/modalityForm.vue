@@ -507,6 +507,7 @@
 
 <script lang="ts">
 import aslYaml from '../../src/assets/schema/rules/sidecars/asl.yaml';
+import petYaml from '../../src/assets/schema/rules/sidecars/pet.yaml';
 
 import metadata_types from '../../src/assets/schema/rules/sidecars/metadata_types.yaml';
 import { ElMessageBox, ElMessage, useFocus } from 'element-plus';
@@ -614,6 +615,7 @@ export default defineComponent({
             return `${item.field} (${item.condition})`;
         },
         initForm() {
+            console.log(this)
             this.fields = this.getFieldsMetaData(this.ss.type);
             this.rules = this.generateValidationRules(this.fields);
 
@@ -650,6 +652,7 @@ export default defineComponent({
         getFieldsMetaData(type: string) {
             let fileObject = {};
             if (type == 'perf/asl' || 'perf/m0scan') fileObject = aslYaml;
+            if (type.startsWith('pet')) fileObject = petYaml;
             let result = {
                 required: [],
                 recommended: [],
