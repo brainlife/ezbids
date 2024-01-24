@@ -10,9 +10,9 @@
                         <h3>Required</h3>
                     </div>
                     <el-form-item
-                        class="editModalityInputItem"
                         v-for="(item, index) in fields.required"
                         :key="'required' + index"
+                        class="editModalityInputItem"
                         :label="`${item.details.display_name} ${item.details.type}`"
                         :prop="item.field"
                     >
@@ -29,14 +29,18 @@
 
                         <el-input
                             v-if="inputType(item) == 'input'"
-                            :name="item.field"
                             v-model="formData[item.field]"
-                            @input="this.$refs.form.validate()"
+                            :name="item.field"
                             :placeholder="getPlaceholderByType(item.details.type)"
                             class="input-fullwidth"
+                            @input="$refs.form.validate()"
                         ></el-input>
 
-                        <el-select v-if="inputType(item) == 'select-enum'" v-model="formData[item.field]" @change="this.$refs.form.validate()">
+                        <el-select
+                            v-if="inputType(item) == 'select-enum'"
+                            v-model="formData[item.field]"
+                            @change="$refs.form.validate()"
+                        >
                             <el-option
                                 v-for="option in parseOptionsEnum(item?.details?.enum)"
                                 :key="option.value"
@@ -47,24 +51,29 @@
 
                         <el-input
                             v-if="inputType(item) == 'input-number'"
+                            v-model="formData[item.field]"
                             type="text"
                             inputmode="decimal"
                             :name="item.field"
                             :placeholder="getPlaceholderByType(item.details.type)"
-                            v-model="formData[item.field]"
-                            @input="this.$refs.form.validate()"
                             class="input-fullwidth"
+                            @input="$refs.form.validate()"
                         ></el-input>
 
                         <el-select
                             v-if="inputType(item) == 'select-boolean'"
-                            @change="this.$refs.form.validate()"
                             v-model="formData[item.field]"
                             class="m-2"
                             placeholder="Select"
                             size="large"
+                            @change="$refs.form.validate()"
                         >
-                            <el-option v-for="item in optionsBoolean" :key="item.value" :label="item.label" :value="item.value" />
+                            <el-option
+                                v-for="item in optionsBoolean"
+                                :key="item.value"
+                                :label="item.label"
+                                :value="item.value"
+                            />
                         </el-select>
 
                         <!-- if inputType == select-type then show the options in the select box and change the type of the input box to select and add the place holder and add the validation rules -->
@@ -74,38 +83,46 @@
                                     <el-input
                                         v-if="
                                             formatType(item.details.type) == 'string' ||
-                                                formatType(item.details.type) == 'object' ||
-                                                formatType(item.details.type) == 'array'
+                                            formatType(item.details.type) == 'object' ||
+                                            formatType(item.details.type) == 'array'
                                         "
-                                        :name="item.field"
                                         v-model="formData[item.field]"
-                                        @input="this.$refs.form.validate()"
+                                        :name="item.field"
                                         :placeholder="getPlaceholderByType(item.details.type)"
+                                        @input="$refs.form.validate()"
                                     ></el-input>
 
                                     <el-input
                                         v-if="formatType(item.details.type) == 'number'"
+                                        v-model="formData[item.field]"
                                         type="text"
                                         inputmode="decimal"
                                         :name="item.field"
                                         :placeholder="getPlaceholderByType(formatType(item.details.type))"
-                                        v-model="formData[item.field]"
-                                        @input="this.$refs.form.validate()"
+                                        @input="$refs.form.validate()"
                                     ></el-input>
                                 </el-col>
                                 <el-col :span="8">
                                     <el-select
+                                        v-model="item.details.type"
                                         class="m-2"
                                         placeholder="Select Type"
                                         size="small"
-                                        v-model="item.details.type"
                                         @change="updateDetailsType(item, $event)"
                                     >
                                         <el-option
                                             v-for="typeOption in item.details.anyOf"
                                             :key="typeOption.value"
-                                            :label="typeOption.format ? `${typeOption.type} (${typeOption.format})` : typeOption.type"
-                                            :value="typeOption.format ? `${typeOption.type} (${typeOption.format})` : typeOption.type"
+                                            :label="
+                                                typeOption.format
+                                                    ? `${typeOption.type} (${typeOption.format})`
+                                                    : typeOption.type
+                                            "
+                                            :value="
+                                                typeOption.format
+                                                    ? `${typeOption.type} (${typeOption.format})`
+                                                    : typeOption.type
+                                            "
                                         />
                                     </el-select>
                                 </el-col>
@@ -119,9 +136,9 @@
                         <h3>Recommended</h3>
                     </div>
                     <el-form-item
-                        class="editModalityInputItem"
                         v-for="(item, index) in fields.recommended"
                         :key="'recommended' + index"
+                        class="editModalityInputItem"
                         :label="`${item.details.display_name}`"
                         :prop="item.field"
                     >
@@ -139,12 +156,16 @@
                         <el-input
                             v-if="inputType(item) == 'input'"
                             v-model="formData[item.field]"
-                            @input="this.$refs.form.validate()"
                             :placeholder="getPlaceholderByType(item.details.type)"
                             class="input-fullwidth"
+                            @input="$refs.form.validate()"
                         ></el-input>
 
-                        <el-select v-if="inputType(item) == 'select-enum'" v-model="formData[item.field]" @change="this.$refs.form.validate()">
+                        <el-select
+                            v-if="inputType(item) == 'select-enum'"
+                            v-model="formData[item.field]"
+                            @change="$refs.form.validate()"
+                        >
                             <el-option
                                 v-for="option in parseOptionsEnum(item?.details?.enum)"
                                 :key="option.value"
@@ -155,24 +176,29 @@
 
                         <el-input
                             v-if="inputType(item) == 'input-number'"
+                            v-model="formData[item.field]"
                             type="text"
                             inputmode="decimal"
                             :name="item.field"
-                            v-model="formData[item.field]"
-                            @input="this.$refs.form.validate()"
                             :placeholder="getPlaceholderByType(item.details.type)"
                             class="input-fullwidth"
+                            @input="$refs.form.validate()"
                         ></el-input>
 
                         <el-select
                             v-if="inputType(item) == 'select-boolean'"
                             v-model="formData[item.field]"
                             class="m-2"
-                            @change="this.$refs.form.validate()"
                             placeholder="Select"
                             size="large"
+                            @change="$refs.form.validate()"
                         >
-                            <el-option v-for="item in optionsBoolean" :key="item.value" :label="item.label" :value="item.value" />
+                            <el-option
+                                v-for="item in optionsBoolean"
+                                :key="item.value"
+                                :label="item.label"
+                                :value="item.value"
+                            />
                         </el-select>
 
                         <div v-if="inputType(item) == 'select-type'">
@@ -181,38 +207,46 @@
                                     <el-input
                                         v-if="
                                             formatType(item.details.type) == 'string' ||
-                                                formatType(item.details.type) == 'object' ||
-                                                formatType(item.details.type) == 'array'
+                                            formatType(item.details.type) == 'object' ||
+                                            formatType(item.details.type) == 'array'
                                         "
-                                        :name="item.field"
                                         v-model="formData[item.field]"
-                                        @input="this.$refs.form.validate()"
+                                        :name="item.field"
                                         :placeholder="getPlaceholderByType(item.details.type)"
+                                        @input="$refs.form.validate()"
                                     ></el-input>
 
                                     <el-input
                                         v-if="formatType(item.details.type) == 'number'"
+                                        v-model="formData[item.field]"
                                         type="text"
                                         inputmode="decimal"
                                         :name="item.field"
                                         :placeholder="getPlaceholderByType(formatType(item.details.type))"
-                                        v-model="formData[item.field]"
-                                        @input="this.$refs.form.validate()"
+                                        @input="$refs.form.validate()"
                                     ></el-input>
                                 </el-col>
                                 <el-col :span="8">
                                     <el-select
+                                        v-model="item.details.type"
                                         class="m-2"
                                         placeholder="Select Type"
                                         size="small"
-                                        v-model="item.details.type"
                                         @change="updateDetailsType(item, $event)"
                                     >
                                         <el-option
                                             v-for="typeOption in item.details.anyOf"
                                             :key="typeOption.value"
-                                            :label="typeOption.format ? `${typeOption.type} (${typeOption.format})` : typeOption.type"
-                                            :value="typeOption.format ? `${typeOption.type} (${typeOption.format})` : typeOption.type"
+                                            :label="
+                                                typeOption.format
+                                                    ? `${typeOption.type} (${typeOption.format})`
+                                                    : typeOption.type
+                                            "
+                                            :value="
+                                                typeOption.format
+                                                    ? `${typeOption.type} (${typeOption.format})`
+                                                    : typeOption.type
+                                            "
                                         />
                                     </el-select>
                                 </el-col>
@@ -226,9 +260,9 @@
                         <h3>Optional</h3>
                     </div>
                     <el-form-item
-                        class="editModalityInputItem"
                         v-for="(item, index) in fields.optional"
                         :key="'optional' + index"
+                        class="editModalityInputItem"
                         :label="`${item.details.display_name}`"
                         :prop="item.field"
                     >
@@ -246,11 +280,15 @@
                         <el-input
                             v-if="inputType(item) == 'input'"
                             v-model="formData[item.field]"
-                            @input="this.$refs.form.validate()"
                             :placeholder="getPlaceholderByType(item.details.type)"
+                            @input="$refs.form.validate()"
                         ></el-input>
 
-                        <el-select v-if="inputType(item) == 'select-enum'" v-model="formData[item.field]" @change="this.$refs.form.validate()">
+                        <el-select
+                            v-if="inputType(item) == 'select-enum'"
+                            v-model="formData[item.field]"
+                            @change="$refs.form.validate()"
+                        >
                             <el-option
                                 v-for="option in parseOptionsEnum(item?.details?.enum)"
                                 :key="option.value"
@@ -261,23 +299,28 @@
 
                         <el-input
                             v-if="inputType(item) == 'input-number'"
+                            v-model="formData[item.field]"
                             type="text"
                             inputmode="decimal"
                             :name="item.field"
-                            v-model="formData[item.field]"
-                            @input="this.$refs.form.validate()"
                             :placeholder="getPlaceholderByType(item.details.type)"
+                            @input="$refs.form.validate()"
                         ></el-input>
 
                         <el-select
                             v-if="inputType(item) == 'select-boolean'"
                             v-model="formData[item.field]"
                             class="m-2"
-                            @change="this.$refs.form.validate()"
                             placeholder="Select"
                             size="large"
+                            @change="$refs.form.validate()"
                         >
-                            <el-option v-for="item in optionsBoolean" :key="item.value" :label="item.label" :value="item.value" />
+                            <el-option
+                                v-for="item in optionsBoolean"
+                                :key="item.value"
+                                :label="item.label"
+                                :value="item.value"
+                            />
                         </el-select>
 
                         <div v-if="inputType(item) == 'select-type'">
@@ -286,38 +329,46 @@
                                     <el-input
                                         v-if="
                                             formatType(item.details.type) == 'string' ||
-                                                formatType(item.details.type) == 'object' ||
-                                                formatType(item.details.type) == 'array'
+                                            formatType(item.details.type) == 'object' ||
+                                            formatType(item.details.type) == 'array'
                                         "
-                                        :name="item.field"
                                         v-model="formData[item.field]"
-                                        @input="this.$refs.form.validate()"
+                                        :name="item.field"
                                         :placeholder="getPlaceholderByType(formatType(item.details.type))"
+                                        @input="$refs.form.validate()"
                                     ></el-input>
 
                                     <el-input
                                         v-if="formatType(item.details.type) == 'number'"
+                                        v-model="formData[item.field]"
                                         type="text"
                                         inputmode="decimal"
                                         :name="item.field"
                                         :placeholder="getPlaceholderByType(formatType(item.details.type))"
-                                        v-model="formData[item.field]"
-                                        @input="this.$refs.form.validate()"
+                                        @input="$refs.form.validate()"
                                     ></el-input>
                                 </el-col>
                                 <el-col :span="8">
                                     <el-select
+                                        v-model="item.details.type"
                                         class="m-2"
                                         placeholder="Select Type"
                                         size="small"
-                                        v-model="item.details.type"
                                         @change="updateDetailsType(item, $event)"
                                     >
                                         <el-option
                                             v-for="typeOption in item.details.anyOf"
                                             :key="typeOption.value"
-                                            :label="typeOption.format ? `${typeOption.type} (${typeOption.format})` : typeOption.type"
-                                            :value="typeOption.format ? `${typeOption.type} (${typeOption.format})` : typeOption.type"
+                                            :label="
+                                                typeOption.format
+                                                    ? `${typeOption.type} (${typeOption.format})`
+                                                    : typeOption.type
+                                            "
+                                            :value="
+                                                typeOption.format
+                                                    ? `${typeOption.type} (${typeOption.format})`
+                                                    : typeOption.type
+                                            "
                                         />
                                     </el-select>
                                 </el-col>
@@ -326,9 +377,9 @@
                     </el-form-item>
 
                     <el-form-item
-                        class="editModalityInputItem"
                         v-for="(item, index) in fields.conditional"
                         :key="'conditional' + index"
+                        class="editModalityInputItem"
                         :label="`${item.details.display_name}`"
                         :prop="item.field"
                     >
@@ -344,13 +395,17 @@
                         </template>
                         <el-input
                             v-if="inputType(item) == 'input'"
-                            :name="item.field"
                             v-model="formData[item.field]"
-                            @change="this.$refs.form.validate()"
+                            :name="item.field"
                             :placeholder="getPlaceholderByType(item.details.type)"
+                            @change="$refs.form.validate()"
                         ></el-input>
 
-                        <el-select v-if="inputType(item) == 'select-enum'" v-model="formData[item.field]" @change="this.$refs.form.validate()">
+                        <el-select
+                            v-if="inputType(item) == 'select-enum'"
+                            v-model="formData[item.field]"
+                            @change="$refs.form.validate()"
+                        >
                             <el-option
                                 v-for="option in parseOptionsEnum(item?.details?.enum)"
                                 :key="option.value"
@@ -361,23 +416,28 @@
 
                         <el-input
                             v-if="inputType(item) == 'input-number'"
+                            v-model="formData[item.field]"
                             type="text"
                             inputmode="decimal"
                             :name="item.field"
-                            v-model="formData[item.field]"
-                            @input="this.$refs.form.validate()"
                             :placeholder="getPlaceholderByType(item.details.type)"
+                            @input="$refs.form.validate()"
                         ></el-input>
 
                         <el-select
                             v-if="inputType(item) == 'select-boolean'"
                             v-model="formData[item.field]"
-                            @change="this.$refs.form.validate()"
                             class="m-2"
                             placeholder="Select"
                             size="large"
+                            @change="$refs.form.validate()"
                         >
-                            <el-option v-for="item in optionsBoolean" :key="item.value" :label="item.label" :value="item.value" />
+                            <el-option
+                                v-for="item in optionsBoolean"
+                                :key="item.value"
+                                :label="item.label"
+                                :value="item.value"
+                            />
                         </el-select>
 
                         <div v-if="inputType(item) == 'select-type'">
@@ -386,38 +446,46 @@
                                     <el-input
                                         v-if="
                                             formatType(item.details.type) == 'string' ||
-                                                formatType(item.details.type) == 'object' ||
-                                                formatType(item.details.type) == 'array'
+                                            formatType(item.details.type) == 'object' ||
+                                            formatType(item.details.type) == 'array'
                                         "
-                                        :name="item.field"
                                         v-model="formData[item.field]"
-                                        @input="this.$refs.form.validate()"
+                                        :name="item.field"
                                         :placeholder="getPlaceholderByType(formatType(item.details.type))"
+                                        @input="$refs.form.validate()"
                                     ></el-input>
 
                                     <el-input
                                         v-if="formatType(item.details.type) == 'number'"
+                                        v-model="formData[item.field]"
                                         type="text"
                                         inputmode="decimal"
                                         :name="item.field"
                                         :placeholder="getPlaceholderByType(formatType(item.details.type))"
-                                        v-model="formData[item.field]"
-                                        @input="this.$refs.form.validate()"
+                                        @input="$refs.form.validate()"
                                     ></el-input>
                                 </el-col>
                                 <el-col :span="8">
                                     <el-select
+                                        v-model="item.details.type"
                                         class="m-2"
                                         placeholder="Select Type"
                                         size="small"
-                                        v-model="item.details.type"
                                         @change="updateDetailsType(item, $event)"
                                     >
                                         <el-option
                                             v-for="typeOption in item.details.anyOf"
                                             :key="typeOption.value"
-                                            :label="typeOption.format ? `${typeOption.type} (${typeOption.format})` : typeOption.type"
-                                            :value="typeOption.format ? `${typeOption.type} (${typeOption.format})` : typeOption.type"
+                                            :label="
+                                                typeOption.format
+                                                    ? `${typeOption.type} (${typeOption.format})`
+                                                    : typeOption.type
+                                            "
+                                            :value="
+                                                typeOption.format
+                                                    ? `${typeOption.type} (${typeOption.format})`
+                                                    : typeOption.type
+                                            "
                                         />
                                     </el-select>
                                 </el-col>
@@ -428,7 +496,8 @@
             </el-row>
         </el-form>
         <br />
-        <span slot="footer" class="dialog-footer">
+
+        <span class="dialog-footer">
             <!-- {{ formData }} -->
             <el-button @click="showDialog = false">Cancel</el-button>
             <el-button type="primary" @click="submitForm">Submit</el-button>
@@ -446,7 +515,6 @@ import { defineComponent } from 'vue';
 export default defineComponent({
     name: 'ModalityForm',
     props: ['ss', 'ezbids'],
-    mounted() {},
     data() {
         return {
             formData: {},
@@ -464,6 +532,7 @@ export default defineComponent({
             showDialog: false,
         };
     },
+    mounted() {},
     methods: {
         submitForm() {
             this.$refs.form.validate((valid: any) => {
@@ -489,10 +558,15 @@ export default defineComponent({
                             // only if value is not null, empty string or empty array or undefined
                             for (let [key, value] of Object.entries(this.formData)) {
                                 const details = Object.values(this.fields)
-                                    .flatMap(fieldArray => fieldArray)
+                                    .flatMap((fieldArray) => fieldArray)
                                     .find((item: any) => item.field == key)?.details;
                                 const type = details.type;
-                                if (value !== null && value !== '' && value !== undefined && !(Array.isArray(value) && value.length === 1 && value[0] === '')) {
+                                if (
+                                    value !== null &&
+                                    value !== '' &&
+                                    value !== undefined &&
+                                    !(Array.isArray(value) && value.length === 1 && value[0] === '')
+                                ) {
                                     if (type == 'number') value = Number(value);
                                     if (type == 'boolean') value = Boolean(value);
                                     if (type == 'array') {
@@ -513,7 +587,10 @@ export default defineComponent({
         },
         inputType(item) {
             if (item.details?.anyOf?.length) return 'select-type';
-            if ((item.details.type == 'string' || item.details.type == 'object' || item.details.type == 'array') && item.details.enum == undefined)
+            if (
+                (item.details.type == 'string' || item.details.type == 'object' || item.details.type == 'array') &&
+                item.details.enum == undefined
+            )
                 return 'input';
             if (item.details.type == 'number') return 'input-number';
             if (item.details.type == 'boolean') return 'select-boolean';
@@ -601,19 +678,25 @@ export default defineComponent({
 
                     let fieldData = { field, details };
 
-                    if (metadata === 'required' && !result.required.some(item => item.field == fieldData.field)) result.required.push(fieldData);
+                    if (metadata === 'required' && !result.required.some((item) => item.field == fieldData.field))
+                        result.required.push(fieldData);
 
-                    if (metadata === 'recommended' && !result.recommended.some(item => item.field == fieldData.field)) result.recommended.push(fieldData);
+                    if (metadata === 'recommended' && !result.recommended.some((item) => item.field == fieldData.field))
+                        result.recommended.push(fieldData);
 
-                    if (metadata === 'optional' && !result.optional.some(item => item.field == fieldData.field)) result.optional.push(fieldData);
+                    if (metadata === 'optional' && !result.optional.some((item) => item.field == fieldData.field))
+                        result.optional.push(fieldData);
 
                     //fields with level
                     const level = metadata.level || '';
-                    if (level === 'required' && !result.required.some(item => item.field == fieldData.field)) {
+                    if (level === 'required' && !result.required.some((item) => item.field == fieldData.field)) {
                         result.required.push(fieldData);
-                    } else if (level === 'recommended' && !result.recommended.some(item => item.field == fieldData.field)) {
+                    } else if (
+                        level === 'recommended' &&
+                        !result.recommended.some((item) => item.field == fieldData.field)
+                    ) {
                         result.recommended.push(fieldData);
-                    } else if (level === 'optional' && !result.optional.some(item => item.field == fieldData.field)) {
+                    } else if (level === 'optional' && !result.optional.some((item) => item.field == fieldData.field)) {
                         result.optional.push(fieldData); // Include optional fields in the recommended list
                     }
 
@@ -621,10 +704,12 @@ export default defineComponent({
                     const levelAddendum = metadata.level_addendum || '';
                     if (levelAddendum.includes('required if') || levelAddendum.includes('required when')) {
                         const obj = { ...fieldData, level: 'required', condition: levelAddendum };
-                        if (!result.conditional.some(item => item.field == fieldData.field)) result.conditional.push(obj);
+                        if (!result.conditional.some((item) => item.field == fieldData.field))
+                            result.conditional.push(obj);
                     } else if (levelAddendum.includes('recommended if') || levelAddendum.includes('recommended when')) {
                         const obj = { ...fieldData, level: 'recommended', condition: levelAddendum };
-                        if (!result.conditional.some(item => item.field == fieldData.field)) result.conditional.push(obj);
+                        if (!result.conditional.some((item) => item.field == fieldData.field))
+                            result.conditional.push(obj);
                     }
                 }
             }
@@ -655,7 +740,12 @@ export default defineComponent({
 
             return result;
         },
-        generateValidationRules(fieldsMetadata: { required: never[]; recommended: never[]; optional: never[]; conditional: never[] }) {
+        generateValidationRules(fieldsMetadata: {
+            required: never[];
+            recommended: never[];
+            optional: never[];
+            conditional: never[];
+        }) {
             const rules = {};
 
             // For required fields
@@ -687,7 +777,11 @@ export default defineComponent({
                 if (item.level === 'required') {
                     rules[item.field] = [
                         {
-                            validator: (rule: any, value: string | null, callback: (arg0: Error | undefined) => void) => {
+                            validator: (
+                                rule: any,
+                                value: string | null,
+                                callback: (arg0: Error | undefined) => void
+                            ) => {
                                 // Condition: "`fieldName` is true|false"
                                 // let matches = item.condition.match(/`(\w+)` is (true|false)/);
                                 let matches = item.condition.match(/`(\w+)`\s+is\s+`(true|false)`/i);
@@ -700,7 +794,14 @@ export default defineComponent({
                                         expectedValue &&
                                         (value == null || value === '')
                                     ) {
-                                        callback(new Error('This field is required based on the condition ' + fieldName + ' == ' + expectedValue));
+                                        callback(
+                                            new Error(
+                                                'This field is required based on the condition ' +
+                                                    fieldName +
+                                                    ' == ' +
+                                                    expectedValue
+                                            )
+                                        );
                                         return;
                                     }
                                 }
@@ -710,8 +811,19 @@ export default defineComponent({
                                 if (matches) {
                                     const fieldName = matches[1];
                                     const expectedValue = matches[2];
-                                    if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
-                                        callback(new Error('This field is required based on the condition ' + fieldName + ' == ' + expectedValue));
+                                    if (
+                                        this.formData.hasOwnProperty(fieldName) &&
+                                        String(this.formData[fieldName]) === expectedValue &&
+                                        !value
+                                    ) {
+                                        callback(
+                                            new Error(
+                                                'This field is required based on the condition ' +
+                                                    fieldName +
+                                                    ' == ' +
+                                                    expectedValue
+                                            )
+                                        );
                                         return;
                                     }
                                 }
@@ -722,8 +834,19 @@ export default defineComponent({
                                 if (matches) {
                                     const fieldName = matches[1];
                                     const expectedValue = matches[2];
-                                    if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
-                                        callback(new Error('This field is required based on the condition ' + fieldName + ' == ' + expectedValue));
+                                    if (
+                                        this.formData.hasOwnProperty(fieldName) &&
+                                        String(this.formData[fieldName]) === expectedValue &&
+                                        !value
+                                    ) {
+                                        callback(
+                                            new Error(
+                                                'This field is required based on the condition ' +
+                                                    fieldName +
+                                                    ' == ' +
+                                                    expectedValue
+                                            )
+                                        );
                                         return;
                                     }
                                 }
@@ -737,8 +860,19 @@ export default defineComponent({
                                     // const section = matches[1];
                                     const fieldName = matches[2];
                                     const expectedValue = matches[3];
-                                    if (this.formData.hasOwnProperty(fieldName) && String(this.formData[fieldName]) === expectedValue && !value) {
-                                        callback(new Error('This field is required based on the condition ' + fieldName + ' == ' + expectedValue));
+                                    if (
+                                        this.formData.hasOwnProperty(fieldName) &&
+                                        String(this.formData[fieldName]) === expectedValue &&
+                                        !value
+                                    ) {
+                                        callback(
+                                            new Error(
+                                                'This field is required based on the condition ' +
+                                                    fieldName +
+                                                    ' == ' +
+                                                    expectedValue
+                                            )
+                                        );
                                         return;
                                     }
                                 }
@@ -752,12 +886,18 @@ export default defineComponent({
 
                                     if (
                                         this.formData.hasOwnProperty(fieldName) &&
-                                        (String(this.formData[fieldName]) === expectedValue1 || String(this.formData[fieldName]) === expectedValue2) &&
+                                        (String(this.formData[fieldName]) === expectedValue1 ||
+                                            String(this.formData[fieldName]) === expectedValue2) &&
                                         !value
                                     ) {
                                         callback(
                                             new Error(
-                                                'This field is required based on the condition ' + fieldName + ' == ' + expectedValue1 + ' or ' + expectedValue2
+                                                'This field is required based on the condition ' +
+                                                    fieldName +
+                                                    ' == ' +
+                                                    expectedValue1 +
+                                                    ' or ' +
+                                                    expectedValue2
                                             )
                                         );
                                         return;
@@ -766,7 +906,9 @@ export default defineComponent({
 
                                 // required if required if `ArterialSpinLabelingType` is in [`PCASL`,`CASL`,`PASL`]
                                 // is either PCASL or CASL or any other value without brackets
-                                matches = item.condition.match(/`(\w+)`\s+is\s+in\s+\[(`([\w-]+)`(,\s*`([\w-]+)`)*\s*)+\]/);
+                                matches = item.condition.match(
+                                    /`(\w+)`\s+is\s+in\s+\[(`([\w-]+)`(,\s*`([\w-]+)`)*\s*)+\]/
+                                );
                                 if (matches) {
                                     const fieldName = matches[1];
                                     const expectedValues = matches[2].split(',').map((item: any) => item.trim());
@@ -774,9 +916,18 @@ export default defineComponent({
                                     expectedValues.forEach((item: any, index: any) => {
                                         expectedValues[index] = item.replace(/`/g, '');
                                     });
-                                    if (this.formData.hasOwnProperty(fieldName) && expectedValues.includes(String(this.formData[fieldName])) && !value) {
+                                    if (
+                                        this.formData.hasOwnProperty(fieldName) &&
+                                        expectedValues.includes(String(this.formData[fieldName])) &&
+                                        !value
+                                    ) {
                                         callback(
-                                            new Error('This field is required based on the condition ' + fieldName + ' == ' + expectedValues.join(' or '))
+                                            new Error(
+                                                'This field is required based on the condition ' +
+                                                    fieldName +
+                                                    ' == ' +
+                                                    expectedValues.join(' or ')
+                                            )
                                         );
                                         return;
                                     }
@@ -811,8 +962,12 @@ export default defineComponent({
                             if (item.details.type == 'array' && item.details.items.type == 'number') {
                                 if (stringValue.includes(',')) {
                                     // Validate for comma-separated numbers
-                                    if (!stringValue.split(',').every(part => this.isNumeric(part.trim()))) {
-                                        callback(new Error('Please enter a valid number or a comma-separated list of numbers'));
+                                    if (!stringValue.split(',').every((part) => this.isNumeric(part.trim()))) {
+                                        callback(
+                                            new Error(
+                                                'Please enter a valid number or a comma-separated list of numbers'
+                                            )
+                                        );
                                     }
                                 }
                                 callback();
@@ -850,7 +1005,8 @@ export default defineComponent({
         getArrayValidation(value, item) {
             // prevent user from entering [] or [""]
             // add check to prevent from entering brackets
-            if (value.includes('[') || value.includes(']')) return 'Please enter a valid entry no brackets allowed [], only comma separated values';
+            if (value.includes('[') || value.includes(']'))
+                return 'Please enter a valid entry no brackets allowed [], only comma separated values';
 
             if (item.details.items.type == 'number') {
                 // If the value is a string that represents a single number or a list of numbers separated by commas
