@@ -28,9 +28,23 @@ instances:
     #     ports:
     #         - 27417:27017 #for local debugging
 
-    mongodb:  # THIRD ATTEMPT
+    # mongodb:  # THIRD ATTEMPT
+    #     container_name: brainlife_ezbids-mongodb
+    #     image: docker://mongo:4.4.15
+    #     platform: linux/amd64
+    #     volumes:
+    #         - ./data/db:/data/db
+    #     ports:
+    #         - 27417:27017 #for local debugging
+    #     # run:
+    #     #     background: true # Does this actually run things in the background? Doesn't seem to
+
+    mongodb:  # FOURTH ATTEMPT
         container_name: brainlife_ezbids-mongodb
-        image: docker://mongo:4.4.15
+        build:
+            context: ./mongodb
+            options:
+                - fakeroot
         platform: linux/amd64
         volumes:
             - ./data/db:/data/db

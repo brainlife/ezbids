@@ -57,36 +57,36 @@ if [ ! -f $PWD/mongodb/mongodb.sif ]; then # Will eventually be redundant and ca
       $PWD/mongodb/mongodb.sif  \
       $PWD/mongodb/Singularity
     
-    # start the container instance
-    singularity instance start  \
-      --fakeroot                \
-      --net                     \
-      --network-args "portmap=27417:27017/tcp" \
-      --bind ./data/db:/data/db \
-      $PWD/mongodb/mongodb.sif  \
-      brainlife_ezbids-mongodb
-    # singularity run instance://brainlife_ezbids-mongodb # This seems to run mongodb in the foreground, meaning can't move on to building other containers.
+#     # start the container instance
+#     singularity instance start  \
+#       --fakeroot                \
+#       --bind $PWD/data/db:/data/db \
+#       --net \
+#       --network-args "portmap=27417:27017/tcp"  \
+#       $PWD/mongodb/mongodb.sif  \
+#       brainlife_ezbids-mongodb
+#     # singularity run instance://brainlife_ezbids-mongodb # This seems to run mongodb in the foreground, meaning can't move on to building other containers.
 fi
 
-if [ ! -f $PWD/api/api.sif ]; then
-    echo "building api"
-    singularity build --arch "amd64" --fakeroot --disable-cache $PWD/api/api.sif Singularity
-    singularity instance start --bind /tmp:/tmp --bind ./api:/app/api --env BRAINLIFE_AUTHENTICATION=${BRAINLIFE_AUTHENTICATION} $PWD/api/api.sif brainlife_ezbids-api
-    # Does --env actually work?
-fi
+# if [ ! -f $PWD/api/api.sif ]; then
+#     echo "building api"
+#     singularity build --arch "amd64" --fakeroot --disable-cache $PWD/api/api.sif Singularity
+#     singularity instance start --bind /tmp:/tmp --bind ./api:/app/api --env BRAINLIFE_AUTHENTICATION=${BRAINLIFE_AUTHENTICATION} $PWD/api/api.sif brainlife_ezbids-api
+#     # Does --env actually work?
+# fi
 
-if [ ! -f $PWD/handler/handler.sif ]; then
-    echo "building handler"
-    singularity build --arch "amd64" --fakeroot --disable-cache $PWD/handler/handler.sif $PWD/handler/Singularity
-    singularity instance start --bind /tmp:/tmp --bind .:/app $PWD/handler/handler.sif brainlife_ezbids-handler
-fi
+# if [ ! -f $PWD/handler/handler.sif ]; then
+#     echo "building handler"
+#     singularity build --arch "amd64" --fakeroot --disable-cache $PWD/handler/handler.sif $PWD/handler/Singularity
+#     singularity instance start --bind /tmp:/tmp --bind .:/app $PWD/handler/handler.sif brainlife_ezbids-handler
+# fi
 
-if [ ! -f $PWD/ui/ui.sif ]; then
-    echo "building ui"
-    singularity build --arch "amd64" --fakeroot --disable-cache $PWD/ui/ui.sif $PWD/ui/Singularity
-    singularity instance start --bind ./ui/src:/ui/src --env VITE_BRAINLIFE_AUTHENTICATION=${BRAINLIFE_AUTHENTICATION} $PWD/ui/ui.sif brainlife_ezbids-ui
-    # Does --env actually work? Don't see VITE_BRAINLIFE_AUTHENTICATION env variable inside container
-fi
+# if [ ! -f $PWD/ui/ui.sif ]; then
+#     echo "building ui"
+#     singularity build --arch "amd64" --fakeroot --disable-cache $PWD/ui/ui.sif $PWD/ui/Singularity
+#     singularity instance start --bind ./ui/src:/ui/src --env VITE_BRAINLIFE_AUTHENTICATION=${BRAINLIFE_AUTHENTICATION} $PWD/ui/ui.sif brainlife_ezbids-ui
+#     # Does --env actually work? Don't see VITE_BRAINLIFE_AUTHENTICATION env variable inside container
+# fi
 
 
 
