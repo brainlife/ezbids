@@ -464,7 +464,7 @@ def modify_uploaded_dataset_list(uploaded_json_list):
                     json_dir + "/" + x for x in os.listdir(json_dir)
                     if os.path.basename(json_file)[:-4] in x
                 ]
-                # deal with PET issue where blood data could be accidently grouped with imaging data
+                # deal with PET issue where blood data could be accidentally grouped with imaging data
                 if "blood" not in json_file and any("blood" in x for x in grouped_files):
                     grouped_files = [x for x in grouped_files if "blood" not in x]
 
