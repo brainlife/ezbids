@@ -444,23 +444,29 @@ def modify_uploaded_dataset_list(uploaded_json_list):
             json_data = json.load(json_data, strict=False)
 
             # Only want json files with corresponding nifti (and bval/bvec) and if the files come accepted software
-            if "ConversionSoftware" in json_data:
-                ref_softwares = ["dcm2niix", "pypet2bids", "MNE-BIDS"]
-                # ConversionSoftware could be string or list type
-                if isinstance(json_data["ConversionSoftware"], str):
-                    if not any(x for x in ref_softwares if x == json_data["ConversionSoftware"]):
-                        break
-                elif isinstance(json_data["ConversionSoftware"], list):
-                    if not any(x for x in ref_softwares if x in json_data["ConversionSoftware"]):
-                        break
+            if "ConversionSoftware" in json_data or json_file.endswith("_blood.json"):
+                if json_file.endswith("_blood.json"):  # PET blood data (pet/blood)
+                    pass
                 else:
-                    break
+                    ref_softwares = ["dcm2niix", "pypet2bids", "MNE-BIDS"]
+                    # ConversionSoftware could be string or list type
+                    if isinstance(json_data["ConversionSoftware"], str):
+                        if not any(x for x in ref_softwares if x == json_data["ConversionSoftware"]):
+                            break
+                    elif isinstance(json_data["ConversionSoftware"], list):
+                        if not any(x for x in ref_softwares if x in json_data["ConversionSoftware"]):
+                            break
+                    else:
+                        break
 
                 json_dir = os.path.dirname(json_file)
                 grouped_files = [
                     json_dir + "/" + x for x in os.listdir(json_dir)
                     if os.path.basename(json_file)[:-4] in x
                 ]
+                # deal with PET issue where blood data could be accidently grouped with imaging data
+                if "blood" not in json_file and any("blood" in x for x in grouped_files):
+                    grouped_files = [x for x in grouped_files if "blood" not in x]
 
                 # Check that both .nii.gz and .nii aren't in the same group. Redundant, so remove .nii file if found
                 if len([x for x in grouped_files if ".nii" in x]) == 2:
@@ -879,6 +885,7 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
         or x.endswith(".bval")
         or x.endswith(".bvec")
         or x.endswith(tuple(MEG_extensions))
+        or x.endswith("blood.tsv")
     ])
 
     print("")
@@ -894,13 +901,22 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
         # Make sure each JSON has a corresponding NIfTI file
         corresponding_nifti = None
         try:
-            if json_data["Modality"] != "MEG":
-                corresponding_nifti = [x for x in nifti_list if json_file[:-4] in x and x.endswith(".nii.gz")][0]
+            if "Modality" in json_data.keys():
+                if json_data["Modality"] in ["MR", "PT"]:
+                    corresponding_nifti = [x for x in nifti_list if json_file[:-4] in x and x.endswith(".nii.gz")][0]
+                elif json_data["Modality"] == "MEG":
+                    corresponding_nifti = [
+                        x for x in nifti_list if json_file[:-4] in x
+                        and x.endswith(tuple(MEG_extensions))
+                    ][0]
+                else:
+                    pass
             else:
-                corresponding_nifti = [
-                    x for x in nifti_list if json_file[:-4] in x
-                    and x.endswith(tuple(MEG_extensions))
-                ][0]
+                if json_file.endswith("_blood.json"):
+                    corresponding_nifti = [x for x in nifti_list if json_file[:-4] in x and x.endswith("blood.tsv")][0]
+
+                else:
+                    pass
         except:
             pass
 
@@ -1037,26 +1053,32 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
                 echo_time = 0
 
             # Get the nibabel nifti image info
-            if json_data["Modality"] == "MEG":
+            if json_file.endswith("_blood.json"):
                 image = "n/a"
                 valid_image = True
                 volume_count = 1
-                ndim = 4
+                ndim = 2
             else:
-                image = nib.load(json_file[:-4] + "nii.gz")
-                ndim = image.ndim
-
-                # if image.get_data_dtype() == [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]:
-                if image.get_data_dtype() in ["<i2", "<u2", "<f4", "int16", "uint16"]:
+                if json_data["Modality"] == "MEG":
+                    image = "n/a"
                     valid_image = True
-                else:
-                    valid_image = False
-
-                # Find how many volumes are in corresponding nifti file
-                try:
-                    volume_count = image.shape[3]
-                except:
                     volume_count = 1
+                    ndim = 4
+                else:
+                    image = nib.load(json_file[:-4] + "nii.gz")
+                    ndim = image.ndim
+
+                    # if image.get_data_dtype() == [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]:
+                    if image.get_data_dtype() in ["<i2", "<u2", "<f4", "int16", "uint16"]:
+                        valid_image = True
+                    else:
+                        valid_image = False
+
+                    # Find how many volumes are in corresponding nifti file
+                    try:
+                        volume_count = image.shape[3]
+                    except:
+                        volume_count = 1
 
             # Find SeriesNumber
             if "SeriesNumber" in json_data:
@@ -1083,6 +1105,11 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
                 protocol_name = json_data["ProtocolName"]
             else:
                 protocol_name = "n/a"
+
+            # If SeriesDescription and ProtocolName are both n/a, give SD something
+            if series_description == "n/a" and protocol_name == "n/a":
+                series_description = json_file
+                descriptor = "SeriesDescription"
 
             # Find ImageType
             if "ImageType" in json_data:
@@ -1157,10 +1184,13 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
             session = re.sub("[^A-Za-z0-9]+", "", session)
 
             # Find NIfTI path
-            try:
-                nifti_path = [x for x in nifti_paths_for_json if x.endswith(".nii.gz")][0]
-            except:
-                nifti_path = [x for x in nifti_paths_for_json if x.endswith(tuple(MEG_extensions))][0]
+            if json_file.endswith("blood.json"):
+                nifti_path = json_file.split(".json")[0] + ".tsv"
+            else:
+                if json_data["Modality"] == "MEG":
+                    nifti_path = [x for x in nifti_paths_for_json if x.endswith(tuple(MEG_extensions))][0]
+                else:
+                    nifti_path = [x for x in nifti_paths_for_json if x.endswith(".nii.gz")][0]
 
             """
             Organize all from individual SeriesNumber in dictionary
@@ -1794,7 +1824,7 @@ def create_lookup_info():
                     suffixes = [x for x in suffixes if x not in ["aslcontext", "asllabeling", "physio", "stim"]]
                 elif datatype == "pet":
                     # Only keep imaging suffixes
-                    suffixes = [x for x in suffixes if x == "pet"]
+                    suffixes = [x for x in suffixes if x in ["pet", "blood"]]
                 elif datatype == "meg":
                     # MEG files are weird, can have calibration and crosstalk files with the same datatype/suffix pair
                     suffixes = [x for x in suffixes if x == "meg" and key == "meg"]
@@ -2107,16 +2137,16 @@ def create_lookup_info():
                                 )
                         elif datatype == "pet":
                             if suffix == "pet":
-                                # lookup_dic[datatype][suffix]["search_terms"].extend(
-                                #     [
-                                #         "radiopharmaceutical",
-                                #         "injectionstart"
-                                #     ]
-                                # )
                                 lookup_dic[datatype][suffix]["conditions"].extend(
                                     [
                                         '"pypet2bids" in unique_dic["sidecar"]["ConversionSoftware"] '
                                         'or unique_dic["Modality"] == "PT"'
+                                    ]
+                                )
+                            elif suffix == "blood":
+                                lookup_dic[datatype][suffix]["conditions"].extend(
+                                    [
+                                        'unique_dic["json_path"].endswith("_blood.json")'
                                     ]
                                 )
                         elif datatype == "meg":
@@ -2197,7 +2227,6 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
     for index, unique_dic in enumerate(dataset_list_unique_series):
         # Not ideal using json_path because it's only the first sequence in the series_idx group...
         json_path = unique_dic["json_path"]
-        print(json_path)
 
         if not unique_dic["valid_image"]:
             """
@@ -2279,6 +2308,15 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
                         f"{unique_dic['datatype']}/{unique_dic['suffix']} " \
                         f"because '{unique_dic['suffix']}' is in the file path. " \
                         f"Please modify if incorrect."
+
+        if json_path.endswith("blood.json"):
+            # Set datatype and suffix values for pet/blood if we know it exists
+            unique_dic["datatype"] = "pet"
+            unique_dic["suffix"] = "blood"
+            unique_dic["type"] = "pet/blood"
+            unique_dic["message"] = "Acquisition is believed to be pet/pet " \
+                "because the file path ends with '_blood.json. " \
+                "Please modify if incorrect."
 
         """
         If no luck with the json paths, and assuming an ezBIDS configuration file wasn't provided, try discerning
@@ -2612,7 +2650,12 @@ def entity_labels_identification(dataset_list_unique_series, lookup_dic):
                     x for x, y in enumerate(re.search(x, sd, re.IGNORECASE) for x in cog_atlas_tasks) if y is not None
                 ]
                 if len(match_index):
-                    series_entities["task"] = cog_atlas_tasks[match_index[0]]
+                    task_name = cog_atlas_tasks[match_index[0]]
+                    if len(task_name) < 4:  # Too many possible false positives with short task names
+                        if any(f"task-{task_name}" in x for x in [unique_dic["json_path"], unique_dic["SeriesDescription"]]):
+                            series_entities["task"] = cog_atlas_tasks[match_index[0]]
+                    else:
+                        series_entities["task"] = cog_atlas_tasks[match_index[0]]
 
             if (any(x in re.sub("[^A-Za-z0-9]+", "", sd).lower() for x in ["noise", "emptyroom"])
                     or series_entities["subject"] == "emptyroom"):  # for MEG data
@@ -2893,6 +2936,14 @@ def modify_objects_info(dataset_list):
                     items.append({"path": item,
                                   "name": "json",
                                   "sidecar": protocol["sidecar"]})
+                    if item.endswith("blood.json"):
+                        path = item.split(".json")[0] + ".tsv"
+                        headers = [x for x in pd.read_csv(path, sep="\t").columns]
+                        print(path)
+                        print(headers)
+                        items.append({"path": path,
+                                      "name": "tsv",
+                                      "headers": headers})
                 elif ".nii.gz" in item:
                     items.append({"path": item,
                                   "name": "nii.gz",

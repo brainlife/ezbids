@@ -643,6 +643,16 @@ export default defineComponent({
                             const json = JSON.parse(item.sidecar_json);
                             for (const [key, value] of Object.entries(json)) {
                                 if (this.formData.hasOwnProperty(key)) this.formData[key] = value;
+                                if (file._type === 'pet/blood') {
+                                    if (key === 'MetaboliteRecoveryCorrectionApplied' && value === true) {
+                                        let tsv_headers = Object.values(
+                                            file.items.find((e) => e.name === 'tsv').headers
+                                        );
+                                        if (!tsv_headers.includes('hplc_recovery_fractions')) {
+                                            this.formData[key] = false;
+                                        }
+                                    }
+                                }
                             }
                         }
                     });
@@ -674,6 +684,13 @@ export default defineComponent({
                     }
                     // Skip all metadata in perf/m0scan except for RepetitionTimePreparation
                     if (type === 'perf/m0scan' && field !== 'RepetitionTimePreparation') {
+                        continue;
+                    }
+                    // Deal with different metadata standards for pet/pet and pet/blood
+                    if (type === 'pet/blood' && !section.includes('Blood')) {
+                        continue;
+                    }
+                    if (type === 'pet/pet' && section.includes('Blood')) {
                         continue;
                     }
 
