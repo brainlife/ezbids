@@ -1,20 +1,19 @@
 #!/usr/bin/env node
-/* eslint-disable no-undef */
-/* eslint-disable no-console */
-'use strict';
-import { readFileSync, writeFileSync, openSync, writeSync, closeSync, lstatSync, unlinkSync, linkSync } from 'fs';
-import { sync } from 'mkdirp';
-import { forEachOf } from 'async';
-import bidsEntitiesOrdered from '../ui/src/assets/schema/rules/entities.json';
+"use strict";
+const fs = require('fs');
+const mkdirp = require('mkdirp');
+const async = require('async');
+const bidsEntitiesOrdered = require('../ui/src/assets/schema/rules/entities.json');
 //import { IObject, Subject, Session, OrganizedSession } from '../ui/src/store'
 const root = process.argv[2];
-if (!root) throw 'please specify root directory';
-const info = JSON.parse(readFileSync(root + '/finalized.json'));
+if (!root)
+    throw "please specify root directory";
+const info = JSON.parse(fs.readFileSync(root + "/finalized.json"));
 //order the entityMappings correctly, as specified by the BIDS specification
 let newEntityOrdering = {};
-Object.values(bidsEntitiesOrdered).forEach((order) => {
-    Object.keys(info.entityMappings).forEach((key) => {
-        if (order === key) {
+Object.values(bidsEntitiesOrdered).forEach(order => {
+    Object.keys(info.entityMappings).forEach(key => {
+        if (order == key) {
             newEntityOrdering[key] = info.entityMappings[key];
         }
     });
@@ -22,20 +21,14 @@ Object.values(bidsEntitiesOrdered).forEach((order) => {
 info.entityMappings = newEntityOrdering;
 const datasetName = info.datasetDescription.Name;
 
-sync(root + '/bids/' + datasetName);
-writeFileSync(root + '/bids/' + datasetName + '/finalized.json', JSON.stringify(info, null, 4)); //copy the finalized.json
-writeFileSync(
-    root + '/bids/' + datasetName + '/dataset_description.json',
-    JSON.stringify(info.datasetDescription, null, 4)
-);
-writeFileSync(
-    root + '/bids/' + datasetName + '/.bidsignore',
-    `
+mkdirp.sync(root + "/bids/" + datasetName);
+fs.writeFileSync(root + "/bids/" + datasetName + "/finalized.json", JSON.stringify(info, null, 4)); //copy the finalized.json
+fs.writeFileSync(root + "/bids/" + datasetName + "/dataset_description.json", JSON.stringify(info.datasetDescription, null, 4));
+fs.writeFileSync(root + "/bids/" + datasetName + "/.bidsignore", `
 **/excluded
 **/*_MP2RAGE.*
 *finalized.json
-`
-);
+`);
 info.readme += `
 
 ## ezbids
@@ -43,11 +36,11 @@ info.readme += `
 This dataset was converted to BIDS using ezBIDS (https://brainlife.io/ezbids)
 
 `;
-writeFileSync(root + '/bids/' + datasetName + '/README', info.readme);
-writeFileSync(root + '/bids/' + datasetName + '/participants.json', JSON.stringify(info.participantsColumn, null, 4));
+fs.writeFileSync(root + "/bids/" + datasetName + "/README", info.readme);
+fs.writeFileSync(root + "/bids/" + datasetName + "/participants.json", JSON.stringify(info.participantsColumn, null, 4));
 //convert participants.json to tsv
-console.log('outputting participants.json/tsv');
-let keys = ['participant_id'];
+console.log("outputting participants.json/tsv");
+let keys = ["participant_id"];
 for (let key in info.participantsColumn) {
     keys.push(key);
 }
@@ -60,24 +53,24 @@ tsv.push(tsvheader);
 for (const subject_idx in info.participantInfo) {
     const sub = info.subjects[subject_idx];
     let tsvrec = [];
-    tsvrec.push('sub-' + sub.subject);
+    tsvrec.push("sub-" + sub.subject);
     for (let key in info.participantsColumn) {
         tsvrec.push(info.participantInfo[subject_idx][key] || 'n/a');
     }
     tsv.push(tsvrec);
 }
-let tsvf = openSync(root + '/bids/' + datasetName + '/participants.tsv', 'w');
+let tsvf = fs.openSync(root + "/bids/" + datasetName + "/participants.tsv", "w");
 for (let rec of tsv) {
-    writeSync(tsvf, rec.join('\t') + '\n');
+    fs.writeSync(tsvf, rec.join("\t") + "\n");
 }
-closeSync(tsvf);
+fs.closeSync(tsvf);
 //handle each objects
-forEachOf(info.objects, (o, idx, next_o) => {
-    if (o._type === 'exclude' || o._exclude) {
-        o._type = 'excluded/obj' + o.idx;
+async.forEachOf(info.objects, (o, idx, next_o) => {
+    if (o._type == "exclude" || o._exclude) {
+        o._type = "excluded/obj" + o.idx;
         o._entities.description = o._SeriesDescription.replace(/[^0-9a-z]/gi, ''); //inject series desc to filename, remove non-alphanum chars
     }
-    let typeTokens = o._type.split('/');
+    let typeTokens = o._type.split("/");
     let modality = typeTokens[0]; //func, dwi, anat, etc.. (or exclude)
     let suffix = typeTokens[1]; //t1w, bold, or "objN" for exclude)
     //construct basename
@@ -86,76 +79,80 @@ forEachOf(info.objects, (o, idx, next_o) => {
     for (let k in info.entityMappings) {
         const sk = info.entityMappings[k];
         if (o._entities[k]) {
-            tokens.push(sk + '-' + o._entities[k]);
+            tokens.push(sk + "-" + o._entities[k]);
         }
     }
     if (o._exclude) {
         //excluded object doesn't have to be validated, so some of the item might collide..
         //let's prevent it by setting some artificial tag
-        tokens.push('ezbids-' + idx);
+        tokens.push("ezbids-" + idx);
     }
-    const name = tokens.join('_');
+    const name = tokens.join("_");
     function composePath(derivatives) {
-        let path = 'bids/' + datasetName;
-        if (derivatives) path += '/derivatives/' + derivatives;
-        path += '/sub-' + o._entities.subject;
-        if (o._entities.session) path += '/ses-' + o._entities.session;
-        path += '/' + modality;
+        let path = "bids/" + datasetName;
+        if (derivatives)
+            path += "/derivatives/" + derivatives;
+        path += "/sub-" + o._entities.subject;
+        if (o._entities.session)
+            path += "/ses-" + o._entities.session;
+        path += "/" + modality;
         return path;
     }
     function handleItem(item, filename, derivatives = null) {
         const path = composePath(derivatives);
-        sync(root + '/' + path);
+        mkdirp.sync(root + "/" + path);
         //setup directory
-        let fullpath = root + '/' + path + '/' + name + '_' + filename;
-        if (item.name === 'json') {
+        let fullpath = root + "/" + path + "/" + name + "_" + filename;
+        if (item.name == "json") {
             //we create sidecar from sidecar object (edited by the user)
             item.content = JSON.stringify(item.sidecar, null, 4);
         }
         if (item.content) {
             //if item has content to write, then use it instead of normal file
-            writeFileSync(fullpath, item.content);
-        } else {
+            fs.writeFileSync(fullpath, item.content);
+        }
+        else {
             //otherwise, assume to be normal files (link from the source)
             try {
-                lstatSync(fullpath);
-                unlinkSync(fullpath);
-            } catch (err) {
+                fs.lstatSync(fullpath);
+                fs.unlinkSync(fullpath);
+            }
+            catch (err) {
                 //console.log("link doesn't exist yet");
             }
             //I need to use hardlink so that when archiver tries to create .zip in download API
             //the files will be found. As far as I know, archiver module can't de-reference
             //symlinks
-            linkSync(root + '/' + item.path, fullpath);
+            fs.linkSync(root + "/" + item.path, fullpath);
         }
     }
     function handlePET() {
-        o.items.forEach((item) => {
+        o.items.forEach(item => {
             let derivatives = null;
             switch (item.name) {
-                case 'nii.gz':
-                    handleItem(item, suffix + '.nii.gz', derivatives);
+                case "nii.gz":
+                    handleItem(item, suffix + ".nii.gz", derivatives);
                     break;
-                case 'json':
-                    handleItem(item, suffix + '.json', derivatives);
+                case "json":
+                    handleItem(item, suffix + ".json", derivatives);
                     break;
-                case 'tsv':
-                    handleItem(item, suffix + '.tsv', derivatives);
+                case "tsv":
+                    handleItem(item, suffix + ".tsv", derivatives);
                     break;
                 default:
-                    console.error('unknown PET item name', item.name);
+                    console.error("unknown PET item name", item.name);
             }
         });
     }
 
     function handlePerf() {
-        o.items.forEach((item) => {
+        o.items.forEach(item => {
             let derivatives = null;
             switch (item.name) {
-                case 'nii.gz':
-                    handleItem(item, suffix + '.nii.gz', derivatives);
+                case "nii.gz":
+                    handleItem(item, suffix + ".nii.gz", derivatives);
                     break;
-                case 'json':
+                case "json":
                     //handle IntendedFor
                     if (o.IntendedFor) {
                         item.sidecar.IntendedFor = [];
@@ -167,29 +164,31 @@ forEachOf(info.objects, (o, idx, next_o) => {
                                 continue;
                             }
                             //if intended object is excluded, skip it
-                            if (io._type === 'exclude') continue;
+                            if (io._type == "exclude") continue;
 
-                            const iomodality = io._type.split('/')[0];
-                            const suffix = io._type.split('/')[1];
+                            const iomodality = io._type.split("/")[0];
+                            const suffix = io._type.split("/")[1];
                             //construct a path relative to the subject
-                            let path = '';
-                            if (io._entities.session) path += 'ses-' + io._entities.session + '/';
-                            path += iomodality + '/';
+                            let path = "";
+                            if (io._entities.session)
+                                path += "ses-" + io._entities.session + "/";
+                            path += iomodality + "/";
                             let tokens = [];
                             //for(let k in io._entities) {
                             for (let k in info.entityMappings) {
                                 const sk = info.entityMappings[k];
-                                if (io._entities[k]) tokens.push(sk + '-' + io._entities[k]);
+                                if (io._entities[k])
+                                    tokens.push(sk + "-" + io._entities[k]);
                             }
-                            path += tokens.join('_');
-                            path += '_' + suffix + '.nii.gz'; //TODO - not sure if this is robust enough..
+                            path += tokens.join("_");
+                            path += "_" + suffix + ".nii.gz"; //TODO - not sure if this is robust enough..
                             item.sidecar.IntendedFor.push(path);
                         }
                     }
-                    handleItem(item, suffix + '.json', derivatives);
+                    handleItem(item, suffix + ".json", derivatives);
                     break;
                 default:
-                    console.error('unknown Perfusion item name', item.name);
+                    console.error("unknown Perfusion item name", item.name);
             }
         });
     }
@@ -213,41 +212,43 @@ forEachOf(info.objects, (o, idx, next_o) => {
             - angio
         */
         //find manufacturer (used by UNIT1 derivatives)
-        let manufacturer = 'UnknownManufacturer';
-        o.items.forEach((item) => {
-            if (item.sidecar && item.sidecar.Manufacturer) manufacturer = item.sidecar.Manufacturer;
+        let manufacturer = "UnknownManufacturer";
+        o.items.forEach(item => {
+            if (item.sidecar && item.sidecar.Manufacturer)
+                manufacturer = item.sidecar.Manufacturer;
         });
-        o.items.forEach((item) => {
+        o.items.forEach(item => {
             let derivatives = null;
-            if (suffix === 'UNIT1') derivatives = manufacturer;
+            if (suffix == "UNIT1")
+                derivatives = manufacturer;
             switch (item.name) {
-                case 'nii.gz':
-                    if (o.defaced && o.defaceSelection === 'defaced') {
-                        item.path = item.path + '.defaced.nii.gz';
-                        console.log('using defaced version of t1w', item.path);
+                case "nii.gz":
+                    if (o.defaced && o.defaceSelection == "defaced") {
+                        item.path = item.path + ".defaced.nii.gz";
+                        console.log("using defaced version of t1w", item.path);
                     }
-                    handleItem(item, suffix + '.nii.gz', derivatives);
+                    handleItem(item, suffix + ".nii.gz", derivatives);
                     break;
-                case 'json':
+                case "json":
                     //handle B0FieldIdentifier and B0FieldSource if present
-                    if (o.B0FieldIdentifier.length) {
-                        if (o.B0FieldIdentifier.length > 1) {
-                            item.sidecar.B0FieldIdentifier = Object.values(o.B0FieldIdentifier);
-                        } else {
-                            item.sidecar.B0FieldIdentifier = o.B0FieldIdentifier[0];
+                    if(o.B0FieldIdentifier.length) {
+                        if(o.B0FieldIdentifier.length > 1) {
+                            item.sidecar.B0FieldIdentifier = Object.values(o.B0FieldIdentifier)
+                        }else{
+                            item.sidecar.B0FieldIdentifier = o.B0FieldIdentifier[0]
                         }
                     }
-                    if (o.B0FieldSource.length) {
-                        if (o.B0FieldSource.length > 1) {
-                            item.sidecar.B0FieldSource = Object.values(o.B0FieldSource);
-                        } else {
-                            item.sidecar.B0FieldSource = o.B0FieldSource[0];
+                    if(o.B0FieldSource.length) {
+                        if(o.B0FieldSource.length > 1) {
+                            item.sidecar.B0FieldSource = Object.values(o.B0FieldSource)
+                        }else{
+                            item.sidecar.B0FieldSource = o.B0FieldSource[0]
                         }
                     }
-                    handleItem(item, suffix + '.json', derivatives);
+                    handleItem(item, suffix + ".json", derivatives);
                     break;
                 default:
-                    console.error('unknown anat item name', item.name);
+                    console.error("unknown anat item name", item.name);
             }
         });
     }
@@ -259,25 +260,25 @@ forEachOf(info.objects, (o, idx, next_o) => {
             - sbref
 
         */
-        if (suffix === 'events') {
+        if (suffix == "events") {
             //we handle events a bit differently.. we need to generate events.tsv from items content
-            const events = o.items.find((o) => !!o.eventsBIDS);
+            const events = o.items.find(o => !!o.eventsBIDS);
             const headers = Object.keys(events.eventsBIDS[0]); //take first index value to see which columns user selected
-            events.content = headers.join('\t') + '\n';
-            events.eventsBIDS.forEach((rec) => {
-                if (rec.stim_file) {
-                    if (!rec.stim_file.startsWith('/stimuli/')) {
-                        rec.stim_file = '/stimuli/' + rec.stim_file;
+            events.content = headers.join("\t") + "\n";
+            events.eventsBIDS.forEach(rec => {
+                if(rec.stim_file) {
+                    if(!rec.stim_file.startsWith("/stimuli/")) {
+                        rec.stim_file = "/stimuli/" + rec.stim_file
                     }
                 }
                 const row = [];
-                headers.forEach((key) => {
+                headers.forEach(key => {
                     row.push(rec[key]);
                 });
-                events.content += row.join('\t') + '\n';
+                events.content += row.join("\t") + "\n";                
             });
             //add stuff to sidecar
-            const sidecar = o.items.find((o) => o.name === 'json');
+            const sidecar = o.items.find(o => o.name == "json");
             //sidecar.sidecar.TaskName = o._entities.task;
             sidecar.sidecar.trial_type = {
                 LongName: info.events.trialTypes.longName,
@@ -285,36 +286,37 @@ forEachOf(info.objects, (o, idx, next_o) => {
                 Levels: info.events.trialTypes.levels,
             };
             //now save
-            handleItem(events, 'events.tsv');
-            handleItem(sidecar, 'events.json');
-        } else {
+            handleItem(events, "events.tsv");
+            handleItem(sidecar, "events.json");
+        }
+        else {
             //normal func stuff..
-            o.items.forEach((item) => {
+            o.items.forEach(item => {
                 switch (item.name) {
-                    case 'nii.gz':
-                        handleItem(item, suffix + '.nii.gz');
+                    case "nii.gz":
+                        handleItem(item, suffix + ".nii.gz");
                         break;
-                    case 'json':
+                    case "json":
                         //handle B0FieldIdentifier and B0FieldSource if present
-                        if (o.B0FieldIdentifier) {
-                            if (o.B0FieldIdentifier.length > 1) {
-                                item.sidecar.B0FieldIdentifier = Object.values(o.B0FieldIdentifier);
-                            } else {
-                                item.sidecar.B0FieldIdentifier = o.B0FieldIdentifier[0];
+                        if(o.B0FieldIdentifier) {
+                            if(o.B0FieldIdentifier.length > 1) {
+                                item.sidecar.B0FieldIdentifier = Object.values(o.B0FieldIdentifier)
+                            }else{
+                                item.sidecar.B0FieldIdentifier = o.B0FieldIdentifier[0]
                             }
                         }
-                        if (o.B0FieldSource) {
-                            if (o.B0FieldSource.length > 1) {
-                                item.sidecar.B0FieldSource = Object.values(o.B0FieldSource);
-                            } else {
-                                item.sidecar.B0FieldSource = o.B0FieldSource[0];
+                        if(o.B0FieldSource) {
+                            if(o.B0FieldSource.length > 1) {
+                                item.sidecar.B0FieldSource = Object.values(o.B0FieldSource)
+                            }else{
+                                item.sidecar.B0FieldSource = o.B0FieldSource[0]
                             }
                         }
                         item.sidecar.TaskName = o._entities.task;
-                        handleItem(item, suffix + '.json');
+                        handleItem(item, suffix + ".json");
                         break;
                     default:
-                        console.error('unknown func item name', item.name);
+                        console.error("unknown func item name", item.name);
                 }
             });
         }
@@ -330,27 +332,27 @@ forEachOf(info.objects, (o, idx, next_o) => {
             - magnitude
             - fieldmap
         */
-        o.items.forEach((item) => {
+        o.items.forEach(item => {
             switch (item.name) {
-                case 'nii.gz':
-                    handleItem(item, suffix + '.nii.gz');
+                case "nii.gz":
+                    handleItem(item, suffix + ".nii.gz");
                     break;
-                case 'json':
+                case "json":
                     //handle B0FieldIdentifier and B0FieldSource if present
-                    if (o.B0FieldIdentifier.length) {
-                        if (o.B0FieldIdentifier.length > 1) {
-                            item.sidecar.B0FieldIdentifier = Object.values(o.B0FieldIdentifier);
-                        } else {
-                            item.sidecar.B0FieldIdentifier = o.B0FieldIdentifier[0];
+                    if(o.B0FieldIdentifier.length) {
+                        if(o.B0FieldIdentifier.length > 1) {
+                            item.sidecar.B0FieldIdentifier = Object.values(o.B0FieldIdentifier)
+                        }else{
+                            item.sidecar.B0FieldIdentifier = o.B0FieldIdentifier[0]
                         }
                     }
-                    if (o.B0FieldSource.length) {
-                        if (o.B0FieldSource.length > 1) {
-                            item.sidecar.B0FieldSource = Object.values(o.B0FieldSource);
-                        } else {
-                            item.sidecar.B0FieldSource = o.B0FieldSource[0];
+                    if(o.B0FieldSource.length) {
+                        if(o.B0FieldSource.length > 1) {
+                            item.sidecar.B0FieldSource = Object.values(o.B0FieldSource)
+                        }else{
+                            item.sidecar.B0FieldSource = o.B0FieldSource[0]
                         }
-                    }
+                    }                    
                     //handle IntendedFor
                     if (o.IntendedFor) {
                         item.sidecar.IntendedFor = [];
@@ -362,108 +364,111 @@ forEachOf(info.objects, (o, idx, next_o) => {
                                 continue;
                             }
                             //if intended object is excluded, skip it
-                            if (io._type === 'exclude') continue;
+                            if (io._type == "exclude") continue;
 
-                            const iomodality = io._type.split('/')[0];
-                            const suffix = io._type.split('/')[1];
+                            const iomodality = io._type.split("/")[0];
+                            const suffix = io._type.split("/")[1];
                             //construct a path relative to the subject
-                            let path = '';
-                            if (io._entities.session) path += 'ses-' + io._entities.session + '/';
-                            path += iomodality + '/';
+                            let path = "";
+                            if (io._entities.session)
+                                path += "ses-" + io._entities.session + "/";
+                            path += iomodality + "/";
                             let tokens = [];
                             //for(let k in io._entities) {
                             for (let k in info.entityMappings) {
                                 const sk = info.entityMappings[k];
-                                if (io._entities[k]) tokens.push(sk + '-' + io._entities[k]);
+                                if (io._entities[k])
+                                    tokens.push(sk + "-" + io._entities[k]);
                             }
-                            path += tokens.join('_');
-                            path += '_' + suffix + '.nii.gz'; //TODO - not sure if this is robust enough..
+                            path += tokens.join("_");
+                            path += "_" + suffix + ".nii.gz"; //TODO - not sure if this is robust enough..
                             item.sidecar.IntendedFor.push(path);
                         }
                     }
-                    handleItem(item, suffix + '.json');
+                    handleItem(item, suffix + ".json");
                     break;
                 default:
-                    console.error('unknown fmap item name', item.name);
+                    console.error("unknown fmap item name", item.name);
             }
         });
     }
     function handleDwi() {
-        o.items.forEach((item) => {
+        o.items.forEach(item => {
             switch (item.name) {
-                case 'nii.gz':
-                    handleItem(item, 'dwi.nii.gz');
+                case "nii.gz":
+                    handleItem(item, "dwi.nii.gz");
                     break;
-                case 'bvec':
-                    handleItem(item, 'dwi.bvec');
+                case "bvec":
+                    handleItem(item, "dwi.bvec");
                     break;
-                case 'bval':
-                    handleItem(item, 'dwi.bval');
+                case "bval":
+                    handleItem(item, "dwi.bval");
                     break;
-                case 'json':
+                case "json":
                     //handle B0FieldIdentifier and B0FieldSource if present
-                    if (o.B0FieldIdentifier.length) {
-                        if (o.B0FieldIdentifier.length > 1) {
-                            item.sidecar.B0FieldIdentifier = Object.values(o.B0FieldIdentifier);
-                        } else {
-                            item.sidecar.B0FieldIdentifier = o.B0FieldIdentifier[0];
+                    if(o.B0FieldIdentifier.length) {
+                        if(o.B0FieldIdentifier.length > 1) {
+                            item.sidecar.B0FieldIdentifier = Object.values(o.B0FieldIdentifier)
+                        }else{
+                            item.sidecar.B0FieldIdentifier = o.B0FieldIdentifier[0]
                         }
                     }
-                    if (o.B0FieldSource.length) {
-                        if (o.B0FieldSource.length > 1) {
-                            item.sidecar.B0FieldSource = Object.values(o.B0FieldSource);
-                        } else {
-                            item.sidecar.B0FieldSource = o.B0FieldSource[0];
+                    if(o.B0FieldSource.length) {
+                        if(o.B0FieldSource.length > 1) {
+                            item.sidecar.B0FieldSource = Object.values(o.B0FieldSource)
+                        }else{
+                            item.sidecar.B0FieldSource = o.B0FieldSource[0]
                         }
                     }
-                    handleItem(item, 'dwi.json');
+                    handleItem(item, "dwi.json");
                     break;
                 default:
-                    console.error('unknown dwi item name', item.name);
+                    console.error("unknown dwi item name", item.name);
             }
         });
-        if (!o.items.find((item) => item.name === 'bvec')) {
-            console.log('bvec is missing.. assuming that this is b0, and setup empty bvec/bval');
+        if (!o.items.find(item => item.name == "bvec")) {
+            console.log("bvec is missing.. assuming that this is b0, and setup empty bvec/bval");
             const path = composePath(false);
             const zeros = [];
             for (let j = 0; j < o.analysisResults.NumVolumes; ++j) {
                 zeros.push(0);
             }
-            const bvec = `${zeros.join(' ')}\n${zeros.join(' ')}\n${zeros.join(' ')}\n`;
-            writeFileSync(root + '/' + path + '/' + name + '_dwi.bvec', bvec);
-            const bval = zeros.join(' ') + '\n';
-            writeFileSync(root + '/' + path + '/' + name + '_dwi.bval', bval);
+            const bvec = `${zeros.join(" ")}\n${zeros.join(" ")}\n${zeros.join(" ")}\n`;
+            fs.writeFileSync(root + "/" + path + "/" + name + "_dwi.bvec", bvec);
+            const bval = zeros.join(" ") + "\n";
+            fs.writeFileSync(root + "/" + path + "/" + name + "_dwi.bval", bval);
         }
     }
     //now handle different modality
     switch (modality) {
-        case 'anat':
+        case "anat":
             handleAnat();
             break;
-        case 'func':
+        case "func":
             handleFunc();
             break;
-        case 'fmap':
+        case "fmap":
             handleFmap();
             break;
-        case 'dwi':
+        case "dwi":
             handleDwi();
             break;
-        case 'perf':
+        case "perf":
             handlePerf();
             break;
-        case 'pet':
+        case "pet":
             handlePET();
             break;
-        case 'excluded':
-            if (!info.includeExcluded) break;
-            o.items.forEach((item) => {
+        case "excluded":
+            if (!info.includeExcluded)
+                break;
+            o.items.forEach((item, idx) => {
                 //sub-OpenSciJan22_desc-localizer_obj5-0.json
-                handleItem(item, 'excluded.' + item.name);
+                handleItem(item, "excluded." + item.name);
             });
             break;
         default:
-            console.error('unknown datatype:' + o._type);
+            console.error("unknown datatype:" + o._type);
     }
     next_o();
 });
