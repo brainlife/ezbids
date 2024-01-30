@@ -12,7 +12,6 @@ instances:
     #     post:
     #         command:
     #             - "mongod --dbpath /tmp"
-    #         # command: ["mongod --dbpath /tmp"]
 
     # mongodb:  # NEW BUT STILL BAD
     #     container_name: brainlife_ezbids-mongodb
@@ -54,9 +53,6 @@ instances:
         # start:
         #     options:
         #         - fakeroot
-        post:
-            command: mongod --dbpath /data/db
-            # command: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
         # run:
         #     background: true # Does this actually run things in the background? Doesn't seem to
 

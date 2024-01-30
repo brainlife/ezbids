@@ -1,13 +1,16 @@
 Bootstrap: docker
 From: mongo:4.4.15
 
-# %environment
-# export HOME=$PWD/data/db
+%environment
+export HOME=/data/db
+export PWD=/
 
 %runscript
     # mongod --dbpath $PWD/data/db
+    cd $HOME
     exec /usr/bin/mongod "$@"
 
 %startscript
     # mongod --dbpath $PWD/data/db
+    cd $HOME
     exec /usr/bin/mongod "$@"
