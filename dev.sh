@@ -41,32 +41,35 @@ export SINGULARITY_CACHEDIR=/tmp
 
 # Approach #1: singularity (individual .sif files)
 
-# Helpful commentary on mongodb container build with Singularity: https://stackoverflow.com/questions/70746228/singularity-mongodb-container-in-background-mode
-if [ ! -d $PWD/data/db ]; then
-    mkdir -p $PWD/data/db
-    chmod -R 777 $PWD/data/db
-fi
+# # Helpful commentary on mongodb container build with Singularity: https://stackoverflow.com/questions/70746228/singularity-mongodb-container-in-background-mode
+# if [ ! -d $PWD/mongodb/data/db ]; then
+#   mkdir -p $PWD/mongodb/data/db
+#   chmod -R 770 $PWD/mongodb/data/db
+# fi
 
-if [ ! -f $PWD/mongodb/mongodb.sif ]; then # Will eventually be redundant and can remove
-    echo "building mongodb"
-    # build image
-    singularity build           \
-      --arch "amd64"            \
-      --fakeroot                \
-      --disable-cache           \
-      $PWD/mongodb/mongodb.sif  \
-      $PWD/mongodb/Singularity
+# if [ ! -f $PWD/mongodb/mongodb.sif ]; then # Will eventually be redundant and can remove
+#     echo "building mongodb"
+#     # build image
+#     singularity build           \
+#       --arch "amd64"            \
+#       --fakeroot                \
+#       --disable-cache           \
+#       $PWD/mongodb/mongodb.sif  \
+#       $PWD/mongodb/Singularity
     
 #     # start the container instance
 #     singularity instance start  \
 #       --fakeroot                \
-#       --bind $PWD/data/db:/data/db \
-#       --net \
-#       --network-args "portmap=27417:27017/tcp"  \
+#       --bind $PWD/mongodb/data/db:/data/db \
 #       $PWD/mongodb/mongodb.sif  \
 #       brainlife_ezbids-mongodb
+
+
+#       # --net \
+#       # --network-args "portmap=27417:27017/tcp"  \
+#       # --bind $PWD/data/db:/data/db \  # Might not need this if mongodb/Singularity contains a %files section
 #     # singularity run instance://brainlife_ezbids-mongodb # This seems to run mongodb in the foreground, meaning can't move on to building other containers.
-fi
+# fi
 
 # if [ ! -f $PWD/api/api.sif ]; then
 #     echo "building api"
@@ -90,10 +93,10 @@ fi
 
 
 
-# # Approach #2: singularity-compose 
+# Approach #2: singularity-compose 
 
-# if [ ! -d $PWD/data/db ]; then
-#     mkdir -p $PWD/data/db
-#     chmod -R 777 $PWD/data/db
-# fi
-# singularity-compose --debug up --no-resolv
+if [ ! -d $PWD/mongodb/data/db ]; then
+    mkdir -p $PWD/mongodb/data/db
+    chmod -R 770 $PWD/mongodb/data/db
+fi
+singularity-compose --debug up --no-resolv

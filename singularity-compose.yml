@@ -41,15 +41,22 @@ instances:
 
     mongodb:  # FOURTH ATTEMPT
         container_name: brainlife_ezbids-mongodb
-        build:
-            context: ./mongodb
-            options:
-                - fakeroot
+        image: docker://mongo:4.4.15
+        # build:
+        #     context: ./mongodb
+        #     options:
+        #         - fakeroot
         platform: linux/amd64
         volumes:
-            - ./data/db:/data/db
+            - ./mongodb/data/db:/data/db
         ports:
-            - 27417:27017 #for local debugging
+            - "27417:27017" #for local debugging
+        # start:
+        #     options:
+        #         - fakeroot
+        post:
+            command: mongod --dbpath /data/db
+            # command: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
         # run:
         #     background: true # Does this actually run things in the background? Doesn't seem to
 
