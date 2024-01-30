@@ -1,6 +1,4 @@
 .vscode/settings.json
 node_modules
-handler/convert.js
-handler/convert.ts
 ui/node_modules
 ui/src/components/modalityForm.vue
