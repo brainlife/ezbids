@@ -735,6 +735,43 @@ export function dwiQA($root: IEzbids) {
     });
 }
 
+export function petQA($root: IEzbids) {
+    $root.objects.forEach((o: IObject) => {
+        if (o._type === 'pet/blood') {
+            let tsv = o.items.find((e) => e.name === 'tsv');
+            let json = o.items.find((e) => e.name === 'json');
+            if (tsv !== undefined && json !== undefined) {
+                let tsv_headers = Object.values(tsv.headers);
+                let metadata = JSON.parse(json.sidecar_json);
+
+                for (const [key, value] of Object.entries(metadata)) {
+                    if (key === 'PlasmaAvail' && value === true) {
+                        if (!tsv_headers.includes('plasma_radioactivity')) {
+                            metadata[key] = false;
+                        }
+                    }
+                    if (key === 'MetaboliteAvail' && value === true) {
+                        if (!tsv_headers.includes('metabolite_parent_fraction')) {
+                            metadata[key] = false;
+                        }
+                    }
+                    if (key === 'WholeBloodAvail' && value === true) {
+                        if (!tsv_headers.includes('whole_blood_radioactivity')) {
+                            metadata[key] = false;
+                        }
+                    }
+                    if (key === 'MetaboliteRecoveryCorrectionApplied' && value === true) {
+                        if (!tsv_headers.includes('hplc_recovery_fractions')) {
+                            metadata[key] = false;
+                        }
+                    }
+                }
+                json.sidecar_json = JSON.stringify(metadata, null, 2);
+            }
+        }
+    });
+}
+
 export function validateEntities(level: string, info: any) {
     /*
     Ensure entity labels are BIDS appropriate (e.g., specific part entities labels accepted, dir entity

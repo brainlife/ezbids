@@ -116,7 +116,7 @@ import { hasAuth, createEventsTSV } from './lib';
 import { ElNotification } from 'element-plus';
 import 'element-plus/es/components/notification/style/css';
 
-import { setSectionIDs, funcQA, fmapQA, dwiQA, setRun, setVolumeThreshold } from './libUnsafe';
+import { setSectionIDs, funcQA, fmapQA, dwiQA, petQA, setRun, setVolumeThreshold } from './libUnsafe';
 
 import niivue from './components/niivue.vue';
 
@@ -245,6 +245,9 @@ export default defineComponent({
                     const idx = this.pages.indexOf(this.page);
                     this.$store.commit('setPage', this.pages[idx + 1]);
                     switch (this.page) {
+                        case 'seriespage':
+                            petQA(this.ezbids);
+                            break;
                         case 'event':
                             setVolumeThreshold(this.ezbids); // Don't move to Objects.Vue, means you can't un-exclude it on the page
                             setSectionIDs(this.ezbids);

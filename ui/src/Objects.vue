@@ -396,6 +396,7 @@ import {
     validate_B0FieldIdentifier_B0FieldSource,
     fileLogicLink,
     dwiQA,
+    petQA,
 } from './libUnsafe';
 
 import AsyncImageLink from './components/AsyncImageLink.vue';
@@ -728,6 +729,7 @@ export default defineComponent({
             setIntendedFor(this.ezbids);
             alignEntities(this.ezbids);
             dwiQA(this.ezbids);
+            petQA(this.ezbids);
             setRun(this.ezbids);
             this.ezbids.objects.forEach(this.validate);
         },
