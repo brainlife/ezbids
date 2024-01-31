@@ -643,10 +643,23 @@ export default defineComponent({
                             for (const [key, value] of Object.entries(json)) {
                                 if (this.formData.hasOwnProperty(key)) this.formData[key] = value;
                                 if (file._type === 'pet/blood') {
+                                    let tsv_headers = Object.values(file.items.find((e) => e.name === 'tsv').headers);
+                                    if (key === 'PlasmaAvail' && value === true) {
+                                        if (!tsv_headers.includes('plasma_radioactivity')) {
+                                            this.formData[key] = false;
+                                        }
+                                    }
+                                    if (key === 'MetaboliteAvail' && value === true) {
+                                        if (!tsv_headers.includes('metabolite_parent_fraction')) {
+                                            this.formData[key] = false;
+                                        }
+                                    }
+                                    if (key === 'WholeBloodAvail' && value === true) {
+                                        if (!tsv_headers.includes('whole_blood_radioactivity')) {
+                                            this.formData[key] = false;
+                                        }
+                                    }
                                     if (key === 'MetaboliteRecoveryCorrectionApplied' && value === true) {
-                                        let tsv_headers = Object.values(
-                                            file.items.find((e) => e.name === 'tsv').headers
-                                        );
                                         if (!tsv_headers.includes('hplc_recovery_fractions')) {
                                             this.formData[key] = false;
                                         }
