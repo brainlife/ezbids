@@ -2,7 +2,15 @@
 
 import os
 import sys
-import pydicom
+from pydicom import dcmread
+# if pet2bids is installed we use it wherever PET data live
+try:
+    # import pypet2bids
+    pet2bidsInstalled = True
+except (ImportError, ModuleNotFoundError):
+    pet2bidsInstalled = False
+    print("pet2bids is not installed, using dcm2niix on PET directories instead")
+    sys.exit(1)
 
 
 def find_dicomdir(dir):
@@ -23,25 +31,27 @@ def find_dicomdir(dir):
 
         if os.path.isdir(full_path):
             for f in sorted(os.listdir(full_path)):
-                if (f.lower().endswith(".dcm") or f.lower().endswith(".ima") or f.lower().endswith(".img")
-                        or f.lower().startswith("mr.")):
-                    hasDicoms = True
-                    print(full_path)
-                    break
-                else:
-                    # no explicit raw data (e.g., DICOM) extension, check using pydicom
+                if f.lower().endswith(tuple(['.dcm', '.ima', '.img'])) or f.lower().startswith('mr.'):
+                    # Are these MRI or PET DICOMS
+
+                    # MRI
                     try:
-                        read_file = pydicom.dcmread(f"{full_path}/{f}")
-                        if read_file.Modality == "MR":  # eventually need to expand this to other imaging modalities
-                            hasDicoms = True
-                            print(full_path)
+                        read_file = dcmread(f"{full_path}/{f}")
+                        if read_file.Modality == "MR":
+                            mri_dcm_dirs_list.append(full_path)
+                            break
+                        elif read_file.Modality == "PT":
+                            pet_dcm_dirs_list.append(full_path)
                             break
                         else:
-                            # Not MRI imaging modality, ignore for now
                             pass
                     except:
-                        # Doesn't appear to be DICOM (or other raw imaging) data
                         pass
+
+                elif f.lower().endswith('.v'):
+                    # PET ECAT-formatted raw data
+                    pet_ecat_files_list.append(f'{full_path}/{f}')
+                    break
 
     if not hasDicoms:
         for x in sorted(os.listdir(dir)):
@@ -50,6 +60,31 @@ def find_dicomdir(dir):
                 find_dicomdir(full_path)
 
 
-os.chdir(sys.argv[1])
+# change to input directory
+root = sys.argv[1]
+os.chdir(root)
+
+pet_ecat_files_list = []
+pet_dcm_dirs_list = []
+mri_dcm_dirs_list = []
 
 find_dicomdir('.')
+
+# Save the MRI and PET lists (if they exist) to separate files
+if len(mri_dcm_dirs_list):
+    file = open(f'{root}/dcm2niix.list', 'w')
+    for dcm in mri_dcm_dirs_list:
+        file.write(dcm + "\n")
+    file.close()
+
+if len(pet_dcm_dirs_list):
+    file = open(f'{root}/pet2bids_dcm.list', 'w')
+    for dcm in pet_dcm_dirs_list:
+        file.write(dcm + "\n")
+    file.close()
+
+if len(pet_ecat_files_list):
+    file = open(f'{root}/pet2bids_ecat.list', 'w')
+    for ecat in pet_ecat_files_list:
+        file.write(ecat + "\n")
+    file.close()

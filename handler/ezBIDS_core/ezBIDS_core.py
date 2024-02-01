@@ -914,7 +914,19 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
             else:
                 if json_file.endswith("_blood.json"):
                     corresponding_nifti = [x for x in nifti_list if json_file[:-4] in x and x.endswith("blood.tsv")][0]
-
+                elif "ConversionSoftware" in json_data.keys():
+                    if isinstance(json_data["ConversionSoftware"], str):
+                        if json_data["ConversionSoftware"] == "pypet2bids":
+                            json_data["Modality"] = "PT"
+                            corresponding_nifti = [
+                                x for x in nifti_list if json_file[:-4] in x and x.endswith(".nii.gz")
+                            ][0]
+                    elif isinstance(json_data["ConversionSoftware"], list):
+                        if "pypet2bids" in json_data["ConversionSoftware"]:
+                            json_data["Modality"] = "PT"
+                            corresponding_nifti = [
+                                x for x in nifti_list if json_file[:-4] in x and x.endswith(".nii.gz")
+                            ][0]
                 else:
                     pass
         except:
