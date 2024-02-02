@@ -22,10 +22,8 @@ echo "running preprocess.sh on root folder ${root}"
 echo "running expand.sh"
 ./expand.sh $root
 
-# PUT BACK IN SOON
-# echo "replace file path that contains space"
-# # find $root -depth -name "* *" -execdir rename 's/ /_/g' "{}" \;
-# find $root -depth -name "*[ ()]*" -execdir rename 's/[ )]/_/g; s/\(//g' "{}" \;
+echo "replace file paths that contain spaces or [@^()] characters"
+find $root -depth -name "*[ @^()]*" | parallel --linebuffer -j 6 -execdir rename "'s/[ @^()]/_/g'" "{}" \;
 
 # check to see if uploaded data is a BIDS-compliant dataset
 echo "Running bids-validator to check BIDS compliance"
@@ -150,9 +148,9 @@ else
     # determine which uploaded files/folders are PET directories or ECAT files
     echo "Finding DICOM directories"
     ./find_dicomdir.py $root
-    if [ ! -f $root/dcm2niix.list ]; then
-        touch $root/dcm2niix.list
-    fi
+    # if [ ! -f $root/dcm2niix.list ]; then
+    #     touch $root/dcm2niix.list
+    # fi
 
     # sort $root/pet2bids_dcm.list, $root/pet2bids_ecat.list, and $root/dcm2niix.list for comm.
     # Then, remove pet directories from dcm2niix list

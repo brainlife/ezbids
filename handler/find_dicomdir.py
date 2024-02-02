@@ -63,7 +63,6 @@ def find_dicomdir(dir):
                             pet_dcm_dirs_list.append(full_path)
                             break
 
-
     if not hasDicoms:
         for x in sorted(os.listdir(dir)):
             full_path = os.path.join(dir, x)
@@ -82,11 +81,11 @@ mri_dcm_dirs_list = []
 find_dicomdir('.')
 
 # Save the MRI and PET lists (if they exist) to separate files
+file = open(f'{root}/dcm2niix.list', 'w')
 if len(mri_dcm_dirs_list):
-    file = open(f'{root}/dcm2niix.list', 'w')
     for dcm in mri_dcm_dirs_list:
         file.write(dcm + "\n")
-    file.close()
+file.close()
 
 if len(pet_dcm_dirs_list):
     file = open(f'{root}/pet2bids_dcm.list', 'w')
