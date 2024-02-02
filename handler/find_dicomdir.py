@@ -2,11 +2,13 @@
 
 import os
 import sys
+from pathlib import Path
 from pydicom import dcmread
 # if pet2bids is installed we use it wherever PET data live
 try:
     # import pypet2bids
     pet2bidsInstalled = True
+    from pypet2bids import is_pet
 except (ImportError, ModuleNotFoundError):
     pet2bidsInstalled = False
     print("pet2bids is not installed, using dcm2niix on PET directories instead")
@@ -31,7 +33,7 @@ def find_dicomdir(dir):
 
         if os.path.isdir(full_path):
             for f in sorted(os.listdir(full_path)):
-                if f.lower().endswith(tuple(['.dcm', '.ima', '.img'])) or f.lower().startswith('mr.'):
+                if f.lower().endswith(tuple(['.dcm', '.ima', '.img', '_'])) or f.lower().startswith('mr.'):
                     # Are these MRI or PET DICOMS
 
                     # MRI
@@ -52,6 +54,15 @@ def find_dicomdir(dir):
                     # PET ECAT-formatted raw data
                     pet_ecat_files_list.append(f'{full_path}/{f}')
                     break
+                else:
+                    # any nifti files?
+                    niftis = [x for x in os.listdir(full_path) if x.endswith('nii') or x.endswith('nii.gz')]
+                    if not len(niftis):
+                        pet_folders = [str(folder) for folder in is_pet.pet_folder(Path(full_path).resolve())]
+                        if len(pet_folders):
+                            pet_dcm_dirs_list.append(full_path)
+                            break
+
 
     if not hasDicoms:
         for x in sorted(os.listdir(dir)):
