@@ -40,11 +40,10 @@ instances:
 
     mongodb:  # FOURTH ATTEMPT
         container_name: brainlife_ezbids-mongodb
-        image: docker://mongo:4.4.15
-        # build:
-        #     context: ./mongodb
-        #     options:
-        #         - fakeroot
+        build:
+            context: ./mongodb
+            options:
+                - fakeroot
         platform: linux/amd64
         volumes:
             - ./mongodb/data/db:/data/db
