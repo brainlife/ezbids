@@ -28,41 +28,24 @@ def find_dicomdir(dir):
 
     hasDicoms = False
 
+    # MRI
     for x in sorted(os.listdir(dir)):
         full_path = os.path.join(dir, x)
-
         if os.path.isdir(full_path):
             for f in sorted(os.listdir(full_path)):
-                if f.lower().endswith(tuple(['.dcm', '.ima', '.img', '_'])) or f.lower().startswith('mr.'):
-                    # Are these MRI or PET DICOMS
-
-                    # MRI
+                if f.lower().endswith(tuple(['.dcm', '.ima', '.img'])) or f.lower().startswith('mr.'):
                     try:
                         read_file = dcmread(f"{full_path}/{f}")
                         if read_file.Modality == "MR":
                             mri_dcm_dirs_list.append(full_path)
+                            hasDicoms = True
                             break
-                        elif read_file.Modality == "PT":
-                            pet_dcm_dirs_list.append(full_path)
-                            break
-                        else:
-                            pass
                     except:
-                        pass
+                        # Doesn't appear to be DICOM data, so skip
+                        # pass
+                        break
 
-                elif f.lower().endswith('.v'):
-                    # PET ECAT-formatted raw data
-                    pet_ecat_files_list.append(f'{full_path}/{f}')
-                    break
-                else:
-                    # any nifti files?
-                    niftis = [x for x in os.listdir(full_path) if x.endswith('nii') or x.endswith('nii.gz')]
-                    if not len(niftis):
-                        pet_folders = [str(folder) for folder in is_pet.pet_folder(Path(full_path).resolve())]
-                        if len(pet_folders):
-                            pet_dcm_dirs_list.append(full_path)
-                            break
-
+    # Complete search
     if not hasDicoms:
         for x in sorted(os.listdir(dir)):
             full_path = os.path.join(dir, x)
@@ -79,6 +62,32 @@ pet_dcm_dirs_list = []
 mri_dcm_dirs_list = []
 
 find_dicomdir('.')
+
+
+# PET
+pet_folders = [str(folder) for folder in is_pet.pet_folder(Path(root).resolve())]
+
+# parse output of ispet into list of directories
+pet_folders = [os.path.relpath(x, root) for x in pet_folders if x != '']
+
+# format from expanded paths to relative paths to match output of find_dicomdir.py
+pet_folders = [os.path.join('.', x) for x in pet_folders]
+if pet_folders:
+    for pet_folder in pet_folders:
+        print(pet_folders)
+        # See if we're dealing ECAT-formatted file(s)
+        ecats = [x for x in os.listdir(pet_folder) if x.endswith(tuple(['.v', '.v.gz']))]
+        if len(ecats):
+            for ecat in ecats:
+                if ecat not in pet_ecat_files_list:
+                    pet_ecat_files_list.append(f'{pet_folder}/{ecat}')
+        # See if we're dealing with DICOM files
+        dcms = [
+            x for x in os.listdir(pet_folder)
+            if not x.endswith(tuple(['.nii', '.nii.gz', '.v', '.v.gz', '.json', '.tsv']))
+        ]
+        if len(dcms) and pet_folder not in pet_dcm_dirs_list:
+            pet_dcm_dirs_list.append(pet_folder)
 
 # Save the MRI and PET lists (if they exist) to separate files
 file = open(f'{root}/dcm2niix.list', 'w')

@@ -121,7 +121,7 @@ else
 
         path=$1
 
-        echo "----------------------- $path ------------------------"
+        echo "----------------------- dcm2niix4pet: $path ------------------------"
         timeout 3600 dcm2niix4pet --silent $path
 
         #all good
@@ -134,7 +134,7 @@ else
 
         path=$1
 
-        echo "----------------------- $path ------------------------"
+        echo "----------------------- ecatpet2bids: $path ------------------------"
         timeout 3600 ecatpet2bids $path --convert
 
         #all good
