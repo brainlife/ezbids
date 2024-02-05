@@ -95,8 +95,8 @@ export SINGULARITY_CACHEDIR=/tmp
 
 # Approach #2: singularity-compose 
 
-# if [ ! -d $PWD/mongodb/data/db ]; then
-#     mkdir -p $PWD/mongodb/data/db
-#     chmod -R 770 $PWD/mongodb/data/db
-# fi
+if [ ! -d $PWD/mongodb/data/db ]; then
+    mkdir -p $PWD/mongodb/data/db
+    chmod -R 770 $PWD/mongodb/data/db
+fi
 singularity-compose --debug up --no-resolv

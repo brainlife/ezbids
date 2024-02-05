@@ -98,6 +98,7 @@ Stage: spython-base
     npm -g install pm2
 
 %environment
+    export MONGO_CONNECTION_STRING=mongodb://mongodb:27017/ezbids
     export DEBIAN_FRONTEND=noninteractive
     export FSLDIR=/usr/local/fsl
     export PATH=$PATH:$FSLDIR/bin
@@ -110,6 +111,7 @@ Stage: spython-base
 %runscript
     cd /app/handler
     exec /bin/bash "$@"
+    pm2 start handler.js --attach --watch --ignore-watch "ui **/node_modules"
 
 %startscript
     cd /app/handler
