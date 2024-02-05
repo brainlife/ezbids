@@ -148,9 +148,6 @@ else
     # determine which uploaded files/folders are PET directories or ECAT files
     echo "Finding DICOM directories"
     ./find_dicomdir.py $root
-    # if [ ! -f $root/dcm2niix.list ]; then
-    #     touch $root/dcm2niix.list
-    # fi
 
     # sort $root/pet2bids_dcm.list, $root/pet2bids_ecat.list, and $root/dcm2niix.list for comm.
     # Then, remove pet directories from dcm2niix list
