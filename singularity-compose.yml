@@ -52,42 +52,43 @@ instances:
         run:
             options:
                 - fakeroot
-            command: "mongod --dbpath /data/db"
+            command: mongod --dbpath /data/db
         # run:
         #     background: true
 
-    api:  # This seemss good, just needs mongodb up and running properly
-        container_name: brainlife_ezbids-api
-        build:
-          context: .
-          options:
-            - fakeroot
-        platform: linux/amd64
-        volumes:
-            - ./api:/app/api
-            - /tmp:/tmp
-        ports:
-            - 8082:8082 #localhost runs on local browser to it needs to access api via host port
+    # api:  # This seemss good, just needs mongodb up and running properly
+    #     container_name: brainlife_ezbids-api
+    #     build:
+    #       context: .
+    #       options:
+    #         - fakeroot
+    #     platform: linux/amd64
+    #     volumes:
+    #         - ./api:/app/api
+    #         - /tmp:/tmp
+    #     ports:
+    #         - 8082:8082 #localhost runs on local browser to it needs to access api via host port
 
-    handler:
-        container_name: brainlife_ezbids-handler
-        build:
-          context: ./handler
-          options:
-            - fakeroot
-        platform: linux/amd64
-        volumes:
-            - .:/app
-            - /tmp:/tmp
-        # depends_on:
-        #     mongodb:
-        #         condition: service_healthy
-        #     api:
-        #         condition: service_healthy
-        environment:
-            MONGO_CONNECTION_STRING: mongodb://mongodb:27017/ezbids
-        tty: true #turn on color for bids-validator output
-        command: pm2 start handler.js --attach --watch --ignore-watch "ui **/node_modules"
+    # handler:
+    #     container_name: brainlife_ezbids-handler
+    #     build:
+    #       context: ./handler
+    #       options:
+    #         - fakeroot
+    #     platform: linux/amd64
+    #     volumes:
+    #         - .:/app
+    #         - /tmp:/tmp
+    #     # depends_on:
+    #     #     mongodb:
+    #     #         condition: service_healthy
+    #     #     api:
+    #     #         condition: service_healthy
+    #     # tty: true #turn on color for bids-validator output
+    #     run:
+    #         options:
+    #             - fakeroot
+    #            command: pm2 start handler.js --attach --watch --ignore-watch "ui **/node_modules"
 
     # ui:
     #     container_name: brainlife_ezbids-ui
@@ -98,9 +99,5 @@ instances:
     #     platform: linux/amd64
     #     volumes:
     #         - ./ui/src:/ui/src #don't copy node_modules which might be compiled for mac (vite won't work)
-    #     environment:
-    #         VITE_APIHOST: http://localhost:8082
-    #     # healthcheck:
-    #     #     test: ["CMD", "curl", "-f", "http://localhost:3000"]
     #     ports:
     #         - 3000:3000 #vite wants to be exposed on the host for HMR?

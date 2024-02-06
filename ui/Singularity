@@ -15,18 +15,19 @@ Stage: spython-base
     # exec npm run dev "$@"
 
 %environment
-    VITE_APIHOST=http://localhost:8082
-    PORT=3000
-    export VITE_APIHOST PORT
+    export VITE_APIHOST=http://localhost:8082
+    export VITE_BRAINLIFE_AUTHENTICATION=false
+    # PORT=3000
 
-%runscript
-    cd /ui
-    npm install
-    # exec /bin/bash npm run dev "$@"
-    exec npm run dev "$@"
+# %runscript
+#     cd /ui
+#     npm install
+#     exec npm run dev "$@"
 
-%startscript
-    cd /ui
-    npm install
-    # exec /bin/bash npm run dev "$@"
-    exec npm run dev "$@"
+# %startscript
+#     cd /ui
+#     npm install
+#     exec npm run dev "$@"
+
+%test
+    # curl -f http://localhost:3000
