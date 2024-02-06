@@ -3,12 +3,10 @@ From: node:16
 Stage: spython-base
 
 %environment
-    MONGO_CONNECTION_STRING=mongodb://mongodb:27017/ezbids
-    BRAINLIFE_AUTHENTICATION=false
-    SINGULARITY_PWD=/app/api  # Not sure this is being properly set (or at least adhered to)
-    PORT=8082
-    export MONGO_CONNECTION_STRING BRAINLIFE_AUTHENTICATION PORT SINGULARITY_PWD
-
+    export MONGO_CONNECTION_STRING=mongodb://mongodb:27017/ezbids
+    export BRAINLIFE_AUTHENTICATION=false
+    export SINGULARITY_PWD=/app/api  # Not sure this is being properly set (or at least adhered to)
+    export PORT=8082
 
 %post
     mkdir -p /app

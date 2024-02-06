@@ -2,7 +2,11 @@ Bootstrap: docker
 From: mongo:4.4.15
 
 %setup
-    mkdir -p /data/db
+    # mkdir -p /data/db
+    if [ ! -d $PWD/data ]; then
+        mkdir -p $PWD/data
+    fi
+    echo "Setup working directory: $PWD"
 
 %environment
 export HOME=/data/db
@@ -10,3 +14,9 @@ export SINGULARITY_PWD=/
 
 %post
     echo "Current working directory: $PWD"
+
+%runscript # Unsure if this section is necessary (doesn't seem like it)
+    exec /usr/bin/mongod "$@"
+
+%startscript # Unsure if this section is necessary (doesn't seem like it)
+    exec /usr/bin/mongod "$@"

@@ -39,35 +39,52 @@ npm run prepare-husky
 export SINGULARITY_DISABLE_CACHE=true
 export SINGULARITY_CACHEDIR=/tmp
 
-# Approach #1: singularity (individual .sif files)
+# # Approach #1: singularity (individual .sif files)
 
 # # Helpful commentary on mongodb container build with Singularity: https://stackoverflow.com/questions/70746228/singularity-mongodb-container-in-background-mode
-# if [ ! -d $PWD/mongodb/data/db ]; then
-#   mkdir -p $PWD/mongodb/data/db
-#   chmod -R 770 $PWD/mongodb/data/db
+# # if [ ! -d $PWD/mongodb/data/db ]; then
+# #   mkdir -p $PWD/mongodb/data/db
+# #   chmod -R 770 $PWD/mongodb/data/db
+# # fi
+
+# if [ ! -d $PWD/mongodb/data ]; then
+#   mkdir -p $PWD/mongodb/data
+#   chmod -R 770 $PWD/mongodb/data
 # fi
 
+
 # if [ ! -f $PWD/mongodb/mongodb.sif ]; then # Will eventually be redundant and can remove
-#     echo "building mongodb"
 #     # build image
-#     singularity build           \
+#     singularity build      \
 #       --arch "amd64"            \
 #       --fakeroot                \
 #       --disable-cache           \
 #       $PWD/mongodb/mongodb.sif  \
 #       $PWD/mongodb/Singularity
     
-#     # start the container instance
-#     singularity instance start  \
-#       --fakeroot                \
-#       --bind $PWD/mongodb/data/db:/data/db \
-#       $PWD/mongodb/mongodb.sif  \
-#       brainlife_ezbids-mongodb
+#     # # start the container instance
+#     # singularity instance start                  \
+#     #   --fakeroot                                \
+#     #   --bind $PWD/mongodb/data:/data/db         \
+#     #   --net                                     \
+#     #   --network-args "portmap=27417:27017/tcp"  \
+#     #   --network-args "IP=0.0.0.0"               \
+#     #   $PWD/mongodb/mongodb.sif                  \
+#     #   brainlife_ezbids-mongodb
 
+#     # run the container instance
+#     singularity run                        \
+#       --fakeroot                                \
+#       --bind $PWD/mongodb/data:/data/db         \
+#       --net                                     \
+#       --network-args "portmap=27417:27017/tcp"  \
+#       $PWD/mongodb/mongodb.sif
 
-#       # --net \
-#       # --network-args "portmap=27417:27017/tcp"  \
-#       # --bind $PWD/data/db:/data/db \  # Might not need this if mongodb/Singularity contains a %files section
+#       # --network-args "IP=127.0.0.1"             \
+#       # --hostname brainlife_ezbids-mongodb       \
+
+#     # DEBUG singularity instance start --bind /home/ubuntu/dlevitas/brainlife/ezbids/mongodb/data:/data/db --net --network-args "portmap=27417:27017/tcp" --network-args "IP=10.22.0.2" --hostname mongodb1 --writable-tmpfs /home/ubuntu/dlevitas/brainlife/ezbids/mongodb/mongodb.sif mongodb1 
+
 #     # singularity run instance://brainlife_ezbids-mongodb # This seems to run mongodb in the foreground, meaning can't move on to building other containers.
 # fi
 
@@ -95,9 +112,9 @@ export SINGULARITY_CACHEDIR=/tmp
 
 # Approach #2: singularity-compose 
 
-if [ ! -d $PWD/mongodb/data/db ]; then
-    mkdir -p $PWD/mongodb/data/db
-    chmod -R 770 $PWD/mongodb/data/db
-fi
+# if [ ! -d $PWD/mongodb/data/db ]; then
+#     mkdir -p $PWD/mongodb/data/db
+#     chmod -R 770 $PWD/mongodb/data/db
+# fi
 singularity-compose down
 singularity-compose --debug up --no-resolv

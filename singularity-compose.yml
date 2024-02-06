@@ -1,44 +1,7 @@
 version: "2.0"
 
 instances:
-    # mongodb: # ORIGINAL
-    #     container_name: brainlife_ezbids-mongodb
-    #     image: docker://mongo:4.4.15
-    #     platform: linux/amd64
-    #     volumes:
-    #         - /tmp:/tmp
-    #     ports:
-    #         - 27417:27017 #for local debugging
-    #     post:
-    #         command:
-    #             - "mongod --dbpath /tmp"
-
-    # mongodb:  # NEW BUT STILL BAD
-    #     container_name: brainlife_ezbids-mongodb
-    #     build:
-    #         context: ./mongodb
-    #         options:
-    #             - fakeroot
-    #     platform: linux/amd64
-    #     # volumes:
-    #     #     - ./data/db:/data/db
-    #     post:
-    #         command: [ "/bin/bash", "./mongodb/mongodb_setup.sh"]
-    #     ports:
-    #         - 27417:27017 #for local debugging
-
-    # mongodb:  # THIRD ATTEMPT
-    #     container_name: brainlife_ezbids-mongodb
-    #     image: docker://mongo:4.4.15
-    #     platform: linux/amd64
-    #     volumes:
-    #         - ./data/db:/data/db
-    #     ports:
-    #         - 27417:27017 #for local debugging
-    #     # run:
-    #     #     background: true # Does this actually run things in the background? Doesn't seem to
-
-    mongodb:  # FOURTH ATTEMPT
+    mongodb:
         container_name: brainlife_ezbids-mongodb
         build:
             context: ./mongodb
@@ -46,64 +9,65 @@ instances:
                 - fakeroot
         platform: linux/amd64
         volumes:
-            - ./mongodb/data/db:/data/db
+            - ./mongodb/data:/data/db
         network:
             options:
                 - fakeroot
-            # enable: true
-            # allocate_ip: true
+            enable: true
+            allocate_ip: true
             args:
                 - portmap=27417:27017/tcp
                 - IP=127.0.0.1
         ports:
-            - 27417:27017 #for local debugging
+            - 27417:27017 # for local debugging
         run:  # start results in errors
+            background: true
             options:
                 - fakeroot
-            command: mongod --dbpath /data/db
+            command: mongod --dbpath /data/db --port=27017 # command: mongod --dbpath /data/db --bind_ip_all --logpath /data/db/mongod.log --fork
 
-    # api:  # This seemss good, just needs mongodb up and running properly
-    #     container_name: brainlife_ezbids-api
-    #     build:
-    #       context: .
-    #       options:
-    #         - fakeroot
-    #     platform: linux/amd64
-    #     volumes:
-    #         - ./api:/app/api
-    #         - /tmp:/tmp
-    #     ports:
-    #         - 8082:8082 #localhost runs on local browser to it needs to access api via host port
+    api:  # This seemss good, just needs mongodb up and running properly
+        container_name: brainlife_ezbids-api
+        build:
+          context: .
+          options:
+            - fakeroot
+        platform: linux/amd64
+        volumes:
+            - ./api:/app/api
+            - /tmp:/tmp
+        ports:
+            - 8082:8082 #localhost runs on local browser to it needs to access api via host port
 
-    # handler:
-    #     container_name: brainlife_ezbids-handler
-    #     build:
-    #       context: ./handler
-    #       options:
-    #         - fakeroot
-    #     platform: linux/amd64
-    #     volumes:
-    #         - .:/app
-    #         - /tmp:/tmp
-    #     # depends_on:
-    #     #     mongodb:
-    #     #         condition: service_healthy
-    #     #     api:
-    #     #         condition: service_healthy
-    #     # tty: true #turn on color for bids-validator output
-    #     run:
-    #         options:
-    #             - fakeroot
-    #            command: pm2 start handler.js --attach --watch --ignore-watch "ui **/node_modules"
+    handler:
+        container_name: brainlife_ezbids-handler
+        build:
+          context: ./handler
+          options:
+            - fakeroot
+        platform: linux/amd64
+        volumes:
+            - .:/app
+            - /tmp:/tmp
+        # depends_on:
+        #     mongodb:
+        #         condition: service_healthy
+        #     api:
+        #         condition: service_healthy
+        # tty: true # don't think this works with Singularity
+        run:
+            options:
+                - fakeroot
+            command: pm2 start handler.js --attach --watch --ignore-watch "ui **/node_modules"
 
-    # ui:
-    #     container_name: brainlife_ezbids-ui
-    #     build:
-    #       context: ./ui
-    #       options:
-    #         - fakeroot
-    #     platform: linux/amd64
-    #     volumes:
-    #         - ./ui/src:/ui/src #don't copy node_modules which might be compiled for mac (vite won't work)
-    #     ports:
-    #         - 3000:3000 #vite wants to be exposed on the host for HMR?
+    ui:
+        container_name: brainlife_ezbids-ui
+        build:
+          context: ./ui
+          options:
+            - fakeroot
+        platform: linux/amd64
+        volumes:
+            - ./ui/src:/ui/src # don't copy node_modules which might be compiled for mac (vite won't work)
+        ports:
+            - 3000:3000 # vite wants to be exposed on the host for HMR?
