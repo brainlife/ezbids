@@ -47,14 +47,20 @@ instances:
         platform: linux/amd64
         volumes:
             - ./mongodb/data/db:/data/db
+        network:
+            options:
+                - fakeroot
+            # enable: true
+            # allocate_ip: true
+            args:
+                - portmap=27417:27017/tcp
+                - IP=127.0.0.1
         ports:
             - 27417:27017 #for local debugging
-        run:
+        run:  # start results in errors
             options:
                 - fakeroot
             command: mongod --dbpath /data/db
-        # run:
-        #     background: true
 
     # api:  # This seemss good, just needs mongodb up and running properly
     #     container_name: brainlife_ezbids-api

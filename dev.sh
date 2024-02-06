@@ -99,4 +99,5 @@ if [ ! -d $PWD/mongodb/data/db ]; then
     mkdir -p $PWD/mongodb/data/db
     chmod -R 770 $PWD/mongodb/data/db
 fi
+singularity-compose down
 singularity-compose --debug up --no-resolv
