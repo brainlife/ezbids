@@ -22,9 +22,8 @@ echo "running preprocess.sh on root folder ${root}"
 echo "running expand.sh"
 ./expand.sh $root
 
-echo "replace file path that contains space"
-# find $root -depth -name "* *" -execdir rename 's/ /_/g' "{}" \;
-find $root -depth -name "*[ ()]*" -execdir rename 's/[ )]/_/g; s/\(//g' "{}" \;
+echo "replace file paths that contain spaces or [@^()] characters"
+find $root -depth -name "*[ @^()]*" | parallel --linebuffer -j 6 -execdir rename "'s/[ @^()]/_/g'" "{}" \;
 
 # check to see if uploaded data is a BIDS-compliant dataset
 echo "Running bids-validator to check BIDS compliance"
@@ -114,20 +113,29 @@ else
 
     echo "processing $root"
 
-    echo "finding dicom directories"
-    ./find_dicomdir.py $root > $root/dcm2niix.list
-    cat $root/dcm2niix.list
-
-    # There can be overlap between the dicom directories and the pet directories
-    # we want to use dcm2niix4pet for the pet directories, and dcm2niix for the dicom directories
+    # There can be overlap between the pet directories and the other modality directories
+    # We want to use dcm2niix4pet or ecatpet2bids for the pet-modality directories, and dcm2niix for the other directories
 
     function rundcm2niix4pet {
         #note.. this function runs inside $root (by --wd $root)
 
         path=$1
 
-        echo "----------------------- $path ------------------------"
+        echo "----------------------- dcm2niix4pet: $path ------------------------"
         timeout 3600 dcm2niix4pet --silent $path
+
+        #all good
+        echo $path >> pet2bids.done
+        PET2BIDS_RUN=true
+    }
+
+    function runecatpet2bids {
+        #note.. this function runs inside $root (by --wd $root)
+
+        path=$1
+
+        echo "----------------------- ecatpet2bids: $path ------------------------"
+        timeout 3600 ecatpet2bids $path --convert
 
         #all good
         echo $path >> pet2bids.done
@@ -135,32 +143,38 @@ else
     } 
 
     export -f rundcm2niix4pet
+    export -f runecatpet2bids
 
-    # determine which uploaded files/folders are PET directories accept return
-    # code value of 1 (no PET directories found) or 0 (PET directories found)
-    
-    (./find_petdir.py $root > $root/pet2bids.list || touch $root/pet2bids.list)
+    # determine which uploaded files/folders are PET directories or ECAT files
+    echo "Finding DICOM directories"
+    ./find_dicomdir.py $root
 
-    # sort $root/pet2bids.list and $root/dcm2niix.list for comm
-    sort -o $root/pet2bids.list $root/pet2bids.list
-    sort -o $root/dcm2niix.list $root/dcm2niix.list
+    # sort $root/pet2bids_dcm.list, $root/pet2bids_ecat.list, and $root/dcm2niix.list for comm.
+    # Then, remove pet directories from dcm2niix list
+    if [ -f $root/pet2bids_dcm.list ]; then
+        sort -o $root/pet2bids_dcm.list $root/pet2bids_dcm.list
+        echo "Removing PET directories from dcm2niix list"
+        comm -12 ${root}/dcm2niix.list ${root}/pet2bids_dcm.list > ${root}/remove_from_dcm2niix_list.list
+        # run pet2bids (dcm2niix4pet)
+        cat $root/pet2bids_dcm.list | parallel --linebuffer --wd $root -j 6 rundcm2niix4pet {} 2>> $root/pet2bids_output
+    fi
+    if [ -f $root/pet2bids_ecat.list ]; then
+        sort -o $root/pet2bids_ecat.list $root/pet2bids_ecat.list
+        echo "Removing PET ECAT files from dcm2niix list"
+        comm -12 ${root}/dcm2niix.list ${root}/pet2bids_ecat.list >> ${root}/remove_from_dcm2niix_list.list
+        # run pet2bids (ecatpet2bids)
+        cat $root/pet2bids_ecat.list | parallel --linebuffer --wd $root -j 6 runecatpet2bids {} 2>> $root/pet2bids_output
 
-    cat $root/pet2bids.list
-    # remove pet directories from dcm2niix list
-    echo "Removing PET directories from dcm2niix list"
-    comm -12  ${root}/dcm2niix.list ${root}/pet2bids.list > ${root}/remove_from_dcm2niix_list.list
+    fi
+    true > $root/pet2bids.done
+
+    # Isn't dcm2niix.list empty anyway? Will this work with the ECAT file paths, rather than folders?
     for folder in $(cat ${root}/remove_from_dcm2niix_list.list); do
         # use sed to remove any lines that contain the folder name while escaping special characters (slashes and dots mostly)
         sed -i "/${folder//\//\\/}/d" ${root}/dcm2niix.list > ${root}/tmpfile && mv ${root}/tmpfile ${root}/dcm2niix.list
     done
     [ -e ${root}/remove_from_dcm2niix_list.list ] && rm ${root}/remove_from_dcm2niix_list.list
     [ -e ${root}/tmpfile ] && rm ${root}/tmpfile
-
-    # run pet2bids
-    true > $root/pet2bids.done
-
-    cat $root/pet2bids.list | parallel --linebuffer --wd $root -j 6 rundcm2niix4pet {} 2>> $root/pet2bids_output
-
 
     echo "running dcm2niix"
     echo `dcm2niix --version`

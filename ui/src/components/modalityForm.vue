@@ -498,7 +498,6 @@
         <br />
 
         <span class="dialog-footer">
-            <!-- {{ formData }} -->
             <el-button @click="showDialog = false">Cancel</el-button>
             <el-button type="primary" @click="submitForm">Submit</el-button>
         </span>
@@ -549,10 +548,10 @@ export default defineComponent({
             this.$emit('form-submitted', this.ezbids);
         },
         createJSONOutput() {
-            this.ezbids.objects.forEach((file: any, idx: any) => {
+            this.ezbids.objects.forEach((file: any) => {
                 if (file.series_idx == this.ss.series_idx) {
                     //find the item in items with .json
-                    file.items.forEach((item: any, idx: any) => {
+                    file.items.forEach((item: any) => {
                         if (item.name.includes('json') && item.sidecar_json) {
                             //create a item.sidecar to keep the new json with update old values
                             const json = JSON.parse(item.sidecar_json);
@@ -614,9 +613,9 @@ export default defineComponent({
             return `${item.field} (${item.condition})`;
         },
         initForm() {
+            this.formData = {};
             let type_str = this.ss.type || this.ss._type;
             this.fields = this.getFieldsMetaData(type_str);
-            // this.fields = this.getFieldsMetaData(this.ss.type);
             this.rules = this.generateValidationRules(this.fields);
 
             //set default values for all fields in the form optional, recommended, required, conditional
@@ -634,10 +633,10 @@ export default defineComponent({
             });
         },
         loadInitFormValues() {
-            this.ezbids.objects.forEach((file: any, idx: any) => {
+            this.ezbids.objects.forEach((file: any) => {
                 if (file.series_idx == this.ss.series_idx) {
                     //find the item in items with .json
-                    file.items.forEach((item: any, idx: any) => {
+                    file.items.forEach((item: any) => {
                         if (item.name.includes('json') && item.sidecar_json) {
                             //load the json through sidecar_json
                             const json = JSON.parse(item.sidecar_json);
@@ -674,6 +673,13 @@ export default defineComponent({
                     }
                     // Skip all metadata in perf/m0scan except for RepetitionTimePreparation
                     if (type === 'perf/m0scan' && field !== 'RepetitionTimePreparation') {
+                        continue;
+                    }
+                    // Deal with different metadata standards for pet/pet and pet/blood
+                    if (type === 'pet/blood' && !section.includes('Blood')) {
+                        continue;
+                    }
+                    if (type === 'pet/pet' && section.includes('Blood')) {
                         continue;
                     }
 

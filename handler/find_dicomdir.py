@@ -2,7 +2,17 @@
 
 import os
 import sys
-import pydicom
+from pathlib import Path
+from pydicom import dcmread
+# if pet2bids is installed we use it wherever PET data live
+try:
+    # import pypet2bids
+    pet2bidsInstalled = True
+    from pypet2bids import is_pet
+except (ImportError, ModuleNotFoundError):
+    pet2bidsInstalled = False
+    print("pet2bids is not installed, using dcm2niix on PET directories instead")
+    sys.exit(1)
 
 
 def find_dicomdir(dir):
@@ -18,31 +28,24 @@ def find_dicomdir(dir):
 
     hasDicoms = False
 
+    # MRI
     for x in sorted(os.listdir(dir)):
         full_path = os.path.join(dir, x)
-
         if os.path.isdir(full_path):
             for f in sorted(os.listdir(full_path)):
-                if (f.lower().endswith(".dcm") or f.lower().endswith(".ima") or f.lower().endswith(".img")
-                        or f.lower().startswith("mr.")):
-                    hasDicoms = True
-                    print(full_path)
-                    break
-                else:
-                    # no explicit raw data (e.g., DICOM) extension, check using pydicom
+                if f.lower().endswith(tuple(['.dcm', '.ima', '.img'])) or f.lower().startswith('mr.'):
                     try:
-                        read_file = pydicom.dcmread(f"{full_path}/{f}")
-                        if read_file.Modality == "MR":  # eventually need to expand this to other imaging modalities
+                        read_file = dcmread(f"{full_path}/{f}")
+                        if read_file.Modality == "MR":
+                            mri_dcm_dirs_list.append(full_path)
                             hasDicoms = True
-                            print(full_path)
                             break
-                        else:
-                            # Not MRI imaging modality, ignore for now
-                            pass
                     except:
-                        # Doesn't appear to be DICOM (or other raw imaging) data
-                        pass
+                        # Doesn't appear to be DICOM data, so skip
+                        # pass
+                        break
 
+    # Complete search
     if not hasDicoms:
         for x in sorted(os.listdir(dir)):
             full_path = os.path.join(dir, x)
@@ -50,6 +53,57 @@ def find_dicomdir(dir):
                 find_dicomdir(full_path)
 
 
-os.chdir(sys.argv[1])
+# change to input directory
+root = sys.argv[1]
+os.chdir(root)
+
+pet_ecat_files_list = []
+pet_dcm_dirs_list = []
+mri_dcm_dirs_list = []
 
 find_dicomdir('.')
+
+
+# PET
+pet_folders = [str(folder) for folder in is_pet.pet_folder(Path(root).resolve())]
+
+# parse output of ispet into list of directories
+pet_folders = [os.path.relpath(x, root) for x in pet_folders if x != '']
+
+# format from expanded paths to relative paths to match output of find_dicomdir.py
+pet_folders = [os.path.join('.', x) for x in pet_folders]
+if pet_folders:
+    for pet_folder in pet_folders:
+        print(pet_folders)
+        # See if we're dealing ECAT-formatted file(s)
+        ecats = [x for x in os.listdir(pet_folder) if x.endswith(tuple(['.v', '.v.gz']))]
+        if len(ecats):
+            for ecat in ecats:
+                if ecat not in pet_ecat_files_list:
+                    pet_ecat_files_list.append(f'{pet_folder}/{ecat}')
+        # See if we're dealing with DICOM files
+        dcms = [
+            x for x in os.listdir(pet_folder)
+            if not x.endswith(tuple(['.nii', '.nii.gz', '.v', '.v.gz', '.json', '.tsv']))
+        ]
+        if len(dcms) and pet_folder not in pet_dcm_dirs_list:
+            pet_dcm_dirs_list.append(pet_folder)
+
+# Save the MRI and PET lists (if they exist) to separate files
+file = open(f'{root}/dcm2niix.list', 'w')
+if len(mri_dcm_dirs_list):
+    for dcm in mri_dcm_dirs_list:
+        file.write(dcm + "\n")
+file.close()
+
+if len(pet_dcm_dirs_list):
+    file = open(f'{root}/pet2bids_dcm.list', 'w')
+    for dcm in pet_dcm_dirs_list:
+        file.write(dcm + "\n")
+    file.close()
+
+if len(pet_ecat_files_list):
+    file = open(f'{root}/pet2bids_ecat.list', 'w')
+    for ecat in pet_ecat_files_list:
+        file.write(ecat + "\n")
+    file.close()

@@ -136,6 +136,9 @@ async.forEachOf(info.objects, (o, idx, next_o) => {
                 case "json":
                     handleItem(item, suffix + ".json", derivatives);
                     break;
+                case "tsv":
+                    handleItem(item, suffix + ".tsv", derivatives);
+                    break;
                 default:
                     console.error("unknown PET item name", item.name);
             }
