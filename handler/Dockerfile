@@ -16,6 +16,7 @@ RUN apt-get install -y build-essential pkg-config cmake git pigz rename zstd lib
     apt-get clean -y && apt-get autoclean -y && apt-get autoremove -y
 
 RUN touch /.pet2bidsconfig && chown 1001:1001 /.pet2bidsconfig
+RUN echo "DEFAULT_METADATA_JSON=/usr/local/lib/python3.8/dist-packages/pypet2bids/template_json.json" > /.pet2bidsconfig
 
 #this is the most tedious that's why it's one of the first layers installed
 #install fsl, and get rid of src
