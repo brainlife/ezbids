@@ -15,6 +15,8 @@ RUN pip3 install numpy==1.23.0 nibabel==4.0.0 pandas==1.0.1 matplotlib pyyaml==5
 RUN apt-get install -y build-essential pkg-config cmake git pigz rename zstd libopenjp2-7 libgdcm-tools wget libopenblas-dev && \
     apt-get clean -y && apt-get autoclean -y && apt-get autoremove -y
 
+RUN touch /.pet2bidsconfig && chown 1001:1001 /.pet2bidsconfig
+
 #this is the most tedious that's why it's one of the first layers installed
 #install fsl, and get rid of src
 # RUN wget https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py && \
