@@ -16,7 +16,11 @@
                         interoperability with
                         <a href="https://openneuro.org" class="link" target="_blank">OpenNeuro</a>
                         and
-                        <a href="https://brainlife.io" class="link" target="_blank">brainlife.io</a>
+                        <a href="https://brainlife.io" class="link" target="_blank">brainlife.io</a>. Our recent
+                        publication in <i>Scientific Data</i> can be found
+                        <a href="https://www.nature.com/articles/s41597-024-02959-0" class="link" target="_blank"
+                            >here</a
+                        >.
                     </p>
                 </el-row>
                 <el-row>
