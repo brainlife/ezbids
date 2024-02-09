@@ -93,13 +93,8 @@ if [ $bids_compliant == "true" ]; then
     touch $root/dcm2niix_output
     touch $root/dcm2niix_error
     
-    #find products
-    (cd $root && find . -maxdepth 9 -type f \( -name "*.json" \) > list)
-
-    # remove irrelevant json files (e.g., ezBIDS_core.json, etc) if found
-    grep -F -v ezBIDS_core.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
-    # grep -F -v dataset_description.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
-    # grep -F -v participants.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
+    # find products (NIfTI files)
+    (cd $root && find . -maxdepth 9 -type f \( -name "*.nii.gz" \) > list)
 
     echo "running ezBIDS_core (may take several minutes, depending on size of data)"
     python3 "./ezBIDS_core/ezBIDS_core.py" $root
@@ -147,7 +142,7 @@ else
 
     # determine which uploaded files/folders are PET directories or ECAT files
     echo "Finding DICOM directories"
-    ./find_dicomdir.py $root
+    ./find_img_data.py $root
 
     # sort $root/pet2bids_dcm.list, $root/pet2bids_ecat.list, and $root/dcm2niix.list for comm.
     # Then, remove pet directories from dcm2niix list
@@ -205,11 +200,11 @@ else
 
     cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n {} 2>> $root/dcm2niix_output
 
-    #find products
+    # find imaging data (NIfTI files)
     echo "searching for products in $root"
-    (cd $root && find . -maxdepth 9 -type f \( -name "*.json" \) > list)
+    (cd $root && find . -maxdepth 9 -type f \( -name "*.nii.gz" \) > list)
 
-    # find non MRI and PET (i.e. MEG) products
+    # find MEG data files
     MEG_extensions=("*.ds" "*.fif" "*.sqd" "*.con" "*.raw" "*.ave" "*.mrk" "*.kdf" "*.mhd" "*.trg" "*.chn" "*.dat")
     for ext in ${MEG_extensions[*]}
     do
@@ -222,11 +217,6 @@ else
 
         (cd $root && find . -maxdepth 9 -type $find_type \( -name $ext \) >> list)
     done
-
-    # remove irrelevant json files (e.g., ezBIDS_core.json, etc) if found
-    grep -F -v ezBIDS_core.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
-    # grep -F -v dataset_description.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
-    # grep -F -v participants.json $root/list > $root/list_tmp && mv $root/list_tmp $root/list
 
     if [ ! -s $root/list ]; then
         echo "Could not find any MRI (or PET) DICOM files in upload. Uploaded files likely do not conform to DICOM format, aborting"
@@ -248,11 +238,11 @@ else
     echo "running ezBIDS_core (may take several minutes, depending on size of data)"
     python3 "./ezBIDS_core/ezBIDS_core.py" $root
 
-    echo "generating thumbnails for 3/4D acquisitions (may take several minutes, depending on size of dataset)"
-    cat $root/list | parallel --linebuffer -j 6 --progress python3 "./ezBIDS_core/createThumbnailsMovies.py" $root
+    # echo "generating thumbnails for 3/4D acquisitions (may take several minutes, depending on size of dataset)"
+    # cat $root/list | parallel --linebuffer -j 6 --progress python3 "./ezBIDS_core/createThumbnailsMovies.py" $root
 
-    echo "updating ezBIDS_core.json"
-    python3 "./ezBIDS_core/update_ezBIDS_core.py" $root
+    # echo "updating ezBIDS_core.json"
+    # python3 "./ezBIDS_core/update_ezBIDS_core.py" $root
 
 fi
 

@@ -15,7 +15,7 @@ except (ImportError, ModuleNotFoundError):
     sys.exit(1)
 
 
-def find_dicomdir(dir):
+def find_img_data(dir):
     """
     Finds all directories that contain DICOM (or other) raw imaging data.
     If dcm2niix output (NIfTI, JSON files) uploaded instead, ezBIDS has separate process for detecting those files.
@@ -26,7 +26,7 @@ def find_dicomdir(dir):
         root-level directory of uploaded data
     """
 
-    hasDicoms = False
+    hasImgData = False
 
     # MRI
     for x in sorted(os.listdir(dir)):
@@ -38,19 +38,18 @@ def find_dicomdir(dir):
                         read_file = dcmread(f"{full_path}/{f}")
                         if read_file.Modality == "MR":
                             mri_dcm_dirs_list.append(full_path)
-                            hasDicoms = True
+                            hasImgData = True
                             break
                     except:
                         # Doesn't appear to be DICOM data, so skip
-                        # pass
                         break
 
     # Complete search
-    if not hasDicoms:
+    if not hasImgData:
         for x in sorted(os.listdir(dir)):
             full_path = os.path.join(dir, x)
             if os.path.isdir(full_path):
-                find_dicomdir(full_path)
+                find_img_data(full_path)
 
 
 # change to input directory
@@ -61,7 +60,7 @@ pet_ecat_files_list = []
 pet_dcm_dirs_list = []
 mri_dcm_dirs_list = []
 
-find_dicomdir('.')
+find_img_data('.')
 
 
 # PET
@@ -70,11 +69,10 @@ pet_folders = [str(folder) for folder in is_pet.pet_folder(Path(root).resolve())
 # parse output of ispet into list of directories
 pet_folders = [os.path.relpath(x, root) for x in pet_folders if x != '']
 
-# format from expanded paths to relative paths to match output of find_dicomdir.py
+# format from expanded paths to relative paths to match output of find_img_data.py
 pet_folders = [os.path.join('.', x) for x in pet_folders]
 if pet_folders:
     for pet_folder in pet_folders:
-        print(pet_folders)
         # See if we're dealing ECAT-formatted file(s)
         ecats = [x for x in os.listdir(pet_folder) if x.endswith(tuple(['.v', '.v.gz']))]
         if len(ecats):
