@@ -204,6 +204,7 @@ else
     echo "searching for products in $root"
     (cd $root && find . -maxdepth 9 -type f \( -name "*.nii.gz" \) > list)
 
+    # TODO: MOVE THIS INTO find_img_data.py
     # find MEG data files
     MEG_extensions=("*.ds" "*.fif" "*.sqd" "*.con" "*.raw" "*.ave" "*.mrk" "*.kdf" "*.mhd" "*.trg" "*.chn" "*.dat")
     for ext in ${MEG_extensions[*]}

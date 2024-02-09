@@ -868,375 +868,374 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
     for img_file in img_list:
         corresponding_json = [
             x for x in corresponding_files_list if x.endswith('.json') and img_file.split('.nii.gz')[0] in x
-        ]  # should be length of 1, but may be empty (not exist)
+        ]  # should be length of 1, but may be empty (i.e. no metadata json file)
 
         if len(corresponding_json):
-            
-        json_data = open(json_file)
-        json_data = json.load(json_data, strict=False)
+            json_path = corresponding_json[0]
+            json_data = open(corresponding_json[0])
+            json_data = json.load(json_data, strict=False)
+        else:
+            json_path = img_file.split('.nii.gz')[0] + '.json'
+            json_data = {
+                'ConversionSoftware': 'ezBIDS',
+                'ConversionSoftwareVersion': '1.0.0'
+            }
+            if not os.path.exists(json_path):
+                with open(json_path, "w") as fp:
+                    json.dump(json_data, fp, indent=3)
+                corresponding_files_list = corresponding_files_list + [json_path]
+                json_data = open(json_path)
+                json_data = json.load(json_data, strict=False)
 
-        # Make sure each JSON has a corresponding NIfTI file
-        corresponding_nifti = None
+        # Find ImageModality
+        if "Modality" in json_data:
+            modality = json_data["Modality"]
+        else:
+            # assume MR (Is this a proper assumption to make? Probably most likely scenario)
+            modality = "MR"
+
+        # Phase encoding direction info
+        if "PhaseEncodingDirection" in json_data:
+            pe_direction = json_data["PhaseEncodingDirection"]
+        else:
+            pe_direction = None
+
         try:
-            if "Modality" in json_data.keys():
-                if json_data["Modality"] in ["MR", "PT"]:
-                    corresponding_nifti = [x for x in nifti_list if json_file[:-4] in x and x.endswith(".nii.gz")][0]
-                elif json_data["Modality"] == "MEG":
-                    corresponding_nifti = [
-                        x for x in nifti_list if json_file[:-4] in x
-                        and x.endswith(tuple(MEG_extensions))
-                    ][0]
-                else:
-                    pass
-            else:
-                if json_file.endswith("_blood.json"):
-                    corresponding_nifti = [x for x in nifti_list if json_file[:-4] in x and x.endswith("blood.tsv")][0]
-                elif "ConversionSoftware" in json_data.keys():
-                    if isinstance(json_data["ConversionSoftware"], str):
-                        if json_data["ConversionSoftware"] == "pypet2bids":
-                            json_data["Modality"] = "PT"
-                            corresponding_nifti = [
-                                x for x in nifti_list if json_file[:-4] in x and x.endswith(".nii.gz")
-                            ][0]
-                    elif isinstance(json_data["ConversionSoftware"], list):
-                        if "pypet2bids" in json_data["ConversionSoftware"]:
-                            json_data["Modality"] = "PT"
-                            corresponding_nifti = [
-                                x for x in nifti_list if json_file[:-4] in x and x.endswith(".nii.gz")
-                            ][0]
-                else:
-                    pass
+            ornt = nib.aff2axcodes(nib.load(img_file).affine)
+            ornt = "".join(ornt)
         except:
-            pass
+            ornt = None
 
-        if corresponding_nifti:
-            # Phase encoding direction info
-            if "PhaseEncodingDirection" in json_data:
-                pe_direction = json_data["PhaseEncodingDirection"]
-            else:
-                pe_direction = None
+        if pe_direction is not None and ornt is not None and json_data["Modality"] != "MEG":
+            proper_pe_direction = correct_pe(pe_direction, ornt)
+            ped = determine_direction(proper_pe_direction, ornt)
+        else:
+            ped = ""
 
+        # JSON (and bval/bvec) file(s) associated with specific json file
+        corresponding_file_paths = [
+            x for x in corresponding_files_list if img_file.split('.nii.gz')[0] in x and not x.endswith('.nii.gz')
+        ]
+
+        # Find nifti file size
+        filesize = os.stat(img_file).st_size
+
+        # Find StudyID from json
+        if "StudyID" in json_data:
+            study_id = json_data["StudyID"]
+        else:
+            study_id = img_file.split('/')[1]  # uppermost folder in file path
+
+        # Find subject_id from json, since some files contain neither PatientID nor PatientName
+        if "PatientID" in json_data:
+            patient_id = json_data["PatientID"]
+        else:
+            patient_id = "n/a"
+
+        if "PatientName" in json_data:
+            patient_name = json_data["PatientName"]
+        else:
+            patient_name = "n/a"
+
+        # Find PatientBirthDate
+        if "PatientBirthDate" in json_data:
+            patient_birth_date = json_data["PatientBirthDate"].replace("-", "")
+        else:
+            patient_birth_date = "00000000"
+
+        # Assume patient_species is homo sapiens
+        patient_species = "homo sapiens"
+
+        # Find PatientSex
+        patient_sex = "n/a"
+        if "PatientSex" in json_data:
+            patient_sex = json_data["PatientSex"]
+
+        # Find PatientAge
+        if "PatientAge" in json_data:
+            patient_age = json_data["PatientAge"]
+        else:
+            patient_age = "n/a"
+
+        # Patient handedness
+        patient_handedness = "n/a"
+
+        """
+        Metadata may contain PatientBirthDate and/or PatientAge. Check either
+        to see if one truly provides accurate age information.
+        """
+        age = "n/a"
+        if "PatientAge" in json_data:
+            patient_age = json_data["PatientAge"]
+            if (isinstance(patient_age, int) or isinstance(patient_age, float)):
+                age = patient_age
+
+        if age == "n/a" and "PatientBirthDate" in json_data:
+            patient_birth_date = json_data["PatientBirthDate"]  # ISO 8601 "YYYY-MM-DD"
             try:
-                ornt = nib.aff2axcodes(nib.load(corresponding_nifti).affine)
-                ornt = "".join(ornt)
+                age = int(today_date.split("-")[0]) - int(patient_birth_date.split("-")[0])
+                - ((int(today_date.split("-")[1]), int(today_date.split("-")[2]))
+                    < (int(patient_birth_date.split("-")[2]), int(patient_birth_date.split("-")[2])))
             except:
-                ornt = None
-
-            if pe_direction is not None and ornt is not None and json_data["Modality"] != "MEG":
-                proper_pe_direction = correct_pe(pe_direction, ornt)
-                ped = determine_direction(proper_pe_direction, ornt)
-            else:
-                ped = ""
-
-            # NIfTI (and bval/bvec) file(s) associated with specific json file
-            nifti_paths_for_json = [x for x in nifti_list if json_file[:-4] in x and ".json" not in x]
-
-            # Find nifti file size
-            filesize = os.stat(nifti_paths_for_json[0]).st_size
-
-            # Find StudyID from json
-            if "StudyID" in json_data:
-                study_id = json_data["StudyID"]
-            else:
-                study_id = ""
-
-            # Find subject_id from json, since some files contain neither PatientID nor PatientName
-            if "PatientID" in json_data:
-                patient_id = json_data["PatientID"]
-            else:
-                patient_id = "n/a"
-
-            if "PatientName" in json_data:
-                patient_name = json_data["PatientName"]
-            else:
-                patient_name = "n/a"
-
-            # Find PatientBirthDate
-            if "PatientBirthDate" in json_data:
-                patient_birth_date = json_data["PatientBirthDate"].replace("-", "")
-            else:
-                patient_birth_date = "00000000"
-
-            # Assume patient_species is homo sapiens
-            patient_species = "homo sapiens"
-
-            # Find PatientSex
-            patient_sex = "n/a"
-            if "PatientSex" in json_data:
-                if json_data["PatientSex"] in ["M", "F"]:
-                    patient_sex = json_data["PatientSex"]
-
-            # Find PatientAge
-            if "PatientAge" in json_data:
-                patient_age = json_data["PatientAge"]
-            else:
-                patient_age = "n/a"
-
-            # Patient handedness
-            patient_handedness = "n/a"
-
-            """
-            Metadata may contain PatientBirthDate and/or PatientAge. Check either
-            to see if one truly provides accurate age information.
-            """
-            age = "n/a"
-            if "PatientAge" in json_data:
-                patient_age = json_data["PatientAge"]
-                if (isinstance(patient_age, int) or isinstance(patient_age, float)):
-                    age = patient_age
-
-            if age == "n/a" and "PatientBirthDate" in json_data:
-                patient_birth_date = json_data["PatientBirthDate"]  # ISO 8601 "YYYY-MM-DD"
-                try:
-                    age = int(today_date.split("-")[0]) - int(patient_birth_date.split("-")[0])
-                    - ((int(today_date.split("-")[1]), int(today_date.split("-")[2]))
-                        < (int(patient_birth_date.split("-")[2]), int(patient_birth_date.split("-")[2])))
-                except:
-                    pass
-
-            # Find AcquisitionDateTime
-            if "AcquisitionDateTime" in json_data:
-                acquisition_date_time = json_data["AcquisitionDateTime"]
-            else:
-                acquisition_date_time = "0000-00-00T00:00:00.000000"
-
-            # Find AcquisitionDate
-            if "AcquisitionDate" in json_data:
-                acquisition_date = json_data["AcquisitionDate"]
-            else:
-                acquisition_date = "0000-00-00"
-
-            # Find AcquisitionTime
-            if "AcquisitionTime" in json_data:
-                acquisition_time = json_data["AcquisitionTime"]
-            else:
-                acquisition_time = acquisition_time = "00:00:00.000000"
-
-            # Find TimeZero
-            if "TimeZero" in json_data and json_data.get("ScanStart", None) == 0:
-                acquisition_time = json_data["TimeZero"]
-
-            # Find Manufacturer metadata or make placehodler
-            if "Manufacturer" not in json_data:
-                manufacturer = "n/a"
-                json_data["Manufacturer"] = manufacturer
-            else:
-                manufacturer = json_data["Manufacturer"]
-
-            # Find RepetitionTime
-            if "RepetitionTime" in json_data:
-                repetition_time = json_data["RepetitionTime"]
-            else:
-                repetition_time = 0
-
-            # Find EchoNumber
-            if "EchoNumber" in json_data:
-                echo_number = json_data["EchoNumber"]
-            else:
-                echo_number = None
-
-            # Find EchoTime
-            if "EchoTime" in json_data:
-                echo_time = json_data["EchoTime"] * 1000
-            else:
-                echo_time = 0
-
-            # Get the nibabel nifti image info
-            if json_file.endswith("_blood.json"):
-                image = "n/a"
-                valid_image = True
-                volume_count = 1
-                ndim = 2
-            else:
-                if json_data["Modality"] == "MEG":
-                    image = "n/a"
-                    valid_image = True
-                    volume_count = 1
-                    ndim = 4
-                else:
-                    image = nib.load(json_file[:-4] + "nii.gz")
-                    ndim = image.ndim
-
-                    # if image.get_data_dtype() == [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]:
-                    if image.get_data_dtype() in ["<i2", "<u2", "<f4", "int16", "uint16"]:
-                        valid_image = True
-                    else:
-                        valid_image = False
-
-                    # Find how many volumes are in corresponding nifti file
-                    try:
-                        volume_count = image.shape[3]
-                    except:
-                        volume_count = 1
-
-            # Find SeriesNumber
-            if "SeriesNumber" in json_data:
-                series_number = json_data["SeriesNumber"]
-            else:
-                series_number = 0
-
-            # Modified SeriesNumber, which zero pads integers < 10. Helpful for sorting purposes
-            if series_number < 10:
-                mod_series_number = '0' + str(series_number)
-            else:
-                mod_series_number = str(series_number)
-
-            # Find SeriesDescription
-            if "SeriesDescription" in json_data:
-                series_description = json_data["SeriesDescription"]
-                descriptor = "SeriesDescription"
-            else:
-                series_description = "n/a"
-                descriptor = "ProtocolName"
-
-            # Find ProtocolName
-            if "ProtocolName" in json_data:
-                protocol_name = json_data["ProtocolName"]
-            else:
-                protocol_name = "n/a"
-
-            # If SeriesDescription and ProtocolName are both n/a, give SD something
-            if series_description == "n/a" and protocol_name == "n/a":
-                series_description = json_file
-                descriptor = "SeriesDescription"
-
-            # Find ImageType
-            if "ImageType" in json_data:
-                image_type = json_data["ImageType"]
-            else:
-                image_type = []
-
-            # Find ImageModality
-            if "Modality" in json_data:
-                modality = json_data["Modality"]
-            else:
-                # assume MR
-                modality = "MR"
-
-            # Exclude data or not
-            if exclude_data is True:
-                data_type = "exclude"
-            else:
-                data_type = ""
-
-            # Relative paths of json and nifti files (per SeriesNumber)
-            paths = natsorted(nifti_paths_for_json + [json_file])
-
-            """
-            Select subject (and session, if applicable) IDs to display.
-            """
-            if patient_id == "n/a" and patient_name == "n/a" and patient_birth_date == "00000000":
-                # Completely anonymized data, assume folder is the subject ID
-                folder = [x for x in json_file.split("/") if ".json" not in x][-1]
-            else:
-                folder = "n/a"
-
-            sub_info = {
-                "PatientID": patient_id,
-                "PatientName": patient_name,
-                "PatientBirthDate": patient_birth_date,
-                "Folder": folder,
-                "Subject": sub_info_list_id,
-            }
-            sub_info_list.append(sub_info)
-
-            if len(sub_info_list) == 1:
                 pass
+
+        # Find AcquisitionDateTime
+        if "AcquisitionDateTime" in json_data:
+            acquisition_date_time = json_data["AcquisitionDateTime"]
+        else:
+            acquisition_date_time = "0000-00-00T00:00:00.000000"
+
+        # Find AcquisitionDate
+        if "AcquisitionDate" in json_data:
+            acquisition_date = json_data["AcquisitionDate"]
+        else:
+            acquisition_date = "0000-00-00"
+
+        # Find AcquisitionTime
+        if "AcquisitionTime" in json_data:
+            acquisition_time = json_data["AcquisitionTime"]
+        else:
+            acquisition_time = acquisition_time = "00:00:00.000000"
+
+        # Find TimeZero
+        if "TimeZero" in json_data and json_data.get("ScanStart", None) == 0:
+            acquisition_time = json_data["TimeZero"]
+
+        # Find Manufacturer metadata or make placehodler
+        if "Manufacturer" not in json_data:
+            manufacturer = "n/a"
+            json_data["Manufacturer"] = manufacturer
+        else:
+            manufacturer = json_data["Manufacturer"]
+
+        # Find RepetitionTime
+        if "RepetitionTime" in json_data:
+            repetition_time = json_data["RepetitionTime"]
+        else:
+            repetition_time = 0
+
+        # Find EchoNumber
+        if "EchoNumber" in json_data:
+            echo_number = json_data["EchoNumber"]
+        else:
+            echo_number = None
+
+        # Find EchoTime
+        if "EchoTime" in json_data:
+            echo_time = json_data["EchoTime"] * 1000
+        else:
+            echo_time = 0
+
+        # Get the nibabel nifti image info
+        if img_file.endswith('.nii.gz'):
+            image = nib.load(img_file)
+            ndim = image.ndim
+
+            # Is image valid (i.e. does image have an acceptable dtype)
+            # TODO - Can this be moved to function above?
+            if image.get_data_dtype() in ["<i2", "<u2", "<f4", "int16", "uint16"]:
+                valid_image = True
             else:
-                if sub_info != sub_info_list[len(sub_info_list) - 2]:
-                    sub_info_list_id = int(sub_info_list_id) + 1
-                    if sub_info_list_id > 9:
-                        sub_info_list_id = str(sub_info_list_id)
-                    else:
-                        sub_info_list_id = "0" + str(sub_info_list_id)
-                    sub_info_list[-1]["Subject"] = sub_info_list_id
+                valid_image = False
 
-            subject = sub_info["Subject"]
+            # Find how many volumes are in corresponding nifti file
+            try:
+                volume_count = image.shape[3]
+            except:
+                volume_count = 1
+        elif img_file.endswith(tuple('.ds', '.fif')):
+            image = "n/a"
+            valid_image = True
+            volume_count = 1
+            ndim = 4
+        # TODO - This work won't as is, need to fix
+        # elif any('_blood.json' in x for x in corresponding_files_list)
+        # elif json_file.endswith("_blood.json"):
+        elif img_file.endswith("_blood.json"):
+            image = "n/a"
+            valid_image = True
+            volume_count = 1
+            ndim = 2
+        else:
+            # TODO - add as we support new imaging modalities
+            image = 'n/a'
+            valid_image = False
+            volume_count = 1
+            ndim = 2
 
-            # Check if subject (and session) ID(s) explicitly specified
-            sub_search_term = "sub-"
-            ses_search_term = "ses-"
+        # Find SeriesNumber
+        if "SeriesNumber" in json_data:
+            series_number = json_data["SeriesNumber"]
+        else:
+            series_number = 0
 
-            for value in [json_file, patient_id, patient_name]:
-                if sub_search_term in value.lower():
-                    subject = re.split('[^a-zA-Z0-9]', value.lower().split(f"{sub_search_term}")[-1])[0]
-                    break
+        # Modified SeriesNumber, which zero pads integers < 10. Helpful for sorting purposes
+        if series_number < 10:
+            mod_series_number = '0' + str(series_number)
+        else:
+            mod_series_number = str(series_number)
 
-            session = ""
-            for value in [json_file, patient_id, patient_name]:
-                if ses_search_term in value.lower():
-                    session = re.split('[^a-zA-Z0-9]', value.lower().split(f"{ses_search_term}")[-1])[0]
-                    break
+        # Find SeriesDescription
+        if "SeriesDescription" in json_data:
+            series_description = json_data["SeriesDescription"]
+            descriptor = "SeriesDescription"
+        else:
+            series_description = "n/a"
+            descriptor = "ProtocolName"
 
-            # Remove non-alphanumeric characters from subject (and session) ID(s)
-            subject = re.sub("[^A-Za-z0-9]+", "", subject)
-            session = re.sub("[^A-Za-z0-9]+", "", session)
+        # Find ProtocolName
+        if "ProtocolName" in json_data:
+            protocol_name = json_data["ProtocolName"]
+        else:
+            protocol_name = "n/a"
 
-            # Find NIfTI path
-            if json_file.endswith("blood.json"):
-                nifti_path = json_file.split(".json")[0] + ".tsv"
-            else:
-                if json_data["Modality"] == "MEG":
-                    nifti_path = [x for x in nifti_paths_for_json if x.endswith(tuple(MEG_extensions))][0]
+        # If SeriesDescription and ProtocolName are both n/a, give SD something
+        if series_description == "n/a" and protocol_name == "n/a":
+            series_description = img_file
+            descriptor = "SeriesDescription"
+
+        # Find ImageType
+        if "ImageType" in json_data:
+            image_type = json_data["ImageType"]
+        else:
+            image_type = []
+
+        # Exclude data or not
+        if exclude_data is True:
+            data_type = "exclude"
+        else:
+            data_type = ""
+
+        # Relative paths of json and nifti files (per SeriesNumber)
+        paths = natsorted(corresponding_file_paths + [img_file])
+
+        """
+        Select subject (and session, if applicable) IDs to display.
+        """
+        if patient_id == "n/a" and patient_name == "n/a" and patient_birth_date == "00000000":
+            # Completely anonymized data, assume folder is the subject ID
+            folder = [x for x in img_file.split("/") if not x.endswith('.nii.gz')][-1]
+        else:
+            folder = "n/a"
+
+        sub_info = {
+            "PatientID": patient_id,
+            "PatientName": patient_name,
+            "PatientBirthDate": patient_birth_date,
+            "Folder": folder,
+            "Subject": sub_info_list_id,
+        }
+        sub_info_list.append(sub_info)
+
+        if len(sub_info_list) == 1:
+            pass
+        else:
+            if sub_info != sub_info_list[len(sub_info_list) - 2]:
+                sub_info_list_id = int(sub_info_list_id) + 1
+                if sub_info_list_id > 9:
+                    sub_info_list_id = str(sub_info_list_id)
                 else:
-                    nifti_path = [x for x in nifti_paths_for_json if x.endswith(".nii.gz")][0]
+                    sub_info_list_id = "0" + str(sub_info_list_id)
+                sub_info_list[-1]["Subject"] = sub_info_list_id
 
-            """
-            Organize all from individual SeriesNumber in dictionary
-            """
-            acquisition_info_directory = {
-                "StudyID": study_id,
-                "PatientID": patient_id,
-                "PatientName": patient_name,
-                "PatientBirthDate": patient_birth_date,
-                "PatientSpecies": patient_species,
-                "PatientSex": patient_sex,
-                "PatientAge": age,
-                "PatientHandedness": patient_handedness,
-                "subject": subject,
-                "session": session,
-                "SeriesNumber": series_number,
-                "ModifiedSeriesNumber": mod_series_number,
-                "AcquisitionDateTime": acquisition_date_time,
-                "AcquisitionDate": acquisition_date,
-                "AcquisitionTime": acquisition_time,
-                "SeriesDescription": series_description,
-                "ProtocolName": protocol_name,
-                "descriptor": descriptor,
-                "Modality": modality,
-                "ImageType": image_type,
-                "RepetitionTime": repetition_time,
-                "EchoNumber": echo_number,
-                "EchoTime": echo_time,
-                "datatype": "",
-                "suffix": "",
-                "subject_idx": 0,
-                "session_idx": 0,
-                "series_idx": 0,
-                "direction": ped,
-                "exclude": False,
-                "filesize": filesize,
-                "NumVolumes": volume_count,
-                "orientation": ornt,
-                "error": None,
-                "IntendedFor": None,
-                "B0FieldIdentifier": None,
-                "B0FieldSource": None,
-                "section_id": 1,
-                "message": None,
-                "type": data_type,
-                "nifti_path": nifti_path,
-                "nibabel_image": image,
-                "ndim": ndim,
-                "valid_image": valid_image,
-                "json_path": json_file,
-                "file_directory": "/".join([x for x in json_file.split("/") if ".json" not in x]),
-                "paths": paths,
-                "headers": "",
-                "finalized_match": False,
-                "sidecar": json_data
-            }
-            dataset_list.append(acquisition_info_directory)
+        subject = sub_info["Subject"]
+
+        # Check if subject (and session) ID(s) explicitly specified
+        sub_search_term = "sub-"
+        ses_search_term = "ses-"
+
+        for value in [img_file, patient_id, patient_name]:
+            if sub_search_term in value.lower():
+                subject = re.split('[^a-zA-Z0-9]', value.lower().split(f"{sub_search_term}")[-1])[0]
+                break
+
+        session = ""
+        for value in [img_file, patient_id, patient_name]:
+            if ses_search_term in value.lower():
+                session = re.split('[^a-zA-Z0-9]', value.lower().split(f"{ses_search_term}")[-1])[0]
+                break
+
+        # Remove non-alphanumeric characters from subject (and session) ID(s)
+        subject = re.sub("[^A-Za-z0-9]+", "", subject)
+        session = re.sub("[^A-Za-z0-9]+", "", session)
+
+        # # Find NIfTI path
+        # if json_file.endswith("blood.json"):
+        #     nifti_path = json_file.split(".json")[0] + ".tsv"
+        # else:
+        #     if json_data["Modality"] == "MEG":
+        #         nifti_path = [x for x in corresponding_file_paths if x.endswith(tuple(MEG_extensions))][0]
+        #     else:
+        #         nifti_path = [x for x in corresponding_file_paths if x.endswith(".nii.gz")][0]
+
+        # TODO - do we really need to do this now, since we get path above?
+        # # Find JSON path
+        # if img_file.endswith("blood.json"):
+        #     json_file = img_file.split(".json")[0] + ".tsv"
+        # else:
+        #     if json_data["Modality"] == "MEG":
+        #         json_file = [x for x in corresponding_file_paths if x.endswith(tuple(MEG_extensions))][0]
+        #     else:
+        #         json_file = [x for x in corresponding_file_paths if x.endswith(".nii.gz")][0]
+
+        """
+        Organize all from individual SeriesNumber in dictionary
+        """
+        sequence_info_directory = {
+            "StudyID": study_id,
+            "PatientID": patient_id,
+            "PatientName": patient_name,
+            "PatientBirthDate": patient_birth_date,
+            "PatientSpecies": patient_species,
+            "PatientSex": patient_sex,
+            "PatientAge": age,
+            "PatientHandedness": patient_handedness,
+            "subject": subject,
+            "session": session,
+            "SeriesNumber": series_number,
+            "ModifiedSeriesNumber": mod_series_number,
+            "AcquisitionDateTime": acquisition_date_time,
+            "AcquisitionDate": acquisition_date,
+            "AcquisitionTime": acquisition_time,
+            "SeriesDescription": series_description,
+            "ProtocolName": protocol_name,
+            "descriptor": descriptor,
+            "Modality": modality,
+            "ImageType": image_type,
+            "RepetitionTime": repetition_time,
+            "EchoNumber": echo_number,
+            "EchoTime": echo_time,
+            "datatype": "",
+            "suffix": "",
+            "subject_idx": 0,
+            "session_idx": 0,
+            "series_idx": 0,
+            "direction": ped,
+            "exclude": False,
+            "filesize": filesize,
+            "NumVolumes": volume_count,
+            "orientation": ornt,
+            "error": None,
+            "IntendedFor": None,
+            "B0FieldIdentifier": None,
+            "B0FieldSource": None,
+            "section_id": 1,
+            "message": None,
+            "type": data_type,
+            "nifti_path": img_file,
+            "nibabel_image": image,
+            "ndim": ndim,
+            "valid_image": valid_image,
+            "json_path": json_path,
+            "file_directory": "/".join([x for x in img_file.split("/") if not x.endswith('.nii.gz')]),
+            'uploaded_config_file': config,
+            "paths": paths,
+            "headers": "",
+            "finalized_match": False,
+            "sidecar": json_data
+        }
+        print(sequence_info_directory)
+        dataset_list.append(sequence_info_directory)
 
     # Sort dataset_list of dictionaries
     dataset_list = sorted(dataset_list, key=itemgetter("AcquisitionDate",
@@ -1591,7 +1590,7 @@ def template_configuration(dataset_list_unique_series, subjects_information, con
         information.
 
     config_file : string
-        Path to the ezBIDS configuration file, if config == True. Otherwise, set as empty string.
+        Path to the ezBIDS configuration file, if config is True. Otherwise, set as empty string.
 
     Returns
     -------
@@ -2599,37 +2598,6 @@ def entity_labels_identification(dataset_list_unique_series, lookup_dic):
                     series_entities["task"] = ""
 
             # If BIDS naming convention isn't detected, do a more thorough check for certain entities labels
-
-            # # Specific code for Nigerian dataset only (revert these changes once dataset is converted)
-            # if "ABDN" in unique_dic["json_path"]:
-            #     sd = re.sub("[^A-Za-z0-9]+", "", sd).lower()
-            #     if sd[-1] == "c":
-            #         series_entities["ceagent"] = "gadolinium"
-            #     if any(x in sd for x in ["axial", "ax", "axi"]):
-            #         series_entities["acquisition"] = "axial"
-            #     if any(x in sd for x in ["cor", "coronal"]):
-            #         series_entities["acquisition"] = "coronal"
-            #     if any(x in sd for x in ["sag", "sagittal"]):
-            #         series_entities["acquisition"] = "sagittal"
-
-            #     if ("t1" in sd or "t1w" in sd) and "gre" not in sd:
-            #         unique_dic["datatype"] = "anat"
-            #         unique_dic["suffix"] = "T1w"
-            #         unique_dic["type"] = "anat/T1w"
-            #     if ("t2" in sd or "t2w" in sd) and "gre" not in sd:
-            #         if "flair" in sd:
-            #             unique_dic["datatype"] = "anat"
-            #             unique_dic["suffix"] = "FLAIR"
-            #             unique_dic["type"] = "anat/FLAIR"
-            #         else:
-            #             unique_dic["datatype"] = "anat"
-            #             unique_dic["suffix"] = "T2w"
-            #             unique_dic["type"] = "anat/T2w"
-            #     if "oblcor" in sd:
-            #         unique_dic["type"] = "exclude"
-            #     if "array" in sd:
-            #         unique_dic["type"] = "exclude"
-
             # task
             func_rest_keys = ["rest", "rsfmri", "fcmri"]
             if any(x in re.sub("[^A-Za-z0-9]+", "", sd).lower() for x in func_rest_keys) and not series_entities["task"]:
@@ -2650,7 +2618,7 @@ def entity_labels_identification(dataset_list_unique_series, lookup_dic):
                     or series_entities["subject"] == "emptyroom"):  # for MEG data
                 series_entities["task"] = "noise"
 
-            # dir (required for fmap/epi and highly recommended for dwi/dwi)
+            # dir (short for direction; required for fmap/epi and highly recommended for dwi/dwi)
             if any(x in unique_dic["type"] for x in ["fmap/epi", "dwi/dwi"]):
                 series_entities["direction"] = unique_dic["direction"]
 
