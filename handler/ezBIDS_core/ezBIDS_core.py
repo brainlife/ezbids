@@ -381,6 +381,8 @@ def generate_MEG_json_sidecars(uploaded_img_list):
             uploaded_img_list.append(json_replacement)
             list_files.append(list_replacement)
 
+        uploaded_img_list = natsorted([x for x in list_files + non_MEG_data_files])
+
         # Save to list file
         with open("list", "w") as f:
             for line in list_files + non_MEG_data_files:
@@ -419,7 +421,6 @@ def modify_uploaded_dataset_list(uploaded_img_list):
     """
     uploaded_files_list = []
 
-    # Remove Philips proprietary files (PAR/REC) in uploaded_json_list if they exist
     uploaded_img_list = natsorted([img for img in uploaded_img_list])
 
     config = False
@@ -432,34 +433,38 @@ def modify_uploaded_dataset_list(uploaded_img_list):
         config = True
         config_file = config_file_list[-1]
 
-    # Parse img (NIfTI) files
+    # Parse img files
     for img_file in uploaded_img_list:
-        try:
-            nib.load(img_file)
+        if img_file.endswith('.nii.gz'):
+            ext = '.nii.gz'
+        else:
+            ext = Path(img_file).suffix
 
-            img_dir = os.path.dirname(img_file)
-            grouped_files = [
-                img_dir + '/' + x for x in os.listdir(img_dir)
-                if os.path.basename(img_file).split('.nii.gz')[0] in x
-            ]
-            # # deal with PET issue where blood data could be accidentally grouped with imaging data
-            # DEAL WITH THIS DIFFERENTLY, BLOOD DATA ONLY COMES IN JSON/TSV PAIRS
-            # if "blood" not in json_file and any("blood" in x for x in grouped_files):
-            #     grouped_files = [x for x in grouped_files if "blood" not in x]
+        if not img_file.endswith(tuple(MEG_extensions)) and not img_file.endswith('blood.json'):
+            try:
+                nib.load(img_file)
+            except:
+                exclude_data = True
+                print(f'{img_file} is not a properly formatted imaging file. Will not be converted by ezBIDS.')
+                break
 
-            # Check that both .nii.gz and .nii aren't in the same group. Redundant, so remove .nii file(s) if found
-            if len([x for x in grouped_files if '.nii' in x]) > 1:
-                grouped_files = [x for x in grouped_files if not x.endswith('.nii')]
+        img_dir = os.path.dirname(img_file)
+        grouped_files = [
+            img_dir + '/' + x for x in os.listdir(img_dir)
+            if os.path.basename(img_file).split(ext)[0] in x
+        ]
 
-            # If json comes with imaging data (NIfTI, bval/bvec) add it to list for processing
-            if len(grouped_files) > 1:
-                uploaded_files_list.append(grouped_files)
-        except:
-            exclude_data = True
-            print(
-                f'{img_file} is not a properly-formatted NIfTI file. '
-                'Will not be converted by ezBIDS.'
-            )
+        # deal with PET issue where ECAT-formatted or blood data could be accidentally grouped with imaging data
+        # grouped_files = [x for x in grouped_files if "blood.json" not in x and '.v' not in x and '.v.gz' not in x]
+
+        if "blood" not in img_file and any("blood" in x for x in grouped_files):
+            grouped_files = [x for x in grouped_files if "blood" not in x]
+        elif any(x.endswith('.v') or x.endswith('.v.gz') for x in grouped_files):
+            grouped_files = [x for x in grouped_files if not x.endswith(tuple(['.v', '.v.gz']))]
+
+        # If imaging file comes with additional data (JSON, bval/bvec) add them to list for processing
+        if len(grouped_files) > 1:
+            uploaded_files_list.append(grouped_files)
 
     # Flatten uploaded_files_list
     uploaded_files_list = natsorted([file for sublist in uploaded_files_list for file in sublist])
@@ -849,7 +854,13 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
     dataset_list = []
 
     # Get separate nifti and json (i.e. sidecar) lists
-    img_list = natsorted([x for x in uploaded_files_list if x.endswith('nii.gz')])
+    img_list = natsorted(
+        [
+            x for x in uploaded_files_list if x.endswith('nii.gz')
+            or x.endswith('blood.json')
+            or x.endswith(tuple(MEG_extensions))
+        ]
+    )
 
     corresponding_files_list = natsorted([
         x for x in uploaded_files_list if x.endswith('.json')
@@ -866,16 +877,25 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
     sub_info_list = []
 
     for img_file in img_list:
-        corresponding_json = [
-            x for x in corresponding_files_list if x.endswith('.json') and img_file.split('.nii.gz')[0] in x
-        ]  # should be length of 1, but may be empty (i.e. no metadata json file)
+        # Find file extension
+        if img_file.endswith('.nii.gz'):
+            ext = 'nii.gz'
+        else:
+            ext = Path(img_file).suffix
+
+        if img_file.endswith('.blood.json'):
+            corresponding_json = img_file
+        else:
+            corresponding_json = [
+                x for x in corresponding_files_list if x.endswith('.json') and img_file.split(ext)[0] in x
+            ]  # should be length of 1, but may be empty (i.e. no metadata json file)
 
         if len(corresponding_json):
             json_path = corresponding_json[0]
             json_data = open(corresponding_json[0])
             json_data = json.load(json_data, strict=False)
         else:
-            json_path = img_file.split('.nii.gz')[0] + '.json'
+            json_path = img_file.split(ext)[0] + '.json'
             json_data = {
                 'ConversionSoftware': 'ezBIDS',
                 'ConversionSoftwareVersion': '1.0.0'
@@ -912,12 +932,12 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
         else:
             ped = ""
 
-        # JSON (and bval/bvec) file(s) associated with specific json file
+        # Files (JSON, bval/bvec, tsv) associated with imaging file
         corresponding_file_paths = [
-            x for x in corresponding_files_list if img_file.split('.nii.gz')[0] in x and not x.endswith('.nii.gz')
+            x for x in corresponding_files_list if img_file.split(ext)[0] in x and not x.endswith(ext)
         ]
 
-        # Find nifti file size
+        # Find image file size
         filesize = os.stat(img_file).st_size
 
         # Find StudyID from json
@@ -1031,35 +1051,21 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
             image = nib.load(img_file)
             ndim = image.ndim
 
-            # Is image valid (i.e. does image have an acceptable dtype)
-            # TODO - Can this be moved to function above?
-            if image.get_data_dtype() in ["<i2", "<u2", "<f4", "int16", "uint16"]:
-                valid_image = True
-            else:
-                valid_image = False
-
-            # Find how many volumes are in corresponding nifti file
+            # Find how many volumes are in nifti file
             try:
                 volume_count = image.shape[3]
             except:
                 volume_count = 1
-        elif img_file.endswith(tuple('.ds', '.fif')):
+        elif img_file.endswith(tuple(MEG_extensions)):
             image = "n/a"
-            valid_image = True
             volume_count = 1
             ndim = 4
-        # TODO - This work won't as is, need to fix
-        # elif any('_blood.json' in x for x in corresponding_files_list)
-        # elif json_file.endswith("_blood.json"):
-        elif img_file.endswith("_blood.json"):
+        elif img_file.endswith("blood.json"):
             image = "n/a"
-            valid_image = True
             volume_count = 1
             ndim = 2
-        else:
-            # TODO - add as we support new imaging modalities
+        else:  # add as we support new imaging modalities
             image = 'n/a'
-            valid_image = False
             volume_count = 1
             ndim = 2
 
@@ -1106,7 +1112,7 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
         else:
             data_type = ""
 
-        # Relative paths of json and nifti files (per SeriesNumber)
+        # Relative paths of NIfTI and JSON files (per SeriesNumber)
         paths = natsorted(corresponding_file_paths + [img_file])
 
         """
@@ -1114,7 +1120,7 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
         """
         if patient_id == "n/a" and patient_name == "n/a" and patient_birth_date == "00000000":
             # Completely anonymized data, assume folder is the subject ID
-            folder = [x for x in img_file.split("/") if not x.endswith('.nii.gz')][-1]
+            folder = [x for x in img_file.split("/") if not x.endswith(ext)][-1]
         else:
             folder = "n/a"
 
@@ -1158,25 +1164,6 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
         # Remove non-alphanumeric characters from subject (and session) ID(s)
         subject = re.sub("[^A-Za-z0-9]+", "", subject)
         session = re.sub("[^A-Za-z0-9]+", "", session)
-
-        # # Find NIfTI path
-        # if json_file.endswith("blood.json"):
-        #     nifti_path = json_file.split(".json")[0] + ".tsv"
-        # else:
-        #     if json_data["Modality"] == "MEG":
-        #         nifti_path = [x for x in corresponding_file_paths if x.endswith(tuple(MEG_extensions))][0]
-        #     else:
-        #         nifti_path = [x for x in corresponding_file_paths if x.endswith(".nii.gz")][0]
-
-        # TODO - do we really need to do this now, since we get path above?
-        # # Find JSON path
-        # if img_file.endswith("blood.json"):
-        #     json_file = img_file.split(".json")[0] + ".tsv"
-        # else:
-        #     if json_data["Modality"] == "MEG":
-        #         json_file = [x for x in corresponding_file_paths if x.endswith(tuple(MEG_extensions))][0]
-        #     else:
-        #         json_file = [x for x in corresponding_file_paths if x.endswith(".nii.gz")][0]
 
         """
         Organize all from individual SeriesNumber in dictionary
@@ -1225,18 +1212,15 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
             "nifti_path": img_file,
             "nibabel_image": image,
             "ndim": ndim,
-            "valid_image": valid_image,
             "json_path": json_path,
-            "file_directory": "/".join([x for x in img_file.split("/") if not x.endswith('.nii.gz')]),
+            "file_directory": "/".join([x for x in img_file.split("/") if not x.endswith(ext)]),
             'uploaded_config_file': config,
             "paths": paths,
             "headers": "",
             "finalized_match": False,
             "sidecar": json_data
         }
-        print(sequence_info_directory)
         dataset_list.append(sequence_info_directory)
-
     # Sort dataset_list of dictionaries
     dataset_list = sorted(dataset_list, key=itemgetter("AcquisitionDate",
                                                        "subject",
@@ -2216,20 +2200,9 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
         # Not ideal using json_path because it's only the first sequence in the series_idx group...
         json_path = unique_dic["json_path"]
 
-        if not unique_dic["valid_image"]:
-            """
-            Likely an acquisition that doesn't actually contain imaging data, so don't convert.
-            Example: "facMapReg" sequences in NYU_Shanghai dataset
-            """
-            unique_dic["type"] = "exclude"
-            unique_dic["error"] = "Acquisition does not appear to be an acquisition with imaging data"
-            unique_dic["message"] = "Acquisition is not believed to have " \
-                "imaging information and therefore will not be converted " \
-                "to BIDS. Please modify if incorrect."
-        elif unique_dic["type"] == "exclude" and unique_dic["finalized_match"] is False:
-            unique_dic["error"] = "Uploaded NIfTI/JSON file wasn't converted from DICOM using " \
-                "dcm2niix or pypet2bids, which is required by ezBIDS. Will not convert file, " \
-                "since necessary metadata information will likely not be present."
+        if unique_dic["type"] == "exclude" and unique_dic["finalized_match"] is False:
+            unique_dic["error"] = "Uploaded imaging data file contains an improper format " \
+                "which cannot be read by ezBIDS. Cannot convert file."
             unique_dic["message"] = unique_dic["error"]
         elif unique_dic["finalized_match"] is False:
             # Try checking the json paths themselves for explicit information regarding datatype and suffix
@@ -2850,9 +2823,7 @@ def modify_objects_info(dataset_list):
                 protocol["headers"] = str(image.header).splitlines()[1:]
 
                 object_img_array = image.dataobj
-                # PET images are scaled, type will be float <f4
-                if (object_img_array.dtype not in ["<i2", "<u2", "int16", "uint16"]
-                        and protocol.get("sidecar", {}).get("Modality", "") != "PT"):
+                if object_img_array.dtype not in ["<i2", "<u2", "<f4", "int16", "uint16"]:
                     # Weird edge case where data array is RGB instead of integer
                     protocol["exclude"] = True
                     protocol["error"] = "The data array for this " \
@@ -3000,19 +2971,17 @@ print("")
 # Load dataframe containing all uploaded files
 uploaded_img_list = natsorted(pd.read_csv("list", header=None, lineterminator='\n').to_numpy().flatten().tolist())
 
-# Update the JSON list with the MEG json files we generate, if MEG data was provided
+# Generate MEG json files, if MEG data was provided
 uploaded_img_list = generate_MEG_json_sidecars(uploaded_img_list)
-# TODO - deal with this
 
 # Filter uploaded files list for files that ezBIDS can't use and check for ezBIDS configuration file
 uploaded_files_list, exclude_data, config, config_file = modify_uploaded_dataset_list(uploaded_img_list)
 
-# Generate list of all possible Cognitive Atlas task terms
+# # Generate list of all possible Cognitive Atlas task terms
 cog_atlas_tasks = find_cog_atlas_tasks(cog_atlas_url)
 
 # Create the dataset list of dictionaries
 dataset_list = generate_dataset_list(uploaded_files_list, exclude_data)
-sys.exit()
 
 # Get pesudo subject (and session) info
 dataset_list = organize_dataset(dataset_list)

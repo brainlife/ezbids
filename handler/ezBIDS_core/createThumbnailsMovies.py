@@ -17,7 +17,7 @@ import pandas as pd
 import nibabel as nib
 from PIL import Image
 from math import floor
-from natsort import natsorted
+from pathlib import Path
 matplotlib.use('Agg')
 plt.style.use('dark_background')
 
@@ -26,42 +26,30 @@ os.environ['MPLCONFIGDIR'] = os.getcwd() + "/configs/"
 # Functions
 
 
-def create_MEG_thumbnail():
+def create_MEG_thumbnail(meg_img_file):
     """
     Generate a simple visualization of the MEG data.
     """
     import mne.viz
 
-    uploaded_json_list = natsorted(pd.read_csv("list", header=None, lineterminator='\n').to_numpy().flatten().tolist())
+    ext = Path(meg_img_file).suffix
+    fname = meg_img_file
+    raw = mne.io.read_raw(fname, verbose=0)
+    mne.viz.set_browser_backend('matplotlib', verbose=None)
 
-    """
-    Get the MEG data organized
-    """
-    data_files = [x.split("./")[-1] for x in uploaded_json_list]
-    MEG_data_files = []
-    for data in data_files:
-        if any(x in data for x in MEG_extensions):
-            MEG_data_files.append(data)
+    png_types = ["channels", "psd"]
+    for png_type in png_types:
+        output_file = fname.split(ext)[0] + f"_{png_type}.png"
 
-    if len(MEG_data_files):
-        for meg in MEG_data_files:
-            fname = f"{data_dir}/{meg}"
-            raw = mne.io.read_raw(fname, verbose=0)
-            mne.viz.set_browser_backend('matplotlib', verbose=None)
+        if png_type == "channels":
+            fig = raw.plot()
+        elif png_type == "psd":
+            fig = raw.compute_psd().plot()
 
-            png_types = ["channels", "psd"]
-            for png_type in png_types:
-                output_file = fname.split(".")[0] + f"_{png_type}.png"
-
-                if png_type == "channels":
-                    fig = raw.plot()
-                elif png_type == "psd":
-                    fig = raw.compute_psd().plot()
-
-                fig.savefig(output_file, bbox_inches='tight')
+        fig.savefig(output_file, bbox_inches='tight')
 
 
-def create_thumbnail(nifti_file, image):
+def create_thumbnail(img_file, image):
     """
     Generates a PNG screenshot of a NIfTI data file. If data is 4D,
     the 2nd volume is used.
@@ -69,11 +57,11 @@ def create_thumbnail(nifti_file, image):
     Parameters
     ----------
 
-    nifti_file : string
+    img_file : string
         path of 4D NIfTI file.
 
     image: nibabel.nifti1.Nifti1Image
-        result of nib.load(nifti_file).
+        result of nib.load(img_file).
     """
 
     if image.ndim == 4:
@@ -81,7 +69,7 @@ def create_thumbnail(nifti_file, image):
     else:
         object_img_array = image.dataobj[:]
 
-    output_file = nifti_file.split(".nii.gz")[0] + ".png"
+    output_file = img_file.split(".nii.gz")[0] + ".png"
 
     slice_x = object_img_array[floor(object_img_array.shape[0] / 2), :, :]
     slice_y = object_img_array[:, floor(object_img_array.shape[1] / 2), :]
@@ -107,24 +95,24 @@ def create_thumbnail(nifti_file, image):
     png.save(output_file)
 
 
-def create_DWIshell_thumbnails(nifti_file, image, bval_file):
+def create_DWIshell_thumbnails(img_file, image, bval_file):
     """
     Generates a PNG for each unique DWI acquisition shell.
 
     Parameters
     ----------
 
-    nifti_file : string
+    img_file : string
         path of 4D NIfTI file.
 
     image: nibabel.nifti1.Nifti1Image
-        result of nib.load(nifti_file).
+        result of nib.load(img_file).
 
     bval_file: string
         path of corresponding NIfTI file's bval.
     """
 
-    output_file = nifti_file.split(".nii.gz")[0] + ".png"
+    output_file = img_file.split(".nii.gz")[0] + ".png"
     bvals = [floor(float(x)) for x in pd.read_csv(bval_file, delim_whitespace=True).columns.tolist()]
     modified_bvals = [round(x, -2) for x in bvals]
     unique_bvals = np.unique(modified_bvals).tolist()
@@ -158,59 +146,59 @@ def create_DWIshell_thumbnails(nifti_file, image, bval_file):
 
 # Begin:
 data_dir = sys.argv[1]
-json_file = sys.argv[2]
+img_file = sys.argv[2]
 MEG_extensions = [".ds", ".fif", ".sqd", ".con", ".raw", ".ave", ".mrk", ".kdf", ".mhd", ".trg", ".chn", ".dat"]
 os.chdir(data_dir)
 
-nifti_file = json_file.split(".json")[0] + ".nii.gz"
-
-create_MEG_thumbnail()
-
-if not os.path.isfile(f"{data_dir}/{nifti_file}"):
-    print(f"{json_file} does not have a corresponding NIfTI file, cannot generate screenshot")
+if img_file.endswith(tuple(MEG_extensions)):
+    print("")
+    print(f"Creating thumbnails for {img_file}")
+    print("")
+    create_MEG_thumbnail(img_file)
 else:
-    output_dir = nifti_file.split(".nii.gz")[0]
-    image = nib.load(nifti_file)
+    if not img_file.endswith('blood.json'):
+        output_dir = img_file.split(".nii.gz")[0]
+        image = nib.load(img_file)
 
-    if len([x for x in image.shape if x < 0]):  # image has negative dimension(s), cannot process
-        print(f"{nifti_file} has negative dimension(s), cannot process")
-    else:
-        # if image.get_data_dtype() == [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]:
-        if image.get_data_dtype() not in ["<i2", "<u2", "<f4", "int16", "uint16"]:
-            # Likely non-imaging acquisition. Example: "facMapReg" sequences in NYU_Shanghai dataset
-            print(
-                f"{nifti_file} doesn't appear to be an "
-                "imaging acquisition and therefore will "
-                "not be converted to BIDS. Please modify "
-                "if incorrect."
-            )
+        if len([x for x in image.shape if x < 0]):  # image has negative dimension(s), cannot process
+            print(f"{img_file} has negative dimension(s), cannot process")
         else:
-            # object_img_array = image.dataobj[:]
-
-            bval_file = json_file.split(".json")[0].split("./")[-1] + ".bval"
-            if not os.path.isfile(f"{data_dir}/{bval_file}"):
-                bval_file = "n/a"
+            # if image.get_data_dtype() == [('R', 'u1'), ('G', 'u1'), ('B', 'u1')]:
+            if image.get_data_dtype() not in ["<i2", "<u2", "<f4", "int16", "uint16"]:
+                # Likely non-imaging acquisition. Example: "facMapReg" sequences in NYU_Shanghai dataset
+                print(
+                    f"{img_file} doesn't appear to be an "
+                    "imaging acquisition and therefore will "
+                    "not be converted to BIDS. Please modify "
+                    "if incorrect."
+                )
             else:
-                bvals = [x.split(" ") for x in pd.read_csv(bval_file).columns.tolist()][0]
-                bvals = [floor(float(x)) for x in bvals if not isinstance(x, str)]
+                # object_img_array = image.dataobj[:]
 
-                if len(bvals) <= 1:  # just b0, so unhelpful
+                bval_file = img_file.split(".nii.gz")[0].split("./")[-1] + ".bval"
+                if not os.path.isfile(f"{data_dir}/{bval_file}"):
                     bval_file = "n/a"
+                else:
+                    bvals = [x.split(" ") for x in pd.read_csv(bval_file).columns.tolist()][0]
+                    bvals = [floor(float(x)) for x in bvals if not isinstance(x, str)]
 
-            # Create thumbnail
-            if nifti_file != "n/a":
-                print("")
-                print(f"Creating thumbnail for {nifti_file}")
-                print("")
-                create_thumbnail(nifti_file, image)
+                    if len(bvals) <= 1:  # just b0, so unhelpful
+                        bval_file = "n/a"
 
-            # Create thumbnail of each DWI's unique shell
-            if bval_file != "n/a":
-                print("")
-                print(f"Creating thumbnail(s) for each DWI shell in {nifti_file}")
-                print("")
-                create_DWIshell_thumbnails(nifti_file, image, bval_file)
+                # Create thumbnail
+                if img_file != "n/a":
+                    print("")
+                    print(f"Creating thumbnail for {img_file}")
+                    print("")
+                    create_thumbnail(img_file, image)
 
-        # Remove the folder containing the PNGs for movie generation; don't need them anymore
-        if os.path.isdir(output_dir):
-            shutil.rmtree(output_dir)
+                # Create thumbnail of each DWI's unique shell
+                if bval_file != "n/a":
+                    print("")
+                    print(f"Creating thumbnail(s) for each DWI shell in {img_file}")
+                    print("")
+                    create_DWIshell_thumbnails(img_file, image, bval_file)
+
+            # Remove the folder containing the PNGs for movie generation; don't need them anymore
+            if os.path.isdir(output_dir):
+                shutil.rmtree(output_dir)

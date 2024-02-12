@@ -141,7 +141,10 @@ else
     export -f runecatpet2bids
 
     # determine which uploaded files/folders are PET directories or ECAT files
-    echo "Finding DICOM directories"
+    echo "Finding imaging directories and files"
+    if [ ! -f $root/list]; then
+        mkdir -p $root/list
+    fi
     ./find_img_data.py $root
 
     # sort $root/pet2bids_dcm.list, $root/pet2bids_ecat.list, and $root/dcm2niix.list for comm.
@@ -200,30 +203,7 @@ else
 
     cat $root/dcm2niix.list | parallel --linebuffer --wd $root -j 6 d2n {} 2>> $root/dcm2niix_output
 
-    # find imaging data (NIfTI files)
-    echo "searching for products in $root"
-    (cd $root && find . -maxdepth 9 -type f \( -name "*.nii.gz" \) > list)
-
-    # TODO: MOVE THIS INTO find_img_data.py
-    # find MEG data files
-    MEG_extensions=("*.ds" "*.fif" "*.sqd" "*.con" "*.raw" "*.ave" "*.mrk" "*.kdf" "*.mhd" "*.trg" "*.chn" "*.dat")
-    for ext in ${MEG_extensions[*]}
-    do
-        if [[ $ext == "*.ds" ]]
-        then
-            find_type=d
-        else
-            find_type=f
-        fi
-
-        (cd $root && find . -maxdepth 9 -type $find_type \( -name $ext \) >> list)
-    done
-
-    if [ ! -s $root/list ]; then
-        echo "Could not find any MRI (or PET) DICOM files in upload. Uploaded files likely do not conform to DICOM format, aborting"
-        exit 1
-    fi
-
+    # Check for dcm2niix errors
     if [[ $DCM2NIIX_RUN -eq "true" ]]; then
         # pull dcm2niix error information to log file
         { grep -B 1 --group-separator=$'\n\n' Error $root/dcm2niix_output || true; } > $root/dcm2niix_error
@@ -236,14 +216,31 @@ else
         done
     fi
 
+    # Let's add the transformed raw data (i.e. to NIfTI or MEG formats) to the list file
+    
+    (cd $root && find . -maxdepth 9 -type f \( -name "*.nii.gz" \) > list)
+    (cd $root && find . -maxdepth 9 -type f \( -name "*blood.json" \) >> list)
+
+    if [ -f $root/meg.list ]; then
+        cat $root/meg.list >> $root/list
+    fi
+
+    if [ ! -s $root/list ]; then
+        echo "Could not find any MRI, PET, or MEG imaging files in upload, aborting"
+        exit 1
+    fi
+
+    # Remove .nii files that are randomly created somehow. Don't need them, as actual files are in .nii.gz format
+    (cd $root && find . -type f -name "*.nii" -exec rm {} \;)
+
     echo "running ezBIDS_core (may take several minutes, depending on size of data)"
     python3 "./ezBIDS_core/ezBIDS_core.py" $root
 
-    # echo "generating thumbnails for 3/4D acquisitions (may take several minutes, depending on size of dataset)"
-    # cat $root/list | parallel --linebuffer -j 6 --progress python3 "./ezBIDS_core/createThumbnailsMovies.py" $root
+    echo "generating thumbnails for image sequences"
+    cat $root/list | parallel --linebuffer -j 6 --progress python3 "./ezBIDS_core/createThumbnailsMovies.py" $root
 
-    # echo "updating ezBIDS_core.json"
-    # python3 "./ezBIDS_core/update_ezBIDS_core.py" $root
+    echo "updating ezBIDS_core.json"
+    python3 "./ezBIDS_core/update_ezBIDS_core.py" $root
 
 fi
 
