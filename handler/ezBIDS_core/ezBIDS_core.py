@@ -286,7 +286,7 @@ def fix_multiple_dots(uploaded_img_list):
     '''
     Occasionally, data files with have multiple periods ('.') in their file names.
     This can cause problems when determining the file extension, so this function remove
-    all extra periods execpt for the one at the end (assumined to be the extension).
+    all extra periods except for the one at the end (assumined to be the extension).
 
     Parameters
     ----------
