@@ -284,8 +284,8 @@ def _sidecar_json(raw, task, manufacturer, fname, datatype, emptyroom_fname=None
 
 def fix_multiple_dots(uploaded_img_list):
     '''
-    Occasionally, data files with have multiple periods ('.') in their file names. 
-    This can cause problems when determing the file extension, so this function remove
+    Occasionally, data files with have multiple periods ('.') in their file names.
+    This can cause problems when determining the file extension, so this function remove
     all extra periods execpt for the one at the end (assumined to be the extension).
 
     Parameters
@@ -298,51 +298,64 @@ def fix_multiple_dots(uploaded_img_list):
     uploaded_img_list : list
         Same list, but with the possibility for corrected file names if they had extra
         periods that weren't the extension.
-
     '''
-    typo_files = []
-    for img_file in uploaded_img_list:
+
+    for img_path in uploaded_img_list:
+        img_file = img_path.split('/')[-1]
+        typo_files = []
         fix = False
-        if img_file.endswith('.nii.gz') and img_file.count('.') > 3:  # for MRI and PET
+        if img_file.endswith('.nii.gz') and img_file.count('.') > 2:  # for MRI and PET
             fix = True
             ext = '.nii.gz'
-        elif img_file.endswith('.json') and img_file.count('.') > 2:  # for PET blood
+        elif img_file.endswith('.v.gz') and img_file.count('.') > 2:  # ECAT-formatted PET
+            fix = True
+            ext = '.v.gz'
+        elif img_file.endswith('.json') and img_file.count('.') > 1:  # for PET blood
             fix = True
             ext = '.json'
-        elif img_file.endswith(tuple(MEG_extensions)) and img_file.count('.') > 2:  # for MEG
+        elif img_file.endswith(tuple(MEG_extensions)) and img_file.count('.') > 1:  # for MEG
             fix = True
             ext = img_file.split('.')[-1]
         else:
             pass
 
         if fix is True:
-            img_dir = os.path.dirname(img_file)
+            img_dir = os.path.dirname(img_path)
 
             corresponding_files = [
                 img_dir + '/' + x for x in os.listdir(img_dir)
-                if os.path.basename(img_file).split(ext)[0] in x
+                if os.path.basename(img_path).split(ext)[0] in x
             ]
 
             if len(corresponding_files):
                 for f in corresponding_files:
                     typo_files.append(f)
 
-    if len(typo_files):
-        for typo in typo_files:
-            typo_split_list = typo.split('.')
-            new_file_name = f".{'_'.join(typo_split_list[1:-1])}.{typo_split_list[-1]}"
+        if len(typo_files):
+            for typo in typo_files:
 
-            os.system(f'mv {typo} {new_file_name}')
+                if typo.endswith('.nii.gz'):
+                    ext = '.nii.gz'
+                elif typo.endswith('.v.gz'):
+                    ext = '.v.gz'
+                else:
+                    ext = '.' + typo.split('.')[-1]
 
-            if typo in uploaded_img_list:
-                idx = uploaded_img_list.index(typo)
-                uploaded_img_list.pop(idx)
-                uploaded_img_list = natsorted(uploaded_img_list + [new_file_name])
+                typo_split_list = typo.split(ext)[0].split('.')
 
-        # Save to list file
-        with open("list", "w") as f:
-            for line in uploaded_img_list:
-                f.write(f"{line}\n")
+                new_file_name = f".{'_'.join(typo_split_list[1:])}{ext}"
+
+                os.system(f'mv {typo} {new_file_name}')
+
+                if typo in uploaded_img_list:
+                    idx = uploaded_img_list.index(typo)
+                    uploaded_img_list.pop(idx)
+                    uploaded_img_list = natsorted(uploaded_img_list + [new_file_name])
+
+            # Save to list file
+            with open("list", "w") as f:
+                for line in uploaded_img_list:
+                    f.write(f"{line}\n")
 
     return uploaded_img_list
 
@@ -363,10 +376,7 @@ def generate_MEG_json_sidecars(uploaded_img_list):
             if include is True:
                 MEG_img_files.append(img)
 
-    # non_MEG_data_files = [f"./{x}" for x in img_files if x not in MEG_img_files]
-
     if len(MEG_img_files):
-        # list_files = []
         """
         Generate the JSON metadata
         """
@@ -376,20 +386,6 @@ def generate_MEG_json_sidecars(uploaded_img_list):
 
         for meg in MEG_img_files:
             ext = Path(meg).suffix
-            # # Often find extra periods (".") in MEG file names. Should only have 1, denoting the file extension
-            # if len([x for x in meg if "." in x]) > 1:
-            #     meg_split_list = meg.split(".")
-            #     if f"_raw{ext}" not in meg:
-            #         new_meg = "_".join(meg_split_list[:-1]) + "_raw." + meg_split_list[-1]
-            #     else:
-            #         new_meg = "_".join(meg_split_list[:-1]) + "." + meg_split_list[-1]
-
-            #     # change the file names
-            #     idx = uploaded_img_list.index(f"./{meg}")
-            #     uploaded_img_list.pop(idx)
-            #     uploaded_img_list = natsorted(uploaded_img_list + [f"./{new_meg}"])
-            #     os.system(f"mv {meg} {new_meg}")
-            #     meg = new_meg
 
             fname = f"{DATA_DIR}/{meg}"
             json_output_name = fname.split(".")[0] + ".json"
@@ -435,25 +431,6 @@ def generate_MEG_json_sidecars(uploaded_img_list):
             _update_sidecar(json_output_name, "Modality", "MEG")
             _update_sidecar(json_output_name, "ConversionSoftware", "MNE-BIDS")
             _update_sidecar(json_output_name, "SeriesDescription", fname)
-
-    #         # Replace the MEG data files in the list file with the newly generated JSON sidecar names
-    #         substring = json_output_name.split(".json")[0].split("/")[-1]
-    #         corresponding_data = [x for x in uploaded_img_list if f"/{substring}" in x][0]
-    #         idx = uploaded_img_list.index(corresponding_data)
-    #         uploaded_img_list.pop(idx)
-    #         json_replacement = "./" + corresponding_data.split("./")[-1].split(".")[0] + ".json"
-    #         list_replacement = "./" + corresponding_data.split("./")[-1].split(".")[0] + ext
-    #         uploaded_img_list.append(json_replacement)
-    #         list_files.append(list_replacement)
-
-    #     uploaded_img_list = natsorted([x for x in list_files + non_MEG_data_files])
-
-    #     # Save to list file
-    #     with open("list", "w") as f:
-    #         for line in list_files + non_MEG_data_files:
-    #             f.write(f"{line}\n")
-
-    # return natsorted(uploaded_img_list)
 
 
 def modify_uploaded_dataset_list(uploaded_img_list):
@@ -502,6 +479,8 @@ def modify_uploaded_dataset_list(uploaded_img_list):
     for img_file in uploaded_img_list:
         if img_file.endswith('.nii.gz'):
             ext = '.nii.gz'
+        elif img_file.endswith('.v.gz'):
+            ext = '.v.gz'
         else:
             ext = Path(img_file).suffix
 
@@ -522,7 +501,7 @@ def modify_uploaded_dataset_list(uploaded_img_list):
         # deal with PET issue where ECAT-formatted or blood data could be accidentally grouped with imaging data
         if "blood" not in img_file and any("blood" in x for x in grouped_files):
             grouped_files = [x for x in grouped_files if "blood" not in x]
-        elif any(x.endswith('.v') or x.endswith('.v.gz') for x in grouped_files):
+        elif any(x.endswith(tuple(['.v', '.v.gz'])) for x in grouped_files):
             grouped_files = [x for x in grouped_files if not x.endswith(tuple(['.v', '.v.gz']))]
 
         # If imaging file comes with additional data (JSON, bval/bvec) add them to list for processing
@@ -677,14 +656,6 @@ def generate_dataset_description(DATA_DIR, bids_compliant):
             }
         }
     ]
-
-    # dataset_description_dic["SourceDatasets"] = [
-    #     {
-    #         "DOI": "",
-    #         "URL": "s3://dicoms/studies/correlates",  # Just a placeholder
-    #         "Version": ""
-    #     }
-    # ]
 
     # Explicit checks for required information
     if dataset_description_dic["Name"] == "":
@@ -1284,6 +1255,7 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
             "sidecar": json_data
         }
         dataset_list.append(sequence_info_directory)
+
     # Sort dataset_list of dictionaries
     dataset_list = sorted(dataset_list, key=itemgetter("AcquisitionDate",
                                                        "subject",
