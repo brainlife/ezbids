@@ -4,7 +4,7 @@ import os
 import sys
 from pathlib import Path
 from pydicom import dcmread
-# if pet2bids is installed we use it wherever PET data live
+# if pet2bids is installed we use it wherever the PET data live
 try:
     # import pypet2bids
     pet2bidsInstalled = True
