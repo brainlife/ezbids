@@ -33,17 +33,16 @@ def find_dicomdir(dir):
         full_path = os.path.join(dir, x)
         if os.path.isdir(full_path):
             for f in sorted(os.listdir(full_path)):
-                if f.lower().endswith(tuple(['.dcm', '.ima', '.img'])) or f.lower().startswith('mr.'):
-                    try:
-                        read_file = dcmread(f"{full_path}/{f}")
-                        if read_file.Modality == "MR":
-                            mri_dcm_dirs_list.append(full_path)
-                            hasDicoms = True
-                            break
-                    except:
-                        # Doesn't appear to be DICOM data, so skip
-                        # pass
+                try:
+                    read_file = dcmread(f"{full_path}/{f}")
+                    if read_file.Modality == "MR":
+                        mri_dcm_dirs_list.append(full_path)
+                        hasDicoms = True
                         break
+                except:
+                    # Doesn't appear to be DICOM data, so skip
+                    # pass
+                    break
 
     # Complete search
     if not hasDicoms:
