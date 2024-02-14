@@ -614,6 +614,7 @@ export default defineComponent({
         },
         initForm() {
             this.formData = {};
+            console.log('this', this);
             let type_str = this.ss.type || this.ss._type;
             this.fields = this.getFieldsMetaData(type_str);
             this.rules = this.generateValidationRules(this.fields);

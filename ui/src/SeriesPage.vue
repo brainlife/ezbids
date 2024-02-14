@@ -308,9 +308,9 @@ import ModalityForm from './components/modalityForm.vue';
 
 import { prettyBytes } from './filters';
 
-import { Series, IObject } from './store';
+import { Series, IObject, MetadataFields } from './store';
 
-import { validateEntities, validate_B0FieldIdentifier_B0FieldSource } from './libUnsafe';
+import { validateEntities, validate_B0FieldIdentifier_B0FieldSource, getRequiredFields } from './libUnsafe';
 import aslYaml from '../src/assets/schema/rules/sidecars/asl.yaml';
 import petYaml from '../src/assets/schema/rules/sidecars/pet.yaml';
 import metadata_types from '../src/assets/schema/rules/sidecars/metadata_types.yaml';
@@ -383,6 +383,40 @@ export default defineComponent({
                 validateEntities('Series', s);
                 validate_B0FieldIdentifier_B0FieldSource(s);
             }
+
+            // const metadata: MetadataFields = {
+            //     aslYaml,
+            // };
+            const metadata = aslYaml;
+            const requiredFields = getRequiredFields(metadata, this.ezbids, s.series_idx);
+            console.log('Required fields:', requiredFields);
+
+            // const MetadataChecks: MetadataChecks = {
+            //     ezbids: this.ezbids,
+            //     severity: MetadataSeverity;
+            //     // formData: any;
+            //     // addArrayValidationRule(rules: any, item: any): any;
+            //     // addNumericValidationRule(rules: any, item: any): any;
+            //     // conditionalLabel(item: any): any;
+            //     // formatType(type: string): string;
+            //     // generateValidationRules(fieldsMetadata: {
+            //     //     required: never[];
+            //     //     recommended: never[];
+            //     //     optional: never[];
+            //     //     conditional: never[];
+            //     // }): any;
+            //     // getArrayValidation(value: string, item: any): any;
+            //     // getFieldsMetaData(type: string): string;
+            //     // isNumeric(value: any): any;
+            //     // loadInitFormValues(): any;
+            //     // parseArrayValues(value: any, details: any): any;
+            //     // parseDefaultValue(type: string): string;
+            //     // parseType(details: { type: null; anyOf: any[] }): any;
+            //     // rules: any;
+            //     // setDefaultValue(details: { type: null; anyOf: any[] }): any;
+            //     ss: s,
+            // };
+            // console.log('dannnnnnnn', MetadataChecks.ss);
 
             // DON'T REALLY NEED THIS if setRun() functionality is in place
 
