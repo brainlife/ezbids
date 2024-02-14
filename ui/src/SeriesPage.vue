@@ -236,7 +236,13 @@
                     </el-form-item>
                     <br />
                     <el-form-item
-                        v-if="['perf/asl', 'perf/m0scan'].includes(ss.type) || ss.type.startsWith('pet/')"
+                        v-if="
+                            ['perf/asl', 'perf/m0scan'].includes(ss.type) ||
+                            ss.type.startsWith('pet') ||
+                            ss.type.startsWith('func') ||
+                            ss.type.startsWith('fmap') ||
+                            ss.type.startsWith('dwi')
+                        "
                         label="Relevant Metadata"
                     >
                         <ModalityForm :ss="ss" :ezbids="ezbids" @form-submitted="submitForm" />
