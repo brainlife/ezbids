@@ -230,6 +230,7 @@ else
 
     if [ ! -s $root/list ]; then
         echo "Could not find any MRI (or PET) DICOM files in upload. Uploaded files likely do not conform to DICOM format, aborting"
+        echo "Please contact the ezBIDS team (dlevitas@iu.edu) or https://github.com/brainlife/ezbids/issues for assistance
         exit 1
     fi
 
