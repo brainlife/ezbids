@@ -507,6 +507,9 @@
 <script lang="ts">
 import aslYaml from '../../src/assets/schema/rules/sidecars/asl.yaml';
 import petYaml from '../../src/assets/schema/rules/sidecars/pet.yaml';
+import funcYaml from '../../src/assets/schema/rules/sidecars/func.yaml';
+import dwiYaml from '../../src/assets/schema/rules/sidecars/dwi.yaml';
+import fmapYaml from '../../src/assets/schema/rules/sidecars/fmap.yaml';
 
 import metadata_types from '../../src/assets/schema/rules/sidecars/metadata_types.yaml';
 import { ElMessageBox, ElMessage, useFocus } from 'element-plus';
@@ -654,6 +657,12 @@ export default defineComponent({
                 fileObject = aslYaml;
             } else if (type.startsWith('pet')) {
                 fileObject = petYaml;
+            } else if (type.startsWith('func')) {
+                fileObject = funcYaml;
+            } else if (type.startsWith('dwi')) {
+                fileObject = dwiYaml;
+            } else if (type.startsWith('fmap')) {
+                fileObject = fmapYaml;
             }
             let result = {
                 required: [],
@@ -680,6 +689,10 @@ export default defineComponent({
                         continue;
                     }
                     if (type === 'pet/pet' && section.includes('Blood')) {
+                        continue;
+                    }
+                    //TODO - Need to come back to this and make the underlying code better at accounting for these
+                    if (type.startsWith('func') && ['TaskName', 'VolumeTiming', 'Units'].includes(field)) {
                         continue;
                     }
 
@@ -1125,6 +1138,10 @@ export default defineComponent({
                         // regex to get CASL
                         const regex = /objects.enums.(\w+).value/;
                         const refObject = regex.exec(item['$ref']);
+                        // Spec PED info contains the phrase "Minus" rather than the actual symbol (-). Correct this here
+                        if (refObject[1].endsWith('Minus')) {
+                            refObject[1] = refObject[1].replace('Minus', '-');
+                        }
                         return { value: refObject[1], label: refObject[1] };
                     }
                 }
