@@ -505,13 +505,15 @@
 </template>
 
 <script lang="ts">
+import anatYaml from '../../src/assets/schema/rules/sidecars/anat.yaml';
+import funcYaml from '../../src/assets/schema/rules/sidecars/func.yaml';
+import fmapYaml from '../../src/assets/schema/rules/sidecars/fmap.yaml';
+import dwiYaml from '../../src/assets/schema/rules/sidecars/dwi.yaml';
 import aslYaml from '../../src/assets/schema/rules/sidecars/asl.yaml';
 import petYaml from '../../src/assets/schema/rules/sidecars/pet.yaml';
-import funcYaml from '../../src/assets/schema/rules/sidecars/func.yaml';
-import dwiYaml from '../../src/assets/schema/rules/sidecars/dwi.yaml';
-import fmapYaml from '../../src/assets/schema/rules/sidecars/fmap.yaml';
+import megYaml from '../../src/assets/schema/rules/sidecars/meg.yaml';
+import metadataInfo from '../../src/assets/schema/rules/sidecars/metadata.yaml';
 
-import metadata_types from '../../src/assets/schema/rules/sidecars/metadata_types.yaml';
 import { ElMessageBox, ElMessage, useFocus } from 'element-plus';
 import { defineComponent } from 'vue';
 
@@ -570,6 +572,7 @@ export default defineComponent({
                                     value !== undefined &&
                                     !(Array.isArray(value) && value.length === 1 && value[0] === '')
                                 ) {
+                                    if (type == 'string') value = value.replace(/"/g, ''); // don't let user add unnecessary quotes
                                     if (type == 'number') value = Number(value);
                                     if (type == 'boolean') value = Boolean(value);
                                     if (type == 'array') {
@@ -617,7 +620,6 @@ export default defineComponent({
         },
         initForm() {
             this.formData = {};
-            console.log('this', this);
             let type_str = this.ss.type || this.ss._type;
             this.fields = this.getFieldsMetaData(type_str);
             this.rules = this.generateValidationRules(this.fields);
@@ -664,7 +666,12 @@ export default defineComponent({
                 fileObject = dwiYaml;
             } else if (type.startsWith('fmap')) {
                 fileObject = fmapYaml;
+            } else if (type.startsWith('anat')) {
+                fileObject = anatYaml;
+            } else if (type.startsWith('meg')) {
+                fileObject = megYaml;
             }
+
             let result = {
                 required: [],
                 recommended: [],
@@ -677,8 +684,8 @@ export default defineComponent({
 
                 // fields with level 'required' or 'recommended' are included in the list
                 for (const [field, metadata] of Object.entries(fields)) {
-                    // Skip the IntendedFor field in the ASL sidecar
-                    if (fileObject === aslYaml && field === 'IntendedFor') {
+                    // ezBIDS handles IntendedFor and TaskName separately, so don't worry about them here
+                    if (['IntendedFor', 'TaskName'].includes(field)) {
                         continue;
                     }
                     // Skip all metadata in perf/m0scan except for RepetitionTimePreparation
@@ -692,13 +699,13 @@ export default defineComponent({
                     if (type === 'pet/pet' && section.includes('Blood')) {
                         continue;
                     }
-                    //TODO - Need to come back to this and make the underlying code better at accounting for these
-                    if (type.startsWith('func') && ['TaskName', 'VolumeTiming', 'Units'].includes(field)) {
+                    // TODO - Need to come back to this and make the underlying code better at accounting for these
+                    if (type.startsWith('func') && ['VolumeTiming', 'Units'].includes(field)) {
                         continue;
                     }
 
-                    // get the metadata from the metadata_types.yaml
-                    const details = metadata_types[field] || {};
+                    // get the metadata from the metadata.yaml
+                    const details = metadataInfo[field] || {};
                     details.default_value = this.setDefaultValue(details);
                     details.type = this.parseType(details);
 
@@ -1032,7 +1039,7 @@ export default defineComponent({
             // prevent user from entering [] or [""]
             // add check to prevent from entering brackets
             if (value.includes('[') || value.includes(']')) {
-                return 'Please enter a valid entry no brackets allowed [], only comma separated values';
+                return 'No brackets, only comma separated values';
             }
 
             if (item.details.items.type == 'number') {

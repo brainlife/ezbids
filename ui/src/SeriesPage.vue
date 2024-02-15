@@ -55,7 +55,6 @@
             </div>
             <div v-if="ss">
                 <h5>BIDS Datatype, Suffix, Entities</h5>
-                <!-- <pre>{{ getFieldsMetaData(ss.type) }}</pre> -->
                 <el-form label-width="150px">
                     <el-alert v-if="ss.message" :title="ss.message" type="info" show-icon style="margin-bottom: 4px" />
                     <div style="margin-bottom: 10px">
@@ -227,7 +226,9 @@
                             ss.type.startsWith('pet') ||
                             ss.type.startsWith('func') ||
                             ss.type.startsWith('fmap') ||
-                            ss.type.startsWith('dwi')
+                            ss.type.startsWith('dwi') ||
+                            ss.type.startsWith('anat') ||
+                            ss.type.startsWith('meg')
                         "
                         label="Relevant Metadata"
                     >
@@ -302,7 +303,7 @@ import { prettyBytes } from './filters';
 
 import { Series, IObject } from './store';
 
-import { validateEntities, validate_B0FieldIdentifier_B0FieldSource, getRequiredFields } from './libUnsafe';
+import { validateEntities, validate_B0FieldIdentifier_B0FieldSource, metadataAlerts } from './libUnsafe';
 import anatYaml from '../src/assets/schema/rules/sidecars/anat.yaml';
 import funcYaml from '../src/assets/schema/rules/sidecars/func.yaml';
 import fmapYaml from '../src/assets/schema/rules/sidecars/fmap.yaml';
@@ -310,8 +311,8 @@ import dwiYaml from '../src/assets/schema/rules/sidecars/dwi.yaml';
 import aslYaml from '../src/assets/schema/rules/sidecars/asl.yaml';
 import petYaml from '../src/assets/schema/rules/sidecars/pet.yaml';
 import megYaml from '../src/assets/schema/rules/sidecars/meg.yaml';
+import metadataInfo from '../src/assets/schema/rules/sidecars/metadata.yaml';
 
-import metadata_types from '../src/assets/schema/rules/sidecars/metadata_types.yaml';
 import AsyncImageLink from './components/AsyncImageLink.vue';
 
 // @ts-ignore
@@ -333,8 +334,7 @@ export default defineComponent({
         return {
             showInfo: {} as any,
             ss: null as Series | null, //selected series
-            petYaml: petYaml,
-            aslYaml: aslYaml,
+            metadataAlertsFields: [] as any,
             fields: {},
             showDialog: false,
             rules: {},
@@ -381,7 +381,9 @@ export default defineComponent({
                 validate_B0FieldIdentifier_B0FieldSource(s);
             }
 
-            // Alert users to metadata issues (e.g. missing required fields).
+            /* Alert users to metadata issues, such as missing required fields or 
+            improperly-formmated metadata field values.
+            */
             let bidsDatatypeMetadata = {};
             if (['perf/asl', 'perf/m0scan'].includes(s.type)) {
                 bidsDatatypeMetadata = aslYaml;
@@ -399,11 +401,19 @@ export default defineComponent({
                 bidsDatatypeMetadata = megYaml;
             }
 
-            const missingRequiredFields = getRequiredFields(bidsDatatypeMetadata, this.ezbids, s.series_idx);
-            if (missingRequiredFields.length) {
-                let warn: string = `'Required metadata is missing, please click on the "Edit Metadata" button below to 
-                enter this information. You can skip fields for which you do not know the exact value, but you will 
-                not have a fully BIDS-compliant dataset.'`;
+            const metadataAlertsFields = metadataAlerts(
+                bidsDatatypeMetadata,
+                metadataInfo,
+                this.ezbids,
+                s.series_idx,
+                s.type
+            );
+            // console.log(s.type);
+            // console.log('metadataAlertsFields', metadataAlertsFields);
+            if (metadataAlertsFields.length) {
+                let warn: string = `'Required metadata is missing and/or provided metadata field values have improper
+                format. Please click on the "Edit Metadata" button below to resolve. You may skip fields for which you
+                do not know the proper value, but you will not have a fully BIDS-compliant dataset.'`;
                 s.validationWarnings.push(warn);
             }
 
@@ -500,6 +510,7 @@ export default defineComponent({
         submitForm(data: any) {
             //TODO: should we make an interface for data in store/index.ts?
             this.ezbids = data;
+            this.ezbids.series.forEach(this.validate);
         },
     },
 });

@@ -290,7 +290,8 @@
                                     so._type.startsWith('pet') ||
                                     so._type.startsWith('func') ||
                                     so._type.startsWith('fmap') ||
-                                    so._type.startsWith('dwi')
+                                    so._type.startsWith('dwi') ||
+                                    so._type.startsWith('anat')
                                 "
                                 label="Relevant Metadata"
                             >
@@ -388,9 +389,14 @@ import { defineComponent } from 'vue';
 import datatype from './components/datatype.vue';
 import ModalityForm from './components/modalityForm.vue';
 
+import anatYaml from '../src/assets/schema/rules/sidecars/anat.yaml';
+import funcYaml from '../src/assets/schema/rules/sidecars/func.yaml';
+import fmapYaml from '../src/assets/schema/rules/sidecars/fmap.yaml';
+import dwiYaml from '../src/assets/schema/rules/sidecars/dwi.yaml';
 import aslYaml from '../src/assets/schema/rules/sidecars/asl.yaml';
 import petYaml from '../src/assets/schema/rules/sidecars/pet.yaml';
-import metadata_types from '../src/assets/schema/rules/sidecars/metadata_types.yaml';
+import megYaml from '../src/assets/schema/rules/sidecars/meg.yaml';
+import metadataInfo from '../src/assets/schema/rules/sidecars/metadata.yaml';
 
 import { IObject, Session, OrganizedSession, OrganizedSubject } from './store';
 import { prettyBytes } from './filters';
