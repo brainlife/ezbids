@@ -244,31 +244,6 @@ interface BIDSDatatypes {
     };
 }
 
-interface BIDSDatatypeMetadataOptionConditions {
-    metadata: string;
-    value: string;
-}
-
-interface BIDSDatatypeMetadataOptionMetadata {
-    name: string;
-    requirement: string | undefined;
-    description: string;
-}
-
-interface BIDSDatatypeMetadataOption {
-    value: string;
-    label: string;
-    conditions: BIDSDatatypeMetadataOptionConditions[];
-    metadata: BIDSDatatypeMetadataOptionMetadata[];
-}
-
-interface BIDSDatatypesMetadata {
-    [key: string]: {
-        label: string;
-        options: BIDSDatatypeMetadataOption[];
-    };
-}
-
 export interface OrganizedSession {
     sess: string;
     session_idx: number;
@@ -305,14 +280,6 @@ export interface ISession {
 
     finalize_begin_date?: string;
     finalize_finish_date?: string;
-}
-
-export interface RelevantMetadata {
-    modality: string;
-    datatype: string;
-    suffix: string;
-    conditions: string[];
-    metadata: string;
 }
 
 const state = {
@@ -445,6 +412,39 @@ const state = {
 export type IEzbids = typeof state.ezbids;
 export type IEvents = typeof state.events;
 
+interface BIDSDatatypeMetadataOptionConditions {
+    metadata: string;
+    value: string;
+}
+
+interface BIDSDatatypeMetadataOptionMetadata {
+    name: string;
+    requirement: string | undefined;
+    description: string;
+}
+
+interface BIDSDatatypeMetadataOption {
+    value: string;
+    label: string;
+    conditions: BIDSDatatypeMetadataOptionConditions[];
+    metadata: BIDSDatatypeMetadataOptionMetadata[];
+}
+
+interface BIDSDatatypesMetadata {
+    [key: string]: {
+        label: string;
+        options: BIDSDatatypeMetadataOption[];
+    };
+}
+
+interface RelevantMetadata {
+    modality: string;
+    datatype: string;
+    suffix: string;
+    conditions: string[];
+    metadata: string;
+}
+
 interface checkMetadata {
     modality: string;
     datatype: string;
@@ -458,19 +458,59 @@ interface MetadataIssues {
     message: string;
 }
 
-interface MetadataFields {
-    [key: string]: {
-        // Metadata key: EchoTime, RepetitionTime, etc...
-        level: string;
-        description_addendum?: string;
-        level_addendum?: string;
-        issue?: MetadataIssues;
-    };
+interface MetadataSeverity {
+    required: any;
+    recommended: any;
+    optional: any;
+    conditional: any;
 }
 
 interface BIDSSchemaMetadata {
     selectors: string[];
     fields: MetadataFields[];
+}
+
+// export interface MetadataChecks {
+//     ezbids: IEzbids;
+//     severity: MetadataSeverity;
+//     // formData: any;
+//     // addArrayValidationRule(rules: any, item: any): any;
+//     // addNumericValidationRule(rules: any, item: any): any;
+//     // conditionalLabel(item: any): any;
+//     // formatType(type: string): string;
+//     // generateValidationRules(fieldsMetadata: {
+//     //     required: never[];
+//     //     recommended: never[];
+//     //     optional: never[];
+//     //     conditional: never[];
+//     // }): any;
+//     // getArrayValidation(value: string, item: any): any;
+//     // getFieldsMetaData(type: string): string;
+//     // isNumeric(value: any): any;
+//     // loadInitFormValues(): any;
+//     // parseArrayValues(value: any, details: any): any;
+//     // parseDefaultValue(type: string): string;
+//     // parseType(details: { type: null; anyOf: any[] }): any;
+//     // rules: any;
+//     // setDefaultValue(details: { type: null; anyOf: any[] }): any;
+//     ss: Series | IObject;
+// }
+
+interface Selector {
+    [key: string]: any;
+}
+
+interface Field {
+    [key: string]: any;
+}
+
+export interface MetadataFields {
+    [key: string]: {
+        selectors: Selector[];
+        fields: {
+            [key: string]: Field;
+        };
+    };
 }
 
 function loadDatatype(modality: string, datatypes: { [key: string]: BIDSSchemaEntities }, label: string) {
@@ -486,21 +526,6 @@ function loadDatatype(modality: string, datatypes: { [key: string]: BIDSSchemaEn
         });
     }
 }
-
-/* ezbids.sideCar = {
-    "anat/t1w": {
-        //yamlfile data fields for the input boxes
-        "Field1" : {
-            severity:"required/recommended/optional" //optional -> not forcing user, 
-            recommended -> ui enhancement, required -> error
-            type: "string",
-            description: "description",
-            conditional: "if Field2 == 'something' then this is required",
-            default: "default value",
-        },
-    }
-}
-*/
 
 import dwiDatatype from '../assets/schema/rules/datatypes/dwi.json';
 loadDatatype('dwi', dwiDatatype, 'Diffusion');
