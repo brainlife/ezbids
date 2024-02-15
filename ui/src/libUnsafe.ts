@@ -1736,7 +1736,7 @@ export function metadataAlerts(
     let suffix = type.split('/')[1];
     for (let key in bidsDatatypeMetadata) {
         const metadataEntry = bidsDatatypeMetadata[key];
-        const selectors = metadataEntry.selectors;
+        const selectors: any = metadataEntry.selectors;
         const fields = metadataEntry.fields;
         let proceed = 'no';
         // Need to ensure that we're dealing with the proper sequence datatype and suffix.
@@ -1751,10 +1751,14 @@ export function metadataAlerts(
             ) {
                 proceed = 'yes';
             }
+        } else {
+            if (datatype === 'meg' && suffix === 'meg' && !selectors.includes('suffix == "coordsystem"')) {
+                proceed = 'yes';
+            }
         }
         if (proceed === 'yes') {
             for (let fieldName in fields) {
-                if (fields.hasOwnProperty(fieldName) && fieldName !== 'IntendedFor') {
+                if (fields.hasOwnProperty(fieldName) && !['IntendedFor', 'TaskName'].includes(fieldName)) {
                     let field = fields[fieldName];
                     let severity: any = '';
                     if (field.hasOwnProperty('level')) {
@@ -1762,8 +1766,8 @@ export function metadataAlerts(
                     } else {
                         severity = field;
                     }
+
                     if (severity === 'required') {
-                        // console.log(type, fieldName)
                         if (!sidecarMetadata.hasOwnProperty(fieldName)) {
                             // Required based on datatype/suffix pairing, no conditionals
                             // BIDS metadata field not in sequence sidecar
@@ -1796,7 +1800,6 @@ export function metadataAlerts(
                             if (context === 'is in') {
                                 let sidecarMetadataKey = bidsMetadataKey;
                                 let sidecarMetadataValue = sidecarMetadata[sidecarMetadataKey];
-                                console.log('dan', sidecarMetadataValue, bidsMetadataValue);
                                 if (bidsMetadataValue.includes(sidecarMetadataValue)) {
                                     requiredFields.push(fieldName);
                                 }
@@ -1841,6 +1844,11 @@ export function metadataAlerts(
                 let sidecarMetadataValueType: string = typeof sidecarMetadataValue;
                 if (sidecarMetadataValueType === 'object' && Array.isArray(sidecarMetadataValue)) {
                     sidecarMetadataValueType = 'array';
+                }
+                if (bidsMetadataValueType === 'integer' && sidecarMetadataValueType === 'number') {
+                    if (Number.isInteger(sidecarMetadataValue)) {
+                        sidecarMetadataValueType = 'integer';
+                    }
                 }
 
                 // Does sequence metadata field key type match what BIDS expects
@@ -1915,7 +1923,7 @@ export function metadataAlerts(
     }
 
     let metadataAlertFields = requiredFields.concat(typoFields);
-    console.log('required', requiredFields);
-    console.log('typo', typoFields);
+    // console.log('required', requiredFields);
+    // console.log('typo', typoFields);
     return metadataAlertFields;
 }

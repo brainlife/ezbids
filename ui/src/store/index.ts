@@ -3,50 +3,6 @@ import { createStore } from 'vuex';
 import bidsEntities from '../assets/schema/objects/entities.json';
 import axios from '../axios.instance';
 
-// export interface GenericRule {
-//     selectors?: string[]
-//     checks?: string[]
-//     columns?: Record<string, string>
-//     additional_columns?: string
-//     initial_columns?: string[]
-//     fields: Record<string, SchemaFields>
-//     issue?: SchemaIssue
-//     extensions?: string[]
-//     suffixes?: string[]
-//     stem?: string
-//     path?: string
-//     datatypes?: string[]
-//     pattern?: string
-//     name?: string
-//     format?: string
-//     required?: string
-//     index_columns?: string[]
-// }
-
-// export interface SchemaFields {
-//     level: string
-//     level_addendum?: string
-//     issue?: SchemaIssue
-// }
-
-// export interface SchemaIssue {
-//     code: string
-//     message: string
-//     level?: string
-// }
-
-// interface SchemaType {
-//     type: string
-//     enum?: string[]
-// }
-
-// interface AnyOf {
-//     anyOf: SchemaType[]
-// }
-
-// export type GenericSchema = { [key: string]: GenericRule | GenericSchema }
-// export type SchemaTypeLike = AnyOf | SchemaType
-
 export interface ContainerObject {
     Type: string;
     Tag: string;
@@ -301,7 +257,7 @@ const state = {
     page: 'upload',
 
     //current state of the session
-    //WATCH OUT - this gets wiped out when we load ezBIDS_core.json from analyzer
+    //TODO: WATCH OUT - this gets wiped out when we load ezBIDS_core.json from analyzer
     ezbids: {
         notLoaded: true,
 
@@ -436,65 +392,6 @@ interface BIDSDatatypesMetadata {
         options: BIDSDatatypeMetadataOption[];
     };
 }
-
-interface RelevantMetadata {
-    modality: string;
-    datatype: string;
-    suffix: string;
-    conditions: string[];
-    metadata: string;
-}
-
-interface checkMetadata {
-    modality: string;
-    datatype: string;
-    suffix: string;
-    filePath: string;
-    MetaDataField: string;
-}
-
-interface MetadataIssues {
-    code: string;
-    message: string;
-}
-
-interface MetadataSeverity {
-    required: any;
-    recommended: any;
-    optional: any;
-    conditional: any;
-}
-
-interface BIDSSchemaMetadata {
-    selectors: string[];
-    fields: MetadataFields[];
-}
-
-// export interface MetadataChecks {
-//     ezbids: IEzbids;
-//     severity: MetadataSeverity;
-//     // formData: any;
-//     // addArrayValidationRule(rules: any, item: any): any;
-//     // addNumericValidationRule(rules: any, item: any): any;
-//     // conditionalLabel(item: any): any;
-//     // formatType(type: string): string;
-//     // generateValidationRules(fieldsMetadata: {
-//     //     required: never[];
-//     //     recommended: never[];
-//     //     optional: never[];
-//     //     conditional: never[];
-//     // }): any;
-//     // getArrayValidation(value: string, item: any): any;
-//     // getFieldsMetaData(type: string): string;
-//     // isNumeric(value: any): any;
-//     // loadInitFormValues(): any;
-//     // parseArrayValues(value: any, details: any): any;
-//     // parseDefaultValue(type: string): string;
-//     // parseType(details: { type: null; anyOf: any[] }): any;
-//     // rules: any;
-//     // setDefaultValue(details: { type: null; anyOf: any[] }): any;
-//     ss: Series | IObject;
-// }
 
 interface Selector {
     [key: string]: any;
