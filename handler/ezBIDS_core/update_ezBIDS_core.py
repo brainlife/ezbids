@@ -19,35 +19,30 @@ from natsort import natsorted
 DATA_DIR = sys.argv[1]
 os.chdir(DATA_DIR)
 
-json_list = pd.read_csv("list", header=None, lineterminator="\n").to_numpy().flatten().tolist()
+img_list = natsorted(pd.read_csv("list", header=None, lineterminator="\n").to_numpy().flatten().tolist())
 MEG_extensions = [".ds", ".fif", ".sqd", ".con", ".raw", ".ave", ".mrk", ".kdf", ".mhd", ".trg", ".chn", ".dat"]
 
 # place paths to image thumbnails in ezBIDS_core.json
 with open("ezBIDS_core.json", "r") as ezBIDS_json:
     ezBIDS = json.load(ezBIDS_json)
 
-for json_file in json_list:
-    if json_file.endswith(tuple(MEG_extensions)):
-        nifti_file = json_file
-    else:
-        nifti_file = json_file.split(".json")[0] + ".nii.gz"
-
-    if os.path.isfile(f"{DATA_DIR}/{nifti_file}") or os.path.isdir(f"{DATA_DIR}/{nifti_file}"):
+for img_file in img_list:
+    if os.path.isfile(f"{DATA_DIR}/{img_file}") or os.path.isdir(f"{DATA_DIR}/{img_file}"):
         for obj in ezBIDS["objects"]:
             for item in obj["items"]:
                 path = item["path"]
 
-                if path == nifti_file:
+                if path == img_file:
                     files = [
-                        os.path.join(os.path.dirname(nifti_file), x) for x in os.listdir(os.path.dirname(nifti_file))
+                        os.path.join(os.path.dirname(img_file), x) for x in os.listdir(os.path.dirname(img_file))
                     ]
 
-                    if nifti_file.endswith(tuple(MEG_extensions)):
-                        ext = Path(nifti_file).suffix
-                    else:
+                    if img_file.endswith('.nii.gz'):
                         ext = ".nii.gz"
+                    else:
+                        ext = Path(img_file).suffix
 
-                    png_files = natsorted([x for x in files if nifti_file.split(ext)[0] in x and ".png" in x])
+                    png_files = natsorted([x for x in files if img_file.split(ext)[0] in x and ".png" in x])
                     item["pngPaths"] = png_files
 
 with open("ezBIDS_core.json", "w") as ezBIDS_json:
