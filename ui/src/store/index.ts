@@ -3,50 +3,6 @@ import { createStore } from 'vuex';
 import bidsEntities from '../assets/schema/objects/entities.json';
 import axios from '../axios.instance';
 
-// export interface GenericRule {
-//     selectors?: string[]
-//     checks?: string[]
-//     columns?: Record<string, string>
-//     additional_columns?: string
-//     initial_columns?: string[]
-//     fields: Record<string, SchemaFields>
-//     issue?: SchemaIssue
-//     extensions?: string[]
-//     suffixes?: string[]
-//     stem?: string
-//     path?: string
-//     datatypes?: string[]
-//     pattern?: string
-//     name?: string
-//     format?: string
-//     required?: string
-//     index_columns?: string[]
-// }
-
-// export interface SchemaFields {
-//     level: string
-//     level_addendum?: string
-//     issue?: SchemaIssue
-// }
-
-// export interface SchemaIssue {
-//     code: string
-//     message: string
-//     level?: string
-// }
-
-// interface SchemaType {
-//     type: string
-//     enum?: string[]
-// }
-
-// interface AnyOf {
-//     anyOf: SchemaType[]
-// }
-
-// export type GenericSchema = { [key: string]: GenericRule | GenericSchema }
-// export type SchemaTypeLike = AnyOf | SchemaType
-
 export interface ContainerObject {
     Type: string;
     Tag: string;
@@ -244,31 +200,6 @@ interface BIDSDatatypes {
     };
 }
 
-interface BIDSDatatypeMetadataOptionConditions {
-    metadata: string;
-    value: string;
-}
-
-interface BIDSDatatypeMetadataOptionMetadata {
-    name: string;
-    requirement: string | undefined;
-    description: string;
-}
-
-interface BIDSDatatypeMetadataOption {
-    value: string;
-    label: string;
-    conditions: BIDSDatatypeMetadataOptionConditions[];
-    metadata: BIDSDatatypeMetadataOptionMetadata[];
-}
-
-interface BIDSDatatypesMetadata {
-    [key: string]: {
-        label: string;
-        options: BIDSDatatypeMetadataOption[];
-    };
-}
-
 export interface OrganizedSession {
     sess: string;
     session_idx: number;
@@ -307,14 +238,6 @@ export interface ISession {
     finalize_finish_date?: string;
 }
 
-export interface RelevantMetadata {
-    modality: string;
-    datatype: string;
-    suffix: string;
-    conditions: string[];
-    metadata: string;
-}
-
 const state = {
     bidsSchema: {
         entities: bidsEntities,
@@ -334,7 +257,7 @@ const state = {
     page: 'upload',
 
     //current state of the session
-    //WATCH OUT - this gets wiped out when we load ezBIDS_core.json from analyzer
+    //TODO: WATCH OUT - this gets wiped out when we load ezBIDS_core.json from analyzer
     ezbids: {
         notLoaded: true,
 
@@ -445,32 +368,46 @@ const state = {
 export type IEzbids = typeof state.ezbids;
 export type IEvents = typeof state.events;
 
-interface checkMetadata {
-    modality: string;
-    datatype: string;
-    suffix: string;
-    filePath: string;
-    MetaDataField: string;
+interface BIDSDatatypeMetadataOptionConditions {
+    metadata: string;
+    value: string;
 }
 
-interface MetadataIssues {
-    code: string;
-    message: string;
+interface BIDSDatatypeMetadataOptionMetadata {
+    name: string;
+    requirement: string | undefined;
+    description: string;
 }
 
-interface MetadataFields {
+interface BIDSDatatypeMetadataOption {
+    value: string;
+    label: string;
+    conditions: BIDSDatatypeMetadataOptionConditions[];
+    metadata: BIDSDatatypeMetadataOptionMetadata[];
+}
+
+interface BIDSDatatypesMetadata {
     [key: string]: {
-        // Metadata key: EchoTime, RepetitionTime, etc...
-        level: string;
-        description_addendum?: string;
-        level_addendum?: string;
-        issue?: MetadataIssues;
+        label: string;
+        options: BIDSDatatypeMetadataOption[];
     };
 }
 
-interface BIDSSchemaMetadata {
-    selectors: string[];
-    fields: MetadataFields[];
+interface Selector {
+    [key: string]: any;
+}
+
+interface Field {
+    [key: string]: any;
+}
+
+export interface MetadataFields {
+    [key: string]: {
+        selectors: Selector[];
+        fields: {
+            [key: string]: Field;
+        };
+    };
 }
 
 function loadDatatype(modality: string, datatypes: { [key: string]: BIDSSchemaEntities }, label: string) {
@@ -486,21 +423,6 @@ function loadDatatype(modality: string, datatypes: { [key: string]: BIDSSchemaEn
         });
     }
 }
-
-/* ezbids.sideCar = {
-    "anat/t1w": {
-        //yamlfile data fields for the input boxes
-        "Field1" : {
-            severity:"required/recommended/optional" //optional -> not forcing user, 
-            recommended -> ui enhancement, required -> error
-            type: "string",
-            description: "description",
-            conditional: "if Field2 == 'something' then this is required",
-            default: "default value",
-        },
-    }
-}
-*/
 
 import dwiDatatype from '../assets/schema/rules/datatypes/dwi.json';
 loadDatatype('dwi', dwiDatatype, 'Diffusion');

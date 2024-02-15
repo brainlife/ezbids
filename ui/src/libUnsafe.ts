@@ -1,5 +1,12 @@
 import e from 'cors';
-import { Series, IObject, OrganizedSession, OrganizedSubject, IEzbids, IBIDSEvent } from './store';
+// import * as fs from 'fs';
+
+import { Series, IObject, OrganizedSession, OrganizedSubject, IEzbids, IBIDSEvent, MetadataFields } from './store';
+
+import aslYaml from '../src/assets/schema/rules/sidecars/asl.yaml';
+import petYaml from '../src/assets/schema/rules/sidecars/pet.yaml';
+
+import metadata_types from '../src/assets/schema/rules/sidecars/metadata_types.yaml';
 
 //deepEqual and isPrimitive functions come from https://stackoverflow.com/a/45683145
 export function deepEqual(obj1: any, obj2: any) {
@@ -1699,4 +1706,224 @@ export function validateParticipantsInfo($root: IEzbids) {
         });
     });
     return errors;
+}
+
+export function metadataAlerts(
+    bidsDatatypeMetadata: MetadataFields,
+    bidsMetadataInfo: any,
+    $root: IEzbids,
+    idx: number,
+    type: string
+): string[] {
+    // First, get the current metadata from the sequence sidecars
+    let sidecarMetadata: any = {};
+    $root.objects.forEach((obj: IObject) => {
+        if (obj.series_idx == idx) {
+            //find the item in items with .json
+            obj.items.forEach((item: any) => {
+                if (item.name.includes('json') && item.sidecar_json) {
+                    //load the json through sidecar_json
+                    const json = JSON.parse(item.sidecar_json);
+                    sidecarMetadata = json;
+                }
+            });
+        }
+    });
+
+    // Second, find the required (and conditionally required) metadata fields, per BIDS spec
+    let requiredFields: string[] = [];
+    let datatype = type.split('/')[0];
+    let suffix = type.split('/')[1];
+    for (let key in bidsDatatypeMetadata) {
+        const metadataEntry = bidsDatatypeMetadata[key];
+        const selectors: any = metadataEntry.selectors;
+        const fields = metadataEntry.fields;
+        let proceed = 'no';
+        // Need to ensure that we're dealing with the proper sequence datatype and suffix.
+        if (selectors.length === 2) {
+            // TODO - Can't always rely on this for important info (e.g. BolusCutOffFlag [ASL])
+            // don't focus on other conditionals, those are in level_addendum
+            if (
+                selectors[0].includes('datatype') &&
+                selectors[0].includes(datatype) &&
+                selectors[1].includes('suffix') &&
+                selectors[1].includes(suffix)
+            ) {
+                proceed = 'yes';
+            }
+        } else {
+            if (datatype === 'meg' && suffix === 'meg' && !selectors.includes('suffix == "coordsystem"')) {
+                proceed = 'yes';
+            }
+        }
+        if (proceed === 'yes') {
+            for (let fieldName in fields) {
+                if (fields.hasOwnProperty(fieldName) && !['IntendedFor', 'TaskName'].includes(fieldName)) {
+                    let field = fields[fieldName];
+                    let severity: any = '';
+                    if (field.hasOwnProperty('level')) {
+                        severity = field.level;
+                    } else {
+                        severity = field;
+                    }
+
+                    if (severity === 'required') {
+                        if (!sidecarMetadata.hasOwnProperty(fieldName)) {
+                            // Required based on datatype/suffix pairing, no conditionals
+                            // BIDS metadata field not in sequence sidecar
+                            requiredFields.push(fieldName);
+                        }
+                    }
+                    if (field.hasOwnProperty('level_addendum')) {
+                        let levelAddendum = field.level_addendum;
+                        if (levelAddendum.includes('required if')) {
+                            let bidsMetadataKey = levelAddendum.split('required if')[1].split('`')[1];
+                            let bidsMetadataValue: string = '';
+                            let context: string = '';
+
+                            // setup some context stuff
+                            if (levelAddendum.includes('does not contain')) {
+                                bidsMetadataValue = 'none';
+                                context = 'does not contain';
+                            } else if (levelAddendum.includes('is in [')) {
+                                bidsMetadataValue = levelAddendum
+                                    .replace(/(^.*\[|\].*$)/g, '')
+                                    .split('`')
+                                    .filter((e: string) => !['', ','].includes(e));
+                                context = 'is in';
+                            } else {
+                                bidsMetadataValue = levelAddendum.split('required if')[1].split('`')[3];
+                                context = 'is';
+                            }
+
+                            // Perform check
+                            if (context === 'is in') {
+                                let sidecarMetadataKey = bidsMetadataKey;
+                                let sidecarMetadataValue = sidecarMetadata[sidecarMetadataKey];
+                                if (bidsMetadataValue.includes(sidecarMetadataValue)) {
+                                    requiredFields.push(fieldName);
+                                }
+                            } else {
+                                if (sidecarMetadata.hasOwnProperty(bidsMetadataKey)) {
+                                    let sidecarMetadataKey = bidsMetadataKey;
+                                    let sidecarMetadataValue = sidecarMetadata[sidecarMetadataKey];
+                                    if (context === 'is' && sidecarMetadataValue === bidsMetadataValue) {
+                                        // Required based on equality conditional between BIDS and sequence metadata
+                                        requiredFields.push(fieldName);
+                                    } else if (
+                                        context === 'does not contain' &&
+                                        !sidecarMetadataValue.includes('none')
+                                    ) {
+                                        // Required based on contain conditional between BIDS and sequence metadata
+                                        requiredFields.push(fieldName);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    //Third, flag any metadata fields values that contain improper BIDS format (e.g. Manufacturer can't be a number)
+    let typoFields: string[] = [];
+
+    for (let sidecarMetadataKey in sidecarMetadata) {
+        let sidecarMetadataValue = sidecarMetadata[sidecarMetadataKey];
+        if (bidsMetadataInfo.hasOwnProperty(sidecarMetadataKey)) {
+            // Should mostly always be the case, but user could have non-BIDS specified metadata fields I suppose
+            if (bidsMetadataInfo[sidecarMetadataKey].hasOwnProperty('anyOf')) {
+                /* TODO - Passing for now, anyOf checking is complicated and already handled when clicking on the 
+                Edit Metadata page. Downside is that user won't be alerted unless they click there, but the validator 
+                will detect it. Not ideal, will return this this later.
+
+                Also need to deal with additionalProperties and items.
+                */
+            } else {
+                let bidsMetadataValueType = bidsMetadataInfo[sidecarMetadataKey].type;
+                let sidecarMetadataValueType: string = typeof sidecarMetadataValue;
+                if (sidecarMetadataValueType === 'object' && Array.isArray(sidecarMetadataValue)) {
+                    sidecarMetadataValueType = 'array';
+                }
+                if (bidsMetadataValueType === 'integer' && sidecarMetadataValueType === 'number') {
+                    if (Number.isInteger(sidecarMetadataValue)) {
+                        sidecarMetadataValueType = 'integer';
+                    }
+                }
+
+                // Does sequence metadata field key type match what BIDS expects
+                if (sidecarMetadataValueType !== bidsMetadataValueType) {
+                    typoFields.push(sidecarMetadataKey);
+                } else {
+                    // Deal with BIDS metadata value type conditionals (other than anyOf)
+                    // format
+                    if (bidsMetadataInfo[sidecarMetadataKey].hasOwnProperty('format')) {
+                        let format = bidsMetadataInfo[sidecarMetadataKey].format;
+                        if (format === 'time' && /^\d{2}:\d{2}:\d{2}$/.test(sidecarMetadataValue) === false) {
+                            typoFields.push(sidecarMetadataKey);
+                        }
+                    }
+                    //enum
+                    if (bidsMetadataInfo[sidecarMetadataKey].hasOwnProperty('enum')) {
+                        let Enum = bidsMetadataInfo[sidecarMetadataKey].enum;
+                        if (typeof Enum[0] === 'object') {
+                            let newEnum = [];
+                            for (let d in Enum) {
+                                let enumValue = Enum[d]['$ref'].split('.')[2];
+                                // e.g. PhaseEncodingDirection
+                                if (enumValue.includes('Minus')) {
+                                    enumValue = enumValue.replace('Minus', '-');
+                                }
+                                // MRAcquisitionType
+                                if (enumValue.includes('TwoD')) {
+                                    enumValue = '2D';
+                                }
+                                if (enumValue.includes('ThreeD')) {
+                                    enumValue = '3D';
+                                }
+                                newEnum.push(enumValue);
+                            }
+                            Enum = newEnum;
+                        }
+                        if (!Enum.includes(sidecarMetadataValue)) {
+                            typoFields.push(sidecarMetadataKey);
+                        }
+                    }
+                    //minimum
+                    if (bidsMetadataInfo[sidecarMetadataKey].hasOwnProperty('minimum')) {
+                        let min = bidsMetadataInfo[sidecarMetadataKey].minimum;
+                        if (sidecarMetadataValue < min) {
+                            typoFields.push(sidecarMetadataKey);
+                        }
+                    }
+                    //maximum
+                    if (bidsMetadataInfo[sidecarMetadataKey].hasOwnProperty('maximum')) {
+                        let max = bidsMetadataInfo[sidecarMetadataKey].maximum;
+                        if (sidecarMetadataValue > max) {
+                            typoFields.push(sidecarMetadataKey);
+                        }
+                    }
+                    //minItems
+                    if (bidsMetadataInfo[sidecarMetadataKey].hasOwnProperty('minItems')) {
+                        let minItems = bidsMetadataInfo[sidecarMetadataKey].minItems;
+                        if (sidecarMetadataValue.length < minItems) {
+                            typoFields.push(sidecarMetadataKey);
+                        }
+                    }
+                    //maxItems
+                    if (bidsMetadataInfo[sidecarMetadataKey].hasOwnProperty('maxItems')) {
+                        let maxItems = bidsMetadataInfo[sidecarMetadataKey].maxItems;
+                        if (sidecarMetadataValue.length > maxItems) {
+                            typoFields.push(sidecarMetadataKey);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    let metadataAlertFields = requiredFields.concat(typoFields);
+    // console.log('required', requiredFields);
+    // console.log('typo', typoFields);
+    return metadataAlertFields;
 }

@@ -101,6 +101,16 @@
                                         :placeholder="getPlaceholderByType(formatType(item.details.type))"
                                         @input="$refs.form.validate()"
                                     ></el-input>
+
+                                    <el-input
+                                        v-if="formatType(item.details.type) == 'integer'"
+                                        v-model="formData[item.field]"
+                                        type="text"
+                                        inputmode="numeric"
+                                        :name="item.field"
+                                        :placeholder="getPlaceholderByType(formatType(item.details.type))"
+                                        @input="$refs.form.validate()"
+                                    ></el-input>
                                 </el-col>
                                 <el-col :span="8">
                                     <el-select
@@ -185,6 +195,17 @@
                             @input="$refs.form.validate()"
                         ></el-input>
 
+                        <el-input
+                            v-if="inputType(item) == 'input-integer'"
+                            v-model="formData[item.field]"
+                            type="text"
+                            inputmode="numeric"
+                            :name="item.field"
+                            :placeholder="getPlaceholderByType(item.details.type)"
+                            class="input-fullwidth"
+                            @input="$refs.form.validate()"
+                        ></el-input>
+
                         <el-select
                             v-if="inputType(item) == 'select-boolean'"
                             v-model="formData[item.field]"
@@ -221,6 +242,16 @@
                                         v-model="formData[item.field]"
                                         type="text"
                                         inputmode="decimal"
+                                        :name="item.field"
+                                        :placeholder="getPlaceholderByType(formatType(item.details.type))"
+                                        @input="$refs.form.validate()"
+                                    ></el-input>
+
+                                    <el-input
+                                        v-if="formatType(item.details.type) == 'integer'"
+                                        v-model="formData[item.field]"
+                                        type="text"
+                                        inputmode="numeric"
                                         :name="item.field"
                                         :placeholder="getPlaceholderByType(formatType(item.details.type))"
                                         @input="$refs.form.validate()"
@@ -307,6 +338,16 @@
                             @input="$refs.form.validate()"
                         ></el-input>
 
+                        <el-input
+                            v-if="inputType(item) == 'input-integer'"
+                            v-model="formData[item.field]"
+                            type="text"
+                            inputmode="numeric"
+                            :name="item.field"
+                            :placeholder="getPlaceholderByType(item.details.type)"
+                            @input="$refs.form.validate()"
+                        ></el-input>
+
                         <el-select
                             v-if="inputType(item) == 'select-boolean'"
                             v-model="formData[item.field]"
@@ -343,6 +384,16 @@
                                         v-model="formData[item.field]"
                                         type="text"
                                         inputmode="decimal"
+                                        :name="item.field"
+                                        :placeholder="getPlaceholderByType(formatType(item.details.type))"
+                                        @input="$refs.form.validate()"
+                                    ></el-input>
+
+                                    <el-input
+                                        v-if="formatType(item.details.type) == 'integer'"
+                                        v-model="formData[item.field]"
+                                        type="text"
+                                        inputmode="numeric"
                                         :name="item.field"
                                         :placeholder="getPlaceholderByType(formatType(item.details.type))"
                                         @input="$refs.form.validate()"
@@ -424,6 +475,16 @@
                             @input="$refs.form.validate()"
                         ></el-input>
 
+                        <el-input
+                            v-if="inputType(item) == 'input-integer'"
+                            v-model="formData[item.field]"
+                            type="text"
+                            inputmode="numeric"
+                            :name="item.field"
+                            :placeholder="getPlaceholderByType(item.details.type)"
+                            @input="$refs.form.validate()"
+                        ></el-input>
+
                         <el-select
                             v-if="inputType(item) == 'select-boolean'"
                             v-model="formData[item.field]"
@@ -460,6 +521,16 @@
                                         v-model="formData[item.field]"
                                         type="text"
                                         inputmode="decimal"
+                                        :name="item.field"
+                                        :placeholder="getPlaceholderByType(formatType(item.details.type))"
+                                        @input="$refs.form.validate()"
+                                    ></el-input>
+
+                                    <el-input
+                                        v-if="formatType(item.details.type) == 'integer'"
+                                        v-model="formData[item.field]"
+                                        type="text"
+                                        inputmode="numeric"
                                         :name="item.field"
                                         :placeholder="getPlaceholderByType(formatType(item.details.type))"
                                         @input="$refs.form.validate()"
@@ -505,10 +576,15 @@
 </template>
 
 <script lang="ts">
+import anatYaml from '../../src/assets/schema/rules/sidecars/anat.yaml';
+import funcYaml from '../../src/assets/schema/rules/sidecars/func.yaml';
+import fmapYaml from '../../src/assets/schema/rules/sidecars/fmap.yaml';
+import dwiYaml from '../../src/assets/schema/rules/sidecars/dwi.yaml';
 import aslYaml from '../../src/assets/schema/rules/sidecars/asl.yaml';
 import petYaml from '../../src/assets/schema/rules/sidecars/pet.yaml';
+import megYaml from '../../src/assets/schema/rules/sidecars/meg.yaml';
+import metadataInfo from '../../src/assets/schema/rules/sidecars/metadata.yaml';
 
-import metadata_types from '../../src/assets/schema/rules/sidecars/metadata_types.yaml';
 import { ElMessageBox, ElMessage, useFocus } from 'element-plus';
 import { defineComponent } from 'vue';
 
@@ -567,7 +643,9 @@ export default defineComponent({
                                     value !== undefined &&
                                     !(Array.isArray(value) && value.length === 1 && value[0] === '')
                                 ) {
+                                    if (type == 'string') value = value.replace(/"/g, ''); // don't let user add unnecessary quotes
                                     if (type == 'number') value = Number(value);
+                                    if (type == 'integer') value = Number(value);
                                     if (type == 'boolean') value = Boolean(value);
                                     if (type == 'array') {
                                         value = this.parseArrayValues(value, details);
@@ -592,6 +670,7 @@ export default defineComponent({
             )
                 return 'input';
             if (item.details.type == 'number') return 'input-number';
+            if (item.details.type == 'integer') return 'input-integer';
             if (item.details.type == 'boolean') return 'select-boolean';
             if (item.details.enum) return 'select-enum';
         },
@@ -654,7 +733,18 @@ export default defineComponent({
                 fileObject = aslYaml;
             } else if (type.startsWith('pet')) {
                 fileObject = petYaml;
+            } else if (type.startsWith('func')) {
+                fileObject = funcYaml;
+            } else if (type.startsWith('dwi')) {
+                fileObject = dwiYaml;
+            } else if (type.startsWith('fmap')) {
+                fileObject = fmapYaml;
+            } else if (type.startsWith('anat')) {
+                fileObject = anatYaml;
+            } else if (type.startsWith('meg')) {
+                fileObject = megYaml;
             }
+
             let result = {
                 required: [],
                 recommended: [],
@@ -667,8 +757,10 @@ export default defineComponent({
 
                 // fields with level 'required' or 'recommended' are included in the list
                 for (const [field, metadata] of Object.entries(fields)) {
-                    // Skip the IntendedFor field in the ASL sidecar
-                    if (fileObject === aslYaml && field === 'IntendedFor') {
+                    // Skip some metadata fields that are either handled seaprately by ezBIDS, or not worthwhile
+
+                    // ezBIDS handles IntendedFor and TaskName separately, so don't worry about them here
+                    if (['IntendedFor', 'TaskName'].includes(field)) {
                         continue;
                     }
                     // Skip all metadata in perf/m0scan except for RepetitionTimePreparation
@@ -682,9 +774,28 @@ export default defineComponent({
                     if (type === 'pet/pet' && section.includes('Blood')) {
                         continue;
                     }
+                    // TODO - Need to come back to this and make the underlying code better at accounting for these
+                    if (type.startsWith('func') && ['VolumeTiming', 'Units'].includes(field)) {
+                        continue;
+                    }
+                    //MEG data is weird sometimes, especially when certain metadata field values are objects
+                    if (
+                        type === 'meg/meg' &&
+                        [
+                            'AssociatedEmptyRoom',
+                            'MEGCoordinateSystem',
+                            'MEGCoordinateUnits',
+                            'SoftwareFilters',
+                            'HardwareFilters',
+                            'HeadCoilCoordinates',
+                            'AnatomicalLandmarkCoordinates',
+                        ].includes(field)
+                    ) {
+                        continue;
+                    }
 
-                    // get the metadata from the metadata_types.yaml
-                    const details = metadata_types[field] || {};
+                    // get the metadata from the metadata.yaml
+                    const details = metadataInfo[field] || {};
                     details.default_value = this.setDefaultValue(details);
                     details.type = this.parseType(details);
 
@@ -806,14 +917,7 @@ export default defineComponent({
                                         expectedValue &&
                                         (value == null || value === '')
                                     ) {
-                                        callback(
-                                            new Error(
-                                                'This field is required based on the condition ' +
-                                                    fieldName +
-                                                    ' == ' +
-                                                    expectedValue
-                                            )
-                                        );
+                                        callback(new Error('Required because ' + fieldName + ' == ' + expectedValue));
                                         return;
                                     }
                                 }
@@ -828,14 +932,7 @@ export default defineComponent({
                                         String(this.formData[fieldName]) === expectedValue &&
                                         !value
                                     ) {
-                                        callback(
-                                            new Error(
-                                                'This field is required based on the condition ' +
-                                                    fieldName +
-                                                    ' == ' +
-                                                    expectedValue
-                                            )
-                                        );
+                                        callback(new Error('Required because ' + fieldName + ' == ' + expectedValue));
                                         return;
                                     }
                                 }
@@ -851,14 +948,7 @@ export default defineComponent({
                                         String(this.formData[fieldName]) === expectedValue &&
                                         !value
                                     ) {
-                                        callback(
-                                            new Error(
-                                                'This field is required based on the condition ' +
-                                                    fieldName +
-                                                    ' == ' +
-                                                    expectedValue
-                                            )
-                                        );
+                                        callback(new Error('Required because ' + fieldName + ' == ' + expectedValue));
                                         return;
                                     }
                                 }
@@ -877,14 +967,7 @@ export default defineComponent({
                                         String(this.formData[fieldName]) === expectedValue &&
                                         !value
                                     ) {
-                                        callback(
-                                            new Error(
-                                                'This field is required based on the condition ' +
-                                                    fieldName +
-                                                    ' == ' +
-                                                    expectedValue
-                                            )
-                                        );
+                                        callback(new Error('Required because ' + fieldName + ' == ' + expectedValue));
                                         return;
                                     }
                                 }
@@ -904,7 +987,7 @@ export default defineComponent({
                                     ) {
                                         callback(
                                             new Error(
-                                                'This field is required based on the condition ' +
+                                                'Required because ' +
                                                     fieldName +
                                                     ' == ' +
                                                     expectedValue1 +
@@ -935,10 +1018,7 @@ export default defineComponent({
                                     ) {
                                         callback(
                                             new Error(
-                                                'This field is required based on the condition ' +
-                                                    fieldName +
-                                                    ' == ' +
-                                                    expectedValues.join(' or ')
+                                                'Required because ' + fieldName + ' == ' + expectedValues.join(' or ')
                                             )
                                         );
                                         return;
@@ -962,7 +1042,7 @@ export default defineComponent({
             return rules;
         },
         addNumericValidationRule(rules, item) {
-            if (item.details && item.details.type === 'number') {
+            if (['number', 'integer'].includes(item.details && item.details.type)) {
                 if (!rules[item.field]) {
                     rules[item.field] = [];
                 }
@@ -1018,7 +1098,7 @@ export default defineComponent({
             // prevent user from entering [] or [""]
             // add check to prevent from entering brackets
             if (value.includes('[') || value.includes(']')) {
-                return 'Please enter a valid entry no brackets allowed [], only comma separated values';
+                return 'No brackets, only comma separated values';
             }
 
             if (item.details.items.type == 'number') {
@@ -1091,6 +1171,7 @@ export default defineComponent({
         parseDefaultValue(type: string) {
             if (type == 'string') return '';
             if (type == 'number') return null;
+            if (type == 'integer') return null;
             if (type == 'boolean') return undefined;
             if (type == 'array') return []; // will help user to identify its an array
             if (type == 'object') return {}; // will help user to identify its an object
@@ -1103,6 +1184,7 @@ export default defineComponent({
         getPlaceholderByType(type) {
             if (type == 'string') return 'Enter string';
             if (type == 'number') return 'Enter number';
+            if (type == 'integer') return 'Enter integer';
             if (type == 'boolean') return 'Select';
             if (type == 'array') return 'Enter array []';
             if (type == 'object') return 'Enter object {}';
@@ -1125,6 +1207,10 @@ export default defineComponent({
                         // regex to get CASL
                         const regex = /objects.enums.(\w+).value/;
                         const refObject = regex.exec(item['$ref']);
+                        // Spec PED info contains the phrase "Minus" rather than the actual symbol (-). Correct this here
+                        if (refObject[1].endsWith('Minus')) {
+                            refObject[1] = refObject[1].replace('Minus', '-');
+                        }
                         return { value: refObject[1], label: refObject[1] };
                     }
                 }
