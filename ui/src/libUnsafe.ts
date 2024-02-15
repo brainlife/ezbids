@@ -1,5 +1,12 @@
 import e from 'cors';
-import { Series, IObject, OrganizedSession, OrganizedSubject, IEzbids, IBIDSEvent } from './store';
+// import * as fs from 'fs';
+
+import { Series, IObject, OrganizedSession, OrganizedSubject, IEzbids, IBIDSEvent, MetadataFields } from './store';
+
+import aslYaml from '../src/assets/schema/rules/sidecars/asl.yaml';
+import petYaml from '../src/assets/schema/rules/sidecars/pet.yaml';
+
+import metadata_types from '../src/assets/schema/rules/sidecars/metadata_types.yaml';
 
 //deepEqual and isPrimitive functions come from https://stackoverflow.com/a/45683145
 export function deepEqual(obj1: any, obj2: any) {
@@ -1699,4 +1706,69 @@ export function validateParticipantsInfo($root: IEzbids) {
         });
     });
     return errors;
+}
+export function getRequiredFields(bidsDatatypeMetadata: MetadataFields, $root: IEzbids, idx: number): string[] {
+    // First, get the current metadata from the sequence sidecars
+    let sidecarMetadata = {};
+    $root.objects.forEach((obj: IObject) => {
+        if (obj.series_idx == idx) {
+            //find the item in items with .json
+            obj.items.forEach((item: any) => {
+                if (item.name.includes('json') && item.sidecar_json) {
+                    //load the json through sidecar_json
+                    const json = JSON.parse(item.sidecar_json);
+                    sidecarMetadata = json;
+                }
+            });
+        }
+    });
+
+    // Second, find the required (and conditionally required) metadata fields, per BIDS spec
+    const requiredFields: string[] = [];
+    for (const key in bidsDatatypeMetadata) {
+        if (bidsDatatypeMetadata.hasOwnProperty(key)) {
+            const metadataEntry = bidsDatatypeMetadata[key];
+            const fields = metadataEntry.fields;
+
+            for (const fieldName in fields) {
+                if (fields.hasOwnProperty(fieldName)) {
+                    const field = fields[fieldName];
+                    if (field.level === 'required') {
+                        if (!sidecarMetadata.hasOwnProperty(fieldName)) {
+                            requiredFields.push(fieldName);
+                        }
+                    }
+                    if (field.hasOwnProperty('level_addendum')) {
+                        let levelAddendum = field.level_addendum;
+                        if (levelAddendum.includes('required if')) {
+                            let bidsMetadataKey = levelAddendum.split('required if')[1].split('`')[1];
+                            let bidsMetadataValue: string = '';
+                            let context: string = '';
+                            if (!levelAddendum.includes('does not contain')) {
+                                bidsMetadataValue = levelAddendum.split('required if')[1].split('`')[3];
+                                context = 'does not contain';
+                            } else {
+                                bidsMetadataValue = 'none';
+                                context = 'is';
+                            }
+                            if (sidecarMetadata.hasOwnProperty(fieldName)) {
+                                let sidecarMetadataKey = fieldName;
+                                let sidecarMetadataValue = sidecarMetadata[fieldName];
+                                if (context === 'is' && sidecarMetadataValue === bidsMetadataValue) {
+                                    requiredFields.push(fieldName);
+                                } else if (context === 'does not contain' && !sidecarMetadataValue.includes('none')) {
+                                    requiredFields.push(fieldName);
+                                } else {
+                                    //pass
+                                }
+                            } else {
+                                requiredFields.push(fieldName);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    return requiredFields;
 }

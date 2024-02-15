@@ -122,20 +122,6 @@
                                 </template>
                             </el-popover>
                         </el-form-item>
-                        <!-- <p style="border-top: 1px solid #eee; padding: 10px 20px;">
-                        <small>The following metadata fields are required, recommoneded, or optional for this datatype/suffix. Please enter missing required information.</small>
-                        <el-form-item v-for="(v, md) in getSomeMetadata(ss.type)" :key="md"
-                            :label="md.toString()+'-'+(v=='required'?' *':'')" label-width="350" style="width: 350px">
-                            <el-popover v-if="bidsSchema.metadata[md]" :width="350"
-                                :title="bidsSchema.metadata[md].name"
-                                :content="bidsSchema.metadata[md].description">
-                                <template #reference>
-                                    <el-input v-model="ss.md" size="small" :required="v == 'required'" @change="validateAll()"/>
-                                </template>
-                            </el-popover>
-                        </el-form-item>
-                        <p style="border-top: 1px solid #eee; padding: 10px 20px;"></p>
-                    </p> -->
                     </div>
 
                     <div v-if="ss.type && (ss.type.startsWith('fmap/') || ss.type === 'perf/m0scan')">
@@ -314,11 +300,17 @@ import ModalityForm from './components/modalityForm.vue';
 
 import { prettyBytes } from './filters';
 
-import { Series, IObject, MetadataFields } from './store';
+import { Series, IObject } from './store';
 
 import { validateEntities, validate_B0FieldIdentifier_B0FieldSource, getRequiredFields } from './libUnsafe';
+import anatYaml from '../src/assets/schema/rules/sidecars/anat.yaml';
+import funcYaml from '../src/assets/schema/rules/sidecars/func.yaml';
+import fmapYaml from '../src/assets/schema/rules/sidecars/fmap.yaml';
+import dwiYaml from '../src/assets/schema/rules/sidecars/dwi.yaml';
 import aslYaml from '../src/assets/schema/rules/sidecars/asl.yaml';
 import petYaml from '../src/assets/schema/rules/sidecars/pet.yaml';
+import megYaml from '../src/assets/schema/rules/sidecars/meg.yaml';
+
 import metadata_types from '../src/assets/schema/rules/sidecars/metadata_types.yaml';
 import AsyncImageLink from './components/AsyncImageLink.vue';
 
@@ -326,7 +318,6 @@ import AsyncImageLink from './components/AsyncImageLink.vue';
 import { Splitpanes, Pane } from 'splitpanes';
 
 import 'splitpanes/dist/splitpanes.css';
-import axios from './axios.instance';
 
 export default defineComponent({
     components: {
@@ -390,39 +381,31 @@ export default defineComponent({
                 validate_B0FieldIdentifier_B0FieldSource(s);
             }
 
-            // const metadata: MetadataFields = {
-            //     aslYaml,
-            // };
-            const metadata = aslYaml;
-            const requiredFields = getRequiredFields(metadata, this.ezbids, s.series_idx);
-            console.log('Required fields:', requiredFields);
+            // Alert users to metadata issues (e.g. missing required fields).
+            let bidsDatatypeMetadata = {};
+            if (['perf/asl', 'perf/m0scan'].includes(s.type)) {
+                bidsDatatypeMetadata = aslYaml;
+            } else if (s.type.startsWith('pet')) {
+                bidsDatatypeMetadata = petYaml;
+            } else if (s.type.startsWith('func')) {
+                bidsDatatypeMetadata = funcYaml;
+            } else if (s.type.startsWith('fmap')) {
+                bidsDatatypeMetadata = fmapYaml;
+            } else if (s.type.startsWith('dwi')) {
+                bidsDatatypeMetadata = dwiYaml;
+            } else if (s.type.startsWith('anat')) {
+                bidsDatatypeMetadata = anatYaml;
+            } else if (s.type.startsWith('meg')) {
+                bidsDatatypeMetadata = megYaml;
+            }
 
-            // const MetadataChecks: MetadataChecks = {
-            //     ezbids: this.ezbids,
-            //     severity: MetadataSeverity;
-            //     // formData: any;
-            //     // addArrayValidationRule(rules: any, item: any): any;
-            //     // addNumericValidationRule(rules: any, item: any): any;
-            //     // conditionalLabel(item: any): any;
-            //     // formatType(type: string): string;
-            //     // generateValidationRules(fieldsMetadata: {
-            //     //     required: never[];
-            //     //     recommended: never[];
-            //     //     optional: never[];
-            //     //     conditional: never[];
-            //     // }): any;
-            //     // getArrayValidation(value: string, item: any): any;
-            //     // getFieldsMetaData(type: string): string;
-            //     // isNumeric(value: any): any;
-            //     // loadInitFormValues(): any;
-            //     // parseArrayValues(value: any, details: any): any;
-            //     // parseDefaultValue(type: string): string;
-            //     // parseType(details: { type: null; anyOf: any[] }): any;
-            //     // rules: any;
-            //     // setDefaultValue(details: { type: null; anyOf: any[] }): any;
-            //     ss: s,
-            // };
-            // console.log('dannnnnnnn', MetadataChecks.ss);
+            const missingRequiredFields = getRequiredFields(bidsDatatypeMetadata, this.ezbids, s.series_idx);
+            if (missingRequiredFields.length) {
+                let warn: string = `'Required metadata is missing, please click on the "Edit Metadata" button below to 
+                enter this information. You can skip fields for which you do not know the exact value, but you will 
+                not have a fully BIDS-compliant dataset.'`;
+                s.validationWarnings.push(warn);
+            }
 
             // DON'T REALLY NEED THIS if setRun() functionality is in place
 
@@ -498,13 +481,6 @@ export default defineComponent({
                         }
                     });
                 }
-            }
-
-            // Alert users to check relevant metadata ("Edit Metadata" button for any perf sequences)
-            if (s.type.startsWith('perf/') || s.type.startsWith('pet/')) {
-                s.validationWarnings.push(
-                    "Please check to ensure that all necessary metadata is provided, by clicking on the 'Edit Metadata' button below"
-                );
             }
         },
 
