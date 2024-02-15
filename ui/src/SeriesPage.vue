@@ -408,8 +408,8 @@ export default defineComponent({
                 s.series_idx,
                 s.type
             );
-            // console.log(s.type);
-            // console.log('metadataAlertsFields', metadataAlertsFields);
+            console.log(s.series_idx, s.type);
+            console.log('metadataAlertsFields', metadataAlertsFields);
             if (metadataAlertsFields.length) {
                 let warn: string = `'Required metadata is missing and/or provided metadata field values have improper
                 format. Please click on the "Edit Metadata" button below to resolve. You may skip fields for which you
