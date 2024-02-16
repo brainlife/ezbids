@@ -409,9 +409,9 @@ export default defineComponent({
                 s.type
             );
             console.log(s.series_idx, s.type);
-            console.log('metadataAlertsFields', metadataAlertsFields);
+            // console.log('metadataAlertsFields', metadataAlertsFields);
             if (metadataAlertsFields.length) {
-                let warn: string = `'Required metadata is missing and/or provided metadata field values have improper
+                let warn: string = `'Required metadata is missing, provided metadata field values have improper
                 format. Please click on the "Edit Metadata" button below to resolve. You may skip fields for which you
                 do not know the proper value, but you will not have a fully BIDS-compliant dataset.'`;
                 s.validationWarnings.push(warn);

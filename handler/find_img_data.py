@@ -64,8 +64,8 @@ find_img_data('.')
 
 
 # PET
+# TODO - These two lines take several seconds to complete, maybe can be sped up?
 pet_folders = [str(folder) for folder in is_pet.pet_folder(Path(root).resolve())]
-
 pet_folders = [os.path.relpath(x, root) for x in pet_folders if x != '']
 
 pet_folders = [os.path.join('.', x) for x in pet_folders]

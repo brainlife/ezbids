@@ -504,9 +504,11 @@ def modify_uploaded_dataset_list(uploaded_img_list):
         elif any(x.endswith(tuple(['.v', '.v.gz'])) for x in grouped_files):
             grouped_files = [x for x in grouped_files if not x.endswith(tuple(['.v', '.v.gz']))]
 
-        # If imaging file comes with additional data (JSON, bval/bvec) add them to list for processing
-        if len(grouped_files) > 1:
-            uploaded_files_list.append(grouped_files)
+        # Don't want this section is we're allowing only NIfTI files to be uploaded (group length will only be 1).
+        # # If imaging file comes with additional data (JSON, bval/bvec) add them to list for processing
+        # if len(grouped_files) > 1:
+        #     uploaded_files_list.append(grouped_files)
+        uploaded_files_list.append(grouped_files)
 
     # Flatten uploaded_files_list
     uploaded_files_list = natsorted([file for sublist in uploaded_files_list for file in sublist])
@@ -913,7 +915,9 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
     for img_file in img_list:
         # Find file extension
         if img_file.endswith('.nii.gz'):
-            ext = 'nii.gz'
+            ext = '.nii.gz'
+        elif img_file.endswith('.v.gz'):
+            ext = '.v.gz'
         else:
             ext = Path(img_file).suffix
 
@@ -934,12 +938,12 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
                 'ConversionSoftware': 'ezBIDS',
                 'ConversionSoftwareVersion': '1.0.0'
             }
-            if not os.path.exists(json_path):
-                with open(json_path, "w") as fp:
-                    json.dump(json_data, fp, indent=3)
-                corresponding_files_list = corresponding_files_list + [json_path]
-                json_data = open(json_path)
-                json_data = json.load(json_data, strict=False)
+            # if not os.path.exists(json_path):
+            #     with open(json_path, "w") as fp:
+            #         json.dump(json_data, fp, indent=3)
+            #     corresponding_files_list = corresponding_files_list + [json_path]
+            #     json_data = open(json_path)
+            #     json_data = json.load(json_data, strict=False)
 
         # Find ImageModality
         if "Modality" in json_data:
@@ -1085,6 +1089,14 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
             image = nib.load(img_file)
             ndim = image.ndim
 
+            # Check for RepetitionTime (TR) if not in JSON metadata and if so, add to file
+            if repetition_time == 0:
+                if len(image.header.get_zooms()) == 4:
+                    repetition_time = image.header.get_zooms()[-1]
+                    if not isinstance(repetition_time, int):
+                        repetition_time = round(float(repetition_time), 2)
+                    json_data['RepetitionTime'] = repetition_time
+
             # Find how many volumes are in nifti file
             try:
                 volume_count = image.shape[3]
@@ -1198,6 +1210,14 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
         # Remove non-alphanumeric characters from subject (and session) ID(s)
         subject = re.sub("[^A-Za-z0-9]+", "", subject)
         session = re.sub("[^A-Za-z0-9]+", "", session)
+
+        # If uploaded data didn't contain JSON metadata, add here
+        if not os.path.exists(json_path):
+            with open(json_path, "w") as fp:
+                json.dump(json_data, fp, indent=3)
+            corresponding_files_list = corresponding_files_list + [json_path]
+            json_data = open(json_path)
+            json_data = json.load(json_data, strict=False)
 
         """
         Organize all from individual SeriesNumber in dictionary
@@ -2889,30 +2909,28 @@ def modify_objects_info(dataset_list):
             # Make items list (part of objects list)
             items = []
             for item in protocol["paths"]:
-                if ".bval" in item:
+                if item.endswith(".bval"):
                     items.append({"path": item,
                                   "name": "bval"})
-                elif ".bvec" in item:
+                elif item.endswith(".bvec"):
                     items.append({"path": item,
                                   "name": "bvec"})
-                elif ".json" in item:
+                elif item.endswith(".json"):
                     items.append({"path": item,
                                   "name": "json",
                                   "sidecar": protocol["sidecar"]})
                     if item.endswith("blood.json"):
                         path = item.split(".json")[0] + ".tsv"
                         headers = [x for x in pd.read_csv(path, sep="\t").columns]
-                        print(path)
-                        print(headers)
                         items.append({"path": path,
                                       "name": "tsv",
                                       "headers": headers})
-                elif ".nii.gz" in item:
+                elif item.endswith(".nii.gz"):
                     items.append({"path": item,
                                   "name": "nii.gz",
                                   "pngPaths": [],
                                   "headers": protocol["headers"]})
-                elif any(x in item for x in MEG_extensions):
+                elif item.endswith(tuple(MEG_extensions)):
                     name = Path(item).suffix
                     items.append({"path": item,
                                   "name": name,

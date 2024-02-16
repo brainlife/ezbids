@@ -1751,10 +1751,10 @@ export function metadataAlerts(
             ) {
                 proceed = 'yes';
             }
-        } else {
-            if (datatype === 'meg' && suffix === 'meg' && !selectors.includes('suffix == "coordsystem"')) {
-                proceed = 'yes';
-            }
+        } else if (datatype === 'meg' && suffix === 'meg' && !selectors.includes('suffix == "coordsystem"')) {
+            proceed = 'yes';
+        } else if (datatype === 'func' && suffix === 'bold' && key === 'MRIFuncRepetitionTime') {
+            proceed = 'yes';
         }
         if (proceed === 'yes') {
             for (let fieldName in fields) {
@@ -1812,9 +1812,10 @@ export function metadataAlerts(
                                         requiredFields.push(fieldName);
                                     } else if (
                                         context === 'does not contain' &&
-                                        !sidecarMetadataValue.includes('none')
+                                        sidecarMetadataValue.includes('none')
                                     ) {
                                         // Required based on contain conditional between BIDS and sequence metadata
+                                        console.log('AAAAAAA', fieldName, sidecarMetadataValue);
                                         requiredFields.push(fieldName);
                                     }
                                 }
@@ -1923,7 +1924,7 @@ export function metadataAlerts(
     }
 
     let metadataAlertFields = requiredFields.concat(typoFields);
-    // console.log('required', requiredFields);
-    // console.log('typo', typoFields);
+    console.log('required', requiredFields);
+    console.log('typo', typoFields);
     return metadataAlertFields;
 }

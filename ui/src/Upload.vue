@@ -149,7 +149,8 @@
 
             <div v-if="session.status == 'failed'">
                 <el-alert type="error"
-                    >ezBIDS failed.. Please check the Debug logs and contact ezBIDS team (dlevitas@iu.edu).</el-alert
+                    >ezBIDS failed.. Please check the Debug logs and contact the ezBIDS team
+                    (dlevitas@iu.edu).</el-alert
                 >
                 <br />
                 <pre class="status">{{ session.status_msg }}</pre>
@@ -190,7 +191,7 @@
                 <div v-if="!ezbids.notLoaded && !ezbids.objects.length">
                     <el-alert type="error"
                         >We couldn't find any objects. Please upload data that contains at least 1 object. Contact the
-                        ezBIDS team (dlevitas@iu.edu) or https://github.com/brainlife/ezbids/issues for
+                        ezBIDS team (dlevitas@iu.edu or https://github.com/brainlife/ezbids/issues) for
                         support</el-alert
                     >
                 </div>
@@ -212,6 +213,9 @@
                         >
                         <el-button type="warning" size="mini" @click="downloadFile('dcm2niix_error')"
                             >Download dcm2niix_error</el-button
+                        >
+                        <el-button type="warning" size="mini" @click="downloadFile('pet2bids_error')"
+                            >Download pet2bids_error</el-button
                         >
                         <el-button type="warning" size="mini" @click="downloadFile('list')">Download list</el-button>
                         <el-button type="warning" size="mini" @click="downloadFile('ezBIDS_core.json')"
