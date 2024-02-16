@@ -92,9 +92,13 @@ if [ $bids_compliant == "true" ]; then
 
     touch $root/dcm2niix_output
     touch $root/dcm2niix_error
+
+    touch $root/pet2bids_output
+    touch $root/pet2bids_error
     
     # find products (NIfTI files)
-    (cd $root && find . -maxdepth 9 -type f \( -name "*.nii.gz" \) > list)
+    (cd $root && find . -maxdepth 9 -type f \( -name "*.nii.gz" \) > $root/list)
+    (cd $root && find . -maxdepth 9 -type f \( -name "*blood.json" \) >> $root/list)
 
     echo "running ezBIDS_core (may take several minutes, depending on size of data)"
     python3 "./ezBIDS_core/ezBIDS_core.py" $root
@@ -142,13 +146,15 @@ else
 
     # determine which uploaded files/folders are PET directories or ECAT files
     echo "Finding imaging directories and files"
-    if [ ! -f $root/list]; then
-        mkdir -p $root/list
+    if [ ! -f $root/list ]; then
+        touch $root/list
     fi
     ./find_img_data.py $root
 
     # sort $root/pet2bids_dcm.list, $root/pet2bids_ecat.list, and $root/dcm2niix.list for comm.
     # Then, remove pet directories from dcm2niix list
+    touch $root/pet2bids_output
+
     if [ -f $root/pet2bids_dcm.list ]; then
         sort -o $root/pet2bids_dcm.list $root/pet2bids_dcm.list
         echo "Removing PET directories from dcm2niix list"
@@ -216,17 +222,41 @@ else
         done
     fi
 
-    # Let's add the transformed raw data (i.e. to NIfTI or MEG formats) to the list file
-    
-    (cd $root && find . -maxdepth 9 -type f \( -name "*.nii.gz" \) > list)
-    (cd $root && find . -maxdepth 9 -type f \( -name "*blood.json" \) >> list)
+    # Check for pet2bids errors
+    if [[ $PET2BIDS_RUN -eq "true" ]]; then
+        # pull pet2bids error information to log file
+        { grep -B 1 --group-separator=$'\n\n' Error $root/pet2bids_output || true; } > $root/pet2bids_error
+        # # remove error message(s) about not finding any DICOMs in folder
+        line_nums=$(grep -n 'Error: Unable to find any DICOM images' $root/pet2bids_error | cut -d: -f1)
+
+        for line_num in ${line_nums[*]}
+        do
+            sed -i "$((line_num-1)), $((line_num+1))d" $root/pet2bids_error
+        done
+    fi
+
+    # Add all transformed data (e.g. NIfTI or MEG formats) to the list file
+    (cd $root && find . -maxdepth 9 -type f \( -name "*.nii.gz" \) > $root/list)
+    (cd $root && find . -maxdepth 9 -type f \( -name "*blood.json" \) >> $root/list)
 
     if [ -f $root/meg.list ]; then
         cat $root/meg.list >> $root/list
     fi
 
     if [ ! -s $root/list ]; then
-        echo "Could not find any MRI, PET, or MEG imaging files in upload, aborting"
+        err_file=''
+        if [ `grep 'Error' $root/dcm2niix_error | wc -l` -ne 0 ]; then
+            err_file='dcm2niix_error'
+        fi
+
+        if [ `grep 'Error' $root/pet2bids_error | wc -l` -ne 0 ]; then
+            err_file='pet2bids_error'
+        fi
+
+        echo ""
+        echo "Error: Could not find any MRI, PET, or MEG imaging files in upload."
+        echo "Please click the Debug section below and select Download ${err_file}"
+        echo "We recommend reaching out to the dcm2niix team for assistance: https://github.com/rordenlab/dcm2niix/issues"
         exit 1
     fi
 

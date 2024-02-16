@@ -504,9 +504,11 @@ def modify_uploaded_dataset_list(uploaded_img_list):
         elif any(x.endswith(tuple(['.v', '.v.gz'])) for x in grouped_files):
             grouped_files = [x for x in grouped_files if not x.endswith(tuple(['.v', '.v.gz']))]
 
-        # If imaging file comes with additional data (JSON, bval/bvec) add them to list for processing
-        if len(grouped_files) > 1:
-            uploaded_files_list.append(grouped_files)
+        # Don't want this section is we're allowing only NIfTI files to be uploaded (group length will only be 1).
+        # # If imaging file comes with additional data (JSON, bval/bvec) add them to list for processing
+        # if len(grouped_files) > 1:
+        #     uploaded_files_list.append(grouped_files)
+        uploaded_files_list.append(grouped_files)
 
     # Flatten uploaded_files_list
     uploaded_files_list = natsorted([file for sublist in uploaded_files_list for file in sublist])
@@ -913,7 +915,9 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
     for img_file in img_list:
         # Find file extension
         if img_file.endswith('.nii.gz'):
-            ext = 'nii.gz'
+            ext = '.nii.gz'
+        elif img_file.endswith('.v.gz'):
+            ext = '.v.gz'
         else:
             ext = Path(img_file).suffix
 
