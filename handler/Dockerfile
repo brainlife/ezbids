@@ -61,14 +61,15 @@ RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesourc
 RUN apt-get update \
     && apt-get install nodejs -y
 
-# RUN wget https://github.com/rordenlab/dcm2niix/releases/download/v1.0.20230411/dcm2niix_lnx.zip -O /tmp/dcm2niix_lnx.zip && \
-#     unzip /tmp/dcm2niix_lnx.zip && \
-#     mv dcm2niix /usr/local/bin
+RUN wget https://github.com/rordenlab/dcm2niix/releases/tag/v1.0.20240202/dcm2niix_lnx.zip -O /tmp/dcm2niix_lnx.zip && \
+    unzip /tmp/dcm2niix_lnx.zip && \
+    mv dcm2niix /usr/local/bin
 
-RUN git clone --branch development https://github.com/rordenlab/dcm2niix.git \
-    && cd dcm2niix/console \
-    && make \
-    && mv dcm2niix /usr/local/bin
+# Don't need, unless there's a reason for having the development branch ahead of scheduled release
+# RUN git clone --branch development https://github.com/rordenlab/dcm2niix.git \
+#     && cd dcm2niix/console \
+#     && make \
+#     && mv dcm2niix /usr/local/bin
 
 # Get bids-specification from github
 RUN cd && git clone https://github.com/bids-standard/bids-specification
