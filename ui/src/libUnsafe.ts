@@ -1812,9 +1812,10 @@ export function metadataAlerts(
                                         requiredFields.push(fieldName);
                                     } else if (
                                         context === 'does not contain' &&
-                                        !sidecarMetadataValue.includes('none')
+                                        sidecarMetadataValue.includes('none')
                                     ) {
                                         // Required based on contain conditional between BIDS and sequence metadata
+                                        console.log('AAAAAAA', fieldName, sidecarMetadataValue);
                                         requiredFields.push(fieldName);
                                     }
                                 }
