@@ -199,27 +199,27 @@
 
             <br />
             <el-collapse>
-                <el-collapse-item title="Debug">
+                <el-collapse-item title="Debug (Download)">
                     <ul style="list-style: none; padding-left: 0">
                         <el-button
                             style="width: 168px"
                             type="warning"
                             size="mini"
                             @click="downloadFile('preprocess.log')"
-                            >Download preprocess.log</el-button
+                            >preprocess.log</el-button
                         >
                         <el-button type="warning" size="mini" @click="downloadFile('preprocess.err')"
-                            >Download preprocess.err</el-button
+                            >preprocess.err</el-button
                         >
                         <el-button type="warning" size="mini" @click="downloadFile('dcm2niix_error')"
-                            >Download dcm2niix_error</el-button
+                            >dcm2niix_error</el-button
                         >
                         <el-button type="warning" size="mini" @click="downloadFile('pet2bids_error')"
-                            >Download pet2bids_error</el-button
+                            >pet2bids_error</el-button
                         >
-                        <el-button type="warning" size="mini" @click="downloadFile('list')">Download list</el-button>
+                        <el-button type="warning" size="mini" @click="downloadFile('list')">data list</el-button>
                         <el-button type="warning" size="mini" @click="downloadFile('ezBIDS_core.json')"
-                            >Download ezBIDS_core.json</el-button
+                            >ezBIDS_core.json</el-button
                         >
                     </ul>
 
