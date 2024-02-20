@@ -65,7 +65,13 @@ def create_thumbnail(img_file, image):
     """
 
     if image.ndim == 4:
-        object_img_array = image.dataobj[..., 1]
+        try:
+            object_img_array = image.dataobj[..., 1]
+        except:
+            # weird issue where an improper singleton 4D dimension is added for otherwise 3D data (see with PET)
+            image = nib.funcs.squeeze_image(image)
+            object_img_array = image.dataobj[:]
+            image.to_filename(img_file)
     else:
         object_img_array = image.dataobj[:]
 
