@@ -314,8 +314,9 @@ def fix_multiple_dots(uploaded_img_list):
             fix = True
             ext = '.json'
         elif img_file.endswith(tuple(MEG_extensions)) and img_file.count('.') > 1:  # for MEG
-            fix = True
-            ext = img_file.split('.')[-1]
+            if not img_file.endswith('.ds'):
+                fix = True
+                ext = '.' + img_file.split('.')[-1]
         else:
             pass
 
@@ -385,10 +386,13 @@ def generate_MEG_json_sidecars(uploaded_img_list):
         from mne_bids.config import MANUFACTURERS
 
         for meg in MEG_img_files:
-            ext = Path(meg).suffix
+            if meg.endswith('.ds'):
+                ext = '.ds'
+            else:
+                ext = Path(meg).suffix
 
             fname = f"{DATA_DIR}/{meg}"
-            json_output_name = fname.split(".")[0] + ".json"
+            json_output_name = fname.split(ext)[0] + ".json"
             raw = mne.io.read_raw(fname, verbose=0)
             acquisition_date_time = raw.info["meas_date"].strftime("%Y-%m-%dT%H:%M:%S.%f")
             acquisition_date = acquisition_date_time.split("T")[0]
@@ -481,6 +485,8 @@ def modify_uploaded_dataset_list(uploaded_img_list):
             ext = '.nii.gz'
         elif img_file.endswith('.v.gz'):
             ext = '.v.gz'
+        elif img_file.endswith('.ds'):
+            ext = '.ds'
         else:
             ext = Path(img_file).suffix
 
@@ -918,6 +924,8 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
             ext = '.nii.gz'
         elif img_file.endswith('.v.gz'):
             ext = '.v.gz'
+        elif img_file.endswith('.ds'):
+            ext = '.ds'
         else:
             ext = Path(img_file).suffix
 
@@ -2931,7 +2939,10 @@ def modify_objects_info(dataset_list):
                                   "pngPaths": [],
                                   "headers": protocol["headers"]})
                 elif item.endswith(tuple(MEG_extensions)):
-                    name = Path(item).suffix
+                    if item.endswith('.ds'):
+                        name = '.ds'
+                    else:
+                        name = Path(item).suffix
                     items.append({"path": item,
                                   "name": name,
                                   "pngPaths": [],
@@ -3028,7 +3039,6 @@ uploaded_img_list = natsorted(pd.read_csv("list", header=None, lineterminator='\
 uploaded_img_list = fix_multiple_dots(uploaded_img_list)
 
 # Generate MEG json files, if MEG data was provided
-# uploaded_img_list = generate_MEG_json_sidecars(uploaded_img_list)
 generate_MEG_json_sidecars(uploaded_img_list)
 
 # Filter uploaded files list for files that ezBIDS can't use and check for ezBIDS configuration file

@@ -96,8 +96,10 @@ for meg_ext in MEG_extensions:
     find_cmd = os.popen(f"find . -maxdepth 9 -type {type_search} -name '{meg_ext}'").read()
     if find_cmd != '':
         meg_data_list.append(find_cmd)
+
 if len(meg_data_list):
-    meg_data_list = [x for x in meg_data_list[0].split('\n') if x != '']
+    # TODO - won't this remove different extensions?
+    meg_data_list = [x for x in meg_data_list[0].split('\n') if x != '' and 'hz.ds' not in x]
 
 # Save the MRI, PET, MEG, and NIfTI lists (if they exist) to separate files
 file = open(f'{root}/dcm2niix.list', 'w')
