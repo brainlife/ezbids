@@ -153,7 +153,14 @@
                         </el-form-item>
                     </div>
 
-                    <div v-if="ss.type && !ss.type.includes('exclude')">
+                    <div
+                        v-if="
+                            ss.type &&
+                            !ss.type.includes('exclude') &&
+                            !ss.type.startsWith('meg') &&
+                            !ss.type.startsWith('pet')
+                        "
+                    >
                         <el-form-item label="B0FieldIdentifier" prop="B0FieldIdentifier">
                             <el-select
                                 v-model="ss.B0FieldIdentifier"
@@ -408,7 +415,7 @@ export default defineComponent({
                 s.series_idx,
                 s.type
             );
-            console.log(s.series_idx, s.type);
+            // console.log(s.series_idx, s.type);
             // console.log('metadataAlertsFields', metadataAlertsFields);
             if (metadataAlertsFields.length) {
                 let warn: string = `'Required metadata is missing, provided metadata field values have improper

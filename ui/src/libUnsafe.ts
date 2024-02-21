@@ -578,7 +578,13 @@ export function setIntendedFor($root: IEzbids) {
                     }
 
                     // check B0FieldIdentifier and B0FieldSource information
-                    if (obj._type && !obj._type.includes('exclude') && !obj._type.includes('events')) {
+                    if (
+                        obj._type &&
+                        !obj._type.includes('exclude') &&
+                        !obj._type.includes('events') &&
+                        !obj._type.startsWith('meg') &&
+                        !obj._type.startsWith('pet')
+                    ) {
                         Object.assign(obj, { B0FieldIdentifier: [] });
                         Object.assign(obj, { B0FieldSource: [] });
                         if ('B0FieldIdentifier' in $root.series[obj.series_idx]) {
@@ -1924,7 +1930,7 @@ export function metadataAlerts(
     }
 
     let metadataAlertFields = requiredFields.concat(typoFields);
-    console.log('required', requiredFields);
-    console.log('typo', typoFields);
+    // console.log('required', requiredFields);
+    // console.log('typo', typoFields);
     return metadataAlertFields;
 }

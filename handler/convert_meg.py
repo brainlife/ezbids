@@ -16,8 +16,8 @@ sub-emptyroom folder. This will makes things simpler for now.
 
 import sys
 import json
-from datetime import datetime
 from mne.io import read_raw
+from datetime import datetime
 from mne_bids import (BIDSPath, write_raw_bids)
 
 # Begin:
