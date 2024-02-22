@@ -557,13 +557,12 @@ export function setIntendedFor($root: IEzbids) {
             // Loop through sections
             sectionIDs.forEach((s: number) => {
                 let section = sesGroup.objects.filter(
-                    (e) => e.analysisResults.section_id === s && !e._exclude && e._type != 'exclude'
+                    (e) => e.analysisResults.section_id === s && !e._exclude && e._type !== 'exclude'
                 );
 
                 section.forEach((obj: IObject) => {
                     //add IntendedFor information
                     if (obj._type.startsWith('fmap/') || obj._type === 'perf/m0scan') {
-                        Object.assign(obj, { IntendedFor: [] });
                         let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor;
                         if (correspindingSeriesIntendedFor !== undefined && correspindingSeriesIntendedFor !== null) {
                             correspindingSeriesIntendedFor.forEach((i: number) => {
@@ -574,6 +573,22 @@ export function setIntendedFor($root: IEzbids) {
                                     obj.IntendedFor = obj.IntendedFor.concat(IntendedForIDs);
                                 }
                             });
+                        }
+                        if (obj.hasOwnProperty('IntendedFor')) {
+                            if (obj.IntendedFor?.length !== 0) {
+                                obj.IntendedFor?.forEach((e) => {
+                                    let IntendedForObj = section.filter((o) => o.idx === e);
+                                    if (!IntendedForObj.length) {
+                                        let badIndex = obj.IntendedFor?.indexOf(e);
+                                        delete obj.IntendedFor[Object.keys(obj.IntendedFor)[badIndex]];
+                                        if (Object.keys(obj.IntendedFor).length === 0) {
+                                            obj.analysisResults.warnings = [
+                                                'It is recommended that field map (fmap) images have IntendedFor set to at least 1 series ID. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep',
+                                            ];
+                                        }
+                                    }
+                                });
+                            }
                         }
                     }
 
@@ -1821,7 +1836,6 @@ export function metadataAlerts(
                                         sidecarMetadataValue.includes('none')
                                     ) {
                                         // Required based on contain conditional between BIDS and sequence metadata
-                                        console.log('AAAAAAA', fieldName, sidecarMetadataValue);
                                         requiredFields.push(fieldName);
                                     }
                                 }

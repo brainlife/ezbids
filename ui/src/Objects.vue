@@ -440,13 +440,6 @@ export default defineComponent({
         return {
             so: null as IObject | null, //selected object
             sess: null as OrganizedSession | null, //selected session for IntendedFor handling
-            showInfo: {} as any,
-            petYaml: petYaml,
-            aslYaml: aslYaml,
-            fields: {},
-            showDialog: false,
-            rules: {},
-            formData: {},
         };
     },
 
@@ -679,10 +672,6 @@ export default defineComponent({
                             'It is required that perfusion m0scan images have IntendedFor set to at least 1 series ID.'
                         );
                     }
-                    // let warningMessage = "It is recommended that these images have IntendedFor set to at least 1 object. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep"
-                    // if (!o.validationWarnings.includes(warningMessage)) {
-                    //     o.validationWarnings.push(warningMessage);
-                    // }
                 }
                 //Ensure other fmap series aren't included in the IntendedFor mapping
                 if (o.IntendedFor.length > 0) {

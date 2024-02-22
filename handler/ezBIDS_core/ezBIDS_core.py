@@ -946,12 +946,6 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
                 'ConversionSoftware': 'ezBIDS',
                 'ConversionSoftwareVersion': '1.0.0'
             }
-            # if not os.path.exists(json_path):
-            #     with open(json_path, "w") as fp:
-            #         json.dump(json_data, fp, indent=3)
-            #     corresponding_files_list = corresponding_files_list + [json_path]
-            #     json_data = open(json_path)
-            #     json_data = json.load(json_data, strict=False)
 
         # Find ImageModality
         if "Modality" in json_data:
@@ -1288,6 +1282,7 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
     dataset_list = sorted(dataset_list, key=itemgetter("AcquisitionDate",
                                                        "subject",
                                                        "session",
+                                                       "AcquisitionTime",
                                                        "ModifiedSeriesNumber",
                                                        "json_path"))
 
@@ -2635,8 +2630,9 @@ def entity_labels_identification(dataset_list_unique_series, lookup_dic):
 
             # If BIDS naming convention isn't detected, do a more thorough check for certain entities labels
             # task
-            func_rest_keys = ["rest", "rsfmri", "fcmri"]
-            if any(x in re.sub("[^A-Za-z0-9]+", "", sd).lower() for x in func_rest_keys) and not series_entities["task"]:
+            func_rest_keys = ["rest", "rsfmri", "fcmri", "resting"]
+            # if any(x in re.sub("[^A-Za-z0-9]+", "", sd).lower() for x in func_rest_keys) and not series_entities["task"]:
+            if any(x in func_rest_keys for x in sd.split('_')) and not series_entities["task"]:
                 series_entities["task"] = "rest"
             else:
                 match_index = [
@@ -2729,6 +2725,10 @@ def entity_labels_identification(dataset_list_unique_series, lookup_dic):
                 series_entities["part"] = "phase"
             else:
                 pass
+
+            # rec (reconstruction)
+            if series_entities['reconstruction'] == 'pointspreadfunctionmodellingtimeofflight':
+                series_entities['reconstruction'] = 'PSTOF'
 
             # Make sure any found entities are allowed for specific datatype/suffix pair
             if unique_dic["type"] != "exclude":

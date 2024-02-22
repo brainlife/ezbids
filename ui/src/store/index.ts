@@ -605,10 +605,17 @@ const store = createStore({
                 const bses_idx = b.session_idx;
                 if (ases_idx != bses_idx) return ases_idx - bses_idx;
 
-                const amodseriesnum = a.ModifiedSeriesNumber;
-                const bmodseriesnum = b.ModifiedSeriesNumber;
-                if (amodseriesnum && bmodseriesnum && amodseriesnum != bmodseriesnum)
-                    return amodseriesnum.localeCompare(bmodseriesnum);
+                // Shouldn't use this anymore, use AcquisitionTime instead
+                // const amodseriesnum = a.ModifiedSeriesNumber;
+                // const bmodseriesnum = b.ModifiedSeriesNumber;
+                // if (amodseriesnum && bmodseriesnum && amodseriesnum != bmodseriesnum)
+                //     return amodseriesnum.localeCompare(bmodseriesnum);
+
+                const aAcqTime = a.AcquisitionTime;
+                const bAcqTime = b.AcquisitionTime;
+                if (aAcqTime && bAcqTime) {
+                    return aAcqTime.localeCompare(bAcqTime);
+                }
 
                 const apath = a.items[0].path;
                 const bpath = b.items[0].path;
