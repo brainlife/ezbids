@@ -563,6 +563,15 @@ export function setIntendedFor($root: IEzbids) {
                 section.forEach((obj: IObject) => {
                     //add IntendedFor information
                     if (obj._type.startsWith('fmap/') || obj._type === 'perf/m0scan') {
+                        // if user changes datatype/suffix to fmap of some kind
+                        if (!obj.hasOwnProperty('IntendedFor')) {
+                            Object.assign(obj, { IntendedFor: [] });
+                        } else {
+                            if (obj.IntendedFor === null) {
+                                obj.IntendedFor = [];
+                            }
+                        }
+
                         let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor;
                         if (correspindingSeriesIntendedFor !== undefined && correspindingSeriesIntendedFor !== null) {
                             correspindingSeriesIntendedFor.forEach((i: number) => {
@@ -574,20 +583,32 @@ export function setIntendedFor($root: IEzbids) {
                                 }
                             });
                         }
-                        if (obj.hasOwnProperty('IntendedFor')) {
-                            if (obj.IntendedFor?.length !== 0) {
-                                obj.IntendedFor?.forEach((e) => {
-                                    let IntendedForObj = section.filter((o) => o.idx === e);
-                                    if (!IntendedForObj.length) {
-                                        let badIndex = obj.IntendedFor?.indexOf(e);
-                                        delete obj.IntendedFor[Object.keys(obj.IntendedFor)[badIndex]];
-                                        if (Object.keys(obj.IntendedFor).length === 0) {
-                                            obj.analysisResults.warnings = [
-                                                'It is recommended that field map (fmap) images have IntendedFor set to at least 1 series ID. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep',
-                                            ];
-                                        }
-                                    }
-                                });
+                        if (Object.keys(obj.IntendedFor).length !== 0) {
+                            obj.IntendedFor?.forEach((e) => {
+                                let IntendedForObj = $root.objects.filter((o: IObject) => o.idx === e)[0];
+                                if (IntendedForObj.exclude || IntendedForObj._exclude) {
+                                    let badIndexKey: number = obj.IntendedFor.indexOf(e);
+                                    delete obj.IntendedFor[badIndexKey];
+                                }
+                            });
+                        }
+                        if (obj._type.startsWith('fmap/')) {
+                            if (Object.keys(obj.IntendedFor).length === 0) {
+                                obj.validationWarnings = [
+                                    'It is recommended that field map (fmap) images have IntendedFor set to at least 1 series ID. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep',
+                                ];
+                                obj.analysisResults.warnings = obj.validationWarnings;
+                            } else {
+                                obj.analysisResults.warnings = [];
+                                obj.validationWarnings = [];
+                            }
+                        } else if (obj._type === 'perf/m0scan') {
+                            if (Object.keys(obj.IntendedFor).length === 0) {
+                                obj.validationErrors = [
+                                    'It is required that perfusion m0scan images have IntendedFor set to at least 1 series ID.',
+                                ];
+                            } else {
+                                obj.validationErrors = [];
                             }
                         }
                     }
@@ -716,15 +737,15 @@ export function dwiQA($root: IEzbids) {
                             oppDWI: false,
                         });
                     }
-
-                    if (key === '_type' && protocol[key].startsWith('fmap/')) {
-                        //check for field map(s) that might be applied to DWI acquisitions
-                        fmapInfo.push({
-                            IntendedFor: $root.series.filter((e) => e.series_idx == protocol.series_idx)[0].IntendedFor,
-                        });
-                    }
                 });
             }
+            let fmapIntendedFor = protocolObjects.filter((t) => t._type.startsWith('fmap/'));
+            fmapIntendedFor.forEach((f) => {
+                if (f.IntendedFor === null) {
+                    f.IntendedFor = [];
+                }
+                fmapInfo.push({ IntendedFor: f.IntendedFor });
+            });
 
             if (dwiInfo.length) {
                 let dwiDirs = dwiInfo.map((e) => e.direction);

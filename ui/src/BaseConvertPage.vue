@@ -116,7 +116,7 @@ import { hasAuth, createEventsTSV } from './lib';
 import { ElNotification } from 'element-plus';
 import 'element-plus/es/components/notification/style/css';
 
-import { setSectionIDs, funcQA, fmapQA, dwiQA, petQA, setRun, setVolumeThreshold } from './libUnsafe';
+import { setSectionIDs, funcQA, fmapQA, dwiQA, petQA, setRun, setVolumeThreshold, setIntendedFor } from './libUnsafe';
 
 import niivue from './components/niivue.vue';
 
@@ -255,6 +255,7 @@ export default defineComponent({
                             fmapQA(this.ezbids);
                             dwiQA(this.ezbids);
                             setRun(this.ezbids); //keep here for initial func/events mapping to corresponding func/bold
+                            setIntendedFor(this.ezbids);
                             this.mapObjects();
                             break;
                         case 'object':

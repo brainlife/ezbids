@@ -661,18 +661,6 @@ export default defineComponent({
             }
 
             if (o._type.startsWith('fmap/') || o._type === 'perf/m0scan') {
-                if (!o.IntendedFor) o.IntendedFor = [];
-                if (o.IntendedFor.length == 0) {
-                    if (o._type.startsWith('fmap/')) {
-                        o.validationWarnings.push(
-                            'It is recommended that field map (fmap) images have IntendedFor set to at least 1 series ID. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep'
-                        );
-                    } else if (o.type === 'perf/m0scan') {
-                        o.validationErrors.push(
-                            'It is required that perfusion m0scan images have IntendedFor set to at least 1 series ID.'
-                        );
-                    }
-                }
                 //Ensure other fmap series aren't included in the IntendedFor mapping
                 if (o.IntendedFor.length > 0) {
                     o.IntendedFor.forEach((i) => {
@@ -732,12 +720,12 @@ export default defineComponent({
         },
 
         validateAll() {
-            setIntendedFor(this.ezbids);
             alignEntities(this.ezbids);
             dwiQA(this.ezbids);
             petQA(this.ezbids);
             setRun(this.ezbids);
             this.ezbids.objects.forEach(this.validate);
+            setIntendedFor(this.ezbids); // keep this last, otherwise IntendedFor in Dataset Review can be messed up
         },
 
         submitForm(data: any) {
