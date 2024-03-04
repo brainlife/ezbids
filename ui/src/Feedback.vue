@@ -12,7 +12,7 @@
         <h2>Feedbacks / Comments</h2>
         <p>
             ezBIDS is a brand new web service! Your feedback is extremely valuable to us. Please send us an email at
-            <a href="mailto:dlevitas@iu.edu" target="mail">dlevitas@iu.edu</a> describing your experience with ezBIDS,
+            <a href="mailto:pestilli@utexas.edu" target="mail">pestilli@utexas.edu</a> describing your experience with
             any feedbacks / comments / suggestions.
         </p>
         <p>
@@ -25,9 +25,9 @@
         <h2>Citations</h2>
         <p>Please cite us with the following citation.</p>
         <p class="citation">
-            Avesani, P., McPherson, B., Hayashi, S. et al. The open diffusion data derivatives, brain data upcycling via
-            integrated publishing of derivatives and reproducible open cloud services. Sci Data 6, 69 (2019).
-            https://doi.org/10.1038/s41597-019-0073-y
+            Levitas, D., Hayashi, S., Vinci-Booher, S., Heinsfeld, A., Bhatia, D., Lee, N., ... & Pestilli, F. (2024).
+            ezBIDS: Guided standardization of neuroimaging data interoperable with major data archives and platforms.
+            Scientific data, 11(1), 179.
         </p>
         <br />
         <br />

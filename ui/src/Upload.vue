@@ -82,7 +82,8 @@
                 <small>Please do not close or refresh this page until all files are uploaded.</small>
                 <div v-if="failed.length > 0">
                     <el-alert type="error"
-                        >Permanently failed to upload some files, please email dlevitas@iu.edu for assistance</el-alert
+                        >Permanently failed to upload some files, please email pestilli@utexas.edu for
+                        assistance</el-alert
                     >
                     <pre v-for="idx in failed" :key="idx" type="info" style="font-size: 80%">{{ files[idx].path }}</pre>
                 </div>
@@ -150,7 +151,7 @@
             <div v-if="session.status == 'failed'">
                 <el-alert type="error"
                     >ezBIDS failed.. Please check the Debug logs and contact the ezBIDS team
-                    (dlevitas@iu.edu).</el-alert
+                    (pestilli@utexas.edu).</el-alert
                 >
                 <br />
                 <pre class="status">{{ session.status_msg }}</pre>
@@ -191,7 +192,7 @@
                 <div v-if="!ezbids.notLoaded && !ezbids.objects.length">
                     <el-alert type="error"
                         >We couldn't find any objects. Please upload data that contains at least 1 object. Contact the
-                        ezBIDS team (dlevitas@iu.edu or https://github.com/brainlife/ezbids/issues) for
+                        ezBIDS team (pestilli@utexas.edu or https://github.com/brainlife/ezbids/issues) for
                         support</el-alert
                     >
                 </div>
