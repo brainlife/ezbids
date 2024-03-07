@@ -49,9 +49,14 @@
                             and
                             <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank"
                                 ><b>user documentation</b></a
-                            >
+                            >.
                         </li>
-                        <li>See below for a brief ezBIDS tutorial video</li>
+                        <li>
+                            If uploading anonymized data, please organize subject data into <i>sub-</i>formatted folder
+                            names (e.g. <b>sub-01</b>). If you have multi-session data, place in <i>ses-</i>formatted
+                            folders (e.g. <b>ses-A</b>) within the subject folders.
+                        </li>
+                        <li>See below for a brief ezBIDS tutorial video.</li>
                     </ul>
                     <iframe
                         width="640"
