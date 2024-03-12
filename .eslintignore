@@ -2,3 +2,4 @@
 .vscode/*
 api/*.js
 api/*.js.map
+handler/convert.js

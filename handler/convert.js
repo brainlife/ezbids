@@ -50,15 +50,20 @@ for (let key of keys) {
     tsvheader.push(key);
 }
 tsv.push(tsvheader);
+let subList = [];
 for (const subject_idx in info.participantInfo) {
     const sub = info.subjects[subject_idx];
-    let tsvrec = [];
-    tsvrec.push("sub-" + sub.subject);
-    for (let key in info.participantsColumn) {
-        tsvrec.push(info.participantInfo[subject_idx][key] || 'n/a');
+    if (!subList.includes(sub.subject)) {
+        subList.push(sub.subject);
+        let tsvrec = [];
+        tsvrec.push("sub-" + sub.subject);
+        for (let key in info.participantsColumn) {
+            tsvrec.push(info.participantInfo[subject_idx][key] || 'n/a');
+        }
+        tsv.push(tsvrec);
     }
-    tsv.push(tsvrec);
 }
+console.log('ParticipantsInfo', tsv);
 let tsvf = fs.openSync(root + "/bids/" + datasetName + "/participants.tsv", "w");
 for (let rec of tsv) {
     fs.writeSync(tsvf, rec.join("\t") + "\n");

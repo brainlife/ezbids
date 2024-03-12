@@ -7,6 +7,7 @@ import aslYaml from '../src/assets/schema/rules/sidecars/asl.yaml';
 import petYaml from '../src/assets/schema/rules/sidecars/pet.yaml';
 
 import metadata_types from '../src/assets/schema/rules/sidecars/metadata_types.yaml';
+import { faNewspaper } from '@fortawesome/free-solid-svg-icons';
 
 //deepEqual and isPrimitive functions come from https://stackoverflow.com/a/45683145
 export function deepEqual(obj1: any, obj2: any) {
@@ -1678,77 +1679,77 @@ export function fileLogicLink($root: IEzbids, o: IObject) {
     }
 }
 
-// TODO, currently no validation on Participants Info page
-export function validateParticipantsInfo($root: IEzbids) {
-    let finalSubs = [] as number[];
-    $root._organized.forEach((sub: OrganizedSubject) => {
-        let use = false;
-        sub.sess.forEach((ses) => {
-            if (ses.objects.some((o) => !o._exclude)) use = true;
-        });
-        if (use) finalSubs.push(sub.subject_idx);
-    });
+// // TODO, currently no validation on Participants Info page
+// export function validateParticipantsInfo($root: IEzbids) {
+//     let finalSubs = [] as number[];
+//     $root._organized.forEach((sub: OrganizedSubject) => {
+//         let use = false;
+//         sub.sess.forEach((ses) => {
+//             if (ses.objects.some((o) => !o._exclude)) use = true;
+//         });
+//         if (use) finalSubs.push(sub.subject_idx);
+//     });
 
-    let errors: string[] = [];
-    let participantsInfo: any = $root.participantsInfo;
-    Object.entries($root.subjects).forEach(([key, value]) => {
-        let subject: string = value.subject;
-        let columnInfo: any = participantsInfo[key];
-        Object.entries(columnInfo).forEach(([col, val]) => {
-            let v: string | any = val;
-            if (!['PatientName', 'PatientID'].includes(col)) {
-                if (val !== 'n/a') {
-                    if (col === 'age' && !/^[0-9]*$/.test(v)) {
-                        errors.push('Subject ' + subject + ': The age column has non-numeric values, please fix');
-                    } else if (
-                        col === 'sex' &&
-                        ![
-                            'male',
-                            'm',
-                            'M',
-                            'MALE',
-                            'Male',
-                            'female',
-                            'f',
-                            'F',
-                            'FEMALE',
-                            'Female',
-                            'other',
-                            'o',
-                            'O',
-                            'OTHER',
-                            'Other',
-                        ].includes(v)
-                    ) {
-                        errors.push('Subject ' + subject + ': The sex column has an improper term, please fix');
-                    } else if (
-                        col === 'handedness' &&
-                        ![
-                            'left',
-                            'l',
-                            'L',
-                            'LEFT',
-                            'Left',
-                            'right',
-                            'r',
-                            'R',
-                            'RIGHT',
-                            'Right',
-                            'ambidextrous',
-                            'a',
-                            'A',
-                            'AMBIDEXTROUS',
-                            'Ambidextrous',
-                        ].includes(v)
-                    ) {
-                        errors.push('Subject ' + subject + ': The handedness column has an improper term, please fix');
-                    }
-                }
-            }
-        });
-    });
-    return errors;
-}
+//     let errors: string[] = [];
+//     let participantsInfo: any = $root.participantsInfo;
+//     Object.entries($root.subjects).forEach(([key, value]) => {
+//         let subject: string = value.subject;
+//         let columnInfo: any = participantsInfo[key];
+//         Object.entries(columnInfo).forEach(([col, val]) => {
+//             let v: string | any = val;
+//             if (!['PatientName', 'PatientID'].includes(col)) {
+//                 if (val !== 'n/a') {
+//                     if (col === 'age' && !/^[0-9]*$/.test(v)) {
+//                         errors.push('Subject ' + subject + ': The age column has non-numeric values, please fix');
+//                     } else if (
+//                         col === 'sex' &&
+//                         ![
+//                             'male',
+//                             'm',
+//                             'M',
+//                             'MALE',
+//                             'Male',
+//                             'female',
+//                             'f',
+//                             'F',
+//                             'FEMALE',
+//                             'Female',
+//                             'other',
+//                             'o',
+//                             'O',
+//                             'OTHER',
+//                             'Other',
+//                         ].includes(v)
+//                     ) {
+//                         errors.push('Subject ' + subject + ': The sex column has an improper term, please fix');
+//                     } else if (
+//                         col === 'handedness' &&
+//                         ![
+//                             'left',
+//                             'l',
+//                             'L',
+//                             'LEFT',
+//                             'Left',
+//                             'right',
+//                             'r',
+//                             'R',
+//                             'RIGHT',
+//                             'Right',
+//                             'ambidextrous',
+//                             'a',
+//                             'A',
+//                             'AMBIDEXTROUS',
+//                             'Ambidextrous',
+//                         ].includes(v)
+//                     ) {
+//                         errors.push('Subject ' + subject + ': The handedness column has an improper term, please fix');
+//                     }
+//                 }
+//             }
+//         });
+//     });
+//     return errors;
+// }
 
 export function metadataAlerts(
     bidsDatatypeMetadata: MetadataFields,
@@ -1969,3 +1970,43 @@ export function metadataAlerts(
     // console.log('typo', typoFields);
     return metadataAlertFields;
 }
+
+// //TODO: Need to work on this more
+// export function updateParticipantsInfo($root: IEzbids) {
+//     let participantsInfo: any = $root.participantsInfo;
+//     console.log('participantsInfo', participantsInfo);
+//     let finalSubs: any = [];
+//     $root._organized.forEach((sub: OrganizedSubject) => {
+//         let use = false;
+//         sub.sess.forEach((ses) => {
+//             if (ses.objects.some((o) => !o._exclude)) use = true;
+//         });
+//         if (use) finalSubs.push({ subIdx: sub.subject_idx, subID: sub.sess[0].objects[0]._entities.subject });
+//     });
+
+//     let newParticipantsInfo: any = {};
+//     if (Object.keys(participantsInfo).length < finalSubs.length) {
+//         // Only an issue when the final number of subjects is greather than the original participantsInfo length
+//         let idx_counter = 0;
+
+//         for (let key of Object.keys(finalSubs)) {
+//             let info = finalSubs[key];
+//             // console.log('info', info);
+//             let participantsInfoRef = participantsInfo[info.subIdx];
+//             // console.log(participantsInfoRef);
+//             newParticipantsInfo[idx_counter] = participantsInfoRef;
+//             idx_counter += 1;
+//             let subObjs = $root.objects.filter((e) => e._entities.subject === info.subID);
+//             let subObjsIdx = subObjs[0].subject_idx.toString();
+//             if (subObjsIdx !== key) {
+//                 subObjs.forEach((o: IObject) => {
+//                     o.subject_idx = Number(key);
+//                 });
+//             }
+//             $root._organized[key].subject_idx = Number(key);
+//             console.log('new', newParticipantsInfo);
+//         }
+//     }
+//     console.log('root', $root);
+//     return newParticipantsInfo;
+// }

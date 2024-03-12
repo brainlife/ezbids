@@ -597,15 +597,15 @@ const store = createStore({
 
             //sort object by subject / session / series # / json path
             state.ezbids.objects.sort((a, b) => {
-                const asub_idx = a.subject_idx;
-                const bsub_idx = b.subject_idx;
-                if (asub_idx != bsub_idx) return asub_idx - bsub_idx;
+                const asub_id = a._entities.subject;
+                const bsub_id = b._entities.subject;
+                if (asub_id !== bsub_id) return asub_id.localeCompare(bsub_id);
 
-                const ases_idx = a.session_idx;
-                const bses_idx = b.session_idx;
-                if (ases_idx != bses_idx) return ases_idx - bses_idx;
+                const ases_id = a._entities.session;
+                const bses_id = b._entities.session;
+                if (ases_id !== bses_id) return ases_id.localeCompare(bses_id);
 
-                // Shouldn't use this anymore, use AcquisitionTime instead
+                // NOTE: Shouldn't use this anymore, use AcquisitionTime instead (more thorough)
                 // const amodseriesnum = a.ModifiedSeriesNumber;
                 // const bmodseriesnum = b.ModifiedSeriesNumber;
                 // if (amodseriesnum && bmodseriesnum && amodseriesnum != bmodseriesnum)

@@ -1091,7 +1091,7 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
             image = nib.load(img_file)
             ndim = image.ndim
 
-            # Check for RepetitionTime (TR) if not in JSON metadata and if so, add to file
+            # If RepetitionTime (TR) not in JSON metadata, add to file
             if repetition_time == 0:
                 if len(image.header.get_zooms()) == 4:
                     repetition_time = image.header.get_zooms()[-1]
@@ -1425,7 +1425,8 @@ def determine_sub_ses_IDs(dataset_list, bids_compliant):
                     "age": x["PatientAge"],
                     "handedness": x["PatientHandedness"],
                     "PatientName": x["PatientID"],
-                    "PatientID": x["PatientName"]
+                    "PatientID": x["PatientName"],
+                    "FileDirectory": x["file_directory"]
                 } for x in sub_dics_list)[0]
 
             participants_info.update({str(x["subject_idx"]): phenotype_info})

@@ -55,6 +55,12 @@
                     </tr>
                 </thead>
                 <tbody>
+                    <!-- <tr v-for="info in finalSubs" :key="info">
+                        <th>{{ 'sub-' + info.subID }}</th>
+                        <td v-for="(column, key) in ezbids.participantsColumn" :key="key">
+                            <el-input v-model.trim="ezbids.participantsInfo[info.subIdx][key]" size="mini" />
+                        </td>
+                    </tr> -->
                     <tr v-for="subject_idx in finalSubs" :key="subject_idx">
                         <th>{{ 'sub-' + ezbids.subjects[subject_idx].subject }}</th>
                         <td v-for="(column, key) in ezbids.participantsColumn" :key="key">
@@ -72,7 +78,7 @@ import { mapState } from 'vuex';
 import { defineComponent } from 'vue';
 
 import { OrganizedSubject } from './store';
-import { validateParticipantsInfo } from './libUnsafe';
+// import { updateParticipantsInfo } from './libUnsafe';
 
 //element-plus icons are bad .. replace it with fontawesome
 // @ts-ignore
@@ -93,6 +99,20 @@ export default defineComponent({
         ...mapState(['ezbids', 'config']),
         //...mapGetters(['findSubjectFromString']),
 
+        // //only show subjects that are really used (not excluded)
+        // finalSubs() {
+        //     let finalSubs: any = [];
+        //     this.ezbids._organized.forEach((sub: OrganizedSubject) => {
+        //         let use = false;
+        //         sub.sess.forEach((ses) => {
+        //             if (ses.objects.some((o) => !o._exclude)) use = true;
+        //         });
+        //         if (use) finalSubs.push({ subIdx: sub.subject_idx, subID: sub.sess[0].objects[0]._entities.subject });
+        //     });
+        //     console.log('finalSubs', finalSubs);
+        //     return finalSubs;
+        // },
+
         //only show subjects that are really used (not excluded)
         finalSubs() {
             let finalSubs = [] as number[];
@@ -109,9 +129,11 @@ export default defineComponent({
 
     created() {
         //initialize
+        // TODO: don't need this I think if we're updating participants Info due to user changes in UI.
         this.ezbids._organized.forEach((o: OrganizedSubject) => {
             if (!this.ezbids.participantsInfo[o.subject_idx]) this.ezbids.participantsInfo[o.subject_idx] = {};
         });
+        // this.ezbids.participantsInfo = updateParticipantsInfo(this.ezbids);
     },
 
     methods: {
@@ -143,12 +165,12 @@ export default defineComponent({
 
         isValid(cb: (v?: string) => void) {
             this.validate();
-            let errors = validateParticipantsInfo(this.ezbids);
-            if (errors.length) {
-                for (const e of errors) {
-                    return cb(e);
-                }
-            }
+            // let errors = validateParticipantsInfo(this.ezbids);
+            // if (errors.length) {
+            //     for (const e of errors) {
+            //         return cb(e);
+            //     }
+            // }
             cb();
         },
     },
