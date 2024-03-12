@@ -1986,7 +1986,7 @@ export function metadataAlerts(
 
 //     let newParticipantsInfo: any = {};
 //     if (Object.keys(participantsInfo).length < finalSubs.length) {
-//         // Only an issue when the final number of subjects is greather than the original participantsInfo length
+//         // Only an issue when the final number of subjects is greater than the original participantsInfo length
 //         let idx_counter = 0;
 
 //         for (let key of Object.keys(finalSubs)) {
