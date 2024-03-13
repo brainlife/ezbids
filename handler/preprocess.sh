@@ -216,10 +216,10 @@ else
         # # remove error message(s) about not finding any DICOMs in folder
         line_nums=$(grep -n 'Error: Unable to find any DICOM images' $root/dcm2niix_error | cut -d: -f1)
 
-        for line_num in ${line_nums[*]}
-        do
-            sed -i "$((line_num-1)), $((line_num+1))d" $root/dcm2niix_error
-        done
+        # for line_num in ${line_nums[*]}
+        # do
+        #     sed -i "$((line_num-1)), $((line_num+1))d" $root/dcm2niix_error
+        # done
     fi
 
     # Check for pet2bids errors
@@ -229,10 +229,10 @@ else
         # # remove error message(s) about not finding any DICOMs in folder
         line_nums=$(grep -n 'Error: Unable to find any DICOM images' $root/pet2bids_error | cut -d: -f1)
 
-        for line_num in ${line_nums[*]}
-        do
-            sed -i "$((line_num-1)), $((line_num+1))d" $root/pet2bids_error
-        done
+        # for line_num in ${line_nums[*]}
+        # do
+        #     sed -i "$((line_num-1)), $((line_num+1))d" $root/pet2bids_error
+        # done
     fi
 
     # Add all transformed data (e.g. NIfTI or MEG formats) to the list file
@@ -255,8 +255,8 @@ else
 
         echo ""
         echo "Error: Could not find any MRI, PET, or MEG imaging files in upload."
-        echo "Please click the Debug section below and select Download ${err_file}"
-        echo "We recommend reaching out to the dcm2niix team for assistance: https://github.com/rordenlab/dcm2niix/issues"
+        echo "Please click the Debug (Download) section below and select the ${err_file} file."
+        echo "Please reach out to the ezBIDS team for further assistance: https://github.com/brainlife/ezbids/issues"
         exit 1
     fi
 
