@@ -62,27 +62,26 @@ meg_data_list = []
 
 find_img_data('.')
 
-# # PET
-# # TODO - Line below line take several seconds to complete, maybe can be sped up?
-# pet_folders = [str(folder) for folder in is_pet.pet_folder(Path(root).resolve())]
-# pet_folders = [os.path.relpath(x, root) for x in pet_folders if x != '']
-# pet_folders = [os.path.join('.', x) for x in pet_folders]
+# PET
+pet_folders = [str(folder) for folder in is_pet.pet_folder(Path(root).resolve(), skim=True, njobs=4)]
+pet_folders = [os.path.relpath(x, root) for x in pet_folders if x != '']
+pet_folders = [os.path.join('.', x) for x in pet_folders]
 
-# if pet_folders:
-#     for pet in pet_folders:
-#         # See if we're dealing ECAT-formatted file(s)
-#         ecats = [x for x in os.listdir(pet) if x.endswith(tuple(['.v', '.v.gz']))]
-#         if len(ecats):
-#             for ecat in ecats:
-#                 if ecat not in pet_ecat_files_list:
-#                     pet_ecat_files_list.append(f'{pet}/{ecat}')
-#         # See if we're dealing with DICOM files
-#         dcms = [
-#             x for x in os.listdir(pet)
-#             if not x.endswith(tuple(['.nii', '.nii.gz', '.v', '.v.gz', '.json', '.tsv']))
-#         ]
-#         if len(dcms) and pet not in pet_dcm_dirs_list:
-#             pet_dcm_dirs_list.append(pet)
+if pet_folders:
+    for pet in pet_folders:
+        # See if we're dealing ECAT-formatted file(s)
+        ecats = [x for x in os.listdir(pet) if x.endswith(tuple(['.v', '.v.gz']))]
+        if len(ecats):
+            for ecat in ecats:
+                if ecat not in pet_ecat_files_list:
+                    pet_ecat_files_list.append(f'{pet}/{ecat}')
+        # See if we're dealing with DICOM files
+        dcms = [
+            x for x in os.listdir(pet)
+            if not x.endswith(tuple(['.nii', '.nii.gz', '.v', '.v.gz', '.json', '.tsv']))
+        ]
+        if len(dcms) and pet not in pet_dcm_dirs_list:
+            pet_dcm_dirs_list.append(pet)
 
 # MEG
 MEG_extensions = ['*.ds', '*.fif', '*.sqd', '*.con', '*.raw', '*.ave', '*.mrk', '*.kdf', '*.mhd', '*.trg', '*.chn', '*.dat']
