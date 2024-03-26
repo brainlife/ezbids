@@ -1,0 +1,33 @@
+Bootstrap: docker
+From: node:16
+Stage: spython-base
+
+%files
+    ./ui /ui
+
+# %post
+#     mkdir -p /ui
+#     ls /ui
+    # cd /ui
+    # npm install
+    # # Hacky solution for dealing with path issue
+    # cp $PWD/ui/singularity_vite node_modules/.bin/vite
+    # exec npm run dev "$@"
+
+%environment
+    export VITE_APIHOST=http://localhost:8082
+    export VITE_BRAINLIFE_AUTHENTICATION=false
+    # PORT=3000
+
+# %runscript
+#     cd /ui
+#     npm install
+#     exec npm run dev "$@"
+
+# %startscript
+#     cd /ui
+#     npm install
+#     exec npm run dev "$@"
+
+%test
+    # curl -f http://localhost:3000

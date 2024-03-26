@@ -1,0 +1,73 @@
+version: "2.0"
+
+instances:
+    mongodb:
+        container_name: brainlife_ezbids-mongodb
+        build:
+            context: ./mongodb
+            options:
+                - fakeroot
+        platform: linux/amd64
+        volumes:
+            - ./mongodb/data:/data/db
+        network:
+            options:
+                - fakeroot
+            enable: true
+            allocate_ip: true
+            args:
+                - portmap=27417:27017/tcp
+                - IP=127.0.0.1
+        ports:
+            - 27417:27017 # for local debugging
+        run:  # start results in errors
+            background: true
+            options:
+                - fakeroot
+            command: mongod --dbpath /data/db --port=27017 # command: mongod --dbpath /data/db --bind_ip_all --logpath /data/db/mongod.log --fork
+
+    api:  # This seemss good, just needs mongodb up and running properly
+        container_name: brainlife_ezbids-api
+        build:
+          context: .
+          options:
+            - fakeroot
+        platform: linux/amd64
+        volumes:
+            - ./api:/app/api
+            - /tmp:/tmp
+        ports:
+            - 8082:8082 #localhost runs on local browser to it needs to access api via host port
+
+    handler:
+        container_name: brainlife_ezbids-handler
+        build:
+          context: ./handler
+          options:
+            - fakeroot
+        platform: linux/amd64
+        volumes:
+            - .:/app
+            - /tmp:/tmp
+        # depends_on:
+        #     mongodb:
+        #         condition: service_healthy
+        #     api:
+        #         condition: service_healthy
+        # tty: true # don't think this works with Singularity
+        run:
+            options:
+                - fakeroot
+            command: pm2 start handler.js --attach --watch --ignore-watch "ui **/node_modules"
+
+    ui:
+        container_name: brainlife_ezbids-ui
+        build:
+          context: ./ui
+          options:
+            - fakeroot
+        platform: linux/amd64
+        volumes:
+            - ./ui/src:/ui/src # don't copy node_modules which might be compiled for mac (vite won't work)
+        ports:
+            - 3000:3000 # vite wants to be exposed on the host for HMR?

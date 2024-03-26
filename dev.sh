@@ -27,11 +27,94 @@ npm run prepare-husky
 
 ./generate_keys.sh
 
-# ok docker compose is now included in docker as an option for docker
-if [[ $(command -v docker-compose) ]]; then 
-    # if the older version is installed use the dash
-    docker-compose up
-else
-    # if the newer version is installed don't use the dash
-    docker compose up
-fi
+# # ok docker compose is now included in docker as an option for docker
+# if [[ $(command -v docker-compose) ]]; then 
+#     # if the older version is installed use the dash
+#     docker-compose up
+# else
+#     # if the newer version is installed don't use the dash
+#     docker compose up
+# fi
+
+export SINGULARITY_DISABLE_CACHE=true
+export SINGULARITY_CACHEDIR=/tmp
+
+# # Approach #1: singularity (individual .sif files)
+
+# # Helpful commentary on mongodb container build with Singularity: https://stackoverflow.com/questions/70746228/singularity-mongodb-container-in-background-mode
+# # if [ ! -d $PWD/mongodb/data/db ]; then
+# #   mkdir -p $PWD/mongodb/data/db
+# #   chmod -R 770 $PWD/mongodb/data/db
+# # fi
+
+# if [ ! -d $PWD/mongodb/data ]; then
+#   mkdir -p $PWD/mongodb/data
+#   chmod -R 770 $PWD/mongodb/data
+# fi
+
+
+# if [ ! -f $PWD/mongodb/mongodb.sif ]; then # Will eventually be redundant and can remove
+#     # build image
+#     singularity build      \
+#       --arch "amd64"            \
+#       --fakeroot                \
+#       --disable-cache           \
+#       $PWD/mongodb/mongodb.sif  \
+#       $PWD/mongodb/Singularity
+    
+#     # # start the container instance
+#     # singularity instance start                  \
+#     #   --fakeroot                                \
+#     #   --bind $PWD/mongodb/data:/data/db         \
+#     #   --net                                     \
+#     #   --network-args "portmap=27417:27017/tcp"  \
+#     #   --network-args "IP=0.0.0.0"               \
+#     #   $PWD/mongodb/mongodb.sif                  \
+#     #   brainlife_ezbids-mongodb
+
+#     # run the container instance
+#     singularity run                        \
+#       --fakeroot                                \
+#       --bind $PWD/mongodb/data:/data/db         \
+#       --net                                     \
+#       --network-args "portmap=27417:27017/tcp"  \
+#       $PWD/mongodb/mongodb.sif
+
+#       # --network-args "IP=127.0.0.1"             \
+#       # --hostname brainlife_ezbids-mongodb       \
+
+#     # DEBUG singularity instance start --bind /home/ubuntu/dlevitas/brainlife/ezbids/mongodb/data:/data/db --net --network-args "portmap=27417:27017/tcp" --network-args "IP=10.22.0.2" --hostname mongodb1 --writable-tmpfs /home/ubuntu/dlevitas/brainlife/ezbids/mongodb/mongodb.sif mongodb1 
+
+#     # singularity run instance://brainlife_ezbids-mongodb # This seems to run mongodb in the foreground, meaning can't move on to building other containers.
+# fi
+
+# if [ ! -f $PWD/api/api.sif ]; then
+#     echo "building api"
+#     singularity build --arch "amd64" --fakeroot --disable-cache $PWD/api/api.sif Singularity
+#     singularity instance start --bind /tmp:/tmp --bind ./api:/app/api --env BRAINLIFE_AUTHENTICATION=${BRAINLIFE_AUTHENTICATION} $PWD/api/api.sif brainlife_ezbids-api
+#     # Does --env actually work?
+# fi
+
+# if [ ! -f $PWD/handler/handler.sif ]; then
+#     echo "building handler"
+#     singularity build --arch "amd64" --fakeroot --disable-cache $PWD/handler/handler.sif $PWD/handler/Singularity
+#     singularity instance start --bind /tmp:/tmp --bind .:/app $PWD/handler/handler.sif brainlife_ezbids-handler
+# fi
+
+# if [ ! -f $PWD/ui/ui.sif ]; then
+#     echo "building ui"
+#     singularity build --arch "amd64" --fakeroot --disable-cache $PWD/ui/ui.sif $PWD/ui/Singularity
+#     singularity instance start --bind ./ui/src:/ui/src --env VITE_BRAINLIFE_AUTHENTICATION=${BRAINLIFE_AUTHENTICATION} $PWD/ui/ui.sif brainlife_ezbids-ui
+#     # Does --env actually work? Don't see VITE_BRAINLIFE_AUTHENTICATION env variable inside container
+# fi
+
+
+
+# Approach #2: singularity-compose 
+
+# if [ ! -d $PWD/mongodb/data/db ]; then
+#     mkdir -p $PWD/mongodb/data/db
+#     chmod -R 770 $PWD/mongodb/data/db
+# fi
+singularity-compose down
+singularity-compose --debug up --no-resolv
