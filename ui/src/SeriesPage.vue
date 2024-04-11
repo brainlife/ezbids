@@ -326,6 +326,7 @@ import AsyncImageLink from './components/AsyncImageLink.vue';
 import { Splitpanes, Pane } from 'splitpanes';
 
 import 'splitpanes/dist/splitpanes.css';
+import { setMaxListeners } from 'process';
 
 export default defineComponent({
     components: {
@@ -483,7 +484,7 @@ export default defineComponent({
                         );
                     }
                 }
-                //Ensure other fmap or perf/m0scan series aren't included in the IntendedFor mapping
+                // Ensure other fmap or perf/m0scan series aren't included in the IntendedFor mapping
                 if (s.IntendedFor.length > 0) {
                     s.IntendedFor.forEach((i) => {
                         if (
@@ -497,6 +498,17 @@ export default defineComponent({
                             );
                         }
                     });
+                }
+            }
+            /*
+            If user tries modifying a DWI b0map (fmap/epi) to dwi/dwi, warn them that it could be improper. At the
+            end of the day though, user has final say.
+            */
+            if (s.type === 'dwi/dwi') {
+                if (s.message.includes('fmap/epi')) {
+                    s.validationWarnings.push(
+                        'This sequence is believed to be a DWI b0map, which in BIDS corresponds to fmap/epi. If this sequence is not a DWI b0map, please proceed. Otherwise, please reconsider.'
+                    );
                 }
             }
         },

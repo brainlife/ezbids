@@ -3027,6 +3027,26 @@ def extract_series_info(dataset_list_unique_series):
     return ui_series_info_list
 
 
+def check_dwi_b0maps(dataset_list_unique_series):
+    for unique_dic in dataset_list_unique_series:
+        if (unique_dic['type'] == 'dwi/dwi'
+            and unique_dic['NumVolumes'] < 10
+                and not any(x.endswith('.bval') for x in unique_dic['paths'])
+                and not unique_dic['exclude']):
+
+            # What we (likely have are DWI b0map sequences, which should be mapped as fmap/epi according to BIDS)
+            unique_dic['datatype'] = 'fmap'
+            unique_dic['suffix'] = 'epi'
+            unique_dic['type'] = 'fmap/epi'
+            unique_dic["message"] = "Acquisition was determined to be fmap/epi because there are no " \
+                "corresponding bval/bvec files, and the number of volumes is < 10. In BIDS parlance, " \
+                "this DWI b0map should be fmap/epi rather than dwi/dwi " \
+                "(for reference, see https://neurostars.org/t/bids-b0-correction-for-dwi/3802). " \
+                "Please modify if incorrect."
+
+    return dataset_list_unique_series
+
+
 # Begin (Apply functions)
 print("########################################")
 print("Beginning conversion process of uploaded dataset")
@@ -3114,6 +3134,9 @@ lookup_dic = create_lookup_info()
 
 # Identify datatype and suffix information
 dataset_list_unique_series = datatype_suffix_identification(dataset_list_unique_series, lookup_dic, config)
+
+# Look for DWI b0maps, which are actually fmap/epi in BIDS parlance
+dataset_list_unique_series = check_dwi_b0maps(dataset_list_unique_series)
 
 # Identify entity label information
 dataset_list_unique_series = entity_labels_identification(dataset_list_unique_series, lookup_dic)

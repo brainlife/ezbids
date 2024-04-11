@@ -199,7 +199,7 @@ export function fmapQA($root: IEzbids) {
 
                 // https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/01-magnetic-resonance-imaging-data.html#types-of-fieldmaps
 
-                // case #1: Phase-difference map and at least one magnitude image
+                // case #1: Phase-difference map and at least one magnitude sequence
                 let fmapMagPhasediffObjs = section.filter(function (o) {
                     return (
                         o._type === 'fmap/magnitude1' || o._type === 'fmap/magnitude2' || o._type === 'fmap/phasediff'
@@ -574,16 +574,19 @@ export function setIntendedFor($root: IEzbids) {
                         }
 
                         let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor;
+
                         if (correspindingSeriesIntendedFor !== undefined && correspindingSeriesIntendedFor !== null) {
                             correspindingSeriesIntendedFor.forEach((i: number) => {
                                 let IntendedForIDs = section
                                     .filter((o) => o.series_idx === i && o._type !== 'func/events')
                                     .map((o) => o.idx);
                                 if (obj.IntendedFor !== undefined) {
-                                    obj.IntendedFor = obj.IntendedFor.concat(IntendedForIDs);
+                                    // obj.IntendedFor = obj.IntendedFor.concat(IntendedForIDs); // TODO: Why was this here? It made editing IntendedFor on Dataset Review page mess up
+                                    obj.IntendedFor = IntendedForIDs;
                                 }
                             });
                         }
+
                         if (Object.keys(obj.IntendedFor).length !== 0) {
                             obj.IntendedFor?.forEach((e) => {
                                 let IntendedForObj = $root.objects.filter((o: IObject) => o.idx === e)[0];
@@ -596,7 +599,7 @@ export function setIntendedFor($root: IEzbids) {
                         if (obj._type.startsWith('fmap/')) {
                             if (Object.keys(obj.IntendedFor).length === 0) {
                                 obj.validationWarnings = [
-                                    'It is recommended that field map (fmap) images have IntendedFor set to at least 1 series ID. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep',
+                                    'It is recommended that field map (fmap) sequences have IntendedFor set to at least 1 series ID. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep',
                                 ];
                                 obj.analysisResults.warnings = obj.validationWarnings;
                             } else {
@@ -606,7 +609,7 @@ export function setIntendedFor($root: IEzbids) {
                         } else if (obj._type === 'perf/m0scan') {
                             if (Object.keys(obj.IntendedFor).length === 0) {
                                 obj.validationErrors = [
-                                    'It is required that perfusion m0scan images have IntendedFor set to at least 1 series ID.',
+                                    'It is required that perfusion m0scan sequences have IntendedFor set to at least 1 series ID.',
                                 ];
                             } else {
                                 obj.validationErrors = [];
@@ -876,14 +879,14 @@ export function validateEntities(level: string, info: any) {
                                     !info.ImageType.includes(i.toUpperCase())
                                 ) {
                                     info.validationWarnings.push(
-                                        `ezBIDS detects that this image is not part-${i}. Please verify before continuing`
+                                        `ezBIDS detects that this sequence is not part-${i}. Please verify before continuing`
                                     );
                                 }
                             }
                         } else {
                             if (entities[k] === i && level === 'Series' && !info.ImageType.includes('IMAGINARY')) {
                                 info.validationWarnings.push(
-                                    'ezBIDS detects that this image is not part-imag. Please verify before continuing'
+                                    'ezBIDS detects that this sequence is not part-imag. Please verify before continuing'
                                 );
                             }
                         }
