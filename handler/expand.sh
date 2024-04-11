@@ -17,23 +17,36 @@ function expand {
     ##
     ## tar can handle most things
     ##
+    expand_counter=1
 
     #use pigz for gz
     for tar in $(find $root -name "*.tar.gz"); do
-        tar -I pigz -xf $tar -C $(dirname $tar)
+        if [ ! -d $(dirname $tar)/$expand_counter ]; then
+            mkdir -p $(dirname $tar)/$expand_counter
+        fi
+        tar -I pigz -xf $tar -C $(dirname $tar)/$expand_counter
+        expand_counter=$((expand_counter+1))
         rm -rf $tar
     done
 
     for tar in $(find $root -name "*.tgz"); do
         #tar is too verbose
-        tar -I pigz -xf $tar -C $(dirname $tar)
+        if [ ! -d $(dirname $tar)/$expand_counter ]; then
+            mkdir -p $(dirname $tar)/$expand_counter
+        fi
+        tar -I pigz -xf $tar -C $(dirname $tar)/$expand_counter
+        expand_counter=$((expand_counter+1))
         rm -rf $tar
     done
 
     #let tar handle all other compression algorithms in default way
     for tar in $(find $root -name "*.tar*"); do
         echo "found $tar ----------"
-        tar -xf $tar -C $(dirname $tar)
+        if [ ! -d $(dirname $tar)/$expand_counter ]; then
+            mkdir -p $(dirname $tar)/$expand_counter
+        fi
+        tar -xf $tar -C $(dirname $tar)/$expand_counter
+        expand_counter=$((expand_counter+1))
         rm -rf $tar
     done
 
@@ -59,7 +72,8 @@ function expand {
     done
 
     for zip in $(find $root -name "*.zip"); do
-        unzip -o $zip -d $(dirname $zip)
+        unzip -o $zip -d $(dirname $zip)/$expand_counter
+        expand_counter=$((expand_counter+1))
         rm -rf $zip
     done
 
