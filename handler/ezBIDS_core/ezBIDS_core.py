@@ -2954,6 +2954,7 @@ def modify_objects_info(dataset_list):
                 "subject_idx": protocol["subject_idx"],
                 "session_idx": protocol["session_idx"],
                 "series_idx": protocol["series_idx"],
+                "message": protocol["message"],
                 "AcquisitionDate": protocol["AcquisitionDate"],
                 "AcquisitionTime": protocol["AcquisitionTime"],
                 "SeriesNumber": protocol["SeriesNumber"],
@@ -3025,6 +3026,30 @@ def extract_series_info(dataset_list_unique_series):
         ui_series_info_list.append(ui_series_info)
 
     return ui_series_info_list
+
+
+def check_dwi_b0maps(dataset_list_unique_series):
+    for unique_dic in dataset_list_unique_series:
+        if (unique_dic['type'] == 'dwi/dwi'
+            and unique_dic['NumVolumes'] < 10
+                and (not any(x.endswith('.bval') for x in unique_dic['paths']) and not unique_dic['exclude'])
+                or ('b0map' in unique_dic['SeriesDescription'] or '_b0_' in unique_dic['SeriesDescription'])):
+
+            # What we (likely have are DWI b0map sequences, which should be mapped as fmap/epi according to BIDS)
+            unique_dic['datatype'] = 'fmap'
+            unique_dic['suffix'] = 'epi'
+            unique_dic['type'] = 'fmap/epi'
+            if 'b0map' in unique_dic['SeriesDescription'] or '_b0_' in unique_dic['SeriesDescription']:
+                more_message = ', and b0map or _b0_ is in the sequence description'
+            else:
+                more_message = ''
+            unique_dic["message"] = "Acquisition was determined to be fmap/epi because there are no " \
+                f"corresponding bval/bvec files, and the number of volumes is < 10 {more_message}. In BIDS parlance, " \
+                "this DWI b0map should be fmap/epi rather than dwi/dwi " \
+                "(for reference, see https://neurostars.org/t/bids-b0-correction-for-dwi/3802). " \
+                "Please modify if incorrect."
+
+    return dataset_list_unique_series
 
 
 # Begin (Apply functions)
@@ -3114,6 +3139,9 @@ lookup_dic = create_lookup_info()
 
 # Identify datatype and suffix information
 dataset_list_unique_series = datatype_suffix_identification(dataset_list_unique_series, lookup_dic, config)
+
+# Look for DWI b0maps, which are actually fmap/epi in BIDS parlance
+dataset_list_unique_series = check_dwi_b0maps(dataset_list_unique_series)
 
 # Identify entity label information
 dataset_list_unique_series = entity_labels_identification(dataset_list_unique_series, lookup_dic)

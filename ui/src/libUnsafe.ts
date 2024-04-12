@@ -199,7 +199,7 @@ export function fmapQA($root: IEzbids) {
 
                 // https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/01-magnetic-resonance-imaging-data.html#types-of-fieldmaps
 
-                // case #1: Phase-difference map and at least one magnitude image
+                // case #1: Phase-difference map and at least one magnitude sequence
                 let fmapMagPhasediffObjs = section.filter(function (o) {
                     return (
                         o._type === 'fmap/magnitude1' || o._type === 'fmap/magnitude2' || o._type === 'fmap/phasediff'
@@ -548,6 +548,15 @@ export function setRun($root: IEzbids) {
 export function setIntendedFor($root: IEzbids) {
     // Apply fmap intendedFor mapping, based on user specifications on Series page.
 
+    function isNumberInObject(obj: number[], number: number) {
+        for (const key in obj) {
+            if (obj.hasOwnProperty(key) && obj[key] === number) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Loop through subjects
     $root._organized.forEach((subGroup: OrganizedSubject) => {
         subGroup.sess.forEach((sesGroup: OrganizedSession) => {
@@ -561,6 +570,16 @@ export function setIntendedFor($root: IEzbids) {
                     (e) => e.analysisResults.section_id === s && !e._exclude && e._type !== 'exclude'
                 );
 
+                let allDWIs = section.filter((d) => d._type === 'dwi/dwi');
+                let allDWIfmaps = section.filter(
+                    (d) => d._type === 'fmap/epi' && d.message.includes('corresponding bval/bvec files')
+                );
+
+                let DWIfmapWorflow = false;
+                if (allDWIs.length === allDWIfmaps.length) {
+                    DWIfmapWorflow = true;
+                }
+
                 section.forEach((obj: IObject) => {
                     //add IntendedFor information
                     if (obj._type.startsWith('fmap/') || obj._type === 'perf/m0scan') {
@@ -573,17 +592,53 @@ export function setIntendedFor($root: IEzbids) {
                             }
                         }
 
-                        let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor;
-                        if (correspindingSeriesIntendedFor !== undefined && correspindingSeriesIntendedFor !== null) {
-                            correspindingSeriesIntendedFor.forEach((i: number) => {
-                                let IntendedForIDs = section
-                                    .filter((o) => o.series_idx === i && o._type !== 'func/events')
-                                    .map((o) => o.idx);
-                                if (obj.IntendedFor !== undefined) {
-                                    obj.IntendedFor = obj.IntendedFor.concat(IntendedForIDs);
+                        /*
+                        Could have an issue where the fmap/epi pertains to a DWI b0map sequence. In certain cases,
+                        there may be a one-to-one correspondence, so don't let this fmap pertain to all if that's
+                        the case.
+                        */
+                        if (obj.message.includes('corresponding bval/bvec files')) {
+                            if (DWIfmapWorflow) {
+                                // one-to-one correspondence between DWI and a DWI b0map (mapped as fmap/epi)
+                                let correspondingDWI = section.filter(
+                                    (c) =>
+                                        c._type === 'dwi/dwi' &&
+                                        c._entities.direction.split('').reverse().join('') ===
+                                            obj._entities.direction &&
+                                        c._entities.run === obj._entities.run
+                                );
+                                if (correspondingDWI.length === 1) {
+                                    let IntendedForID = correspondingDWI[0].idx;
+                                    if (obj.IntendedFor !== undefined) {
+                                        if (!isNumberInObject(obj.IntendedFor, IntendedForID)) {
+                                            obj.IntendedFor = obj.IntendedFor.concat(IntendedForID);
+                                        }
+                                    }
                                 }
-                            });
+                            }
+                        } else {
+                            // Otherwise, proceed as usual
+                            let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor;
+
+                            if (
+                                correspindingSeriesIntendedFor !== undefined &&
+                                correspindingSeriesIntendedFor !== null
+                            ) {
+                                correspindingSeriesIntendedFor.forEach((i: number) => {
+                                    let IntendedForIDs = section
+                                        .filter((o) => o.series_idx === i && o._type !== 'func/events')
+                                        .map((o) => o.idx);
+                                    if (obj.IntendedFor !== undefined) {
+                                        for (const IntendedForID of IntendedForIDs) {
+                                            if (!isNumberInObject(obj.IntendedFor, IntendedForID)) {
+                                                obj.IntendedFor = obj.IntendedFor.concat(IntendedForID);
+                                            }
+                                        }
+                                    }
+                                });
+                            }
                         }
+
                         if (Object.keys(obj.IntendedFor).length !== 0) {
                             obj.IntendedFor?.forEach((e) => {
                                 let IntendedForObj = $root.objects.filter((o: IObject) => o.idx === e)[0];
@@ -596,7 +651,7 @@ export function setIntendedFor($root: IEzbids) {
                         if (obj._type.startsWith('fmap/')) {
                             if (Object.keys(obj.IntendedFor).length === 0) {
                                 obj.validationWarnings = [
-                                    'It is recommended that field map (fmap) images have IntendedFor set to at least 1 series ID. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep',
+                                    'It is recommended that field map (fmap) sequences have IntendedFor set to at least 1 series ID. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep',
                                 ];
                                 obj.analysisResults.warnings = obj.validationWarnings;
                             } else {
@@ -606,7 +661,7 @@ export function setIntendedFor($root: IEzbids) {
                         } else if (obj._type === 'perf/m0scan') {
                             if (Object.keys(obj.IntendedFor).length === 0) {
                                 obj.validationErrors = [
-                                    'It is required that perfusion m0scan images have IntendedFor set to at least 1 series ID.',
+                                    'It is required that perfusion m0scan sequences have IntendedFor set to at least 1 series ID.',
                                 ];
                             } else {
                                 obj.validationErrors = [];
@@ -740,7 +795,7 @@ export function dwiQA($root: IEzbids) {
                     }
                 });
             }
-            let fmapIntendedFor = protocolObjects.filter((t) => t._type.startsWith('fmap/'));
+            let fmapIntendedFor = protocolObjects.filter((t) => t._type.startsWith('fmap/') && !t._exclude);
             fmapIntendedFor.forEach((f) => {
                 if (f.IntendedFor === null) {
                     f.IntendedFor = [];
@@ -774,7 +829,7 @@ export function dwiQA($root: IEzbids) {
                     let corrProtocolObj = protocolObjects.filter((e) => e.idx == d.idx)[0]; //will always be an index of 1, so just grab the first (i.e. only) index
                     if (!d.fmap && !d.oppDWI) {
                         corrProtocolObj.analysisResults.warnings = [
-                            "This dwi/dwi acquisition doesn't appear to have a corresponding dwi/dwi or field map acquisition with a 180 degree flipped phase encoding direction. You may wish to exclude this from BIDS conversion, unless there is a reason for keeping it.",
+                            "This dwi/dwi acquisition doesn't appear to have a corresponding dwi/dwi or fmap sequence with a 180 degree flipped phase encoding direction. You may wish to exclude this from BIDS conversion, unless there is a reason for keeping it.",
                         ];
                     } else {
                         corrProtocolObj.analysisResults.warnings = [];
@@ -876,14 +931,14 @@ export function validateEntities(level: string, info: any) {
                                     !info.ImageType.includes(i.toUpperCase())
                                 ) {
                                     info.validationWarnings.push(
-                                        `ezBIDS detects that this image is not part-${i}. Please verify before continuing`
+                                        `ezBIDS detects that this sequence is not part-${i}. Please verify before continuing`
                                     );
                                 }
                             }
                         } else {
                             if (entities[k] === i && level === 'Series' && !info.ImageType.includes('IMAGINARY')) {
                                 info.validationWarnings.push(
-                                    'ezBIDS detects that this image is not part-imag. Please verify before continuing'
+                                    'ezBIDS detects that this sequence is not part-imag. Please verify before continuing'
                                 );
                             }
                         }
