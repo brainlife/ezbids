@@ -593,12 +593,12 @@ export function setIntendedFor($root: IEzbids) {
                         }
                         /*
                         Could have an issue where the fmap/epi pertains to a DWI b0map sequence. In certain cases,
-                        there may be a one-to-one correspondance, so don't let this fmap pertain to all if that's
+                        there may be a one-to-one correspondence, so don't let this fmap pertain to all if that's
                         the case.
                         */
                         if (obj.message.includes('corresponding bval/bvec files')) {
                             if (DWIfmapWorflow) {
-                                // one-to-one correspondance between DWI and a DWI b0map (mapped as fmap/epi)
+                                // one-to-one correspondence between DWI and a DWI b0map (mapped as fmap/epi)
                                 let correspondingDWI = section.filter(
                                     (c) =>
                                         c._type === 'dwi/dwi' &&
