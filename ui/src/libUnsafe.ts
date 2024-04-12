@@ -591,6 +591,7 @@ export function setIntendedFor($root: IEzbids) {
                                 obj.IntendedFor = [];
                             }
                         }
+
                         /*
                         Could have an issue where the fmap/epi pertains to a DWI b0map sequence. In certain cases,
                         there may be a one-to-one correspondence, so don't let this fmap pertain to all if that's
@@ -794,7 +795,7 @@ export function dwiQA($root: IEzbids) {
                     }
                 });
             }
-            let fmapIntendedFor = protocolObjects.filter((t) => t._type.startsWith('fmap/'));
+            let fmapIntendedFor = protocolObjects.filter((t) => t._type.startsWith('fmap/') && !t._exclude);
             fmapIntendedFor.forEach((f) => {
                 if (f.IntendedFor === null) {
                     f.IntendedFor = [];
@@ -828,7 +829,7 @@ export function dwiQA($root: IEzbids) {
                     let corrProtocolObj = protocolObjects.filter((e) => e.idx == d.idx)[0]; //will always be an index of 1, so just grab the first (i.e. only) index
                     if (!d.fmap && !d.oppDWI) {
                         corrProtocolObj.analysisResults.warnings = [
-                            "This dwi/dwi acquisition doesn't appear to have a corresponding dwi/dwi or field map acquisition with a 180 degree flipped phase encoding direction. You may wish to exclude this from BIDS conversion, unless there is a reason for keeping it.",
+                            "This dwi/dwi acquisition doesn't appear to have a corresponding dwi/dwi or fmap sequence with a 180 degree flipped phase encoding direction. You may wish to exclude this from BIDS conversion, unless there is a reason for keeping it.",
                         ];
                     } else {
                         corrProtocolObj.analysisResults.warnings = [];
