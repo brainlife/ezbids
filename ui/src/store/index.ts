@@ -140,6 +140,8 @@ export interface IObject {
     subject_idx: number;
     session_idx: number;
 
+    message: string;
+
     _SeriesDescription: string; //copied from series for quick ref
     type: string; //override
     _type: string;

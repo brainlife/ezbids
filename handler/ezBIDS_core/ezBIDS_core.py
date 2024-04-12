@@ -2954,6 +2954,7 @@ def modify_objects_info(dataset_list):
                 "subject_idx": protocol["subject_idx"],
                 "session_idx": protocol["session_idx"],
                 "series_idx": protocol["series_idx"],
+                "message": protocol["message"],
                 "AcquisitionDate": protocol["AcquisitionDate"],
                 "AcquisitionTime": protocol["AcquisitionTime"],
                 "SeriesNumber": protocol["SeriesNumber"],

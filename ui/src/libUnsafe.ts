@@ -548,6 +548,15 @@ export function setRun($root: IEzbids) {
 export function setIntendedFor($root: IEzbids) {
     // Apply fmap intendedFor mapping, based on user specifications on Series page.
 
+    function isNumberInObject(obj: number[], number: number) {
+        for (const key in obj) {
+            if (obj.hasOwnProperty(key) && obj[key] === number) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     // Loop through subjects
     $root._organized.forEach((subGroup: OrganizedSubject) => {
         subGroup.sess.forEach((sesGroup: OrganizedSession) => {
@@ -561,6 +570,16 @@ export function setIntendedFor($root: IEzbids) {
                     (e) => e.analysisResults.section_id === s && !e._exclude && e._type !== 'exclude'
                 );
 
+                let allDWIs = section.filter((d) => d._type === 'dwi/dwi');
+                let allDWIfmaps = section.filter(
+                    (d) => d._type === 'fmap/epi' && d.message.includes('corresponding bval/bvec files')
+                );
+
+                let DWIfmapWorflow = false;
+                if (allDWIs.length === allDWIfmaps.length) {
+                    DWIfmapWorflow = true;
+                }
+
                 section.forEach((obj: IObject) => {
                     //add IntendedFor information
                     if (obj._type.startsWith('fmap/') || obj._type === 'perf/m0scan') {
@@ -572,19 +591,51 @@ export function setIntendedFor($root: IEzbids) {
                                 obj.IntendedFor = [];
                             }
                         }
-
-                        let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor;
-
-                        if (correspindingSeriesIntendedFor !== undefined && correspindingSeriesIntendedFor !== null) {
-                            correspindingSeriesIntendedFor.forEach((i: number) => {
-                                let IntendedForIDs = section
-                                    .filter((o) => o.series_idx === i && o._type !== 'func/events')
-                                    .map((o) => o.idx);
-                                if (obj.IntendedFor !== undefined) {
-                                    // obj.IntendedFor = obj.IntendedFor.concat(IntendedForIDs); // TODO: Why was this here? It made editing IntendedFor on Dataset Review page mess up
-                                    obj.IntendedFor = IntendedForIDs;
+                        /*
+                        Could have an issue where the fmap/epi pertains to a DWI b0map sequence. In certain cases,
+                        there may be a one-to-one correspondance, so don't let this fmap pertain to all if that's
+                        the case.
+                        */
+                        if (obj.message.includes('corresponding bval/bvec files')) {
+                            if (DWIfmapWorflow) {
+                                // one-to-one correspondance between DWI and a DWI b0map (mapped as fmap/epi)
+                                let correspondingDWI = section.filter(
+                                    (c) =>
+                                        c._type === 'dwi/dwi' &&
+                                        c._entities.direction.split('').reverse().join('') ===
+                                            obj._entities.direction &&
+                                        c._entities.run === obj._entities.run
+                                );
+                                if (correspondingDWI.length === 1) {
+                                    let IntendedForID = correspondingDWI[0].idx;
+                                    if (obj.IntendedFor !== undefined) {
+                                        if (!isNumberInObject(obj.IntendedFor, IntendedForID)) {
+                                            obj.IntendedFor = obj.IntendedFor.concat(IntendedForID);
+                                        }
+                                    }
                                 }
-                            });
+                            }
+                        } else {
+                            // Otherwise, proceed as usual
+                            let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor;
+
+                            if (
+                                correspindingSeriesIntendedFor !== undefined &&
+                                correspindingSeriesIntendedFor !== null
+                            ) {
+                                correspindingSeriesIntendedFor.forEach((i: number) => {
+                                    let IntendedForIDs = section
+                                        .filter((o) => o.series_idx === i && o._type !== 'func/events')
+                                        .map((o) => o.idx);
+                                    if (obj.IntendedFor !== undefined) {
+                                        for (const IntendedForID of IntendedForIDs) {
+                                            if (!isNumberInObject(obj.IntendedFor, IntendedForID)) {
+                                                obj.IntendedFor = obj.IntendedFor.concat(IntendedForID);
+                                            }
+                                        }
+                                    }
+                                });
+                            }
                         }
 
                         if (Object.keys(obj.IntendedFor).length !== 0) {
