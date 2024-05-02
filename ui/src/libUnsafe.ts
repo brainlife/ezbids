@@ -898,7 +898,8 @@ export function validateEntities(level: string, info: any) {
             if (k === 'direction') {
                 /* 
                 Ensure direction (dir) entity labels are capitalized (e.g. AP, not ap).
-                Can occur when user adds this themselves.
+                Can occur when user adds this themselves. Only do this if we have PED
+                info (e.g. Philips scanners don't provide this).
                 */
                 if (entities[k] && entities[k] !== '') {
                     if (entities[k] !== entities[k].toUpperCase()) {
@@ -907,7 +908,7 @@ export function validateEntities(level: string, info: any) {
                         );
                     }
 
-                    if (entities[k].toUpperCase() !== info.PED) {
+                    if (entities[k].toUpperCase() !== info.PED && info.PED !== '') {
                         info.validationWarnings.push(
                             `ezBIDS detects that the direction should be ${info.PED}, not ${entities[k]}. Please verify before continuing`
                         );

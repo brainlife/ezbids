@@ -2092,7 +2092,8 @@ def create_lookup_info():
                                             "spin_echo",
                                             "sefmri",
                                             "semri",
-                                            "pepolar"
+                                            "pepolar",
+                                            "topup"
                                         ]
                                     )
                                     lookup_dic[datatype][suffix]["conditions"].extend(
