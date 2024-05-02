@@ -74,9 +74,20 @@
                         location.</small
                     >
                 </p>
+
+                <h3>Citation</h3>
+                <div style="background-color: #0001; padding: 20px; padding-top: 10px">
+                    <p class="citation">
+                        Levitas, D., Hayashi, S., Vinci-Booher, S., Heinsfeld, A., Bhatia, D., Lee, N., ... & Pestilli,
+                        F. (2024). ezBIDS: Guided standardization of neuroimaging data interoperable with major data
+                        archives and platforms. Scientific data, 11(1), 179.
+                        <a href="https://doi.org/10.1038/s41597-024-02959-0" target="_blank"
+                            >https://doi.org/10.1038/s41597-024-02959-0</a
+                        >
+                    </p>
+                </div>
             </div>
 
-            <br />
             <el-row>
                 <el-col :span="12">
                     <h4>BIDS Structure</h4>

@@ -7,7 +7,6 @@
             >&nbsp;&nbsp;if you'd like to convert another dataset.
         </p>
         <br />
-        <br />
 
         <h2>Feedbacks / Comments</h2>
         <p>
@@ -19,17 +18,6 @@
             If you have experienced any issues while using ezBIDS, please submit an
             <a href="https://github.com/brainlife/ezbids/issues" target="github">Github Issues</a>
         </p>
-        <br />
-        <br />
-
-        <h2>Citations</h2>
-        <p>Please cite us with the following citation.</p>
-        <p class="citation">
-            Levitas, D., Hayashi, S., Vinci-Booher, S., Heinsfeld, A., Bhatia, D., Lee, N., ... & Pestilli, F. (2024).
-            ezBIDS: Guided standardization of neuroimaging data interoperable with major data archives and platforms.
-            Scientific data, 11(1), 179.
-        </p>
-        <br />
         <br />
 
         <h2>Funded By</h2>
