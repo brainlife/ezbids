@@ -974,8 +974,10 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
 
         # Files (JSON, bval/bvec, tsv) associated with imaging file
         corresponding_file_paths = [
-            x for x in corresponding_files_list if img_file.split(ext)[0] in x and not x.endswith(ext)
+            x for x in corresponding_files_list if f"{img_file.split(ext)[0]}." in x and not x.endswith(ext)
         ]
+        # corresponding_files_list
+        print(corresponding_file_paths)
 
         # Find image file size
         filesize = os.stat(img_file).st_size
@@ -2335,7 +2337,7 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
             unique_dic["datatype"] = "pet"
             unique_dic["suffix"] = "blood"
             unique_dic["type"] = "pet/blood"
-            unique_dic["message"] = "Acquisition is believed to be pet/pet " \
+            unique_dic["message"] = "Acquisition is believed to be pet/blood " \
                 "because the file path ends with '_blood.json. " \
                 "Please modify if incorrect."
 
