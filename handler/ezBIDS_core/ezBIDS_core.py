@@ -977,7 +977,6 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
             x for x in corresponding_files_list if f"{img_file.split(ext)[0]}." in x and not x.endswith(ext)
         ]
         # corresponding_files_list
-        print(corresponding_file_paths)
 
         # Find image file size
         filesize = os.stat(img_file).st_size
@@ -3036,18 +3035,18 @@ def check_dwi_b0maps(dataset_list_unique_series):
         if (unique_dic['type'] == 'dwi/dwi'
             and unique_dic['NumVolumes'] < 10
                 and (not any(x.endswith('.bval') for x in unique_dic['paths']) and not unique_dic['exclude'])
-                or ('b0map' in unique_dic['SeriesDescription'] or '_b0_' in unique_dic['SeriesDescription'])):
+                or any(x in unique_dic['SeriesDescription'] for x in ('b0map', '_b0_', 'b0_'))):
 
             # What we (likely have are DWI b0map sequences, which should be mapped as fmap/epi according to BIDS)
             unique_dic['datatype'] = 'fmap'
             unique_dic['suffix'] = 'epi'
             unique_dic['type'] = 'fmap/epi'
-            if 'b0map' in unique_dic['SeriesDescription'] or '_b0_' in unique_dic['SeriesDescription']:
-                more_message = ', and b0map or _b0_ is in the sequence description'
+            if any(x in unique_dic['SeriesDescription'] for x in ('b0map', '_b0_', 'b0_')):
+                more_message = ', and b0map, _b0_, or b0_ is in the sequence description'
             else:
                 more_message = ''
-            unique_dic["message"] = "Acquisition was determined to be fmap/epi because there are no " \
-                f"corresponding bval/bvec files, and the number of volumes is < 10 {more_message}. In BIDS parlance, " \
+            unique_dic["message"] = "Acquisition was determined to be fmap/epi because either there are no " \
+                f"corresponding bval/bvec files, or the number of volumes is < 10 {more_message}. In BIDS parlance, " \
                 "this DWI b0map should be fmap/epi rather than dwi/dwi " \
                 "(for reference, see https://neurostars.org/t/bids-b0-correction-for-dwi/3802). " \
                 "Please modify if incorrect."
