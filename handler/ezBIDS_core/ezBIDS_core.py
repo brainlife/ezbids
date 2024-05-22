@@ -3061,7 +3061,11 @@ print("########################################")
 print("")
 
 # Load dataframe containing all uploaded files
-uploaded_img_list = natsorted(pd.read_csv("list", header=None, lineterminator='\n').to_numpy().flatten().tolist())
+try:
+    uploaded_img_list = natsorted(pd.read_csv("list", header=None, lineterminator='\n').to_numpy().flatten().tolist())
+except:
+    # Need for [rare] instances where a comma (or other escape character) is in the file path
+    uploaded_img_list = natsorted(pd.read_csv("list", sep=' ', header=None, lineterminator='\n').to_numpy().flatten().tolist())
 
 # Remove dots in file names (that aren't extensions). This screws up the bids-validator otherwise
 uploaded_img_list = fix_multiple_dots(uploaded_img_list)

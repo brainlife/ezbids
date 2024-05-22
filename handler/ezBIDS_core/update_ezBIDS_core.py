@@ -19,7 +19,12 @@ from natsort import natsorted
 DATA_DIR = sys.argv[1]
 os.chdir(DATA_DIR)
 
-img_list = natsorted(pd.read_csv("list", header=None, lineterminator="\n").to_numpy().flatten().tolist())
+try:
+    img_list = natsorted(pd.read_csv("list", header=None, lineterminator="\n").to_numpy().flatten().tolist())
+except:
+    # Need for [rare] instances where a comma (or other escape character) is in the file path
+    img_list = natsorted(pd.read_csv("list", sep=' ', header=None, lineterminator='\n').to_numpy().flatten().tolist())
+
 MEG_extensions = [".ds", ".fif", ".sqd", ".con", ".raw", ".ave", ".mrk", ".kdf", ".mhd", ".trg", ".chn", ".dat"]
 
 # place paths to image thumbnails in ezBIDS_core.json
