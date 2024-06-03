@@ -705,6 +705,39 @@ export default defineComponent({
             }
             //match the pos of type and series.idx inside the ezbids.objects[]
             this.loadInitFormValues();
+            /*
+                With perf/asl data, when ArterialSpinLabelingType is CASL or PCASL, you can't have the following:
+                - PASLType
+                - LabelingSlabThickness
+                - BolusCutOffFlag
+                - BolusCutOffTimingSequence
+                - BolusCutOffDelayTime
+                - BolusCutOffTechnique
+            */
+            if (type_str === 'perf/asl' && ['CASL', 'PCASL'].includes(this.formData['ArterialSpinLabelingType'])) {
+                let bad_keys = [
+                    'PASLType',
+                    'LabelingSlabThickness',
+                    'BolusCutOffFlag',
+                    'BolusCutOffTimingSequence',
+                    'BolusCutOffDelayTime',
+                    'BolusCutOffTechnique',
+                ];
+
+                function removeEntryByFieldValue(arr, bad_key) {
+                    return arr.filter(obj => obj.field !== bad_key);
+                }
+
+                for (let bad_key of bad_keys) {
+                    for (let i in this.fields) {
+                        this.fields[i] = removeEntryByFieldValue(this.fields[i], bad_key);
+                    }
+
+                    if (this.formData.hasOwnProperty(bad_key)) {
+                        delete this.formData[bad_key];
+                    }
+                }
+            }
             //Task validate form on load
             this.showDialog = true;
             this.$nextTick(() => {
@@ -767,6 +800,7 @@ export default defineComponent({
                     if (type === 'perf/m0scan' && field !== 'RepetitionTimePreparation') {
                         continue;
                     }
+
                     // Deal with different metadata standards for pet/pet and pet/blood
                     if (type === 'pet/blood' && !section.includes('Blood')) {
                         continue;

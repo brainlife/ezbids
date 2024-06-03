@@ -2021,6 +2021,14 @@ export function metadataAlerts(
         }
     }
 
+    for (let i = requiredFields.length - 1; i >= 0; i--) {
+        let requiredField = requiredFields[i];
+
+        if (sidecarMetadata.hasOwnProperty(requiredField)) {
+            requiredFields.splice(i, 1);
+        }
+    }
+
     let metadataAlertFields = requiredFields.concat(typoFields);
     // console.log('required', requiredFields);
     // console.log('typo', typoFields);
