@@ -156,7 +156,7 @@ export function fmapQA($root) {
                         let fmapMagFieldmapBadObjs = fmapMagFieldmapObjs.slice(0,-2)
                         fmapMagFieldmapBadObjs.forEach(obj=> {
                             obj.exclude = true
-                            obj.analysisResults.errors = ['Multiple image sets of magnitude & fieldmap field map acquistions found in section. Only selecting most recent pair. Other(s) will not be included in BIDS output']
+                            obj.analysisResults.errors = ['Multiple image sets of magnitude & fieldmap field map acquisitions found in section. Only selecting most recent pair. Other(s) will not be included in BIDS output']
                         });
                     }
 

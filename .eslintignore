@@ -3,3 +3,5 @@
 api/*.js
 api/*.js.map
 handler/convert.js
+ui/test/events/*.js
+api/*.ts

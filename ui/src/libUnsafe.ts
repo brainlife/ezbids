@@ -262,7 +262,7 @@ export function fmapQA($root: IEzbids) {
                     if (fmapMagPhasediffObjs.length == 1) {
                         fmapMagPhasediffObjs.forEach((o: IObject) => {
                             o.analysisResults.warnings.push(
-                                "There doesn't appear to be a full field map pair (magnitude1, phasediff) or triplet (magnitude1, magnitude2, phasediff). It is highly recommended that this acquistion be excluded from BIDS conversion, as it doesn't form a complete pair/triplet."
+                                "There doesn't appear to be a full field map pair (magnitude1, phasediff) or triplet (magnitude1, magnitude2, phasediff). It is highly recommended that this acquisition be excluded from BIDS conversion, as it doesn't form a complete pair/triplet."
                             );
                         });
                     }

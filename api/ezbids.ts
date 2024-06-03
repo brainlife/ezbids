@@ -47,7 +47,7 @@ app.use(bodyParser.json({
 
 app.use('/', require('./controllers'));
 app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
-//error handlin
+//error handling
 //app.use(expressWinston.errorLogger(config.logger.winston)); 
 app.use(function (err, req, res, next) {
     if (typeof err == "string") err = { message: err };

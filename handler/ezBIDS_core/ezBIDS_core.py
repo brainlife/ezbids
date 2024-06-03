@@ -1568,7 +1568,7 @@ def determine_unique_series(dataset_list, bids_compliant):
         Since EchoTime and RepetitionTime are float values, add slight measurement error
         tolerance for these metadata. See https://github.com/rordenlab/dcm2niix/issues/543
 
-        If retro-reconstruction (RR) acquistions are found
+        If retro-reconstruction (RR) acquisitions are found
         ("_RR" in SeriesDescription), they should be of same unique
         series as non retro-reconstruction ones. These are generally rare
         cases, but should be accounted for.
@@ -2988,7 +2988,7 @@ def modify_objects_info(dataset_list):
 
 def extract_series_info(dataset_list_unique_series):
     """
-    Extracts a subset of the acquistion information, which will be displayed on
+    Extracts a subset of the acquisition information, which will be displayed on
     the Series-level page of the ezBIDS UI.
 
     Parameters
@@ -3165,7 +3165,7 @@ dataset_list_unique_series = check_part_entity(dataset_list_unique_series, confi
 # If BIDS-compliant dataset uploaded, set and apply IntendedFor mapping
 dataset_list_unique_series = set_IntendedFor_B0FieldIdentifier_B0FieldSource(dataset_list_unique_series, bids_compliant)
 
-# Port series level information to all other acquistions (i.e. objects level) with same series info
+# Port series level information to all other acquisitions (i.e. objects level) with same series info
 dataset_list = update_dataset_list(dataset_list, dataset_list_unique_series)
 
 # Apply a few other changes to the objects level

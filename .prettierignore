@@ -3,3 +3,5 @@ node_modules
 ui/node_modules
 ui/src/components/modalityForm.vue
 handler/convert.js
+ui/test/events/*.js
+api/*.ts
