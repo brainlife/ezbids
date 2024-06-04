@@ -234,6 +234,44 @@ export function fmapQA($root: IEzbids) {
                 //case #4: Multiple phase encoding direction ("pepolar")
                 let fmapPepolar = section.filter((o) => o._type === 'fmap/epi');
 
+                fmapPepolar.forEach((fmap) => {
+                    let sidecar = JSON.parse(fmap.items[0].sidecar_json);
+                    if (!sidecar.hasOwnProperty('PhaseEncodingDirection')) {
+                        let axis = '';
+                        if (sidecar.hasOwnProperty('PhaseEncodingAxis')) {
+                            axis = sidecar.PhaseEncodingAxis;
+                        }
+
+                        let orientation = fmap.analysisResults.orientation;
+                        if (orientation !== undefined) {
+                            let direction = fmap._entities.direction;
+
+                            let idx = 1; // Can we assume A-P phase encoding plane? Seems like the most common.
+                            if (axis === 'i') {
+                                idx = 0;
+                            } else if (axis === 'j') {
+                                idx = 1;
+                            } else if (axis === 'k') {
+                                idx = 2;
+                            }
+
+                            let letter = orientation[idx];
+
+                            let ped = '';
+                            if (letter === direction[0]) {
+                                ped = axis + '-';
+                            } else {
+                                ped = axis;
+                            }
+
+                            if (ped !== '') {
+                                sidecar['PhaseEncodingDirection'] = ped;
+                                fmap.items[0].sidecar_json = JSON.stringify(sidecar, null, 2);
+                            }
+                        }
+                    }
+                });
+
                 /*
                 In addition to the fmap cases listed above, other field maps exist.
                 For list of these [quantitative MRI] field maps, see
@@ -911,6 +949,12 @@ export function validateEntities(level: string, info: any) {
                     if (entities[k].toUpperCase() !== info.PED && info.PED !== '') {
                         info.validationWarnings.push(
                             `ezBIDS detects that the direction should be ${info.PED}, not ${entities[k]}. Please verify before continuing`
+                        );
+                    }
+
+                    if (!['LR', 'RL', 'AP', 'PA', 'IS', 'SI'].includes(entities[k].toUpperCase())) {
+                        info.validationErrors.push(
+                            `The direction entity you have specified in not allowed. Must be one of the following: LR, RL, AP, PA, IS, or SI.`
                         );
                     }
                 }
