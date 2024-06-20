@@ -19,11 +19,11 @@ fi
 root=$1
 echo "running preprocess.sh on root folder ${root}"
 
-echo "replace file paths that contain space, quotation, or [@^()] characters"
-find "$root" -depth -name "*[ @^()]*" -print0 | sort -rz | xargs -0 -n 1 -I {} ./rename_special_chars.sh {}
-
 echo "running expand.sh"
 ./expand.sh $root
+
+echo "replace file paths that contain space, quotation, or [@^()] characters"
+find "$root" -depth -name "*[ @^()]*" -print0 | sort -rz | xargs -0 -n 1 -I {} ./rename_special_chars.sh {}
 
 # check to see if uploaded data is a BIDS-compliant dataset
 echo "Running bids-validator to check BIDS compliance"
