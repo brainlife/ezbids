@@ -235,7 +235,8 @@ export function fmapQA($root: IEzbids) {
                 let fmapPepolar = section.filter((o) => o._type === 'fmap/epi');
 
                 fmapPepolar.forEach((fmap) => {
-                    let sidecar = JSON.parse(fmap.items[0].sidecar_json);
+                    let sidecar_idx = fmap.items.findIndex(obj => obj.path.endsWith('json'));
+                    let sidecar = JSON.parse(fmap.items[sidecar_idx].sidecar_json);
                     if (!sidecar.hasOwnProperty('PhaseEncodingDirection')) {
                         let axis = '';
                         if (sidecar.hasOwnProperty('PhaseEncodingAxis')) {
