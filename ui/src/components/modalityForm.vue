@@ -796,11 +796,26 @@ export default defineComponent({
                     if (['IntendedFor', 'TaskName'].includes(field)) {
                         continue;
                     }
+                    // for field maps (fmap) sequences, deal with ignoring EchoTime_fmap, EchoTime1, EchoTime2, Units, and TotalReadoutTime in specific instances
+                    if (type === 'fmap/epi' && ['EchoTime__fmap', 'EchoTime1', 'EchoTime2', 'Units'].includes(field)) {
+                        continue;
+                    }
+                    if (['fmap/magnitude1', 'fmap/magnitude2'].includes(type) && ['EchoTime__fmap', 'EchoTime1', 'EchoTime2', 'Units', 'TotalReadoutTime'].includes(field)) {
+                        continue;
+                    }
+                    if (type === 'fmap/phasediff' && ['EchoTime__fmap', 'Units', 'TotalReadoutTime'].includes(field)) {
+                        continue;
+                    }
+                    if (['fmap/phase1', 'fmap/phase2'].includes(type) && ['EchoTime1', 'EchoTime2', 'Units', 'TotalReadoutTime'].includes(field)) {
+                        continue;
+                    }
+                    if (type === 'fmap/fieldmap' && ['EchoTime__fmap', 'EchoTime1', 'EchoTime2', 'TotalReadoutTime'].includes(field)) {
+                        continue;
+                    }
                     // Skip all metadata in perf/m0scan except for RepetitionTimePreparation
                     if (type === 'perf/m0scan' && field !== 'RepetitionTimePreparation') {
                         continue;
                     }
-
                     // Deal with different metadata standards for pet/pet and pet/blood
                     if (type === 'pet/blood' && !section.includes('Blood')) {
                         continue;
