@@ -972,12 +972,6 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
         else:
             ped = ""
 
-        # Files (JSON, bval/bvec, tsv) associated with imaging file
-        corresponding_file_paths = [
-            x for x in corresponding_files_list if f"{img_file.split(ext)[0]}." in x and not x.endswith(ext)
-        ]
-        # corresponding_files_list
-
         # Find image file size
         filesize = os.stat(img_file).st_size
 
@@ -1161,9 +1155,6 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
         else:
             data_type = ""
 
-        # Relative paths of NIfTI and JSON files (per SeriesNumber)
-        paths = natsorted(corresponding_file_paths + [img_file])
-
         """
         Select subject (and session, if applicable) IDs to display.
         """
@@ -1221,6 +1212,14 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
             corresponding_files_list = corresponding_files_list + [json_path]
             json_data = open(json_path)
             json_data = json.load(json_data, strict=False)
+
+        # Files (JSON, bval/bvec, tsv) associated with imaging file
+        corresponding_file_paths = [
+            x for x in corresponding_files_list if f"{img_file.split(ext)[0]}." in x and not x.endswith(ext)
+        ]
+
+        # Relative paths of NIfTI and JSON files (per SeriesNumber)
+        paths = natsorted(corresponding_file_paths + [img_file])
 
         """
         Organize all from individual SeriesNumber in dictionary
@@ -3065,7 +3064,9 @@ try:
     uploaded_img_list = natsorted(pd.read_csv("list", header=None, lineterminator='\n').to_numpy().flatten().tolist())
 except:
     # Need for [rare] instances where a comma (or other escape character) is in the file path
-    uploaded_img_list = natsorted(pd.read_csv("list", sep=' ', header=None, lineterminator='\n').to_numpy().flatten().tolist())
+    uploaded_img_list = natsorted(
+        pd.read_csv("list", sep=' ', header=None, lineterminator='\n').to_numpy().flatten().tolist()
+    )
 
 # Remove dots in file names (that aren't extensions). This screws up the bids-validator otherwise
 uploaded_img_list = fix_multiple_dots(uploaded_img_list)
