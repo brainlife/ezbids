@@ -263,11 +263,23 @@ export default defineComponent({
             );
         },
 
-        sendOpenneuro() {
-            const url =
-                this.config.apihost + '/download/' + this.session._id + '/bids/' + this.ezbids.datasetDescription.Name;
-            const fullurl = new URL(url, document.baseURI).href;
-            window.open('https://openneuro.org/import?url=' + encodeURI(fullurl));
+        async sendOpenneuro() {
+            try {
+                const res = await axios.get(`${this.config.apihost}/download/${this.session._id}/token`);
+                const shortLivedJWT = res.data;
+
+                const url = `${this.config.apihost}/download/${this.session._id}/bids/${this.ezbids.datasetDescription.Name}?token=${shortLivedJWT}`;
+
+                const fullurl = new URL(url, document.baseURI).href;
+                window.open('https://openneuro.org/import?url=' + encodeURI(fullurl));
+
+            } catch (e) {
+                console.error(e);
+                ElNotification({
+                    message: 'there was an error downloading the data',
+                    type: 'error',
+                });
+            }
         },
 
         isValid(cb: (err?: string) => void) {

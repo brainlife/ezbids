@@ -6,3 +6,4 @@ ui/src/libUnsafe.ts
 handler/convert.js
 ui/test/events/*.js
 api/*.ts
+ui/src/Finalize.vue
