@@ -280,7 +280,6 @@ export default defineComponent({
                 console.log(url)
 
                 const fullurl = new URL(url, document.baseURI).href;
-                window.location.href = url;
                 window.open('https://openneuro.org/import?url=' + encodeURI(fullurl));
 
             } catch (e) {
