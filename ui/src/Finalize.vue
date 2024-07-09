@@ -277,8 +277,10 @@ export default defineComponent({
                 console.log(res)
 
                 const url = `${this.config.apihost}/download/${this.session._id}/bids/${this.ezbids.datasetDescription.Name}?token=${shortLivedJWT}`;
+                console.log(url)
 
                 const fullurl = new URL(url, document.baseURI).href;
+                window.location.href = url;
                 window.open('https://openneuro.org/import?url=' + encodeURI(fullurl));
 
             } catch (e) {
