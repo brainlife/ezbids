@@ -262,11 +262,11 @@ export default defineComponent({
                 `_brainlife.${this.session._id}`
             );
         },
-
         async sendOpenneuro() {
             try {
                 const res = await axios.get(`${this.config.apihost}/download/${this.session._id}/token`);
                 const shortLivedJWT = res.data;
+                console.log(res)
 
                 const url = `${this.config.apihost}/download/${this.session._id}/bids/${this.ezbids.datasetDescription.Name}?token=${shortLivedJWT}`;
 
