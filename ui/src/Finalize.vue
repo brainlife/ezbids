@@ -278,8 +278,8 @@ export default defineComponent({
 
                 const url = `${this.config.apihost}/download/${this.session._id}/bids/${this.ezbids.datasetDescription.Name}?token=${shortLivedJWT}`;
                 console.log(url)
+                console.log('final update check')
 
-                window.location.href = url;
                 const fullurl = new URL(url, document.baseURI).href;
                 window.open('https://openneuro.org/import?url=' + encodeURI(fullurl));
 
