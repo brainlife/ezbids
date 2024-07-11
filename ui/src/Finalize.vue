@@ -265,7 +265,6 @@ export default defineComponent({
 
         async sendOpenneuro() {
             try {
-                console.log('test')
                 const res = await axios.get(`${this.config.apihost}/download/${this.session._id}/token`);
                 const shortLivedJWT = res.data;
 

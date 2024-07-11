@@ -467,8 +467,6 @@ router.get(
     (req: EzBIDSAuthRequestObject, res) => {
         const session = req.ezBIDS.session;
         const JWT = signJWT({ sessionId: session._id.toString() });
-        console.log('new test')
-        console.log(JWT)
         return res.send(JWT);
     }
 );
