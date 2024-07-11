@@ -33,7 +33,7 @@ export const verifyJWT = (jwtToVerify?: string): string | jwt.JwtPayload | undef
 export const signJWT = (claims: { sessionId: string }, signInOpts?: jwt.SignOptions) => {
     return jwt.sign(claims, ezbidsPrivateKey, {
         algorithm: 'RS256',
-        expiresIn: '10s',
+        expiresIn: '600s',
         ...(signInOpts || {}),
     });
 };
