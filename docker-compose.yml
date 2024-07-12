@@ -67,3 +67,10 @@ services:
             test: ["CMD", "curl", "-f", "http://localhost:3000"]
         ports:
             - 3000:3000 #vite wants to be exposed on the host for HMR?
+    
+    telemetry:
+        container_name: brainlife_ezbids-telemetry
+        build: ./telemetry
+        platform: linux/amd64
+        ports:
+            - 8000:8000 #for local debugging
