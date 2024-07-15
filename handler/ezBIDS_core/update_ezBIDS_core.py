@@ -31,12 +31,12 @@ MEG_extensions = [".ds", ".fif", ".sqd", ".con", ".raw", ".ave", ".mrk", ".kdf",
 with open("ezBIDS_core.json", "r") as ezBIDS_json:
     ezBIDS = json.load(ezBIDS_json)
 
+
 for img_file in img_list:
     if os.path.isfile(f"{DATA_DIR}/{img_file}") or os.path.isdir(f"{DATA_DIR}/{img_file}"):
         for obj in ezBIDS["objects"]:
             for item in obj["items"]:
                 path = item["path"]
-
                 if path == img_file:
                     files = [
                         os.path.join(os.path.dirname(img_file), x) for x in os.listdir(os.path.dirname(img_file))
@@ -47,7 +47,7 @@ for img_file in img_list:
                     else:
                         ext = Path(img_file).suffix
 
-                    png_files = natsorted([x for x in files if img_file.split(ext)[0] in x and ".png" in x])
+                    png_files = natsorted([x for x in files if img_file.split(ext)[0] + ".png" == x])
                     item["pngPaths"] = png_files
 
 with open("ezBIDS_core.json", "w") as ezBIDS_json:

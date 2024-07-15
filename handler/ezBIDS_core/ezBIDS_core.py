@@ -501,7 +501,7 @@ def modify_uploaded_dataset_list(uploaded_img_list):
         img_dir = os.path.dirname(img_file)
         grouped_files = [
             img_dir + '/' + x for x in os.listdir(img_dir)
-            if os.path.basename(img_file).split(ext)[0] in x
+            if os.path.basename(img_file).split(ext)[0] + "." in x
         ]
 
         # deal with PET issue where ECAT-formatted or blood data could be accidentally grouped with imaging data
