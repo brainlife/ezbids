@@ -825,7 +825,7 @@ def correct_pe(pe_direction, ornt, correction):
         proper_pe_direction = [key for key, value in proper_ax_idcs.items()
                                if value == axcode_index][0] + polarity
 
-    # Weird issue where the polarity sign (-) comes before the axis letter (e.g. -j instead of j-). 
+    # Weird issue where the polarity sign (-) comes before the axis letter (e.g. -j instead of j-).
     # Only witnessed in Philips data.
     if len(proper_pe_direction) == 2 and proper_pe_direction[0] == '-':
         proper_pe_direction = proper_pe_direction[1] + proper_pe_direction[0]

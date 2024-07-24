@@ -571,6 +571,7 @@ const store = createStore({
                         //     delete sidecar.SeriesDescription;
                         // }
 
+                        item.sidecar = sidecar;
                         item['sidecar_json'] = JSON.stringify(sidecar, null, 4);
                     }
                 });
