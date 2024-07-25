@@ -788,7 +788,7 @@ def correct_pe(pe_direction, ornt, correction):
     -------
     proper_pe_direction : string
         pe_direction, in "ijk" format.
-    
+
     correction: boolean
     """
     # axes = (("R", "L"), ("A", "P"), ("S", "I"))

@@ -33,5 +33,9 @@ bids-validator --json "$rootDir" > $root/validator.json || true
 echo "Copying finalized.json file to ezBIDS_template.json"
 cp -r $root/finalized.json $root/ezBIDS_template.json
 
+# Create telemetry-specific files
+echo "Creating ezBIDS telemetry files"
+./telemetry.py $root
+
 # Telemetry (to hard-coded pet2bids server)
 curl -H 'Content-Type: application/json' -d @$root/validator.json -X POST http://52.87.154.236/telemetry/
