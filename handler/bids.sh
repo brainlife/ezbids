@@ -38,4 +38,14 @@ echo "Creating ezBIDS telemetry files"
 ./telemetry.py $root
 
 # Telemetry (to hard-coded pet2bids server)
-curl -H 'Content-Type: application/json' -d @$root/validator.json -X POST http://52.87.154.236/telemetry/
+if [ -f $root/validator.json ]; then
+    curl -H 'Content-Type: application/json' -d @$root/validator.json -X POST http://52.87.154.236/telemetry/
+fi
+
+if [ -f $root/ezBIDS_core_telemetry.json ]; then
+    curl -H 'Content-Type: application/json' -d @$root/ezBIDS_core_telemetry.json -X POST http://52.87.154.236/telemetry/
+fi
+
+if [ -f $root/ezBIDS_finalized_telemetry.json ]; then
+    curl -H 'Content-Type: application/json' -d @$root/ezBIDS_finalized_telemetry.json -X POST http://52.87.154.236/telemetry/
+fi
