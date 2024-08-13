@@ -301,6 +301,9 @@ async.forEachOf(info.objects, (o, idx, next_o) => {
                     case "nii.gz":
                         handleItem(item, suffix + ".nii.gz");
                         break;
+                    case "tsv.gz":
+                        handleItem(item, suffix + ".tsv.gz");
+                        break;              
                     case "json":
                         //handle B0FieldIdentifier and B0FieldSource if present
                         if(o.B0FieldIdentifier) {

@@ -22,8 +22,11 @@ echo "running preprocess.sh on root folder ${root}"
 echo "running expand.sh"
 ./expand.sh $root
 
-echo "replace file paths that contain space, quotation, or [@^()] characters"
+echo "Replace file paths that contain space, quotation, or [@^()] characters"
 find "$root" -depth -name "*[ @^()]*" -print0 | sort -rz | xargs -0 -n 1 -I {} ./rename_special_chars.sh {}
+
+echo "Additionally, ensure file extensions do not have capital letters in them (e.g. .NII.GZ --> .nii.gz)"
+find "$root" -depth -type f -name '*.[A-Z]*' -exec rename 's/\.([A-Z]+)$/.\L$1/' {} \;
 
 # check to see if uploaded data is a BIDS-compliant dataset
 echo "Running bids-validator to check BIDS compliance"
@@ -241,6 +244,10 @@ else
 
     if [ -f $root/meg.list ]; then
         cat $root/meg.list >> $root/list
+    fi
+
+    if [ -f $root/eyetracking.list ]; then
+        cat $root/eyetracking.list >> $root/list
     fi
 
     if [ ! -s $root/list ]; then

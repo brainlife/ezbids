@@ -59,6 +59,7 @@ mri_dcm_dirs_list = []
 pet_ecat_files_list = []
 pet_dcm_dirs_list = []
 meg_data_list = []
+eyetracking_data_list = []
 
 find_img_data('.')
 
@@ -99,7 +100,14 @@ if len(meg_data_list):
     # TODO - won't this remove different extensions?
     meg_data_list = [x for x in meg_data_list[0].split('\n') if x != '' and 'hz.ds' not in x]
 
-# Save the MRI, PET, MEG, and NIfTI lists (if they exist) to separate files
+# Eyetracking
+eye_extensions = ['*.edf']  # Add as more become known
+for eye_ext in eye_extensions:
+    find_cmd = os.popen(f"find . -maxdepth 9 -type f -name '{eye_ext}'").read()
+    if find_cmd != '':
+        eyetracking_data_list.append(find_cmd)
+
+# Save the MRI, PET, MEG, and Eyetracking lists (if they exist) to separate files
 file = open(f'{root}/dcm2niix.list', 'w')
 if len(mri_dcm_dirs_list):
     for dcm in mri_dcm_dirs_list:
@@ -122,4 +130,24 @@ if len(meg_data_list):
     file = open(f'{root}/meg.list', 'w')
     for meg in meg_data_list:
         file.write(meg + '\n')
+    file.close()
+
+if len(eyetracking_data_list):
+    file = open(f'{root}/eyetracking.list', 'w')
+    output_counter = 1
+    for eye in eyetracking_data_list:
+        eye = eye.strip()
+        data_dir = os.path.dirname(eye)
+        output_dir = f"{data_dir}/output/{output_counter}"
+        if not os.path.isdir(output_dir):
+            os.makedirs(output_dir)
+        try:
+            os.system(f"eye2bids --input_file {eye} --output_dir {output_dir} --force")
+            output_data_files = [f'{output_dir}/{x}' for x in os.listdir(output_dir) if x.endswith('.tsv.gz')]
+            if len(output_data_files):
+                for o in output_data_files:
+                    file.write(o + '\n')
+        except:
+            print('Could not convert eyetracking .edf format data.')
+        output_counter += 1
     file.close()

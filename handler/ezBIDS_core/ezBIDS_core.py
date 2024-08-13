@@ -41,7 +41,7 @@ entity_ordering_file = str(BIDS_SCHEMA_DIR / Path("rules/entities.yaml"))
 
 cog_atlas_url = "http://cognitiveatlas.org/api/v-alpha/task"
 
-accepted_datatypes = ["anat", "dwi", "fmap", "func", "perf", "pet", "meg"]  # Will add others later
+accepted_datatypes = ["anat", "dwi", "fmap", "func", "meg", "perf", "pet"]  # Will add others later
 
 MEG_extensions = [".ds", ".fif", ".sqd", ".con", ".raw", ".ave", ".mrk", ".kdf", ".mhd", ".trg", ".chn", ".dat"]
 
@@ -310,6 +310,9 @@ def fix_multiple_dots(uploaded_img_list):
         elif img_file.endswith('.v.gz') and img_file.count('.') > 2:  # ECAT-formatted PET
             fix = True
             ext = '.v.gz'
+        elif img_file.endswith('.tsv.gz') and img_file.count('.') > 2:  # Eyetracking
+            fix = True
+            ext = '.tsv.gz'
         elif img_file.endswith('.json') and img_file.count('.') > 1:  # for PET blood
             fix = True
             ext = '.json'
@@ -339,6 +342,8 @@ def fix_multiple_dots(uploaded_img_list):
                     ext = '.nii.gz'
                 elif typo.endswith('.v.gz'):
                     ext = '.v.gz'
+                elif typo.endswith('.tsv.gz'):
+                    ext = '.tsv.gz'
                 else:
                     ext = '.' + typo.split('.')[-1]
 
@@ -487,10 +492,13 @@ def modify_uploaded_dataset_list(uploaded_img_list):
             ext = '.v.gz'
         elif img_file.endswith('.ds'):
             ext = '.ds'
+        elif img_file.endswith('.tsv.gz'):
+            ext = '.tsv.gz'
         else:
             ext = Path(img_file).suffix
 
-        if not img_file.endswith(tuple(MEG_extensions)) and not img_file.endswith('blood.json'):
+        if (not img_file.endswith(tuple(MEG_extensions)) and not img_file.endswith('blood.json')
+                and not img_file.endswith('.tsv.gz')):
             try:
                 nib.load(img_file)
             except:
@@ -510,7 +518,7 @@ def modify_uploaded_dataset_list(uploaded_img_list):
         elif any(x.endswith(tuple(['.v', '.v.gz'])) for x in grouped_files):
             grouped_files = [x for x in grouped_files if not x.endswith(tuple(['.v', '.v.gz']))]
 
-        # Don't want this section is we're allowing only NIfTI files to be uploaded (group length will only be 1).
+        # Don't want this section if we're allowing only NIfTI files to be uploaded (group length will only be 1).
         # # If imaging file comes with additional data (JSON, bval/bvec) add them to list for processing
         # if len(grouped_files) > 1:
         #     uploaded_files_list.append(grouped_files)
@@ -909,11 +917,13 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
     # Create list for appending dictionaries to
     dataset_list = []
 
-    # Get separate nifti and json (i.e. sidecar) lists
+    # Get separate data (e.g. nifti) and json (i.e. sidecar) lists
     img_list = natsorted(
         [
-            x for x in uploaded_files_list if x.endswith('nii.gz')
+            x for x in uploaded_files_list
+            if x.endswith('nii.gz')
             or x.endswith('blood.json')
+            or x.endswith('.tsv.gz')
             or x.endswith(tuple(MEG_extensions))
         ]
     )
@@ -940,6 +950,8 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
             ext = '.v.gz'
         elif img_file.endswith('.ds'):
             ext = '.ds'
+        elif img_file.endswith('.tsv.gz'):
+            ext = '.tsv.gz'
         else:
             ext = Path(img_file).suffix
 
@@ -954,6 +966,9 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
             json_path = corresponding_json[0]
             json_data = open(corresponding_json[0])
             json_data = json.load(json_data, strict=False)
+            if ext == '.tsv.gz':
+                from mne_bids.sidecar_updates import _update_sidecar
+                _update_sidecar(json_path, "ConversionSoftware", "n/a")
         else:
             json_path = img_file.split(ext)[0] + '.json'
             json_data = {
@@ -1228,9 +1243,9 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
         if not os.path.exists(json_path):
             with open(json_path, "w") as fp:
                 json.dump(json_data, fp, indent=3)
-            corresponding_files_list = corresponding_files_list + [json_path]
             json_data = open(json_path)
             json_data = json.load(json_data, strict=False)
+            corresponding_files_list = corresponding_files_list + [json_path]
 
         # Files (JSON, bval/bvec, tsv) associated with imaging file
         corresponding_file_paths = [
@@ -1868,10 +1883,10 @@ def create_lookup_info():
                     suffixes = [x for x in suffixes if x not in ["m0scan"]]
                 elif datatype == "func":
                     # Remove non-imaging suffixes
-                    suffixes = [x for x in suffixes if x not in ["events", "stim", "physio", "phase"]]
+                    suffixes = [x for x in suffixes if x not in ["events", "stim", "phase"]]
                 elif datatype == "perf":
                     # Remove non-imaging suffixes
-                    suffixes = [x for x in suffixes if x not in ["aslcontext", "asllabeling", "physio", "stim"]]
+                    suffixes = [x for x in suffixes if x not in ["aslcontext", "asllabeling", "stim"]]
                 elif datatype == "pet":
                     # Only keep imaging suffixes
                     suffixes = [x for x in suffixes if x in ["pet", "blood"]]
@@ -2357,6 +2372,11 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
             unique_dic["message"] = "Acquisition is believed to be pet/blood " \
                 "because the file path ends with '_blood.json. " \
                 "Please modify if incorrect."
+
+        if json_path.endswith('_physio.tsv.gz'):
+            unique_dic["suffix"] = 'physio'
+        if json_path.endswith('_physioevents.tsv.gz'):
+            unique_dic["suffix"] = 'physioevents'
 
         """
         If no luck with the json paths, and assuming an ezBIDS configuration file wasn't provided, try discerning
@@ -2968,6 +2988,13 @@ def modify_objects_info(dataset_list):
                                   "name": name,
                                   "pngPaths": [],
                                   "headers": protocol["headers"]})
+                elif item.endswith('tsv.gz'):
+                    items.append({
+                        "path": item,
+                        "name": 'tsv.gz',
+                        "pngPaths": [],
+                        "headers": protocol["headers"]
+                    })
 
             # Objects-level info for ezBIDS_core.json
             objects_info = {
@@ -3102,6 +3129,7 @@ cog_atlas_tasks = find_cog_atlas_tasks(cog_atlas_url)
 # Create the dataset list of dictionaries
 dataset_list = generate_dataset_list(uploaded_files_list, exclude_data)
 
+
 # Get pesudo subject (and session) info
 dataset_list = organize_dataset(dataset_list)
 
@@ -3110,6 +3138,7 @@ dataset_list, subjects_information, participants_info = determine_sub_ses_IDs(da
 
 # Make a new list containing the dictionaries of only unique dataset acquisitions
 dataset_list, dataset_list_unique_series = determine_unique_series(dataset_list, bids_compliant)
+
 
 # If ezBIDS configuration file detected in upload, use that for datatype, suffix, and entity identifications
 if config is True:
