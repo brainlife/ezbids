@@ -40,7 +40,7 @@ library.add(
 
 //move to ./types?
 //tell typescript about some global properties we are adding
-declare module '@vue/runtime-core' {
+declare module 'vue' {
     export interface ComponentCustomProperties {
         $validate: (data: object, rule: object) => boolean
         $store: typeof store
