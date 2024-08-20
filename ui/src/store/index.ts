@@ -314,6 +314,7 @@ const state = {
         subjects: [] as Subject[],
         series: [] as Series[],
         objects: [] as IObject[],
+        BIDSURI: false,
 
         _organized: [] as OrganizedSubject[], //above things are organized into subs/ses/run/object hierarchy for quick access
 
@@ -509,6 +510,7 @@ const store = createStore({
                 subjects: [],
                 series: [],
                 objects: [],
+                BIDSURI: false,
 
                 _organized: [], //above things are organized into subs/ses/run/object hierarchy for quick access
 
