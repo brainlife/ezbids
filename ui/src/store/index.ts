@@ -444,7 +444,11 @@ loadDatatype('pet', petDatatype, 'PET');
 import megDatatype from '../assets/schema/rules/datatypes/meg.json';
 loadDatatype('meg', megDatatype, 'MEG');
 
+import behDatatype from '../assets/schema/rules/datatypes/beh.json';
+loadDatatype('beh', behDatatype, 'Behavioral');
+
 import perfDatatype from '../assets/schema/rules/datatypes/perf.json';
+
 import { ElNotification } from 'element-plus';
 loadDatatype('perf', perfDatatype, 'Perfusion');
 

@@ -134,6 +134,10 @@ if len(meg_data_list):
 
 if len(eyetracking_data_list):
     file = open(f'{root}/eyetracking.list', 'w')
+    metadata = []
+    find_metadata_cmd = os.popen("find . -maxdepth 9 -type f -name metadata.yml").read()
+    if find_metadata_cmd != '':
+        metadata.append(find_metadata_cmd)
     output_counter = 1
     for eye in eyetracking_data_list:
         eye = eye.strip()
@@ -142,7 +146,11 @@ if len(eyetracking_data_list):
         if not os.path.isdir(output_dir):
             os.makedirs(output_dir)
         try:
-            os.system(f"eye2bids --input_file {eye} --output_dir {output_dir} --force")
+            if len(metadata):
+                metadata = metadata[-1]
+                os.system(f"eye2bids --input_file {eye} --output_dir {output_dir} --metadata_file {metadata}")
+            else:
+                os.system(f"eye2bids --input_file {eye} --output_dir {output_dir} --force")
             output_data_files = [f'{output_dir}/{x}' for x in os.listdir(output_dir) if x.endswith('.tsv.gz')]
             if len(output_data_files):
                 for o in output_data_files:

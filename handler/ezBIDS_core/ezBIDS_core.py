@@ -41,7 +41,7 @@ entity_ordering_file = str(BIDS_SCHEMA_DIR / Path("rules/entities.yaml"))
 
 cog_atlas_url = "http://cognitiveatlas.org/api/v-alpha/task"
 
-accepted_datatypes = ["anat", "dwi", "fmap", "func", "meg", "perf", "pet"]  # Will add others later
+accepted_datatypes = ["anat", "dwi", "fmap", "func", "meg", "perf", "pet", "beh"]  # Will add others later
 
 MEG_extensions = [".ds", ".fif", ".sqd", ".con", ".raw", ".ave", ".mrk", ".kdf", ".mhd", ".trg", ".chn", ".dat"]
 
@@ -1893,6 +1893,8 @@ def create_lookup_info():
                 elif datatype == "meg":
                     # MEG files are weird, can have calibration and crosstalk files with the same datatype/suffix pair
                     suffixes = [x for x in suffixes if x == "meg" and key == "meg"]
+                elif datatype == "beh":
+                    suffixes = [x for x in suffixes if x not in ["stim"]]
 
                 for suffix in suffixes:
 
@@ -2778,6 +2780,9 @@ def entity_labels_identification(dataset_list_unique_series, lookup_dic):
                 exposed_entities = [x[0] for x in series_entities.items() if x[1] != ""]
 
                 for exposed_entity in exposed_entities:
+                    print(datatype)
+                    print(suffix)
+                    print(lookup_dic[datatype][suffix])
                     accepted_entities = lookup_dic[datatype][suffix]["accepted_entities"]
                     if exposed_entity not in accepted_entities:
                         if datatype == "anat" and exposed_entity == "echo":
