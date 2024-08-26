@@ -2080,6 +2080,16 @@ export function metadataAlerts(
     return metadataAlertFields;
 }
 
+export function updateErrorMessages($root: IEzbids) {
+    $root.objects.forEach((o: IObject) => {
+        const err_str = "Acquisition cannot be resolved. Please determine whether or not this acquisition should be converted to BIDS."
+        if (o._type !== "exclude" && o.analysisResults.errors.includes(err_str)) {
+            const err_index = o.analysisResults.errors.indexOf(err_str);
+            o.analysisResults.errors.splice(err_index, 1);
+        }
+    })
+}
+
 // //TODO: Need to work on this more
 // export function updateParticipantsInfo($root: IEzbids) {
 //     let participantsInfo: any = $root.participantsInfo;

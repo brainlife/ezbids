@@ -414,6 +414,7 @@ import {
     fileLogicLink,
     dwiQA,
     petQA,
+    updateErrorMessages,
 } from './libUnsafe';
 
 import AsyncImageLink from './components/AsyncImageLink.vue';
@@ -726,6 +727,7 @@ export default defineComponent({
             setRun(this.ezbids);
             this.ezbids.objects.forEach(this.validate);
             setIntendedFor(this.ezbids); // keep this last, otherwise IntendedFor in Dataset Review can be messed up
+            updateErrorMessages(this.ezbids);
         },
 
         submitForm(data: any) {
