@@ -2780,9 +2780,6 @@ def entity_labels_identification(dataset_list_unique_series, lookup_dic):
                 exposed_entities = [x[0] for x in series_entities.items() if x[1] != ""]
 
                 for exposed_entity in exposed_entities:
-                    print(datatype)
-                    print(suffix)
-                    print(lookup_dic[datatype][suffix])
                     accepted_entities = lookup_dic[datatype][suffix]["accepted_entities"]
                     if exposed_entity not in accepted_entities:
                         if datatype == "anat" and exposed_entity == "echo":
