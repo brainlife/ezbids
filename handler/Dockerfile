@@ -37,6 +37,7 @@ RUN git clone https://github.com/openneuropet/PET2BIDS && \
 RUN apt-get install -y build-essential pkg-config cmake git pigz rename zstd libopenjp2-7 libgdcm-tools wget libopenblas-dev && \
     apt-get clean -y && apt-get autoclean -y && apt-get autoremove -y
 
+
 RUN touch /.pet2bidsconfig && chown 1001:1001 /.pet2bidsconfig
 RUN echo "DEFAULT_METADATA_JSON=/usr/local/lib/python3.10/dist-packages/pypet2bids/template_json.json" > /.pet2bidsconfig
 

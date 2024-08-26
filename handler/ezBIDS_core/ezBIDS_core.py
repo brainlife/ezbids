@@ -478,7 +478,12 @@ def modify_uploaded_dataset_list(uploaded_img_list):
     config_file = ""
     exclude_data = False
 
-    config_file_list = natsorted([x for x in os.listdir(DATA_DIR) if x.endswith('ezBIDS_template.json')])
+    config_file_list = []
+    for root, dirs, files in os.walk(DATA_DIR):
+        for file in files:
+            if file.endswith('ezBIDS_template.json'):
+                config_file_list.append(os.path.join(root, file))
+
     if len(config_file_list):
         # Ideally only one config file uploaded, but if multiple configurations found, select last one (most recent?)
         config = True
@@ -1407,7 +1412,7 @@ def determine_sub_ses_IDs(dataset_list, bids_compliant):
         List of dictionaries containing pertinent and unique information about
         the data, primarily coming from the metadata in the json files.
 
-    subjects_information : list
+    subs_information : list
         List of dictionaries containing subject identification info, such as
         PatientID, PatientName, PatientBirthDate, and corresponding session
         information.
@@ -1417,7 +1422,7 @@ def determine_sub_ses_IDs(dataset_list, bids_compliant):
     """
     date_counter = 1
     subject_idx_counter = 0
-    subjects_information = []
+    subs_information = []
     participants_info = {}
     # Determine unique subjects from uploaded dataset
     for sub in np.unique([x["subject"] for x in dataset_list]):
@@ -1565,9 +1570,9 @@ def determine_sub_ses_IDs(dataset_list, bids_compliant):
             "validationErrors": []
         }
 
-        subjects_information.append(subject_ids_info)
+        subs_information.append(subject_ids_info)
 
-    return dataset_list, subjects_information, participants_info
+    return dataset_list, subs_information, participants_info
 
 
 def determine_unique_series(dataset_list, bids_compliant):
@@ -1653,7 +1658,7 @@ def determine_unique_series(dataset_list, bids_compliant):
     return dataset_list, dataset_list_unique_series
 
 
-def template_configuration(dataset_list_unique_series, subjects_information, config_file):
+def template_configuration(dataset_list_unique_series, subs_information, config_file):
     """
     Parameters
     ----------
@@ -1661,7 +1666,7 @@ def template_configuration(dataset_list_unique_series, subjects_information, con
         A modified version of dataset_list, where this list contains only the
         dictionaries of acquisitions with a unique series group ID.
 
-    subjects_information : list
+    subs_information : list
         List of dictionaries containing subject identification info, such as
         PatientID, PatientName, PatientBirthDate, and corresponding session
         information.
@@ -1684,13 +1689,16 @@ def template_configuration(dataset_list_unique_series, subjects_information, con
         A modified version of dataset_list, where this list contains only the
         dictionaries of acquisitions with a unique series group ID.
 
-    subjects_information : list
+    subs_information : list
         List of dictionaries containing subject identification info, such as
         PatientID, PatientName, PatientBirthDate, and corresponding session
         information.
 
     events : dictionary
         Information pertaining to the events timing files for func/bold data.
+
+    bids_uri : boolean
+        Specifies whether or not user wants BIDS URI format for IntendedFor metadata mapping
     """
 
     config_data = open(config_file)
@@ -1702,6 +1710,7 @@ def template_configuration(dataset_list_unique_series, subjects_information, con
     subjects_sessions_info = config_data["subjects"]
     config_dataset_list_unique_series = config_data["series"]
     config_dataset_list_objects = config_data["objects"]
+    bids_uri = config_data["BIDSURI"]
 
     # Try to determine subject (and session) mapping from what's in the configuration
     match_start_index = None
@@ -1727,7 +1736,7 @@ def template_configuration(dataset_list_unique_series, subjects_information, con
         "AcquisitionDateTime"
     ]
 
-    for sub_info in subjects_information:
+    for sub_info in subs_information:
         sub = sub_info["subject"]
         for key in ref_patient_info.keys():
             if ref_subject_id in ref_patient_info[key]:
@@ -1834,7 +1843,7 @@ def template_configuration(dataset_list_unique_series, subjects_information, con
     events["sampleValues"] = {}
 
     return (readme, dataset_description_dic, participants_column_info,
-            dataset_list_unique_series, subjects_information, events)
+            dataset_list_unique_series, subs_information, events, bids_uri)
 
 
 def create_lookup_info():
@@ -3136,7 +3145,7 @@ dataset_list = generate_dataset_list(uploaded_files_list, exclude_data)
 dataset_list = organize_dataset(dataset_list)
 
 # Determine subject (and session) information
-dataset_list, subjects_information, participants_info = determine_sub_ses_IDs(dataset_list, bids_compliant)
+dataset_list, subs_information, participants_info = determine_sub_ses_IDs(dataset_list, bids_compliant)
 
 # Make a new list containing the dictionaries of only unique dataset acquisitions
 dataset_list, dataset_list_unique_series = determine_unique_series(dataset_list, bids_compliant)
@@ -3144,8 +3153,8 @@ dataset_list, dataset_list_unique_series = determine_unique_series(dataset_list,
 
 # If ezBIDS configuration file detected in upload, use that for datatype, suffix, and entity identifications
 if config is True:
-    readme, dataset_description_dic, participants_column_info, dataset_list_unique_series, subjects_information, events = \
-        template_configuration(dataset_list_unique_series, subjects_information, config_file)
+    readme, dataset_description_dic, participants_column_info, dataset_list_unique_series, subs_information, events, \
+        bids_uri = template_configuration(dataset_list_unique_series, subs_information, config_file)
 
 else:
     # README
@@ -3190,6 +3199,9 @@ else:
             "longName": "Event category"
         }
     }
+
+    # BIDS URI
+    bids_uri = False
 
 # Generate lookup information directory to help with datatype and suffix identification (and to some degree, entities)
 lookup_dic = create_lookup_info()
@@ -3243,12 +3255,13 @@ ui_series_info_list = extract_series_info(dataset_list_unique_series)
 EZBIDS = {
     "readme": readme,
     "datasetDescription": dataset_description_dic,
-    "subjects": subjects_information,
+    "subjects": subs_information,
     "participantsColumn": participants_column_info,
     "participantsInfo": participants_info,
     "series": ui_series_info_list,
     "objects": objects_list,
-    "events": events
+    "events": events,
+    "BIDSURI": bids_uri
 }
 
 # Write dictionary to ezBIDS_core.json

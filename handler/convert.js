@@ -187,6 +187,9 @@ async.forEachOf(info.objects, (o, idx, next_o) => {
                             }
                             path += tokens.join("_");
                             path += "_" + suffix + ".nii.gz"; //TODO - not sure if this is robust enough..
+                            if (info.BIDSURI === true) {
+                                path = "bids::" + "sub-" + io._entities.subject + "/" + path
+                            }
                             item.sidecar.IntendedFor.push(path);
                         }
                     }
@@ -448,6 +451,9 @@ async.forEachOf(info.objects, (o, idx, next_o) => {
                             }
                             path += tokens.join("_");
                             path += "_" + suffix + ".nii.gz"; //TODO - not sure if this is robust enough..
+                            if (info.BIDSURI === true) {
+                                path = "bids::" + "sub-" + io._entities.subject + "/" + path
+                            }
                             item.sidecar.IntendedFor.push(path);
                         }
                     }

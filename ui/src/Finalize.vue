@@ -204,6 +204,7 @@ export default defineComponent({
 
                     //things that convert.ts uses
                     objects: this.ezbids.objects, //most important thing that convert.ts needs
+                    BIDSURI: this.ezbids.BIDSURI,
                     events: this.ezbids.events,
                     entityMappings, //helps with convert
                     datasetDescription: this.ezbids.datasetDescription,

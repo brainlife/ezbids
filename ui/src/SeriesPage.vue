@@ -48,6 +48,9 @@
                         The information you specify here will be applied to all subjects that uses matching
                         SeriesDescription. You can also override this information later for each subject.
                     </p>
+                    <el-checkbox v-model="this.ezbids.BIDSURI" @change="BIDSURI(this.ezbids, $event)">
+                        <small>Use BIDS URI format for IntendedFor metadata mapping (if applicable)</small>
+                    </el-checkbox>
                     <div style="background-color: white; padding: 10px; color: #666">
                         <i class="el-icon-back" /> &lt; Please select a series to view/edit
                     </div>
@@ -309,7 +312,7 @@ import ModalityForm from './components/modalityForm.vue';
 
 import { prettyBytes } from './filters';
 
-import { Series, IObject } from './store';
+import { Series, IObject, IEzbids } from './store';
 
 import { validateEntities, validate_B0FieldIdentifier_B0FieldSource, metadataAlerts } from './libUnsafe';
 import anatYaml from '../src/assets/schema/rules/sidecars/anat.yaml';
@@ -380,6 +383,16 @@ export default defineComponent({
             this.showInfo[entity] = !this.showInfo[entity];
         },
 
+        BIDSURI($root: IEzbids, b: boolean) {
+            if (b === true) {
+                $root.BIDSURI = true;
+                localStorage.setItem('checkboxState', 'true');
+            } else {
+                $root.BIDSURI = false;
+                localStorage.setItem('checkboxState', 'false');
+            }
+        },
+
         validate(s: Series | null) {
             if (!s) return;
 
@@ -391,7 +404,7 @@ export default defineComponent({
                 validate_B0FieldIdentifier_B0FieldSource(s);
             }
 
-            /* Alert users to metadata issues, such as missing required fields or 
+            /* Alert users to metadata issues, such as missing required fields or
             improperly-formmated metadata field values.
             */
             let bidsDatatypeMetadata = {};

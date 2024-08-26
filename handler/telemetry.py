@@ -13,6 +13,7 @@ import sys
 import json
 
 # Begin
+telemetry_url = "http://52.87.154.236/telemetry/"
 DATA_DIR = sys.argv[1]
 os.chdir(DATA_DIR)
 
@@ -44,6 +45,7 @@ def gather_telemetry(dtype):
             idx = str(subject_idx) + str(session_idx) + str(series_idx)
 
             seq_file_name = json_data['series'][series_idx]['nifti_path']
+            seq_file_name = seq_file_name.split('/')[-1]
 
             ezBIDS_type = json_data['series'][series_idx]['type']
             if '/' in ezBIDS_type:
@@ -67,6 +69,7 @@ def gather_telemetry(dtype):
     else:
         print(error_message)
 
+    # print(ezBIDS_telemetry_info_list)
     if len(ezBIDS_telemetry_info_list) > 1:
         header = ezBIDS_telemetry_info_list[0]
         rows = ezBIDS_telemetry_info_list[1:]
@@ -74,8 +77,12 @@ def gather_telemetry(dtype):
         for row in rows:
             ezBIDS_telemetry_info_json.append(dict(zip(header, row)))
 
+        output_data = {}
+        output_data['description'] = 'ezBIDS'
+        output_data['finalized'] = ezBIDS_telemetry_info_json
+
         with open(output_file, "w") as fp:
-            json.dump(ezBIDS_telemetry_info_json, fp, indent=3)
+            json.dump(output_data, fp, indent=3)
 
 
 # Execute functionality
