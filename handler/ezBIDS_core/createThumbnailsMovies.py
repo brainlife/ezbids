@@ -162,7 +162,7 @@ if img_file.endswith(tuple(MEG_extensions)):
     print("")
     create_MEG_thumbnail(img_file)
 else:
-    if not img_file.endswith('blood.json'):
+    if not img_file.endswith(('blood.json', '_physio.tsv.gz', '_physioevents.tsv.gz')):
         output_dir = img_file.split(".nii.gz")[0]
         image = nib.load(img_file)
 

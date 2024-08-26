@@ -260,6 +260,64 @@ async.forEachOf(info.objects, (o, idx, next_o) => {
             }
         });
     }
+    function handleBeh() {
+        /*
+        - suffixes:
+            - beh
+            - events
+            - physio
+            - stim
+
+        */
+        if (suffix == "events") {
+            //we handle events a bit differently.. we need to generate events.tsv from items content
+            const events = o.items.find(o => !!o.eventsBIDS);
+            const headers = Object.keys(events.eventsBIDS[0]); //take first index value to see which columns user selected
+            events.content = headers.join("\t") + "\n";
+            events.eventsBIDS.forEach(rec => {
+                if(rec.stim_file) {
+                    if(!rec.stim_file.startsWith("/stimuli/")) {
+                        rec.stim_file = "/stimuli/" + rec.stim_file
+                    }
+                }
+                const row = [];
+                headers.forEach(key => {
+                    row.push(rec[key]);
+                });
+                events.content += row.join("\t") + "\n";                
+            });
+            //add stuff to sidecar
+            const sidecar = o.items.find(o => o.name == "json");
+            sidecar.sidecar.TaskName = o._entities.task;
+            sidecar.sidecar.trial_type = {
+                LongName: info.events.trialTypes.longName,
+                Description: info.events.trialTypes.desc,
+                Levels: info.events.trialTypes.levels,
+            };
+            //now save
+            handleItem(events, "events.tsv");
+            handleItem(sidecar, "events.json");
+        }
+        else {
+            //normal beh stuff..
+            o.items.forEach(item => {
+                switch (item.name) {
+                    case "tsv":
+                        handleItem(item, suffix + ".tsv");
+                        break;
+                    case "tsv.gz":
+                        handleItem(item, suffix + ".tsv.gz");
+                        break;              
+                    case "json":
+                        item.sidecar.TaskName = o._entities.task;
+                        handleItem(item, suffix + ".json");
+                        break;
+                    default:
+                        console.error("unknown beh item name", item.name);
+                }
+            });
+        }
+    }
     function handleFunc() {
         /*
         - suffixes:
@@ -304,6 +362,9 @@ async.forEachOf(info.objects, (o, idx, next_o) => {
                     case "nii.gz":
                         handleItem(item, suffix + ".nii.gz");
                         break;
+                    case "tsv.gz":
+                        handleItem(item, suffix + ".tsv.gz");
+                        break;              
                     case "json":
                         //handle B0FieldIdentifier and B0FieldSource if present
                         if(o.B0FieldIdentifier) {
@@ -454,6 +515,9 @@ async.forEachOf(info.objects, (o, idx, next_o) => {
     switch (modality) {
         case "anat":
             handleAnat();
+            break;
+        case "beh":
+            handleBeh();
             break;
         case "func":
             handleFunc();

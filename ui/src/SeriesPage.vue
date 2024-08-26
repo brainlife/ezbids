@@ -238,7 +238,8 @@
                             ss.type.startsWith('fmap') ||
                             ss.type.startsWith('dwi') ||
                             ss.type.startsWith('anat') ||
-                            ss.type.startsWith('meg')
+                            ss.type.startsWith('meg') ||
+                            ss.type.startsWith('beh')
                         "
                         label="Relevant Metadata"
                     >
@@ -315,6 +316,7 @@ import { Series, IObject, IEzbids } from './store';
 
 import { validateEntities, validate_B0FieldIdentifier_B0FieldSource, metadataAlerts } from './libUnsafe';
 import anatYaml from '../src/assets/schema/rules/sidecars/anat.yaml';
+import behYaml from '../src/assets/schema/rules/sidecars/beh.yaml';
 import funcYaml from '../src/assets/schema/rules/sidecars/func.yaml';
 import fmapYaml from '../src/assets/schema/rules/sidecars/fmap.yaml';
 import dwiYaml from '../src/assets/schema/rules/sidecars/dwi.yaml';
@@ -420,6 +422,8 @@ export default defineComponent({
                 bidsDatatypeMetadata = anatYaml;
             } else if (s.type.startsWith('meg')) {
                 bidsDatatypeMetadata = megYaml;
+            } else if (s.type.startsWith('beh')) {
+                bidsDatatypeMetadata = behYaml;
             }
 
             const metadataAlertsFields = metadataAlerts(
@@ -432,9 +436,9 @@ export default defineComponent({
             // console.log(s.series_idx, s.type);
             // console.log('metadataAlertsFields', metadataAlertsFields);
             if (metadataAlertsFields.length) {
-                let warn: string = `'Required metadata is missing, provided metadata field values have improper
+                let warn: string = `Required metadata is missing or provided metadata field values have improper
                 format. Please click on the "Edit Metadata" button below to resolve. You may skip fields for which you
-                do not know the proper value, but you will not have a fully BIDS-compliant dataset.'`;
+                do not know the proper value, but you will not have a fully BIDS-compliant dataset.`;
                 s.validationWarnings.push(warn);
             }
 

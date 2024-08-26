@@ -577,6 +577,7 @@
 
 <script lang="ts">
 import anatYaml from '../../src/assets/schema/rules/sidecars/anat.yaml';
+import behYaml from '../../src/assets/schema/rules/sidecars/beh.yaml';
 import funcYaml from '../../src/assets/schema/rules/sidecars/func.yaml';
 import fmapYaml from '../../src/assets/schema/rules/sidecars/fmap.yaml';
 import dwiYaml from '../../src/assets/schema/rules/sidecars/dwi.yaml';
@@ -776,6 +777,8 @@ export default defineComponent({
                 fileObject = anatYaml;
             } else if (type.startsWith('meg')) {
                 fileObject = megYaml;
+            } else if (type.startsWith('beh')) {
+                fileObject = behYaml;
             }
 
             let result = {

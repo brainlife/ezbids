@@ -296,7 +296,8 @@
                                     so._type.startsWith('fmap') ||
                                     so._type.startsWith('dwi') ||
                                     so._type.startsWith('anat') ||
-                                    so._type.startsWith('meg')
+                                    so._type.startsWith('meg') ||
+                                    so._type.startsWith('beh')
                                 "
                                 label="Relevant Metadata"
                             >
@@ -395,6 +396,7 @@ import datatype from './components/datatype.vue';
 import ModalityForm from './components/modalityForm.vue';
 
 import anatYaml from '../src/assets/schema/rules/sidecars/anat.yaml';
+import behYaml from '../src/assets/schema/rules/sidecars/beh.yaml';
 import funcYaml from '../src/assets/schema/rules/sidecars/func.yaml';
 import fmapYaml from '../src/assets/schema/rules/sidecars/fmap.yaml';
 import dwiYaml from '../src/assets/schema/rules/sidecars/dwi.yaml';

@@ -1,4 +1,4 @@
-FROM neurodebian:nd20.04-non-free
+FROM neurodebian:nd22.04-non-free
 
 SHELL ["/bin/bash", "-c"]
 
@@ -7,10 +7,28 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt update && \
     apt-get update && apt-get upgrade -y
 
-RUN apt install -y parallel python3 python3-pip tree curl unzip git jq python libgl-dev python-numpy
+# RUN apt install -y parallel python3 python3-pip tree curl unzip git jq libgl-dev python-numpy (orig)
+RUN apt install -y parallel python3 python3-pip tree curl unzip git jq libgl-dev
 
-RUN pip3 install numpy==1.23.0 nibabel==4.0.0 pandas matplotlib pyyaml==5.4.1 pydicom==2.3.1 natsort pydeface && \
+RUN pip3 install numpy nibabel pandas matplotlib pyyaml pydicom natsort pydeface && \
     pip3 install quickshear mne mne-bids
+
+# Install eye2bids for eyetracking
+RUN git clone https://github.com/bids-standard/eye2bids.git && \
+    cd eye2bids && \
+    pip3 install .
+
+# Install edf2asc function from EyeLink Developers Kit (needed by eye2bids for EyeLink data)
+RUN git clone https://github.com/dlevitas/edf2asc /tmp/edf2asc && \
+    cp -r /tmp/edf2asc/edf2asc /usr/local/bin && \
+    chmod +x /usr/local/bin/edf2asc
+# RUN add-apt-repository universe && \
+#     apt update && \
+#     apt install ca-certificates && \
+#     apt-key adv --fetch-keys https://apt.sr-research.com/SRResearch_key && \
+#     add-apt-repository 'deb [arch=amd64] https://apt.sr-research.com SRResearch main' && \
+#     apt update && \
+#     apt install eyelink-display-software
 
 # Install pypet2bids
 RUN git clone https://github.com/openneuropet/PET2BIDS && \
@@ -21,8 +39,9 @@ RUN apt-get install -y build-essential pkg-config cmake git pigz rename zstd lib
 
 
 RUN touch /.pet2bidsconfig && chown 1001:1001 /.pet2bidsconfig
-RUN echo "DEFAULT_METADATA_JSON=/usr/local/lib/python3.8/dist-packages/pypet2bids/template_json.json" > /.pet2bidsconfig
+RUN echo "DEFAULT_METADATA_JSON=/usr/local/lib/python3.10/dist-packages/pypet2bids/template_json.json" > /.pet2bidsconfig
 
+# Install FSL
 #this is the most tedious that's why it's one of the first layers installed
 #install fsl, and get rid of src
 # RUN wget https://fsl.fmrib.ox.ac.uk/fsldownloads/fslinstaller.py && \
@@ -76,10 +95,10 @@ RUN cd /tmp && curl -fLO https://github.com/rordenlab/dcm2niix/releases/latest/d
 #     && make \
 #     && mv dcm2niix /usr/local/bin
 
-# Get bids-specification from github
+# Install bids-specification from github
 RUN cd && git clone https://github.com/bids-standard/bids-specification
 
-#install ROBEX
+# Install ROBEX
 ADD https://www.nitrc.org/frs/download.php/5994/ROBEXv12.linux64.tar.gz//?i_agree=1&download_now=1 /
 RUN tar -xzf /ROBEXv12.linux64.tar.gz
 ENV PATH /ROBEX:$PATH
@@ -87,10 +106,10 @@ ENV PATH /ROBEX:$PATH
 ENV NODE_PATH $NVM_DIR/v$NODE_VERSION/lib/node_modules
 ENV PATH $NVM_DIR/v$NODE_VERSION/bin:$PATH
 
-#install bids-validator
+# Install bids-validator
 RUN npm install -g bids-validator@1.11.0
 RUN git clone https://github.com/bids-standard/bids-validator
 
-# install source code from local
+# Install source code from local
 WORKDIR /app/handler
 RUN npm -g install pm2
