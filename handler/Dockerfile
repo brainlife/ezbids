@@ -7,7 +7,7 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt update && \
     apt-get update && apt-get upgrade -y
 
-RUN apt install -y parallel python3 python3-pip tree curl unzip git jq python libgl-dev python-numpy
+RUN apt install -y parallel python3 python3-pip tree curl unzip git jq python libgl-dev python-numpy bc
 
 RUN pip3 install numpy==1.23.0 nibabel==4.0.0 pandas matplotlib pyyaml==5.4.1 pydicom==2.3.1 natsort pydeface && \
     pip3 install quickshear mne mne-bids
@@ -30,7 +30,9 @@ RUN echo "DEFAULT_METADATA_JSON=/usr/local/lib/python3.8/dist-packages/pypet2bid
 
 RUN mkdir -p /usr/local/fsl && \
     git clone https://github.com/dlevitas/FSL_binaries /usr/local/fsl && \
-    rm -rf /usr/local/fsl/README.md
+    rm -rf /usr/local/fsl/README.md && \
+    mkdir -p /usr/local/fsl/data/standard && \
+    mv /usr/local/fsl/bin/MNI152_T1_2mm_brain.nii.gz /usr/local/fsl/data/standard
 
 ENV FSLDIR=/usr/local/fsl
 ENV PATH=$PATH:$FSLDIR/bin
