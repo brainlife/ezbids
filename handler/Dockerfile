@@ -62,7 +62,7 @@ RUN apt-get update \
     && mkdir -p /etc/apt/keyrings \
     && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
 
-ARG NODE_MAJOR=16
+ARG NODE_MAJOR=20
 RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_$NODE_MAJOR.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
 
 RUN apt-get update \
@@ -90,7 +90,8 @@ ENV NODE_PATH $NVM_DIR/v$NODE_VERSION/lib/node_modules
 ENV PATH $NVM_DIR/v$NODE_VERSION/bin:$PATH
 
 #install bids-validator
-RUN npm install -g bids-validator@1.11.0
+RUN npm install -g npm@9.5.1
+RUN npm install -g bids-validator@1.14.8
 RUN git clone https://github.com/bids-standard/bids-validator
 
 # install source code from local
