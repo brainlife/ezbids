@@ -1,8 +1,8 @@
-FROM node:16
+FROM node:20
 
 COPY . /ui
 WORKDIR /ui
 
-RUN npm install
+RUN npm install -g npm@9.5.1
 
 CMD [ "npm", "run", "dev" ]
