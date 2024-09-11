@@ -27,7 +27,7 @@ services:
         platform: linux/amd64
         volumes:
             - ./api:/app/api
-            - /home/ezbids/tmp:/tmp
+            - /tmp:/tmp
         depends_on:
             mongodb:
                 condition: service_healthy
@@ -50,7 +50,7 @@ services:
         platform: linux/amd64
         volumes:
             - .:/app
-            - /home/ezbids/tmp:/tmp
+            - /tmp:/tmp
         depends_on:
             mongodb:
                 condition: service_healthy
@@ -104,6 +104,6 @@ services:
         networks:
             - ezbids
         volumes: 
-            - /etc/nginx/nginx.d:/etc/nginx/conf.d
+            - ./nginx:/etc/nginx/conf.d
 
 
