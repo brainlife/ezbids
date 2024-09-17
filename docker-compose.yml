@@ -70,7 +70,7 @@ services:
         volumes:
             - ./ui/src:/ui/src #don't copy node_modules which might be compiled for mac (vite won't work)
         environment:
-            VITE_APIHOST: http://api:8082
+            VITE_APIHOST: http://localhost/api
             VITE_BRAINLIFE_AUTHENTICATION: ${BRAINLIFE_AUTHENTICATION}
         healthcheck:
             test: ["CMD", "curl", "-f", "http://ui:3000"]
@@ -96,6 +96,7 @@ services:
         container_name: brainlife_ezbids-nginx
         depends_on:
             - ui
+            - api
         image: nginx:latest
         platform: linux/amd64
         profiles: ["development"]
