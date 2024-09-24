@@ -1,5 +1,4 @@
 version: "3"
-
 networks:
     ezbids:
 
@@ -65,12 +64,14 @@ services:
 
     ui:
         container_name: brainlife_ezbids-ui
+        env_file:
+            - .env
         build: ./ui
         platform: linux/amd64
         volumes:
             - ./ui/src:/ui/src #don't copy node_modules which might be compiled for mac (vite won't work)
         environment:
-            VITE_APIHOST: http://localhost/api
+            VITE_APIHOST: https://${SERVER_NAME}/api
             VITE_BRAINLIFE_AUTHENTICATION: ${BRAINLIFE_AUTHENTICATION}
         healthcheck:
             test: ["CMD", "curl", "-f", "http://ui:3000"]
@@ -93,6 +94,8 @@ services:
             - ezbids
 
     nginx:
+        env_file:
+            - .env
         container_name: brainlife_ezbids-nginx
         depends_on:
             - ui
@@ -102,9 +105,13 @@ services:
         profiles: ["development"]
         ports: 
             - 80:80
+            - 443:443
         networks:
             - ezbids
         volumes: 
-            - ./nginx:/etc/nginx/conf.d
+            - ./nginx/ssl:/etc/nginx/conf.d/ssl/
+            # replace production/development depending on whether you want ssl or not
+            - ./nginx/production_nginx.conf:/etc/nginx/conf.d/default.conf
+
 
 
