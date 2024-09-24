@@ -17,13 +17,13 @@ export BRAINLIFE_AUTHENTICATION
 
 git submodule update --init --recursive
 
-(cd api && npm install -g npm@9.5.1)
-(cd ui && npm install -g npm@9.5.1)
+(cd api && npm install)
+(cd ui && npm install)
 
 mkdir -p /tmp/upload
 mkdir -p /tmp/workdir
 
-npm run prepare-husky
+#npm run prepare-husky
 
 ./generate_keys.sh
 
