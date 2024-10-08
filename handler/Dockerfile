@@ -1,5 +1,7 @@
 FROM neurodebian:nd20.04-non-free
 
+COPY . /app
+
 SHELL ["/bin/bash", "-c"]
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -97,3 +99,6 @@ RUN git clone https://github.com/bids-standard/bids-validator
 # install source code from local
 WORKDIR /app/handler
 RUN npm -g install pm2
+
+# copy over code and build node from ui
+RUN cd /app/ui && npm install
