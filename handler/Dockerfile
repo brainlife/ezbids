@@ -99,6 +99,3 @@ RUN git clone https://github.com/bids-standard/bids-validator
 # install source code from local
 WORKDIR /app/handler
 RUN npm -g install pm2
-
-# copy over code and build node from ui
-RUN cd /app/ui && npm install

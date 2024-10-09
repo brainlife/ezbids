@@ -27,15 +27,16 @@ do
 done < .env
 
 if [ $BRAINLIFE_DEVELOPMENT == true ]; then
-  # build local changes and mount them directly into the containers
-  # api/ and ui/ are mounted as volumes  at /app within the docker-compose.yml
-  (cd api && npm install)
-  (cd ui && npm install)
   # enable or disable debugging output
   set -ex
 else
   set -e
 fi
+
+# build local changes and mount them directly into the containers
+# api/ and ui/ are mounted as volumes  at /app within the docker-compose.yml
+(cd api && npm install)
+(cd ui && npm install)
 
 # update the bids submodule
 git submodule update --init --recursive
