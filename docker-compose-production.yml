@@ -91,11 +91,10 @@ services:
         image: nginx:latest
         platform: linux/amd64
         ports:
-            - 80:80
             - 443:443
         networks:
             - ezbids
         volumes:
             - ./nginx/ssl:/etc/nginx/conf.d/ssl/
-            - ./nginx/production_nginx.conf:/etc/nginx/conf.d/default.conf
+            - ./nginx/production_nginx.conf:/etc/nginx/conf.d/nginx.conf
             - ./ui/dist:/usr/share/nginx/html/ezbids:ro
