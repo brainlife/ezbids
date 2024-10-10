@@ -1101,7 +1101,7 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
 
         # Find EchoTime
         if "EchoTime" in json_data:
-            echo_time = json_data["EchoTime"] * 1000
+            echo_time = json_data["EchoTime"]
         else:
             echo_time = 0
 
