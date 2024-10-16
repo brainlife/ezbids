@@ -31,7 +31,7 @@ services:
             mongodb:
                 condition: service_healthy
         healthcheck:
-            test: ["CMD", "curl", "-f", "http://api:8082/health"]
+            test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
         working_dir: /app/api
         command:
             ./dev.sh
@@ -71,10 +71,10 @@ services:
         volumes:
             - ./ui/src:/ui/src #don't copy node_modules which might be compiled for mac (vite won't work)
         environment:
-            VITE_APIHOST: https://${SERVER_NAME}/api
+            VITE_APIHOST: http://localhost:8082
             VITE_BRAINLIFE_AUTHENTICATION: ${BRAINLIFE_AUTHENTICATION}
         healthcheck:
-            test: ["CMD", "curl", "-f", "http://ui:3000"]
+            test: ["CMD", "curl", "-f", "http://localhost:3000"]
         ports:
             - 3000:3000 #vite wants to be exposed on the host for HMR?
         networks:
@@ -92,25 +92,5 @@ services:
             - 8000:8000 #for local debugging
         networks:
             - ezbids
-
-    nginx:
-        env_file:
-            - .env
-        container_name: brainlife_ezbids-nginx
-        depends_on:
-            - ui
-            - api
-        image: nginx:latest
-        platform: linux/amd64
-        ports: 
-            - 80:80
-            - 443:443
-        networks:
-            - ezbids
-        volumes: 
-            - ./nginx/ssl:/etc/nginx/conf.d/ssl/
-            # replace production/development depending on whether you want ssl or not, defaults to .nginx/development_nginx.conf
-            - ./${NGINX_CONFIG_FILE}:/etc/nginx/conf.d/nginx.conf
-
 
 
