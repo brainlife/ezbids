@@ -95,6 +95,8 @@ services:
         networks:
             - ezbids
         volumes:
-            - ./nginx/ssl:/etc/nginx/conf.d/ssl/
+            - ${SSL_CERT_PATH}:/etc/nginx/conf.d/ssl/sslcert.cert
+            - ${SSL_KEY_PATH}:/etc/nginx/conf.d/ssl/sslcert.key
+            - ${SSL_PASSWORD_PATH}:/etc/nginx/conf.d/ssl/sslpassword
             - ./nginx/production_nginx.conf:/etc/nginx/conf.d/default.conf
             - ./ui/dist:/usr/share/nginx/html/ezbids:ro
