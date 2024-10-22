@@ -42,7 +42,7 @@ fi
 git submodule update --init --recursive
 
 # The main differences between the production and development docker-compose files are that the production
-# files uses https and the development file uses http. The production file also uses a different nginx.conf
+# files uses https via nginx and the development file uses http.
 if [[ $BRAINLIFE_PRODUCTION == true ]]; then
   DOCKER_COMPOSE_FILE=docker-compose-production.yml
 else
