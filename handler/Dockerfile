@@ -9,7 +9,7 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt update && \
     apt-get update && apt-get upgrade -y
 
-RUN apt install -y parallel python3 python3-pip tree curl unzip git jq python libgl-dev python-numpy bc
+RUN apt update && apt install -y parallel python3 python3-pip tree curl unzip git jq python libgl-dev python-numpy bc
 
 RUN pip3 install numpy==1.23.0 nibabel==4.0.0 pandas matplotlib pyyaml==5.4.1 pydicom==2.3.1 natsort pydeface && \
     pip3 install quickshear mne mne-bids
