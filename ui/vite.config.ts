@@ -7,7 +7,6 @@ import ViteYaml from '@modyfi/vite-plugin-yaml';
 
 export default defineConfig({
     base: '/ezbids/',
-    mode: 'production',
     plugins: [
         vue(),
         Components({
@@ -17,10 +16,5 @@ export default defineConfig({
     ],
     build: {
         sourcemap: true,
-    },
-    server: {
-        hmr: false,
-        strictPort: true,
-        port: 3000,
     },
 });
