@@ -62,7 +62,7 @@ services:
         container_name: brainlife_ezbids-ui-builder
         env_file:
             - .env
-        build: ./ui/Dockerfile-production
+        build: ./ui
         platform: linux/amd64
         volumes:
             - ./ui/dist:/ui/dist
@@ -70,14 +70,14 @@ services:
             VITE_APIHOST: https://${SERVER_NAME}/api
             VITE_BRAINLIFE_AUTHENTICATION: ${BRAINLIFE_AUTHENTICATION}
 
-    # by default this is not enabled, need to run docker compose with --profile development to enable this service
+    # by default this is not enabled, add COMPOSE_PROFILES=telemetry to your .env
     telemetry:
         container_name: brainlife_ezbids-telemetry
         build: ./telemetry
         platform: linux/amd64
         depends_on:
             - mongodb
-        profiles: ["development"]
+        profiles: ["telemetry"]
         networks:
             - ezbids
 
@@ -91,11 +91,12 @@ services:
         image: nginx:latest
         platform: linux/amd64
         ports:
-            - 80:80
             - 443:443
         networks:
             - ezbids
         volumes:
-            - ./nginx/ssl:/etc/nginx/conf.d/ssl/
+            - ${SSL_CERT_PATH}:/etc/nginx/conf.d/ssl/sslcert.cert
+            - ${SSL_KEY_PATH}:/etc/nginx/conf.d/ssl/sslcert.key
+            - ${SSL_PASSWORD_PATH}:/etc/nginx/conf.d/ssl/sslpassword
             - ./nginx/production_nginx.conf:/etc/nginx/conf.d/default.conf
             - ./ui/dist:/usr/share/nginx/html/ezbids:ro

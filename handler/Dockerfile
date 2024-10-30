@@ -1,5 +1,7 @@
 FROM neurodebian:nd20.04-non-free
 
+COPY . /app
+
 SHELL ["/bin/bash", "-c"]
 
 ENV DEBIAN_FRONTEND noninteractive
