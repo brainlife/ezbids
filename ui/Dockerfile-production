@@ -1,9 +1,0 @@
-FROM node:20
-
-COPY . /ui
-WORKDIR /ui
-
-RUN npm install
-
-CMD [ "npm", "run", "build"] 
-
