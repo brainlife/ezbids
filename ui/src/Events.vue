@@ -1,7 +1,9 @@
 <template>
-    <div style="padding: 20px">
+    <div>
         <div v-if="!events.loaded">
-            <p>If you'd like to include task events/timing data with your BIDS datasets, you can upload them here.</p>
+            <p style="margin-top: 0">
+                If you'd like to include task events/timing data with your BIDS datasets, you can upload them here.
+            </p>
             <p>
                 Please skip this page if working with MEG data, if you do not have events data, or if your events data
                 are not set up where each row pertains to an individual trial. An exception is E-Prime txt files, which

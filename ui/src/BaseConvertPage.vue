@@ -1,96 +1,83 @@
 <template>
     <div>
-        <aside>
-            <h1 style="font-size: 25pt"><span style="letter-spacing: -3px; opacity: 0.6">ez</span>BIDS</h1>
-
-            <ul>
-                <li :class="{ active: page === 'upload' }">Upload Imaging Data</li>
-                <li :class="{ active: page === 'description' }">Dataset Description</li>
-            </ul>
-
-            <div class="section">
-                <h2 class="list-header">Dataset Mappings</h2>
-                <ul>
-                    <li :class="{ active: page === 'subject' }">Subjects/Sessions</li>
-                    <li :class="{ active: page === 'seriespage' }">Series Mapping</li>
-                    <li :class="{ active: page === 'event' }">Events</li>
-                </ul>
+        <div class="app-header" style="display: flex; align-items: center; justify-content: space-between">
+            <div style="height: 100%; display: flex; align-items: center; padding: 0 1rem">
+                <h1 style="color: white; margin: 0"><span style="letter-spacing: -3px; opacity: 0.6">ez</span>BIDS</h1>
+                <DisplayMode />
             </div>
-
-            <ul>
-                <li :class="{ active: page === 'object' }">Dataset Review</li>
-            </ul>
-
-            <div class="section">
-                <h2 class="list-header">Optional</h2>
-                <ul>
-                    <li :class="{ active: page === 'deface' }">Deface</li>
-                    <li :class="{ active: page === 'participant' }">Participants Info</li>
-                </ul>
-            </div>
-
-            <ul>
-                <li :class="{ active: page === 'finalize' }">Access BIDS Data</li>
-                <li :class="{ active: page === 'feedback' }">Feedback</li>
-            </ul>
-
-            <div class="menu-footer">
-                <el-tooltip content="Open brainlife">
-                    <a href="https://brainlife.io" target="_blank" style="display: flex">
-                        <img src="./assets/bl_logo.png" class="menu-footer-icon" alt="brainlife logo" />
+            <div>
+                <div class="menu-footer">
+                    <a href="https://brainlife.io" target="_blank" style="margin-right: 8px; text-decoration: none">
+                        <el-button type="success" style="display: flex; background-color: #20ab5c">
+                            Open Brainlife
+                        </el-button>
                     </a>
-                </el-tooltip>
-                <el-tooltip content="Open github">
-                    <a href="https://github.com/brainlife/ezbids" target="github">
-                        <font-awesome-icon class="menu-footer-icon" :icon="['fab', 'github']" />
+                    <a
+                        href="https://github.com/brainlife/ezbids"
+                        target="_blank"
+                        style="margin-right: 8px; text-decoration: none"
+                    >
+                        <el-button type="success" style="display: flex; background-color: #20ab5c">
+                            Open Github
+                        </el-button>
                     </a>
-                </el-tooltip>
-                <el-tooltip content="Open documentation">
-                    <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank">
-                        <font-awesome-icon class="menu-footer-icon" :icon="['fa', 'book']" />
+                    <a
+                        href="https://brainlife.io/docs/using_ezBIDS/"
+                        target="_blank"
+                        style="margin-right: 8px; text-decoration: none"
+                    >
+                        <el-button type="success" style="display: flex; background-color: #20ab5c">
+                            Open Documentation
+                        </el-button>
                     </a>
-                </el-tooltip>
+                </div>
             </div>
+        </div>
+        <div style="display: flex">
+            <aside>
+                <el-steps :active="activeValue" direction="vertical">
+                    <el-step
+                        v-for="page in pages"
+                        :key="page.key"
+                        :title="page.title"
+                        :description="page.description"
+                    />
+                </el-steps>
+            </aside>
+            <div style="flex-grow: 1">
+                <section>
+                    <Upload v-if="page === 'upload'" ref="upload" />
+                    <Description v-if="page === 'description'" ref="description" />
+                    <Subject v-if="page === 'subject'" ref="subject" />
+                    <SeriesPage v-if="page === 'seriespage'" ref="seriespage" @niivue="openNiivue" />
+                    <Events v-if="page === 'event'" ref="event" @mapObjects="mapObjects" />
+                    <Objects
+                        v-if="page === 'object'"
+                        ref="object"
+                        @niivue="openNiivue"
+                        @mapObjects="mapObjects"
+                        @updateObject="updateObject"
+                    />
+                    <Deface v-if="page === 'deface'" ref="deface" @niivue="openNiivue" />
+                    <Participant v-if="page === 'participant'" ref="participant" />
+                    <Finalize v-if="page === 'finalize'" ref="finalize" />
+                    <Feedback v-if="page === 'feedback'" ref="feedback" />
 
-            <ManageUsersDialog v-if="hasAuth"></ManageUsersDialog>
-
-            <div style="width: 135px; padding: 0 10px">
-                <el-button style="color: black; width: 100%; font-family: inherit" @click="handleSignout"
-                    >Signout</el-button
-                >
+                    <br />
+                    <footer v-if="session" class="page-action">
+                        <el-button style="width: 260px" v-if="backLabel" :type="backButtonType" @click="back">
+                            <font-awesome-icon :icon="['fas', 'angle-left']" />
+                            {{ backLabel }}
+                        </el-button>
+                        <el-button style="width: 260px" v-if="nextLabel" type="primary" @click="next">
+                            {{ nextLabel }}
+                            <font-awesome-icon :icon="['fas', 'angle-right']" />
+                        </el-button>
+                    </footer>
+                </section>
+                <niivue :path="niivuePath" @close="niivuePath = undefined" />
             </div>
-        </aside>
-        <section>
-            <Upload v-if="page === 'upload'" ref="upload" />
-            <Description v-if="page === 'description'" ref="description" />
-            <Subject v-if="page === 'subject'" ref="subject" />
-            <Participant v-if="page === 'participant'" ref="participant" />
-            <SeriesPage v-if="page === 'seriespage'" ref="seriespage" @niivue="openNiivue" />
-            <Events v-if="page === 'event'" ref="event" @mapObjects="mapObjects" />
-            <Objects
-                v-if="page === 'object'"
-                ref="object"
-                @niivue="openNiivue"
-                @mapObjects="mapObjects"
-                @updateObject="updateObject"
-            />
-            <Deface v-if="page === 'deface'" ref="deface" @niivue="openNiivue" />
-            <Finalize v-if="page === 'finalize'" ref="finalize" />
-            <Feedback v-if="page === 'feedback'" ref="feedback" />
-
-            <br />
-            <div v-if="session" class="page-action">
-                <el-button v-if="backLabel" :type="backButtonType" @click="back">
-                    <font-awesome-icon :icon="['fas', 'angle-left']" />
-                    {{ backLabel }}
-                </el-button>
-                <el-button v-if="nextLabel" type="primary" style="float: right" @click="next">
-                    {{ nextLabel }}
-                    <font-awesome-icon :icon="['fas', 'angle-right']" />
-                </el-button>
-            </div>
-        </section>
-        <niivue :path="niivuePath" @close="niivuePath = undefined" />
+        </div>
     </div>
 </template>
 
@@ -108,8 +95,6 @@ import Events from './Events.vue';
 import Deface from './Deface.vue';
 import Finalize from './Finalize.vue';
 import Feedback from './Feedback.vue';
-import ManageUsersDialog from './components/dialogs/ManageUsersDialog.vue';
-import { IObject } from './store';
 import { hasAuth, createEventsTSV } from './lib';
 
 //https://github.com/element-plus/element-plus/issues/436#issuecomment-961386582
@@ -119,6 +104,8 @@ import 'element-plus/es/components/notification/style/css';
 import { setSectionIDs, funcQA, fmapQA, dwiQA, petQA, setRun, setVolumeThreshold, setIntendedFor } from './libUnsafe';
 
 import niivue from './components/niivue.vue';
+import DisplayMode from './components/DisplayMode.vue';
+import { IObject } from './store/store.types';
 
 export default defineComponent({
     components: {
@@ -132,7 +119,6 @@ export default defineComponent({
         Participant,
         Finalize,
         Feedback,
-        ManageUsersDialog: ManageUsersDialog,
 
         niivue,
     },
@@ -141,16 +127,16 @@ export default defineComponent({
         return {
             //page order
             pages: [
-                'upload',
-                'description',
-                'subject',
-                'seriespage',
-                'event',
-                'object',
-                'deface',
-                'participant',
-                'finalize',
-                'feedback',
+                { title: 'Upload Imaging Data', description: '', key: 'upload' },
+                { title: 'Dataset Description', description: '', key: 'description' },
+                { title: 'Subjects/Sessions', description: 'Data Mapping (1/3)', key: 'subject' },
+                { title: 'Series Mapping', description: 'Data Mapping (2/3)', key: 'seriespage' },
+                { title: 'Events', description: 'Data Mapping (3/3)', key: 'event' },
+                { title: 'Dataset Review', description: '', key: 'object' },
+                { title: 'Deface', description: 'Optional', key: 'deface' },
+                { title: 'Participants Info', description: 'Optional', key: 'participant' },
+                { title: 'Finalize', description: '', key: 'finalize' },
+                { title: 'Feedback', description: '', key: 'feedback' },
             ],
 
             //item to open in niivue
@@ -165,6 +151,12 @@ export default defineComponent({
 
         hasAuth() {
             return hasAuth();
+        },
+
+        activeValue() {
+            const activeIndex = this.pages.findIndex((p) => p.key === this.page);
+            if (activeIndex < 0) return 0;
+            return activeIndex;
         },
 
         backLabel(): string | null {
@@ -242,8 +234,8 @@ export default defineComponent({
                     console.error(err);
                     ElNotification({ title: 'Failed', message: err });
                 } else {
-                    const idx = this.pages.indexOf(this.page);
-                    this.$store.commit('setPage', this.pages[idx + 1]);
+                    const idx = this.pages.findIndex((p) => p.key === this.page);
+                    this.$store.commit('setPage', this.pages[idx + 1].key);
                     switch (this.page) {
                         case 'seriespage':
                             petQA(this.ezbids);
@@ -270,14 +262,14 @@ export default defineComponent({
         },
 
         back() {
-            const idx = this.pages.indexOf(this.page);
+            const idx = this.pages.findIndex((p) => p.key === this.page);
             if (idx == 0) {
                 if (confirm('Do you really want to start over?')) {
                     document.location.hash = '';
                     document.location.reload();
                 }
             } else {
-                this.$store.commit('setPage', this.pages[idx - 1]);
+                this.$store.commit('setPage', this.pages[idx - 1].key);
             }
         },
 
@@ -350,63 +342,29 @@ export default defineComponent({
 </script>
 
 <style scoped lang="scss">
-aside h1 {
-    padding: 0;
-    margin: 0;
+.app-header {
+    height: 64px;
+    max-height: 44px;
+    padding: 10px;
+    background-color: #3782e5;
 }
 
 aside {
-    position: fixed;
-    width: 160px;
-    top: 0;
-    left: 0;
-    height: 100%;
+    height: calc(100vh - 64px - 4rem);
+    width: 196px;
+    min-width: 196px;
+    max-width: 196px;
+    padding: 2rem;
 
-    // background-color: #eee;
-    background: linear-gradient(
-        rgb(70, 188, 152),
-        rgb(53, 150, 121),
-        rgb(45, 113, 141),
-        rgb(31, 82, 95),
-        rgb(16, 45, 71)
-    );
-
-    color: #333;
-
-    h1 {
-        padding: 10px;
+    .step {
+        padding: 1rem 0;
     }
+}
 
-    h2 {
-        margin-bottom: 0px;
-        padding: 10px;
-        font-size: 110%;
-        color: white;
-    }
-
-    ul {
-        list-style: none;
-        padding-left: 0;
-        margin: 0;
-        color: white;
-
-        li {
-            padding: 10px;
-        }
-
-        li.active {
-            background-color: rgb(103, 194, 58);
-            color: white;
-        }
-    }
-
-    .section {
-        margin-bottom: 10px;
-
-        ul {
-            list-style: inside;
-        }
-    }
+section {
+    max-height: calc(100vh - 64px - 8rem);
+    padding: 2rem;
+    overflow-y: auto;
 }
 
 .menu-footer {
@@ -423,15 +381,15 @@ aside {
     }
 
     .menu-footer-icon {
-        font-size: 2rem;
+        font-size: 1.6rem;
         color: white;
-        width: 32px;
-        height: 32px;
+        width: 28px;
+        height: 28px;
     }
 }
 
-section {
-    margin-left: 160px;
+.container {
+    padding: 0 160px;
     padding-bottom: 100px;
 }
 
@@ -442,14 +400,14 @@ footer {
 }
 
 .page-action {
-    padding: 0 20px;
+    display: flex;
+    justify-content: space-between;
+    padding: 1rem 0;
     position: fixed;
     height: 40px;
     bottom: 0;
-    right: 0;
-    left: 160px;
-    padding: 10px;
-    background-color: #0003;
+    width: calc(100vw - 260px - 4rem);
+    background-color: white;
     z-index: 3;
 }
 

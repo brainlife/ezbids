@@ -17,8 +17,8 @@
                             <el-button
                                 type="text"
                                 style="font-size: var(--el-font-size-extra-large); font-family: unset; color: #3482e9"
-                                @click="redirectToBrainlifeAuth"
-                                >{{ !hasAuth || hasJWT ? 'GET STARTED' : 'LOG IN / REGISTER' }}</el-button
+                                @click="navigate"
+                                >GET STARTED</el-button
                             >
                         </el-menu-item>
                     </el-menu>
@@ -32,37 +32,17 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapState } from 'vuex';
-import { hasJWT, hasAuth } from './lib';
 
 export default defineComponent({
     computed: {
         ...mapState(['config']),
-        hasAuth() {
-            return hasAuth();
-        },
-        hasJWT() {
-            return hasJWT();
-        },
     },
     methods: {
         openBrainLifeTeamPage() {
             window.open('https://brainlife.io/team/', '_blank');
         },
-        redirectToBrainlifeAuth() {
-            if (!hasAuth() || hasJWT()) {
-                this.$router.push('/convert');
-                return;
-            }
-
-            sessionStorage.setItem('auth_redirect', `${window.location.href}convert`);
-            window.location.href = (
-                this.config as {
-                    apihost: string;
-                    authSignIn: string;
-                    authSignOut: string;
-                    debug: boolean;
-                }
-            ).authSignIn;
+        navigate() {
+            this.$router.push('/convert');
         },
     },
 });

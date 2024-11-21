@@ -1,10 +1,11 @@
 <template>
-    <div style="padding: 20px">
+    <div>
         <div v-if="!session">
-            <p>
+            <h2 style="margin-bottom: 0; margin-top: 0">
                 Welcome to <b><span style="letter-spacing: -2px; opacity: 0.5">ez</span>BIDS</b> - an online imaging
                 data to BIDS conversion / organizing tool.
-            </p>
+            </h2>
+            <p style="color: gray; margin-top: 8px">To get started, upload a DICOM (or dcm2niix) dataset.</p>
 
             <div v-if="!starting">
                 <div
@@ -39,25 +40,22 @@
                 </div>
 
                 <div class="Info">
-                    <h2>Information</h2>
-                    <ul style="line-height: 200%">
-                        <li>
-                            If you are new to ezBIDS, please view our
-                            <a href="https://brainlife.io/docs/tutorial/ezBIDS/" target="_blank"
-                                ><b>ezBIDS tutorial</b></a
-                            >
-                            and
-                            <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank"
-                                ><b>user documentation</b></a
-                            >.
-                        </li>
-                        <li>
-                            If uploading anonymized data, please organize subject data into <i>sub-</i>formatted folder
-                            names (e.g. <b>sub-01</b>). If you have multi-session data, place in <i>ses-</i>formatted
-                            folders (e.g. <b>ses-A</b>) within the subject folders.
-                        </li>
-                        <li>See below for a brief ezBIDS tutorial video.</li>
-                    </ul>
+                    <h2 style="margin-bottom: 0">Not sure what to do?</h2>
+                    <p style="color: gray; margin-top: 8px">
+                        If you are new to ezBIDS, you can learn more by watching our
+                        <a style="display: inline" href="https://brainlife.io/docs/tutorial/ezBIDS/" target="_blank"
+                            ><b>ezBIDS tutorial</b></a
+                        >
+                        and taking a look at our
+                        <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank"><b>user documentation</b></a
+                        >.
+                    </p>
+                    <p style="color: gray">
+                        If uploading anonymized data, please organize subject data into <i>sub-</i>formatted folder
+                        names (e.g. <b>sub-01</b>). If you have multi-session data, place in <i>ses-</i>formatted
+                        folders (e.g. <b>ses-A</b>) within the subject folders.
+                    </p>
+                    <p style="color: gray">See below for a brief ezBIDS tutorial video.</p>
                     <iframe
                         width="640"
                         height="360"
@@ -73,8 +71,19 @@
                 <br />
             </div>
 
-            <div v-if="starting">
+            <div v-if="starting && !promptSignIn">
                 <h3>Initializing ...</h3>
+            </div>
+
+            <div v-if="starting && promptSignIn">
+                <p style="color: yellow">
+                    The files you are trying to upload are ~{{ formatNumber(total_size / (1024 * 1024 * 1024)) }} GB in
+                    size, which is larger than the 4GB limit for ezBIDS edge mode (local processing).
+                </p>
+                <p>
+                    Please
+                    <a style="color: blue" href="https://brainlife.io">sign in</a> to continue via ezBIDS server mode.
+                </p>
             </div>
         </div>
 
@@ -171,7 +180,7 @@
                 </div>
 
                 <div v-if="!ezbids.notLoaded && ezbids.objects.length">
-                    <h2>Analysis complete!</h2>
+                    <h2 style="margin-top: 0">Analysis complete!</h2>
                     <AnalysisErrors />
                     <h3>
                         Object List <small>({{ ezbids.objects.length }})</small>
@@ -204,7 +213,9 @@
             </div>
 
             <br />
-            <el-collapse>
+            <!-- ANIBAL-TODO: Not sure how these files will be generated or handled when computing via EDGE. I'm
+                 going to hide them for now (when on EDGE) but you can change this to fit the use case -->
+            <el-collapse v-if="ezbidsProcessingMode !== 'EDGE'">
                 <el-collapse-item title="Debug (Download)">
                     <ul style="list-style: none; padding-left: 0">
                         <el-button
@@ -255,6 +266,9 @@ import { mapState } from 'vuex';
 import { formatNumber } from './filters';
 import axios from './axios.instance';
 import { ElNotification } from 'element-plus';
+import { hasJWT } from './lib';
+
+const SIZE_LIMIT_GB = 4;
 
 export default defineComponent({
     components: {
@@ -264,6 +278,7 @@ export default defineComponent({
         return {
             dragging: false,
             starting: false, //wait for browser to handle all files
+            promptSignIn: false, // if the files to upload are larger than 4GB, we prompt the user to sign in
 
             total_size: null,
             ignoreCount: 0,
@@ -284,7 +299,7 @@ export default defineComponent({
     },
 
     computed: {
-        ...mapState(['session', 'config', 'ezbids']),
+        ...mapState(['session', 'config', 'ezbids', 'ezbidsProcessingMode']),
 
         ignoredFiles() {
             let files = [];
@@ -421,9 +436,6 @@ export default defineComponent({
         }, //end listDropFiles()
 
         async upload() {
-            this.starting = false;
-            this.doneUploading = false;
-
             //calculate total file size
             this.total_size = 0;
             for (let i = 0; i < this.files.length; ++i) {
@@ -431,17 +443,28 @@ export default defineComponent({
                 this.total_size += file.size;
             }
 
+            // this is due to WASM restrictions but may change in the future with the advent of WASM64
+            const totalSizeInGB = this.total_size / (1024 * 1024 * 1024);
+            if (totalSizeInGB >= SIZE_LIMIT_GB && !hasJWT()) {
+                this.promptSignIn = true;
+                return;
+            }
+
+            this.starting = false;
+            this.doneUploading = false;
+
             //reset try counters
             for (let i = 0; i < this.files.length; ++i) {
                 this.files[i].try = 0;
             }
 
             //create new session
-            const res = await axios.post(`${this.config.apihost}/session`, {
-                headers: { 'Content-Type': 'application/json' },
-            });
-            this.$store.commit('setSession', await res.data);
-            this.processFiles();
+            this.$store.commit('setEzBidsProcessingMode', totalSizeInGB >= SIZE_LIMIT_GB ? 'SERVER' : 'EDGE');
+            alert(totalSizeInGB >= SIZE_LIMIT_GB ? 'SERVER' : 'EDGE');
+            const res = await this.api.createNewSession();
+            alert(JSON.stringify(res, undefined, 4));
+            // this.$store.commit('setSession', await res.data);
+            // this.processFiles();
         },
 
         processFiles() {

@@ -11,8 +11,7 @@ services:
             test: echo 'db.runCommand("ping").ok' | mongo localhost:27017/test --quiet
             interval: 10s
             timeout: 10s
-            retries:
-                5
+            retries: 5
         ports:
             - 27417:27017 #for local debugging
 
@@ -27,10 +26,9 @@ services:
             mongodb:
                 condition: service_healthy
         healthcheck:
-            test: ["CMD", "curl", "-f", "http://localhost:8082/health"]
+            test: ['CMD', 'curl', '-f', 'http://localhost:8082/health']
         working_dir: /app/api
-        command:
-            ./dev.sh
+        command: ./dev.sh
         environment:
             MONGO_CONNECTION_STRING: mongodb://mongodb:27017/ezbids
             BRAINLIFE_AUTHENTICATION: ${BRAINLIFE_AUTHENTICATION}
@@ -64,10 +62,10 @@ services:
             VITE_APIHOST: http://localhost:8082
             VITE_BRAINLIFE_AUTHENTICATION: ${BRAINLIFE_AUTHENTICATION}
         healthcheck:
-            test: ["CMD", "curl", "-f", "http://localhost:3000"]
+            test: ['CMD', 'curl', '-f', 'http://localhost:3000']
         ports:
             - 3000:3000 #vite wants to be exposed on the host for HMR?
-    
+
     # by default this is not enabled, need to run docker compose with --profile development to enable this service
     telemetry:
         container_name: brainlife_ezbids-telemetry
@@ -75,6 +73,6 @@ services:
         platform: linux/amd64
         depends_on:
             - mongodb
-        profiles: ["development"]
+        profiles: ['development']
         ports:
             - 8000:8000 #for local debugging

@@ -1,9 +1,9 @@
-import { createApp } from 'vue'
-import VueGtag from 'vue-gtag-next'
-import App from './App.vue'
-import { FontAwesomeIcon } from "@fortawesome/vue-fontawesome"
-import { library } from "@fortawesome/fontawesome-svg-core"
-import { faGithub } from "@fortawesome/free-brands-svg-icons"
+import { createApp } from 'vue';
+import VueGtag from 'vue-gtag-next';
+import App from './App.vue';
+import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
+import { library } from '@fortawesome/fontawesome-svg-core';
+import { faGithub } from '@fortawesome/free-brands-svg-icons';
 import {
     faSpinner,
     faAngleLeft,
@@ -15,11 +15,13 @@ import {
     faCircleInfo,
     faUsers,
     faBook,
-    faDownload
-} from '@fortawesome/free-solid-svg-icons'
-import 'element-plus/dist/index.css'
+    faDownload,
+    faCircleQuestion,
+} from '@fortawesome/free-solid-svg-icons';
+import 'element-plus/dist/index.css';
 import store from './store';
-import router from './routes'
+import api, { API } from './api/index';
+import router from './routes';
 
 // add icons
 library.add(
@@ -34,27 +36,29 @@ library.add(
     faCircleInfo,
     faUsers,
     faBook,
-    faDownload
+    faDownload,
+    faCircleQuestion
 );
-
 
 //move to ./types?
 //tell typescript about some global properties we are adding
 declare module 'vue' {
     export interface ComponentCustomProperties {
-        $validate: (data: object, rule: object) => boolean
-        $store: typeof store
+        $validate: (data: object, rule: object) => boolean;
+        $store: typeof store;
+        api: API;
     }
 }
 
 const app = createApp(App);
 app.use(router);
-app.use(store)
+app.use(store);
+app.use(api);
 app.use(VueGtag, {
     property: {
-        id: "G-J5H19RMNCT"
-    }
+        id: 'G-J5H19RMNCT',
+    },
 });
 
-app.component("font-awesome-icon", FontAwesomeIcon)
-app.mount('#app')
+app.component('font-awesome-icon', FontAwesomeIcon);
+app.mount('#app');

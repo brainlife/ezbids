@@ -56,8 +56,8 @@ export default defineComponent({
 </script>
 
 <template>
-    <div style="padding: 20px">
-        <p>
+    <div>
+        <p style="margin-top: 0">
             Please enter as much information you like to include in the <b>dataset_description.json</b>. For specific
             information and examples, see
             <a

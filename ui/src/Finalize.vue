@@ -1,7 +1,7 @@
 <template>
-    <div style="padding: 20px">
+    <div style="max-width: calc(100vw - 260px - 4rem - 2rem);">
         <div v-if="session.status == 'analyzed' || session.status == 'defaced'">
-            <p>
+            <p style="margin-top: 0">
                 Your dataset is now ready to be converted to BIDS! Please click the button below to generate BIDS
                 structure.
             </p>

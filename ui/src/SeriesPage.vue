@@ -1,6 +1,6 @@
 <template>
-    <splitpanes class="seriespage default-theme">
-        <pane min-size="20" size="30" class="series-list">
+    <splitpanes class="default-theme panes">
+        <pane min-size="20" size="30">
             <div
                 v-for="(s, series_idx) in ezbids.series"
                 :key="series_idx"
@@ -549,30 +549,14 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-.seriespage {
-    position: fixed;
-    top: 0;
-    bottom: 60px;
-    left: 160px;
-    right: 0;
-
-    width: inherit;
-    height: inherit;
-}
-
 .splitpanes.default-theme .splitpanes__pane {
     background-color: inherit;
 }
 
-.series-list {
-    padding: 10px;
-    font-size: 90%;
-    box-sizing: border-box;
-    overflow-y: scroll;
+.panes {
+    width: calc(100vw - 260px - 4rem - 2rem);
 }
-.series-detail {
-    overflow-y: scroll;
-}
+
 .el-form-item {
     margin-bottom: 0;
 }

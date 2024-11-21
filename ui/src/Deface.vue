@@ -1,7 +1,7 @@
 <template>
-    <div style="padding: 20px">
+    <div>
         <el-form v-if="anatObjects.length && !isDefacing">
-            <p>
+            <p style="margin-top: 0">
                 If you'd like to deface all anatomical images, please select a defacing method and click
                 <b>Run Deface</b> button. Otherwise, you can skip this page.
             </p>

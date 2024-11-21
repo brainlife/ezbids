@@ -1,6 +1,6 @@
 <template>
-    <div style="padding: 20px">
-        <h1>Thank you for using ezBIDS!</h1>
+    <div>
+        <h1 style="margin-top: 0">Thank you for using ezBIDS!</h1>
         <p>
             You can close this tab now. Or&nbsp;&nbsp;<el-button type="primary" size="small" @click="restart"
                 >Start Over</el-button
