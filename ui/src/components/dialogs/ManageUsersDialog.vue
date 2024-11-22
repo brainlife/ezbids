@@ -1,11 +1,11 @@
 <template>
     <div v-if="shareSessionButtonIsVisible">
-        <div style="padding: 0 10px">
+        <div style="padding: 0px">
             <el-badge
                 :value="allowedUserProfiles.length === 0 ? undefined : allowedUserProfiles.length"
                 style="width: 135px"
             >
-                <el-button class="share-session-button" type="primary" @click="handleOpen"> Share session </el-button>
+                <el-button class="share-session-button" type="default" @click="handleOpen"> Share session </el-button>
             </el-badge>
         </div>
         <el-dialog

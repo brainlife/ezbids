@@ -30,6 +30,7 @@
                             Open Documentation
                         </el-button>
                     </a>
+                    <ManageUsersDialog v-if="authRequired && hasJWT"></ManageUsersDialog>
                 </div>
             </div>
         </div>
@@ -95,7 +96,7 @@ import Events from './Events.vue';
 import Deface from './Deface.vue';
 import Finalize from './Finalize.vue';
 import Feedback from './Feedback.vue';
-import { authRequired, createEventsTSV } from './lib';
+import { authRequired, hasJWT, createEventsTSV } from './lib';
 
 //https://github.com/element-plus/element-plus/issues/436#issuecomment-961386582
 import { ElNotification } from 'element-plus';
@@ -149,8 +150,12 @@ export default defineComponent({
         ...mapState(['session', 'ezbids', 'events', 'page', 'config']),
         ...mapGetters(['getBIDSEntities', 'getBIDSMetadata', 'findSession', 'findSubject']),
 
-        hasAuth() {
+        authRequired() {
             return authRequired();
+        },
+
+        hasJWT() {
+            return hasJWT();
         },
 
         activeValue() {

@@ -9,7 +9,6 @@ const convert = new Convert();
 
 import { mapState } from 'vuex';
 import { defineComponent } from 'vue';
-import axios from '../axios.instance';
 import { ElNotification } from 'element-plus';
 
 export default defineComponent({
