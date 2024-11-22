@@ -1,7 +1,5 @@
 import { createStore } from 'vuex';
 import bidsEntities from '../assets/schema/objects/entities.json';
-import axios from '../axios.instance';
-import { ElNotification } from 'element-plus';
 import {
     BIDSDatatypes,
     BIDSDatatypesMetadata,
@@ -27,6 +25,7 @@ import fmapDatatype from '../assets/schema/rules/datatypes/fmap.json';
 import petDatatype from '../assets/schema/rules/datatypes/pet.json';
 import megDatatype from '../assets/schema/rules/datatypes/meg.json';
 import perfDatatype from '../assets/schema/rules/datatypes/perf.json';
+import { ElNotification } from 'element-plus';
 
 const state = {
     bidsSchema: {
@@ -110,6 +109,50 @@ const state = {
         defacingMethod: '',
         includeExcluded: true,
         sideCar: {} as { [key: string]: any },
+        events: {
+            columns: {
+                //these are just for typescript definitions.
+                //real initial values should come from mapEventColumns()
+
+                onsetLogic: 'eq',
+                onset: null, //will be set to column name in event
+                onset2: null, //will be set to column name in event
+                onsetUnit: 'sec',
+
+                durationLogic: 'eq',
+                duration: null,
+                duration2: null, //used in case durationLogic is "subtract" or "add"
+                durationUnit: 'sec',
+
+                sampleLogic: 'eq',
+                sample: null,
+                sample2: null,
+                sampleUnit: 'samples',
+
+                trialType: null,
+
+                responseTimeLogic: 'eq',
+                responseTime: null,
+                responseTime2: null,
+                responseTimeUnit: 'sec',
+
+                value: null,
+
+                HED: null,
+
+                stim_file: null,
+            },
+
+            trialTypes: {
+                longName: 'Event category',
+                desc: 'Indicator of type of action that is expected',
+                levels: {} as { [key: string]: string }, //description for each trialType values
+            },
+
+            columnKeys: null as string[] | null,
+            sampleValues: {} as { [key: string]: string[] },
+            loaded: false,
+        } as IEvents, // looks like we references events both inside the ezBIDS objects as well as outside in the parent state object... TODO - validate this
     } as IEZBIDS,
 
     events: {
@@ -416,6 +459,9 @@ const store = createStore({
         async loadSession(context) {
             if (!context.state.session) return;
             const res = await api.getSessionById(context.state.session._id);
+            if (!res.session) {
+                throw new Error('No session found!');
+            }
             context.commit('setSession', res.session);
             if (res.ezbidsProcessingMode) {
                 context.commit('setEzBidsProcessingMode', res.ezbidsProcessingMode);
@@ -433,39 +479,29 @@ const store = createStore({
             }
         },
 
-        // TODO-ANIBAL: Please confirm, but I don't think that this functionality is even useful...
+        // ANIBAL-TODO: Please confirm, but I don't think that this functionality is used, or it's currently broken...
         // I don't think that this is ever used anywhere. I don't see anywhere in the codebase where "updated"
         // is set in the backend models.ezBIDS mongoDB object. We may be able to remove this. IF SO,
         // then also remove the "getEZBIDSUpdated" function in api/index.ts.
         async loadEzbidsUpdated(context) {
             if (!context.state.session || !context.state.session.pre_finish_date) return;
-            try {
-                const res = await axios.get(
-                    `${context.state.config.apihost}/session/${context.state.session._id}/updated`
-                );
-                if (res.status == 200) {
-                    const updated = await res.data;
-                    context.commit('updateEzbids', updated);
-                    context.commit('updateEvents', updated.events);
-                    context.commit('setPage', 'finalize');
-                }
-            } catch (e) {
-                console.error(e);
+
+            const res = await api.getEZBIDSUpdated(context.state.session._id);
+            if (res !== null) {
+                context.commit('updateEzbids', { ...res });
+                context.commit('updateEvents', res.events);
+                context.commit('setPage', 'finalize');
             }
         },
 
         async loadDefaceStatus(context) {
             if (!context.state.session) return;
-
             try {
-                let jwtRes = await axios.get(
-                    `${context.state.config.apihost}/download/${context.state.session._id}/token`
-                );
-                const finished = await axios.get(
-                    `${context.state.config.apihost}/download/${context.state.session._id}/deface.finished?token=${jwtRes.data}`
-                );
-                if (finished.status == 200) {
-                    const finishedText = await finished.data;
+                const res = await api.getDefaceStatus(context.state.session._id);
+                if (res === null) return; // likely still processing
+
+                if (res.status === 'FINISHED') {
+                    const finishedText = res.defaceContents;
                     const idxs = finishedText
                         .toString()
                         .trim()
@@ -477,14 +513,8 @@ const store = createStore({
                         if (!o) console.error("can't find", idx);
                         else o.defaced = true;
                     });
-                }
-
-                jwtRes = await axios.get(`${context.state.config.apihost}/download/${context.state.session._id}/token`);
-                const failed = await axios.get(
-                    `${context.state.config.apihost}/download/${context.state.session._id}/deface.failed?token=${jwtRes.data}`
-                );
-                if (failed.status == 200) {
-                    const failedText = await failed.data;
+                } else {
+                    const failedText = res.defaceContents;
                     const idxs = failedText
                         .trim()
                         .split('\n')
@@ -498,6 +528,11 @@ const store = createStore({
                 }
             } catch (e) {
                 console.error(e);
+                ElNotification({
+                    title: 'Could not get deface status',
+                    message: '',
+                    type: 'error',
+                });
             }
         },
     },

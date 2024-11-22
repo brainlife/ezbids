@@ -10,6 +10,7 @@ const convert = new Convert();
 import { mapState } from 'vuex';
 import { defineComponent } from 'vue';
 import axios from '../axios.instance';
+import { ElNotification } from 'element-plus';
 
 export default defineComponent({
     props: {
@@ -32,24 +33,18 @@ export default defineComponent({
         ...mapState(['session', 'config']),
     },
 
-    mounted() {
-        axios
-            .get(`${this.config.apihost}/download/${this.session._id}/token`)
-            .then((res) => {
-                const shortLivedJWT = res.data;
-                return axios.get(
-                    `${this.config.apihost}/download/${this.session._id}/${this.path}?token=${shortLivedJWT}`
-                );
-            })
-            .then((res) => {
-                const text = JSON.stringify(res.data, undefined, 4);
-                this.content = convert.toHtml(text);
-                // data from the BE will have newlines which informs indentation in the frontend
-                this.content = convert.toHtml(res.data);
-            })
-            .catch((err) => {
-                console.error(err);
+    async mounted() {
+        try {
+            if (!this.path) return;
+            this.content = await this.api.retrieveFileContents(this.session._id, this.path);
+        } catch (e) {
+            console.error(e);
+            ElNotification({
+                title: 'There was an error retrieve the file contents',
+                message: '',
+                type: 'error',
             });
+        }
 
         if (this.tall) {
             this.maxHeight = '400px';

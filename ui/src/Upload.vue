@@ -76,7 +76,7 @@
             </div>
 
             <div v-if="starting && promptSignIn">
-                <p style="color: yellow">
+                <p style="color: orange">
                     The files you are trying to upload are ~{{ formatNumber(total_size / (1024 * 1024 * 1024)) }} GB in
                     size, which is larger than the 4GB limit for ezBIDS edge mode (local processing).
                 </p>
@@ -89,7 +89,7 @@
 
         <div v-if="session">
             <div v-if="session.status == 'created'">
-                <h3>
+                <h3 style="margin-top: 0">
                     Uploading
                     <font-awesome-icon icon="spinner" pulse />
                 </h3>
@@ -133,7 +133,7 @@
             </div>
 
             <div v-if="['preprocessing', 'uploaded'].includes(session.status)">
-                <h3 v-if="session.dicomDone === undefined">
+                <h3 v-if="session.dicomDone === undefined" style="margin-top: 0">
                     Inflating
                     <font-awesome-icon icon="spinner" pulse />
                 </h3>
@@ -173,7 +173,7 @@
 
             <div v-if="session.pre_finish_date">
                 <div v-if="ezbids.notLoaded">
-                    <h3>
+                    <h3 style="margin-top: 0">
                         Loading analysis results
                         <font-awesome-icon icon="spinner" pulse />
                     </h3>
@@ -264,11 +264,10 @@
 import { defineComponent } from 'vue';
 import { mapState } from 'vuex';
 import { formatNumber } from './filters';
-import axios from './axios.instance';
 import { ElNotification } from 'element-plus';
-import { hasJWT } from './lib';
+import { hasJWT, authRequired } from './lib';
 
-const SIZE_LIMIT_GB = 4;
+const SIZE_LIMIT_GB = 0.001;
 
 export default defineComponent({
     components: {
@@ -315,10 +314,7 @@ export default defineComponent({
         async downloadFile(fileName) {
             if (!fileName) return;
             try {
-                const res = await axios.get(`${this.config.apihost}/download/${this.session._id}/token`);
-                const shortLivedJWT = res.data;
-
-                window.location.href = `${this.config.apihost}/download/${this.session._id}/${fileName}?token=${shortLivedJWT}`;
+                this.api.downloadFile(this.session._id, fileName);
             } catch (e) {
                 console.error(e);
                 ElNotification({
@@ -445,7 +441,7 @@ export default defineComponent({
 
             // this is due to WASM restrictions but may change in the future with the advent of WASM64
             const totalSizeInGB = this.total_size / (1024 * 1024 * 1024);
-            if (totalSizeInGB >= SIZE_LIMIT_GB && !hasJWT()) {
+            if (totalSizeInGB >= SIZE_LIMIT_GB && authRequired() && !hasJWT()) {
                 this.promptSignIn = true;
                 return;
             }
@@ -459,113 +455,32 @@ export default defineComponent({
             }
 
             //create new session
-            this.$store.commit('setEzBidsProcessingMode', totalSizeInGB >= SIZE_LIMIT_GB ? 'SERVER' : 'EDGE');
-            alert(totalSizeInGB >= SIZE_LIMIT_GB ? 'SERVER' : 'EDGE');
-            const res = await this.api.createNewSession();
-            alert(JSON.stringify(res, undefined, 4));
-            // this.$store.commit('setSession', await res.data);
-            // this.processFiles();
-        },
-
-        processFiles() {
-            //find next files to upload
-            let data = new FormData();
-            let fileidx = [];
-            let batchSize = 0;
-
-            for (let i = 0; i < this.files.length; ++i) {
-                let file = this.files[i];
-                if (this.uploaded.includes(i)) continue;
-                if (file.uploading) continue;
-                if (file.ignore) continue;
-                if (file.try > 5) {
-                    if (!this.failed.includes(i)) this.failed.push(i);
-                    continue; //TODO we should abort upload?
-                }
-                batchSize += file.size;
-
-                //limit batch size (3000 files causes network error - probably too many?)
-                if (fileidx.length > 0 && (fileidx.length >= 500 || batchSize > 1024 * 1014 * 300)) break;
-
-                //let's proceed!
-                file.uploading = true;
-                fileidx.push(i);
-                data.append('files', file);
-
-                //file doesn't contains the real path and lastModifiedDate. I need to pass this separately
-                data.append('paths', file.path);
-                data.append('mtimes', file.lastModified);
+            const ezbidsProcessingMode = totalSizeInGB >= SIZE_LIMIT_GB ? 'SERVER' : 'EDGE';
+            this.$store.commit('setEzBidsProcessingMode', ezbidsProcessingMode);
+            try {
+                const res = await this.api.createNewSession();
+                this.$store.commit('setSession', res);
+                this.api.storeFiles(res._id, this.done, {
+                    files: this.files,
+                    uploaded: this.uploaded,
+                    failed: this.failed,
+                    ignoreCount: this.ignoreCount,
+                    batches: this.batches,
+                });
+            } catch (e) {
+                console.error(e);
+                ElNotification({
+                    title: 'Could not create a new session, please try again',
+                    message: '',
+                    type: 'error',
+                });
             }
-
-            if (fileidx.length == 0) {
-                return;
-            }
-
-            //prepare a batch
-            let batch = { fileidx, evt: {}, status: 'uploading', size: batchSize };
-            this.batches.push(batch);
-
-            function doSend() {
-                axios
-                    .post(this.config.apihost + '/upload-multi/' + this.session._id, data, {
-                        onUploadProgress: (evt) => {
-                            //count++;
-                            batch.evt = evt;
-                        },
-                    })
-                    .then((res) => {
-                        let msg = res.data;
-                        if (msg == 'ok') {
-                            batch.status = 'done';
-                            fileidx.forEach((idx) => {
-                                this.uploaded.push(idx);
-                            });
-
-                            if (this.uploaded.length + this.ignoreCount == this.files.length) {
-                                this.done();
-                            } else {
-                                //handle next batch
-                                this.processFiles();
-                            }
-                        } else {
-                            //server side error?
-                            batch.status = 'failed';
-                            console.error(res);
-                        }
-                    })
-                    .catch((err) => {
-                        batch.status = 'failed';
-                        //retry these files on a different batch
-                        fileidx.forEach((idx) => {
-                            this.files[idx].try++;
-                        });
-                        setTimeout(this.processFiles, 1000 * 13);
-                    })
-                    .then(() => {
-                        fileidx.forEach((idx) => {
-                            this.files[idx].uploading = false;
-                        });
-                    });
-
-                //see how many batches we are currently uploading
-                let uploadingBatches = this.batches.filter((b) => b.status == 'uploading');
-                if (uploadingBatches.length < 4) {
-                    setTimeout(this.processFiles, 1000 * 3);
-                }
-            }
-
-            doSend.call(this);
         },
 
         async done() {
             //we have multiple files uploading concurrently, so the last files will could make this call back
             if (this.doneUploading) return;
             this.doneUploading = true;
-
-            //mark the session as uploaded
-            await axios.patch(`${this.config.apihost}/session/uploaded/${this.session._id}`, {
-                headers: { 'Content-Type': 'application/json' },
-            });
 
             //construct a good dataset description from the file paths
             const f = this.files[0];

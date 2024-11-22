@@ -2,7 +2,7 @@ import { createRouter, createWebHistory } from 'vue-router';
 import LandingPage from './LandingPage.vue';
 import BaseConvertPage from './BaseConvertPage.vue';
 import NotFound from './NotFound.vue';
-import { hasJWT, hasAuth } from './lib';
+import { hasJWT, authRequired } from './lib';
 import { ElNotification } from 'element-plus';
 
 // enable routing
@@ -16,7 +16,7 @@ const router = createRouter({
 });
 
 router.beforeEach((to, from) => {
-    if (hasAuth() && !hasJWT() && to.name !== 'base') {
+    if (authRequired() && !hasJWT() && to.name !== 'base') {
         ElNotification({
             title: 'Please login to continue',
             message: '',

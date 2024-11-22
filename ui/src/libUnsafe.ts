@@ -1,7 +1,7 @@
 import e from 'cors';
 // import * as fs from 'fs';
 
-import { Series, IObject, OrganizedSession, OrganizedSubject, IEzbids, IBIDSEvent, MetadataFields } from './store';
+import { Series, IObject, OrganizedSession, OrganizedSubject, IEZBIDS, IBIDSEvent, MetadataFields } from './store/store.types';
 
 import aslYaml from '../src/assets/schema/rules/sidecars/asl.yaml';
 import petYaml from '../src/assets/schema/rules/sidecars/pet.yaml';
@@ -38,7 +38,7 @@ export function isPrimitive(obj: any) {
     return obj !== Object(obj);
 }
 
-export function setVolumeThreshold($root: IEzbids) {
+export function setVolumeThreshold($root: IEZBIDS) {
     /*
     Determine volume threshold for all func/bold acquisitions in dataset and set
     to exclude if the number of volumes does not meet the volume threshold. Threshold 
@@ -75,7 +75,7 @@ export function setVolumeThreshold($root: IEzbids) {
     });
 }
 
-export function setSectionIDs($root: IEzbids) {
+export function setSectionIDs($root: IEZBIDS) {
     /*
     Set section_id value for each acquisition, beginning with value of 1. A section is
     ezBIDS jargin for each time participant comes out and then re-enters scanner. Each time
@@ -116,7 +116,7 @@ export function setSectionIDs($root: IEzbids) {
     });
 }
 
-export function funcQA($root: IEzbids) {
+export function funcQA($root: IEZBIDS) {
     /*
     1). If func/bold acquisition is excluded, warn users that corresponding
     func/sbref, and func/bold (part-phase) should all excluded as well,
@@ -179,7 +179,7 @@ export function funcQA($root: IEzbids) {
     });
 }
 
-export function fmapQA($root: IEzbids) {
+export function fmapQA($root: IEZBIDS) {
     /* Generate warning(s) duplicate field maps (or not enough) are detected.
 
     TODO: generate warning(s) if Pepolar field maps don't have opposite phase encoding directions
@@ -412,7 +412,7 @@ export function fmapQA($root: IEzbids) {
     });
 }
 
-export function setRun($root: IEzbids) {
+export function setRun($root: IEZBIDS) {
     // Set run entity label for all objects, if appropriate.
     // Applied on the Dataset Review page.
 
@@ -584,7 +584,7 @@ export function setRun($root: IEzbids) {
     });
 }
 
-export function setIntendedFor($root: IEzbids) {
+export function setIntendedFor($root: IEZBIDS) {
     // Apply fmap intendedFor mapping, based on user specifications on Series page.
 
     function isNumberInObject(obj: number[], number: number) {
@@ -678,17 +678,17 @@ export function setIntendedFor($root: IEzbids) {
                             }
                         }
 
-                        if (Object.keys(obj.IntendedFor).length !== 0) {
-                            obj.IntendedFor?.forEach((e) => {
+                        if (Object.keys(obj.IntendedFor || []).length !== 0) {
+                            (obj.IntendedFor || []).forEach((e) => {
                                 let IntendedForObj = $root.objects.filter((o: IObject) => o.idx === e)[0];
                                 if (IntendedForObj.exclude || IntendedForObj._exclude) {
-                                    let badIndexKey: number = obj.IntendedFor.indexOf(e);
-                                    delete obj.IntendedFor[badIndexKey];
+                                    let badIndexKey: number = (obj.IntendedFor || []).indexOf(e);
+                                    delete (obj.IntendedFor || [])[badIndexKey];
                                 }
                             });
                         }
                         if (obj._type.startsWith('fmap/')) {
-                            if (Object.keys(obj.IntendedFor).length === 0) {
+                            if (Object.keys(obj.IntendedFor || []).length === 0) {
                                 obj.validationWarnings = [
                                     'It is recommended that field map (fmap) sequences have IntendedFor set to at least 1 series ID. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep',
                                 ];
@@ -698,7 +698,7 @@ export function setIntendedFor($root: IEzbids) {
                                 obj.validationWarnings = [];
                             }
                         } else if (obj._type === 'perf/m0scan') {
-                            if (Object.keys(obj.IntendedFor).length === 0) {
+                            if (Object.keys(obj.IntendedFor || []).length === 0) {
                                 obj.validationErrors = [
                                     'It is required that perfusion m0scan sequences have IntendedFor set to at least 1 series ID.',
                                 ];
@@ -756,7 +756,7 @@ function findMostCommonValue(arr: any) {
         .pop();
 }
 
-export function alignEntities($root: IEzbids) {
+export function alignEntities($root: IEZBIDS) {
     /*
     Applied on Dataset Review page
     There are two ways entities are stored:
@@ -805,7 +805,7 @@ export function validate_B0FieldIdentifier_B0FieldSource(info: Series | IObject)
     }
 }
 
-export function dwiQA($root: IEzbids) {
+export function dwiQA($root: IEZBIDS) {
     /*
     DWI acquisitions are typically acquired in two ways:
 
@@ -879,7 +879,7 @@ export function dwiQA($root: IEzbids) {
     });
 }
 
-export function petQA($root: IEzbids) {
+export function petQA($root: IEZBIDS) {
     $root.objects.forEach((o: IObject) => {
         if (o._type === 'pet/blood') {
             let tsv = o.items.find((e) => e.name === 'tsv');
@@ -1152,7 +1152,7 @@ function parseExcelEvents(fileData: any) {
     return trials[0];
 }
 
-export function createEventObjects(ezbids: IEzbids, files: any) {
+export function createEventObjects(ezbids: IEZBIDS, files: any) {
     /*
     This function receives files, an array of object containing fullpath and data.
     Data is the actual file content of the file,
@@ -1651,7 +1651,7 @@ export function mapEventColumns(ezbids_events: any, events: any) {
     }
 }
 
-export function fileLogicLink($root: IEzbids, o: IObject) {
+export function fileLogicLink($root: IEZBIDS, o: IObject) {
     /* Imaging data implicitly has a part-mag (magnitude), though this doesn't need to be explicitly stated. 
     Any phase data (part-phase) is linked to the magnitude. If part entity is specified, make sure it's
     properly linked and has same entities (except for part) and exclusion criteria.
@@ -1781,7 +1781,7 @@ export function fileLogicLink($root: IEzbids, o: IObject) {
 }
 
 // // TODO, currently no validation on Participants Info page
-// export function validateParticipantsInfo($root: IEzbids) {
+// export function validateParticipantsInfo($root: IEZBIDS) {
 //     let finalSubs = [] as number[];
 //     $root._organized.forEach((sub: OrganizedSubject) => {
 //         let use = false;
@@ -1855,7 +1855,7 @@ export function fileLogicLink($root: IEzbids, o: IObject) {
 export function metadataAlerts(
     bidsDatatypeMetadata: MetadataFields,
     bidsMetadataInfo: any,
-    $root: IEzbids,
+    $root: IEZBIDS,
     idx: number,
     type: string
 ): string[] {
@@ -2080,7 +2080,7 @@ export function metadataAlerts(
     return metadataAlertFields;
 }
 
-export function updateErrorMessages($root: IEzbids) {
+export function updateErrorMessages($root: IEZBIDS) {
     $root.objects.forEach((o: IObject) => {
         const err_str = "Acquisition cannot be resolved. Please determine whether or not this acquisition should be converted to BIDS."
         if (o._type !== "exclude" && o.analysisResults.errors.includes(err_str)) {
@@ -2091,7 +2091,7 @@ export function updateErrorMessages($root: IEzbids) {
 }
 
 // //TODO: Need to work on this more
-// export function updateParticipantsInfo($root: IEzbids) {
+// export function updateParticipantsInfo($root: IEZBIDS) {
 //     let participantsInfo: any = $root.participantsInfo;
 //     console.log('participantsInfo', participantsInfo);
 //     let finalSubs: any = [];

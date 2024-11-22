@@ -135,10 +135,9 @@
 import { mapState, mapGetters } from 'vuex';
 import { defineComponent } from 'vue';
 import datatype from './components/datatype.vue';
-import { IObject } from './store';
 import { ElNotification } from 'element-plus';
-import axios from './axios.instance';
 import AsyncImageLink from './components/AsyncImageLink.vue';
+import { IObject } from './store/store.types';
 
 export default defineComponent({
     components: {
@@ -196,32 +195,30 @@ export default defineComponent({
             return item.path + '.defaced.nii.gz';
         },
 
-        cancel() {
-            axios.post(`${this.config.apihost}/session/${this.session._id}/canceldeface`).then((res) => {
-                if (res.data !== 'ok') {
-                    ElNotification({ title: 'Failed', message: 'Failed to cancel defacing' });
-                } else {
-                    ElNotification({ title: 'Success', message: 'Requested to cancel defacing..' });
-                }
-                this.$store.dispatch('loadSession', this.session._id);
-            });
+        async cancel() {
+            const res = await this.api.cancelDeface(this.session._id);
+            if (res === 'ok') {
+                ElNotification({ title: 'Success', message: 'Requested to cancel defacing..' });
+            } else {
+                ElNotification({ title: 'Failed', message: 'Failed to cancel defacing' });
+            }
+            this.$store.dispatch('loadSession', this.session._id);
         },
 
-        reset() {
-            axios.post(`${this.config.apihost}/session/${this.session._id}/resetdeface`).then((res) => {
-                if (res.data !== 'ok') {
-                    ElNotification({ title: 'Failed', message: 'Failed to reset defacing' });
-                }
-                this.anatObjects.forEach((anat: IObject) => {
-                    delete anat.defaced;
-                    delete anat.defaceFailed;
-                    anat.defaceSelection = 'defaced';
-                });
-                this.$store.dispatch('loadSession', this.session._id);
+        async reset() {
+            const res = await this.api.resetDeface(this.session._id);
+            if (res !== 'ok') {
+                ElNotification({ title: 'Failed', message: 'Failed to reset defacing' });
+            }
+            this.anatObjects.forEach((anat: IObject) => {
+                delete anat.defaced;
+                delete anat.defaceFailed;
+                anat.defaceSelection = 'defaced';
             });
+            this.$store.dispatch('loadSession', this.session._id);
         },
 
-        runDeface() {
+        async runDeface() {
             const list = this.anatObjects.map((o: IObject) => {
                 return { idx: o.idx, path: o.items.find((i) => i.path?.endsWith('.nii.gz'))?.path };
             });
@@ -231,17 +228,11 @@ export default defineComponent({
                 delete o.defaced;
             });
 
-            axios
-                .post(`${this.config.apihost}/session/${this.session._id}/deface`, {
-                    list,
-                    method: this.ezbids.defacingMethod,
-                })
-                .then((res) => {
-                    if (res.data !== 'ok') {
-                        ElNotification({ title: 'Failed', message: 'Failed to submit deface request' });
-                    }
-                    this.$store.dispatch('loadSession', this.session._id);
-                });
+            const res = await this.api.runDeface(this.session._id, list, this.ezbids.defacingMethod);
+            if (res !== 'ok') {
+                ElNotification({ title: 'Failed', message: 'Failed to submit deface request' });
+            }
+            this.$store.dispatch('loadSession', this.session._id);
         },
 
         isValid(cb: (v?: string) => void) {

@@ -95,7 +95,7 @@ import Events from './Events.vue';
 import Deface from './Deface.vue';
 import Finalize from './Finalize.vue';
 import Feedback from './Feedback.vue';
-import { hasAuth, createEventsTSV } from './lib';
+import { authRequired, createEventsTSV } from './lib';
 
 //https://github.com/element-plus/element-plus/issues/436#issuecomment-961386582
 import { ElNotification } from 'element-plus';
@@ -150,7 +150,7 @@ export default defineComponent({
         ...mapGetters(['getBIDSEntities', 'getBIDSMetadata', 'findSession', 'findSubject']),
 
         hasAuth() {
-            return hasAuth();
+            return authRequired();
         },
 
         activeValue() {

@@ -26,7 +26,7 @@ export default defineComponent({
     },
 
     computed: {
-        ...mapState(['session', 'config']),
+        ...mapState(['session', 'config', 'ezbidsProcessingMode']),
     },
 
     watch: {
@@ -41,22 +41,27 @@ export default defineComponent({
 
     methods: {
         load() {
-            axios.get(`${this.config.apihost}/download/${this.session._id}/token`).then((res) => {
-                const url = `${this.config.apihost}/download/${this.session._id}/${this.path}?token=${res.data}`;
-                this.open = true;
-                this.$nextTick(() => {
-                    nv.attachToCanvas(this.$refs.canvas);
-                    nv.loadVolumes([
-                        {
-                            url: url,
-                            volume: { hdr: null, img: null },
-                            colorMap: 'gray',
-                            opacity: 1,
-                            visible: true,
-                        },
-                    ]);
+            if (this.ezbidsProcessingMode === 'EDGE') {
+                // ANIBAL-TODO: Need to link the niivue component to some frontend generated image
+                throw new Error('not yet implemented');
+            } else {
+                axios.get(`${this.config.apihost}/download/${this.session._id}/token`).then((res) => {
+                    const url = `${this.config.apihost}/download/${this.session._id}/${this.path}?token=${res.data}`;
+                    this.open = true;
+                    this.$nextTick(() => {
+                        nv.attachToCanvas(this.$refs.canvas);
+                        nv.loadVolumes([
+                            {
+                                url: url,
+                                volume: { hdr: null, img: null },
+                                colorMap: 'gray',
+                                opacity: 1,
+                                visible: true,
+                            },
+                        ]);
+                    });
                 });
-            });
+            }
         },
 
         close() {

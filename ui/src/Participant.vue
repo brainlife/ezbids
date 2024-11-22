@@ -76,13 +76,12 @@
 <script lang="ts">
 import { mapState } from 'vuex';
 import { defineComponent } from 'vue';
-
-import { OrganizedSubject } from './store';
 // import { updateParticipantsInfo } from './libUnsafe';
 
 //element-plus icons are bad .. replace it with fontawesome
 // @ts-ignore
 import { Remove } from '@element-plus/icons/lib';
+import { OrganizedSubject } from './store/store.types';
 
 export default defineComponent({
     components: {

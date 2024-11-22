@@ -314,9 +314,7 @@
 import { mapState, mapGetters } from 'vuex';
 import { defineComponent } from 'vue';
 import columnSelecter from './components/columnselecter.vue';
-
-import { IObject } from './store';
-
+import { IObject } from './store/store.types';
 import { createEventObjects, mapEventColumns } from './libUnsafe';
 
 interface Section {

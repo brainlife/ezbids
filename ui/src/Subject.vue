@@ -92,8 +92,9 @@
 
 <script lang="ts">
 import { mapState } from 'vuex';
-import { Subject } from './store';
+
 import { defineComponent } from 'vue';
+import { Subject } from './store/store.types';
 
 export default defineComponent({
     data() {

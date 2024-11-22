@@ -311,8 +311,6 @@ import ModalityForm from './components/modalityForm.vue';
 
 import { prettyBytes } from './filters';
 
-import { Series, IObject, IEzbids } from './store';
-
 import { validateEntities, validate_B0FieldIdentifier_B0FieldSource, metadataAlerts } from './libUnsafe';
 import anatYaml from '../src/assets/schema/rules/sidecars/anat.yaml';
 import funcYaml from '../src/assets/schema/rules/sidecars/func.yaml';
@@ -329,7 +327,7 @@ import AsyncImageLink from './components/AsyncImageLink.vue';
 import { Splitpanes, Pane } from 'splitpanes';
 
 import 'splitpanes/dist/splitpanes.css';
-import { setMaxListeners } from 'process';
+import { IEZBIDS, IObject, Series } from './store/store.types';
 
 export default defineComponent({
     components: {
@@ -381,7 +379,7 @@ export default defineComponent({
             this.showInfo[entity] = !this.showInfo[entity];
         },
 
-        BIDSURI($root: IEzbids, b: boolean) {
+        BIDSURI($root: IEZBIDS, b: boolean) {
             if (b === true) {
                 $root.BIDSURI = true;
                 localStorage.setItem('checkboxState', 'true');

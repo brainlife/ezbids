@@ -235,23 +235,18 @@ export interface ISession {
     finalize_finish_date?: string;
 }
 
+export interface IEZBIDSUpdateSchema {
+    _session_id: string;
+
+    original: any;
+    updated: any;
+
+    create_date: string;
+    update_date: string;
+}
+
 export type EzbidsProcessingMode = 'EDGE' | 'SERVER' | null;
 
-export interface IEZBIDS {
-    notLoaded: boolean;
-    datasetDescription: DatasetDescription;
-    readme: string;
-    participantsColumn: { [key: string]: any };
-    participantsInfo: { [key: string]: any };
-    subjects: Subject[];
-    series: Series[];
-    objects: IObject[];
-    BIDSURI: boolean;
-    _organized: OrganizedSubject[];
-    defacingMethod: string;
-    includeExcluded: boolean;
-    sideCar: { [key: string]: any };
-}
 export interface IEvents {
     columns: {
         onsetLogic: string; // eq
@@ -283,6 +278,23 @@ export interface IEvents {
     columnKeys: string[] | null;
     sampleValues: { [key: string]: string[] };
     loaded: boolean;
+}
+
+export interface IEZBIDS {
+    notLoaded: boolean;
+    datasetDescription: DatasetDescription;
+    readme: string;
+    participantsColumn: { [key: string]: any };
+    participantsInfo: { [key: string]: any };
+    subjects: Subject[];
+    series: Series[];
+    objects: IObject[];
+    BIDSURI: boolean;
+    _organized: OrganizedSubject[];
+    defacingMethod: string;
+    includeExcluded: boolean;
+    sideCar: { [key: string]: any };
+    events: IEvents;
 }
 
 export interface BIDSDatatypeMetadataOptionConditions {

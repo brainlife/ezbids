@@ -402,8 +402,6 @@ import aslYaml from '../src/assets/schema/rules/sidecars/asl.yaml';
 import petYaml from '../src/assets/schema/rules/sidecars/pet.yaml';
 import megYaml from '../src/assets/schema/rules/sidecars/meg.yaml';
 import metadataInfo from '../src/assets/schema/rules/sidecars/metadata.yaml';
-
-import { IObject, Session, OrganizedSession, OrganizedSubject } from './store';
 import { prettyBytes } from './filters';
 import {
     setRun,
@@ -423,6 +421,7 @@ import AsyncImageLink from './components/AsyncImageLink.vue';
 import { Splitpanes, Pane } from 'splitpanes';
 
 import 'splitpanes/dist/splitpanes.css';
+import { IObject, OrganizedSession, OrganizedSubject, Session } from './store/store.types';
 
 interface Section {
     [key: string]: IObject[];
@@ -663,8 +662,8 @@ export default defineComponent({
 
             if (o._type.startsWith('fmap/') || o._type === 'perf/m0scan') {
                 //Ensure other fmap series aren't included in the IntendedFor mapping
-                if (o.IntendedFor.length > 0) {
-                    o.IntendedFor.forEach((i) => {
+                if ((o.IntendedFor || []).length > 0) {
+                    (o.IntendedFor || []).forEach((i) => {
                         let series_idx = this.ezbids.objects[i].series_idx;
                         if (this.ezbids.objects[i]._type.startsWith('fmap/')) {
                             o.validationErrors.push(

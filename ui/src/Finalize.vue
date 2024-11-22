@@ -138,7 +138,7 @@ import showfile from './components/showfile.vue';
 import axios from './axios.instance';
 
 import { ElNotification } from 'element-plus';
-import { hasAuth } from './lib';
+import { authRequired } from './lib';
 
 export default defineComponent({
     components: {
@@ -153,9 +153,9 @@ export default defineComponent({
     },
 
     computed: {
-        ...mapState(['ezbids', 'config', 'bidsSchema', 'session', 'events']),
+        ...mapState(['ezbids', 'config', 'bidsSchema', 'session', 'events', 'ezbidsProcessingMode']),
         hasAuth() {
-            return hasAuth();
+            return authRequired();
         },
     },
 
@@ -184,7 +184,7 @@ export default defineComponent({
             });
         },
 
-        dofinalize(cb: (err: string | null) => void) {
+        async dofinalize(cb: (err: string | null) => void) {
             //TODO - why can't server just look up the bids schema by itself!?
             //mapping between things like like "subject" to "sub"
             const entityMappings = {} as { [key: string]: string };
@@ -192,8 +192,7 @@ export default defineComponent({
                 entityMappings[key] = this.bidsSchema.entities[key].entity;
             }
 
-            axios
-                .post(`${this.config.apihost}/session/${this.session._id}/finalize`, {
+            const res = await this.api.runFinalize(this.session._id, {
                     //basically we just need everything except _organized
 
                     //we store these so we can reload the session later
@@ -211,10 +210,9 @@ export default defineComponent({
                     readme: this.ezbids.readme,
                     participantsColumn: this.ezbids.participantsColumn,
                     participantInfo: this.ezbids.participantsInfo,
-                })
-                .then((res) => {
-                    if (cb) cb(res.data === 'ok' ? null : res.data);
-                });
+            });
+
+            if (cb) cb(res === 'ok' ? null : res);
         },
 
         /*
@@ -229,10 +227,7 @@ export default defineComponent({
         async download(fileName: string) {
             if (!fileName) return;
             try {
-                const res = await axios.get(`${this.config.apihost}/download/${this.session._id}/token`);
-                const shortLivedJWT = res.data;
-
-                window.location.href = `${this.config.apihost}/download/${this.session._id}/${fileName}?token=${shortLivedJWT}`;
+                this.api.downloadFile(this.session._id, fileName);
             } catch (e) {
                 console.error(e);
                 ElNotification({
@@ -266,13 +261,19 @@ export default defineComponent({
 
         async sendOpenneuro() {
             try {
-                const res = await axios.get(`${this.config.apihost}/download/${this.session._id}/token`);
-                const shortLivedJWT = res.data;
-
-                const url = `${this.config.apihost}/download/${this.session._id}/bids/${this.ezbids.datasetDescription.Name}?token=${shortLivedJWT}`;
-
-                const fullurl = new URL(url, document.baseURI).href;
-                window.open('https://openneuro.org/import?url=' + encodeURI(fullurl));
+                if (this.ezbidsProcessingMode === 'EDGE') {
+                    // ANIBAL-TODO: It looks like implementing this for edge will break
+                    // our ability to send data to openenuro as openneuro downloads the data from the server via
+                    // the provided link
+                } else {
+                    const res = await axios.get(`${this.config.apihost}/download/${this.session._id}/token`);
+                    const shortLivedJWT = res.data;
+    
+                    const url = `${this.config.apihost}/download/${this.session._id}/bids/${this.ezbids.datasetDescription.Name}?token=${shortLivedJWT}`;
+    
+                    const fullurl = new URL(url, document.baseURI).href;
+                    window.open('https://openneuro.org/import?url=' + encodeURI(fullurl));
+                }
 
             } catch (e) {
                 console.error(e);
