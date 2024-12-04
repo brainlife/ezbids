@@ -265,6 +265,8 @@ import { defineComponent } from 'vue';
 import { mapState } from 'vuex';
 import { formatNumber } from './filters';
 import { ElNotification } from 'element-plus';
+import { Dcm2niix } from '@niivue/dcm2niix';
+
 import { hasJWT, authRequired } from './lib';
 
 const SIZE_LIMIT_GB = 0.001;
@@ -285,7 +287,6 @@ export default defineComponent({
 
             uploaded: [], //index of files that are successfully uploaded
             failed: [], //index of files failed to upload
-
             batches: [], //object containing information for each batch upload {evt, fileidx}
 
             opened: [],
@@ -353,22 +354,29 @@ export default defineComponent({
             this.dragging = false;
             this.starting = true;
 
-            //I can't wrap this around timeout because chrome won't allow accessing dataTransfer.items outside dropevent context for security reason
             await this.listDropFiles(e.dataTransfer?.items);
             this.upload();
         },
 
-        selectit(e /*: Event*/) {
+        async selectit(e /*: Event*/) {
             const target = e.target; /* as HTMLInputElement*/
             this.files = target.files /* as FileList*/;
 
-            this.starting = true;
+            // dcm2niix --progress y -v 1 -ba n -z o -d 9 -f 'time-%t-sn-%s' $path
+
+            const dcm2niix = new Dcm2niix();
+            await dcm2niix.init();
+            const convertedFiles = await dcm2niix.input(target.files).v(1).ba('n').z('o').d(9).f('time-%t-sn-%s').run();
+
+            console.log('convertedFiles', convertedFiles);
+
+            // this.starting = true;
             //this.$nextTick() won't update the UI with starting flag change
             setTimeout(() => {
                 for (let file of this.files) {
                     file.path = file.webkitRelativePath;
                 }
-                this.upload();
+                // this.upload();
             }, 1000);
         },
 
