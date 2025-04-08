@@ -9,7 +9,7 @@
                 <div class="menu-footer">
                     <a href="https://brainlife.io" target="_blank" style="margin-right: 8px; text-decoration: none">
                         <el-button type="success" style="display: flex; background-color: #20ab5c">
-                            Open Brainlife
+                            Brainlife
                         </el-button>
                     </a>
                     <a
@@ -17,9 +17,7 @@
                         target="_blank"
                         style="margin-right: 8px; text-decoration: none"
                     >
-                        <el-button type="success" style="display: flex; background-color: #20ab5c">
-                            Open Github
-                        </el-button>
+                        <el-button type="success" style="display: flex; background-color: #20ab5c"> Github </el-button>
                     </a>
                     <a
                         href="https://brainlife.io/docs/using_ezBIDS/"
@@ -27,7 +25,7 @@
                         style="margin-right: 8px; text-decoration: none"
                     >
                         <el-button type="success" style="display: flex; background-color: #20ab5c">
-                            Open Documentation
+                            Documentation
                         </el-button>
                     </a>
                     <ManageUsersDialog v-if="authRequired && hasJWT"></ManageUsersDialog>
