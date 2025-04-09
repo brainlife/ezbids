@@ -200,7 +200,15 @@
                                 </small>
                             </el-link>
                         </p>
-                        <pre v-if="opened.includes(idx)" class="status">{{ object }}</pre>
+
+                        <splitpanes v-if="opened.includes(idx)" class="default-theme vis-panes">
+                            <pane size="30" class="vis-pane">
+                                <pre class="status">{{ object }}</pre>
+                            </pane>
+                            <pane class="vis-pane">
+                                <canvas :id="`vis-${idx}`" class="vis"></canvas>
+                            </pane>
+                        </splitpanes>
                     </div>
                 </div>
                 <div v-if="!ezbids.notLoaded && !ezbids.objects.length">
@@ -265,15 +273,20 @@ import { defineComponent } from 'vue';
 import { mapState } from 'vuex';
 import { formatNumber } from './filters';
 import { ElNotification } from 'element-plus';
-import { Dcm2niix } from '@niivue/dcm2niix';
-
+import * as niivue from '@niivue/niivue';
 import { hasJWT, authRequired } from './lib';
 
-const SIZE_LIMIT_GB = 0.001;
+// @ts-ignore
+import { Splitpanes, Pane } from 'splitpanes';
+import 'splitpanes/dist/splitpanes.css';
+
+const SIZE_LIMIT_GB = 4;
 
 export default defineComponent({
     components: {
         AnalysisErrors: () => import('./components/analysisErrors.vue'),
+        Splitpanes,
+        Pane,
     },
     data() {
         return {
@@ -330,7 +343,23 @@ export default defineComponent({
         toggleObject(idx) {
             let pos = this.opened.indexOf(idx);
             if (~pos) this.opened.splice(pos, 1);
-            else this.opened.push(idx);
+            else {
+                this.opened.push(idx);
+                const image = this.ezbids.objects[idx].items.find(
+                    (item) => item.path.endsWith('.nii') || item.path.endsWith('.nii.gz')
+                );
+                if (!image) return;
+
+                const file = this.$store.state.processedFiles.find((f) => f.name === image.path);
+                if (!file) return;
+
+                setTimeout(() => {
+                    const nv = new niivue.Niivue();
+                    nv.attachTo(`vis-${idx}`);
+                    nv.setSliceType(nv.sliceTypeRender);
+                    nv.loadFromFile(file);
+                }, 500);
+            }
         },
 
         batchStatus(batch) {
@@ -362,21 +391,16 @@ export default defineComponent({
             const target = e.target; /* as HTMLInputElement*/
             this.files = target.files /* as FileList*/;
 
-            // dcm2niix --progress y -v 1 -ba n -z o -d 9 -f 'time-%t-sn-%s' $path
-
-            const dcm2niix = new Dcm2niix();
-            await dcm2niix.init();
-            const convertedFiles = await dcm2niix.input(target.files).v(1).ba('n').z('o').d(9).f('time-%t-sn-%s').run();
-
-            console.log('convertedFiles', convertedFiles);
+            if (this.files.length == 0) return;
 
             // this.starting = true;
             //this.$nextTick() won't update the UI with starting flag change
             setTimeout(() => {
+                this.starting = true;
                 for (let file of this.files) {
                     file.path = file.webkitRelativePath;
                 }
-                // this.upload();
+                this.upload();
             }, 1000);
         },
 
@@ -497,6 +521,8 @@ export default defineComponent({
                 const desc = tokens[0];
                 this.$store.state.ezbids.datasetDescription.Name = desc;
             }
+
+            await this.api.preprocess();
         },
 
         loadedPercentage(file_id) {
@@ -579,6 +605,15 @@ export default defineComponent({
     font-size: 90%;
 }
 
+.vis-panes {
+    max-width: 70vw;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+.vis-pane {
+    height: auto;
+}
+
 pre.status {
     background-color: #666;
     color: white;
@@ -588,5 +623,9 @@ pre.status {
     margin-top: 0;
     margin-bottom: 5px;
     border-radius: 5px;
+}
+
+canvas.vis {
+    height: 300px;
 }
 </style>

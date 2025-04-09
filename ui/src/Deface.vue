@@ -15,17 +15,29 @@
                     placeholder="Select a defacing method"
                     style="width: 300px"
                     @change="changeMethod"
+                    v-if="ezbidsProcessingMode == 'SERVER'"
                 >
                     <el-option value="" label="Don't Deface (use original)" />
                     <el-option value="quickshear" label="Quickshear (recommended)" />
                     <el-option value="pydeface" label="pyDeface (more common but takes much longer time)" />
                 </el-select>
+                <el-select
+                    v-model="ezbids.defacingMethod"
+                    placeholder="Select a defacing method"
+                    style="width: 300px"
+                    @change="changeMethod"
+                    v-if="ezbidsProcessingMode == 'EDGE'"
+                >
+                    <el-option value="" label="Don't Deface (use original)" />
+                    <el-option value="brainchop" label="Brainchop" />
+                    <el-option value="bet" label="FSL BET" />
+                </el-select>
             </el-form-item>
             <!--sub options-->
-            <p v-if="ezbids.defacingMethod == 'quickshear'">
+            <p v-if="ezbidsProcessingMode == 'SERVER' && ezbids.defacingMethod == 'quickshear'">
                 <small>* Use ROBEX and QuickShear Average processing time. ~1 min per image</small>
             </p>
-            <p v-if="ezbids.defacingMethod == 'pydeface'">
+            <p v-if="ezbidsProcessingMode == 'SERVER' && ezbids.defacingMethod == 'pydeface'">
                 <small>* pydeface uses FSL to align facial mask template. ~5 min per image</small>
             </p>
         </el-form>
@@ -153,7 +165,7 @@ export default defineComponent({
     },
     */
     computed: {
-        ...mapState(['ezbids', 'config', 'session', 'bidsSchema']),
+        ...mapState(['ezbids', 'config', 'session', 'bidsSchema', 'ezbidsProcessingMode']),
         ...mapGetters(['getBIDSEntities']),
 
         isDefacing() {

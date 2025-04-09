@@ -13,7 +13,7 @@
         "@fortawesome/free-solid-svg-icons": "^6.1.1",
         "@fortawesome/vue-fontawesome": "^3.0.0-5",
         "@niivue/dcm2niix": "^0.1.1",
-        "@niivue/niivue": "^0.21.1",
+        "@niivue/niivue": "^0.49.0",
         "axios": "^0.24",
         "element-plus": "^1.2.0-beta.6",
         "js-yaml": "^4.1.0",

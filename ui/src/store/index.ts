@@ -46,6 +46,9 @@ const state = {
     page: 'upload',
     ezbidsProcessingMode: null as EzbidsProcessingMode,
 
+    files: [] as File[],
+    processedFiles: [] as File[],
+
     //current state of the session
     //TODO: WATCH OUT - this gets wiped out when we load ezBIDS_core.json from analyzer
     ezbids: {
@@ -240,10 +243,20 @@ const store = createStore({
             state.page = page;
         },
 
+        setFiles(state, files) {
+            state.files = files;
+        },
+
+        setProcessedFiles(state, processedFiles) {
+            state.processedFiles = processedFiles;
+        },
+
         reset(state) {
             state.session = null;
             state.page = 'upload'; //current page
             state.ezbidsProcessingMode = null; // reset processing mode
+            state.files = [];
+            state.processedFiles = [];
             state.ezbids = {
                 notLoaded: true,
 

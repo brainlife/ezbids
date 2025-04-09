@@ -7,3 +7,4 @@ handler/convert.js
 ui/test/events/*.js
 api/*.ts
 ui/src/Finalize.vue
+ui/src/assets/edge/bet2.js

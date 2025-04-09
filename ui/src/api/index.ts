@@ -6,6 +6,7 @@ import store from '../store';
 import { apihost, getShortLivedJWTToken } from './helpers';
 import { AxiosError } from 'axios';
 import Convert from 'ansi-to-html';
+import { dcmToNii, findMetadata, preprocess } from './edge';
 
 const convert = new Convert();
 
@@ -14,6 +15,7 @@ export interface API {
         sessionId: string
     ) => Promise<{ session: Partial<ISession> | null; ezbidsProcessingMode: EzbidsProcessingMode }>;
     createNewSession: () => Promise<Partial<ISession>>;
+    preprocess: () => Promise<void>;
     getEZBIDSCoreJSONFile: (sessionId: string) => Promise<IEZBIDS | null>;
     getEZBIDSUpdated: (sessionId: string) => Promise<IEZBIDSUpdateSchema['updated'] | null>;
     getDefaceStatus: (sessionId: string) => Promise<{ defaceContents: string; status: 'FINISHED' | 'FAILED' } | null>;
@@ -59,6 +61,7 @@ export interface API {
 
 const apiInstance: API = {
     getSessionById: async (sessionId) => {
+        console.log('getSessionById', sessionId);
         // The processing mode may not be set in the store yet. We derive its value by checking
         // both the local storage and the database.
         if (!sessionId) throw new Error('no session id');
@@ -66,7 +69,7 @@ const apiInstance: API = {
             const session = localStorage.getItem(sessionId);
             if (session) {
                 const parsedSession = JSON.parse(session);
-                return new Promise((resolve) => resolve({ session: parsedSession, ezbidsProcessingMode: 'EDGE' }));
+                return { session: parsedSession, ezbidsProcessingMode: 'EDGE' };
             }
 
             const res = await axios.get<ISession>(`${apihost}/session/${sessionId}`);
@@ -91,7 +94,12 @@ const apiInstance: API = {
                 _id: uuid(),
                 ownerId: 0,
                 allowedUsers: [],
+                dicomDone: 1,
+                dicomCount: 1,
                 create_date: new Date().toISOString(), //"2021-08-27T21:24:21.610Z"
+                // status: 'analyzed',
+                // status_msg: 'successfully run preprocess.sh',
+                // pre_finish_date: new Date(),
             };
             localStorage.setItem(`${newSession._id}`, JSON.stringify(newSession));
             return new Promise((resolve) => resolve(newSession));
@@ -108,7 +116,11 @@ const apiInstance: API = {
         try {
             if (processingMode === 'EDGE') {
                 // ANIBAL-TODO: implement
-                return Promise.reject('not yet implemented');
+
+                return {
+                    defaceContents: '',
+                    status: 'FINISHED',
+                };
             } else {
                 let jwt = await getShortLivedJWTToken(sessionId);
                 const finished = await axios.get<string>(
@@ -181,8 +193,7 @@ const apiInstance: API = {
         if (!processingMode) throw new Error('no processing mode');
         try {
             if (processingMode === 'EDGE') {
-                // ANIBAL-TODO: implement
-                return Promise.reject('not yet implemented');
+                return 'ok';
             } else {
                 const res = await axios.post<string>(`${apihost}/session/${sessionId}/deface`, {
                     list: anatObjectList,
@@ -245,17 +256,18 @@ const apiInstance: API = {
     storeFiles: async function (sessionId, onComplete, serverVariables) {
         const processingMode = store.state.ezbidsProcessingMode;
         if (!processingMode) throw new Error('no processing mode');
-        if (processingMode === 'EDGE') {
-            // ANIBAL-TODO: implement storing files in the browser
-            // Can we just dump the file contents into local storage? Not
-            // quite sure how one would store non text files (like DICOMs) however
+        if (serverVariables === undefined) throw new Error('Server variables are required');
 
-            // Note: serverVariables is an optional argument that is used to track/update
-            // state in the Upload.vue component. I think EDGE mode can ignore this as writes to
-            // local storage should be synchronous?
-            return Promise.reject('not yet implemented');
+        if (processingMode === 'EDGE') {
+            store.commit('setFiles', serverVariables.files);
+            store.commit('updateEzbids', {
+                status: 'uploaded',
+                status_msg: 'Waiting in the queue..',
+                upload_finish_date: new Date(),
+            });
+
+            onComplete();
         } else {
-            if (serverVariables === undefined) throw new Error('Server variables are required');
             const { files, failed, batches, ignoreCount, uploaded } = serverVariables;
 
             //find next files to upload
@@ -349,6 +361,26 @@ const apiInstance: API = {
             }
         }
     },
+    preprocess: async function () {
+        const processingMode = store.state.ezbidsProcessingMode;
+        if (!processingMode) throw new Error('no processing mode');
+
+        if (processingMode === 'EDGE') {
+            const convertedFiles = await dcmToNii(store.state.files);
+            const ezbids_CORE = await preprocess(convertedFiles);
+
+            store.commit('setProcessedFiles', convertedFiles);
+
+            const sessionId = store.state.session._id;
+            localStorage.setItem(`${sessionId}.core`, JSON.stringify(ezbids_CORE));
+
+            const session = JSON.parse(localStorage.getItem(sessionId));
+            session.status = 'analyzed';
+            session.status_msg = 'successfully analyzed';
+            session.pre_finish_date = new Date();
+            localStorage.setItem(sessionId, JSON.stringify(session));
+        }
+    },
     /**
      * ANIBAL-TODO: double check that this function is necessary, remove if not
      * I'm honestly not sure that this function is even used...
@@ -380,8 +412,8 @@ const apiInstance: API = {
 
         try {
             if (processingMode === 'EDGE') {
-                // ANIBAL-TODO: implement returning ezBIDS_core.json file
-                return Promise.resolve(null);
+                const ezbids_CORE = JSON.parse(localStorage.getItem(`${store.state.session._id}.core`));
+                return ezbids_CORE;
             } else {
                 const jwtRes = await axios.get(`${apihost}/download/${sessionId}/token`);
                 const res = await axios.get<IEZBIDS>(

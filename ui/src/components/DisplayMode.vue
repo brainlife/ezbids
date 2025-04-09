@@ -1,5 +1,5 @@
 <template>
-    <div v-if="ezbidsProcessingMode !== undefined">
+    <div v-if="ezbidsProcessingMode !== null">
         <h1 style="color: #e6a23c; margin-left: 1rem; display: flex; align-items: center">
             {{ ezbidsProcessingMode }}
 
