@@ -26,7 +26,7 @@ export default defineComponent({
     },
 
     computed: {
-        ...mapState(['session', 'config', 'ezbidsProcessingMode']),
+        ...mapState(['session', 'config', 'ezbidsProcessingMode', 'processedFiles']),
     },
 
     watch: {
@@ -42,8 +42,12 @@ export default defineComponent({
     methods: {
         load() {
             if (this.ezbidsProcessingMode === 'EDGE') {
-                // ANIBAL-TODO: Need to link the niivue component to some frontend generated image
-                throw new Error('not yet implemented');
+                const file = this.processedFiles.find((f: File) => f.name === this.path);
+                this.open = true;
+                this.$nextTick(() => {
+                    nv.attachToCanvas(this.$refs.canvas);
+                    nv.loadFromFile(file);
+                });
             } else {
                 axios.get(`${this.config.apihost}/download/${this.session._id}/token`).then((res) => {
                     const url = `${this.config.apihost}/download/${this.session._id}/${this.path}?token=${res.data}`;

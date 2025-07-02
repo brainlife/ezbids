@@ -8,7 +8,7 @@ export async function dcmToNii(files: File[]) {
     return convertedFiles;
 }
 
-async function readTextFile(file: File): Promise<string> {
+export async function readTextFile(file: File): Promise<string> {
     return await new Promise((resolve) => {
         let fileReader = new FileReader();
         fileReader.onload = (e) => resolve(fileReader.result as string);

@@ -6,7 +6,7 @@ import store from '../store';
 import { apihost, getShortLivedJWTToken } from './helpers';
 import { AxiosError } from 'axios';
 import Convert from 'ansi-to-html';
-import { dcmToNii, findMetadata, preprocess } from './edge';
+import { dcmToNii, findMetadata, preprocess, readTextFile } from './edge';
 
 const convert = new Convert();
 
@@ -164,7 +164,7 @@ const apiInstance: API = {
         try {
             if (processingMode === 'EDGE') {
                 // ANIBAL-TODO: implement
-                return Promise.reject('not yet implemented');
+                return Promise.reject('cancelDeface not yet implemented');
             } else {
                 const res = await axios.post<string>(`${apihost}/session/${sessionId}/canceldeface`);
                 return res.data;
@@ -179,7 +179,7 @@ const apiInstance: API = {
         try {
             if (processingMode === 'EDGE') {
                 // ANIBAL-TODO: implement
-                return Promise.reject('not yet implemented');
+                return Promise.reject('resetDeface not yet implemented');
             } else {
                 const res = await axios.post<string>(`${apihost}/session/${sessionId}/resetdeface`);
                 return res.data;
@@ -211,7 +211,7 @@ const apiInstance: API = {
         try {
             if (processingMode === 'EDGE') {
                 // ANIBAL-TODO: implement
-                return Promise.reject('not yet implemented');
+                return Promise.reject('runFinalize not yet implemented');
             } else {
                 const res = await axios.post<string>(`${apihost}/session/${sessionId}/finalize`, args);
                 return res.data;
@@ -226,7 +226,7 @@ const apiInstance: API = {
         try {
             if (processingMode === 'EDGE') {
                 // ANIBAL-TODO: implement
-                return Promise.reject('not yet implemented');
+                return Promise.reject('downloadFile not yet implemented');
             } else {
                 const jwt = await getShortLivedJWTToken(sessionId);
                 window.location.href = `${apihost}/download/${sessionId}/${pathName}?token=${jwt.data}`;
@@ -241,8 +241,12 @@ const apiInstance: API = {
         if (!processingMode) throw new Error('no processing mode');
         try {
             if (processingMode === 'EDGE') {
-                // ANIBAL-TODO: implement
-                return Promise.reject('not yet implemented');
+                const file = store.state.processedFiles.find((f) => f.name === path);
+                if (file) {
+                    return readTextFile(file);
+                } else {
+                    return Promise.reject('file not found');
+                }
             } else {
                 const jwt = await getShortLivedJWTToken(sessionId);
                 const res = await axios.get(`${apihost}/download/${sessionId}/${path}?token=${jwt.data}`);
@@ -364,21 +368,24 @@ const apiInstance: API = {
     preprocess: async function () {
         const processingMode = store.state.ezbidsProcessingMode;
         if (!processingMode) throw new Error('no processing mode');
-
         if (processingMode === 'EDGE') {
-            const convertedFiles = await dcmToNii(store.state.files);
-            const ezbids_CORE = await preprocess(convertedFiles);
+            try {
+                const convertedFiles = await dcmToNii(store.state.files);
+                const ezbids_CORE = await preprocess(convertedFiles);
 
-            store.commit('setProcessedFiles', convertedFiles);
+                store.commit('setProcessedFiles', convertedFiles);
 
-            const sessionId = store.state.session._id;
-            localStorage.setItem(`${sessionId}.core`, JSON.stringify(ezbids_CORE));
+                const sessionId = store.state.session._id;
+                localStorage.setItem(`${sessionId}.core`, JSON.stringify(ezbids_CORE));
 
-            const session = JSON.parse(localStorage.getItem(sessionId));
-            session.status = 'analyzed';
-            session.status_msg = 'successfully analyzed';
-            session.pre_finish_date = new Date();
-            localStorage.setItem(sessionId, JSON.stringify(session));
+                const session = JSON.parse(localStorage.getItem(sessionId));
+                session.status = 'analyzed';
+                session.status_msg = 'successfully analyzed';
+                session.pre_finish_date = new Date();
+                localStorage.setItem(sessionId, JSON.stringify(session));
+            } catch (error) {
+                store.commit('setProcessError', error.message);
+            }
         }
     },
     /**
@@ -432,8 +439,7 @@ const apiInstance: API = {
 
         try {
             if (processingMode === 'EDGE') {
-                // ANIBAL-TODO: implement
-                return Promise.reject('not yet implemented');
+                return store.state.processError;
             } else {
                 const jwt = await axios.get<string>(`${apihost}/download/${sessionId}/token`);
                 const res = await axios.get<string>(

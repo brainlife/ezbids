@@ -48,6 +48,7 @@ const state = {
 
     files: [] as File[],
     processedFiles: [] as File[],
+    processError: null as string | null, //error message from processing
 
     //current state of the session
     //TODO: WATCH OUT - this gets wiped out when we load ezBIDS_core.json from analyzer
@@ -246,9 +247,11 @@ const store = createStore({
         setFiles(state, files) {
             state.files = files;
         },
-
         setProcessedFiles(state, processedFiles) {
             state.processedFiles = processedFiles;
+        },
+        setProcessError(state, error) {
+            state.processError = error;
         },
 
         reset(state) {
