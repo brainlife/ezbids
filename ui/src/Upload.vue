@@ -612,6 +612,8 @@ export default defineComponent({
 }
 .vis-pane {
     height: auto;
+    display: flex;
+    flex-direction: column;
 }
 
 pre.status {
@@ -621,8 +623,9 @@ pre.status {
     overflow: auto;
     padding: 10px;
     margin-top: 0;
-    margin-bottom: 5px;
+    margin-bottom: 0;
     border-radius: 5px;
+    flex-grow: 1;
 }
 
 canvas.vis {
