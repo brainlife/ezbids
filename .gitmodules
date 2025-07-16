@@ -2,3 +2,8 @@
 	path = bids-specification
 	url = https://github.com/bids-standard/bids-specification
 	branch = master
+
+[submodule "bids-specification"]
+	path = ui/src/bids-specification
+	url = https://github.com/bids-standard/bids-specification
+	branch = master

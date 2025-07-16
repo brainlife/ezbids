@@ -1,4 +1,8 @@
 import { Dcm2niix } from '@niivue/dcm2niix';
+import anatYaml from '../bids-specification/src/schema/rules/datatypes/anat.yaml';
+import funcYaml from '../bids-specification/src/schema/rules/datatypes/func.yaml';
+import fmapYaml from '../bids-specification/src/schema/rules/datatypes/fmap.yaml';
+import dwiYaml from '../bids-specification/src/schema/rules/datatypes/dwi.yaml';
 
 export async function dcmToNii(files: File[]) {
     // dcm2niix --progress y -v 1 -ba n -z o -d 9 -f 'time-%t-sn-%s' $path
@@ -893,149 +897,167 @@ function createLookupInfo() {
 
     const acceptedDatatypes = Object.keys(datatypesYaml); // Assuming accepted datatypes are defined in YAML
 
-    // acceptedDatatypes.forEach((datatype) => {
-    //     if (!datatypesYaml[datatype]) return;
+    acceptedDatatypes.forEach((datatype) => {
+        if (!datatypesYaml[datatype]) return;
 
-    //     lookupDic[datatype] = {};
+        lookupDic[datatype] = {};
 
-    //     const rulePath = path.join(__dirname, 'datatype_suffix_rules', `${datatype}.yaml`);
-    //     const rule = yaml.load(fs.readFileSync(rulePath, 'utf8'));
+        // const rulePath = path.join(__dirname, 'datatype_suffix_rules', `${datatype}.yaml`);
+        // const rule = yaml.load(fs.readFileSync(rulePath, 'utf8'));
 
-    //     Object.keys(rule).forEach((key) => {
-    //         let suffixes = rule[key]['suffixes'];
+        let rule;
+        switch (datatype) {
+            case 'anat':
+                rule = anatYaml;
+                break;
+            case 'func':
+                rule = funcYaml;
+                break;
+            case 'fmap':
+                rule = fmapYaml;
+                break;
+            case 'dwi':
+                rule = dwiYaml;
+                break;
+        }
 
-    //         // Remove or filter suffixes based on datatype-specific rules
-    //         switch (datatype) {
-    //             case 'anat':
-    //                 suffixes = suffixes.filter((x) => !['T2star', 'FLASH', 'PD'].includes(x));
-    //                 break;
-    //             case 'dwi':
-    //                 suffixes = suffixes.filter((x) => ['dwi', 'sbref'].includes(x));
-    //                 break;
-    //             case 'fmap':
-    //                 suffixes = suffixes.filter((x) => !['m0scan'].includes(x));
-    //                 break;
-    //             case 'func':
-    //                 suffixes = suffixes.filter((x) => !['events', 'stim', 'physio', 'phase'].includes(x));
-    //                 break;
-    //             case 'perf':
-    //                 suffixes = suffixes.filter((x) => !['aslcontext', 'asllabeling', 'physio', 'stim'].includes(x));
-    //                 break;
-    //             case 'pet':
-    //                 suffixes = suffixes.filter((x) => ['pet', 'blood'].includes(x));
-    //                 break;
-    //             case 'meg':
-    //                 suffixes = suffixes.filter((x) => x === 'meg' && key === 'meg');
-    //                 break;
-    //         }
+        if (!rule) return lookupDic;
 
-    //         suffixes.forEach((suffix) => {
-    //             lookupDic[datatype][suffix] = {
-    //                 search_terms: [suffix.toLowerCase()],
-    //                 accepted_entities: [],
-    //                 required_entities: [],
-    //                 conditions: [],
-    //             };
+        Object.keys(rule).forEach((key) => {
+            let suffixes = rule[key]['suffixes'];
 
-    //             if (rule[key]['suffixes'].includes(suffix)) {
-    //                 const entities = rule[key]['entities'];
+            // Remove or filter suffixes based on datatype-specific rules
+            switch (datatype) {
+                case 'anat':
+                    suffixes = suffixes.filter((x) => !['T2star', 'FLASH', 'PD'].includes(x));
+                    break;
+                case 'dwi':
+                    suffixes = suffixes.filter((x) => ['dwi', 'sbref'].includes(x));
+                    break;
+                case 'fmap':
+                    suffixes = suffixes.filter((x) => !['m0scan'].includes(x));
+                    break;
+                case 'func':
+                    suffixes = suffixes.filter((x) => !['events', 'stim', 'physio', 'phase'].includes(x));
+                    break;
+                case 'perf':
+                    suffixes = suffixes.filter((x) => !['aslcontext', 'asllabeling', 'physio', 'stim'].includes(x));
+                    break;
+                case 'pet':
+                    suffixes = suffixes.filter((x) => ['pet', 'blood'].includes(x));
+                    break;
+                case 'meg':
+                    suffixes = suffixes.filter((x) => x === 'meg' && key === 'meg');
+                    break;
+            }
 
-    //                 lookupDic[datatype][suffix]['accepted_entities'] = Object.keys(entities).filter(
-    //                     (x) => !['subject', 'session'].includes(x)
-    //                 );
+            suffixes.forEach((suffix) => {
+                lookupDic[datatype][suffix] = {
+                    search_terms: [suffix.toLowerCase()],
+                    accepted_entities: [],
+                    required_entities: [],
+                    conditions: [],
+                };
 
-    //                 lookupDic[datatype][suffix]['required_entities'] = Object.keys(entities).filter(
-    //                     (x) => !['subject', 'session'].includes(x) && entities[x] === 'required'
-    //                 );
+                if (rule[key]['suffixes'].includes(suffix)) {
+                    const entities = rule[key]['entities'];
 
-    //                 // Additional datatype-specific rules
-    //                 if (datatype === 'anat') {
-    //                     lookupDic[datatype][suffix]['conditions'].push('uniqueDic["ndim"] == 3');
+                    lookupDic[datatype][suffix]['accepted_entities'] = Object.keys(entities).filter(
+                        (x) => !['subject', 'session'].includes(x)
+                    );
 
-    //                     if (suffix === 'T1w') {
-    //                         lookupDic[datatype][suffix]['search_terms'].push(
-    //                             'tfl3d',
-    //                             'tfl_3d',
-    //                             'mprage',
-    //                             'mp_rage',
-    //                             'spgr',
-    //                             'tflmgh',
-    //                             'tfl_mgh',
-    //                             't1mpr',
-    //                             't1_mpr',
-    //                             'anatt1',
-    //                             'anat_t1',
-    //                             '3dt1',
-    //                             '3d_t1'
-    //                         );
-    //                         lookupDic[datatype][suffix]['conditions'].push(
-    //                             '"inv1" not in sd && "inv2" not in sd && "uni_images" not in sd'
-    //                         );
-    //                     } else if (suffix === 'T2w') {
-    //                         lookupDic[datatype][suffix]['search_terms'].push(
-    //                             'anatt2',
-    //                             'anat_t2',
-    //                             '3dt2',
-    //                             '3d_t2',
-    //                             't2spc',
-    //                             't2_spc'
-    //                         );
-    //                         lookupDic[datatype][suffix]['conditions'].push('uniqueDic["EchoTime"] > 100');
-    //                     } else if (suffix === 'FLAIR') {
-    //                         lookupDic[datatype][suffix]['search_terms'].push(
-    //                             't2spacedafl',
-    //                             't2_space_da_fl',
-    //                             't2space_da_fl',
-    //                             't2space_dafl',
-    //                             't2_space_dafl'
-    //                         );
-    //                     } else if (suffix === 'T2starw') {
-    //                         lookupDic[datatype][suffix]['search_terms'].push('qsm');
-    //                         lookupDic[datatype][suffix]['conditions'].push('"EchoNumber" not in uniqueDic["sidecar"]');
-    //                     }
-    //                 } else if (datatype === 'func') {
-    //                     if (['bold', 'sbref'].includes(suffix)) {
-    //                         lookupDic[datatype][suffix]['search_terms'].push(
-    //                             'func',
-    //                             'bold',
-    //                             'fmri',
-    //                             'fcmri',
-    //                             'fcfmri',
-    //                             'rsfmri',
-    //                             'rsmri',
-    //                             'task',
-    //                             'rest'
-    //                         );
-    //                         if (suffix === 'bold') {
-    //                             lookupDic[datatype][suffix]['conditions'].push(
-    //                                 'uniqueDic["ndim"] == 4',
-    //                                 'uniqueDic["NumVolumes"] > 1',
-    //                                 'uniqueDic["RepetitionTime"] > 0',
-    //                                 '!("DERIVED" in uniqueDic["ImageType"] || "PERFUSION" in uniqueDic["ImageType"])'
-    //                             );
-    //                         } else if (suffix === 'sbref') {
-    //                             lookupDic[datatype][suffix]['conditions'].push(
-    //                                 '"DIFFUSION" not in uniqueDic["ImageType"]',
-    //                                 '"sbref" in sd && uniqueDic["NumVolumes"] == 1',
-    //                                 'uniqueDic["ndim"] == 3'
-    //                             );
-    //                         }
-    //                     }
-    //                 } else if (datatype === 'dwi') {
-    //                     if (['dwi', 'sbref'].includes(suffix)) {
-    //                         lookupDic[datatype][suffix]['search_terms'].push('dwi', 'dti', 'dmri');
-    //                         if (suffix === 'dwi') {
-    //                             lookupDic[datatype][suffix]['conditions'].push(
-    //                                 'any(".bvec" in x for x in uniqueDic["paths"])',
-    //                                 'uniqueDic["NumVolumes"] > 1'
-    //                             );
-    //                         }
-    //                     }
-    //                 }
-    //             }
-    //         });
-    //     });
-    // });
+                    lookupDic[datatype][suffix]['required_entities'] = Object.keys(entities).filter(
+                        (x) => !['subject', 'session'].includes(x) && entities[x] === 'required'
+                    );
+
+                    // Additional datatype-specific rules
+                    if (datatype === 'anat') {
+                        lookupDic[datatype][suffix]['conditions'].push('uniqueDic["ndim"] == 3');
+
+                        if (suffix === 'T1w') {
+                            lookupDic[datatype][suffix]['search_terms'].push(
+                                'tfl3d',
+                                'tfl_3d',
+                                'mprage',
+                                'mp_rage',
+                                'spgr',
+                                'tflmgh',
+                                'tfl_mgh',
+                                't1mpr',
+                                't1_mpr',
+                                'anatt1',
+                                'anat_t1',
+                                '3dt1',
+                                '3d_t1'
+                            );
+                            lookupDic[datatype][suffix]['conditions'].push(
+                                '"inv1" not in sd && "inv2" not in sd && "uni_images" not in sd'
+                            );
+                        } else if (suffix === 'T2w') {
+                            lookupDic[datatype][suffix]['search_terms'].push(
+                                'anatt2',
+                                'anat_t2',
+                                '3dt2',
+                                '3d_t2',
+                                't2spc',
+                                't2_spc'
+                            );
+                            lookupDic[datatype][suffix]['conditions'].push('uniqueDic["EchoTime"] > 100');
+                        } else if (suffix === 'FLAIR') {
+                            lookupDic[datatype][suffix]['search_terms'].push(
+                                't2spacedafl',
+                                't2_space_da_fl',
+                                't2space_da_fl',
+                                't2space_dafl',
+                                't2_space_dafl'
+                            );
+                        } else if (suffix === 'T2starw') {
+                            lookupDic[datatype][suffix]['search_terms'].push('qsm');
+                            lookupDic[datatype][suffix]['conditions'].push('"EchoNumber" not in uniqueDic["sidecar"]');
+                        }
+                    } else if (datatype === 'func') {
+                        if (['bold', 'sbref'].includes(suffix)) {
+                            lookupDic[datatype][suffix]['search_terms'].push(
+                                'func',
+                                'bold',
+                                'fmri',
+                                'fcmri',
+                                'fcfmri',
+                                'rsfmri',
+                                'rsmri',
+                                'task',
+                                'rest'
+                            );
+                            if (suffix === 'bold') {
+                                lookupDic[datatype][suffix]['conditions'].push(
+                                    'uniqueDic["ndim"] == 4',
+                                    'uniqueDic["NumVolumes"] > 1',
+                                    'uniqueDic["RepetitionTime"] > 0',
+                                    '!("DERIVED" in uniqueDic["ImageType"] || "PERFUSION" in uniqueDic["ImageType"])'
+                                );
+                            } else if (suffix === 'sbref') {
+                                lookupDic[datatype][suffix]['conditions'].push(
+                                    '"DIFFUSION" not in uniqueDic["ImageType"]',
+                                    '"sbref" in sd && uniqueDic["NumVolumes"] == 1',
+                                    'uniqueDic["ndim"] == 3'
+                                );
+                            }
+                        }
+                    } else if (datatype === 'dwi') {
+                        if (['dwi', 'sbref'].includes(suffix)) {
+                            lookupDic[datatype][suffix]['search_terms'].push('dwi', 'dti', 'dmri');
+                            if (suffix === 'dwi') {
+                                lookupDic[datatype][suffix]['conditions'].push(
+                                    'any(".bvec" in x for x in uniqueDic["paths"])',
+                                    'uniqueDic["NumVolumes"] > 1'
+                                );
+                            }
+                        }
+                    }
+                }
+            });
+        });
+    });
 
     // Add DWI derivatives (TRACEW, FA, ADC) to lookup dictionary
     lookupDic['dwi_derivatives'] = {
