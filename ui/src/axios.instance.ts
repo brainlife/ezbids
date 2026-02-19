@@ -1,14 +1,14 @@
 import axios from 'axios';
 import { ElNotification } from 'element-plus';
 import router from './routes';
-import { hasAuth } from './lib';
+import { authRequired } from './lib';
 
 const axiosInstance = axios.create({
     headers: { 'Content-Type': 'application/json; charset=UTF-8' },
 });
 
 axiosInstance.interceptors.request.use((config) => {
-    if (!hasAuth()) return config;
+    if (!authRequired()) return config;
     const token = localStorage.getItem('jwt');
     if (token) {
         config.headers = {

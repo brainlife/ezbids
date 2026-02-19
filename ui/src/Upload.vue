@@ -1,10 +1,11 @@
 <template>
-    <div style="padding: 20px">
+    <div>
         <div v-if="!session">
-            <p>
+            <h2 style="margin-bottom: 0; margin-top: 0">
                 Welcome to <b><span style="letter-spacing: -2px; opacity: 0.5">ez</span>BIDS</b> - an online imaging
                 data to BIDS conversion / organizing tool.
-            </p>
+            </h2>
+            <p style="color: gray; margin-top: 8px">To get started, upload a DICOM (or dcm2niix) dataset.</p>
 
             <div v-if="!starting">
                 <div
@@ -39,25 +40,22 @@
                 </div>
 
                 <div class="Info">
-                    <h2>Information</h2>
-                    <ul style="line-height: 200%">
-                        <li>
-                            If you are new to ezBIDS, please view our
-                            <a href="https://brainlife.io/docs/tutorial/ezBIDS/" target="_blank"
-                                ><b>ezBIDS tutorial</b></a
-                            >
-                            and
-                            <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank"
-                                ><b>user documentation</b></a
-                            >.
-                        </li>
-                        <li>
-                            If uploading anonymized data, please organize subject data into <i>sub-</i>formatted folder
-                            names (e.g. <b>sub-01</b>). If you have multi-session data, place in <i>ses-</i>formatted
-                            folders (e.g. <b>ses-A</b>) within the subject folders.
-                        </li>
-                        <li>See below for a brief ezBIDS tutorial video.</li>
-                    </ul>
+                    <h2 style="margin-bottom: 0">Not sure what to do?</h2>
+                    <p style="color: gray; margin-top: 8px">
+                        If you are new to ezBIDS, you can learn more by watching our
+                        <a style="display: inline" href="https://brainlife.io/docs/tutorial/ezBIDS/" target="_blank"
+                            ><b>ezBIDS tutorial</b></a
+                        >
+                        and taking a look at our
+                        <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank"><b>user documentation</b></a
+                        >.
+                    </p>
+                    <p style="color: gray">
+                        If uploading anonymized data, please organize subject data into <i>sub-</i>formatted folder
+                        names (e.g. <b>sub-01</b>). If you have multi-session data, place in <i>ses-</i>formatted
+                        folders (e.g. <b>ses-A</b>) within the subject folders.
+                    </p>
+                    <p style="color: gray">See below for a brief ezBIDS tutorial video.</p>
                     <iframe
                         width="640"
                         height="360"
@@ -73,14 +71,25 @@
                 <br />
             </div>
 
-            <div v-if="starting">
+            <div v-if="starting && !promptSignIn">
                 <h3>Initializing ...</h3>
+            </div>
+
+            <div v-if="starting && promptSignIn">
+                <p style="color: orange">
+                    The files you are trying to upload are ~{{ formatNumber(total_size / (1024 * 1024 * 1024)) }} GB in
+                    size, which is larger than the 4GB limit for ezBIDS edge mode (local processing).
+                </p>
+                <p>
+                    Please
+                    <a style="color: blue" href="https://brainlife.io">sign in</a> to continue via ezBIDS server mode.
+                </p>
             </div>
         </div>
 
         <div v-if="session">
             <div v-if="session.status == 'created'">
-                <h3>
+                <h3 style="margin-top: 0">
                     Uploading
                     <font-awesome-icon icon="spinner" pulse />
                 </h3>
@@ -124,7 +133,7 @@
             </div>
 
             <div v-if="['preprocessing', 'uploaded'].includes(session.status)">
-                <h3 v-if="session.dicomDone === undefined">
+                <h3 v-if="session.dicomDone === undefined" style="margin-top: 0">
                     Inflating
                     <font-awesome-icon icon="spinner" pulse />
                 </h3>
@@ -164,14 +173,14 @@
 
             <div v-if="session.pre_finish_date">
                 <div v-if="ezbids.notLoaded">
-                    <h3>
+                    <h3 style="margin-top: 0">
                         Loading analysis results
                         <font-awesome-icon icon="spinner" pulse />
                     </h3>
                 </div>
 
                 <div v-if="!ezbids.notLoaded && ezbids.objects.length">
-                    <h2>Analysis complete!</h2>
+                    <h2 style="margin-top: 0">Analysis complete!</h2>
                     <AnalysisErrors />
                     <h3>
                         Object List <small>({{ ezbids.objects.length }})</small>
@@ -191,7 +200,15 @@
                                 </small>
                             </el-link>
                         </p>
-                        <pre v-if="opened.includes(idx)" class="status">{{ object }}</pre>
+
+                        <splitpanes v-if="opened.includes(idx)" class="default-theme vis-panes">
+                            <pane size="30" class="vis-pane">
+                                <pre class="status">{{ object }}</pre>
+                            </pane>
+                            <pane class="vis-pane">
+                                <canvas :id="`vis-${idx}`" class="vis"></canvas>
+                            </pane>
+                        </splitpanes>
                     </div>
                 </div>
                 <div v-if="!ezbids.notLoaded && !ezbids.objects.length">
@@ -255,10 +272,16 @@ import { mapState } from 'vuex';
 import { formatNumber } from './filters';
 import axios from './axios.instance';
 import { ElNotification } from 'element-plus';
+import * as niivue from '@niivue/niivue';
+import { hasJWT, authRequired } from './lib';
+import { Splitpanes, Pane } from 'splitpanes';
+import 'splitpanes/dist/splitpanes.css';
 
 export default defineComponent({
     components: {
         AnalysisErrors: () => import('./components/analysisErrors.vue'),
+        Splitpanes,
+        Pane,
     },
     data() {
         return {
@@ -318,7 +341,6 @@ export default defineComponent({
         toggleObject(idx) {
             let pos = this.opened.indexOf(idx);
             if (~pos) this.opened.splice(pos, 1);
-            else this.opened.push(idx);
         },
 
         batchStatus(batch) {
@@ -351,9 +373,11 @@ export default defineComponent({
             const target = e.target; /* as HTMLInputElement*/
             this.files = target.files /* as FileList*/;
 
-            this.starting = true;
+            if (this.files.length === 0) return;
+
             //this.$nextTick() won't update the UI with starting flag change
             setTimeout(() => {
+                this.starting = true;
                 for (let file of this.files) {
                     file.path = file.webkitRelativePath;
                 }
@@ -633,6 +657,17 @@ export default defineComponent({
     font-size: 90%;
 }
 
+.vis-panes {
+    max-width: 70vw;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+}
+.vis-pane {
+    height: auto;
+    display: flex;
+    flex-direction: column;
+}
+
 pre.status {
     background-color: #666;
     color: white;
@@ -640,7 +675,11 @@ pre.status {
     overflow: auto;
     padding: 10px;
     margin-top: 0;
-    margin-bottom: 5px;
+    margin-bottom: 0;
     border-radius: 5px;
+    flex-grow: 1;
+}
+canvas.vis {
+    height: 300px;
 }
 </style>

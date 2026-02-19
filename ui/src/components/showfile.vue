@@ -10,6 +10,7 @@ const convert = new Convert();
 import { mapState } from 'vuex';
 import { defineComponent } from 'vue';
 import axios from '../axios.instance';
+import { ElNotification } from 'element-plus';
 
 export default defineComponent({
     props: {
@@ -48,6 +49,11 @@ export default defineComponent({
                 this.content = convert.toHtml(res.data);
             })
             .catch((err) => {
+                ElNotification({
+                    title: 'There was an error retrieving the file contents',
+                    message: '',
+                    type: 'error',
+                });
                 console.error(err);
             });
 

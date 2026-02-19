@@ -1,22 +1,22 @@
-import { createRouter, createWebHistory } from 'vue-router';
+import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router';
 import LandingPage from './LandingPage.vue';
 import BaseConvertPage from './BaseConvertPage.vue';
 import NotFound from './NotFound.vue';
-import { hasJWT, hasAuth } from './lib';
+import { hasJWT, authRequired } from './lib';
 import { ElNotification } from 'element-plus';
 
-// enable routing
+const isElectron = import.meta.env.VITE_ELECTRON === 'true';
 const router = createRouter({
-    history: createWebHistory('/ezbids'),
+    history: isElectron ? createWebHashHistory() : createWebHistory('/ezbids'),
     routes: [
-        { path: '/', name: 'base', component: LandingPage },
+        { path: '', component: LandingPage },
         { path: '/convert', name: 'convert', component: BaseConvertPage },
         { path: '/:pathMatch(.*)*', component: NotFound },
     ],
 });
 
 router.beforeEach((to, from) => {
-    if (hasAuth() && !hasJWT() && to.name !== 'base') {
+    if (authRequired() && !hasJWT() && to.name !== 'base') {
         ElNotification({
             title: 'Please login to continue',
             message: '',

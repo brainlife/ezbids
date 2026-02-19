@@ -1,0 +1,31 @@
+{
+    "name": "electron",
+    "version": "1.0.0",
+    "description": "electron implementation for ezbids",
+    "main": "main.ts",
+    "type": "module",
+    "scripts": {
+        "build": "tsc",
+        "build-run": "cd ../ui && npm run build:electron && cd ../electron && electron .",
+        "dev": "cd ../ui && npm run dev && cd ../electron && electron .",
+        "start": "BRAINLIFE_AUTHENTICATION=false electron .",
+        "app:dir": "electron-builder --dir",
+        "app:dist": "electron-builder",
+        "build:electron-backend": "esbuild ../api/ezbids.ts --bundle --platform=node --format=cjs --outfile=dist/backend.cjs --external:node-pty --external:nan"
+    },
+    "author": "nicoalee",
+    "license": "ISC",
+    "devDependencies": {
+        "@types/node": "^20.0.0",
+        "electron": "^40.3.0",
+        "electron-builder": "^26.7.0",
+        "esbuild": "^0.27.3",
+        "typescript": "^5.0.0"
+    },
+    "build": {
+        "appId": "com.brainlife.ezbids.electron",
+        "mac": {
+            "category": "public.app-category.education"
+        }
+    }
+}

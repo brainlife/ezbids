@@ -1,6 +1,6 @@
 <template>
-    <splitpanes class="objectpage default-theme">
-        <pane min-size="20" size="30" class="bids-structure">
+    <splitpanes class="default-theme panes">
+        <pane min-size="20" size="30">
             <div v-for="o_sub in ezbids._organized" :key="o_sub.sub" style="font-size: 90%; margin-bottom: 10px">
                 <span v-if="o_sub.sub != ''" class="hierarchy">
                     <i class="el-icon-user-solid" style="margin-right: 2px" />
@@ -98,7 +98,7 @@
             <br />
         </pane>
 
-        <pane class="object-detail">
+        <pane>
             <div v-if="!so" style="padding: 20px">
                 <div class="hint">
                     <p>Please make sure all subject/session/series mappings are correctly applied to your data.</p>
@@ -403,7 +403,6 @@ import petYaml from '../src/assets/schema/rules/sidecars/pet.yaml';
 import megYaml from '../src/assets/schema/rules/sidecars/meg.yaml';
 import metadataInfo from '../src/assets/schema/rules/sidecars/metadata.yaml';
 
-import { IObject, Session, OrganizedSession, OrganizedSubject } from './store';
 import { prettyBytes } from './filters';
 import {
     setRun,
@@ -423,6 +422,7 @@ import AsyncImageLink from './components/AsyncImageLink.vue';
 import { Splitpanes, Pane } from 'splitpanes';
 
 import 'splitpanes/dist/splitpanes.css';
+import { IObject, OrganizedSession, OrganizedSubject, Session } from './store/store.types';
 
 interface Section {
     [key: string]: IObject[];
@@ -663,8 +663,8 @@ export default defineComponent({
 
             if (o._type.startsWith('fmap/') || o._type === 'perf/m0scan') {
                 //Ensure other fmap series aren't included in the IntendedFor mapping
-                if (o.IntendedFor.length > 0) {
-                    o.IntendedFor.forEach((i) => {
+                if ((o.IntendedFor ?? []).length > 0) {
+                    (o.IntendedFor ?? []).forEach((i) => {
                         let series_idx = this.ezbids.objects[i].series_idx;
                         if (this.ezbids.objects[i]._type.startsWith('fmap/')) {
                             o.validationErrors.push(
@@ -739,30 +739,14 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-.objectpage {
-    position: fixed;
-    top: 0;
-    bottom: 60px;
-    left: 160px;
-    right: 0;
-
-    width: inherit;
-    height: inherit;
-}
-
 .splitpanes.default-theme .splitpanes__pane {
     background-color: inherit;
 }
 
-.bids-structure {
-    padding: 10px;
-    font-size: 90%;
-    box-sizing: border-box;
-    overflow-y: scroll;
+.panes {
+    width: calc(100vw - 260px - 4rem - 2rem);
 }
-.object-detail {
-    overflow-y: scroll;
-}
+
 .item {
     padding-bottom: 5px;
     margin-bottom: 5px;

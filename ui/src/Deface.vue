@@ -1,7 +1,7 @@
 <template>
-    <div style="padding: 20px">
+    <div>
         <el-form v-if="anatObjects.length && !isDefacing">
-            <p>
+            <p style="margin-top: 0">
                 If you'd like to deface all anatomical images, please select a defacing method and click
                 <b>Run Deface</b> button. Otherwise, you can skip this page.
             </p>
@@ -135,10 +135,10 @@
 import { mapState, mapGetters } from 'vuex';
 import { defineComponent } from 'vue';
 import datatype from './components/datatype.vue';
-import { IObject } from './store';
 import { ElNotification } from 'element-plus';
-import axios from './axios.instance';
 import AsyncImageLink from './components/AsyncImageLink.vue';
+import { IObject } from './store/store.types';
+import axios from 'axios';
 
 export default defineComponent({
     components: {
@@ -196,7 +196,7 @@ export default defineComponent({
             return item.path + '.defaced.nii.gz';
         },
 
-        cancel() {
+        async cancel() {
             axios.post(`${this.config.apihost}/session/${this.session._id}/canceldeface`).then((res) => {
                 if (res.data !== 'ok') {
                     ElNotification({ title: 'Failed', message: 'Failed to cancel defacing' });
@@ -207,7 +207,7 @@ export default defineComponent({
             });
         },
 
-        reset() {
+        async reset() {
             axios.post(`${this.config.apihost}/session/${this.session._id}/resetdeface`).then((res) => {
                 if (res.data !== 'ok') {
                     ElNotification({ title: 'Failed', message: 'Failed to reset defacing' });
@@ -221,7 +221,7 @@ export default defineComponent({
             });
         },
 
-        runDeface() {
+        async runDeface() {
             const list = this.anatObjects.map((o: IObject) => {
                 return { idx: o.idx, path: o.items.find((i) => i.path?.endsWith('.nii.gz'))?.path };
             });

@@ -103,7 +103,7 @@
 import { defineComponent } from 'vue';
 import { mapState } from 'vuex';
 import LandingPageAnimation from './LandingPageAnimation.vue';
-import { hasJWT, hasAuth } from './lib';
+import { hasJWT, authRequired } from './lib';
 export default defineComponent({
     components: {
         LandingPageAnimation: LandingPageAnimation,
@@ -116,7 +116,7 @@ export default defineComponent({
             window.open(`https://brainlife.io/docs/using_ezBIDS/`);
         },
         onClickGetStarted() {
-            if (!hasAuth() || hasJWT()) {
+            if (!authRequired() || hasJWT()) {
                 this.$router.push('/convert');
                 return;
             }
@@ -180,10 +180,6 @@ export default defineComponent({
 
 /* for screens larger than 992px */
 @media screen and (min-width: 992px) {
-    .main {
-        height: calc(90vh - 62px);
-    }
-
     .hero-banner-container {
         flex-wrap: wrap;
     }
@@ -284,7 +280,6 @@ export default defineComponent({
 }
 
 .hero-banner-container {
-    height: 65%;
     align-items: center;
 }
 

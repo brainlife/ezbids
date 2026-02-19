@@ -2,7 +2,7 @@
 import { defineComponent } from 'vue';
 import { mapState } from 'vuex';
 import { formatNumber } from './filters';
-import { DatasetDescription } from './store';
+import { DatasetDescription } from './store/store.types';
 
 export default defineComponent({
     //props: [ 'dd' ],
@@ -56,7 +56,7 @@ export default defineComponent({
 </script>
 
 <template>
-    <div style="padding: 20px">
+    <div style="margin-top: 0px">
         <p>
             Please enter as much information you like to include in the <b>dataset_description.json</b>. For specific
             information and examples, see

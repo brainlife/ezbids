@@ -32,13 +32,13 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapState } from 'vuex';
-import { hasJWT, hasAuth } from './lib';
+import { hasJWT, authRequired } from './lib';
 
 export default defineComponent({
     computed: {
         ...mapState(['config']),
         hasAuth() {
-            return hasAuth();
+            return authRequired();
         },
         hasJWT() {
             return hasJWT();
@@ -49,7 +49,7 @@ export default defineComponent({
             window.open('https://brainlife.io/team/', '_blank');
         },
         redirectToBrainlifeAuth() {
-            if (!hasAuth() || hasJWT()) {
+            if (!authRequired() || hasJWT()) {
                 this.$router.push('/convert');
                 return;
             }

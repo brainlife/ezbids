@@ -1,6 +1,6 @@
 <template>
-    <div style="padding: 20px">
-        <p>You can store metadata/phenotypical data for each participant in this dataset.</p>
+    <div>
+        <p style="margin-top: 0">You can store metadata/phenotypical data for each participant in this dataset.</p>
         <p>Please skip this step if you do not wish to store any phenotypical data.</p>
         <h5>Phenotype Columns</h5>
         <small>Define phenotypical keys stored for this study (recommended).</small>
@@ -76,13 +76,12 @@
 <script lang="ts">
 import { mapState } from 'vuex';
 import { defineComponent } from 'vue';
-
-import { OrganizedSubject } from './store';
 // import { updateParticipantsInfo } from './libUnsafe';
 
 //element-plus icons are bad .. replace it with fontawesome
 // @ts-ignore
 import { Remove } from '@element-plus/icons/lib';
+import { OrganizedSubject } from './store/store.types';
 
 export default defineComponent({
     components: {

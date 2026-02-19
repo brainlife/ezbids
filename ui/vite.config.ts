@@ -6,7 +6,8 @@ import { ElementPlusResolver } from 'unplugin-vue-components/resolvers';
 import ViteYaml from '@modyfi/vite-plugin-yaml';
 
 export default defineConfig({
-    base: '/ezbids/',
+    // base: '/ezbids/',
+    base: './',
     plugins: [
         vue(),
         Components({

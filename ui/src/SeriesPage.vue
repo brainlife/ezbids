@@ -1,6 +1,6 @@
 <template>
-    <splitpanes class="seriespage default-theme">
-        <pane min-size="20" size="30" class="series-list">
+    <splitpanes class="default-theme panes">
+        <pane min-size="20" size="30">
             <div
                 v-for="(s, series_idx) in ezbids.series"
                 :key="series_idx"
@@ -311,8 +311,6 @@ import ModalityForm from './components/modalityForm.vue';
 
 import { prettyBytes } from './filters';
 
-import { Series, IObject, IEzbids } from './store';
-
 import { validateEntities, validate_B0FieldIdentifier_B0FieldSource, metadataAlerts } from './libUnsafe';
 import anatYaml from '../src/assets/schema/rules/sidecars/anat.yaml';
 import funcYaml from '../src/assets/schema/rules/sidecars/func.yaml';
@@ -329,7 +327,7 @@ import AsyncImageLink from './components/AsyncImageLink.vue';
 import { Splitpanes, Pane } from 'splitpanes';
 
 import 'splitpanes/dist/splitpanes.css';
-import { setMaxListeners } from 'process';
+import { IEZBIDS, IObject, Series } from './store/store.types';
 
 export default defineComponent({
     components: {
@@ -381,7 +379,7 @@ export default defineComponent({
             this.showInfo[entity] = !this.showInfo[entity];
         },
 
-        BIDSURI($root: IEzbids, b: boolean) {
+        BIDSURI($root: IEZBIDS, b: boolean) {
             if (b === true) {
                 $root.BIDSURI = true;
                 localStorage.setItem('checkboxState', 'true');
@@ -549,30 +547,14 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-.seriespage {
-    position: fixed;
-    top: 0;
-    bottom: 60px;
-    left: 160px;
-    right: 0;
-
-    width: inherit;
-    height: inherit;
-}
-
 .splitpanes.default-theme .splitpanes__pane {
     background-color: inherit;
 }
 
-.series-list {
-    padding: 10px;
-    font-size: 90%;
-    box-sizing: border-box;
-    overflow-y: scroll;
+.panes {
+    width: calc(100vw - 260px - 4rem - 2rem);
 }
-.series-detail {
-    overflow-y: scroll;
-}
+
 .el-form-item {
     margin-bottom: 0;
 }
