@@ -61,7 +61,7 @@ pet_ecat_files_list = []
 pet_dcm_dirs_list = []
 meg_data_list = []
 
-find_img_data(root)
+find_img_data('.')
 
 # PET
 pet_folders = [str(folder) for folder in is_pet.pet_folder(Path(root).resolve(), skim=True, njobs=4)]
