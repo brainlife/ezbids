@@ -29,10 +29,30 @@ api/config.json
 
 handler/container/ROBEXv12.linux64.tar.gz
 
-api/*.pub
-api/*.key
-api/ezbids.key
-api/*.js
-api/*.js.map
+api/**/*.pub
+api/**/*.key
+api/**/*.key
+api/**/*.js
+api/**/*.js.map
+api/**/*.cjs
+api/**/*.cjs.map
+
+handler/**/*.js
+handler/**/*.js.map
+handler/**/*.cjs
+handler/**/*.cjs.map
+handler/bin/*
+handler/*.js
+handler/*.js.map
+handler/*.cjs
+handler/*.log
 
 tmp/*
+
+electron/node_modules
+electron/dist
+electron/dist/*
+electron/build
+electron/release
+electron/**/*.js
+electron/dist/*

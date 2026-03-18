@@ -1,8 +1,8 @@
 import { NextFunction, Response } from 'express';
 import { Request } from 'express-jwt';
-import { ISession, Session } from './models';
-import { Types, Document } from 'mongoose';
 import * as config from './config';
+import { sessionStore } from './store';
+import { ISessionReturn } from './store/types';
 
 export enum HTTP_STATUS {
     OK = 200,
@@ -14,13 +14,7 @@ export enum HTTP_STATUS {
 
 export type EzBIDSAuthRequestObject = Request & {
     ezBIDS: {
-        session: Document<unknown, any, ISession> &
-            Omit<
-                ISession & {
-                    _id: Types.ObjectId;
-                },
-                never
-            >;
+        session: ISessionReturn;
     };
 };
 
@@ -37,7 +31,7 @@ export const validateUserCanAccessSession = (onlyOwnerCanAccess: boolean) => {
             return res.status(HTTP_STATUS.BAD_REQUEST).json({ err: 'No userId found' });
         }
 
-        return Session.findById(sessionId)
+        return sessionStore.findById(sessionId)
             .then((session) => {
                 if (!session)
                     return res
@@ -45,8 +39,8 @@ export const validateUserCanAccessSession = (onlyOwnerCanAccess: boolean) => {
                         .json({ err: 'Could not find session with ID: ' + sessionId });
 
                 if (config.authentication) {
-                    const isOwner = userId === (session.ownerId || '');
-                    const isInAllowedUserList = session.allowedUsers.some((allowedUser) => allowedUser === userId);
+                    const isOwner = userId === (session.ownerId ?? null);
+                    const isInAllowedUserList = (session.allowedUsers ?? []).some((allowedUser) => allowedUser === userId);
 
                     if (onlyOwnerCanAccess && !isOwner) {
                         return res.status(HTTP_STATUS.UNAUTHORIZED).json({ err: 'unauthorized' });
@@ -55,9 +49,7 @@ export const validateUserCanAccessSession = (onlyOwnerCanAccess: boolean) => {
                     }
                 }
 
-                req.ezBIDS = {
-                    session,
-                };
+                req.ezBIDS = { session };
                 return next();
             })
             .catch((err) => {

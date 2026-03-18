@@ -3,6 +3,7 @@ import { Request } from 'express-jwt';
 import { JwtPayload } from 'jsonwebtoken';
 import { signJWT, validateWithJWTConfig, verifyJWT } from './auth';
 import { EzBIDSAuthRequestObject, HTTP_STATUS, validateUserCanAccessSession } from './controllers.utils';
+import { ezbidsStore, sessionStore } from './store';
 import multer = require('multer');
 import path = require('path');
 import fs = require('fs');
@@ -11,7 +12,6 @@ import archiver = require('archiver');
 import async = require('async');
 
 import config = require('./config');
-import models = require('./models');
 
 console.debug(config.multer);
 const upload = multer(config.multer);
@@ -100,20 +100,14 @@ router.get('/health', (req, res) => {
  *    Session: $ref: '#/components/schemas/Session'
  */
 router.post('/session', validateWithJWTConfig(), (req: Request, res: express.Response, next) => {
-    req.body.status = 'created';
-    req.body.request_headers = req.headers;
-
-    const session = new models.Session({
-        ...req.body,
-        ownerId: req.auth.sub,
-        allowedUsers: [],
-    });
-    session
-        .save()
-        .then((_session) => {
-            //mongoose contains err on the 1st argument of resolve!? odd.
-            res.json(_session);
+    const body = { ...req.body, status: 'created', request_headers: req.headers };
+    sessionStore
+        .create({
+            ...body,
+            ownerId: req.auth.sub,
+            allowedUsers: [],
         })
+        .then((_session) => res.json(_session))
         .catch((err) => {
             console.error(err);
             return next(err);
@@ -157,14 +151,10 @@ router.patch(
     (req: EzBIDSAuthRequestObject, res, next) => {
         const session = req.ezBIDS.session;
         session.allowedUsers = req.body.allowedUsers;
-        return session
-            .save()
-            .then(() => {
-                res.send('ok');
-            })
-            .catch((err) => {
-                return next(err);
-            });
+        return sessionStore
+            .save(session)
+            .then(() => res.send('ok'))
+            .catch((err) => next(err));
     }
 );
 
@@ -279,12 +269,7 @@ router.post(
         fs.writeFile(`${config.workdir}/${session._id}/deface.json`, JSON.stringify(req.body), () => {
             session.status = 'deface';
             session.status_msg = 'Waiting to be defaced';
-            session
-                .save()
-                .then(() => {
-                    return res.send('ok');
-                })
-                .catch((err) => next(err));
+            sessionStore.save(session).then(() => res.send('ok')).catch((err) => next(err));
         });
     }
 );
@@ -331,12 +316,7 @@ router.post(
             //be necessary.. but right now kill() doesn't work.. so
             session.deface_begin_date = undefined;
             session.status = 'analyzed';
-            session
-                .save()
-                .then(() => {
-                    return res.send('ok');
-                })
-                .catch((err) => next(err));
+            sessionStore.save(session).then(() => res.send('ok')).catch((err) => next(err));
         });
     }
 );
@@ -385,12 +365,7 @@ router.post(
         session.status_msg = 'reset defacing';
         session.deface_begin_date = undefined;
         session.deface_finish_date = undefined;
-        session
-            .save()
-            .then(() => {
-                return res.send('ok');
-            })
-            .catch((err) => next(err));
+        sessionStore.save(session).then(() => res.send('ok')).catch((err) => next(err));
     }
 );
 
@@ -403,26 +378,14 @@ router.post(
 
         fs.writeFile(`${config.workdir}/${session._id}/finalized.json`, JSON.stringify(req.body), (err) => {
             if (err) console.error(err);
-            models.ezBIDS
-                .findOneAndUpdate(
-                    { _session_id: session._id },
-                    {
-                        $set: {
-                            //TODO - store this somewhere for book keeping
-                            //updated: req.body, //finalized.json could exceed 16MB
-                            update_date: new Date(),
-                        },
-                    }
-                )
+            ezbidsStore
+                .findOneAndUpdate(session._id, {
+                    $set: { update_date: new Date() },
+                })
                 .then(() => {
                     session.status = 'finalized';
                     session.status_msg = 'Waiting to be finalized';
-                    session
-                        .save()
-                        .then(() => {
-                            res.send('ok');
-                        })
-                        .catch((err) => next(err));
+                    return sessionStore.save(session).then(() => res.send('ok')).catch((err) => next(err));
                 })
                 .catch((err) => next(err));
         });
@@ -436,9 +399,8 @@ router.get(
     validateUserCanAccessSession(false),
     (req: EzBIDSAuthRequestObject, res, next) => {
         const session = req.ezBIDS.session;
-
-        models.ezBIDS
-            .findOne({ _session_id: session._id })
+        ezbidsStore
+            .findOneBySessionId(session._id)
             .then((ezBIDS) => {
                 if (!ezBIDS) {
                     return res
@@ -488,8 +450,10 @@ router.get('/download/:session_id/*', (req, res, next) => {
         return;
     }
 
-    models.Session.findById(validJWTPayload?.sessionId)
-        .then((session) => {
+    sessionStore.findById(validJWTPayload?.sessionId as string).then((session) => {
+            if (!session) {
+                return res.status(HTTP_STATUS.NOT_FOUND).json({ err: 'session not found' });
+            }
             const basepath = config.workdir + '/' + session._id;
 
             //validate path so it will be inside the basepath
@@ -576,14 +540,7 @@ router.patch(
         session.status = 'uploaded';
         session.status_msg = 'Waiting in the queue..';
         session.upload_finish_date = new Date();
-        session
-            .save()
-            .then(() => {
-                return res.send('ok');
-            })
-            .catch((err) => {
-                return next(err);
-            });
+        sessionStore.save(session).then(() => res.send('ok')).catch((err) => next(err));
     }
 );
 

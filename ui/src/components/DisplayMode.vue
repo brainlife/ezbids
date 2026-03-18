@@ -1,7 +1,7 @@
 <template>
     <div>
         <h3 style="color: #e6a23c; margin-left: 1rem; display: flex; align-items: center">
-            {{ isElectron ? 'Local Mode' : 'Server Mode' }}
+            {{ isElectron ? 'ezBIDS Desktop' : 'ezBIDS Server' }}
 
             <el-tooltip>
                 <template #content>

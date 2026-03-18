@@ -41,7 +41,7 @@ def find_img_data(dir):
                         break
                 except:
                     # Doesn't appear to be DICOM data, so skip
-                    break
+                    pass
 
     # Complete search
     if not hasImgData:
@@ -54,6 +54,8 @@ def find_img_data(dir):
 # change to input directory
 root = sys.argv[1]
 os.chdir(root)
+
+print('root: ', root)
 
 mri_dcm_dirs_list = []
 pet_ecat_files_list = []

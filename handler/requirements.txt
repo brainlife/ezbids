@@ -1,0 +1,11 @@
+numpy==1.23.0
+nibabel==4.0.0
+pandas
+matplotlib
+pyyaml==5.4.1
+pydicom==2.3.1
+natsort
+mne
+mne-bids
+pypet2bids
+Pillow

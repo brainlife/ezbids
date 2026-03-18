@@ -6,30 +6,36 @@ import {
     Schema,
     model,
 } from 'mongoose';
-import { mongodb, mongoose_debug } from './config';
+import { mongodb, mongoose_debug, isElectron } from './config';
+import { v4 as uuidv4 } from 'uuid';
 
 if (mongoose_debug) set('debug', true);
 
 export function connect(cb: CallbackWithoutResult) {
-    console.debug('connecting to mongo via: ' + mongodb);
-    mongooseConnect(
-        mongodb,
-        {
-            /* this really screwed up warehouse db..
-        readPreference: 'nearest',
-        writeConcern: {
-            w: 'majority', //isn't this the default?
-        },
-        readConcernLevel: 'majority',//prevents read to grab stale data from secondary
-        */
-            //auto_reconnect: true, //isn't this the default?
-        },
-        (err) => {
-            if (err) return cb(err);
-            console.debug('connected to mongo via: ' + mongodb);
-            return cb(null);
-        }
-    );
+    if (isElectron) {
+        console.debug('ezbids running in electron mode');
+        return cb(null);
+    } else {
+        console.debug('connecting to mongo via: ' + mongodb);
+        mongooseConnect(
+            mongodb,
+            {
+                /* this really screwed up warehouse db..
+            readPreference: 'nearest',
+            writeConcern: {
+                w: 'majority', //isn't this the default?
+            },
+            readConcernLevel: 'majority',//prevents read to grab stale data from secondary
+            */
+                //auto_reconnect: true, //isn't this the default?
+            },
+            (err) => {
+                if (err) return cb(err);
+                console.debug('connected to mongo via: ' + mongodb);
+                return cb(null);
+            }
+        );
+    }
 }
 
 export function disconnect(cb) {
@@ -60,11 +66,10 @@ export interface ISession {
     finalize_begin_date: Date;
     finalize_finish_date: Date;
 
-    status: string;
-
     dicomCount: number;
     dicomDone: number;
-
+    
+    status: string;
     status_msg: string;
 }
 
@@ -125,7 +130,15 @@ sessionSchema.pre('save', function (next) {
 });
 export const Session = model('Session', sessionSchema);
 
-const ezbidsSchema = new Schema({
+export interface IEzBIDS {
+    _session_id: string;
+    original: any;
+    updated: any;
+    create_date: Date;
+    update_date: Date;
+}
+
+const ezbidsSchema = new Schema<IEzBIDS>({
     _session_id: Schema.Types.ObjectId,
 
     original: Schema.Types.Mixed,
@@ -134,4 +147,17 @@ const ezbidsSchema = new Schema({
     create_date: { type: Date, default: Date.now },
     update_date: { type: Date },
 });
+
+export const IElectronStoreEzBIDSSchema = {
+    _session_id: {
+        type: "string",
+        format: "uuid",
+        default: uuidv4(),
+    },
+    original: {
+        type: "object",
+        default: {},
+    },
+}
+
 export const ezBIDS = model('ezBIDS', ezbidsSchema);

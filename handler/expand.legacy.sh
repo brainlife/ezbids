@@ -6,7 +6,7 @@
 set -x
 
 root=$1
-cd $root
+cd "$root"
 
 echo "expanding archives in $root"
 
@@ -20,7 +20,7 @@ function expand {
     expand_counter=1
 
     #use pigz for gz
-    for tar in $(find $root -name "*.tar.gz"); do
+    for tar in $(find "$root" -name "*.tar.gz"); do
         if [ ! -d $(dirname $tar)/$expand_counter ]; then
             mkdir -p $(dirname $tar)/$expand_counter
         fi
@@ -29,7 +29,7 @@ function expand {
         rm -rf $tar
     done
 
-    for tar in $(find $root -name "*.tgz"); do
+    for tar in $(find "$root" -name "*.tgz"); do
         #tar is too verbose
         if [ ! -d $(dirname $tar)/$expand_counter ]; then
             mkdir -p $(dirname $tar)/$expand_counter
@@ -40,7 +40,7 @@ function expand {
     done
 
     #let tar handle all other compression algorithms in default way
-    for tar in $(find $root -name "*.tar*"); do
+    for tar in $(find "$root" -name "*.tar*"); do
         echo "found $tar ----------"
         if [ ! -d $(dirname $tar)/$expand_counter ]; then
             mkdir -p $(dirname $tar)/$expand_counter
@@ -54,35 +54,35 @@ function expand {
     ##
     ##############################################################################################
 
-    for gz in $(find $root -name "*.gz"); do
+    for gz in $(find "$root" -name "*.gz"); do
         if [[ "$gz" != *".nii.gz" ]]; then
             gunzip $gz
             rm -rf $gz
         fi
     done
 
-    for zip in $(find $root -name "*.7z"); do
+    for zip in $(find "$root" -name "*.7z"); do
         7z x $zip
         rm -rf $zip
     done
 
-    for zip in $(find $root -name "*.bz2"); do
+    for zip in $(find "$root" -name "*.bz2"); do
         bunzip2 $zip
         rm -rf $zip
     done
 
-    for zip in $(find $root -name "*.zip"); do
+    for zip in $(find "$root" -name "*.zip"); do
         unzip -o $zip -d $(dirname $zip)/$expand_counter
         expand_counter=$((expand_counter+1))
         rm -rf $zip
     done
 
-    for rar in $(find $root -name "*.rar"); do
+    for rar in $(find "$root" -name "*.rar"); do
         unrar x $rar
         rm -rf $rar
     done
 
-    for zst in $(find $root -name "*.zst"); do
+    for zst in $(find "$root" -name "*.zst"); do
         zst -d $zip
         rm -rf $zip
     done

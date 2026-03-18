@@ -17,13 +17,16 @@ if [ -z $1 ]; then
 fi
 
 root=$1
-echo "running preprocess.sh on root folder ${root}"
+handlerDir=$2
+echo "running ${handlerDir}/preprocess.sh on root folder ${root}"
 
-echo "running expand.sh"
-./expand.sh $root
+# echo "running ${handlerDir}/expand.sh"
+# "${handlerDir}/expand.sh" "$root"
+echo "running expand (TypeScript)"
+node "${handlerDir}/expand.js" "$root"
 
 echo "replace file paths that contain space, quotation, or [@^()] characters"
-find "$root" -depth -name "*[ @^()]*" -print0 | sort -rz | xargs -0 -n 1 -I {} ./rename_special_chars.sh {}
+find "$root" -depth -name "*[ @^()]*" -print0 | sort -rz | xargs -0 -n 1 -I {} ${handlerDir}/rename_special_chars.sh {}
 
 # check to see if uploaded data is a BIDS-compliant dataset
 echo "Running bids-validator to check BIDS compliance"
@@ -33,7 +36,7 @@ echo "Running bids-validator to check BIDS compliance"
 substring="dataset_description.json"
 maxdepth=1
 
-test_root=($(find $root -maxdepth $maxdepth -type f \( -name $substring \)))
+test_root=($(find "$root" -maxdepth $maxdepth -type f \( -name $substring \)))
 
 bids="no"
 
@@ -44,7 +47,7 @@ do
         break
     else
         ((maxdepth++))
-        test_root=($(find $root -maxdepth $maxdepth -type f \( -name $substring \)))
+        test_root=($(find "$root" -maxdepth $maxdepth -type f \( -name $substring \)))
     fi
 done
 
@@ -101,7 +104,7 @@ if [ $bids_compliant == "true" ]; then
     (cd $root && find . -maxdepth 9 -type f \( -name "*blood.json" \) >> $root/list)
 
     echo "running ezBIDS_core (may take several minutes, depending on size of data)"
-    python3 "./ezBIDS_core/ezBIDS_core.py" $root
+    python3 "${handlerDir}/ezBIDS_core/ezBIDS_core.py" $root
 else
 
     # If there are .nii files, compress them to .nii.gz
