@@ -126,6 +126,11 @@ is_archive() {
     esac
 }
 
+set_user_permissions() {
+    local target_dir="$1"
+    chmod -R u+rwx "$target_dir"
+}
+
 DOWNLOAD_ARGS=(-sL -H "Accept: application/octet-stream")
 [[ -n "${GITHUB_TOKEN:-}" ]] && DOWNLOAD_ARGS+=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
 
@@ -148,6 +153,8 @@ while IFS=$'\t' read -r name url; do
         echo "Downloading $name"
         curl "${DOWNLOAD_ARGS[@]}" -o "$subdir/$name" "$url"
     fi
+    set_user_permissions "$subdir"
+    echo "Set user permissions (u+rwx) on: $subdir"
 done <<< "$matching"
 
 echo "Done."

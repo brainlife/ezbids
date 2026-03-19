@@ -15,8 +15,6 @@ import config = require("./config");
 import swaggerUi = require('swagger-ui-express');
 import swaggerJsdoc = require('swagger-jsdoc');
 
-console.log("STARGIN UP EZBIDS API");
-
 const options = {
     definition: {
         openapi: '3.0.0',

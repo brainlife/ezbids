@@ -1,18 +1,16 @@
-import { app, BrowserWindow, ipcMain, protocol } from 'electron';
+import { app, BrowserWindow, protocol } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import net from 'net';
 import crypto from 'crypto';
-import { fileURLToPath } from 'url';
 import { spawn, ChildProcess } from 'child_process';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ENVIRONMENT = process.env.NODE_ENV || 'development';
 const USER_DATA_PATH = app.getPath('userData');
+const APP_DIR = app.getAppPath();
 const WORKDIR = path.join(USER_DATA_PATH, 'workdir');
-const PROJECT_DIR = path.join(__dirname, '..');
+const PROJECT_DIR = path.resolve(APP_DIR, '..');
 const UPLOAD_DIR = path.join(USER_DATA_PATH, 'upload');
-
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true } }]);
 
 let backendProcess: ChildProcess | null = null;
@@ -30,42 +28,18 @@ const getRandomPort = (): Promise<number> =>
         server.on('error', reject);
     });
 
-const port = process.env.PORT ? parseInt(process.env.PORT, 10) : await getRandomPort();
-
 const getBinDir = (): string =>
-    app.isPackaged ? path.join(process.resourcesPath, 'bin') : path.join(__dirname, '../handler/bin');
+    app.isPackaged ? path.join(process.resourcesPath, 'bin') : path.join(PROJECT_DIR, 'handler', 'bin');
 
 const getEzBidsPlatform = (): string =>
     process.env.EZBIDS_PLATFORM ?? (process.platform === 'win32' ? 'windows' : process.platform);
 
 const getEzBidsArch = (): string => process.env.EZBIDS_ARCH ?? (process.arch === 'arm64' ? 'arm64' : 'amd64');
 
-const rendererEnv = {
-    BRAINLIFE_AUTHENTICATION: process.env.BRAINLIFE_AUTHENTICATION || 'false',
-    IS_ELECTRON: 'true',
-    API_HOST: `http://localhost:${port}`,
-};
-
-Object.assign(process.env, rendererEnv);
-
-const env = {
-    ...process.env,
-    USER_DATA_PATH: USER_DATA_PATH,
-    UPLOAD_DIR: UPLOAD_DIR,
-    PROJECT_DIR: PROJECT_DIR,
-    WORKDIR: WORKDIR,
-    PORT: String(port),
-    MONGO_CONNECTION_STRING: '',
-    EZBIDS_BIN_DIR: getBinDir(),
-    EZBIDS_PLATFORM: getEzBidsPlatform(),
-    EZBIDS_ARCH: getEzBidsArch(),
-    ...rendererEnv,
-};
-
 console.log('ENVIRONMENT', ENVIRONMENT);
 
 /** Backend runs from this dir (backend reads ezbids.key/ezbids.pub from its __dirname). */
-const getBackendKeysDir = (): string => (ENVIRONMENT === 'development' ? path.join(__dirname, 'dist') : __dirname);
+const getBackendKeysDir = (): string => (ENVIRONMENT === 'development' ? path.join(APP_DIR, 'dist') : APP_DIR);
 
 /** Ensure ezbids.pub and ezbids.key exist for JWT; auto-generate fake keys for testing if missing. */
 const ensureEzbidsKeys = (): void => {
@@ -84,45 +58,53 @@ const ensureEzbidsKeys = (): void => {
     fs.writeFileSync(pubPath, publicKey, 'ascii');
 };
 
-/**
- * On POSIX, spawn with detached:true so the child becomes a process group
- * leader. This lets killProcess target the entire group (all grandchildren too)
- * via process.kill(-pid, 'SIGKILL'). On Windows detached would open a new
- * console, so we leave it false there (taskkill /T handles the tree instead).
- */
-const spawnOpts = { stdio: 'inherit' as const, env, detached: process.platform !== 'win32' };
-
-const startBackend = async (): Promise<void> => {
+const startBackend = async (port: number, env: Record<string, string>): Promise<void> => {
     fs.mkdirSync(WORKDIR, { recursive: true });
-    ensureEzbidsKeys();
+    // ensureEzbidsKeys();
 
     if (ENVIRONMENT === 'development') {
-        const backendPath = path.join(__dirname, 'backend.js');
-        backendProcess = spawn('node', [backendPath], spawnOpts);
+        const backendPath = path.join(PROJECT_DIR, 'api', 'ezbids.js');
+        backendProcess = spawn('node', [backendPath], {
+            stdio: 'inherit' as const,
+            env,
+            detached: process.platform !== 'win32',
+        });
         backendProcess.on('error', (err) => console.error('Backend failed to start:', err));
     } else {
-        const backendPath = path.join(__dirname, 'dist', 'backend.cjs');
-        backendProcess = spawn('node', [backendPath], spawnOpts);
+        const backendPath = path.join(APP_DIR, 'dist', 'backend.cjs');
+        backendProcess = spawn('node', [backendPath], {
+            stdio: 'inherit' as const,
+            env,
+            detached: process.platform !== 'win32',
+        });
         backendProcess.on('spawn', () => console.log('Backend spawned on port', port));
         backendProcess.on('error', (err) => console.error('Backend failed to start:', err));
     }
 };
 
-const startHandler = async (): Promise<void> => {
+const startHandler = async (env: Record<string, string>): Promise<void> => {
     if (ENVIRONMENT === 'development') {
-        const handlerPath = path.join(__dirname, 'handler.js');
-        handlerProcess = spawn('node', [handlerPath], spawnOpts);
+        const handlerPath = path.join(PROJECT_DIR, 'handler', 'handler.js');
+        handlerProcess = spawn('node', [handlerPath], {
+            stdio: 'inherit' as const,
+            env,
+            detached: process.platform !== 'win32',
+        });
         handlerProcess.on('error', (err) => console.error('Handler failed to start:', err));
     } else {
-        const handlerPath = path.join(__dirname, 'dist', 'handler.cjs');
-        handlerProcess = spawn('node', [handlerPath], spawnOpts);
+        const handlerPath = path.join(APP_DIR, 'dist', 'handler.cjs');
+        handlerProcess = spawn('node', [handlerPath], {
+            stdio: 'inherit' as const,
+            env,
+            detached: process.platform !== 'win32',
+        });
         handlerProcess.on('spawn', () => console.log('Handler spawned'));
         handlerProcess.on('error', (err) => console.error('Handler failed to start:', err));
     }
 };
 
 const startFrontend = (): Promise<void> => {
-    const preloadPath = path.join(__dirname, 'preload', 'preload.js');
+    const preloadPath = path.join(APP_DIR, 'preload', 'preload.js');
     const win = new BrowserWindow({
         width: 1000,
         height: 700,
@@ -136,58 +118,41 @@ const startFrontend = (): Promise<void> => {
     win.webContents.openDevTools();
     // }
 
-    return win.loadFile(path.join(__dirname, 'dist', 'frontend', 'index.html'), {});
+    return win.loadFile(path.join(APP_DIR, 'dist', 'frontend', 'index.html'), {});
 };
 
-const createWindow = async (): Promise<void> => {
-    await startBackend();
+async function startApp(): Promise<void> {
+    const port = await getRandomPort();
+
+    const rendererEnv = {
+        BRAINLIFE_AUTHENTICATION: process.env.BRAINLIFE_AUTHENTICATION || 'false',
+        IS_ELECTRON: 'true',
+        API_HOST: `http://localhost:${port}`,
+    };
+
+    Object.assign(process.env, rendererEnv);
+
+    const env = {
+        ...process.env,
+        USER_DATA_PATH: USER_DATA_PATH,
+        UPLOAD_DIR: UPLOAD_DIR,
+        PROJECT_DIR: PROJECT_DIR,
+        WORKDIR: WORKDIR,
+        PORT: String(port),
+        MONGO_CONNECTION_STRING: '',
+        EZBIDS_BIN_DIR: getBinDir(),
+        EZBIDS_PLATFORM: getEzBidsPlatform(),
+        EZBIDS_ARCH: getEzBidsArch(),
+        ...rendererEnv,
+    };
+    await startBackend(port, env);
+    await startHandler(env);
     await startFrontend();
-    await startHandler();
-};
+}
 
-app.whenReady().then(() => {
-    ipcMain.handle('getApiUrl', () => `http://localhost:${port}`);
-    ipcMain.handle('pingPython', (_event, _args: unknown) => {
-        const pythonProcess = spawn('python3', ['hello.py']);
-        pythonProcess.stdout.on('data', (data: Buffer | string) => {
-            console.log(`stdout: ${data}`);
-        });
-        pythonProcess.stderr.on('data', (data: Buffer | string) => {
-            console.error(`stderr: ${data}`);
-        });
-        pythonProcess.on('close', (code: number | null) => {
-            console.log(`child process exited with code ${code}`);
-        });
-    });
-    createWindow();
+app.whenReady().then(async () => {
+    await startApp();
 });
-
-// function killProcess(child: ChildProcess, name: string): void {
-//     if (!child.pid) return;
-//     const pid = child.pid;
-//     console.log(`killing ${name} (pid ${pid})`);
-//     try {
-//         if (process.platform === 'win32') {
-//             spawn('taskkill', ['/F', '/T', '/PID', String(pid)], { stdio: 'ignore' });
-//         } else {
-//             process.kill(pid, 'SIGTERM');
-//             setTimeout(() => {
-//                 try {
-//                     console.log(`SIGKILLing ${name} (pid ${pid})`);
-//                     process.kill(-pid, 'SIGKILL');
-//                 } catch (err) {
-//                     if ((err as NodeJS.ErrnoException).code !== 'ESRCH') {
-//                         console.error(`Failed to SIGKILL ${name}:`, err);
-//                     }
-//                 }
-//             }, 3000).unref();
-//         }
-//     } catch (err) {
-//         if ((err as NodeJS.ErrnoException).code !== 'ESRCH') {
-//             console.error(`Failed to kill ${name}:`, err);
-//         }
-//     }
-// }
 
 function killProcess(child: ChildProcess, name: string): void {
     if (!child.pid) {
@@ -261,6 +226,8 @@ process.on('uncaughtException', (err) => {
     process.exit(1);
 });
 
-app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
+app.on('activate', async () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+        await startApp();
+    }
 });

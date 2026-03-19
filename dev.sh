@@ -19,6 +19,7 @@ git submodule update --init --recursive
 
 (cd api && npm install)
 (cd ui && npm install)
+(cd electron && npm install)
 
 mkdir -p /tmp/upload
 mkdir -p /tmp/workdir
