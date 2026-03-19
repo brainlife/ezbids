@@ -12,9 +12,9 @@ Unlike other BIDS converters, ezBIDS eliminates the need for coding and command 
 
 A series of inferenial heuritics analyze the uploaded data to provide a *first guess* BIDS structure, which is presented to users through the web-browser user interface. Users verify the *first guess* and modify the information provided as needed so as to best match the final BIDS structure. 
 
-Data from all major scanner vendors are accepted by ezBIDS. ezBIDS enables pseudo-anonymization by providing options for the defacing of anatomical sequences, and removes all identifying metadata information (e.g. `PatientName`) before final conversion to BIDS.
+Data from all major scanner vendors are accepted by ezBIDS. ezBIDS enables pseudo-anonymization by providing options for the defacing of anatomical sequences, and removes all identifying metadata information (e.g., `PatientName`) before final conversion to BIDS.
 
-The BIDS output can then be downloaded back to the user's computer, or uploaded to open repositories such as
+The BIDS output can then be downloaded back to the user's computer or uploaded to open repositories such as
 [brainlife.io](https://brainlife.io/) or [OpenNeuro.org](https://openneuro.org/).
 
 Helpful links:
@@ -31,7 +31,7 @@ Users do not need to organize their uploaded data in any specific manner, and us
 
 Should users feel the need to anonymize data before uploading, we strongly recommend that subjects (and sessions, if applicable) be organized into subject (and session) folders, with explicit labeling of the preferred subjects (and sessions) IDs (e.g. `MRI_data/sub-01/ses-01/DICOMS`). Failure to do so for non-anonymized data may result in an inaccurate *first guess* and require additional edits in the web browser.
 
-If users wish to install ezBIDS locally, to ensure that data do not leave their institution site, please see [here](https://brainlife.io/docs/using_ezBIDS/#installing-ezbids-locally).
+If users wish to install ezBIDS locally, to ensure that data do not leave their institution's site, please see [here](https://brainlife.io/docs/using_ezBIDS/#installing-ezbids-locally).
 
 ### Authors
 
@@ -44,7 +44,8 @@ If users wish to install ezBIDS locally, to ensure that data do not leave their 
 -   [Anthony Galassi](niconal902@gmail.com)
 -   [Guiomar Niso](guiomar.niso@ctb.upm.es)
 -   [Franco Pestilli](pestilli@utexas.edu)
-* _Both authors contributed equally to this project_
+
+*_These authors contributed equally to this project_
 
 ### Funding Acknowledgement
 
