@@ -5,11 +5,13 @@ import NotFound from './NotFound.vue';
 import { hasJWT, authRequired } from './lib';
 import { ElNotification } from 'element-plus';
 
-const isElectron = import.meta.env.VITE_ELECTRON === 'true';
+const isElectron = window.env.IS_ELECTRON === 'true';
+
 const router = createRouter({
     history: isElectron ? createWebHashHistory() : createWebHistory('/ezbids'),
     routes: [
-        { path: '', component: LandingPage },
+        { path: '', name: 'base', component: LandingPage },
+        { path: '/', component: LandingPage },
         { path: '/convert', name: 'convert', component: BaseConvertPage },
         { path: '/:pathMatch(.*)*', component: NotFound },
     ],

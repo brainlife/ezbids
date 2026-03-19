@@ -7,11 +7,11 @@ import { fileURLToPath } from 'url';
 import { spawn, ChildProcess } from 'child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const ENVIRONMENT = process.env.NODE_ENV || 'development';
 const USER_DATA_PATH = app.getPath('userData');
 const WORKDIR = path.join(USER_DATA_PATH, 'workdir');
-
-const ENVIRONMENT = process.env.NODE_ENV || 'development';
-const RENDERER_DIST_PATH = path.join(__dirname, '../ui/dist');
+const PROJECT_DIR = path.join(__dirname, '..');
+const UPLOAD_DIR = path.join(USER_DATA_PATH, 'upload');
 
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true } }]);
 
@@ -32,31 +32,37 @@ const getRandomPort = (): Promise<number> =>
 
 const port = process.env.PORT ? parseInt(process.env.PORT, 10) : await getRandomPort();
 
-/** Dir containing packaged binaries (7z, etc.). Handler/expand uses EZBIDS_BIN_DIR to find them. */
 const getBinDir = (): string =>
     app.isPackaged ? path.join(process.resourcesPath, 'bin') : path.join(__dirname, '../handler/bin');
 
-/** Platform for binary naming: darwin | linux | windows (matches fetch-binaries / getDcm2niixExecutable). */
 const getEzBidsPlatform = (): string =>
     process.env.EZBIDS_PLATFORM ?? (process.platform === 'win32' ? 'windows' : process.platform);
 
-/** Arch for binary naming: amd64 | arm64. */
 const getEzBidsArch = (): string => process.env.EZBIDS_ARCH ?? (process.arch === 'arm64' ? 'arm64' : 'amd64');
+
+const rendererEnv = {
+    BRAINLIFE_AUTHENTICATION: process.env.BRAINLIFE_AUTHENTICATION || 'false',
+    IS_ELECTRON: 'true',
+    API_HOST: `http://localhost:${port}`,
+};
+
+Object.assign(process.env, rendererEnv);
 
 const env = {
     ...process.env,
     USER_DATA_PATH: USER_DATA_PATH,
-    UPLOAD_DIR: path.join(USER_DATA_PATH, 'upload'),
-    PROJECT_DIR: path.join(__dirname, '..'),
+    UPLOAD_DIR: UPLOAD_DIR,
+    PROJECT_DIR: PROJECT_DIR,
     WORKDIR: WORKDIR,
     PORT: String(port),
-    BRAINLIFE_AUTHENTICATION: process.env.BRAINLIFE_AUTHENTICATION || 'false',
-    IS_ELECTRON: 'true',
     MONGO_CONNECTION_STRING: '',
     EZBIDS_BIN_DIR: getBinDir(),
     EZBIDS_PLATFORM: getEzBidsPlatform(),
     EZBIDS_ARCH: getEzBidsArch(),
+    ...rendererEnv,
 };
+
+console.log('ENVIRONMENT', ENVIRONMENT);
 
 /** Backend runs from this dir (backend reads ezbids.key/ezbids.pub from its __dirname). */
 const getBackendKeysDir = (): string => (ENVIRONMENT === 'development' ? path.join(__dirname, 'dist') : __dirname);
@@ -91,21 +97,28 @@ const startBackend = async (): Promise<void> => {
     ensureEzbidsKeys();
 
     if (ENVIRONMENT === 'development') {
+        const backendPath = path.join(__dirname, 'backend.js');
+        backendProcess = spawn('node', [backendPath], spawnOpts);
+        backendProcess.on('error', (err) => console.error('Backend failed to start:', err));
+    } else {
         const backendPath = path.join(__dirname, 'dist', 'backend.cjs');
         backendProcess = spawn('node', [backendPath], spawnOpts);
         backendProcess.on('spawn', () => console.log('Backend spawned on port', port));
-        backendProcess.on('error', (err) => console.error('Backend failed to start:', err));
-    } else {
-        const backendPath = path.join(__dirname, 'backend.js');
-        backendProcess = spawn('node', [backendPath], spawnOpts);
         backendProcess.on('error', (err) => console.error('Backend failed to start:', err));
     }
 };
 
 const startHandler = async (): Promise<void> => {
-    const handlerPath = path.join(__dirname, '../handler', 'handler.js');
-    handlerProcess = spawn('node', [handlerPath], spawnOpts);
-    handlerProcess.on('error', (err) => console.error('Handler failed to start:', err));
+    if (ENVIRONMENT === 'development') {
+        const handlerPath = path.join(__dirname, 'handler.js');
+        handlerProcess = spawn('node', [handlerPath], spawnOpts);
+        handlerProcess.on('error', (err) => console.error('Handler failed to start:', err));
+    } else {
+        const handlerPath = path.join(__dirname, 'dist', 'handler.cjs');
+        handlerProcess = spawn('node', [handlerPath], spawnOpts);
+        handlerProcess.on('spawn', () => console.log('Handler spawned'));
+        handlerProcess.on('error', (err) => console.error('Handler failed to start:', err));
+    }
 };
 
 const startFrontend = (): Promise<void> => {
@@ -119,12 +132,11 @@ const startFrontend = (): Promise<void> => {
         },
     });
 
-    if (ENVIRONMENT === 'development') {
-        win.webContents.openDevTools();
-        return win.loadURL('http://localhost:3000');
-    } else {
-        return win.loadFile(path.join(__dirname, '../ui/dist', 'index.html'));
-    }
+    // if (ENVIRONMENT === 'development') {
+    win.webContents.openDevTools();
+    // }
+
+    return win.loadFile(path.join(__dirname, 'dist', 'frontend', 'index.html'), {});
 };
 
 const createWindow = async (): Promise<void> => {
@@ -150,17 +162,49 @@ app.whenReady().then(() => {
     createWindow();
 });
 
+// function killProcess(child: ChildProcess, name: string): void {
+//     if (!child.pid) return;
+//     const pid = child.pid;
+//     console.log(`killing ${name} (pid ${pid})`);
+//     try {
+//         if (process.platform === 'win32') {
+//             spawn('taskkill', ['/F', '/T', '/PID', String(pid)], { stdio: 'ignore' });
+//         } else {
+//             process.kill(pid, 'SIGTERM');
+//             setTimeout(() => {
+//                 try {
+//                     console.log(`SIGKILLing ${name} (pid ${pid})`);
+//                     process.kill(-pid, 'SIGKILL');
+//                 } catch (err) {
+//                     if ((err as NodeJS.ErrnoException).code !== 'ESRCH') {
+//                         console.error(`Failed to SIGKILL ${name}:`, err);
+//                     }
+//                 }
+//             }, 3000).unref();
+//         }
+//     } catch (err) {
+//         if ((err as NodeJS.ErrnoException).code !== 'ESRCH') {
+//             console.error(`Failed to kill ${name}:`, err);
+//         }
+//     }
+// }
+
 function killProcess(child: ChildProcess, name: string): void {
-    if (!child.pid) return;
-    console.log(`killing ${name} (pid ${child.pid})`);
+    if (!child.pid) {
+        console.log(`${name} has no pid, skipping`);
+        return;
+    }
+    const pid = child.pid;
+    console.log(`killing ${name} (pid ${pid})`);
     try {
-        if (process.platform === 'win32') {
-            spawn('taskkill', ['/F', '/T', '/PID', String(child.pid)], { stdio: 'ignore' });
-        } else {
-            process.kill(-child.pid, 'SIGKILL'); // dont just kill process, but kill the entire process group
+        if (process.platform !== 'win32') {
+            console.log(`sending SIGTERM to ${name} pid ${pid}`);
+            process.kill(pid, 'SIGTERM'); // to the process itself
+            console.log(`sending SIGTERM to ${name} group -${pid}`);
+            process.kill(-pid, 'SIGTERM'); // to the whole process group
         }
     } catch (err) {
-        console.error(`Failed to kill ${name}:`, err);
+        console.log(`error killing ${name}:`, (err as NodeJS.ErrnoException).code, err);
     }
 }
 
@@ -180,8 +224,41 @@ app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', (event) => {
+    if (handlerProcess || backendProcess) {
+        event.preventDefault();
+        killAll();
+        app.quit();
+    }
+});
+
+app.on('will-quit', () => {
+    console.log('will-quit event received');
     killAll();
+    app.quit();
+});
+
+// When Ctrl+C is pressed in the terminal, SIGINT goes to the foreground process
+// group (Electron + npm), but NOT to the handler/backend which are in their own
+// process groups (detached: true). Explicitly forward these signals so the child
+// process groups are killed before Electron exits.
+process.on('SIGINT', () => {
+    console.log('SIGINT received, killing all processes');
+    app.quit();
+    // killAll();
+});
+process.on('SIGTERM', () => {
+    console.log('SIGTERM received, killing all processes');
+    killAll();
+    app.quit();
+});
+
+// Safety net: fires even on crashes or force-quits that bypass Electron events
+process.on('exit', killAll);
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught exception:', err);
+    killAll();
+    process.exit(1);
 });
 
 app.on('activate', () => {

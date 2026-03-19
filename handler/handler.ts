@@ -10,6 +10,15 @@ console.log('---------------------------------------');
 console.log(' starting ezbids-handler');
 console.log('---------------------------------------');
 
+setInterval(() => {
+    try {
+        process.kill(process.ppid, 0);
+    } catch (e) {
+        console.log('parent process gone, shutting down handler');
+        process.exit(0);
+    }
+}, 1000).unref();
+
 function run() {
     sessionStore
         .find({

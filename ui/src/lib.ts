@@ -117,7 +117,7 @@ export function createEventsTSV(ezbids: IEZBIDS, events: IEvents) {
 }
 
 export function authRequired() {
-    return import.meta.env.VITE_BRAINLIFE_AUTHENTICATION === 'true';
+    return window.env.BRAINLIFE_AUTHENTICATION === 'true';
 }
 
 export function hasJWT() {

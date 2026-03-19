@@ -26,7 +26,7 @@ const state = {
     },
 
     config: {
-        apihost: import.meta.env.VITE_APIHOST || '/api/ezbids',
+        apihost: window.env.API_HOST || '/api/ezbids',
         authhost: process.env.NODE_ENV === 'development' ? 'http://localhost:8080/api/auth' : '/api/auth',
         authSignIn: '/auth/#!/signin',
         authSignOut: '/auth/#!/signout',
@@ -147,6 +147,8 @@ const state = {
     } as IEvents,
 };
 
+const isElectron = window.env.IS_ELECTRON === 'true';
+
 function loadDatatype(modality: string, datatypes: { [key: string]: BIDSSchemaEntities }, label: string) {
     state.bidsSchema.datatypes[modality] = { label, options: [] };
     for (const group of Object.values(datatypes)) {
@@ -188,7 +190,8 @@ const store = createStore({
     mutations: {
         setSession(state, session) {
             state.session = session;
-            if (session._id) window.location.hash = session._id;
+            // In Electron we use hash-based routing, so avoid overriding route hash.
+            if (!isElectron && session._id) window.location.hash = session._id;
         },
 
         setApihost(state, apihost: string) {

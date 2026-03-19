@@ -3,7 +3,7 @@
         "target": "ES2020",
         "module": "ESNext",
         "moduleResolution": "node",
-        "outDir": "dist",
+        // "outDir": "dist",
         "rootDir": ".",
         "strict": true,
         "esModuleInterop": true,
@@ -11,6 +11,6 @@
         "forceConsistentCasingInFileNames": true,
         "resolveJsonModule": true
     },
-    "include": ["*.ts", "main.ts"],
+    "include": ["*.ts", "main.ts", "preload/**/*.ts"],
     "exclude": ["node_modules", "dist"]
 }

@@ -51,6 +51,11 @@ declare module 'vue' {
 declare global {
     interface Window {
         electronAPI?: { getApiUrl: () => Promise<string> };
+        env: {
+            API_HOST: string;
+            IS_ELECTRON: string;
+            BRAINLIFE_AUTHENTICATION: string;
+        };
     }
 }
 

@@ -2,9 +2,9 @@
     "name": "ui",
     "version": "0.2.0",
     "scripts": {
-        "dev": "VITE_APIHOST=http://localhost:8082 vite",
+        "dev": "API_HOST=http://localhost:8082 vite",
         "build": "vite build --base=/ezbids/",
-        "build:electron": "VITE_ELECTRON=true vite build --base=./",
+        "build:electron": "vite build --base=./ --outDir ../electron/dist/frontend",
         "serve": "vite preview"
     },
     "dependencies": {

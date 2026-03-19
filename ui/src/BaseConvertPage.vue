@@ -209,8 +209,11 @@ export default defineComponent({
 
     async created() {
         this.$store.commit('reset');
-        if (location.hash) {
-            await this.$store.dispatch('reload', location.hash.substring(1));
+        const isElectron = window.env.IS_ELECTRON === 'true';
+        const hash = location.hash;
+        // Legacy web mode stores session id in hash. In Electron hash is router state (#/convert).
+        if (!isElectron && hash) {
+            await this.$store.dispatch('reload', hash.substring(1));
             this.mapObjects();
             this.$store.commit('organizeObjects');
             this.$store.dispatch('loadDefaceStatus');

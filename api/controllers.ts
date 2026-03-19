@@ -13,7 +13,6 @@ import async = require('async');
 
 import config = require('./config');
 
-console.debug(config.multer);
 const upload = multer(config.multer);
 
 const router = express.Router();

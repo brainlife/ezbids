@@ -23,7 +23,7 @@ import { defineComponent } from 'vue';
 export default defineComponent({
     computed: {
         isElectron() {
-            return import.meta.env.VITE_ELECTRON === 'true';
+            return window.env.IS_ELECTRON === 'true';
         },
     },
 });
