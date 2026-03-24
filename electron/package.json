@@ -5,9 +5,9 @@
     "main": "main.ts",
     "type": "module",
     "scripts": {
-        "start": "NODE_ENV=prod ELECTRON_OVERRIDE_DIST_PATH=../node_modules/electron/dist electron .",
-        "build:electron-api": "tsc --noCheck -p ../api/tsconfig.json && esbuild ../api/ezbids.ts --bundle --platform=node --format=cjs --outfile=dist/backend.cjs --external:node-pty --external:nan",
-        "build:electron-handler": "tsc --noCheck -p ../handler/tsconfig.json  && esbuild ../handler/handler.ts --bundle --platform=node --format=cjs --outfile=dist/handler.cjs --external:node-pty --external:nan",
+        "start": "NODE_ENV=prod electron .",
+        "build:electron-api": "tsc --noCheck -p ../api/tsconfig.json && esbuild ../api/ezbids.ts --bundle --platform=node --format=cjs --outfile=dist/backend.cjs --external:node-pty --external:nan --external:electron --external:electron-store",
+        "build:electron-handler": "tsc --noCheck -p ../handler/tsconfig.json  && esbuild ../handler/handler.ts --bundle --platform=node --format=cjs --outfile=dist/handler.cjs --external:node-pty --external:nan --external:electron --external:electron-store",
         "build:electron-frontend": "(cd ../ui && npm run build:electron)",
         "build:electron": "npm run build:electron-api && npm run build:electron-handler && npm run build:electron-frontend && tsc",
         "app:dir": "electron-builder --dir",
@@ -28,5 +28,8 @@
         "mac": {
             "category": "public.app-category.education"
         }
+    },
+    "dependencies": {
+        "bids-validator": "^1.14.8"
     }
 }

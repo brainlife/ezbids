@@ -1,9 +1,11 @@
 FROM node:20
 
-COPY . /ui
 WORKDIR /ui
 
-RUN npm install -g npm@9.5.1
+COPY package.json package-lock.json ./
+RUN npm install
+
+COPY . .
 
 RUN chmod +x /ui/docker-entrypoint.sh
 

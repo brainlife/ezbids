@@ -1,26 +1,19 @@
 import axios from 'axios';
-import { ElNotification } from 'element-plus';
-import router from './routes';
-import { authRequired } from './lib';
+import toast from 'react-hot-toast';
+import { hasAuth } from './lib';
 
 const axiosInstance = axios.create({
-    headers: { 'Content-Type': 'application/json; charset=UTF-8' },
+    // Don't set a default Content-Type — let axios auto-detect
+    // (multipart/form-data for FormData, application/json for objects)
 });
 
 axiosInstance.interceptors.request.use((config) => {
-    if (!authRequired()) return config;
+    if (!hasAuth()) return config;
     const token = localStorage.getItem('jwt');
     if (token) {
-        config.headers = {
-            ...config.headers,
-            Authorization: `Bearer ${token}`,
-        };
+        config.headers.set('Authorization', `Bearer ${token}`);
     } else {
-        ElNotification({
-            title: 'Unauthorized user',
-            message: '',
-            type: 'error',
-        });
+        toast.error('Unauthorized user');
     }
     return config;
 });
@@ -30,12 +23,9 @@ axiosInstance.interceptors.response.use(
     (err) => {
         if (err.response) {
             if (err.response.status === 401) {
-                router.push('/');
-                ElNotification({
-                    title: 'Unauthorized access',
-                    message: '',
-                    type: 'error',
-                });
+                toast.error('Unauthorized access');
+                // Navigation handled at component level via React Router
+                window.location.href = '/ezbids/';
             }
         }
         throw err;

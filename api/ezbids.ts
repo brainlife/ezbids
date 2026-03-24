@@ -8,6 +8,7 @@ import nocache = require('nocache');
 
 import models = require("./models");
 import config = require("./config");
+import { loadAllDefinitions } from './workflows/workflowLoader';
 
 //import sendSeekable = require('send-seekable');
 
@@ -25,7 +26,7 @@ const options = {
     },
     apis: ['./controllers.js'], // files containing annotations as above
 };
-// const swaggerSpec = swaggerJsdoc(options);
+const swaggerSpec = swaggerJsdoc(options);
 //init express
 const app: express.Application = express();
 app.use(cors());
@@ -46,7 +47,8 @@ app.use(bodyParser.json({
 }));
 
 app.use('/', require('./controllers'));
-// app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
+app.use('/workflow', require('./workflowController'));
+app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 //error handling
 //app.use(expressWinston.errorLogger(config.logger.winston)); 
 app.use(function (err, req, res, next) {
@@ -67,24 +69,17 @@ process.on('uncaughtException', err => {
     console.error(err.stack)
 });
 
+loadAllDefinitions();
+
 models.connect(err => {
     if (err) throw err;
     var port = parseInt(process.env.PORT || config.express.port || '8082');
     var host = process.env.HOST || config.express.host || 'localhost';
     var server = app.listen(port, host, function () {
-        console.log("ezbids api service running on %s:%d in %s mode", host, port, app.settings.env);
+        console.log("warehouse api service running on %s:%d in %s mode", host, port, app.settings.env);
     });
 });
 
 //increase timeout for dataset download .. (default 120s)
 //without this, places like nki/s3 will timeout
 //server.timeout = 300*1000; 
-
-setInterval(() => {
-    try {
-        process.kill(process.ppid, 0);
-    } catch (e) {
-        console.log('parent process gone, shutting down api');
-        process.exit(0);
-    }
-}, 1000).unref();

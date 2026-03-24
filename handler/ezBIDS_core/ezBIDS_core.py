@@ -754,13 +754,17 @@ def find_cog_atlas_tasks(url):
         "test" removed, to make it easier to search the SeriesDescription
         fields for a matching task name.
     """
-    url_contents = urlopen(url)
-    data = json.load(url_contents)
-    # Remove non-alphanumeric terms and "task", "test" substrings
-    tasks = [re.sub("[^A-Za-z0-9]+", "", re.split(" task| test", x["name"])[0]).lower() for x in data]
-    # Remove empty task name terms and ones under 2 characters (b/c hard to detect in SeriesDescription)
-    tasks = [x for x in tasks if len(x) > 2]
-    tasks = sorted(tasks, key=str.casefold)  # sort alphabetically, but ignore case
+    try:
+        url_contents = urlopen(url, timeout=10)
+        data = json.load(url_contents)
+        # Remove non-alphanumeric terms and "task", "test" substrings
+        tasks = [re.sub("[^A-Za-z0-9]+", "", re.split(" task| test", x["name"])[0]).lower() for x in data]
+        # Remove empty task name terms and ones under 2 characters (b/c hard to detect in SeriesDescription)
+        tasks = [x for x in tasks if len(x) > 2]
+        tasks = sorted(tasks, key=str.casefold)  # sort alphabetically, but ignore case
+    except Exception as e:
+        print(f"Warning: Could not fetch Cognitive Atlas tasks from {url}: {e}")
+        tasks = []
 
     return tasks
 

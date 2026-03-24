@@ -6,5 +6,6 @@
         "module": "CommonJS",
         "skipLibCheck": true,
         "esModuleInterop": true,
+        "noEmitOnError": false
     }
 }

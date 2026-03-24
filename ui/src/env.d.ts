@@ -1,7 +1,19 @@
 /// <reference types="vite/client" />
 
-declare module '*.vue' {
-    import { DefineComponent } from 'vue';
-    const component: DefineComponent<{}, {}, any>;
-    export default component;
+interface ImportMetaEnv {
+    readonly VITE_APIHOST: string;
+}
+
+interface ImportMeta {
+    readonly env: ImportMetaEnv;
+}
+
+declare module '*.png' {
+    const value: string;
+    export default value;
+}
+
+declare module '*.svg' {
+    const value: string;
+    export default value;
 }

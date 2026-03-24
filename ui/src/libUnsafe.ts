@@ -1,7 +1,14 @@
-import e from 'cors';
+// @ts-nocheck
 // import * as fs from 'fs';
 
-import { Series, IObject, OrganizedSession, OrganizedSubject, IEZBIDS, IBIDSEvent, MetadataFields } from './store/store.types';
+import type { Series, IObject, OrganizedSession, OrganizedSubject, IEzbids, IBIDSEvent } from './store/slices/ezbidsSlice';
+
+export interface MetadataFields {
+    [key: string]: {
+        selectors: { [key: string]: any }[];
+        fields: { [key: string]: { [key: string]: any } };
+    };
+}
 
 import aslYaml from '../src/assets/schema/rules/sidecars/asl.yaml';
 import petYaml from '../src/assets/schema/rules/sidecars/pet.yaml';
@@ -26,7 +33,7 @@ export function deepEqual(obj1: any, obj2: any) {
     if (Object.keys(obj1).length !== Object.keys(obj2).length) return false;
 
     // compare objects with same number of keys
-    for (let key in obj1) {
+    for (const key in obj1) {
         if (!(key in obj2)) return false; //other object doesn't have this prop
         if (!deepEqual(obj1[key], obj2[key])) return false;
     }
@@ -38,7 +45,7 @@ export function isPrimitive(obj: any) {
     return obj !== Object(obj);
 }
 
-export function setVolumeThreshold($root: IEZBIDS) {
+export function setVolumeThreshold($root: IEzbids) {
     /*
     Determine volume threshold for all func/bold acquisitions in dataset and set
     to exclude if the number of volumes does not meet the volume threshold. Threshold 
@@ -48,9 +55,9 @@ export function setVolumeThreshold($root: IEZBIDS) {
     $root.objects.forEach((o: IObject) => {
         //update analysisResults.warnings in case user went back to Series and adjusted things
         if (o._type === 'func/bold') {
-            let tr: number = o.items[0].sidecar.RepetitionTime;
-            let numVolumes: any = o.analysisResults.NumVolumes;
-            let numVolumes1min: number = Math.floor(60 / tr);
+            const tr: number = o.items[0].sidecar.RepetitionTime;
+            const numVolumes: any = o.analysisResults.NumVolumes;
+            const numVolumes1min: number = Math.floor(60 / tr);
             if (numVolumes <= numVolumes1min) {
                 o.exclude = true;
                 o._exclude = true;
@@ -65,7 +72,7 @@ export function setVolumeThreshold($root: IEZBIDS) {
             // In case user changes sequence on dataset review to func/bold and then back, remove the volume threshold warning
             if (o.analysisResults.warnings.length) {
                 for (const warn in o.analysisResults.warnings) {
-                    let index: number = o.analysisResults.warnings[warn].indexOf('This func/bold sequence contains');
+                    const index: number = o.analysisResults.warnings[warn].indexOf('This func/bold sequence contains');
                     if (index !== -1) {
                         o.analysisResults.warnings.splice(index, 1);
                     }
@@ -75,7 +82,7 @@ export function setVolumeThreshold($root: IEZBIDS) {
     });
 }
 
-export function setSectionIDs($root: IEZBIDS) {
+export function setSectionIDs($root: IEzbids) {
     /*
     Set section_id value for each acquisition, beginning with value of 1. A section is
     ezBIDS jargin for each time participant comes out and then re-enters scanner. Each time
@@ -86,7 +93,7 @@ export function setSectionIDs($root: IEZBIDS) {
 
     $root._organized.forEach((subGroup: OrganizedSubject) => {
         subGroup.sess.forEach((sesGroup: OrganizedSession) => {
-            let protocol: IObject[] = sesGroup.objects;
+            const protocol: IObject[] = sesGroup.objects;
             let sectionID = 1;
             let obj_idx = 0;
             let message = '';
@@ -116,7 +123,7 @@ export function setSectionIDs($root: IEZBIDS) {
     });
 }
 
-export function funcQA($root: IEZBIDS) {
+export function funcQA($root: IEzbids) {
     /*
     1). If func/bold acquisition is excluded, warn users that corresponding
     func/sbref, and func/bold (part-phase) should all excluded as well,
@@ -159,9 +166,9 @@ export function funcQA($root: IEZBIDS) {
 
         // #2
         if (o._type === 'func/bold' && !o.exclude && (!o._entities.part || o._entities.part === 'mag')) {
-            let boldEntities = o._entities;
-            let boldPED = o.items[0].sidecar.PhaseEncodingDirection;
-            let badSBRef = $root.objects
+            const boldEntities = o._entities;
+            const boldPED = o.items[0].sidecar.PhaseEncodingDirection;
+            const badSBRef = $root.objects
                 .filter(
                     (e) =>
                         e._type === 'func/sbref' &&
@@ -179,7 +186,7 @@ export function funcQA($root: IEZBIDS) {
     });
 }
 
-export function fmapQA($root: IEZBIDS) {
+export function fmapQA($root: IEzbids) {
     /* Generate warning(s) duplicate field maps (or not enough) are detected.
 
     TODO: generate warning(s) if Pepolar field maps don't have opposite phase encoding directions
@@ -188,12 +195,12 @@ export function fmapQA($root: IEZBIDS) {
     $root._organized.forEach((subGroup: OrganizedSubject) => {
         subGroup.sess.forEach((sesGroup: OrganizedSession) => {
             // Determine unique sectionIDs
-            let allSectionIDs: number[] = sesGroup.objects.map((e) => e.analysisResults.section_id);
-            let sectionIDs = Array.from(new Set(allSectionIDs));
+            const allSectionIDs: number[] = sesGroup.objects.map((e) => e.analysisResults.section_id);
+            const sectionIDs = Array.from(new Set(allSectionIDs));
 
             // Loop through sections
             sectionIDs.forEach((s: number) => {
-                let section = sesGroup.objects.filter(
+                const section = sesGroup.objects.filter(
                     (o) => o.analysisResults.section_id === s && !o._exclude && o._type != 'exclude'
                 );
 
@@ -206,7 +213,7 @@ export function fmapQA($root: IEZBIDS) {
                     );
                 });
 
-                let fmapMagPhasediffCheck = fmapMagPhasediffObjs.filter((o) => o._type === 'fmap/phasediff'); //since cases 1 & 2 can have "fmap/magnitude1", check for "fmap/phasediff to determine case 1"
+                const fmapMagPhasediffCheck = fmapMagPhasediffObjs.filter((o) => o._type === 'fmap/phasediff'); //since cases 1 & 2 can have "fmap/magnitude1", check for "fmap/phasediff to determine case 1"
                 if (!fmapMagPhasediffCheck.length) {
                     fmapMagPhasediffObjs = [];
                 }
@@ -221,31 +228,31 @@ export function fmapQA($root: IEZBIDS) {
                     );
                 });
 
-                let fmapMagPhaseCheck = fmapMagPhaseObjs.filter((o) => o._type === 'fmap/phase1'); //since cases 1 & 2 can have "fmap/magnitude1", check for "fmap/phase1 to determine case 2"
+                const fmapMagPhaseCheck = fmapMagPhaseObjs.filter((o) => o._type === 'fmap/phase1'); //since cases 1 & 2 can have "fmap/magnitude1", check for "fmap/phase1 to determine case 2"
                 if (!fmapMagPhaseCheck.length) {
                     fmapMagPhaseObjs = [];
                 }
 
                 // case #3: Direct field mapping
-                let fmapDirectObjs = section.filter(function (o) {
+                const fmapDirectObjs = section.filter(function (o) {
                     return o._type === 'fmap/magnitude' || o._type === 'fmap/fieldmap';
                 });
 
                 //case #4: Multiple phase encoding direction ("pepolar")
-                let fmapPepolar = section.filter((o) => o._type === 'fmap/epi');
+                const fmapPepolar = section.filter((o) => o._type === 'fmap/epi');
 
                 fmapPepolar.forEach((fmap) => {
-                    let sidecar_idx = fmap.items.findIndex(obj => obj.path.endsWith('json'));
-                    let sidecar = JSON.parse(fmap.items[sidecar_idx].sidecar_json);
+                    const sidecar_idx = fmap.items.findIndex(obj => obj.path.endsWith('json'));
+                    const sidecar = JSON.parse(fmap.items[sidecar_idx].sidecar_json);
                     if (!sidecar.hasOwnProperty('PhaseEncodingDirection')) {
                         let axis = '';
                         if (sidecar.hasOwnProperty('PhaseEncodingAxis')) {
                             axis = sidecar.PhaseEncodingAxis;
                         }
 
-                        let orientation = fmap.analysisResults.orientation;
+                        const orientation = fmap.analysisResults.orientation;
                         if (orientation !== undefined) {
-                            let direction = fmap._entities.direction;
+                            const direction = fmap._entities.direction;
 
                             let idx = 1; // Can we assume A-P phase encoding plane? Seems like the most common.
                             if (axis === 'i') {
@@ -256,7 +263,7 @@ export function fmapQA($root: IEZBIDS) {
                                 idx = 2;
                             }
 
-                            let letter = orientation[idx];
+                            const letter = orientation[idx];
 
                             let ped = '';
                             if (letter === direction[0]) {
@@ -280,15 +287,15 @@ export function fmapQA($root: IEZBIDS) {
                 https://bids-specification.readthedocs.io/en/stable/99-appendices/11-qmri.html
                 */
 
-                let fmapTB1DAM = section.filter((o) => o._type === 'fmap/TB1DAM'); //pair
-                let fmapTB1EPI = section.filter((o) => o._type === 'fmap/TB1EPI'); //pair
-                let fmapTB1AFI = section.filter((o) => o._type === 'fmap/TB1AFI'); //pair
-                let fmapTB1TFL = section.filter((o) => o._type === 'fmap/TB1TFL'); //pair
-                let fmapTB1RFM = section.filter((o) => o._type === 'fmap/TB1RFM'); //pair
-                let fmapRB1COR = section.filter((o) => o._type === 'fmap/RB1COR'); //pair
-                let fmapTB1SRGE = section.filter((o) => o._type === 'fmap/TB1SRGE'); //pair
-                let fmapTB1map = section.filter((o) => o._type === 'fmap/TB1map'); //single
-                let fmapRB1map = section.filter((o) => o._type === 'fmap/RB1map'); //single
+                const fmapTB1DAM = section.filter((o) => o._type === 'fmap/TB1DAM'); //pair
+                const fmapTB1EPI = section.filter((o) => o._type === 'fmap/TB1EPI'); //pair
+                const fmapTB1AFI = section.filter((o) => o._type === 'fmap/TB1AFI'); //pair
+                const fmapTB1TFL = section.filter((o) => o._type === 'fmap/TB1TFL'); //pair
+                const fmapTB1RFM = section.filter((o) => o._type === 'fmap/TB1RFM'); //pair
+                const fmapRB1COR = section.filter((o) => o._type === 'fmap/RB1COR'); //pair
+                const fmapTB1SRGE = section.filter((o) => o._type === 'fmap/TB1SRGE'); //pair
+                const fmapTB1map = section.filter((o) => o._type === 'fmap/TB1map'); //single
+                const fmapRB1map = section.filter((o) => o._type === 'fmap/RB1map'); //single
 
                 /* Check for duplicate fmaps (or not enough fmaps). If so, generate validation
                 warning for the duplicate(s) or missing field maps. ezBIDS assumes that the duplicates
@@ -412,7 +419,7 @@ export function fmapQA($root: IEZBIDS) {
     });
 }
 
-export function setRun($root: IEZBIDS) {
+export function setRun($root: IEzbids) {
     // Set run entity label for all objects, if appropriate.
     // Applied on the Dataset Review page.
 
@@ -423,12 +430,12 @@ export function setRun($root: IEZBIDS) {
             sesGroup.objects.forEach((obj: IObject) => {
                 // leave two entity labels out for now: part and run. The part entity could have a pairing (mag/phase or real/imag), and we're interested in the run entity
 
-                let targetEntities = Object.fromEntries(
+                const targetEntities = Object.fromEntries(
                     Object.entries(obj._entities).filter(([key]) => key !== 'part' && key !== 'run' && key !== 'echo')
                 ); // REFERENCE
                 // let targetEntities = Object.fromEntries(Object.entries(obj._entities).filter(([key])=>key !== "part" && key !== "run"))
 
-                let initialGrouping = sesGroup.objects.filter(
+                const initialGrouping = sesGroup.objects.filter(
                     (e) =>
                         e._type !== 'exclude' &&
                         !e._exclude &&
@@ -489,7 +496,7 @@ export function setRun($root: IEZBIDS) {
                                     }
 
                                     if (o._entities.echo) {
-                                        let correspondingFuncMag = initialGrouping.filter(
+                                        const correspondingFuncMag = initialGrouping.filter(
                                             (e) =>
                                                 e._entities.part === corresponding_part &&
                                                 e._type === o._type &&
@@ -509,7 +516,7 @@ export function setRun($root: IEZBIDS) {
                                                     ') sequence, therefore this sequence will be excluded from BIDS conversion',
                                             ];
                                         } else {
-                                            let correspondingFuncMagFinal = correspondingFuncMag.filter(
+                                            const correspondingFuncMagFinal = correspondingFuncMag.filter(
                                                 (e) =>
                                                     e.ModifiedSeriesNumber ===
                                                     (Number(o.ModifiedSeriesNumber) - 1).toString()
@@ -531,7 +538,7 @@ export function setRun($root: IEZBIDS) {
                                         }
                                     } else {
                                         // no echo entity
-                                        let correspondingFuncMag = initialGrouping.filter(
+                                        const correspondingFuncMag = initialGrouping.filter(
                                             (e) =>
                                                 e._entities.part === corresponding_part &&
                                                 ((e.idx === o.idx - 1 && e._type === o._type) ||
@@ -584,7 +591,7 @@ export function setRun($root: IEZBIDS) {
     });
 }
 
-export function setIntendedFor($root: IEZBIDS) {
+export function setIntendedFor($root: IEzbids) {
     // Apply fmap intendedFor mapping, based on user specifications on Series page.
 
     function isNumberInObject(obj: number[], number: number) {
@@ -600,17 +607,17 @@ export function setIntendedFor($root: IEZBIDS) {
     $root._organized.forEach((subGroup: OrganizedSubject) => {
         subGroup.sess.forEach((sesGroup: OrganizedSession) => {
             // Determine unique sectionIDs
-            let allSectionIDs = sesGroup.objects.map((e) => e.analysisResults.section_id);
-            let sectionIDs = Array.from(new Set(allSectionIDs));
+            const allSectionIDs = sesGroup.objects.map((e) => e.analysisResults.section_id);
+            const sectionIDs = Array.from(new Set(allSectionIDs));
 
             // Loop through sections
             sectionIDs.forEach((s: number) => {
-                let section = sesGroup.objects.filter(
+                const section = sesGroup.objects.filter(
                     (e) => e.analysisResults.section_id === s && !e._exclude && e._type !== 'exclude'
                 );
 
-                let allDWIs = section.filter((d) => d._type === 'dwi/dwi');
-                let allDWIfmaps = section.filter(
+                const allDWIs = section.filter((d) => d._type === 'dwi/dwi');
+                const allDWIfmaps = section.filter(
                     (d) => d._type === 'fmap/epi' && d.message.includes('corresponding bval/bvec files')
                 );
 
@@ -639,7 +646,7 @@ export function setIntendedFor($root: IEZBIDS) {
                         if (obj.message.includes('corresponding bval/bvec files')) {
                             if (DWIfmapWorflow) {
                                 // one-to-one correspondence between DWI and a DWI b0map (mapped as fmap/epi)
-                                let correspondingDWI = section.filter(
+                                const correspondingDWI = section.filter(
                                     (c) =>
                                         c._type === 'dwi/dwi' &&
                                         c._entities.direction.split('').reverse().join('') ===
@@ -647,7 +654,7 @@ export function setIntendedFor($root: IEZBIDS) {
                                         c._entities.run === obj._entities.run
                                 );
                                 if (correspondingDWI.length === 1) {
-                                    let IntendedForID = correspondingDWI[0].idx;
+                                    const IntendedForID = correspondingDWI[0].idx;
                                     if (obj.IntendedFor !== undefined) {
                                         if (!isNumberInObject(obj.IntendedFor, IntendedForID)) {
                                             obj.IntendedFor = obj.IntendedFor.concat(IntendedForID);
@@ -657,14 +664,14 @@ export function setIntendedFor($root: IEZBIDS) {
                             }
                         } else {
                             // Otherwise, proceed as usual
-                            let correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor;
+                            const correspindingSeriesIntendedFor = $root.series[obj.series_idx].IntendedFor;
 
                             if (
                                 correspindingSeriesIntendedFor !== undefined &&
                                 correspindingSeriesIntendedFor !== null
                             ) {
                                 correspindingSeriesIntendedFor.forEach((i: number) => {
-                                    let IntendedForIDs = section
+                                    const IntendedForIDs = section
                                         .filter((o) => o.series_idx === i && o._type !== 'func/events')
                                         .map((o) => o.idx);
                                     if (obj.IntendedFor !== undefined) {
@@ -678,17 +685,17 @@ export function setIntendedFor($root: IEZBIDS) {
                             }
                         }
 
-                        if (Object.keys(obj.IntendedFor ?? []).length !== 0) {
+                        if (Object.keys(obj.IntendedFor).length !== 0) {
                             obj.IntendedFor?.forEach((e) => {
-                                let IntendedForObj = $root.objects.filter((o: IObject) => o.idx === e)[0];
+                                const IntendedForObj = $root.objects.filter((o: IObject) => o.idx === e)[0];
                                 if (IntendedForObj.exclude || IntendedForObj._exclude) {
-                                    let badIndexKey: number = (obj.IntendedFor ?? []).indexOf(e);
-                                    delete (obj.IntendedFor ?? [])[badIndexKey];
+                                    const badIndexKey: number = obj.IntendedFor.indexOf(e);
+                                    delete obj.IntendedFor[badIndexKey];
                                 }
                             });
                         }
                         if (obj._type.startsWith('fmap/')) {
-                            if (Object.keys(obj.IntendedFor ?? []).length === 0) {
+                            if (Object.keys(obj.IntendedFor).length === 0) {
                                 obj.validationWarnings = [
                                     'It is recommended that field map (fmap) sequences have IntendedFor set to at least 1 series ID. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep',
                                 ];
@@ -698,7 +705,7 @@ export function setIntendedFor($root: IEZBIDS) {
                                 obj.validationWarnings = [];
                             }
                         } else if (obj._type === 'perf/m0scan') {
-                            if (Object.keys(obj.IntendedFor ?? []).length === 0) {
+                            if (Object.keys(obj.IntendedFor).length === 0) {
                                 obj.validationErrors = [
                                     'It is required that perfusion m0scan sequences have IntendedFor set to at least 1 series ID.',
                                 ];
@@ -719,7 +726,7 @@ export function setIntendedFor($root: IEZBIDS) {
                         Object.assign(obj, { B0FieldIdentifier: [] });
                         Object.assign(obj, { B0FieldSource: [] });
                         if ('B0FieldIdentifier' in $root.series[obj.series_idx]) {
-                            let correspindingSeriesB0FieldIdentifier = $root.series[obj.series_idx].B0FieldIdentifier;
+                            const correspindingSeriesB0FieldIdentifier = $root.series[obj.series_idx].B0FieldIdentifier;
                             if (correspindingSeriesB0FieldIdentifier) {
                                 for (const k of correspindingSeriesB0FieldIdentifier) {
                                     obj.B0FieldIdentifier.push(k);
@@ -728,7 +735,7 @@ export function setIntendedFor($root: IEZBIDS) {
                         }
 
                         if ('B0FieldSource' in $root.series[obj.series_idx]) {
-                            let correspindingSeriesB0FieldSource = $root.series[obj.series_idx].B0FieldSource;
+                            const correspindingSeriesB0FieldSource = $root.series[obj.series_idx].B0FieldSource;
                             if (correspindingSeriesB0FieldSource) {
                                 for (const k of correspindingSeriesB0FieldSource) {
                                     obj.B0FieldSource.push(k);
@@ -756,7 +763,7 @@ function findMostCommonValue(arr: any) {
         .pop();
 }
 
-export function alignEntities($root: IEZBIDS) {
+export function alignEntities($root: IEzbids) {
     /*
     Applied on Dataset Review page
     There are two ways entities are stored:
@@ -777,8 +784,8 @@ export function alignEntities($root: IEZBIDS) {
 }
 
 export function validate_B0FieldIdentifier_B0FieldSource(info: Series | IObject) {
-    let B0FieldIdentifier = info.B0FieldIdentifier;
-    let B0FieldSource = info.B0FieldSource;
+    const B0FieldIdentifier = info.B0FieldIdentifier;
+    const B0FieldSource = info.B0FieldSource;
 
     //validate B0FieldIdentifier (only alphanumeric, dash [-], and underscore [_] characters allowed)
     if (B0FieldIdentifier) {
@@ -805,7 +812,7 @@ export function validate_B0FieldIdentifier_B0FieldSource(info: Series | IObject)
     }
 }
 
-export function dwiQA($root: IEZBIDS) {
+export function dwiQA($root: IEzbids) {
     /*
     DWI acquisitions are typically acquired in two ways:
 
@@ -817,9 +824,9 @@ export function dwiQA($root: IEZBIDS) {
     */
     $root._organized.forEach((subGroup: OrganizedSubject) => {
         subGroup.sess.forEach((sesGroup: OrganizedSession) => {
-            let dwiInfo: any[] = [];
-            let fmapInfo: any[] = [];
-            let protocolObjects: IObject[] = sesGroup.objects;
+            const dwiInfo: any[] = [];
+            const fmapInfo: any[] = [];
+            const protocolObjects: IObject[] = sesGroup.objects;
 
             for (const protocol of protocolObjects) {
                 Object.keys(protocol).forEach((key: string) => {
@@ -834,7 +841,7 @@ export function dwiQA($root: IEZBIDS) {
                     }
                 });
             }
-            let fmapIntendedFor = protocolObjects.filter((t) => t._type.startsWith('fmap/') && !t._exclude);
+            const fmapIntendedFor = protocolObjects.filter((t) => t._type.startsWith('fmap/') && !t._exclude);
             fmapIntendedFor.forEach((f) => {
                 if (f.IntendedFor === null) {
                     f.IntendedFor = [];
@@ -843,7 +850,7 @@ export function dwiQA($root: IEZBIDS) {
             });
 
             if (dwiInfo.length) {
-                let dwiDirs = dwiInfo.map((e) => e.direction);
+                const dwiDirs = dwiInfo.map((e) => e.direction);
 
                 if (fmapInfo.length) {
                     fmapInfo.forEach((f) => {
@@ -865,7 +872,7 @@ export function dwiQA($root: IEZBIDS) {
                 }
 
                 dwiInfo.forEach((d) => {
-                    let corrProtocolObj = protocolObjects.filter((e) => e.idx == d.idx)[0]; //will always be an index of 1, so just grab the first (i.e. only) index
+                    const corrProtocolObj = protocolObjects.filter((e) => e.idx == d.idx)[0]; //will always be an index of 1, so just grab the first (i.e. only) index
                     if (!d.fmap && !d.oppDWI) {
                         corrProtocolObj.analysisResults.warnings = [
                             "This dwi/dwi acquisition doesn't appear to have a corresponding dwi/dwi or fmap sequence with a 180 degree flipped phase encoding direction. You may wish to exclude this from BIDS conversion, unless there is a reason for keeping it.",
@@ -879,14 +886,14 @@ export function dwiQA($root: IEZBIDS) {
     });
 }
 
-export function petQA($root: IEZBIDS) {
+export function petQA($root: IEzbids) {
     $root.objects.forEach((o: IObject) => {
         if (o._type === 'pet/blood') {
-            let tsv = o.items.find((e) => e.name === 'tsv');
-            let json = o.items.find((e) => e.name === 'json');
+            const tsv = o.items.find((e) => e.name === 'tsv');
+            const json = o.items.find((e) => e.name === 'json');
             if (tsv !== undefined && json !== undefined) {
-                let tsv_headers = Object.values(tsv.headers);
-                let metadata = JSON.parse(json.sidecar_json);
+                const tsv_headers = Object.values(tsv.headers);
+                const metadata = JSON.parse(json.sidecar_json);
 
                 for (const [key, value] of Object.entries(metadata)) {
                     if (key === 'PlasmaAvail' && value === true) {
@@ -928,7 +935,7 @@ export function validateEntities(level: string, info: any) {
         entities = info._entities;
     }
 
-    for (let k in entities) {
+    for (const k in entities) {
         //validate entity (only alpha numeric values allowed)
         if (entities[k] && !/^[a-zA-Z0-9]*$/.test(entities[k])) {
             info.validationErrors.push('The ' + k + ' entity label contains non-alphanumeric character(s).');
@@ -961,7 +968,7 @@ export function validateEntities(level: string, info: any) {
                 }
             } else if (k === 'part') {
                 // Only mag, phase, real, or imag allowed
-                let values = ['mag', 'phase', 'real', 'imag'];
+                const values = ['mag', 'phase', 'real', 'imag'];
                 if (entities[k] && entities[k] !== '') {
                     if (!['mag', 'phase', 'real', 'imag'].includes(entities[k])) {
                         info.validationErrors.push(
@@ -1088,7 +1095,7 @@ export function parseEvents(fileData: any, sep: any) {
         .split(/\r|\n/)
         .map((l: any) => l.trim().replace(/['"]+/g, ''));
     const trials: any[] = [];
-    let headers = lines.shift().split(sep);
+    const headers = lines.shift().split(sep);
     const timing_info = [];
 
     lines.forEach((line: string) => {
@@ -1120,19 +1127,19 @@ export function parseEvents(fileData: any, sep: any) {
 
 function parseExcelEvents(fileData: any) {
     // Code from https://stackoverflow.com/questions/30859901/parse-xlsx-with-node-and-create-json
-    let workbook = fileData;
-    let sheet_name_list = workbook.SheetNames;
-    let trials: any[] = [];
+    const workbook = fileData;
+    const sheet_name_list = workbook.SheetNames;
+    const trials: any[] = [];
     sheet_name_list.forEach(function (y: any) {
-        let worksheet = workbook.Sheets[y];
-        let headers: any = {};
-        let data: any[] = [];
+        const worksheet = workbook.Sheets[y];
+        const headers: any = {};
+        const data: any[] = [];
         for (const z in worksheet) {
             if (z[0] === '!') continue;
             //parse out the column, row, and value
-            let col: string = z.substring(0, 1);
-            let row: number = parseInt(z.substring(1));
-            let value = worksheet[z].v;
+            const col: string = z.substring(0, 1);
+            const row: number = parseInt(z.substring(1));
+            const value = worksheet[z].v;
 
             //store header names
             if (row == 1) {
@@ -1152,7 +1159,7 @@ function parseExcelEvents(fileData: any) {
     return trials[0];
 }
 
-export function createEventObjects(ezbids: IEZBIDS, files: any) {
+export function createEventObjects(ezbids: IEzbids, files: any) {
     /*
     This function receives files, an array of object containing fullpath and data.
     Data is the actual file content of the file,
@@ -1210,7 +1217,7 @@ export function createEventObjects(ezbids: IEZBIDS, files: any) {
     //set random entity values that can be updated later on if events mapping doesn't work properly
     let randSubID = 1;
     let randSesID = 1;
-    let randTaskName = 'unknown';
+    const randTaskName = 'unknown';
     let randRunID = 1;
 
     // Sort through events file(s) list
@@ -1342,8 +1349,8 @@ export function createEventObjects(ezbids: IEZBIDS, files: any) {
                         });
                         lastSplit = lastSplit.replace('/', '-');
 
-                        let value = lastSplit.split(/[._-]+/)[0];
-                        let regex = new RegExp(value, 'gi');
+                        const value = lastSplit.split(/[._-]+/)[0];
+                        const regex = new RegExp(value, 'gi');
                         info.eventsValue = file.path.match(regex)[0]; //since we used a case-insensitive search, let eventsValue be the case-sensitive value from the file path
                         info.detectionMethod = 'identifying information found in file path';
                     }
@@ -1390,10 +1397,10 @@ export function createEventObjects(ezbids: IEZBIDS, files: any) {
                     });
                 } else {
                     // Make sure task id aligns correctly
-                    let ezbids_tasks: string[] = eventsMappingInfo.task.ezBIDSvalues;
-                    let events_task: string = eventsMappingInfo.task.eventsValue;
+                    const ezbids_tasks: string[] = eventsMappingInfo.task.ezBIDSvalues;
+                    const events_task: string = eventsMappingInfo.task.eventsValue;
                     if (ezbids_tasks.length) {
-                        let task_match_id = ezbids_tasks.map((t) => t.toLowerCase()).indexOf(events_task.toLowerCase());
+                        const task_match_id = ezbids_tasks.map((t) => t.toLowerCase()).indexOf(events_task.toLowerCase());
                         if (task_match_id !== -1) {
                             eventsMappingInfo.task.eventsValue = ezbids_tasks[task_match_id];
                         }
@@ -1411,7 +1418,7 @@ export function createEventObjects(ezbids: IEZBIDS, files: any) {
 
         let section_id = 1; //default value unless otherwise determined
         let ModifiedSeriesNumber = '00'; //default value unless otherwise determined
-        let sidecar = {};
+        const sidecar = {};
 
         //create new events object
         const object = {
@@ -1460,13 +1467,13 @@ export function createEventObjects(ezbids: IEZBIDS, files: any) {
 
         //modify object values
         for (const entity of ['subject', 'session', 'task', 'run']) {
-            let ezBIDSvalues = eventsMappingInfo[entity as keyof typeof eventsMappingInfo].ezBIDSvalues;
-            let eventsValue = eventsMappingInfo[entity as keyof typeof eventsMappingInfo].eventsValue;
+            const ezBIDSvalues = eventsMappingInfo[entity as keyof typeof eventsMappingInfo].ezBIDSvalues;
+            const eventsValue = eventsMappingInfo[entity as keyof typeof eventsMappingInfo].eventsValue;
             if (eventsValue) {
                 object.entities[entity as keyof typeof eventsMappingInfo] = eventsValue;
             }
 
-            let subjectsInfo = ezbids.subjects;
+            const subjectsInfo = ezbids.subjects;
 
             //update subject_idx
             if (entity === 'subject' && ezBIDSvalues.includes(eventsValue)) {
@@ -1482,7 +1489,7 @@ export function createEventObjects(ezbids: IEZBIDS, files: any) {
                 eventsMappingInfo.session.ezBIDSvalues.length > 0 &&
                 ezBIDSvalues.includes(eventsValue)
             ) {
-                let sessionsInfo = subjectsInfo[object.subject_idx].sessions;
+                const sessionsInfo = subjectsInfo[object.subject_idx].sessions;
 
                 object.session_idx = sessionsInfo.findIndex(function (sessionsInfo) {
                     return sessionsInfo.session === eventsMappingInfo.session.eventsValue;
@@ -1526,7 +1533,7 @@ export function createEventObjects(ezbids: IEZBIDS, files: any) {
         //update section_id, series_idx, and ModifiedSeriesNumber
         if (sessions.length > 0) {
             // series_id
-            let section_id_object = ezbids.objects.find(
+            const section_id_object = ezbids.objects.find(
                 (e) =>
                     e._entities.subject === eventsMappingInfo.subject.eventsValue &&
                     e._entities.session === eventsMappingInfo.session.eventsValue &&
@@ -1540,7 +1547,7 @@ export function createEventObjects(ezbids: IEZBIDS, files: any) {
             }
 
             // ModifiedSeriesNumber
-            let ModifiedSeriesNumberObj = ezbids.objects.find(
+            const ModifiedSeriesNumberObj = ezbids.objects.find(
                 (e) =>
                     e._entities.subject === eventsMappingInfo.subject.eventsValue &&
                     e._entities.session === eventsMappingInfo.session.eventsValue &&
@@ -1556,7 +1563,7 @@ export function createEventObjects(ezbids: IEZBIDS, files: any) {
             }
         } else {
             // series_id
-            let section_id_obj = ezbids.objects.find(
+            const section_id_obj = ezbids.objects.find(
                 (e) =>
                     e._entities.subject === eventsMappingInfo.subject.eventsValue &&
                     e._entities.task === eventsMappingInfo.task.eventsValue &&
@@ -1569,7 +1576,7 @@ export function createEventObjects(ezbids: IEZBIDS, files: any) {
             }
 
             // ModifiedSeriesNumber
-            let ModifiedSeriesNumberObj = ezbids.objects.find(
+            const ModifiedSeriesNumberObj = ezbids.objects.find(
                 (e) =>
                     e._entities.subject === eventsMappingInfo.subject.eventsValue &&
                     e._entities.task === eventsMappingInfo.task.eventsValue &&
@@ -1599,8 +1606,8 @@ imaging data, those mappings are auto generated when user uploads new events tim
 export function mapEventColumns(ezbids_events: any, events: any) {
     if (ezbids_events.columns.onset != '') {
         // configuration file specified previous events mapping
-        let expectedColumns: IBIDSEvent = ezbids_events.columns;
-        let eventsColumns = events[0];
+        const expectedColumns: IBIDSEvent = ezbids_events.columns;
+        const eventsColumns = events[0];
 
         for (const [key, value] of Object.entries(expectedColumns)) {
             // make sure currently upload events columns have what's expected from the configuration
@@ -1651,13 +1658,13 @@ export function mapEventColumns(ezbids_events: any, events: any) {
     }
 }
 
-export function fileLogicLink($root: IEZBIDS, o: IObject) {
+export function fileLogicLink($root: IEzbids, o: IObject) {
     /* Imaging data implicitly has a part-mag (magnitude), though this doesn't need to be explicitly stated. 
     Any phase data (part-phase) is linked to the magnitude. If part entity is specified, make sure it's
     properly linked and has same entities (except for part) and exclusion criteria.
     */
     if (o._entities.part && !['mag', 'real'].includes(o._entities.part)) {
-        let correspondingFuncMag = $root.objects.filter(
+        const correspondingFuncMag = $root.objects.filter(
             (object: IObject) =>
                 object._type === o._type &&
                 object._entities.part === 'mag' &&
@@ -1669,7 +1676,7 @@ export function fileLogicLink($root: IEZBIDS, o: IObject) {
             // should be no more than one
             correspondingFuncMag.forEach((boldMag: IObject) => {
                 // o.analysisResults.section_id = boldObj.analysisResults.section_id
-                for (let k in boldMag._entities) {
+                for (const k in boldMag._entities) {
                     if (k !== 'part' && k !== 'echo') {
                         if (boldMag._entities[k] !== '') {
                             o._entities[k] = boldMag._entities[k];
@@ -1699,14 +1706,14 @@ export function fileLogicLink($root: IEZBIDS, o: IObject) {
 
     // func/sbref are implicitly linked to a corresponding func/bold; make sure these have same entities and exclusion criteria
     if (o._type === 'func/sbref') {
-        let correspondingFuncBold = $root.objects.filter(
+        const correspondingFuncBold = $root.objects.filter(
             (object: IObject) => object._type === 'func/bold' && o.idx === object.idx - 1
         ); // the func/sbref index (idx) should always be one less than the corresponding func/bold idx, since it comes right before, right?
         if (correspondingFuncBold.length) {
             // should be no more than one
             correspondingFuncBold.forEach((boldObj: IObject) => {
                 o.analysisResults.section_id = boldObj.analysisResults.section_id;
-                for (let k in boldObj._entities) {
+                for (const k in boldObj._entities) {
                     if (boldObj._entities[k] !== '' && k !== 'echo') {
                         if (k === 'part' && boldObj._entities[k] === 'phase') {
                             //pass
@@ -1737,7 +1744,7 @@ export function fileLogicLink($root: IEZBIDS, o: IObject) {
 
     // func/events are implicitly linked to a func/bold; make sure these have same entities and exclusion criteria
     if (o._type === 'func/events') {
-        let correspondingFuncBold = $root.objects.filter(
+        const correspondingFuncBold = $root.objects.filter(
             (object: IObject) =>
                 object._type === 'func/bold' &&
                 !object._exclude &&
@@ -1756,7 +1763,7 @@ export function fileLogicLink($root: IEZBIDS, o: IObject) {
                     o.validationWarnings = [];
                     o.ModifiedSeriesNumber = boldObj.ModifiedSeriesNumber;
                     o.analysisResults.section_id = boldObj.analysisResults.section_id;
-                    for (let k in boldObj._entities) {
+                    for (const k in boldObj._entities) {
                         if (boldObj._entities[k] !== '') {
                             o._entities[k] = boldObj._entities[k];
                         } else {
@@ -1781,7 +1788,7 @@ export function fileLogicLink($root: IEZBIDS, o: IObject) {
 }
 
 // // TODO, currently no validation on Participants Info page
-// export function validateParticipantsInfo($root: IEZBIDS) {
+// export function validateParticipantsInfo($root: IEzbids) {
 //     let finalSubs = [] as number[];
 //     $root._organized.forEach((sub: OrganizedSubject) => {
 //         let use = false;
@@ -1855,7 +1862,7 @@ export function fileLogicLink($root: IEZBIDS, o: IObject) {
 export function metadataAlerts(
     bidsDatatypeMetadata: MetadataFields,
     bidsMetadataInfo: any,
-    $root: IEZBIDS,
+    $root: IEzbids,
     idx: number,
     type: string
 ): string[] {
@@ -1875,10 +1882,10 @@ export function metadataAlerts(
     });
 
     // Second, find the required (and conditionally required) metadata fields, per BIDS spec
-    let requiredFields: string[] = [];
-    let datatype = type.split('/')[0];
-    let suffix = type.split('/')[1];
-    for (let key in bidsDatatypeMetadata) {
+    const requiredFields: string[] = [];
+    const datatype = type.split('/')[0];
+    const suffix = type.split('/')[1];
+    for (const key in bidsDatatypeMetadata) {
         const metadataEntry = bidsDatatypeMetadata[key];
         const selectors: any = metadataEntry.selectors;
         const fields = metadataEntry.fields;
@@ -1901,9 +1908,9 @@ export function metadataAlerts(
             proceed = 'yes';
         }
         if (proceed === 'yes') {
-            for (let fieldName in fields) {
+            for (const fieldName in fields) {
                 if (fields.hasOwnProperty(fieldName) && !['IntendedFor', 'TaskName'].includes(fieldName)) {
-                    let field = fields[fieldName];
+                    const field = fields[fieldName];
                     let severity: any = '';
                     if (field.hasOwnProperty('level')) {
                         severity = field.level;
@@ -1919,9 +1926,9 @@ export function metadataAlerts(
                         }
                     }
                     if (field.hasOwnProperty('level_addendum')) {
-                        let levelAddendum = field.level_addendum;
+                        const levelAddendum = field.level_addendum;
                         if (levelAddendum.includes('required if')) {
-                            let bidsMetadataKey = levelAddendum.split('required if')[1].split('`')[1];
+                            const bidsMetadataKey = levelAddendum.split('required if')[1].split('`')[1];
                             let bidsMetadataValue: string = '';
                             let context: string = '';
 
@@ -1942,15 +1949,15 @@ export function metadataAlerts(
 
                             // Perform check
                             if (context === 'is in') {
-                                let sidecarMetadataKey = bidsMetadataKey;
-                                let sidecarMetadataValue = sidecarMetadata[sidecarMetadataKey];
+                                const sidecarMetadataKey = bidsMetadataKey;
+                                const sidecarMetadataValue = sidecarMetadata[sidecarMetadataKey];
                                 if (bidsMetadataValue.includes(sidecarMetadataValue)) {
                                     requiredFields.push(fieldName);
                                 }
                             } else {
                                 if (sidecarMetadata.hasOwnProperty(bidsMetadataKey)) {
-                                    let sidecarMetadataKey = bidsMetadataKey;
-                                    let sidecarMetadataValue = sidecarMetadata[sidecarMetadataKey];
+                                    const sidecarMetadataKey = bidsMetadataKey;
+                                    const sidecarMetadataValue = sidecarMetadata[sidecarMetadataKey];
                                     if (context === 'is' && sidecarMetadataValue === bidsMetadataValue) {
                                         // Required based on equality conditional between BIDS and sequence metadata
                                         requiredFields.push(fieldName);
@@ -1970,10 +1977,10 @@ export function metadataAlerts(
         }
     }
     //Third, flag any metadata fields values that contain improper BIDS format (e.g. Manufacturer can't be a number)
-    let typoFields: string[] = [];
+    const typoFields: string[] = [];
 
-    for (let sidecarMetadataKey in sidecarMetadata) {
-        let sidecarMetadataValue = sidecarMetadata[sidecarMetadataKey];
+    for (const sidecarMetadataKey in sidecarMetadata) {
+        const sidecarMetadataValue = sidecarMetadata[sidecarMetadataKey];
         if (bidsMetadataInfo.hasOwnProperty(sidecarMetadataKey)) {
             // Should mostly always be the case, but user could have non-BIDS specified metadata fields I suppose
             if (bidsMetadataInfo[sidecarMetadataKey].hasOwnProperty('anyOf')) {
@@ -1984,7 +1991,7 @@ export function metadataAlerts(
                 Also need to deal with additionalProperties and items.
                 */
             } else {
-                let bidsMetadataValueType = bidsMetadataInfo[sidecarMetadataKey].type;
+                const bidsMetadataValueType = bidsMetadataInfo[sidecarMetadataKey].type;
                 let sidecarMetadataValueType: string = typeof sidecarMetadataValue;
                 if (sidecarMetadataValueType === 'object' && Array.isArray(sidecarMetadataValue)) {
                     sidecarMetadataValueType = 'array';
@@ -2002,7 +2009,7 @@ export function metadataAlerts(
                     // Deal with BIDS metadata value type conditionals (other than anyOf)
                     // format
                     if (bidsMetadataInfo[sidecarMetadataKey].hasOwnProperty('format')) {
-                        let format = bidsMetadataInfo[sidecarMetadataKey].format;
+                        const format = bidsMetadataInfo[sidecarMetadataKey].format;
                         if (format === 'time' && /^\d{2}:\d{2}:\d{2}$/.test(sidecarMetadataValue) === false) {
                             typoFields.push(sidecarMetadataKey);
                         }
@@ -2011,8 +2018,8 @@ export function metadataAlerts(
                     if (bidsMetadataInfo[sidecarMetadataKey].hasOwnProperty('enum')) {
                         let Enum = bidsMetadataInfo[sidecarMetadataKey].enum;
                         if (typeof Enum[0] === 'object') {
-                            let newEnum = [];
-                            for (let d in Enum) {
+                            const newEnum = [];
+                            for (const d in Enum) {
                                 let enumValue = Enum[d]['$ref'].split('.')[2];
                                 // e.g. PhaseEncodingDirection
                                 if (enumValue.includes('Minus')) {
@@ -2035,28 +2042,28 @@ export function metadataAlerts(
                     }
                     //minimum
                     if (bidsMetadataInfo[sidecarMetadataKey].hasOwnProperty('minimum')) {
-                        let min = bidsMetadataInfo[sidecarMetadataKey].minimum;
+                        const min = bidsMetadataInfo[sidecarMetadataKey].minimum;
                         if (sidecarMetadataValue < min) {
                             typoFields.push(sidecarMetadataKey);
                         }
                     }
                     //maximum
                     if (bidsMetadataInfo[sidecarMetadataKey].hasOwnProperty('maximum')) {
-                        let max = bidsMetadataInfo[sidecarMetadataKey].maximum;
+                        const max = bidsMetadataInfo[sidecarMetadataKey].maximum;
                         if (sidecarMetadataValue > max) {
                             typoFields.push(sidecarMetadataKey);
                         }
                     }
                     //minItems
                     if (bidsMetadataInfo[sidecarMetadataKey].hasOwnProperty('minItems')) {
-                        let minItems = bidsMetadataInfo[sidecarMetadataKey].minItems;
+                        const minItems = bidsMetadataInfo[sidecarMetadataKey].minItems;
                         if (sidecarMetadataValue.length < minItems) {
                             typoFields.push(sidecarMetadataKey);
                         }
                     }
                     //maxItems
                     if (bidsMetadataInfo[sidecarMetadataKey].hasOwnProperty('maxItems')) {
-                        let maxItems = bidsMetadataInfo[sidecarMetadataKey].maxItems;
+                        const maxItems = bidsMetadataInfo[sidecarMetadataKey].maxItems;
                         if (sidecarMetadataValue.length > maxItems) {
                             typoFields.push(sidecarMetadataKey);
                         }
@@ -2067,20 +2074,20 @@ export function metadataAlerts(
     }
 
     for (let i = requiredFields.length - 1; i >= 0; i--) {
-        let requiredField = requiredFields[i];
+        const requiredField = requiredFields[i];
 
         if (sidecarMetadata.hasOwnProperty(requiredField)) {
             requiredFields.splice(i, 1);
         }
     }
 
-    let metadataAlertFields = requiredFields.concat(typoFields);
+    const metadataAlertFields = requiredFields.concat(typoFields);
     // console.log('required', requiredFields);
     // console.log('typo', typoFields);
     return metadataAlertFields;
 }
 
-export function updateErrorMessages($root: IEZBIDS) {
+export function updateErrorMessages($root: IEzbids) {
     $root.objects.forEach((o: IObject) => {
         const err_str = "Acquisition cannot be resolved. Please determine whether or not this acquisition should be converted to BIDS."
         if (o._type !== "exclude" && o.analysisResults.errors.includes(err_str)) {
@@ -2091,7 +2098,7 @@ export function updateErrorMessages($root: IEZBIDS) {
 }
 
 // //TODO: Need to work on this more
-// export function updateParticipantsInfo($root: IEZBIDS) {
+// export function updateParticipantsInfo($root: IEzbids) {
 //     let participantsInfo: any = $root.participantsInfo;
 //     console.log('participantsInfo', participantsInfo);
 //     let finalSubs: any = [];

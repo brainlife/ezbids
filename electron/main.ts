@@ -42,6 +42,7 @@ console.log('ENVIRONMENT', ENVIRONMENT);
 const getBackendKeysDir = (): string => (ENVIRONMENT === 'development' ? path.join(APP_DIR, 'dist') : APP_DIR);
 
 /** Ensure ezbids.pub and ezbids.key exist for JWT; auto-generate fake keys for testing if missing. */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ensureEzbidsKeys = (): void => {
     const keysDir = getBackendKeysDir();
     const keyPath = path.join(keysDir, 'ezbids.key');
@@ -132,6 +133,11 @@ async function startApp(): Promise<void> {
 
     Object.assign(process.env, rendererEnv);
 
+    // Add electron's node_modules to NODE_PATH so child processes can find 'electron' module
+    const electronNodeModules = path.join(APP_DIR, 'node_modules');
+    const existingNodePath = process.env.NODE_PATH || '';
+    const nodePath = existingNodePath ? `${electronNodeModules}:${existingNodePath}` : electronNodeModules;
+
     const env = {
         ...process.env,
         USER_DATA_PATH: USER_DATA_PATH,
@@ -143,6 +149,7 @@ async function startApp(): Promise<void> {
         EZBIDS_BIN_DIR: getBinDir(),
         EZBIDS_PLATFORM: getEzBidsPlatform(),
         EZBIDS_ARCH: getEzBidsArch(),
+        NODE_PATH: nodePath,
         ...rendererEnv,
     };
     await startBackend(port, env);

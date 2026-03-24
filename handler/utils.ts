@@ -58,8 +58,8 @@ export async function runPython(argv: string[], opts: Options): Promise<{ status
             ...(withTimeout ? { timeout: opts.timeout, stdio: 'pipe' as const } : { stdio: 'inherit' as const }),
             env: {
                 ...process.env,
-                PYTHONPATH: path.join(getBinPath('python-runtime'), 'venv', 'lib', 'python3.8', 'site-packages'),
                 PYTHONHOME: path.resolve(path.join(pythonHome, 'python')),
+                // Let PYTHONHOME handle site-packages resolution (conda env)
             },
         }
     );

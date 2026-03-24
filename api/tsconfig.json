@@ -4,6 +4,7 @@
         "alwaysStrict": true,
         "sourceMap": true,
         "module": "CommonJS",
+        "esModuleInterop": true,
         "skipLibCheck": true
     }
 }

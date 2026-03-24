@@ -492,6 +492,7 @@ router.post(
     upload.any(),
     (req: any, res, next) => {
         const session = req.ezBIDS.session;
+        console.log(`[upload-multi] session=${session._id} files=${req.files?.length || 0} workdir=${config.workdir}`);
 
         //when a single file is uploaded paths becomes just a string. convert it to an array of 1
         let paths = req.body.paths;

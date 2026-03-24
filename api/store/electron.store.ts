@@ -23,7 +23,7 @@ function getSessionStore(): StoreLike {
         name: SESSION_STORE_NAME,
         projectName: 'ezbids',
         cwd: process.env.USER_DATA_PATH,
-    }) as unknown as StoreLike;
+    } as any) as unknown as StoreLike;
 }
 
 function getEzBIDSStore(): StoreLike {
@@ -31,7 +31,7 @@ function getEzBIDSStore(): StoreLike {
         name: EZBIDS_STORE_NAME,
         projectName: 'ezbids',
         cwd: process.env.USER_DATA_PATH,
-    }) as unknown as StoreLike;
+    } as any) as unknown as StoreLike;
 }
 
 export const sessionStore: ISessionStore = {

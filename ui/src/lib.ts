@@ -1,7 +1,10 @@
-import { IBIDSEvent, IEvents, IEZBIDS } from './store/store.types';
+// @ts-nocheck
+import type { IEzbids, IBIDSEvent } from './store/slices/ezbidsSlice';
+import type { IEvents } from './store/slices/eventsSlice';
+import axios from './axios.instance';
 //import { parseEvents } from './libUnsafe'
 
-export function createEventsTSV(ezbids: IEZBIDS, events: IEvents) {
+export function createEventsTSV(ezbids: IEzbids, events: IEvents) {
     ezbids.objects.forEach((object) => {
         object.items
             .filter((i) => !!i.events)
@@ -44,14 +47,14 @@ export function createEventsTSV(ezbids: IEZBIDS, events: IEvents) {
                         case 'add':
                             // @ts-ignore
                             duration =
-                                parseFloat(event[events.columns.duration as string]) +
-                                parseFloat(event[events.columns.duration2 as string]);
+                                parseFloat(event[events.columns.duration]) +
+                                parseFloat(event[events.columns.duration2]);
                             break;
                         case 'subtract':
                             // @ts-ignore
                             duration =
-                                parseFloat(event[events.columns.duration as string]) -
-                                parseFloat(event[events.columns.duration2 as string]);
+                                parseFloat(event[events.columns.duration]) -
+                                parseFloat(event[events.columns.duration2]);
                             break;
                         default:
                             // @ts-ignore
@@ -71,13 +74,13 @@ export function createEventsTSV(ezbids: IEZBIDS, events: IEvents) {
                                 // @ts-ignore
                                 rec.sample =
                                     parseFloat(event[events.columns.sample]) +
-                                    parseFloat(event[events.columns.sample2 as string]);
+                                    parseFloat(event[events.columns.sample2]);
                                 break;
                             case 'subtract':
                                 // @ts-ignore
                                 rec.sample =
                                     parseFloat(event[events.columns.sample]) -
-                                    parseFloat(event[events.columns.sample2 as string]);
+                                    parseFloat(event[events.columns.sample2]);
                                 break;
                             default:
                                 rec.sample = parseFloat(event[events.columns.sample]);
@@ -90,13 +93,13 @@ export function createEventsTSV(ezbids: IEZBIDS, events: IEvents) {
                                 // @ts-ignore
                                 responseTime =
                                     parseFloat(event[events.columns.responseTime]) +
-                                    parseFloat(event[events.columns.responseTime2 as string]);
+                                    parseFloat(event[events.columns.responseTime2]);
                                 break;
                             case 'subtract':
                                 // @ts-ignore
                                 responseTime =
                                     parseFloat(event[events.columns.responseTime]) -
-                                    parseFloat(event[events.columns.responseTime2 as string]);
+                                    parseFloat(event[events.columns.responseTime2]);
                                 break;
                             default:
                                 // @ts-ignore
@@ -116,8 +119,8 @@ export function createEventsTSV(ezbids: IEZBIDS, events: IEvents) {
     });
 }
 
-export function authRequired() {
-    return window.env.BRAINLIFE_AUTHENTICATION === 'true';
+export function hasAuth() {
+    return import.meta.env.VITE_BRAINLIFE_AUTHENTICATION === 'true';
 }
 
 export function hasJWT() {
