@@ -1,0 +1,34 @@
+{
+    "$schema": "../schemas/tool.schema.json",
+    "name": "skull-strip-batch",
+    "version": "1.0.0",
+    "description": "Batch skull stripping across multiple volumes using allineate",
+    "inputs": {
+        "volumes": {
+            "type": "volume[]",
+            "description": "Input NIfTI volumes"
+        },
+        "cost": {
+            "type": "string",
+            "description": "Registration cost function",
+            "optional": true,
+            "default": "ls"
+        },
+        "template": {
+            "type": "string",
+            "description": "Template resolution key (2mm or 55)",
+            "optional": true,
+            "default": "2mm"
+        }
+    },
+    "outputs": {
+        "stripped_volumes": {
+            "type": "volume[]",
+            "description": "Skull-stripped volumes"
+        },
+        "thumbnails": {
+            "type": "string",
+            "description": "Thumbnail paths for preview"
+        }
+    }
+}

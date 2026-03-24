@@ -9,6 +9,8 @@ import nocache = require('nocache');
 import models = require("./models");
 import config = require("./config");
 import { loadAllDefinitions } from './workflows/workflowLoader';
+import { registerSkullStripExecutors } from './workflows/executors/skullStripExecutors';
+import { registerHeuristics } from './workflows/executors/heuristics';
 
 //import sendSeekable = require('send-seekable');
 
@@ -70,6 +72,8 @@ process.on('uncaughtException', err => {
 });
 
 loadAllDefinitions();
+registerSkullStripExecutors();
+registerHeuristics();
 
 models.connect(err => {
     if (err) throw err;

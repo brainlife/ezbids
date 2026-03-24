@@ -1,0 +1,18 @@
+{
+    "$schema": "../schemas/tool.schema.json",
+    "name": "create-thumbnail",
+    "version": "1.0.0",
+    "description": "Generate PNG thumbnail from NIfTI volume",
+    "inputs": {
+        "volume": {
+            "type": "volume",
+            "description": "Input NIfTI volume"
+        }
+    },
+    "outputs": {
+        "thumbnail": {
+            "type": "string",
+            "description": "Path to generated PNG"
+        }
+    }
+}

@@ -51,6 +51,7 @@ interface WorkflowRunState {
 
 export default function WorkflowDialog() {
     const config = useAppSelector((s) => s.session.config);
+    const ezbids = useAppSelector((s) => s.ezbids);
     const apiBase = config.apihost.replace(/\/api\/ezbids\/?$/, '/workflow');
 
     const [listOpen, setListOpen] = useState(false);
@@ -88,7 +89,24 @@ export default function WorkflowDialog() {
             setDefinition(null);
 
             try {
-                const startRes = await axios.post(`${apiBase}/start`, { name, inputs: {} });
+                // Build workflow inputs from current session data
+                const workflowInputs: Record<string, unknown> = {};
+                // Auto-detect anatomical volumes for workflows that need them
+                if (ezbids?.objects) {
+                    const volumes = ezbids.objects
+                        .filter((o: any) => o._type?.startsWith('anat') && !o.exclude && !o._exclude)
+                        .flatMap((o: any) =>
+                            o.items.filter((i: any) => i.path?.endsWith('.nii.gz')).map((i: any) => i.path)
+                        )
+                        .filter(Boolean);
+                    if (volumes.length > 0) {
+                        workflowInputs.volumes = volumes;
+                    }
+                }
+                const startRes = await axios.post(`${apiBase}/start`, {
+                    name,
+                    inputs: workflowInputs,
+                });
                 setRunId(startRes.data.runId);
                 setRunState(startRes.data.runState);
                 setDefinition(startRes.data.definition);

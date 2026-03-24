@@ -1,0 +1,35 @@
+{
+    "$schema": "../schemas/tool.schema.json",
+    "name": "allineate-skull-strip",
+    "version": "1.0.0",
+    "description": "Skull stripping via allineate (registers MNI template, applies brain mask)",
+    "inputs": {
+        "volume": {
+            "type": "volume",
+            "description": "Input T1w NIfTI volume"
+        },
+        "template": {
+            "type": "volume",
+            "description": "MNI template volume",
+            "optional": true
+        },
+        "mask": {
+            "type": "mask",
+            "description": "Brain mask in template space",
+            "optional": true
+        },
+        "cost": {
+            "type": "string",
+            "description": "Cost function",
+            "optional": true,
+            "default": "ls",
+            "enum": ["ls", "hel", "lpc", "lpa"]
+        }
+    },
+    "outputs": {
+        "stripped": {
+            "type": "volume",
+            "description": "Skull-stripped output volume"
+        }
+    }
+}

@@ -1,0 +1,67 @@
+{
+    "$schema": "../schemas/workflow.schema.json",
+    "name": "skull-strip",
+    "version": "1.0.0",
+    "description": "Skull stripping (brain extraction) using allineate",
+    "menu": "Processing",
+    "inputs": {
+        "volumes": {
+            "type": "volume[]",
+            "description": "Anatomical volumes to skull-strip"
+        }
+    },
+    "context": {
+        "description": "Skull stripping parameters",
+        "fields": {
+            "cost": {
+                "type": "string",
+                "description": "Registration cost function",
+                "default": "ls",
+                "enum": ["ls", "hel"],
+                "heuristic": "suggest-cost-function"
+            },
+            "template": {
+                "type": "string",
+                "description": "MNI template resolution",
+                "default": "2mm",
+                "enum": ["2mm", "55"],
+                "heuristic": "suggest-template"
+            }
+        }
+    },
+    "form": {
+        "sections": [
+            {
+                "title": "Parameters",
+                "description": "Configure skull stripping. Defaults work well for most T1w images.",
+                "fields": ["cost", "template"]
+            }
+        ]
+    },
+    "steps": {
+        "strip": {
+            "tool": "skull-strip-batch",
+            "inputs": {
+                "volumes": {
+                    "ref": "inputs.volumes"
+                },
+                "cost": {
+                    "ref": "context.cost"
+                },
+                "template": {
+                    "ref": "context.template"
+                }
+            }
+        }
+    },
+    "outputs": {
+        "stripped_volumes": {
+            "type": "volume[]",
+            "ref": "steps.strip.outputs.stripped_volumes"
+        },
+        "thumbnails": {
+            "type": "string",
+            "ref": "steps.strip.outputs.thumbnails"
+        }
+    }
+}
