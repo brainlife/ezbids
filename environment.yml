@@ -1,0 +1,21 @@
+name: ezbids
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - numpy=1.23.0
+  - nibabel=4.0.0
+  - pandas
+  - matplotlib
+  - pyyaml=5.4.1
+  - pydicom=2.3.1
+  - natsort
+  - pillow
+  - mne
+  - mne-bids
+  - pip
+  - pip:
+    - pydeface
+    - quickshear
+    - pypet2bids==1.3.9

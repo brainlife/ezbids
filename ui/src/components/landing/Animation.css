@@ -1,0 +1,128 @@
+#right-brain {
+  animation: disappearBrain 4s ease-out forwards;
+}
+
+#ez {
+  animation: appearingEZ 4s ease-in-out forwards;
+}
+
+#ez,
+#bids {
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+#connector-2 {
+  opacity: 0;
+  transform-origin: 14% 40%;
+  animation: 4s extend forwards;
+  animation-delay: calc(var(--order) * 300ms);
+}
+
+#connector-3 {
+  opacity: 0;
+  transform-origin: 14% 60%;
+  animation: 4s extend forwards;
+  animation-delay: calc(var(--order) * 300ms);
+}
+
+#connector-4 {
+  opacity: 0;
+  transform-origin: 14% 80%;
+  animation: 4s extend forwards;
+  animation-delay: calc(var(--order) * 300ms);
+}
+
+#file-1,
+#file-2,
+#file-3,
+#file-4,
+#connector-1 {
+  opacity: 0;
+  animation: 4s appearingFiles forwards;
+  animation-delay: calc(var(--order) * 300ms);
+}
+
+#bids {
+  transform: translate(-15%);
+  animation: appearingBIDS 4s ease-in-out forwards;
+}
+
+#right-brain path,
+#left-brain path,
+#file-1 path,
+#file-2 path,
+#file-3 path,
+#file-4 path,
+#connector-1 path,
+#connector-2 rect,
+#connector-3 rect,
+#connector-4 rect {
+  fill: #363636;
+}
+
+/* brain disappears */
+@keyframes disappearBrain {
+  0%,
+  40% {
+    opacity: 1;
+  }
+
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes appearingFiles {
+  0%,
+  45% {
+    opacity: 0;
+  }
+
+  65%,
+  100% {
+    opacity: 1;
+  }
+}
+
+@keyframes appearingBIDS {
+  0% {
+    opacity: 0;
+    transform: translateY(50%);
+  }
+
+  30%,
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes appearingEZ {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%);
+  }
+
+  30%,
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes extend {
+  0%,
+  45% {
+    opacity: 0;
+    transform: scale(0);
+  }
+
+  55%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
