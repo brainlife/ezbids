@@ -52,7 +52,8 @@ interface WorkflowRunState {
 export default function WorkflowDialog() {
     const config = useAppSelector((s) => s.session.config);
     const ezbids = useAppSelector((s) => s.ezbids);
-    const apiBase = config.apihost.replace(/\/api\/ezbids\/?$/, '/workflow');
+    // Handle both web (/api/ezbids → /workflow) and Electron (http://host:port → /workflow)
+    const apiBase = config.apihost.replace(/\/api\/ezbids\/?$/, '') + '/workflow';
 
     const [listOpen, setListOpen] = useState(false);
     const [runOpen, setRunOpen] = useState(false);

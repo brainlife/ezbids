@@ -1,0 +1,85 @@
+{
+    "$schema": "../schemas/workflow.schema.json",
+    "name": "dicom-to-bids",
+    "version": "1.0.0",
+    "description": "Convert DICOM to NIfTI and skull-strip anatomical images",
+    "menu": "Import",
+    "inputs": {
+        "dicom_folder": {
+            "type": "dicom-folder",
+            "description": "Folder containing DICOM files"
+        }
+    },
+    "context": {
+        "description": "Conversion and processing parameters",
+        "fields": {
+            "skull_strip": {
+                "type": "boolean",
+                "description": "Perform skull stripping on anatomical images",
+                "default": true
+            },
+            "cost": {
+                "type": "string",
+                "description": "Skull strip registration cost function",
+                "default": "ls",
+                "enum": ["ls", "hel"],
+                "heuristic": "suggest-cost-function"
+            },
+            "template": {
+                "type": "string",
+                "description": "MNI template resolution",
+                "default": "2mm",
+                "enum": ["2mm", "55"],
+                "heuristic": "suggest-template"
+            }
+        }
+    },
+    "form": {
+        "sections": [
+            {
+                "title": "Conversion",
+                "description": "DICOM to NIfTI conversion settings.",
+                "fields": ["skull_strip"]
+            },
+            {
+                "title": "Skull Stripping",
+                "description": "Configure skull stripping parameters for anatomical images.",
+                "fields": ["cost", "template"]
+            }
+        ]
+    },
+    "steps": {
+        "convert": {
+            "tool": "dcm2niix",
+            "inputs": {
+                "dicom_folder": {
+                    "ref": "inputs.dicom_folder"
+                }
+            }
+        },
+        "strip": {
+            "tool": "skull-strip-batch",
+            "inputs": {
+                "volumes": {
+                    "ref": "steps.convert.outputs.nifti_files"
+                },
+                "cost": {
+                    "ref": "context.cost"
+                },
+                "template": {
+                    "ref": "context.template"
+                }
+            }
+        }
+    },
+    "outputs": {
+        "nifti_files": {
+            "type": "volume[]",
+            "ref": "steps.convert.outputs.nifti_files"
+        },
+        "stripped_volumes": {
+            "type": "volume[]",
+            "ref": "steps.strip.outputs.stripped_volumes"
+        }
+    }
+}

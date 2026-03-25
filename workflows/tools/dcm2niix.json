@@ -1,0 +1,33 @@
+{
+    "$schema": "../schemas/tool.schema.json",
+    "name": "dcm2niix",
+    "version": "1.0.0",
+    "description": "Convert DICOM images to NIfTI format using dcm2niix",
+    "inputs": {
+        "dicom_folder": {
+            "type": "dicom-folder",
+            "description": "Path to folder containing DICOM files"
+        },
+        "output_dir": {
+            "type": "string",
+            "description": "Output directory for NIfTI files",
+            "optional": true
+        },
+        "compress": {
+            "type": "boolean",
+            "description": "Compress output with gzip",
+            "optional": true,
+            "default": true
+        }
+    },
+    "outputs": {
+        "nifti_files": {
+            "type": "volume[]",
+            "description": "Paths to converted NIfTI files"
+        },
+        "json_sidecars": {
+            "type": "json[]",
+            "description": "Paths to JSON sidecar files"
+        }
+    }
+}

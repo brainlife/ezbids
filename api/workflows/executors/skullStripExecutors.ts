@@ -56,7 +56,73 @@ function runCommand(
     });
 }
 
+/** Resolve the dcm2niix binary path, matching handler/utils.ts logic. */
+function getDcm2niixBin(): string {
+    const binDir = process.env.EZBIDS_BIN_DIR;
+    const platform = process.platform === 'darwin' ? 'macos' : process.platform === 'win32' ? 'windows' : 'linux';
+    const arch = process.arch === 'arm64' ? 'arm64' : 'amd64';
+    const base = `dcm2niix-${platform}-${arch}`;
+    const name = platform === 'windows' ? `${base}.exe` : base;
+    if (binDir) {
+        const p = path.resolve(path.join(binDir, 'dcm2niix', name));
+        if (fs.existsSync(p)) return p;
+    }
+    // Fallback: try system dcm2niix
+    return 'dcm2niix';
+}
+
 export function registerSkullStripExecutors(): void {
+    // dcm2niix: convert DICOM folder to NIfTI
+    registerToolExecutor('dcm2niix', async (inputs) => {
+        const dicomFolder = inputs.dicom_folder as string;
+
+        const bin = getDcm2niixBin();
+        const args = [
+            '--progress',
+            'y',
+            '-v',
+            '1',
+            '-ba',
+            'n',
+            '-z',
+            'o',
+            '-d',
+            '9',
+            '-f',
+            'time-%t-sn-%s',
+            dicomFolder,
+        ];
+
+        // eslint-disable-next-line no-console
+        console.log(`[dcm2niix] Running: ${bin} ${args.join(' ')}`);
+        const result = await runCommand(bin, args);
+
+        if (result.code !== 0) {
+            throw new Error(`dcm2niix failed (exit ${result.code}): ${result.stderr}`);
+        }
+
+        // Collect output .nii.gz and .json files
+        const niftiFiles: string[] = [];
+        const jsonSidecars: string[] = [];
+        const scanDir = (dir: string) => {
+            for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+                const full = path.join(dir, entry.name);
+                if (entry.isDirectory()) {
+                    scanDir(full);
+                } else if (entry.name.endsWith('.nii.gz')) {
+                    niftiFiles.push(full);
+                } else if (entry.name.endsWith('.json') && !entry.name.startsWith('.')) {
+                    jsonSidecars.push(full);
+                }
+            }
+        };
+        scanDir(dicomFolder);
+
+        // eslint-disable-next-line no-console
+        console.log(`[dcm2niix] Converted: ${niftiFiles.length} NIfTI files, ${jsonSidecars.length} JSON sidecars`);
+        return { nifti_files: niftiFiles, json_sidecars: jsonSidecars };
+    });
+
     // Single-volume skull strip using allineate
     registerToolExecutor('allineate-skull-strip', async (inputs) => {
         const volume = inputs.volume as string;

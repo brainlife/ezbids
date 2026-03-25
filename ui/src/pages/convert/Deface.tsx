@@ -1,4 +1,4 @@
-import React, { forwardRef, useImperativeHandle, useEffect, useMemo, useCallback } from 'react';
+import React, { forwardRef, useImperativeHandle, useEffect, useMemo, useCallback, useState } from 'react';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
 import { loadDefaceStatus, type IObject } from '../../store/slices/ezbidsSlice';
 import { loadSession } from '../../store/slices/sessionSlice';
@@ -6,6 +6,7 @@ import axios from '../../axios.instance';
 import toast from 'react-hot-toast';
 import Datatype from '../../components/Datatype';
 import AsyncImageLink from '../../components/AsyncImageLink';
+import NiiVueInline from '../../components/NiiVueInline';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faEye, faSpinner } from '@fortawesome/free-solid-svg-icons';
 
@@ -36,6 +37,10 @@ const Deface = forwardRef<DefaceHandle, DefaceProps>(({ onNiivue }, ref) => {
         if (!session) return false;
         return ['deface', 'defacing'].includes(session.status);
     }, [session]);
+
+    // Local state to track method selection (direct mutation on ezbids doesn't trigger re-render)
+    const [selectedMethod, setSelectedMethod] = useState(ezbids.defacingMethod || '');
+    const isAllineate = selectedMethod === 'allineate';
 
     // Initialize all anat objects to use defaced image by default
     useEffect(() => {
@@ -89,6 +94,7 @@ const Deface = forwardRef<DefaceHandle, DefaceProps>(({ onNiivue }, ref) => {
         (method: string) => {
             // Direct mutation on ezbids data (matches Vue store pattern with serializableCheck: false)
             ezbids.defacingMethod = method;
+            setSelectedMethod(method);
             if (method) {
                 anatObjects.forEach((o: IObject) => {
                     o.defaceSelection = 'defaced';
@@ -174,23 +180,32 @@ const Deface = forwardRef<DefaceHandle, DefaceProps>(({ onNiivue }, ref) => {
                         <br />
                         <select
                             className="border border-gray-300 rounded px-3 py-2 w-[300px]"
-                            value={ezbids.defacingMethod}
+                            value={selectedMethod}
                             onChange={(e) => changeMethod(e.target.value)}
                         >
-                            <option value="">Don't Deface (use original)</option>
-                            <option value="quickshear">Quickshear (recommended)</option>
+                            <option value="">Don't Deface / Skull Strip (use original)</option>
+                            <option value="quickshear">Quickshear (recommended deface)</option>
                             <option value="pydeface">pyDeface (more common but takes much longer time)</option>
+                            <option value="allineate">Skull Strip via allineate (brain extraction)</option>
                         </select>
                     </div>
 
-                    {ezbids.defacingMethod === 'quickshear' && (
+                    {selectedMethod === 'quickshear' && (
                         <p>
                             <small>* Use ROBEX and QuickShear Average processing time. ~1 min per image</small>
                         </p>
                     )}
-                    {ezbids.defacingMethod === 'pydeface' && (
+                    {selectedMethod === 'pydeface' && (
                         <p>
                             <small>* pydeface uses FSL to align facial mask template. ~5 min per image</small>
+                        </p>
+                    )}
+                    {selectedMethod === 'allineate' && (
+                        <p>
+                            <small>
+                                * Skull stripping using allineate (registers MNI template, removes non-brain voxels). ~7
+                                sec per image
+                            </small>
                         </p>
                     )}
                 </div>
@@ -198,7 +213,7 @@ const Deface = forwardRef<DefaceHandle, DefaceProps>(({ onNiivue }, ref) => {
 
             {/* Action buttons */}
             <div className="mb-0">
-                {!isDefacing && ezbids.defacingMethod && !session?.deface_finish_date && (
+                {!isDefacing && selectedMethod && !session?.deface_finish_date && (
                     <button
                         className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded"
                         onClick={runDeface}
@@ -231,12 +246,12 @@ const Deface = forwardRef<DefaceHandle, DefaceProps>(({ onNiivue }, ref) => {
             )}
 
             {/* Status display while defacing */}
-            {anatObjects.length > 0 && ezbids.defacingMethod && (
+            {anatObjects.length > 0 && selectedMethod && (
                 <>
                     {(session?.status === 'deface' || session?.status === 'defacing') && (
                         <div>
                             <h3 className="text-lg font-semibold">
-                                Running <b>{ezbids.defacingMethod}</b> ...
+                                Running <b>{selectedMethod}</b> ...
                             </h3>
                             <pre className="bg-gray-700 text-white h-[125px] overflow-auto p-2.5 mb-1 rounded">
                                 {session.status_msg}
@@ -266,101 +281,116 @@ const Deface = forwardRef<DefaceHandle, DefaceProps>(({ onNiivue }, ref) => {
                         <tr>
                             <th className="text-left p-1"></th>
                             <th className="text-left p-1">Original</th>
-                            <th className="text-left p-1">Defaced</th>
+                            <th className="text-left p-1">{isAllineate ? 'Skull-Stripped' : 'Defaced'}</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {anatObjects.map((anat) => (
-                            <tr key={anat.idx} className="border-t border-gray-200">
-                                <td className="align-top pt-1">
-                                    <div className="mb-0 text-[85%] leading-[200%]">
-                                        <span>
-                                            <small>sub</small> {anat._entities.subject}{' '}
-                                        </span>
-                                        {anat._entities.session && (
+                        {anatObjects.map((anat) => {
+                            const niiPath = anat.items.find((i) => i.path?.endsWith('.nii.gz'))?.path;
+                            const defacedURL = getDefacedURL(anat);
+                            return (
+                                <tr key={anat.idx} className="border-t border-gray-200">
+                                    <td className="align-top pt-1">
+                                        <div className="mb-0 text-[85%] leading-[200%]">
                                             <span>
-                                                / <small>ses</small> {anat._entities.session}{' '}
+                                                <small>sub</small> {anat._entities.subject}{' '}
                                             </span>
-                                        )}
-                                    </div>
-                                    <span className="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded">
-                                        #{anat.series_idx}
-                                    </span>
-                                    &nbsp;
-                                    <Datatype type={anat._type} series_idx={anat.series_idx} entities={anat.entities} />
-                                </td>
-
-                                {/* Original column */}
-                                <td className="w-[40%] align-top relative pt-1">
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name={`deface-${anat.idx}`}
-                                            checked={anat.defaceSelection === 'original'}
-                                            onChange={() => {
-                                                anat.defaceSelection = 'original';
-                                            }}
-                                        />
-                                        Use Original
-                                    </label>
-                                    {anat.items.map(
-                                        (item, itemIdx) =>
-                                            item.pngPaths && (
-                                                <div key={itemIdx}>
-                                                    <AsyncImageLink path={item.pngPaths[0]} />
-                                                    <button
-                                                        className="absolute top-[50px] left-[5px] bg-gray-500 hover:bg-gray-600 text-white text-sm px-3 py-1 rounded"
-                                                        onClick={() => onNiivue(item.path)}
-                                                    >
-                                                        <FontAwesomeIcon icon={faEye} /> NiiVue
-                                                    </button>
-                                                </div>
-                                            )
-                                    )}
-                                </td>
-
-                                {/* Defaced column */}
-                                <td className="w-[40%] align-top relative pt-1">
-                                    <label className="flex items-center gap-2 cursor-pointer">
-                                        <input
-                                            type="radio"
-                                            name={`deface-${anat.idx}`}
-                                            checked={anat.defaceSelection === 'defaced'}
-                                            onChange={() => {
-                                                anat.defaceSelection = 'defaced';
-                                            }}
-                                        />
-                                        Use Defaced (when finish defacing)
-                                    </label>
-                                    {anat.defaced && (
-                                        <div>
-                                            <AsyncImageLink path={`${getDefacedURL(anat)}.png`} />
-                                            <button
-                                                className="absolute top-[50px] left-[5px] bg-gray-500 hover:bg-gray-600 text-white text-sm px-3 py-1 rounded"
-                                                onClick={() => {
-                                                    const url = getDefacedURL(anat);
-                                                    if (url) onNiivue(url);
-                                                }}
-                                            >
-                                                <FontAwesomeIcon icon={faEye} /> NiiVue
-                                            </button>
+                                            {anat._entities.session && (
+                                                <span>
+                                                    / <small>ses</small> {anat._entities.session}{' '}
+                                                </span>
+                                            )}
                                         </div>
-                                    )}
-                                    {session.status === 'defacing' && !anat.defaced && (
-                                        <p className="bg-gray-100 px-5 py-2.5 m-0">
-                                            <small>
-                                                Defacing <FontAwesomeIcon icon={faSpinner} pulse />
-                                            </small>
-                                        </p>
-                                    )}
-                                    {anat.defaceFailed && (
-                                        <p className="bg-red-500 text-white px-5 py-2.5 m-0">
-                                            <small>Defacing Failed</small>
-                                        </p>
-                                    )}
-                                </td>
-                            </tr>
-                        ))}
+                                        <span className="inline-block bg-gray-100 text-gray-600 text-xs px-2 py-0.5 rounded">
+                                            #{anat.series_idx}
+                                        </span>
+                                        &nbsp;
+                                        <Datatype
+                                            type={anat._type}
+                                            series_idx={anat.series_idx}
+                                            entities={anat.entities}
+                                        />
+                                    </td>
+
+                                    {/* Original column */}
+                                    <td className="w-[40%] align-top relative pt-1">
+                                        <label className="flex items-center gap-2 cursor-pointer mb-2">
+                                            <input
+                                                type="radio"
+                                                name={`deface-${anat.idx}`}
+                                                checked={anat.defaceSelection === 'original'}
+                                                onChange={() => {
+                                                    anat.defaceSelection = 'original';
+                                                }}
+                                            />
+                                            Use Original
+                                        </label>
+                                        {isAllineate && niiPath ? (
+                                            <NiiVueInline path={niiPath} height={250} />
+                                        ) : (
+                                            anat.items.map(
+                                                (item, itemIdx) =>
+                                                    item.pngPaths && (
+                                                        <div key={itemIdx}>
+                                                            <AsyncImageLink path={item.pngPaths[0]} />
+                                                            <button
+                                                                className="absolute top-[50px] left-[5px] bg-gray-500 hover:bg-gray-600 text-white text-sm px-3 py-1 rounded"
+                                                                onClick={() => onNiivue(item.path)}
+                                                            >
+                                                                <FontAwesomeIcon icon={faEye} /> NiiVue
+                                                            </button>
+                                                        </div>
+                                                    )
+                                            )
+                                        )}
+                                    </td>
+
+                                    {/* Defaced / Skull-stripped column */}
+                                    <td className="w-[40%] align-top relative pt-1">
+                                        <label className="flex items-center gap-2 cursor-pointer mb-2">
+                                            <input
+                                                type="radio"
+                                                name={`deface-${anat.idx}`}
+                                                checked={anat.defaceSelection === 'defaced'}
+                                                onChange={() => {
+                                                    anat.defaceSelection = 'defaced';
+                                                }}
+                                            />
+                                            {isAllineate ? 'Use Skull-Stripped' : 'Use Defaced (when finish defacing)'}
+                                        </label>
+                                        {anat.defaced && isAllineate && defacedURL && (
+                                            <NiiVueInline path={defacedURL} height={250} />
+                                        )}
+                                        {anat.defaced && !isAllineate && (
+                                            <div>
+                                                <AsyncImageLink path={`${defacedURL}.png`} />
+                                                <button
+                                                    className="absolute top-[50px] left-[5px] bg-gray-500 hover:bg-gray-600 text-white text-sm px-3 py-1 rounded"
+                                                    onClick={() => {
+                                                        if (defacedURL) onNiivue(defacedURL);
+                                                    }}
+                                                >
+                                                    <FontAwesomeIcon icon={faEye} /> NiiVue
+                                                </button>
+                                            </div>
+                                        )}
+                                        {session.status === 'defacing' && !anat.defaced && (
+                                            <p className="bg-gray-100 px-5 py-2.5 m-0">
+                                                <small>
+                                                    {isAllineate ? 'Skull-stripping' : 'Defacing'}{' '}
+                                                    <FontAwesomeIcon icon={faSpinner} pulse />
+                                                </small>
+                                            </p>
+                                        )}
+                                        {anat.defaceFailed && (
+                                            <p className="bg-red-500 text-white px-5 py-2.5 m-0">
+                                                <small>{isAllineate ? 'Skull-stripping' : 'Defacing'} Failed</small>
+                                            </p>
+                                        )}
+                                    </td>
+                                </tr>
+                            );
+                        })}
                     </tbody>
                 </table>
             )}
