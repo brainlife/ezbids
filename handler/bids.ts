@@ -69,9 +69,9 @@ async function main(): Promise<void> {
 
     // Convert output to BIDS
     log('converting output to bids');
-    const convertJs = path.join(handlerDir, 'convert.js');
+    const convertPath = process.env.EZBIDS_CONVERT_PATH ?? path.join(handlerDir, 'convert.js');
     try {
-        await execa(process.execPath, [convertJs, root], {
+        await execa(process.execPath, [convertPath, root], {
             cwd: handlerDir,
             stdio: 'inherit',
             reject: true,

@@ -5,11 +5,11 @@ import net from 'net';
 import crypto from 'crypto';
 import { spawn, ChildProcess } from 'child_process';
 
-const ENVIRONMENT = process.env.NODE_ENV || 'development';
+const ENVIRONMENT = app.isPackaged ? 'production' : 'development';
 const USER_DATA_PATH = app.getPath('userData');
-const APP_DIR = app.getAppPath();
+const APP_DIR = app.getAppPath(); // In production, APP_DIR looks like .../release/mac-arm64/ezBIDS.app/Contents/Resources/app
 const WORKDIR = path.join(USER_DATA_PATH, 'workdir');
-const PROJECT_DIR = path.resolve(APP_DIR, '..');
+const LOCAL_PROJECT_DIR = path.resolve(APP_DIR, '..');
 const UPLOAD_DIR = path.join(USER_DATA_PATH, 'upload');
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true } }]);
 
@@ -29,14 +29,21 @@ const getRandomPort = (): Promise<number> =>
     });
 
 const getBinDir = (): string =>
-    app.isPackaged ? path.join(process.resourcesPath, 'bin') : path.join(PROJECT_DIR, 'handler', 'bin');
+    ENVIRONMENT === 'production'
+        ? path.join(process.resourcesPath, 'bin')
+        : path.join(LOCAL_PROJECT_DIR, 'handler', 'bin');
+
+const getProjectPath = (...relativePathSegments: string[]): string =>
+    ENVIRONMENT === 'production'
+        ? path.join(APP_DIR, ...relativePathSegments)
+        : path.join(LOCAL_PROJECT_DIR, ...relativePathSegments);
+
+// const getBackendPath = (relativePath: string): string => getProjectPath(path.join('api', ...relativePathSegments));
 
 const getEzBidsPlatform = (): string =>
     process.env.EZBIDS_PLATFORM ?? (process.platform === 'win32' ? 'windows' : process.platform);
 
 const getEzBidsArch = (): string => process.env.EZBIDS_ARCH ?? (process.arch === 'arm64' ? 'arm64' : 'amd64');
-
-console.log('ENVIRONMENT', ENVIRONMENT);
 
 /** Backend runs from this dir (backend reads ezbids.key/ezbids.pub from its __dirname). */
 const getBackendKeysDir = (): string => (ENVIRONMENT === 'development' ? path.join(APP_DIR, 'dist') : APP_DIR);
@@ -63,16 +70,14 @@ const startBackend = async (port: number, env: Record<string, string>): Promise<
     // ensureEzbidsKeys();
 
     if (ENVIRONMENT === 'development') {
-        const backendPath = path.join(PROJECT_DIR, 'api', 'ezbids.js');
-        backendProcess = spawn('node', [backendPath], {
+        backendProcess = spawn(process.execPath, [env.EZBIDS_BACKEND_DIR], {
             stdio: 'inherit' as const,
             env,
             detached: process.platform !== 'win32',
         });
         backendProcess.on('error', (err) => console.error('Backend failed to start:', err));
     } else {
-        const backendPath = path.join(APP_DIR, 'dist', 'backend.cjs');
-        backendProcess = spawn('node', [backendPath], {
+        backendProcess = spawn(process.execPath, [env.EZBIDS_BACKEND_DIR], {
             stdio: 'inherit' as const,
             env,
             detached: process.platform !== 'win32',
@@ -84,16 +89,14 @@ const startBackend = async (port: number, env: Record<string, string>): Promise<
 
 const startHandler = async (env: Record<string, string>): Promise<void> => {
     if (ENVIRONMENT === 'development') {
-        const handlerPath = path.join(PROJECT_DIR, 'handler', 'handler.js');
-        handlerProcess = spawn('node', [handlerPath], {
+        handlerProcess = spawn(process.execPath, [path.join(env.EZBIDS_HANDLER_DIR, 'handler.js')], {
             stdio: 'inherit' as const,
             env,
             detached: process.platform !== 'win32',
         });
         handlerProcess.on('error', (err) => console.error('Handler failed to start:', err));
     } else {
-        const handlerPath = path.join(APP_DIR, 'dist', 'handler.cjs');
-        handlerProcess = spawn('node', [handlerPath], {
+        handlerProcess = spawn(process.execPath, [path.join(env.EZBIDS_HANDLER_DIR, 'handler.cjs')], {
             stdio: 'inherit' as const,
             env,
             detached: process.platform !== 'win32',
@@ -124,6 +127,10 @@ const startFrontend = (): Promise<void> => {
 async function startApp(): Promise<void> {
     const port = await getRandomPort();
 
+    /**
+     * Note: These variables are separated from the rest of the env object as they will be assigned to
+     * process.env and passed to the frontend.
+     */
     const rendererEnv = {
         BRAINLIFE_AUTHENTICATION: process.env.BRAINLIFE_AUTHENTICATION || 'false',
         IS_ELECTRON: 'true',
@@ -132,19 +139,39 @@ async function startApp(): Promise<void> {
 
     Object.assign(process.env, rendererEnv);
 
+    const ezbidsHandlerDir =
+        ENVIRONMENT === 'production' ? getProjectPath('dist', 'handler') : getProjectPath('handler');
+    const bidsValidatorPath = getProjectPath('node_modules', 'bids-validator', 'bin', 'bids-validator');
+    const ezbidsBackendDir =
+        ENVIRONMENT === 'production' ? getProjectPath('dist', 'backend.cjs') : getProjectPath('api', 'ezbids.js');
+
     const env = {
         ...process.env,
         USER_DATA_PATH: USER_DATA_PATH,
         UPLOAD_DIR: UPLOAD_DIR,
-        PROJECT_DIR: PROJECT_DIR,
         WORKDIR: WORKDIR,
         PORT: String(port),
         MONGO_CONNECTION_STRING: '',
         EZBIDS_BIN_DIR: getBinDir(),
+        EZBIDS_HANDLER_DIR: ezbidsHandlerDir,
+        EZBIDS_PREPROCESS_PATH: path.join(
+            ezbidsHandlerDir,
+            ENVIRONMENT === 'production' ? 'preprocess.cjs' : 'preprocess.js'
+        ),
+        EZBIDS_EXPAND_PATH: path.join(ezbidsHandlerDir, ENVIRONMENT === 'production' ? 'expand.cjs' : 'expand.js'),
+        EZBIDS_BIDS_PATH: path.join(ezbidsHandlerDir, ENVIRONMENT === 'production' ? 'bids.cjs' : 'bids.js'),
+        EZBIDS_CONVERT_PATH: path.join(ezbidsHandlerDir, ENVIRONMENT === 'production' ? 'convert.cjs' : 'convert.js'),
+        EZBIDS_BACKEND_DIR: ezbidsBackendDir,
+        BIDS_VALIDATOR_PATH: bidsValidatorPath,
         EZBIDS_PLATFORM: getEzBidsPlatform(),
         EZBIDS_ARCH: getEzBidsArch(),
+        ENVIRONMENT: ENVIRONMENT,
+        ELECTRON_RUN_AS_NODE: '1',
         ...rendererEnv,
     };
+
+    console.log('STARTING EZBIDS DESKTOP WITH ENV:', env);
+
     await startBackend(port, env);
     await startHandler(env);
     await startFrontend();
@@ -224,10 +251,4 @@ process.on('uncaughtException', (err) => {
     console.error('Uncaught exception:', err);
     killAll();
     process.exit(1);
-});
-
-app.on('activate', async () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-        await startApp();
-    }
 });

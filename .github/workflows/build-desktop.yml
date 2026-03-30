@@ -1,0 +1,97 @@
+name: Build Desktop App
+
+on:
+    push:
+        tags:
+            - 'v*'
+
+permissions:
+    contents: write
+
+jobs:
+    build:
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - os: macos-latest
+                      platform: darwin
+                      arch: arm64
+                      eb_flags: --mac --arm64
+                    - os: windows-latest
+                      platform: win32
+                      arch: amd64
+                      eb_flags: --win --x64
+                    - os: ubuntu-latest
+                      platform: linux
+                      arch: amd64
+                      eb_flags: --linux --x64
+
+        runs-on: ${{ matrix.os }}
+
+        defaults:
+            run:
+                shell: bash
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  submodules: recursive
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+
+            - name: Install dependencies
+              run: |
+                  npm ci
+                  (cd api && npm ci)
+                  (cd handler && npm ci)
+                  (cd ui && npm ci)
+                  (cd electron && npm ci)
+
+            - name: Fetch binaries
+              run: bash fetch-binaries.sh ${{ matrix.platform }} ${{ matrix.arch }}
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Clean dist
+              run: rm -rf electron/dist
+
+            - name: Build JS bundles
+              working-directory: electron
+              run: |
+                  npm run build:electron-api
+                  npm run build:electron-handler
+                  npm run build:electron-handler-scripts
+
+            - name: Copy Python files and BIDS schema
+              working-directory: electron
+              run: npm run build:electron-python
+
+            - name: Build frontend
+              working-directory: ui
+              run: npm run build:electron
+
+            - name: Compile main process
+              working-directory: electron
+              run: npx tsc
+
+            - name: Package
+              working-directory: electron
+              run: npx electron-builder ${{ matrix.eb_flags }}
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Upload artifacts to release
+              uses: softprops/action-gh-release@v2
+              with:
+                  draft: true
+                  files: |
+                      electron/release/*.dmg
+                      electron/release/*.exe
+                      electron/release/*.AppImage
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

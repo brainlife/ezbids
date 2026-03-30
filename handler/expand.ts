@@ -6,7 +6,7 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { allFilesUnder, extract7z, rm } from './expand.utils';
+import { allFilesUnder, run7z, rm } from './expand.utils';
 
 const root = process.argv[2];
 if (!root || !fs.existsSync(root)) {
@@ -14,7 +14,7 @@ if (!root || !fs.existsSync(root)) {
     process.exit(1);
 }
 
-function onePass(rootPath: string): boolean {
+async function onePass(rootPath: string): Promise<boolean> {
     const files = allFilesUnder(rootPath);
     let expanded = false;
     let expandCounter = 1;
@@ -44,7 +44,9 @@ function onePass(rootPath: string): boolean {
         const dir = path.dirname(file);
         const outDirName = String(expandCounter);
         fs.mkdirSync(path.join(dir, outDirName), { recursive: true });
-        if (extract7z(file, dir, outDirName)) {
+        console.log('extracting 7z', file, dir, outDirName);
+        if (await run7z(file, { cwd: dir }, outDirName)) {
+            console.log('extracted 7z', file, dir, outDirName, 'successfully');
             rm(file);
             expanded = true;
             expandCounter++;
@@ -54,7 +56,7 @@ function onePass(rootPath: string): boolean {
     for (const file of singleCompressed) {
         if (!fs.existsSync(file)) continue;
         const dir = path.dirname(file);
-        if (extract7z(file, dir)) {
+        if (await run7z(file, { cwd: dir })) {
             rm(file);
             expanded = true;
         }
@@ -63,17 +65,20 @@ function onePass(rootPath: string): boolean {
     return expanded;
 }
 
-function main(): void {
+async function main(): Promise<void> {
     const rootPath = path.resolve(root);
     // eslint-disable-next-line no-console -- CLI script
     console.log('expanding archives in', rootPath);
 
     let expanded: boolean;
     do {
-        expanded = onePass(rootPath);
+        expanded = await onePass(rootPath);
     } while (expanded);
     // eslint-disable-next-line no-console -- CLI script
     console.log('no more archives to expand .. done');
 }
 
-main();
+main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+});

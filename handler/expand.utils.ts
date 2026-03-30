@@ -1,6 +1,7 @@
+import { execa, Options } from 'execa';
 import * as fs from 'fs';
 import * as path from 'path';
-import { spawnSync } from 'child_process';
+import { getBinPath } from './utils';
 
 export function walkDir(dir: string, files: string[]): void {
     const entries = fs.readdirSync(dir, { withFileTypes: true });
@@ -20,31 +21,6 @@ export function allFilesUnder(rootPath: string): string[] {
     return files;
 }
 
-export function run(cmd: string, args: string[], opts?: { cwd?: string }): boolean {
-    const r = spawnSync(cmd, args, {
-        stdio: 'inherit',
-        cwd: opts?.cwd,
-    });
-    return r.status === 0;
-}
-
-/**
- * Path to local 7z binary from ezbids-binaries, or '7z' to use system.
- * - With Electron: main process sets EZBIDS_BIN_DIR to the packaged resources/bin (or handler/bin in dev).
- * - Standalone: use handler/bin/ with name 7z-<platform>-<arch>, e.g. 7z-darwin-amd64.
- */
-export function get7zPath(): string {
-    const platform = process.platform; // 'darwin' | 'linux' | 'win32'
-    const arch = process.arch === 'x64' ? 'amd64' : process.arch; // release uses amd64 not x64
-    const name = `7z-${platform}-${arch}`;
-    const binDir = process.env.EZBIDS_BIN_DIR || path.join(__dirname, 'bin');
-    const localPath = path.join(binDir, name);
-    if (fs.existsSync(localPath)) {
-        return localPath;
-    }
-    return '7z';
-}
-
 export function rm(file: string): void {
     try {
         fs.unlinkSync(file);
@@ -53,11 +29,18 @@ export function rm(file: string): void {
     }
 }
 
-/** Extract with 7z. If outDirName is given, extract into that subdir; otherwise extract in place. 7z -o has no space before path. */
-export function extract7z(archivePath: string, cwd: string, outDirName?: string): boolean {
-    const sevenZ = get7zPath();
-    const base = path.basename(archivePath);
-    const args = ['x', base];
-    if (outDirName !== undefined) args.push(`-o${outDirName}`);
-    return run(sevenZ, args, { cwd });
+export async function run7z(filePath: string, opts: Options, outDir?: string) {
+    const sevenZPath = path.join(getBinPath('7z'), `7z-${process.env.EZBIDS_PLATFORM}-${process.env.EZBIDS_ARCH}`);
+    const args = ['x', path.basename(filePath)];
+    if (outDir) args.push(`-o${outDir}`);
+    try {
+        await execa(sevenZPath, args, {
+            ...opts,
+            stdio: 'inherit',
+        });
+    } catch (e) {
+        console.error('run7z failed:', sevenZPath, args, e);
+        return false;
+    }
+    return true;
 }

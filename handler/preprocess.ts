@@ -41,9 +41,9 @@ function writeBidsCompliantLog(testRoot: string, bidsCompliant: boolean): void {
 
 async function runExpand(): Promise<void> {
     log('running expand (TypeScript)');
-    const expandJs = path.join(resolvedHandlerDir, 'expand.js');
+    const expandPath = process.env.EZBIDS_EXPAND_PATH ?? path.join(resolvedHandlerDir, 'expand.js');
     try {
-        await execa(process.execPath, [expandJs, resolvedRoot], {
+        await execa(process.execPath, [expandPath, resolvedRoot], {
             cwd: resolvedHandlerDir,
             stdio: 'inherit',
         });

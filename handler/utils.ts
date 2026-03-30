@@ -73,11 +73,8 @@ export async function runBidsValidator(
     pathToValidate: string,
     outLogFilePath: string
 ): Promise<{ hasErr: boolean }> {
-    const validatorBin = path.join(
-        path.dirname(require.resolve('bids-validator/package.json')),
-        'bin',
-        'bids-validator'
-    );
+    const validatorBin = process.env.BIDS_VALIDATOR_PATH;
+    if (!validatorBin) throw new Error('BIDS_VALIDATOR_PATH is not set');
     const args = [validatorBin, pathToValidate];
     if (outputAsJson) {
         args.push('--json');

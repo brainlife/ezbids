@@ -2,20 +2,26 @@
     "name": "ezbids-electron",
     "version": "1.0.0",
     "description": "electron implementation for ezbids",
-    "main": "main.ts",
-    "type": "module",
+    "main": "main.js",
     "scripts": {
         "start": "NODE_ENV=prod ELECTRON_OVERRIDE_DIST_PATH=../node_modules/electron/dist electron .",
-        "build:electron-api": "tsc --noCheck -p ../api/tsconfig.json && esbuild ../api/ezbids.ts --bundle --platform=node --format=cjs --outfile=dist/backend.cjs --external:node-pty --external:nan",
-        "build:electron-handler": "tsc --noCheck -p ../handler/tsconfig.json  && esbuild ../handler/handler.ts --bundle --platform=node --format=cjs --outfile=dist/handler.cjs --external:node-pty --external:nan",
+        "build:electron-api": "tsc --noCheck -p ../api/tsconfig.json && esbuild ../api/ezbids.ts --bundle --platform=node --format=cjs --outfile=dist/backend.cjs --external:node-pty --external:nan --external:electron-store",
+        "build:electron-handler": "tsc --noCheck -p ../handler/tsconfig.json && esbuild ../handler/handler.ts --bundle --platform=node --format=cjs --outfile=dist/handler/handler.cjs --external:node-pty --external:nan --external:electron-store",
+        "build:electron-handler-scripts": "esbuild ../handler/preprocess.ts ../handler/expand.ts ../handler/bids.ts ../handler/convert.ts --bundle --platform=node --format=cjs --outdir=dist/handler --out-extension:.js=.cjs --external:node-pty --external:nan --external:electron-store",
+        "build:electron-python": "mkdir -p dist/handler/ezBIDS_core && cp ../handler/ezBIDS_core/*.py dist/handler/ezBIDS_core/ && cp ../handler/*.py dist/handler/ && mkdir -p dist/bids-specification/src && cp -r ../bids-specification/src/schema dist/bids-specification/src/schema",
         "build:electron-frontend": "(cd ../ui && npm run build:electron)",
-        "build:electron": "npm run build:electron-api && npm run build:electron-handler && npm run build:electron-frontend && tsc",
+        "build:electron": "rm -rf dist && npm run build:electron-api && npm run build:electron-handler && npm run build:electron-handler-scripts && npm run build:electron-python && npm run build:electron-frontend && tsc",
         "app:dir": "electron-builder --dir",
         "app:dist": "electron-builder",
+        "app:build-dist": "npm run build:electron && electron-builder",
         "tsc:watch": "tsc --watch"
     },
     "author": "nicoalee",
     "license": "ISC",
+    "dependencies": {
+        "bids-validator": "^1.14.8",
+        "electron-store": "^11.0.2"
+    },
     "devDependencies": {
         "@types/node": "^20.0.0",
         "electron": "^40.3.0",
@@ -24,9 +30,45 @@
         "typescript": "^5.0.0"
     },
     "build": {
-        "appId": "com.brainlife.ezbids.electron",
+        "appId": "io.brainlife.ezbids.electron",
+        "productName": "ezBIDS",
+        "directories": {
+            "output": "release"
+        },
+        "asar": false,
+        "files": [
+            "main.js",
+            "preload/**/*.js",
+            "dist/backend.cjs",
+            "dist/handler/**",
+            "dist/bids-specification/**",
+            "dist/frontend/**",
+            "!node_modules/**/*.ts",
+            "!node_modules/**/*.map",
+            "!node_modules/**/build/module/**",
+            "!node_modules/**/{test,tests,__tests__,testing,spec}/**",
+            "!node_modules/**/{example,examples,demo,demos}/**",
+            "!node_modules/**/{docs,doc,documentation}/**",
+            "!node_modules/**/{CHANGELOG*,HISTORY*,README*,readme*,LICENSE,license,*.md}"
+        ],
+        "extraResources": [
+            {
+                "from": "../handler/bin",
+                "to": "bin",
+                "filter": [
+                    "**/*"
+                ]
+            }
+        ],
         "mac": {
-            "category": "public.app-category.education"
+            "category": "public.app-category.education",
+            "target": [{ "target": "dmg" }]
+        },
+        "win": {
+            "target": [{ "target": "nsis" }]
+        },
+        "linux": {
+            "target": [{ "target": "AppImage" }]
         }
     }
 }

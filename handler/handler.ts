@@ -65,8 +65,8 @@ start();
 
 async function handle_uploaded(session) {
     const workdir = path.join(config.workdir, session._id);
-    const projectDir = process.env.PROJECT_DIR ?? './';
-    const handlerDir = path.join(projectDir, 'handler');
+    const handlerDir = process.env.EZBIDS_HANDLER_DIR ?? './handler';
+    const preprocessScript = process.env.EZBIDS_PREPROCESS_PATH ?? path.join(handlerDir, 'preprocess.js');
 
     session.pre_begin_date = new Date();
     session.pre_end_date = undefined;
@@ -74,7 +74,7 @@ async function handle_uploaded(session) {
     session.status = 'preprocessing';
     await handle(
         session,
-        path.join(handlerDir, 'preprocess.js'),
+        preprocessScript,
         'preprocess',
         (cb) => {
             //monitoring callback
@@ -119,8 +119,8 @@ async function handle_uploaded(session) {
 
 async function handle_finalized(session) {
     console.log('handling finalized request!-----------------------');
-    const projectDir = process.env.PROJECT_DIR ?? './';
-    const handlerDir = path.join(projectDir, 'handler');
+    const handlerDir = process.env.EZBIDS_HANDLER_DIR ?? './handler';
+    const bidsScript = process.env.EZBIDS_BIDS_PATH ?? path.join(handlerDir, 'bids.js');
 
     session.finalize_begin_date = new Date();
     session.finalize_end_date = undefined;
@@ -128,7 +128,7 @@ async function handle_finalized(session) {
 
     await handle(
         session,
-        path.join(handlerDir, 'bids.js'),
+        bidsScript,
         'bids',
         (cb) => {
             //monitor cb
@@ -144,8 +144,8 @@ async function handle_finalized(session) {
 
 async function handle_deface(session) {
     console.log('handling deface request!-----------------------');
-    const projectDir = process.env.PROJECT_DIR ?? './';
-    const handlerDir = path.join(projectDir, 'handler');
+    const handlerDir = process.env.EZBIDS_HANDLER_DIR ?? './handler';
+    const defacePath = process.env.EZBIDS_DEFACE_PATH ?? path.join(handlerDir, 'deface.js');
 
     session.deface_begin_date = new Date();
     session.deface_end_date = undefined;
@@ -153,7 +153,7 @@ async function handle_deface(session) {
 
     await handle(
         session,
-        path.join(handlerDir, 'deface.js'),
+        defacePath,
         'deface',
         (cb) => {
             //monitor cb - nothing special to do yet
@@ -174,8 +174,8 @@ function handle(session, script: string, name: string, cb_monitor, cb_finish: (e
         sessionStore.save(session).then(() => {
             try {
                 let monitor;
-                let workdir = config.workdir + '/' + session._id;
-                const handlerDir = path.join(process.env.PROJECT_DIR ?? './', 'handler');
+                const workdir = config.workdir + '/' + session._id;
+                const handlerDir = process.env.EZBIDS_HANDLER_DIR ?? './handler';
                 const p = spawn(process.execPath, [script, workdir, handlerDir], { cwd: handlerDir, detached: true });
                 // const p = spawn(script, [workdir, handlerDir], { cwd: handlerDir, detached: true });
                 const logout = fs.openSync(workdir + '/' + name + '.log', 'w');
