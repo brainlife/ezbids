@@ -151,8 +151,12 @@ set_user_permissions() {
     chmod -R u+rwx "$target_dir"
 }
 
-DOWNLOAD_ARGS=(-sL -H "Accept: application/octet-stream")
+# -f: fail on HTTP 4xx/5xx (do not write error HTML/JSON to output file)
+# -s: no progress meter; -S: still print error text when a failure occurs
+DOWNLOAD_ARGS=(-fsSL -H "Accept: application/octet-stream")
 [[ -n "${GITHUB_TOKEN:-}" ]] && DOWNLOAD_ARGS+=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
+
+echo "Found ${matching}"
 
 while IFS=$'\t' read -r name url; do
     [[ -z "$name" ]] && continue

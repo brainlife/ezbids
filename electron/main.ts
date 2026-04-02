@@ -73,14 +73,14 @@ const startBackend = async (port: number, env: Record<string, string>): Promise<
         backendProcess = spawn(process.execPath, [env.EZBIDS_BACKEND_DIR], {
             stdio: 'inherit' as const,
             env,
-            detached: process.platform !== 'win32',
+            detached: getEzBidsPlatform() !== 'windows',
         });
         backendProcess.on('error', (err) => console.error('Backend failed to start:', err));
     } else {
         backendProcess = spawn(process.execPath, [env.EZBIDS_BACKEND_DIR], {
             stdio: 'inherit' as const,
             env,
-            detached: process.platform !== 'win32',
+            detached: getEzBidsPlatform() !== 'windows',
         });
         backendProcess.on('spawn', () => console.log('Backend spawned on port', port));
         backendProcess.on('error', (err) => console.error('Backend failed to start:', err));
@@ -92,14 +92,14 @@ const startHandler = async (env: Record<string, string>): Promise<void> => {
         handlerProcess = spawn(process.execPath, [path.join(env.EZBIDS_HANDLER_DIR, 'handler.js')], {
             stdio: 'inherit' as const,
             env,
-            detached: process.platform !== 'win32',
+            detached: getEzBidsPlatform() !== 'windows',
         });
         handlerProcess.on('error', (err) => console.error('Handler failed to start:', err));
     } else {
         handlerProcess = spawn(process.execPath, [path.join(env.EZBIDS_HANDLER_DIR, 'handler.cjs')], {
             stdio: 'inherit' as const,
             env,
-            detached: process.platform !== 'win32',
+            detached: getEzBidsPlatform() !== 'windows',
         });
         handlerProcess.on('spawn', () => console.log('Handler spawned'));
         handlerProcess.on('error', (err) => console.error('Handler failed to start:', err));
@@ -189,7 +189,7 @@ function killProcess(child: ChildProcess, name: string): void {
     const pid = child.pid;
     console.log(`killing ${name} (pid ${pid})`);
     try {
-        if (process.platform !== 'win32') {
+        if (getEzBidsPlatform() !== 'windows') {
             console.log(`sending SIGTERM to ${name} pid ${pid}`);
             process.kill(pid, 'SIGTERM'); // to the process itself
             console.log(`sending SIGTERM to ${name} group -${pid}`);

@@ -68,6 +68,8 @@ jobs:
 
             - name: Fetch binaries
               run: bash fetch-binaries.sh ${{ matrix.platform }} ${{ matrix.arch }}
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Clean dist
               run: rm -rf electron/dist

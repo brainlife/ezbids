@@ -5,17 +5,20 @@ import * as fs from 'fs';
 export function getBinPath(binaryName: string): string {
     const binDir = process.env.EZBIDS_BIN_DIR;
     if (binDir) {
-        const name = process.platform === 'win32' && !binaryName.endsWith('.exe') ? `${binaryName}.exe` : binaryName;
+        const name =
+            process.env.EZBIDS_PLATFORM === 'windows' && !binaryName.endsWith('.exe')
+                ? `${binaryName}.exe`
+                : binaryName;
         return path.resolve(path.join(binDir, name));
     }
     return binaryName;
 }
 
-/** Platform for binary naming: darwin | linux | windows (assets use "windows", not "win32"). */
+/** Platform for binary naming: darwin | linux | windows. */
 function getPlatform(): string {
     const env = process.env.EZBIDS_PLATFORM?.toLowerCase();
     if (env === 'darwin' || env === 'linux' || env === 'windows') return env;
-    return process.platform === 'win32' ? 'windows' : process.platform;
+    return process.env.EZBIDS_PLATFORM;
 }
 
 /** Arch for binary naming: amd64 | arm64. */
@@ -51,7 +54,14 @@ export async function runPython(argv: string[], opts: Options): Promise<{ status
     const pythonHome = getBinPath('python-runtime');
     const withTimeout = opts.timeout !== undefined && opts.timeout !== null;
     const result = await execa(
-        path.resolve(path.join(pythonHome, 'python', 'bin', process.platform === 'win32' ? 'python3.exe' : 'python3')),
+        path.resolve(
+            path.join(
+                pythonHome,
+                'python',
+                'bin',
+                process.env.EZBIDS_PLATFORM === 'windows' ? 'python3.exe' : 'python3'
+            )
+        ),
         argv,
         {
             ...opts,
