@@ -107,6 +107,10 @@ if [[ "$platform" == "windows" && "$arch" == "amd64" ]]; then
     fi
 fi
 
+# jq on Windows (GitHub windows-latest) may emit CRLF; curl rejects URLs containing \r (exit 3:
+# "Malformed input to a URL function"). Normalise before parsing and downloads.
+matching="${matching//$'\r'/}"
+
 # Derive library name from asset filename:
 #   7z-darwin-arm64, 7z-windows-amd64.exe, dcm2niix-linux-amd64 -> 7z, dcm2niix
 #   python-runtime-darwin-arm64.tar.gz -> python-runtime
@@ -156,10 +160,17 @@ set_user_permissions() {
 DOWNLOAD_ARGS=(-fsSL -H "Accept: application/octet-stream")
 [[ -n "${GITHUB_TOKEN:-}" ]] && DOWNLOAD_ARGS+=(-H "Authorization: Bearer ${GITHUB_TOKEN}")
 
-echo "Found ${matching}"
+echo "Will proceed to download the following assets:"
+echo "${matching}"
 
 while IFS=$'\t' read -r name url; do
+    name="${name//$'\r'/}"
+    url="${url//$'\r'/}"
     [[ -z "$name" ]] && continue
+    if [[ -z "$url" ]]; then
+        echo "Error: empty download URL for asset '${name}' (check release asset list / jq output)" >&2
+        exit 1
+    fi
     lib=$(library_from_name "$name")
     [[ -z "$lib" ]] && continue
     subdir="$BIN_BASE/$lib"
