@@ -68,8 +68,6 @@ jobs:
 
             - name: Fetch binaries
               run: bash fetch-binaries.sh ${{ matrix.platform }} ${{ matrix.arch }}
-              env:
-                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Clean dist
               run: rm -rf electron/dist
@@ -83,13 +81,15 @@ jobs:
 
             - name: Copy Python files and BIDS schema
               working-directory: electron
-              run: npm run build:electron-python
+              run: |
+                  npm run build:electron-python
+                  npm run build:electron-bids-spec
 
             - name: Build frontend
               working-directory: ui
               run: npm run build:electron
 
-            - name: Compile main process
+            - name: Transpile main process
               working-directory: electron
               run: npx tsc
 
