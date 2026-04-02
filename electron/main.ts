@@ -117,9 +117,9 @@ const startFrontend = (): Promise<void> => {
         },
     });
 
-    // if (ENVIRONMENT === 'development') {
-    win.webContents.openDevTools();
-    // }
+    if (ENVIRONMENT === 'development') {
+        win.webContents.openDevTools();
+    }
 
     return win.loadFile(path.join(APP_DIR, 'dist', 'frontend', 'index.html'), {});
 };

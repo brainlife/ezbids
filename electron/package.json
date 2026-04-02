@@ -5,9 +5,9 @@
     "main": "main.js",
     "scripts": {
         "start": "NODE_ENV=prod ELECTRON_OVERRIDE_DIST_PATH=../node_modules/electron/dist electron .",
-        "build:electron-api": "tsc --noCheck -p ../api/tsconfig.json && esbuild ../api/ezbids.ts --bundle --platform=node --format=cjs --outfile=dist/backend.cjs --external:node-pty --external:nan --external:electron-store",
-        "build:electron-handler": "tsc --noCheck -p ../handler/tsconfig.json && esbuild ../handler/handler.ts --bundle --platform=node --format=cjs --outfile=dist/handler/handler.cjs --external:node-pty --external:nan --external:electron-store",
-        "build:electron-handler-scripts": "esbuild ../handler/preprocess.ts ../handler/expand.ts ../handler/bids.ts ../handler/convert.ts --bundle --platform=node --format=cjs --outdir=dist/handler --out-extension:.js=.cjs --external:node-pty --external:nan --external:electron-store",
+        "build:electron-api": "tsc --noCheck -p ../api/tsconfig.json && esbuild ../api/ezbids.ts --bundle --platform=node --format=cjs --outfile=dist/backend.cjs --external:nan --external:electron-store",
+        "build:electron-handler": "tsc --noCheck -p ../handler/tsconfig.json && esbuild ../handler/handler.ts --bundle --platform=node --format=cjs --outfile=dist/handler/handler.cjs --external:nan --external:electron-store",
+        "build:electron-handler-scripts": "esbuild ../handler/preprocess.ts ../handler/expand.ts ../handler/bids.ts ../handler/convert.ts --bundle --platform=node --format=cjs --outdir=dist/handler --out-extension:.js=.cjs --external:nan --external:electron-store",
         "build:electron-python": "mkdir -p dist/handler/ezBIDS_core && cp ../handler/ezBIDS_core/*.py dist/handler/ezBIDS_core/ && cp ../handler/*.py dist/handler/ && mkdir -p dist/bids-specification/src && cp -r ../bids-specification/src/schema dist/bids-specification/src/schema",
         "build:electron-frontend": "(cd ../ui && npm run build:electron)",
         "build:electron": "rm -rf dist && npm run build:electron-api && npm run build:electron-handler && npm run build:electron-handler-scripts && npm run build:electron-python && npm run build:electron-frontend && tsc",
@@ -63,13 +63,28 @@
         ],
         "mac": {
             "category": "public.app-category.education",
-            "target": [{ "target": "dmg" }]
+            "target": [
+                {
+                    "target": "dmg"
+                }
+            ],
+            "artifactName": "ezbids-desktop-darwin-${arch}.${ext}"
         },
         "win": {
-            "target": [{ "target": "nsis" }]
+            "target": [
+                {
+                    "target": "nsis"
+                }
+            ],
+            "artifactName": "ezbids-desktop-windows-${arch}.${ext}"
         },
         "linux": {
-            "target": [{ "target": "AppImage" }]
+            "target": [
+                {
+                    "target": "AppImage"
+                }
+            ],
+            "artifactName": "ezbids-desktop-linux-${arch}.${ext}"
         }
     }
 }

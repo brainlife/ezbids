@@ -33,7 +33,7 @@ jobs:
                       arch: arm64
                       eb_flags: --mac --arm64
                     - os: windows-latest
-                      platform: win32
+                      platform: windows
                       arch: amd64
                       eb_flags: --win --x64
                     - os: ubuntu-latest

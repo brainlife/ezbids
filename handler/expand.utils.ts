@@ -30,7 +30,10 @@ export function rm(file: string): void {
 }
 
 export async function run7z(filePath: string, opts: Options, outDir?: string) {
-    const sevenZPath = path.join(getBinPath('7z'), `7z-${process.env.EZBIDS_PLATFORM}-${process.env.EZBIDS_ARCH}`);
+    const platform = process.env.EZBIDS_PLATFORM;
+    const arch = process.env.EZBIDS_ARCH;
+    const sevenZName = platform === 'windows' ? `7z-${platform}-${arch}.exe` : `7z-${platform}-${arch}`;
+    const sevenZPath = path.join(getBinPath('7z'), sevenZName);
     const args = ['x', path.basename(filePath)];
     if (outDir) args.push(`-o${outDir}`);
     try {
