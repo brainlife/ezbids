@@ -12,20 +12,20 @@ export function getBinPath(tool: string): string {
 }
 /** python3 inside the bundled runtime, or a PATH fallback when EZBIDS_BIN_DIR is unset. */
 export function getPythonExecutablePath(): string {
-    const root = getBinPath('python-runtime');
+    const pythonRoot = getBinPath('python-runtime');
     const pyBin =
         process.env.EZBIDS_PLATFORM === 'windows'
-            ? path.join(root, 'python', 'python3.exe')
-            : path.join(root, 'python', 'bin', 'python3');
+            ? path.join(pythonRoot, 'python', 'python3.exe')
+            : path.join(pythonRoot, 'python', 'bin', 'python3');
     return path.resolve(pyBin);
 }
 
 function getBundledPythonSitePackages(): string {
-    const root = getBinPath('python-runtime');
+    const pythonRoot = getBinPath('python-runtime');
     const sitePackages =
         process.env.EZBIDS_PLATFORM === 'windows'
-            ? path.join(root, 'venv', 'Lib', 'site-packages')
-            : path.join(root, 'venv', 'lib', 'python3.8', 'site-packages');
+            ? path.join(pythonRoot, 'venv', 'Lib', 'site-packages')
+            : path.join(pythonRoot, 'venv', 'lib', 'python3.8', 'site-packages');
     return path.resolve(sitePackages);
 }
 
@@ -44,7 +44,7 @@ export function log(msg: string): void {
 }
 
 export async function runPython(argv: string[], opts: Options): Promise<{ status: number; stderr: string }> {
-    const pythonRuntimeRoot = getBinPath('python-runtime');
+    const pythonRoot = getBinPath('python-runtime');
     const pythonExe = getPythonExecutablePath();
     const withTimeout = opts.timeout !== undefined && opts.timeout !== null;
     const result = await execa(pythonExe, argv, {
@@ -53,7 +53,7 @@ export async function runPython(argv: string[], opts: Options): Promise<{ status
         env: {
             ...process.env,
             PYTHONPATH: getBundledPythonSitePackages(),
-            PYTHONHOME: path.resolve(path.join(pythonRuntimeRoot, 'python')),
+            PYTHONHOME: path.resolve(path.join(pythonRoot, 'python')),
         },
     });
     const status = result.exitCode ?? -1;
