@@ -15,7 +15,7 @@ export function getPythonExecutablePath(): string {
     const pythonRoot = getBinPath('python-runtime');
     const pyBin =
         process.env.EZBIDS_PLATFORM === 'windows'
-            ? path.join(pythonRoot, 'python', 'python3.exe')
+            ? path.join(pythonRoot, 'python', 'python.exe')
             : path.join(pythonRoot, 'python', 'bin', 'python3');
     return path.resolve(pyBin);
 }
