@@ -8,7 +8,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { execa } from 'execa';
-import { getBinPath, log, runBidsValidator, runPython } from './utils';
+import { getPythonExecutablePath, log, runBidsValidator, runPython } from './utils';
 import { getDatasetName, tree } from './bids.utils';
 
 const rootArg = process.argv[2];
@@ -51,7 +51,6 @@ async function main(): Promise<void> {
         fs.rmSync(bidsDir, { recursive: true, force: true });
     }
 
-    const pythonPath = getBinPath('python-runtime');
     const telemetryPy = path.join(handlerDir, 'telemetry.py');
 
     // Run MEG BIDS conversion if relevant data found
@@ -105,7 +104,7 @@ async function main(): Promise<void> {
         // Create telemetry-specific files
         log('Creating ezBIDS telemetry files');
         if (fs.existsSync(telemetryPy)) {
-            await execa(pythonPath, [telemetryPy, root], {
+            await execa(getPythonExecutablePath(), [telemetryPy, root], {
                 cwd: handlerDir,
                 stdio: 'inherit',
                 reject: false,

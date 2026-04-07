@@ -2,46 +2,39 @@ import { execa, Options } from 'execa';
 import * as path from 'path';
 import * as fs from 'fs';
 
-export function getBinPath(binaryName: string): string {
+/** Resolved path to `<EZBIDS_BIN_DIR>/<tool>` (e.g. 7z, dcm2niix, python-runtime). Callers add executable names and `.exe` where needed. */
+export function getBinPath(tool: string): string {
     const binDir = process.env.EZBIDS_BIN_DIR;
     if (binDir) {
-        const name =
-            process.env.EZBIDS_PLATFORM === 'windows' && !binaryName.endsWith('.exe')
-                ? `${binaryName}.exe`
-                : binaryName;
-        return path.resolve(path.join(binDir, name));
+        return path.resolve(path.join(binDir, tool));
     }
-    return binaryName;
+    return tool;
+}
+/** python3 inside the bundled runtime, or a PATH fallback when EZBIDS_BIN_DIR is unset. */
+export function getPythonExecutablePath(): string {
+    const root = getBinPath('python-runtime');
+    const pyBin =
+        process.env.EZBIDS_PLATFORM === 'windows'
+            ? path.join(root, 'python', 'python3.exe')
+            : path.join(root, 'python', 'bin', 'python3');
+    return path.resolve(pyBin);
 }
 
-/** Platform for binary naming: darwin | linux | windows. */
-function getPlatform(): string {
-    const env = process.env.EZBIDS_PLATFORM?.toLowerCase();
-    if (env === 'darwin' || env === 'linux' || env === 'windows') return env;
-    return process.env.EZBIDS_PLATFORM;
+function getBundledPythonSitePackages(): string {
+    const root = getBinPath('python-runtime');
+    const sitePackages =
+        process.env.EZBIDS_PLATFORM === 'windows'
+            ? path.join(root, 'venv', 'Lib', 'site-packages')
+            : path.join(root, 'venv', 'lib', 'python3.8', 'site-packages');
+    return path.resolve(sitePackages);
 }
 
-/** Arch for binary naming: amd64 | arm64. */
-function getArch(): string {
-    const env = process.env.EZBIDS_ARCH?.toLowerCase();
-    if (env === 'amd64' || env === 'arm64') return env;
-    return process.arch === 'arm64' ? 'arm64' : 'amd64';
-}
-
-/**
- * Returns the path to the dcm2niix executable for the current (or env-overridden) platform/arch.
- * Relies on EZBIDS_BIN_DIR; binary name follows fetch-binaries pattern: dcm2niix-<platform>-<arch>[.exe].
- */
 export function getDcm2niixExecutablePath(): string {
-    const binDir = process.env.EZBIDS_BIN_DIR;
-    const platform = getPlatform();
-    const arch = getArch();
+    const platform = process.env.EZBIDS_PLATFORM;
+    const arch = process.env.EZBIDS_ARCH;
     const base = `dcm2niix-${platform}-${arch}`;
-    const name = platform === 'windows' ? `${base}.exe` : base;
-    if (binDir) {
-        return path.resolve(path.join(binDir, 'dcm2niix', name));
-    }
-    return path.join('dcm2niix', name);
+    const fileName = platform === 'windows' ? `${base}.exe` : base;
+    return path.resolve(path.join(getBinPath('dcm2niix'), fileName));
 }
 
 // in the future, if we want some sort of more sophisticated logging, we can replace this function
@@ -51,28 +44,18 @@ export function log(msg: string): void {
 }
 
 export async function runPython(argv: string[], opts: Options): Promise<{ status: number; stderr: string }> {
-    const pythonHome = getBinPath('python-runtime');
+    const pythonRuntimeRoot = getBinPath('python-runtime');
+    const pythonExe = getPythonExecutablePath();
     const withTimeout = opts.timeout !== undefined && opts.timeout !== null;
-    const result = await execa(
-        path.resolve(
-            path.join(
-                pythonHome,
-                'python',
-                'bin',
-                process.env.EZBIDS_PLATFORM === 'windows' ? 'python3.exe' : 'python3'
-            )
-        ),
-        argv,
-        {
-            ...opts,
-            ...(withTimeout ? { timeout: opts.timeout, stdio: 'pipe' as const } : { stdio: 'inherit' as const }),
-            env: {
-                ...process.env,
-                PYTHONPATH: path.join(getBinPath('python-runtime'), 'venv', 'lib', 'python3.8', 'site-packages'),
-                PYTHONHOME: path.resolve(path.join(pythonHome, 'python')),
-            },
-        }
-    );
+    const result = await execa(pythonExe, argv, {
+        ...opts,
+        ...(withTimeout ? { timeout: opts.timeout, stdio: 'pipe' as const } : { stdio: 'inherit' as const }),
+        env: {
+            ...process.env,
+            PYTHONPATH: getBundledPythonSitePackages(),
+            PYTHONHOME: path.resolve(path.join(pythonRuntimeRoot, 'python')),
+        },
+    });
     const status = result.exitCode ?? -1;
     const stderr = withTimeout ? result.stderr.toString() ?? '' : '';
     return { status, stderr };
