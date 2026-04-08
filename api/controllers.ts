@@ -453,11 +453,12 @@ router.get('/download/:session_id/*', (req, res, next) => {
             if (!session) {
                 return res.status(HTTP_STATUS.NOT_FOUND).json({ err: 'session not found' });
             }
-            const basepath = config.workdir + '/' + session._id;
+            const basepath = path.resolve(config.workdir, String(session._id));
 
-            //validate path so it will be inside the basepath
-            const fullpath = path.resolve(basepath + '/' + req.params[0]);
-            if (!fullpath.startsWith(basepath)) return next('invalid path');
+            // validate path stays inside session dir (avoid mixed / vs \\ breaking startsWith on Windows)
+            const fullpath = path.resolve(basepath, req.params[0] as string);
+            const rel = path.relative(basepath, fullpath);
+            if (rel.startsWith('..') || path.isAbsolute(rel)) return next('invalid path');
 
             //TODO - if requested path is a file, thenstream
             const stats = fs.lstatSync(fullpath);
@@ -506,11 +507,12 @@ router.post(
             (file: any, nextFile) => {
                 idx++;
                 const srcPath = file.path;
-                const dirtyPath = `${config.workdir}/${session._id}/${paths[idx]}`;
-                const destPath = path.resolve(dirtyPath);
+                const workdirResolved = path.resolve(config.workdir);
+                const destPath = path.resolve(workdirResolved, String(session._id), paths[idx]);
                 const mtime = mtimes[idx] / 1000; //browser uses msec.. filesystem uses sec since epoch
 
-                if (!destPath.startsWith(config.workdir)) {
+                const relToWorkdir = path.relative(workdirResolved, destPath);
+                if (relToWorkdir.startsWith('..') || path.isAbsolute(relToWorkdir)) {
                     return nextFile(new Error(`invalid path: ${destPath}`));
                 }
                 const destdir = path.dirname(destPath);

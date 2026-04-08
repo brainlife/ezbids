@@ -325,8 +325,27 @@ export default defineComponent({
             try {
                 const res = await axios.get(`${this.config.apihost}/download/${this.session._id}/token`);
                 const shortLivedJWT = res.data;
+                const pathInUrl = String(fileName)
+                    .split('/')
+                    .map((seg) => encodeURIComponent(seg))
+                    .join('/');
+                const url = `${this.config.apihost}/download/${this.session._id}/${pathInUrl}?token=${shortLivedJWT}`;
 
-                window.location.href = `${this.config.apihost}/download/${this.session._id}/${fileName}?token=${shortLivedJWT}`;
+                // Avoid window navigation (breaks Electron SPA; also keeps errors in-app)
+                const dl = await axios.get(url, { responseType: 'blob' });
+                const blob = dl.data;
+                const baseName = fileName.includes('/') ? fileName.split('/').pop() : fileName;
+                const objectUrl = URL.createObjectURL(blob);
+                try {
+                    const link = document.createElement('a');
+                    link.href = objectUrl;
+                    link.download = baseName || 'download';
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                } finally {
+                    URL.revokeObjectURL(objectUrl);
+                }
             } catch (e) {
                 console.error(e);
                 ElNotification({

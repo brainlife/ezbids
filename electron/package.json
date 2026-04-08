@@ -14,7 +14,7 @@
         "build:electron": "rm -rf dist && npm run build:electron-api && npm run build:electron-handler && npm run build:electron-handler-scripts && npm run build:electron-python && npm run build:electron-bids-spec && npm run build:electron-frontend && tsc",
         "app:dir": "electron-builder --dir",
         "app:dist": "electron-builder",
-        "app:build-dist": "npm run build:electron && electron-builder",
+        "app:build-dist": "npm run build:electron && npm run app:dist",
         "tsc:watch": "tsc --watch"
     },
     "author": "nicoalee",
