@@ -110,5 +110,6 @@ jobs:
                       electron/release/*.dmg
                       electron/release/*.exe
                       electron/release/*.AppImage
+                      electron/release/*.deb
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -80,9 +80,13 @@
             "artifactName": "ezbids-desktop-windows-${arch}.${ext}"
         },
         "linux": {
+            "category": "Science",
             "target": [
                 {
                     "target": "AppImage"
+                },
+                {
+                    "target": "deb"
                 }
             ],
             "artifactName": "ezbids-desktop-linux-${arch}.${ext}"
