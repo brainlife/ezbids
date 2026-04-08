@@ -81,12 +81,12 @@ if [[ -z "$matching" ]]; then
     exit 1
 fi
 
-# Ensure both Windows 7z runtime files are present (exe + dll). These are required together.
+# Ensure Windows 7z console exe and loader DLL (7z.exe loads 7z.dll from the same folder)
 if [[ "$platform" == "windows" && "$arch" == "amd64" ]]; then
     sevenz_exe="7z-windows-amd64.exe"
-    sevenz_dll="7z-windows-amd64.dll"
+    sevenz_loader_dll="7z.dll"
     sevenz_exe_url="https://api.github.com/repos/${REPO}/releases/assets/$(echo "$release_json" | jq -r --arg n "$sevenz_exe" '.assets[] | select(.name == $n) | .id')"
-    sevenz_dll_url="https://api.github.com/repos/${REPO}/releases/assets/$(echo "$release_json" | jq -r --arg n "$sevenz_dll" '.assets[] | select(.name == $n) | .id')"
+    sevenz_loader_dll_url="https://api.github.com/repos/${REPO}/releases/assets/$(echo "$release_json" | jq -r --arg n "$sevenz_loader_dll" '.assets[] | select(.name == $n) | .id')"
 
     if [[ "$matching" != *"$sevenz_exe"$'\t'* ]]; then
         if [[ "$sevenz_exe_url" != *"/null" ]]; then
@@ -97,11 +97,11 @@ if [[ "$platform" == "windows" && "$arch" == "amd64" ]]; then
         fi
     fi
 
-    if [[ "$matching" != *"$sevenz_dll"$'\t'* ]]; then
-        if [[ "$sevenz_dll_url" != *"/null" ]]; then
-            matching="${matching}"$'\n'"${sevenz_dll}"$'\t'"${sevenz_dll_url}"
+    if [[ "$matching" != *"$sevenz_loader_dll"$'\t'* ]]; then
+        if [[ "$sevenz_loader_dll_url" != *"/null" ]]; then
+            matching="${matching}"$'\n'"${sevenz_loader_dll}"$'\t'"${sevenz_loader_dll_url}"
         else
-            echo "Missing required Windows 7z asset: ${sevenz_dll}" >&2
+            echo "Missing required Windows 7z asset: ${sevenz_loader_dll}" >&2
             exit 1
         fi
     fi
@@ -114,6 +114,7 @@ matching="${matching//$'\r'/}"
 # Derive library name from asset filename:
 #   7z-darwin-arm64, 7z-windows-amd64.exe, dcm2niix-linux-amd64 -> 7z, dcm2niix
 #   python-runtime-darwin-arm64.tar.gz -> python-runtime
+#   7z.dll -> base "7z", no "-windows-amd64" infix -> else branch uses base as lib name
 library_from_name() {
     local name="$1"
 
@@ -127,7 +128,7 @@ library_from_name() {
     if [[ "$base" == *"$suffix" ]]; then
         echo "${base%"$suffix"}"
     else
-        echo ""
+        echo "$base"
     fi
 }
 

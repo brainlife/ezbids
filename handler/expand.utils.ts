@@ -3,6 +3,16 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { getBinPath } from './utils';
 
+/** 7z.exe loads `7z.dll` from the same directory; fail fast if missing (ezbids-binaries must ship `7z.dll`). */
+function assertWindows7zDll(sevenZPath: string): void {
+    if (process.env.EZBIDS_PLATFORM !== 'windows') return;
+    const dllPath = path.join(path.dirname(sevenZPath), '7z.dll');
+    if (fs.existsSync(dllPath)) return;
+    throw new Error(
+        `7-Zip requires "${dllPath}" next to the executable. Run fetch-binaries for windows (brainlife/ezbids-binaries ships 7z.dll with 7z-windows-amd64.exe).`
+    );
+}
+
 function formatFor7z(basename: string): string[] {
     if (basename.endsWith('.tar.gz') || basename.endsWith('.tgz')) return [];
     if (basename.endsWith('.gz')) return ['-tgzip'];
@@ -42,6 +52,7 @@ export async function run7z(filePath: string, opts: Options, outDir?: string) {
     const arch = process.env.EZBIDS_ARCH;
     const sevenZName = platform === 'windows' ? `7z-${platform}-${arch}.exe` : `7z-${platform}-${arch}`;
     const sevenZPath = path.join(getBinPath('7z'), sevenZName);
+    assertWindows7zDll(sevenZPath);
     const args = ['x', '-y', ...formatFor7z(path.basename(filePath)), path.basename(filePath)];
     if (outDir) args.push(`-o${outDir}`);
     try {
