@@ -17,7 +17,11 @@
         "app:build-dist": "npm run build:electron && npm run app:dist",
         "tsc:watch": "tsc --watch"
     },
-    "author": "nicoalee",
+    "homepage": "https://github.com/brainlife/ezbids",
+    "author": {
+        "name": "Pestilli Lab",
+        "email": "pestillilab@gmail.com"
+    },
     "license": "ISC",
     "dependencies": {
         "bids-validator": "^1.14.8",
