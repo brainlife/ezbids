@@ -52,6 +52,10 @@ function detectSigningIdentity(appPath) {
 
 module.exports = async function afterSign(context) {
     if (context.electronPlatformName !== 'darwin') return;
+    if (process.env.CSC_IDENTITY_AUTO_DISCOVERY === 'false') {
+        console.log('[afterSign] Signing disabled (CSC_IDENTITY_AUTO_DISCOVERY=false); skipping nested binary signing');
+        return;
+    }
 
     const appName = context.packager.appInfo.productFilename;
     const appPath = path.join(context.appOutDir, `${appName}.app`);
@@ -66,7 +70,13 @@ module.exports = async function afterSign(context) {
         return;
     }
 
-    const identity = detectSigningIdentity(appPath);
+    let identity;
+    try {
+        identity = detectSigningIdentity(appPath);
+    } catch (err) {
+        console.log(`[afterSign] Skipping nested binary signing: ${err.message}`);
+        return;
+    }
     const allFiles = [];
     for (const root of existingRoots) walkFiles(root, allFiles);
     const machoFiles = allFiles.filter(isMachO);

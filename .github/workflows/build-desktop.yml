@@ -79,6 +79,9 @@ jobs:
               if: matrix.platform == 'darwin'
               run: |
                   rm -rf handler/bin/python-runtime/venv/lib/python3.8/site-packages/joblib/test
+                  # remove dcm2niix_binaries to avoid notarization failure. We will point to the bundled dcm2niix in the app.
+                  # Note that we have pinned pypet2bids to 1.4.6 in requirements.txt, and it uses dcm2niix v1.0.20250505.
+                  # in the future, if we want to upgrade pypet2bids, we must make sure that our version of dcm2niix is compatible and vice versa.
                   rm -rf handler/bin/python-runtime/venv/lib/python3.8/site-packages/pypet2bids/dcm2niix_binaries
 
             - name: Clean dist

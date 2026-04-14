@@ -7,5 +7,5 @@ pydicom==2.3.1
 natsort
 mne
 mne-bids
-pypet2bids
+pypet2bids==1.4.6
 Pillow

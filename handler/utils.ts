@@ -37,6 +37,18 @@ export function getDcm2niixExecutablePath(): string {
     return path.resolve(path.join(getBinPath('dcm2niix'), fileName));
 }
 
+function getPythonDcm2niixPath(): string | undefined {
+    if (process.env.DCM2NIIX_PATH) {
+        return process.env.DCM2NIIX_PATH;
+    }
+    const hasBundledEnv = !!(process.env.EZBIDS_BIN_DIR && process.env.EZBIDS_PLATFORM && process.env.EZBIDS_ARCH);
+    if (!hasBundledEnv) {
+        return undefined;
+    }
+    const bundledDcm2niix = getDcm2niixExecutablePath();
+    return fs.existsSync(bundledDcm2niix) ? bundledDcm2niix : undefined;
+}
+
 // in the future, if we want some sort of more sophisticated logging, we can replace this function
 export function log(msg: string): void {
     // eslint-disable-next-line no-console -- CLI output
@@ -46,6 +58,7 @@ export function log(msg: string): void {
 export async function runPython(argv: string[], opts: Options): Promise<{ status: number; stderr: string }> {
     const pythonRoot = getBinPath('python-runtime');
     const pythonExe = getPythonExecutablePath();
+    const pythonDcm2niixPath = getPythonDcm2niixPath();
     const withTimeout = opts.timeout !== undefined && opts.timeout !== null;
     const result = await execa(pythonExe, argv, {
         ...opts,
@@ -54,6 +67,7 @@ export async function runPython(argv: string[], opts: Options): Promise<{ status
             ...process.env,
             PYTHONPATH: getBundledPythonSitePackages(),
             PYTHONHOME: path.resolve(path.join(pythonRoot, 'python')),
+            ...(pythonDcm2niixPath ? { DCM2NIIX_PATH: pythonDcm2niixPath } : {}),
         },
     });
     const status = result.exitCode ?? -1;
