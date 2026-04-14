@@ -174,6 +174,7 @@ function handle(session, script: string, name: string, cb_monitor, cb_finish: (e
         sessionStore.save(session).then(() => {
             try {
                 let monitor;
+                let cancelHandled = false;
                 const workdir = config.workdir + '/' + session._id;
                 const handlerDir = process.env.EZBIDS_HANDLER_DIR ?? './handler';
                 const p = spawn(process.execPath, [script, workdir, handlerDir], { cwd: handlerDir, detached: true });
@@ -220,14 +221,26 @@ function handle(session, script: string, name: string, cb_monitor, cb_finish: (e
 
                 //update session periodically
                 monitor = setInterval(() => {
+                    const safeKill = (pid: number) => {
+                        try {
+                            process.kill(pid);
+                        } catch (err) {
+                            // Ignore "no such process" when child exited between checks.
+                            if (!(err && err.code === 'ESRCH')) {
+                                throw err;
+                            }
+                        }
+                    };
+
                     //handle cancel request
-                    if (fs.existsSync(workdir + '/.cancel')) {
+                    if (!cancelHandled && fs.existsSync(workdir + '/.cancel')) {
+                        cancelHandled = true;
                         console.log('received .cancel request.. killing process group');
                         //p.stdin.pause();
-                        process.kill(-p.pid); //, 'SIGKILL');
+                        safeKill(-p.pid); //, 'SIGKILL');
                         setTimeout(() => {
                             //parallel will wait for child process to end unless we seng SIGTERM again
-                            process.kill(-p.pid); //, 'SIGKILL');
+                            safeKill(-p.pid); //, 'SIGKILL');
                         }, 1000);
                         fs.rename(workdir + '/' + name + '.log', workdir + '/' + name + '.log.canceled', (err) => {
                             if (err) console.error(err);

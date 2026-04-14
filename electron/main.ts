@@ -161,6 +161,8 @@ async function startApp(): Promise<void> {
         EZBIDS_EXPAND_PATH: path.join(ezbidsHandlerDir, ENVIRONMENT === 'production' ? 'expand.cjs' : 'expand.js'),
         EZBIDS_BIDS_PATH: path.join(ezbidsHandlerDir, ENVIRONMENT === 'production' ? 'bids.cjs' : 'bids.js'),
         EZBIDS_CONVERT_PATH: path.join(ezbidsHandlerDir, ENVIRONMENT === 'production' ? 'convert.cjs' : 'convert.js'),
+        EZBIDS_DEFACE_PATH: path.join(ezbidsHandlerDir, ENVIRONMENT === 'production' ? 'deface.cjs' : 'deface.js'),
+        EZBIDS_TEMPLATE_DIR: path.join(ezbidsHandlerDir, 'templates'),
         EZBIDS_BACKEND_DIR: ezbidsBackendDir,
         BIDS_VALIDATOR_PATH: bidsValidatorPath,
         EZBIDS_PLATFORM: getEzBidsPlatform(),
@@ -213,21 +215,22 @@ function killAll(): void {
 
 app.on('window-all-closed', () => {
     killAll();
-    if (process.platform !== 'darwin') app.quit();
+    app.quit();
 });
 
 app.on('before-quit', (event) => {
     if (handlerProcess || backendProcess) {
         event.preventDefault();
         killAll();
-        app.quit();
+        // Defer retry: synchronous app.quit() right after preventDefault can fail to
+        // complete shutdown on macOS (window gone, main process still running).
+        setImmediate(() => app.quit());
     }
 });
 
 app.on('will-quit', () => {
     console.log('will-quit event received');
     killAll();
-    app.quit();
 });
 
 // When Ctrl+C is pressed in the terminal, SIGINT goes to the foreground process

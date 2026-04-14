@@ -697,6 +697,8 @@ pre.status {
     margin-bottom: 0;
     border-radius: 5px;
     flex-grow: 1;
+    word-break: break-all;
+    white-space: break-spaces;
 }
 canvas.vis {
     height: 300px;

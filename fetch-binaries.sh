@@ -3,6 +3,10 @@
 # Fetches ezbids-binaries release assets for a given platform and extracts them
 # into handler/bin with one subfolder per library.
 #
+# Allineate (skull strip / deface): when the release includes an `allineate-<platform>-<arch>`
+# archive, it is extracted to handler/bin/allineate/ with the `allineate` binary and MNI
+# template/mask files expected by handler/deface.ts (allineate skull-strip).
+#
 # Usage:
 #   ./fetch-binaries.sh <platform> [arch]
 #
@@ -21,7 +25,7 @@
 set -e
 
 REPO="brainlife/ezbids-binaries"
-RELEASE_TAG="v0.0.4"
+RELEASE_TAG="v0.0.5"
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BIN_BASE="$SCRIPT_DIR/handler/bin"
 

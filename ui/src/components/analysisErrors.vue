@@ -66,6 +66,7 @@ export default defineComponent({
 <style lang="scss" scoped>
 .errors {
     white-space: break-spaces;
+    word-break: break-all;
     padding: 1rem;
     overflow: auto;
 }

@@ -5,7 +5,10 @@
                 If you'd like to deface all anatomical images, please select a defacing method and click
                 <b>Run Deface</b> button. Otherwise, you can skip this page.
             </p>
-            <p>Defaced images will be reoriented via FSL's <i>reorient2std</i> function to ensure proper defacing.</p>
+            <p>
+                For Allineate, anatomical images are rewritten in closest canonical orientation (nibabel
+                <i>as_closest_canonical</i>) before skull stripping. pyDeface still uses FSL <i>reorient2std</i>.
+            </p>
 
             <el-form-item>
                 <b>Defacing Method </b>
@@ -17,13 +20,16 @@
                     @change="changeMethod"
                 >
                     <el-option value="" label="Don't Deface (use original)" />
-                    <el-option value="quickshear" label="Quickshear (recommended)" />
+                    <el-option value="allineate" label="Allineate skull strip (recommended)" />
                     <el-option value="pydeface" label="pyDeface (more common but takes much longer time)" />
                 </el-select>
             </el-form-item>
             <!--sub options-->
-            <p v-if="ezbids.defacingMethod == 'quickshear'">
-                <small>* Use ROBEX and QuickShear Average processing time. ~1 min per image</small>
+            <p v-if="ezbids.defacingMethod == 'allineate'">
+                <small>
+                    * Allineate registers an MNI template and applies a brain mask (skull strip). Typical time ~1–3 min
+                    per image depending on hardware.
+                </small>
             </p>
             <p v-if="ezbids.defacingMethod == 'pydeface'">
                 <small>* pydeface uses FSL to align facial mask template. ~5 min per image</small>
@@ -168,6 +174,9 @@ export default defineComponent({
     },
 
     mounted() {
+        if (this.ezbids.defacingMethod === 'quickshear') {
+            this.ezbids.defacingMethod = 'allineate';
+        }
         //initialize all anat to use defaced image by default
         this.anatObjects.forEach((o: IObject) => {
             if (!o.defaceSelection) o.defaceSelection = 'defaced';
@@ -307,5 +316,7 @@ pre.status {
     padding: 10px;
     margin-bottom: 5px;
     border-radius: 5px;
+    word-break: break-all;
+    white-space: break-spaces;
 }
 </style>
