@@ -74,12 +74,6 @@
             "gatekeeperAssess": false,
             "entitlements": "build/entitlements.mac.plist",
             "entitlementsInherit": "build/entitlements.mac.plist",
-            "binaries": [
-                "Contents/Resources/bin/7z/7z-darwin-${arch}",
-                "Contents/Resources/bin/dcm2niix/dcm2niix-darwin-${arch}",
-                "Contents/Resources/bin/python-runtime/python/bin/python3",
-                "Contents/Resources/bin/allineate/allineate-darwin-${arch}"
-            ],
             "target": [
                 {
                     "target": "dmg"
