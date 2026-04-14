@@ -75,6 +75,11 @@ jobs:
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+            - name: Remove Python test archives for notarization
+              if: matrix.platform == 'darwin'
+              run: |
+                  rm -rf handler/bin/python-runtime/venv/lib/python3.8/site-packages/joblib/test
+
             - name: Clean dist
               run: rm -rf electron/dist
 
