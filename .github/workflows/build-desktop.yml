@@ -79,6 +79,7 @@ jobs:
               if: matrix.platform == 'darwin'
               run: |
                   rm -rf handler/bin/python-runtime/venv/lib/python3.8/site-packages/joblib/test
+                  rm -rf handler/bin/python-runtime/venv/lib/python3.8/site-packages/pypet2bids/dcm2niix_binaries
 
             - name: Clean dist
               run: rm -rf electron/dist
