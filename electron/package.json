@@ -7,11 +7,12 @@
         "start": "NODE_ENV=prod ELECTRON_OVERRIDE_DIST_PATH=../node_modules/electron/dist electron .",
         "build:electron-api": "tsc --noCheck -p ../api/tsconfig.json && esbuild ../api/ezbids.ts --bundle --platform=node --format=cjs --outfile=dist/backend.cjs --external:nan --external:electron-store",
         "build:electron-handler": "tsc --noCheck -p ../handler/tsconfig.json && esbuild ../handler/handler.ts --bundle --platform=node --format=cjs --outfile=dist/handler/handler.cjs --external:nan --external:electron-store",
-        "build:electron-handler-scripts": "esbuild ../handler/preprocess.ts ../handler/expand.ts ../handler/bids.ts ../handler/convert.ts --bundle --platform=node --format=cjs --outdir=dist/handler --out-extension:.js=.cjs --external:nan --external:electron-store",
+        "build:electron-handler-scripts": "esbuild ../handler/preprocess.ts ../handler/expand.ts ../handler/bids.ts ../handler/convert.ts ../handler/deface.ts --bundle --platform=node --format=cjs --outdir=dist/handler --out-extension:.js=.cjs --external:nan --external:electron-store",
         "build:electron-python": "mkdir -p dist/handler/ezBIDS_core && cp ../handler/ezBIDS_core/*.py dist/handler/ezBIDS_core/ && cp ../handler/*.py dist/handler/",
+        "build:electron-templates": "mkdir -p dist/handler/templates && cp -R ../handler/templates/. dist/handler/templates/",
         "build:electron-bids-spec": "mkdir -p dist/bids-specification/src && cp -r ../bids-specification/src/schema dist/bids-specification/src/schema",
         "build:electron-frontend": "(cd ../ui && npm run build:electron)",
-        "build:electron": "rm -rf dist && npm run build:electron-api && npm run build:electron-handler && npm run build:electron-handler-scripts && npm run build:electron-python && npm run build:electron-bids-spec && npm run build:electron-frontend && tsc",
+        "build:electron": "rm -rf dist && npm run build:electron-api && npm run build:electron-handler && npm run build:electron-handler-scripts && npm run build:electron-python && npm run build:electron-templates && npm run build:electron-bids-spec && npm run build:electron-frontend && tsc",
         "app:dir": "electron-builder --dir",
         "app:dist": "electron-builder",
         "app:build-dist": "npm run build:electron && npm run app:dist",
@@ -41,6 +42,7 @@
         "directories": {
             "output": "release"
         },
+        "afterSign": "build/afterSign.js",
         "asar": false,
         "files": [
             "main.js",
@@ -68,6 +70,16 @@
         ],
         "mac": {
             "category": "public.app-category.education",
+            "hardenedRuntime": true,
+            "gatekeeperAssess": false,
+            "entitlements": "build/entitlements.mac.plist",
+            "entitlementsInherit": "build/entitlements.mac.plist",
+            "binaries": [
+                "Contents/Resources/bin/7z/7z-darwin-${arch}",
+                "Contents/Resources/bin/dcm2niix/dcm2niix-darwin-${arch}",
+                "Contents/Resources/bin/python-runtime/python/bin/python3",
+                "Contents/Resources/bin/allineate/allineate-darwin-${arch}"
+            ],
             "target": [
                 {
                     "target": "dmg"
