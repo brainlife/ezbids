@@ -79,6 +79,7 @@ jobs:
               if: matrix.platform == 'darwin'
               run: |
                   rm -rf handler/bin/python-runtime/venv/lib/python3.8/site-packages/joblib/test
+                  rm -rf handler/bin/python-runtime/venv/lib/python3.8/site-packages/pooch/tests
                   # remove dcm2niix_binaries to avoid notarization failure. We will point to the bundled dcm2niix in the app.
                   # Note that we have pinned pypet2bids to 1.4.6 in requirements.txt, and it uses dcm2niix v1.0.20250505.
                   # in the future, if we want to upgrade pypet2bids, we must make sure that our version of dcm2niix is compatible and vice versa.
@@ -140,7 +141,23 @@ jobs:
             - name: Package (macOS signed + notarized)
               if: matrix.platform == 'darwin'
               working-directory: electron
-              run: npx electron-builder ${{ matrix.eb_flags }}
+              timeout-minutes: 360
+              run: |
+                  for attempt in 1 2 3; do
+                      echo "::group::electron-builder attempt $attempt/3"
+                      if npx electron-builder ${{ matrix.eb_flags }}; then
+                          echo "::endgroup::"
+                          exit 0
+                      fi
+                      rc=$?
+                      echo "::endgroup::"
+                      echo "electron-builder exited with $rc"
+                      if [[ $attempt -eq 3 ]]; then
+                          exit $rc
+                      fi
+                      echo "Retrying in 120 seconds..."
+                      sleep 120
+                  done
               env:
                   APPLE_API_KEY: ${{ runner.temp }}/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8
                   APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
