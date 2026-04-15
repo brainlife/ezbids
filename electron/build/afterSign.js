@@ -56,6 +56,7 @@ module.exports = async function afterSign(context) {
         console.log('[afterSign] Signing disabled (CSC_IDENTITY_AUTO_DISCOVERY=false); skipping nested binary signing');
         return;
     }
+    console.log('[afterSign] Signing enabled (CSC_IDENTITY_AUTO_DISCOVERY=true); performing nested binary signing');
 
     const appName = context.packager.appInfo.productFilename;
     const appPath = path.join(context.appOutDir, `${appName}.app`);

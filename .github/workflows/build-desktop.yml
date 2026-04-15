@@ -75,28 +75,36 @@ jobs:
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Remove Python test archives for notarization
+            - name: Prune Python runtime test/archive payloads for notarization
               if: matrix.platform == 'darwin'
               run: |
-                  rm -rf handler/bin/python-runtime/venv/lib/python3.8/site-packages/joblib/test
-                  rm -rf handler/bin/python-runtime/venv/lib/python3.8/site-packages/pooch/tests
+                  PY_SITE="handler/bin/python-runtime/venv/lib/python3.8/site-packages"
+                  rm -rf "$PY_SITE/joblib/test"
+                  rm -rf "$PY_SITE/pooch/tests"
                   # remove dcm2niix_binaries to avoid notarization failure. We will point to the bundled dcm2niix in the app.
                   # Note that we have pinned pypet2bids to 1.4.6 in requirements.txt, and it uses dcm2niix v1.0.20250505.
                   # in the future, if we want to upgrade pypet2bids, we must make sure that our version of dcm2niix is compatible and vice versa.
-                  rm -rf handler/bin/python-runtime/venv/lib/python3.8/site-packages/pypet2bids/dcm2niix_binaries
+                  rm -rf "$PY_SITE/pypet2bids/dcm2niix_binaries"
+                  # prune generic test/cache trees that are not needed at runtime
+                  find "$PY_SITE" -type d \( -name test -o -name tests -o -name testing -o -name __pycache__ \) -prune -exec rm -rf {} +
 
-            - name: Normalize executable permissions in bundled Python runtime
+            - name: Strip execute bit from non-binary Python runtime files
               if: matrix.platform == 'darwin'
               run: |
+                  runtime_root="handler/bin/python-runtime"
                   changed=0
                   while IFS= read -r -d '' path; do
+                      # Keep executable mode only for likely binaries/scripts.
+                      if [[ "$path" == */bin/* ]] || [[ "$path" == *.dylib ]] || [[ "$path" == *.so ]] || [[ "$path" == *.node ]]; then
+                          continue
+                      fi
                       mode=$(stat -f "%Mp%Lp" "$path")
-                      if [[ "$mode" != "755" ]]; then
-                          chmod 755 "$path"
+                      if [[ "$mode" != "644" ]]; then
+                          chmod 644 "$path"
                           changed=$((changed + 1))
                       fi
-                  done < <(find handler/bin/python-runtime -type f -perm -111 -print0)
-                  echo "Normalized executable file mode to 755 for ${changed} file(s)"
+                  done < <(find "$runtime_root" -type f -perm -111 -print0)
+                  echo "Removed execute bit from ${changed} non-binary file(s)"
 
             - name: Clean dist
               run: rm -rf electron/dist
