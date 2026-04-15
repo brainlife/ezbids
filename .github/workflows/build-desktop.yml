@@ -85,6 +85,19 @@ jobs:
                   # in the future, if we want to upgrade pypet2bids, we must make sure that our version of dcm2niix is compatible and vice versa.
                   rm -rf handler/bin/python-runtime/venv/lib/python3.8/site-packages/pypet2bids/dcm2niix_binaries
 
+            - name: Normalize executable permissions in bundled Python runtime
+              if: matrix.platform == 'darwin'
+              run: |
+                  changed=0
+                  while IFS= read -r -d '' path; do
+                      mode=$(stat -f "%Mp%Lp" "$path")
+                      if [[ "$mode" != "755" ]]; then
+                          chmod 755 "$path"
+                          changed=$((changed + 1))
+                      fi
+                  done < <(find handler/bin/python-runtime -type f -perm -111 -print0)
+                  echo "Normalized executable file mode to 755 for ${changed} file(s)"
+
             - name: Clean dist
               run: rm -rf electron/dist
 
@@ -142,7 +155,15 @@ jobs:
               if: matrix.platform == 'darwin'
               working-directory: electron
               timeout-minutes: 360
-              run: npx electron-builder ${{ matrix.eb_flags }}
+              run: |
+                  npx electron-builder ${{ matrix.eb_flags }} &
+                  EB_PID=$!
+                  while kill -0 "$EB_PID" 2>/dev/null; do
+                      echo "[heartbeat] electron-builder still running at $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+                      ps -axo pid,ppid,etime,command | grep -E "electron-builder|app-builder|codesign|notarytool" | grep -v grep || true
+                      sleep 60
+                  done
+                  wait "$EB_PID"
               env:
                   # Verbose logs: builder-util registers `electron-builder`; @electron/notarize registers `electron-notarize`.
                   DEBUG: 'electron-builder*,electron-notarize*'
