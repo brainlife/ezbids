@@ -81,20 +81,22 @@ async function handle_uploaded(session) {
             console.log('checking dcm2niix progress--------------------------');
             //load dcm2niix.list/done
             let list = null;
-            if (fs.existsSync(workdir + '/dcm2niix.list')) {
-                list = fs.readFileSync(workdir + '/dcm2niix.list', 'utf8').split('\n');
+            const dcm2niixListPath = path.join(workdir, 'dcm2niix.list');
+            if (fs.existsSync(dcm2niixListPath)) {
+                list = fs.readFileSync(dcm2niixListPath, 'utf8').split('\n');
                 session.dicomCount = list.length;
             }
             let done = null;
-            if (fs.existsSync(workdir + '/dcm2niix.done')) {
-                done = fs.readFileSync(workdir + '/dcm2niix.done', 'utf8').split('\n');
+            const dcm2niixDonePath = path.join(workdir, 'dcm2niix.done');
+            if (fs.existsSync(dcm2niixDonePath)) {
+                done = fs.readFileSync(dcm2niixDonePath, 'utf8').split('\n');
                 session.dicomDone = done.length;
             }
             cb();
         },
         (cb) => {
             //finish callback
-            fs.readFile(workdir + '/ezBIDS_core.json', 'utf8', async (err, data) => {
+            fs.readFile(path.join(workdir, 'ezBIDS_core.json'), 'utf8', async (err, data) => {
                 if (err) return cb(err);
                 try {
                     //try parsing the json!
@@ -168,19 +170,27 @@ async function handle_deface(session) {
     );
 }
 
-function handle(session, script: string, name: string, cb_monitor, cb_finish: (err: Error | null) => void) {
+function handle(
+    session,
+    script: string,
+    name: string,
+    cb_monitor: (done: () => void) => void,
+    cb_finish: (done: (err?: Error | null) => void) => void
+) {
     console.log('handling session ' + session._id, name);
     return new Promise((resolve, reject) => {
         sessionStore.save(session).then(() => {
             try {
                 let monitor;
                 let cancelHandled = false;
-                const workdir = config.workdir + '/' + session._id;
+                const workdir = path.join(config.workdir, String(session._id));
                 const handlerDir = process.env.EZBIDS_HANDLER_DIR ?? './handler';
                 const p = spawn(process.execPath, [script, workdir, handlerDir], { cwd: handlerDir, detached: true });
                 // const p = spawn(script, [workdir, handlerDir], { cwd: handlerDir, detached: true });
-                const logout = fs.openSync(workdir + '/' + name + '.log', 'w');
-                const errout = fs.openSync(workdir + '/' + name + '.err', 'w');
+                const logPath = path.join(workdir, `${name}.log`);
+                const errPath = path.join(workdir, `${name}.err`);
+                const logout = fs.openSync(logPath, 'w');
+                const errout = fs.openSync(errPath, 'w');
                 let lasterr = '';
                 p.stdout.on('data', (data) => {
                     let out = data.toString('utf8').trim();
@@ -233,7 +243,8 @@ function handle(session, script: string, name: string, cb_monitor, cb_finish: (e
                     };
 
                     //handle cancel request
-                    if (!cancelHandled && fs.existsSync(workdir + '/.cancel')) {
+                    const cancelPath = path.join(workdir, '.cancel');
+                    if (!cancelHandled && fs.existsSync(cancelPath)) {
                         cancelHandled = true;
                         console.log('received .cancel request.. killing process group');
                         //p.stdin.pause();
@@ -242,13 +253,13 @@ function handle(session, script: string, name: string, cb_monitor, cb_finish: (e
                             //parallel will wait for child process to end unless we seng SIGTERM again
                             safeKill(-p.pid); //, 'SIGKILL');
                         }, 1000);
-                        fs.rename(workdir + '/' + name + '.log', workdir + '/' + name + '.log.canceled', (err) => {
+                        fs.rename(logPath, path.join(workdir, `${name}.log.canceled`), (err) => {
                             if (err) console.error(err);
                         });
-                        fs.rename(workdir + '/' + name + '.err', workdir + '/' + name + '.err.canceled', (err) => {
+                        fs.rename(errPath, path.join(workdir, `${name}.err.canceled`), (err) => {
                             if (err) console.error(err);
                         });
-                        fs.rename(workdir + '/.cancel', workdir + '/.cancel.ed', (err) => {
+                        fs.rename(cancelPath, path.join(workdir, '.cancel.ed'), (err) => {
                             if (err) console.error(err);
                         });
                     }

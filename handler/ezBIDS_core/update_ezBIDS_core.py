@@ -33,7 +33,8 @@ with open("ezBIDS_core.json", "r") as ezBIDS_json:
 
 
 for img_file in img_list:
-    if os.path.isfile(f"{DATA_DIR}/{img_file}") or os.path.isdir(f"{DATA_DIR}/{img_file}"):
+    img_path = Path(DATA_DIR) / img_file
+    if os.path.isfile(str(img_path)) or os.path.isdir(str(img_path)):
         for obj in ezBIDS["objects"]:
             for item in obj["items"]:
                 path = item["path"]

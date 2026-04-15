@@ -6,6 +6,11 @@ import { pipeline } from 'stream/promises';
 import * as zlib from 'zlib';
 import { log } from './utils';
 
+function toPosixRelativePath(rootPath: string, fullPath: string): string {
+    const rel = path.relative(rootPath, fullPath);
+    return rel.split(path.sep).join(path.posix.sep);
+}
+
 /** Find paths (files or dirs) under root whose basename contains space, @, ^, (, ). */
 export function findSpecialCharPaths(rootPath: string): string[] {
     const out: string[] = [];
@@ -33,9 +38,9 @@ export function findFilesUnder(rootPath: string, maxDepth: number, predicate: (n
         const entries = fs.readdirSync(dir, { withFileTypes: true });
         for (const e of entries) {
             const full = path.join(dir, e.name);
-            const rel = path.relative(rootPath, full);
+            const rel = toPosixRelativePath(rootPath, full);
             if (e.isFile() && predicate(e.name)) {
-                out.push(`./${rel}`);
+                out.push(path.posix.join('.', rel));
             }
             if (e.isDirectory()) {
                 visit(full, depth + 1);

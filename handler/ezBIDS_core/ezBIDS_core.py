@@ -301,8 +301,10 @@ def fix_multiple_dots(uploaded_img_list):
         periods that weren't the extension.
     '''
 
-    for img_path in uploaded_img_list:
-        img_file = img_path.split('/')[-1]
+    normalized_uploaded_img_list = [Path(x).as_posix() for x in uploaded_img_list]
+
+    for img_path in normalized_uploaded_img_list:
+        img_file = os.path.basename(img_path)
         typo_files = []
         fix = False
         if img_file.endswith('.nii.gz') and img_file.count('.') > 2:  # for MRI and PET
@@ -325,7 +327,7 @@ def fix_multiple_dots(uploaded_img_list):
             img_dir = os.path.dirname(img_path)
 
             corresponding_files = [
-                img_dir + '/' + x for x in os.listdir(img_dir)
+                (Path(img_dir) / x).as_posix() for x in os.listdir(img_dir)
                 if os.path.basename(img_path).split(ext)[0] in x
             ]
 
@@ -343,23 +345,26 @@ def fix_multiple_dots(uploaded_img_list):
                 else:
                     ext = '.' + typo.split('.')[-1]
 
-                typo_split_list = typo.split(ext)[0].split('.')
-
-                new_file_name = f".{'_'.join(typo_split_list[1:])}{ext}"
+                typo_dir = os.path.dirname(typo)
+                typo_base = os.path.basename(typo)
+                typo_stem = typo_base.split(ext)[0]
+                new_file_base = f"{typo_stem.replace('.', '_')}{ext}"
+                new_file_name = (Path(typo_dir) / new_file_base).as_posix()
 
                 shutil.move(typo, new_file_name)
 
-                if typo in uploaded_img_list:
-                    idx = uploaded_img_list.index(typo)
-                    uploaded_img_list.pop(idx)
-                    uploaded_img_list = natsorted(uploaded_img_list + [new_file_name])
+                normalized_typo = Path(typo).as_posix()
+                if normalized_typo in normalized_uploaded_img_list:
+                    idx = normalized_uploaded_img_list.index(normalized_typo)
+                    normalized_uploaded_img_list.pop(idx)
+                    normalized_uploaded_img_list = natsorted(normalized_uploaded_img_list + [new_file_name])
 
             # Save to list file
             with open("list", "w") as f:
-                for line in uploaded_img_list:
+                for line in normalized_uploaded_img_list:
                     f.write(f"{line}\n")
 
-    return uploaded_img_list
+    return normalized_uploaded_img_list
 
 
 def generate_MEG_json_sidecars(uploaded_img_list):
@@ -392,7 +397,7 @@ def generate_MEG_json_sidecars(uploaded_img_list):
             else:
                 ext = Path(meg).suffix
 
-            fname = f"{DATA_DIR}/{meg}"
+            fname = str(Path(DATA_DIR) / meg)
             json_output_name = fname.split(ext)[0] + ".json"
             raw = mne.io.read_raw(fname, verbose=0)
             acquisition_date_time = raw.info["meas_date"].strftime("%Y-%m-%dT%H:%M:%S.%f")
@@ -506,7 +511,7 @@ def modify_uploaded_dataset_list(uploaded_img_list):
 
         img_dir = os.path.dirname(img_file)
         grouped_files = [
-            img_dir + '/' + x for x in os.listdir(img_dir)
+            (Path(img_dir) / x).as_posix() for x in os.listdir(img_dir)
             if os.path.basename(img_file).split(ext)[0] + "." in x
         ]
 
@@ -1004,7 +1009,8 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
         if "StudyID" in json_data:
             study_id = json_data["StudyID"]
         else:
-            study_id = img_file.split('/')[1]  # uppermost folder in file path
+            parts = Path(img_file).parts
+            study_id = parts[1] if len(parts) > 1 else os.path.basename(img_file)
 
         # Find subject_id from json, since some files contain neither PatientID nor PatientName
         if "PatientID" in json_data:
