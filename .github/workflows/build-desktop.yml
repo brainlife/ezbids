@@ -95,8 +95,19 @@ jobs:
                   runtime_root="handler/bin/python-runtime"
                   changed=0
                   while IFS= read -r -d '' path; do
-                      # Keep executable mode only for likely binaries/scripts.
-                      if [[ "$path" == */bin/* ]] || [[ "$path" == *.dylib ]] || [[ "$path" == *.so ]] || [[ "$path" == *.node ]]; then
+                      # Keep executable mode only for real binaries/libs/scripts.
+                      keep_exec=0
+                      if [[ "$path" == *.dylib ]] || [[ "$path" == *.so ]] || [[ "$path" == *.node ]]; then
+                          keep_exec=1
+                      elif file -b "$path" | grep -q "Mach-O"; then
+                          keep_exec=1
+                      else
+                          # Keep executable text scripts with shebang.
+                          if head -c 2 "$path" 2>/dev/null | grep -q "^#!"; then
+                              keep_exec=1
+                          fi
+                      fi
+                      if [[ "$keep_exec" -eq 1 ]]; then
                           continue
                       fi
                       mode=$(stat -f "%Mp%Lp" "$path")
