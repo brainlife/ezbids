@@ -78,15 +78,16 @@ jobs:
             - name: Prune Python runtime test/archive payloads for notarization
               if: matrix.platform == 'darwin'
               run: |
+                  runtime_root="handler/bin/python-runtime"
                   PY_SITE="handler/bin/python-runtime/venv/lib/python3.8/site-packages"
-                  rm -rf "$PY_SITE/joblib/test"
-                  rm -rf "$PY_SITE/pooch/tests"
+
                   # remove dcm2niix_binaries to avoid notarization failure. We will point to the bundled dcm2niix in the app.
                   # Note that we have pinned pypet2bids to 1.4.6 in requirements.txt, and it uses dcm2niix v1.0.20250505.
                   # in the future, if we want to upgrade pypet2bids, we must make sure that our version of dcm2niix is compatible and vice versa.
                   rm -rf "$PY_SITE/pypet2bids/dcm2niix_binaries"
+
                   # prune generic test/cache trees that are not needed at runtime
-                  find "$PY_SITE" -type d \( -name test -o -name tests -o -name testing -o -name __pycache__ \) -prune -exec rm -rf {} +
+                  find "$runtime_root" -type d \( -name test -o -name tests -o -name testing -o -name unittest -o -name __pycache__ \) -prune -exec rm -rf {} +
 
             - name: Strip execute bit from non-binary Python runtime files
               if: matrix.platform == 'darwin'
