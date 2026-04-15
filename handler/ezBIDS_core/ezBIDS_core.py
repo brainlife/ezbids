@@ -26,6 +26,7 @@ from datetime import date
 from natsort import natsorted
 from operator import itemgetter
 from urllib.request import urlopen
+from urllib.error import URLError
 
 DATA_DIR = sys.argv[1]
 
@@ -760,8 +761,12 @@ def find_cog_atlas_tasks(url):
         "test" removed, to make it easier to search the SeriesDescription
         fields for a matching task name.
     """
-    url_contents = urlopen(url)
-    data = json.load(url_contents)
+    try:
+        url_contents = urlopen(url, timeout=10)
+        data = json.load(url_contents)
+    except (URLError, TimeoutError, json.JSONDecodeError):
+        print("Warning: Unable to fetch Cognitive Atlas tasks. Continuing without task lookup.")
+        return []
     # Remove non-alphanumeric terms and "task", "test" substrings
     tasks = [re.sub("[^A-Za-z0-9]+", "", re.split(" task| test", x["name"])[0]).lower() for x in data]
     # Remove empty task name terms and ones under 2 characters (b/c hard to detect in SeriesDescription)
