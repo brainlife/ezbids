@@ -142,23 +142,10 @@ jobs:
               if: matrix.platform == 'darwin'
               working-directory: electron
               timeout-minutes: 360
-              run: |
-                  for attempt in 1 2 3; do
-                      echo "::group::electron-builder attempt $attempt/3"
-                      if npx electron-builder ${{ matrix.eb_flags }}; then
-                          echo "::endgroup::"
-                          exit 0
-                      fi
-                      rc=$?
-                      echo "::endgroup::"
-                      echo "electron-builder exited with $rc"
-                      if [[ $attempt -eq 3 ]]; then
-                          exit $rc
-                      fi
-                      echo "Retrying in 120 seconds..."
-                      sleep 120
-                  done
+              run: npx electron-builder ${{ matrix.eb_flags }}
               env:
+                  # Verbose logs: builder-util registers `electron-builder`; @electron/notarize registers `electron-notarize`.
+                  DEBUG: 'electron-builder*,electron-notarize*'
                   APPLE_API_KEY: ${{ runner.temp }}/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8
                   APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
                   APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
