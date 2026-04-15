@@ -14,6 +14,26 @@ except (ImportError, ModuleNotFoundError):
     print('pet2bids is not installed, using dcm2niix on PET directories instead')
     sys.exit(1)
 
+MEG_FIND_MAX_DEPTH = 9
+
+
+def meg_find_output(meg_ext: str, want_directories: bool) -> str:
+    """Same idea as ``find . -maxdepth 9 -type d|f -name '<glob>'`` using pathlib only."""
+    root = Path('.')
+    lines = []
+    for p in root.rglob(meg_ext):
+        if want_directories and not p.is_dir():
+            continue
+        if not want_directories and not p.is_file():
+            continue
+        rel = p.relative_to(root)
+        if len(rel.parts) > MEG_FIND_MAX_DEPTH:
+            continue
+        rel_s = rel.as_posix()
+        # relative_to('.') yields 'foo.txt' or 'a/b', never './foo.txt'
+        lines.append('.' if rel_s == '.' else f'./{rel_s}')
+    return '\n'.join(lines) + ('\n' if lines else '')
+
 
 def find_img_data(dir):
     '''
@@ -88,12 +108,7 @@ if pet_folders:
 # MEG
 MEG_extensions = ['*.ds', '*.fif', '*.sqd', '*.con', '*.raw', '*.ave', '*.mrk', '*.kdf', '*.mhd', '*.trg', '*.chn', '*.dat']
 for meg_ext in MEG_extensions:
-    if meg_ext == '*.ds':
-        type_search = 'd'
-    else:
-        type_search = 'f'
-
-    find_cmd = os.popen(f"find . -maxdepth 9 -type {type_search} -name '{meg_ext}'").read()
+    find_cmd = meg_find_output(meg_ext, want_directories=(meg_ext == '*.ds'))
     if find_cmd != '':
         meg_data_list.append(find_cmd)
 

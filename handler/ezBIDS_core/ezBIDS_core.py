@@ -12,6 +12,7 @@ edits/modifications as they see fit, before finalizing their data into a BIDS-co
 from __future__ import division
 import os
 import re
+import shutil
 import sys
 import mne
 import json
@@ -346,7 +347,7 @@ def fix_multiple_dots(uploaded_img_list):
 
                 new_file_name = f".{'_'.join(typo_split_list[1:])}{ext}"
 
-                os.system(f'mv {typo} {new_file_name}')
+                shutil.move(typo, new_file_name)
 
                 if typo in uploaded_img_list:
                     idx = uploaded_img_list.index(typo)

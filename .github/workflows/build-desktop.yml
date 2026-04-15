@@ -75,48 +75,18 @@ jobs:
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Prune Python runtime test/archive payloads for notarization
+            - name: Remove embedded archives / package test fixtures (mac notarization)
               if: matrix.platform == 'darwin'
               run: |
-                  runtime_root="handler/bin/python-runtime"
                   PY_SITE="handler/bin/python-runtime/venv/lib/python3.8/site-packages"
-
+                  # Some vendored Python packages ship test fixtures as zip/tar archives (and sometimes odd perms).
+                  # Apple's notarization pipeline can flag these when bundled inside a signed app.
+                  rm -rf "$PY_SITE/joblib/test"
+                  rm -rf "$PY_SITE/pooch/tests"
                   # remove dcm2niix_binaries to avoid notarization failure. We will point to the bundled dcm2niix in the app.
                   # Note that we have pinned pypet2bids to 1.4.6 in requirements.txt, and it uses dcm2niix v1.0.20250505.
                   # in the future, if we want to upgrade pypet2bids, we must make sure that our version of dcm2niix is compatible and vice versa.
                   rm -rf "$PY_SITE/pypet2bids/dcm2niix_binaries"
-
-                  # prune generic test/cache trees that are not needed at runtime
-                  find "$runtime_root" -type d \( -name test -o -name tests -o -name testing -o -name unittest -o -name __pycache__ \) -prune -exec rm -rf {} +
-
-            - name: Strip execute bit from non-binary Python runtime files
-              if: matrix.platform == 'darwin'
-              run: |
-                  runtime_root="handler/bin/python-runtime"
-                  changed=0
-                  while IFS= read -r -d '' path; do
-                      # Keep executable mode only for real binaries/libs/scripts.
-                      keep_exec=0
-                      if [[ "$path" == *.dylib ]] || [[ "$path" == *.so ]] || [[ "$path" == *.node ]]; then
-                          keep_exec=1
-                      elif file -b "$path" | grep -q "Mach-O"; then
-                          keep_exec=1
-                      else
-                          # Keep executable text scripts with shebang.
-                          if head -c 2 "$path" 2>/dev/null | grep -q "^#!"; then
-                              keep_exec=1
-                          fi
-                      fi
-                      if [[ "$keep_exec" -eq 1 ]]; then
-                          continue
-                      fi
-                      mode=$(stat -f "%Mp%Lp" "$path")
-                      if [[ "$mode" != "644" ]]; then
-                          chmod 644 "$path"
-                          changed=$((changed + 1))
-                      fi
-                  done < <(find "$runtime_root" -type f -perm -111 -print0)
-                  echo "Removed execute bit from ${changed} non-binary file(s)"
 
             - name: Clean dist
               run: rm -rf electron/dist
