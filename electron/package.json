@@ -73,9 +73,6 @@
             "gatekeeperAssess": false,
             "entitlements": "build/entitlements.mac.plist",
             "entitlementsInherit": "build/entitlements.mac.plist",
-            "binaries": [
-                "Contents/Resources/bin/**"
-            ],
             "target": [
                 {
                     "target": "dmg"

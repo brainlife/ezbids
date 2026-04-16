@@ -184,31 +184,6 @@ jobs:
                   echo "Gatekeeper assess DMG"
                   spctl --assess --type open --context context:primary-signature --verbose=4 "$DMG_PATH"
 
-            - name: Diagnostic (first unsigned Mach-O)
-              if: failure() && matrix.platform == 'darwin'
-              working-directory: electron
-              run: |
-                  APP_PATH=$(ls release/*.app | head -n 1 || true)
-                  if [[ -z "$APP_PATH" ]]; then
-                      echo "No .app found under electron/release for diagnostics."
-                      exit 0
-                  fi
-                  FIRST_UNSIGNED=""
-                  while IFS= read -r -d '' P; do
-                      FILE_DESC=$(file -b "$P" 2>/dev/null || true)
-                      [[ "$FILE_DESC" == *"Mach-O"* ]] || continue
-                      if ! codesign -vv "$P" >/dev/null 2>&1; then
-                          FIRST_UNSIGNED="$P"
-                          break
-                      fi
-                  done < <(find "$APP_PATH" -type f -print0)
-
-                  if [[ -n "$FIRST_UNSIGNED" ]]; then
-                      echo "First unsigned/invalid Mach-O: $FIRST_UNSIGNED"
-                      exit 0
-                  fi
-                  echo "No unsigned Mach-O binaries detected; failure may be notarization or policy-related."
-
             - name: Upload artifacts to release
               uses: softprops/action-gh-release@v2
               with:
