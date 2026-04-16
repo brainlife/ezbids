@@ -1,6 +1,6 @@
 <template>
     <div>
-        <el-form v-if="anatObjects.length && !isDefacing">
+        <el-form v-if="anatObjects.length && !isDefacing && !isDesktopMode">
             <p style="margin-top: 0">
                 If you'd like to deface all anatomical images, please select a defacing method and click
                 <b>Run Deface</b> button. Otherwise, you can skip this page.
@@ -21,6 +21,7 @@
                 >
                     <el-option value="" label="Don't Deface (use original)" />
                     <el-option value="allineate" label="Allineate skull strip (recommended)" />
+                    <el-option value="qs" label="Quickshear (recommended)" />
                     <el-option value="pydeface" label="pyDeface (more common but takes much longer time)" />
                 </el-select>
             </el-form-item>
@@ -38,12 +39,7 @@
 
         <el-form>
             <el-form-item>
-                <el-button
-                    v-if="!isDefacing && ezbids.defacingMethod && !session.deface_finish_date"
-                    type="success"
-                    @click="runDeface"
-                    >Run Deface</el-button
-                >
+                <el-button v-if="showRunDefaceButton" type="success" @click="runDeface">Run Deface</el-button>
                 <el-button v-if="isDefacing" type="warning" @click="cancel">Cancel Defacing</el-button>
                 <el-button v-if="session.deface_begin_date && session.deface_finish_date" @click="reset"
                     >Reset Deface</el-button
@@ -55,10 +51,10 @@
         <el-alert v-if="anatObjects.length == 0" type="warning"
             >No anatomy files to deface. Please skip this step.</el-alert
         >
-        <div v-if="anatObjects.length && ezbids.defacingMethod">
+        <div v-if="anatObjects.length && effectiveDefacingMethod">
             <div v-if="session.status == 'deface' || session.status == 'defacing'">
                 <h3>
-                    Running <b>{{ ezbids.defacingMethod }}</b> ...
+                    Running <b>{{ effectiveDefacingMethod }}</b> ...
                 </h3>
                 <pre class="status">{{ session.status_msg }}</pre>
             </div>
@@ -94,7 +90,7 @@
                 <td width="40%" style="position: relative">
                     <el-radio v-model="anat.defaceSelection" label="original">Use Original</el-radio>
                     <div v-for="(item, itemIdx) in anat.items" :key="itemIdx">
-                        <div v-if="item.pngPaths">
+                        <div v-if="item.pngPaths && item.pngPaths.length > 0 && item.pngPaths[0]">
                             <AsyncImageLink :path="item.pngPaths[0]" />
                             <el-button
                                 type="info"
@@ -167,6 +163,15 @@ export default defineComponent({
             if (!this.$store.state.session) return false;
             return ['deface', 'defacing'].includes(this.$store.state.session.status);
         },
+        isDesktopMode() {
+            return window.env.IS_ELECTRON === 'true';
+        },
+        effectiveDefacingMethod() {
+            return this.isDesktopMode ? 'allineate' : this.ezbids.defacingMethod;
+        },
+        showRunDefaceButton() {
+            return !this.isDefacing && !!this.effectiveDefacingMethod && !this.session.deface_finish_date;
+        },
 
         anatObjects() {
             return this.$store.state.ezbids.objects.filter((o: IObject) => o._type.startsWith('anat') && !o._exclude);
@@ -174,9 +179,7 @@ export default defineComponent({
     },
 
     mounted() {
-        if (this.ezbids.defacingMethod === 'quickshear') {
-            this.ezbids.defacingMethod = 'allineate';
-        }
+        this.ezbids.defacingMethod = 'allineate';
         //initialize all anat to use defaced image by default
         this.anatObjects.forEach((o: IObject) => {
             if (!o.defaceSelection) o.defaceSelection = 'defaced';
@@ -243,7 +246,7 @@ export default defineComponent({
             axios
                 .post(`${this.config.apihost}/session/${this.session._id}/deface`, {
                     list,
-                    method: this.ezbids.defacingMethod,
+                    method: this.effectiveDefacingMethod,
                 })
                 .then((res) => {
                     if (res.data !== 'ok') {
@@ -254,7 +257,7 @@ export default defineComponent({
         },
 
         isValid(cb: (v?: string) => void) {
-            if (!this.ezbids.defacingMethod) return cb();
+            if (!this.effectiveDefacingMethod) return cb();
             if (!this.session.deface_begin_date) {
                 return cb('Please run deface');
             }

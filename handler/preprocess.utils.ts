@@ -72,12 +72,13 @@ export function extractErrorBlocks(content: string): string {
     return out.join('\n');
 }
 
-export async function runParallel(
-    items: string[],
-    runOne: (item: string) => Promise<{ status: number; stderr: string }>,
-    appendStderrToFilePath?: string
+export async function runParallel<T>(
+    items: T[],
+    runOne: (item: T) => Promise<{ status: number; stderr: string }>,
+    appendStderrToFilePath?: string,
+    maxParallel: number = MAX_PARALLEL
 ): Promise<void> {
-    const limit = pLimit(MAX_PARALLEL);
+    const limit = pLimit(maxParallel);
     await Promise.all(
         items.map((item) =>
             limit(async () => {

@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { execa } from 'execa';
 import { getBinPath, runPython } from './utils';
+import { runParallel } from './preprocess.utils';
 
 const root = process.argv[2];
 const handlerDir = process.argv[3];
@@ -146,7 +147,11 @@ async function main(): Promise<void> {
 
     let anyFailed = false;
 
-    for (const item of list) {
+    if (method !== 'allineate') {
+        die(`unknown deface method: ${method}`);
+    }
+
+    async function processItem(item: DefaceItem): Promise<{ status: number; stderr: string }> {
         if (cancelRequested()) {
             // eslint-disable-next-line no-console -- CLI
             console.log('cancel requested; stopping deface loop');
@@ -157,7 +162,7 @@ async function main(): Promise<void> {
         if (!rel) {
             anyFailed = true;
             appendLine(failedPath, String(item.idx));
-            continue;
+            return { status: 1, stderr: `missing relative path for idx=${item.idx}` };
         }
 
         const vol = resolveVolume(rel);
@@ -166,23 +171,23 @@ async function main(): Promise<void> {
             console.error(`missing volume: ${vol}`);
             anyFailed = true;
             appendLine(failedPath, String(item.idx));
-            continue;
+            return { status: 1, stderr: `missing volume: ${vol}` };
         }
 
         try {
-            if (method === 'allineate') {
-                await runAllineateDefacing(vol, resolvedHandlerDir);
-            } else {
-                die(`unknown deface method: ${method}`);
-            }
+            await runAllineateDefacing(vol, resolvedHandlerDir);
             appendLine(finishedPath, String(item.idx));
+            return { status: 0, stderr: '' };
         } catch (e) {
             // eslint-disable-next-line no-console -- CLI
             console.error(e);
             anyFailed = true;
             appendLine(failedPath, String(item.idx));
+            return { status: 1, stderr: String(e) };
         }
     }
+
+    await runParallel(list, processItem, failedPath);
 
     // eslint-disable-next-line no-console -- CLI
     console.log('all done defacing');

@@ -15,6 +15,11 @@ import pandas as pd
 from pathlib import Path
 from natsort import natsorted
 
+
+def normalize_rel_path(p):
+    """Normalize relative paths for cross-platform comparisons."""
+    return Path(p).as_posix()
+
 # Begin:
 DATA_DIR = sys.argv[1]
 os.chdir(DATA_DIR)
@@ -35,20 +40,25 @@ with open("ezBIDS_core.json", "r") as ezBIDS_json:
 for img_file in img_list:
     img_path = Path(DATA_DIR) / img_file
     if os.path.isfile(str(img_path)) or os.path.isdir(str(img_path)):
+        normalized_img = Path(img_file).as_posix()
         for obj in ezBIDS["objects"]:
             for item in obj["items"]:
                 path = item["path"]
-                if path == img_file:
+                normalized_item_path = Path(path).as_posix()
+                if normalized_item_path == normalized_img:
+                    item_dir = os.path.dirname(normalized_item_path) or "."
+                    item_base = os.path.basename(normalized_item_path)
                     files = [
-                        os.path.join(os.path.dirname(img_file), x) for x in os.listdir(os.path.dirname(img_file))
+                        (Path(item_dir) / x).as_posix() for x in os.listdir(item_dir)
                     ]
 
-                    if img_file.endswith('.nii.gz'):
+                    if normalized_item_path.endswith('.nii.gz'):
                         ext = ".nii.gz"
                     else:
-                        ext = Path(img_file).suffix
+                        ext = Path(normalized_item_path).suffix
 
-                    png_files = natsorted([x for x in files if img_file.split(ext)[0] + ".png" == x])
+                    png_target = item_base.split(ext)[0] + ".png"
+                    png_files = natsorted([x for x in files if os.path.basename(x) == png_target])
                     item["pngPaths"] = png_files
 
 with open("ezBIDS_core.json", "w") as ezBIDS_json:
