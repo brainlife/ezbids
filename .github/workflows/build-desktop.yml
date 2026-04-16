@@ -171,8 +171,19 @@ jobs:
               if: matrix.platform == 'darwin'
               working-directory: electron
               run: |
-                  APP_PATH=$(ls release/*.app | head -n 1)
-                  DMG_PATH=$(ls release/*.dmg | head -n 1)
+                  # electron-builder puts the .app under release/mac-<arch>/ (not release/*.app).
+                  APP_PATH=$(find release -name '*.app' -type d | head -n 1)
+                  DMG_PATH=$(find release -maxdepth 1 -name '*.dmg' -type f | head -n 1)
+                  if [[ -z "$APP_PATH" || ! -d "$APP_PATH" ]]; then
+                      echo "No .app bundle found under electron/release (expected e.g. release/mac-arm64/*.app):"
+                      find release -maxdepth 4 -type d -print || true
+                      exit 1
+                  fi
+                  if [[ -z "$DMG_PATH" || ! -f "$DMG_PATH" ]]; then
+                      echo "No .dmg found under electron/release:"
+                      ls -la release || true
+                      exit 1
+                  fi
 
                   echo "Verifying app signature: $APP_PATH"
                   codesign --verify --deep --strict --verbose=2 "$APP_PATH"
