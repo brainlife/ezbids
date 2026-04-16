@@ -189,11 +189,15 @@ jobs:
                   codesign --verify --deep --strict --verbose=2 "$APP_PATH"
                   codesign -dv --verbose=4 "$APP_PATH" 2>&1
 
-                  echo "Validating notarization ticket on DMG: $DMG_PATH"
-                  xcrun stapler validate "$DMG_PATH"
+                  # electron-notarize staples the .app; the .dmg is built afterward and usually has no separate ticket.
+                  echo "Validating notarization ticket on app bundle: $APP_PATH"
+                  xcrun stapler validate "$APP_PATH"
 
-                  echo "Gatekeeper assess DMG"
-                  spctl --assess --type open --context context:primary-signature --verbose=4 "$DMG_PATH"
+                  echo "Gatekeeper assess app bundle: $APP_PATH"
+                  spctl --assess --verbose=4 "$APP_PATH"
+
+                  echo "DMG artifact present (notarization ticket is on the .app, not this wrapper): $DMG_PATH"
+                  test -f "$DMG_PATH"
 
             - name: Upload artifacts to release
               uses: softprops/action-gh-release@v2
