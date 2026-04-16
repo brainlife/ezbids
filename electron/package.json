@@ -67,6 +67,10 @@
                 ]
             }
         ],
+        "dmg": {
+            "size": "12g",
+            "shrink": true
+        },
         "mac": {
             "category": "public.app-category.education",
             "hardenedRuntime": true,
