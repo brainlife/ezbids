@@ -42,7 +42,6 @@
         "directories": {
             "output": "release"
         },
-        "afterSign": "build/afterSign.js",
         "asar": false,
         "files": [
             "main.js",
@@ -74,6 +73,9 @@
             "gatekeeperAssess": false,
             "entitlements": "build/entitlements.mac.plist",
             "entitlementsInherit": "build/entitlements.mac.plist",
+            "binaries": [
+                "Contents/Resources/bin/**"
+            ],
             "target": [
                 {
                     "target": "dmg"
