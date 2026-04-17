@@ -13,11 +13,11 @@ import {
     extractErrorBlocks,
     findBidsRoot,
     findFilesUnder,
-    runRenameSpecialChars,
     gzipFile,
     intersection,
     readLines,
     runParallel,
+    runRenameSpecialChars,
     updateBidsignore,
 } from './preprocess.utils';
 import { getDcm2niixExecutablePath, log, runBidsValidator, runPython } from './utils';
@@ -109,6 +109,8 @@ async function runEcatPet2Bids(itemPath: string): Promise<{ status: number; stde
 
 async function main(): Promise<void> {
     log(`running ${resolvedHandlerDir}/preprocess on root folder ${resolvedRoot}`);
+
+    fs.writeFileSync(path.join(resolvedRoot, 'unprocessed_list'), '');
 
     try {
         await runExpand();

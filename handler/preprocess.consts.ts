@@ -10,6 +10,7 @@ export const BIDSIGNORE_ENTRIES = [
     '*bids_compliant.log',
     '*validator.log',
     '*.png',
+    '*unprocessed_list*',
 ];
 
 export const MAX_PARALLEL = 6;

@@ -241,6 +241,9 @@
                             >pet2bids_error</el-button
                         >
                         <el-button type="warning" size="mini" @click="downloadFile('list')">data list</el-button>
+                        <el-button type="warning" size="mini" @click="downloadFile('unprocessed_list')"
+                            >unprocessed_list</el-button
+                        >
                         <el-button type="warning" size="mini" @click="downloadFile('ezBIDS_core.json')"
                             >ezBIDS_core.json</el-button
                         >

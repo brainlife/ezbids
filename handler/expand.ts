@@ -44,9 +44,9 @@ async function onePass(rootPath: string): Promise<boolean> {
         const dir = path.dirname(file);
         const outDirName = String(expandCounter);
         fs.mkdirSync(path.join(dir, outDirName), { recursive: true });
-        console.log('extracting 7z', file, dir, outDirName);
+        console.log('extracting via 7z', file, dir, outDirName);
         if (await run7z(file, { cwd: dir }, outDirName)) {
-            console.log('extracted 7z', file, dir, outDirName, 'successfully');
+            console.log('extracted via 7z', file, dir, outDirName, 'successfully');
             rm(file);
             expanded = true;
             expandCounter++;
