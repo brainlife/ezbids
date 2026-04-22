@@ -1,4 +1,6 @@
 describe('api/auth', () => {
+    const keyPath = (filename: string) => `${__dirname}/${filename}`;
+
     afterEach(() => {
         jest.resetModules();
         jest.clearAllMocks();
@@ -58,7 +60,7 @@ describe('api/auth', () => {
         const { auth, expressjwtMock } = loadAuthModule({
             authentication: true,
             keyFiles: {
-                '/Users/nicholaslee/WORK/ezbids/api/auth.pub': 'PUBLICKEY',
+                [keyPath('auth.pub')]: 'PUBLICKEY',
             },
         });
 
@@ -88,8 +90,8 @@ describe('api/auth', () => {
         const { auth, jwtVerifyMock } = loadAuthModule({
             authentication: true,
             keyFiles: {
-                '/Users/nicholaslee/WORK/ezbids/api/auth.pub': 'PUBLICKEY',
-                '/Users/nicholaslee/WORK/ezbids/api/ezbids.pub': 'EZPUB',
+                [keyPath('auth.pub')]: 'PUBLICKEY',
+                [keyPath('ezbids.pub')]: 'EZPUB',
             },
         });
         auth.verifyJWT('token-x');
@@ -100,7 +102,7 @@ describe('api/auth', () => {
         const { auth } = loadAuthModule({
             authentication: true,
             keyFiles: {
-                '/Users/nicholaslee/WORK/ezbids/api/auth.pub': 'PUBLICKEY',
+                [keyPath('auth.pub')]: 'PUBLICKEY',
             },
         });
         expect(() => auth.verifyJWT('token-x')).toThrow('missing ezbids public key');
@@ -120,8 +122,8 @@ describe('api/auth', () => {
         const { auth, jwtSignMock } = loadAuthModule({
             authentication: true,
             keyFiles: {
-                '/Users/nicholaslee/WORK/ezbids/api/auth.pub': 'PUBLICKEY',
-                '/Users/nicholaslee/WORK/ezbids/api/ezbids.key': 'PRIVATEKEY',
+                [keyPath('auth.pub')]: 'PUBLICKEY',
+                [keyPath('ezbids.key')]: 'PRIVATEKEY',
             },
         });
         auth.signJWT({ sessionId: 's2' });
@@ -136,7 +138,7 @@ describe('api/auth', () => {
         const { auth } = loadAuthModule({
             authentication: true,
             keyFiles: {
-                '/Users/nicholaslee/WORK/ezbids/api/auth.pub': 'PUBLICKEY',
+                [keyPath('auth.pub')]: 'PUBLICKEY',
             },
         });
         expect(() => auth.signJWT({ sessionId: 's2' })).toThrow('missing ezbids private key');
