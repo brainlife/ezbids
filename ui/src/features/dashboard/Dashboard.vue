@@ -20,9 +20,12 @@
             <DashboardUpload />
 
             <div class="dashboard-bottom">
-                <DashboardSessions :recent-sessions="recentSessions" @open-session="openSession" />
-
-                <DashboardInstructions />
+                <div class="dashboard-bottom-item">
+                    <DashboardSessions :recent-sessions="recentSessions" @open-session="openSession" />
+                </div>
+                <div class="dashboard-bottom-item">
+                    <DashboardInstructions />
+                </div>
             </div>
         </main>
     </div>
@@ -153,16 +156,25 @@ export default defineComponent({
 }
 
 .dashboard-bottom {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
+    display: flex;
+    align-items: stretch;
     gap: 1.5rem;
-    align-items: start;
     min-height: 320px;
+    width: 100%;
+    min-width: 0;
+
+    .dashboard-bottom-item {
+        flex: 1 1 0;
+        min-width: 0;
+        max-width: 100%;
+        display: flex;
+        flex-direction: column;
+    }
 }
 
 @media (max-width: 900px) {
     .dashboard-bottom {
-        grid-template-columns: 1fr;
+        flex-direction: column;
     }
 }
 </style>

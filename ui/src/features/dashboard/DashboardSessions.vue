@@ -1,9 +1,5 @@
 <template>
-    <section
-        style="align-self: stretch; overflow-y: auto; max-height: 100%"
-        class="dashboard-card dashboard-sessions"
-        aria-labelledby="dashboard-sessions-title"
-    >
+    <section class="dashboard-card dashboard-sessions" aria-labelledby="dashboard-sessions-title">
         <h2 id="dashboard-sessions-title" class="dashboard-section-title">Previous sessions</h2>
         <p v-if="!sessions.length" class="dashboard-muted">
             No sessions yet. After you upload data, sessions appear here on this device.
@@ -124,6 +120,10 @@ export default defineComponent({
     box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
     border: 1px solid rgba(226, 232, 240, 0.9);
     align-self: stretch;
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
 }
 
 .dashboard-sessions {
@@ -131,6 +131,8 @@ export default defineComponent({
     display: flex;
     flex-direction: column;
     min-height: 0;
+    overflow-y: auto;
+    max-height: 100%;
 }
 
 .dashboard-section-title {
@@ -149,6 +151,9 @@ export default defineComponent({
 .dashboard-session-scroll {
     flex: 1;
     min-height: 0;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
 }
 
 .dashboard-session-list {
@@ -156,8 +161,13 @@ export default defineComponent({
     margin: 0;
     padding: 0;
     min-height: 0;
+    min-width: 0;
     max-height: 500px;
     overflow-y: auto;
+}
+
+.dashboard-session-item {
+    min-width: 0;
 }
 
 .dashboard-session-item:last-child {
@@ -166,6 +176,9 @@ export default defineComponent({
 
 .dashboard-session-button {
     width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     text-align: left;
     justify-content: flex-start;
     display: flex;
@@ -177,6 +190,7 @@ export default defineComponent({
     border-radius: 10px;
     border: 1px solid #e2e8f0;
     background: #f8fafc;
+    overflow-wrap: anywhere;
 }
 
 .dashboard-session-button:hover {
@@ -204,6 +218,7 @@ export default defineComponent({
     gap: 0.25rem;
     display: flex;
     flex-direction: column;
+    min-width: 0;
 }
 
 .dashboard-session-label {

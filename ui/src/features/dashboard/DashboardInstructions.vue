@@ -56,6 +56,10 @@ export default defineComponent({
     border: 1px solid rgba(226, 232, 240, 0.9);
     padding: 1.25rem 1.5rem 1.5rem;
     min-height: 0;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
     flex: 1 1 auto;
 }
 
@@ -68,6 +72,7 @@ export default defineComponent({
 
 .instructions-panel__body {
     overflow-y: auto;
+    min-width: 0;
 }
 
 .instructions-panel__subheading {
@@ -80,6 +85,7 @@ export default defineComponent({
     color: #718096;
     line-height: 1.55;
     margin: 0 0 0.75rem;
+    overflow-wrap: break-word;
 }
 
 .instructions-panel__link {
@@ -94,7 +100,7 @@ export default defineComponent({
 .instructions-panel__video {
     position: relative;
     width: 100%;
-    max-width: 640px;
+    max-width: 100%;
     margin-top: 0.5rem;
     border-radius: 8px;
     overflow: hidden;

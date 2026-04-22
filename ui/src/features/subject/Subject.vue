@@ -45,7 +45,7 @@
                     <el-table-column label="Subject / Session Mappings">
                         <template #default="scope">
                             <div class="mapping-cell">
-                                <div style="margin-top: 1rem">
+                                <div>
                                     <el-input
                                         v-model.trim="scope.row.subject"
                                         size="small"
@@ -271,7 +271,6 @@ export default defineComponent({
 .patient-cell {
     display: flex;
     align-items: flex-start;
-    gap: 0.6rem;
 }
 
 .patient-cell__arrow {
@@ -283,6 +282,8 @@ export default defineComponent({
 
 .patient-info {
     overflow-wrap: anywhere;
+    padding: 0px;
+    vertical-align: top;
 
     p {
         margin-top: 0;
@@ -315,7 +316,6 @@ export default defineComponent({
 
 .session-table {
     padding-top: 0.25rem;
-    padding-bottom: 1rem;
 }
 
 :deep(.el-table--mini .el-table__cell) {

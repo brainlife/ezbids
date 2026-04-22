@@ -5,9 +5,9 @@
     "main": "dist/main.cjs",
     "scripts": {
         "start-dev": "npm run build:electron-preload && npm run build:electron-main && NODE_ENV=development electron .",
-        "build:electron-api": "esbuild ../api/ezbids.ts --bundle --platform=node --format=cjs --target=es6 --outfile=dist/ezbids.cjs --external:nan --external:electron-store",
-        "build:electron-handler": "esbuild ../handler/handler.ts --bundle --platform=node --format=cjs --target=es6 --outfile=dist/handler/handler.cjs --external:nan --external:electron-store --external:ts-node-dev",
-        "build:electron-handler-scripts": "esbuild ../handler/preprocess.ts ../handler/expand.ts ../handler/bids.ts ../handler/convert.ts ../handler/deface.ts --bundle --platform=node --format=cjs --target=es6 --outdir=dist/handler --out-extension:.js=.cjs --external:nan --external:electron-store --external:ts-node-dev",
+        "build:electron-api": "esbuild ../api/ezbids.ts --bundle --platform=node --format=cjs --target=node20 --outfile=dist/ezbids.cjs --external:nan --external:electron-store",
+        "build:electron-handler": "esbuild ../handler/handler.ts --bundle --platform=node --format=cjs --target=node20 --outfile=dist/handler/handler.cjs --external:nan --external:electron-store --external:ts-node-dev",
+        "build:electron-handler-scripts": "esbuild ../handler/preprocess.ts ../handler/expand.ts ../handler/bids.ts ../handler/convert.ts ../handler/deface.ts --bundle --platform=node --format=cjs --target=node20 --outdir=dist/handler --out-extension:.js=.cjs --external:nan --external:electron-store --external:ts-node-dev",
         "build:electron-python": "mkdir -p dist/handler/ezBIDS_core && cp ../handler/ezBIDS_core/*.py dist/handler/ezBIDS_core/ && cp ../handler/*.py dist/handler/",
         "build:electron-templates": "mkdir -p dist/handler/templates && cp -R ../handler/templates/. dist/handler/templates/",
         "build:electron-bids-spec": "mkdir -p dist/bids-specification/src && cp -r ../bids-specification/src/schema dist/bids-specification/src/schema",
