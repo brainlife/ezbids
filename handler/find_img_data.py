@@ -16,7 +16,6 @@ except (ImportError, ModuleNotFoundError):
 
 MEG_FIND_MAX_DEPTH = 9
 
-
 def meg_find_output(meg_ext: str, want_directories: bool) -> str:
     """Same idea as ``find . -maxdepth 9 -type d|f -name '<glob>'`` using pathlib only."""
     root = Path('.')
@@ -38,6 +37,8 @@ def meg_find_output(meg_ext: str, want_directories: bool) -> str:
 def find_img_data(dir):
     '''
     Finds all directories that contain DICOM (or other) raw imaging data.
+    Note: dcm2niix recursively searches the given directory and all subdirectories for DICOM data so this function
+    only needs to find the top-level directory of the first instance of MRI data.
     If dcm2niix output (NIfTI, JSON files) uploaded instead, ezBIDS has separate process for detecting those files.
 
     Parameters

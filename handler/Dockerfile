@@ -9,12 +9,16 @@ RUN apt update && \
 
 RUN apt install -y parallel python3 python3-pip tree curl unzip git jq libgl-dev bc
 
+<<<<<<< HEAD
 COPY requirements.txt /tmp/requirements.txt
 RUN pip3 install -r /tmp/requirements.txt
+=======
+RUN pip3 install numpy==1.23.0 nibabel==4.0.0 pandas matplotlib pyyaml==5.4.1 pydicom==2.3.1 natsort pydeface && \
+    pip3 install quickshear pypet2bids==1.3.9 mne mne-bids
+>>>>>>> master
 
 RUN apt-get install -y build-essential pkg-config cmake git pigz rename zstd libopenjp2-7 libgdcm-tools wget libopenblas-dev && \
     apt-get clean -y && apt-get autoclean -y && apt-get autoremove -y
-
 
 RUN touch /.pet2bidsconfig && chown 1001:1001 /.pet2bidsconfig
 RUN echo "DEFAULT_METADATA_JSON=/usr/local/lib/python3.8/dist-packages/pypet2bids/template_json.json" > /.pet2bidsconfig
