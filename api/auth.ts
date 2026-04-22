@@ -4,6 +4,9 @@ import * as jwt from 'jsonwebtoken';
 import * as config from './config';
 
 const pubkey = config.authentication ? fs.readFileSync(__dirname + '/auth.pub', 'ascii').trim() : null;
+
+const PLACEHOLDER_KEY = 'placeholder-key';
+
 const tryReadKey = (path: string): string | null => {
     if (!fs.existsSync(path)) return null;
     return fs.readFileSync(path, 'ascii').trim();
@@ -15,7 +18,7 @@ const ezbidsPublicKey = tryReadKey(`${__dirname}/ezbids.pub`);
 export const validateWithJWTConfig = (options?: Params) => {
     if (config.authentication) {
         return expressjwt({
-            secret: pubkey,
+            secret: pubkey as string,
             algorithms: ['RS256'],
             ...options,
         });
@@ -37,7 +40,7 @@ export const verifyJWT = (jwtToVerify?: string): string | jwt.JwtPayload | undef
         if (!ezbidsPublicKey) throw new Error('missing ezbids public key');
         return jwt.verify(jwtToVerify, ezbidsPublicKey, { algorithms: ['RS256'] });
     } else {
-        return jwt.verify(jwtToVerify, 'mock-key', { algorithms: ['HS256'] });
+        return jwt.verify(jwtToVerify, PLACEHOLDER_KEY, { algorithms: ['HS256'] });
     }
 };
 
@@ -50,7 +53,7 @@ export const signJWT = (claims: { sessionId: string }, signInOpts?: jwt.SignOpti
             ...(signInOpts || {}),
         });
     } else {
-        return jwt.sign(claims, 'mock-key', {
+        return jwt.sign(claims, PLACEHOLDER_KEY, {
             algorithm: 'HS256',
             expiresIn: '600s',
             ...(signInOpts || {}),

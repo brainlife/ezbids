@@ -1,55 +1,57 @@
 <template>
-    <div>
-        <div v-if="!events.loaded">
-            <p style="margin-top: 0">
+    <div class="events-page">
+        <header class="events-intro">
+            <h2 class="events-intro__title">Events Mapping</h2>
+            <p class="events-intro__text">
                 If you'd like to include task events/timing data with your BIDS datasets, you can upload them here.
             </p>
-            <p>
+            <p class="events-intro__text">
                 Please skip this page if working with MEG data, if you do not have events data, or if your events data
                 are not set up where each row pertains to an individual trial. An exception is E-Prime txt files, which
                 are allowed for functional BOLD data.
             </p>
-            <p>
+            <p class="events-intro__text">
                 Only the following file extensions will be accepted by ezBIDS: <b>.csv</b>, <b>.tsv</b>, <b>.txt</b>,
                 <b>.out</b>, and <b>.xlsx</b>. Uploaded files with other extensions will be ignored.
             </p>
+        </header>
 
-            <br />
+        <section v-if="!events.loaded" class="events-card">
+            <div class="events-upload">
+                <input
+                    type="file"
+                    webkitdirectory
+                    mozdirectory
+                    msdirectory
+                    odirectory
+                    directory
+                    placeholder="Select Directory"
+                    class="events-upload__input"
+                    @change="open"
+                />
+            </div>
 
-            <!-- <el-button @click="open">Select Directory</el-button> -->
-            <input
-                type="file"
-                webkitdirectory
-                mozdirectory
-                msdirectory
-                odirectory
-                directory
-                placeholder="Select Directory"
-                @change="open"
-            />
-
-            <br />
-            <br />
-            <br />
-            <div class="hint">
-                <h2>Hint</h2>
-                <p>
+            <div class="events-hint">
+                <h3 class="events-hint__title">Hint</h3>
+                <p class="events-hint__text">
                     To ensure proper mapping of events to their imaging files, please have subject, (session), task, and
                     run information in the event file columns, or have the information in the file paths. An example of
                     the latter can be found below.
                 </p>
-                <div class="clearfix">
-                    <img src="./assets/images/events_directoryUpload_example.png" width="600" />
+                <div class="events-hint__image-wrap">
+                    <img src="@/assets/images/events_directoryUpload_example.png" class="events-hint__image" />
                 </div>
             </div>
-            <br />
-            <br />
-            <br />
-        </div>
-        <div v-if="events.loaded">
-            <el-button type="warning" style="float: right" @click="reset">Reset</el-button>
-            <h3>Column Mapping</h3>
-            <p>Please correct the column mappings.</p>
+        </section>
+
+        <section v-else class="events-card">
+            <div class="events-mapping__header">
+                <div>
+                    <h3 class="events-mapping__title">Column Mapping</h3>
+                    <p class="events-mapping__subtitle">Please correct the column mappings.</p>
+                </div>
+                <el-button type="warning" @click="reset">Reset</el-button>
+            </div>
 
             <table class="mapping-table">
                 <tr>
@@ -306,17 +308,17 @@
             <br />
             <br />
             <br />
-        </div>
+        </section>
     </div>
 </template>
 
 <script lang="ts">
 import { mapState, mapGetters } from 'vuex';
 import { defineComponent } from 'vue';
-import columnSelecter from './components/columnselecter.vue';
-import { IObject } from './store/store.types';
+import columnSelecter from '@/components/columnselecter.vue';
+import { IObject } from '@/store/store.types';
 
-import { createEventObjects, mapEventColumns } from './libUnsafe';
+import { createEventObjects, mapEventColumns } from '@/libUnsafe';
 
 interface Section {
     [key: string]: IObject[];
@@ -477,82 +479,98 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
-.bids-structure {
-    font-size: 90%;
-    position: fixed;
-    top: 0;
-    bottom: 60px;
-    left: 160px;
-    width: 350px;
-    overflow: auto;
-    padding: 5px 10px;
-    overflow-y: scroll;
-    box-sizing: border-box;
-}
-.object {
-    position: fixed;
-    top: 0;
-    bottom: 60px;
-    overflow-y: auto;
-    left: 550px;
-    right: 0;
-    z-index: 1;
-}
-.item {
-    padding-bottom: 5px;
-    margin-bottom: 5px;
-}
-.hierarchy {
-    padding: 3px;
-    display: block;
-    line-height: 100%;
-}
-.hierarchy-item {
-    padding: 2px;
-}
-.clickable {
-    transition: background-color 0.3s;
-}
-.clickable:hover {
-    background-color: #ddd;
-    cursor: pointer;
-}
-.selected {
-    background-color: #d9ecff;
-}
-.exclude {
-    opacity: 0.2;
-}
-.left-border {
-    margin-left: 8.5px;
-    padding-left: 4px;
-    border-left: 2px solid #3331;
-    padding-top: 4px;
-}
-.exclude {
-    opacity: 0.6;
-}
-.sub-title {
-    font-size: 85%;
-    margin-bottom: 5px;
+.events-page {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0.5rem 1.25rem 2.75rem;
 }
 
-.border-top {
-    border-top: 1px solid #f6f6f6;
-    padding-top: 2px;
-    margin-top: 2px;
+.events-intro {
+    margin-bottom: 1.5rem;
+    padding: 1.35rem 1.5rem 1.5rem;
+    border-radius: 10px;
+    border: 1px solid var(--el-border-color-lighter, #ebeef5);
+    background: var(--el-fill-color-blank, #fff);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
 }
 
-pre.headers {
-    height: 200px;
-    overflow: auto;
-    line-height: 1.5;
-    border-radius: 5px;
-    padding: 5px 15px;
-    font-family: Avenir, Helvetica, Arial, sans-serif;
-    font-size: inherit;
-    background-color: #eee;
-    color: #999;
+.events-intro__title {
+    margin: 0 0 0.65rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--el-text-color-primary, #303133);
+}
+
+.events-intro__text {
+    margin: 0.5rem 0 0;
+    font-size: 14px;
+    line-height: 1.65;
+    color: var(--el-text-color-regular, #606266);
+}
+
+.events-card {
+    padding: 1.25rem;
+    border-radius: 12px;
+    border: 1px solid var(--el-border-color-lighter, #ebeef5);
+    background: var(--el-bg-color, #fff);
+}
+
+.events-upload {
+    margin-bottom: 1.2rem;
+}
+
+.events-upload__input {
+    max-width: 100%;
+}
+
+.events-hint {
+    border-top: 1px solid var(--el-border-color-extra-light, #f2f6fc);
+    padding-top: 1rem;
+}
+
+.events-hint__title {
+    margin: 0 0 0.5rem;
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+.events-hint__text {
+    margin: 0 0 0.75rem;
+    font-size: 14px;
+    color: var(--el-text-color-regular, #606266);
+    line-height: 1.6;
+}
+
+.events-hint__image-wrap {
+    overflow-x: auto;
+}
+
+.events-hint__image {
+    width: 100%;
+    max-width: 600px;
+    border-radius: 8px;
+    border: 1px solid var(--el-border-color-extra-light, #f2f6fc);
+}
+
+.events-mapping__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.events-mapping__title {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+}
+
+.events-mapping__subtitle {
+    margin: 0.35rem 0 0;
+    color: var(--el-text-color-secondary, #909399);
+    font-size: 13px;
 }
 
 .el-form-item {
@@ -561,6 +579,9 @@ pre.headers {
 }
 
 .mapping-table {
+    width: 100%;
+    border-collapse: collapse;
+
     td,
     th {
         vertical-align: top;
@@ -576,19 +597,5 @@ pre.headers {
         font-size: 90%;
         opacity: 0.8;
     }
-}
-
-.image {
-    display: inline-block;
-    width: 300px;
-    padding: 10px;
-    margin-bottom: 20px;
-    img {
-        border-radius: 50%;
-        margin-bottom: 20px;
-    }
-    text-align: center;
-    font-size: 125%;
-    color: #0009;
 }
 </style>

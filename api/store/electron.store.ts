@@ -42,7 +42,6 @@ export const sessionStore: ISessionStore = {
         return Promise.resolve(session ? { ...session } : null);
     },
     find(query: SessionQuery) {
-        console.log('find query', query);
         const store = getSessionStore();
         const sessions = store.get(SESSIONS_KEY, {}) as Record<string, ISessionWithId>;
         let list = Object.entries(sessions).map(([, s]) => ({ ...s }));
@@ -50,6 +49,14 @@ export const sessionStore: ISessionStore = {
             list = list.filter((s) => query.status!.$in!.includes(s.status));
         }
         return Promise.resolve(list);
+    },
+    findForUser(userId: number) {
+        const store = getSessionStore();
+        const sessions = store.get(SESSIONS_KEY, {}) as Record<string, ISessionWithId>;
+        const list = Object.values(sessions).filter(
+            (s) => s.ownerId === userId || (s.allowedUsers ?? []).includes(userId)
+        );
+        return Promise.resolve(list.map((s) => ({ ...s })));
     },
     create(data: Partial<ISession>) {
         const store = getSessionStore();

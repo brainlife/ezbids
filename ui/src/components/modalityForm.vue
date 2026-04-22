@@ -1320,6 +1320,7 @@ export default defineComponent({
 
 .grid-content {
     border-radius: 4px;
+    padding-bottom: 1rem;
 }
 
 .input-fullwidth {

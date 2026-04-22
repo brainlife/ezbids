@@ -29,5 +29,13 @@
         "no-empty": "error",
         "no-empty-function": "error",
         "no-floating-decimal": "error"
-    }
+    },
+    "overrides": [
+        {
+            "files": ["**/*.test.ts"],
+            "rules": {
+                "max-nested-callbacks": ["warn", { "max": 8 }]
+            }
+        }
+    ]
 }

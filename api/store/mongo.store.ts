@@ -13,6 +13,11 @@ export const sessionStore: ISessionStore = {
     find(query) {
         return Session.find(query).exec();
     },
+    findForUser(userId) {
+        return Session.find({
+            $or: [{ ownerId: userId }, { allowedUsers: userId }],
+        }).exec();
+    },
     create(data) {
         const session = new Session(data);
         return session.save().then((_session) => _session);

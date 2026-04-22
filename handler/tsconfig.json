@@ -1,10 +1,16 @@
 {
+    "extends": "../tsconfig.base.json",
     "compilerOptions": {
-        "target": "ES6",
-        "alwaysStrict": true,
-        "sourceMap": true,
         "module": "CommonJS",
-        "skipLibCheck": true,
-        "esModuleInterop": true,
-    }
+        "moduleResolution": "Node10",
+        "types": ["node"],
+        "noEmit": true,
+        "resolveJsonModule": true
+    },
+    "ts-node": {
+        "esm": false,
+        "transpileOnly": true
+    },
+    "include": ["**/*.ts"],
+    "exclude": ["**/*.js"]
 }

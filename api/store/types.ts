@@ -17,6 +17,7 @@ export type IEzBIDSReturn = IEzBIDSWithId | HydratedDocument<IEzBIDS>;
 export interface ISessionStore {
     findById(id: string): Promise<ISessionReturn | null>;
     find(query: SessionQuery): Promise<ISessionReturn[]>;
+    findForUser(userId: number): Promise<ISessionReturn[]>;
     create(data: Partial<ISession>): Promise<ISessionReturn>;
     save(session: ISessionReturn): Promise<ISessionReturn>;
 }

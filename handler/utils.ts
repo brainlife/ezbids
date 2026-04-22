@@ -71,7 +71,7 @@ export async function runPython(argv: string[], opts: Options): Promise<{ status
         },
     });
     const status = result.exitCode ?? -1;
-    const stderr = withTimeout ? result.stderr.toString() ?? '' : '';
+    const stderr = withTimeout ? result?.stderr?.toString() ?? '' : '';
     return { status, stderr };
 }
 
@@ -94,4 +94,31 @@ export async function runBidsValidator(
     fs.writeFileSync(outLogFilePath, content);
     const hasErr = /\bERR\b/.test(content);
     return { hasErr };
+}
+
+export async function runNodeScript(args: string[], opts?: Options): Promise<{ status: number; stderr: string }> {
+    const scriptArgs = [...args];
+    if (process.env.ENVIRONMENT === 'development') {
+        const tsNodeDevBin = require.resolve('ts-node-dev/lib/bin.js');
+        scriptArgs.unshift(
+            tsNodeDevBin,
+            '--transpile-only',
+            '--debounce',
+            '2000',
+            '--watch',
+            process.env.EZBIDS_HANDLER_DIR ?? '',
+            '-P',
+            path.join(process.env.EZBIDS_HANDLER_DIR ?? '', 'tsconfig.json')
+        );
+    }
+
+    const result = await execa(process.execPath, scriptArgs, {
+        stdio: 'inherit',
+        reject: true,
+        ...(opts ?? {}),
+    });
+
+    const status = result.exitCode ?? -1;
+    const stderr = result?.stderr?.toString() ?? '';
+    return { status, stderr };
 }

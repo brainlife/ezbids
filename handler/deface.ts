@@ -48,7 +48,7 @@ function appendLine(file: string, line: string): void {
 
 /** MNI template + mask next to the allineate binary (bundled layout). */
 function getTemplatePaths(): { template: string; mask: string } {
-    const binPath = process.env.EZBIDS_TEMPLATE_DIR;
+    const binPath = process.env.EZBIDS_TEMPLATE_DIR ?? '';
     return {
         template: path.join(binPath, 'mean_reg2mean.nii.gz'),
         mask: path.join(binPath, 'facemask.nii.gz'),

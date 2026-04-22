@@ -1,5 +1,4 @@
 <template>
-    <!-- subtract 62px for the header and 10 vh for the footer -->
     <el-main class="main">
         <el-row class="hero-banner-container">
             <el-col :xs="0" :md="1" />
@@ -87,7 +86,7 @@
                             <font-awesome-icon :icon="['fas', 'circle-check']" />
                         </el-icon>
                         <span>
-                            Multiple data management options: download BIDS data to local system, or transfer to either
+                            Multiple data management options: download BIDS data locally, or transfer to
                             <a href="https://openneuro.org" class="link" target="_blank">OpenNeuro</a>
                             or
                             <a href="https://brainlife.io" class="link" target="_blank">brainlife.io</a>.
@@ -102,8 +101,8 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapState } from 'vuex';
-import LandingPageAnimation from './LandingPageAnimation.vue';
-import { hasJWT, authRequired } from './lib';
+import LandingPageAnimation from '@/features/landing/LandingPageAnimation.vue';
+import { hasJWT, authRequired } from '@/lib';
 export default defineComponent({
     components: {
         LandingPageAnimation: LandingPageAnimation,
@@ -117,11 +116,11 @@ export default defineComponent({
         },
         onClickGetStarted() {
             if (!authRequired() || hasJWT()) {
-                this.$router.push('/convert');
+                this.$router.push('/dashboard');
                 return;
             }
 
-            sessionStorage.setItem('auth_redirect', `${window.location.href}convert`);
+            sessionStorage.setItem('auth_redirect', `${window.location.href}dashboard`);
             window.location.href = (
                 this.config as {
                     apihost: string;
@@ -148,10 +147,13 @@ export default defineComponent({
 
     .cards-container {
         height: 100% !important;
+        display: flex;
     }
 
     .card-container {
         padding: 1.5rem;
+        flex: 1 1 auto;
+        min-width: 0;
     }
 
     .card {
@@ -160,9 +162,10 @@ export default defineComponent({
 
     .card-content {
         display: flex;
-        flex-direction: row;
-        align-items: center;
+        flex-direction: column;
+        justify-content: space-around;
         text-align: start;
+        height: 100%;
     }
 
     .hero-banner-button {
@@ -284,7 +287,7 @@ export default defineComponent({
 }
 
 .cards-container {
-    height: 35%;
+    height: 240px;
     background-color: #20ab5c;
     align-items: center;
 }
@@ -299,6 +302,11 @@ export default defineComponent({
     height: 100%;
     display: flex;
     align-items: center;
+}
+
+:deep(.el-card__body) {
+    height: 100% !important;
+    box-sizing: border-box;
 }
 
 .card-icon {

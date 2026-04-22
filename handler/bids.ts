@@ -7,9 +7,8 @@
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { execa } from 'execa';
-import { getPythonExecutablePath, log, runBidsValidator, runPython } from './utils';
 import { getDatasetName, tree } from './bids.utils';
+import { log, runBidsValidator, runNodeScript, runPython } from './utils';
 
 const rootArg = process.argv[2];
 const handlerDirArg = process.argv[3];
@@ -70,13 +69,11 @@ async function main(): Promise<void> {
     log('converting output to bids');
     const convertPath = process.env.EZBIDS_CONVERT_PATH ?? path.join(handlerDir, 'convert.js');
     try {
-        await execa(process.execPath, [convertPath, root], {
+        await runNodeScript([convertPath, root], {
             cwd: handlerDir,
-            stdio: 'inherit',
-            reject: true,
         });
     } catch (err) {
-        console.error('Failed to run convert.js:', err);
+        console.error(`Failed to run ${convertPath}:`, err);
         process.exit(1);
     }
 
@@ -104,7 +101,7 @@ async function main(): Promise<void> {
         // Create telemetry-specific files
         log('Creating ezBIDS telemetry files');
         if (fs.existsSync(telemetryPy)) {
-            await execa(getPythonExecutablePath(), [telemetryPy, root], {
+            await runPython([telemetryPy, root], {
                 cwd: handlerDir,
                 stdio: 'inherit',
                 reject: false,

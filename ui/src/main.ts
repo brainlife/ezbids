@@ -17,6 +17,7 @@ import {
     faBook,
     faDownload,
     faQuestionCircle,
+    faGlobe,
 } from '@fortawesome/free-solid-svg-icons';
 import 'element-plus/dist/index.css';
 import store from './store';
@@ -26,6 +27,7 @@ import router from './routes';
 library.add(
     faSpinner,
     faGithub,
+    faGlobe,
     faAngleLeft,
     faAngleRight,
     faAngleDown,

@@ -1,5 +1,5 @@
 import { contextBridge } from 'electron';
-
+console.log('run preload');
 contextBridge.exposeInMainWorld('env', {
     IS_ELECTRON: process.env.IS_ELECTRON,
     API_HOST: process.env.API_HOST,

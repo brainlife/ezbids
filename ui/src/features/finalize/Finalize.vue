@@ -1,36 +1,44 @@
 <template>
-    <div style="max-width: calc(100vw - 260px - 4rem - 2rem);">
-        <div v-if="session.status == 'analyzed' || session.status == 'defaced'">
-            <p style="margin-top: 0">
-                Your dataset is now ready to be converted to BIDS! Please click the button below to generate BIDS
-                structure.
+    <div class="finalize-page">
+        <header class="finalize-intro">
+            <h2 class="finalize-intro__title">Finalize</h2>
+            <p class="finalize-intro__text">
+                Generate the final BIDS structure, download outputs, and review validation logs.
             </p>
-            <p>
+        </header>
+
+        <div v-if="session.status == 'analyzed' || session.status == 'defaced'">
+            <section class="finalize-card">
+                <p class="finalize-copy">
+                    Your dataset is now ready to be converted to BIDS. Click below to generate the output structure.
+                </p>
                 <el-checkbox v-model="ezbids.includeExcluded">
                     Save all acquisitions set to 'exclude' in an excluded directory in output BIDS structure
                 </el-checkbox>
-            </p>
-            <br />
-            <el-button type="success" @click="finalize">Finalize</el-button>
+                <div class="finalize-actions">
+                    <el-button type="success" class="finalize-cta" @click="finalize">Finalize</el-button>
+                </div>
+            </section>
         </div>
 
         <div
             v-else-if="session.status == 'finalized' || (session.finalize_begin_date && !session.finalize_finish_date)"
         >
-            <h3>
-                Converting to BIDS
-                <font-awesome-icon icon="spinner" pulse />
-            </h3>
-            <p>
-                <small
-                    ><i>{{ session.status_msg }}</i></small
-                >
-            </p>
+            <section class="finalize-card">
+                <h3 class="status-title">
+                    Converting to BIDS
+                    <font-awesome-icon icon="spinner" pulse />
+                </h3>
+                <p>
+                    <small
+                        ><i>{{ session.status_msg }}</i></small
+                    >
+                </p>
+            </section>
         </div>
 
         <div v-else-if="session.finalize_finish_date">
-            <div class="download">
-                <br />
+            <div class="download finalize-card">
                 <el-button type="success" style="float: right" size="small" @click="session.status = 'analyzed'"
                     >Rerun Finalize Step</el-button
                 >
@@ -88,20 +96,20 @@
                 </div>
             </div>
 
-            <el-row>
-                <el-col :span="12">
-                    <h4>BIDS Structure</h4>
+            <div class="logs-row">
+                <section class="finalize-card log-card">
+                    <h3>BIDS Structure</h3>
                     <showfile path="tree.log" style="margin-right: 15px" :tall="true" />
-                </el-col>
-                <el-col :span="12">
-                    <h4>bids-validator output</h4>
+                </section>
+                <section class="finalize-card log-card">
+                    <h3>bids-validator output</h3>
                     <showfile path="validator.log" :tall="true" />
-                </el-col>
-            </el-row>
+                </section>
+            </div>
         </div>
 
-        <div v-if="session.status == 'failed'">
-            <p>Failed to convert to BIDS</p>
+        <div v-if="session.status == 'failed'" class="finalize-card">
+            <p class="status-title">Failed to convert to BIDS</p>
             <el-button type="success" style="float: right" size="small" @click="finalize"
                 >Rerun Finalize Step</el-button
             >
@@ -112,8 +120,6 @@
             </p>
         </div>
 
-        <br />
-        <br />
         <h4>Debugging</h4>
         <el-collapse v-model="activeLogs">
             <el-collapse-item v-if="session.status == 'finished'" title="BIDS Conversion Log" name="bids.log">
@@ -126,19 +132,17 @@
                 <pre class="text">{{ session }}</pre>
             </el-collapse-item>
         </el-collapse>
-        <br />
-        <br />
     </div>
 </template>
 
 <script lang="ts">
 import { mapState } from 'vuex';
 import { defineComponent } from 'vue';
-import showfile from './components/showfile.vue';
-import axios from './axios.instance';
+import showfile from '@/components/showfile.vue';
+import axios from '@/axios.instance';
 
 import { ElNotification } from 'element-plus';
-import { authRequired } from './lib';
+import { authRequired } from '@/lib';
 
 export default defineComponent({
     components: {
@@ -273,7 +277,6 @@ export default defineComponent({
 
                 const fullurl = new URL(url, document.baseURI).href;
                 window.open('https://openneuro.org/import?url=' + encodeURI(fullurl));
-
             } catch (e) {
                 console.error(e);
                 ElNotification({
@@ -292,12 +295,82 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
+.finalize-page {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 0.5rem 1.25rem 2.75rem;
+}
+
+.finalize-intro {
+    margin-bottom: 1.25rem;
+    padding: 1.35rem 1.5rem 1.5rem;
+    border-radius: 10px;
+    border: 1px solid var(--el-border-color-lighter, #ebeef5);
+    background: var(--el-fill-color-blank, #fff);
+    box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+}
+
+.finalize-intro__title {
+    margin: 0 0 0.65rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--el-text-color-primary, #303133);
+}
+
+.finalize-intro__text {
+    margin: 0.4rem 0 0;
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--el-text-color-regular, #606266);
+}
+
+.finalize-card {
+    padding: 1.1rem 1.25rem;
+    border-radius: 12px;
+    border: 1px solid var(--el-border-color-lighter, #ebeef5);
+    background: var(--el-bg-color, #fff);
+    margin-bottom: 1rem;
+}
+
+.finalize-copy {
+    margin-top: 0;
+}
+
+.finalize-actions {
+    margin-top: 0.8rem;
+}
+
+.finalize-cta {
+    height: 44px;
+    padding: 0 28px;
+    font-size: 15px;
+    font-weight: 600;
+    border-radius: 8px;
+}
+
+.status-title {
+    margin-top: 0;
+}
+
 .download {
     border-radius: 10px;
-    background-color: #eee;
-    padding: 20px;
+    background-color: #f5f7fa;
     font-size: 85%;
 }
+
+.logs-row {
+    margin-top: 1rem;
+    display: flex;
+    gap: 1rem;
+}
+
+.log-card {
+    margin-top: 0;
+    flex: 1 1 50%;
+    overflow: auto;
+}
+
 .mappings p {
     cursor: pointer;
     color: #409eff;

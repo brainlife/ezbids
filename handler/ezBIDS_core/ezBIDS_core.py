@@ -443,27 +443,55 @@ def generate_MEG_json_sidecars(uploaded_img_list):
             _update_sidecar(json_output_name, "ConversionSoftware", "MNE-BIDS")
             _update_sidecar(json_output_name, "SeriesDescription", fname)
 
-
 UNPROCESSED_LIST_NAME = "unprocessed_list"
 
+def _normalize_upload_rel_path(p):
+    """Stable relative path for comparing list / unprocessed_list / grouped paths."""
+    if not p:
+        return ""
+    s = Path(p).as_posix()
+    while s.startswith("./"):
+        s = s[2:]
+    return s
 
-def _append_unprocessed_list(rel_path, reason):
-    """Append one line to unprocessed_list if rel_path is not already listed (first column)."""
+
+def _read_unprocessed_list_rows():
+    """Load unprocessed_list as [{'path': str, 'reason': str}, ...]."""
     p = Path(DATA_DIR) / UNPROCESSED_LIST_NAME
-    seen = set()
-    if p.is_file():
-        text = p.read_text(encoding="utf-8", errors="replace")
-        for line in text.splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            path_part = line.split("\t", 1)[0].strip()
-            if path_part:
-                seen.add(path_part)
-    if rel_path in seen:
-        return
-    with open(p, "a", encoding="utf-8") as fp:
-        fp.write(f"{rel_path}\t{reason}\n")
+    rows = []
+    if not p.is_file():
+        return rows
+    text = p.read_text(encoding="utf-8", errors="replace")
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if "\t" in line:
+            path_part, reason = line.split("\t", 1)
+        else:
+            path_part, reason = line, ""
+        path_part = path_part.strip()
+        if path_part:
+            rows.append({"path": path_part, "reason": reason.strip()})
+    return rows
+
+
+def _write_unprocessed_list(rows):
+    """Write unprocessed_list (one path\\treason per line)."""
+    p = Path(DATA_DIR) / UNPROCESSED_LIST_NAME
+    lines = []
+    for r in rows:
+        path = (r.get("path") or "").strip()
+        if not path:
+            continue
+        reason = (r.get("reason") or "").replace("\n", " ").strip()
+        lines.append(f"{path}\t{reason}")
+    p.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+
+
+def _unprocessed_norm_set(rows):
+    """Normalized path keys for rows from _read_unprocessed_list_rows / in-memory list."""
+    return {_normalize_upload_rel_path(r["path"]) for r in rows if r.get("path")}
 
 
 def modify_uploaded_dataset_list(uploaded_img_list):
@@ -491,8 +519,17 @@ def modify_uploaded_dataset_list(uploaded_img_list):
         Path to the ezBIDS configuration file, if config == True. Otherwise, set as empty string.
     """
     uploaded_files_list = []
+    unprocessed_paths_list = _read_unprocessed_list_rows()
+    unprocessed_norm_seen = _unprocessed_norm_set(unprocessed_paths_list)
 
     uploaded_img_list = natsorted([img for img in uploaded_img_list])
+    # Do not process (or rewrite into list) paths already marked unprocessed.
+    # Technically this is the first place where we handle the unprocessed_list file. but
+    # in the future, if we want to add more checks earlier in the process, this will support that.
+    uploaded_img_list = [
+        img for img in uploaded_img_list
+        if _normalize_upload_rel_path(img) not in unprocessed_norm_seen
+    ]
 
     config = False
     config_file = ""
@@ -526,7 +563,12 @@ def modify_uploaded_dataset_list(uploaded_img_list):
             except Exception as e:
                 msg = str(e).split("\n")[0][:240]
                 print(f"{img_file} is not a properly formatted imaging file. Skipping. {msg}")
-                _append_unprocessed_list(img_file, f"nib_load_failed:{msg}")
+                np = _normalize_upload_rel_path(img_file)
+                if np not in unprocessed_norm_seen:
+                    unprocessed_norm_seen.add(np)
+                    unprocessed_paths_list.append(
+                        {"path": img_file, "reason": f"nib_load_failed:{msg}"}
+                    )
                 continue
 
         valid_list_imgs.append(img_file)
@@ -551,6 +593,12 @@ def modify_uploaded_dataset_list(uploaded_img_list):
 
     # Flatten uploaded_files_list
     uploaded_files_list = natsorted([file for sublist in uploaded_files_list for file in sublist])
+    uploaded_files_list = [
+        f for f in uploaded_files_list
+        if _normalize_upload_rel_path(f) not in unprocessed_norm_seen
+    ]
+
+    _write_unprocessed_list(unprocessed_paths_list)
 
     # Keep list file aligned with only successfully loadable entries for downstream consumers.
     with open(Path(DATA_DIR) / "list", "w", encoding="utf-8") as fp:
@@ -1140,7 +1188,12 @@ def generate_dataset_list(uploaded_files_list):
 
         # Get the nibabel nifti image info
         if img_file.endswith('.nii.gz'):
-            image = nib.load(img_file)
+            try:
+                image = nib.load(img_file)
+            except Exception as e:
+                image = "n/a"
+                print(f"Error loading image {img_file}: {e}")
+
             ndim = image.ndim
 
             # If RepetitionTime (TR) not in JSON metadata, add to file

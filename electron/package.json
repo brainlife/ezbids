@@ -2,21 +2,20 @@
     "name": "ezbids-electron",
     "version": "1.0.0",
     "description": "electron implementation for ezbids",
-    "main": "main.js",
+    "main": "main.ts",
     "scripts": {
-        "start": "NODE_ENV=prod ELECTRON_OVERRIDE_DIST_PATH=../node_modules/electron/dist electron .",
-        "build:electron-api": "tsc --noCheck -p ../api/tsconfig.json && esbuild ../api/ezbids.ts --bundle --platform=node --format=cjs --outfile=dist/backend.cjs --external:nan --external:electron-store",
-        "build:electron-handler": "tsc --noCheck -p ../handler/tsconfig.json && esbuild ../handler/handler.ts --bundle --platform=node --format=cjs --outfile=dist/handler/handler.cjs --external:nan --external:electron-store",
-        "build:electron-handler-scripts": "esbuild ../handler/preprocess.ts ../handler/expand.ts ../handler/bids.ts ../handler/convert.ts ../handler/deface.ts --bundle --platform=node --format=cjs --outdir=dist/handler --out-extension:.js=.cjs --external:nan --external:electron-store",
+        "start": "NODE_ENV=development electron . --require ts-node/register",
+        "build:electron-api": "esbuild ../api/ezbids.ts --bundle --platform=node --format=cjs --target=es6 --outfile=dist/backend.cjs --external:nan --external:electron-store",
+        "build:electron-handler": "esbuild ../handler/handler.ts --bundle --platform=node --format=cjs --target=es6 --outfile=dist/handler/handler.cjs --external:nan --external:electron-store",
+        "build:electron-handler-scripts": "esbuild ../handler/preprocess.ts ../handler/expand.ts ../handler/bids.ts ../handler/convert.ts ../handler/deface.ts --bundle --platform=node --format=cjs --target=es6 --outdir=dist/handler --out-extension:.js=.cjs --external:nan --external:electron-store",
         "build:electron-python": "mkdir -p dist/handler/ezBIDS_core && cp ../handler/ezBIDS_core/*.py dist/handler/ezBIDS_core/ && cp ../handler/*.py dist/handler/",
         "build:electron-templates": "mkdir -p dist/handler/templates && cp -R ../handler/templates/. dist/handler/templates/",
         "build:electron-bids-spec": "mkdir -p dist/bids-specification/src && cp -r ../bids-specification/src/schema dist/bids-specification/src/schema",
         "build:electron-frontend": "(cd ../ui && npm run build:electron)",
-        "build:electron": "rm -rf dist && npm run build:electron-api && npm run build:electron-handler && npm run build:electron-handler-scripts && npm run build:electron-python && npm run build:electron-templates && npm run build:electron-bids-spec && npm run build:electron-frontend && tsc",
-        "app:dir": "CSC_IDENTITY_AUTO_DISCOVERY=false env -u APPLE_API_KEY -u APPLE_API_KEY_ID -u APPLE_API_ISSUER electron-builder --dir",
+        "build:electron": "rm -rf dist && npm run build:electron-api && npm run build:electron-handler && npm run build:electron-handler-scripts && npm run build:electron-python && npm run build:electron-templates && npm run build:electron-bids-spec && npm run build:electron-frontend",
+        "app:dir": "env -u APPLE_API_KEY -u APPLE_API_KEY_ID -u APPLE_API_ISSUER electron-builder --dir",
         "app:dist": "electron-builder",
-        "app:build-dist": "npm run build:electron && npm run app:dist",
-        "tsc:watch": "tsc --watch"
+        "app:build-dist": "npm run build:electron && npm run app:dist"
     },
     "homepage": "https://github.com/brainlife/ezbids",
     "author": {
@@ -26,7 +25,8 @@
     "license": "ISC",
     "dependencies": {
         "bids-validator": "^1.14.8",
-        "electron-store": "^11.0.2"
+        "electron-store": "^11.0.2",
+        "tree-kill": "^1.2.2"
     },
     "devDependencies": {
         "@types/node": "^20.0.0",

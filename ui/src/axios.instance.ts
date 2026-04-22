@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { ElNotification } from 'element-plus';
-import router from './routes';
-import { authRequired } from './lib';
+import router from '@/routes';
+import { authRequired } from '@/lib';
 
 const axiosInstance = axios.create({
     headers: { 'Content-Type': 'application/json; charset=UTF-8' },

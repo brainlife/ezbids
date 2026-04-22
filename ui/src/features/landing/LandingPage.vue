@@ -8,9 +8,9 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import LandingPageHeader from './LandingPageHeader.vue';
-import LandingPageContent from './LandingPageContent.vue';
-import LandingPageFooter from './LandingPageFooter.vue';
+import LandingPageHeader from '@/features/landing/LandingPageHeader.vue';
+import LandingPageContent from '@/features/landing/LandingPageContent.vue';
+import LandingPageFooter from '@/features/landing/LandingPageFooter.vue';
 
 export default defineComponent({
     components: {

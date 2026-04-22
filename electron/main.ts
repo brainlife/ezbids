@@ -1,9 +1,12 @@
+/* eslint-disable no-console */
 import { app, BrowserWindow, protocol } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import net from 'net';
-import crypto from 'crypto';
 import { spawn, ChildProcess } from 'child_process';
+import { createRequire } from 'module';
+import treeKill from 'tree-kill';
+const require = createRequire(import.meta.url);
 
 const ENVIRONMENT = app.isPackaged ? 'production' : 'development';
 const USER_DATA_PATH = app.getPath('userData');
@@ -38,46 +41,40 @@ const getProjectPath = (...relativePathSegments: string[]): string =>
         ? path.join(APP_DIR, ...relativePathSegments)
         : path.join(LOCAL_PROJECT_DIR, ...relativePathSegments);
 
-// const getBackendPath = (relativePath: string): string => getProjectPath(path.join('api', ...relativePathSegments));
-
 const getEzBidsPlatform = (): string =>
     process.env.EZBIDS_PLATFORM ?? (process.platform === 'win32' ? 'windows' : process.platform);
 
 const getEzBidsArch = (): string => process.env.EZBIDS_ARCH ?? (process.arch === 'arm64' ? 'arm64' : 'amd64');
 
-/** Backend runs from this dir (backend reads ezbids.key/ezbids.pub from its __dirname). */
-const getBackendKeysDir = (): string => (ENVIRONMENT === 'development' ? path.join(APP_DIR, 'dist') : APP_DIR);
-
-/** Ensure ezbids.pub and ezbids.key exist for JWT; auto-generate fake keys for testing if missing. */
-const ensureEzbidsKeys = (): void => {
-    const keysDir = getBackendKeysDir();
-    const keyPath = path.join(keysDir, 'ezbids.key');
-    const pubPath = path.join(keysDir, 'ezbids.pub');
-    if (fs.existsSync(keyPath) && fs.existsSync(pubPath)) return;
-
-    fs.mkdirSync(keysDir, { recursive: true });
-    const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', {
-        modulusLength: 2048,
-        publicKeyEncoding: { type: 'spki', format: 'pem' },
-        privateKeyEncoding: { type: 'pkcs1', format: 'pem' },
-    });
-    fs.writeFileSync(keyPath, privateKey, 'ascii');
-    fs.writeFileSync(pubPath, publicKey, 'ascii');
-};
-
 const startBackend = async (port: number, env: Record<string, string>): Promise<void> => {
+    console.log(`Starting backend in ${ENVIRONMENT} environment`);
     fs.mkdirSync(WORKDIR, { recursive: true });
-    // ensureEzbidsKeys();
 
     if (ENVIRONMENT === 'development') {
-        backendProcess = spawn(process.execPath, [env.EZBIDS_BACKEND_DIR], {
-            stdio: 'inherit' as const,
-            env,
-            detached: getEzBidsPlatform() !== 'windows',
-        });
+        const tsNodeDevBin = require.resolve('ts-node-dev/lib/bin.js');
+        backendProcess = spawn(
+            process.execPath,
+            [
+                tsNodeDevBin,
+                '--transpile-only',
+                '--debounce',
+                '2000',
+                '--watch',
+                env.EZBIDS_BACKEND_DIR,
+                '-P',
+                path.join(env.EZBIDS_BACKEND_DIR, 'tsconfig.json'),
+                path.join(env.EZBIDS_BACKEND_DIR, 'ezbids.ts'),
+            ],
+            {
+                cwd: env.EZBIDS_BACKEND_DIR,
+                stdio: 'inherit' as const,
+                env,
+                detached: false,
+            }
+        );
         backendProcess.on('error', (err) => console.error('Backend failed to start:', err));
     } else {
-        backendProcess = spawn(process.execPath, [env.EZBIDS_BACKEND_DIR], {
+        backendProcess = spawn(process.execPath, [path.join(env.EZBIDS_BACKEND_DIR, 'ezbids.cjs')], {
             stdio: 'inherit' as const,
             env,
             detached: getEzBidsPlatform() !== 'windows',
@@ -88,12 +85,29 @@ const startBackend = async (port: number, env: Record<string, string>): Promise<
 };
 
 const startHandler = async (env: Record<string, string>): Promise<void> => {
+    console.log(`Starting handler in ${ENVIRONMENT} environment`);
     if (ENVIRONMENT === 'development') {
-        handlerProcess = spawn(process.execPath, [path.join(env.EZBIDS_HANDLER_DIR, 'handler.js')], {
-            stdio: 'inherit' as const,
-            env,
-            detached: getEzBidsPlatform() !== 'windows',
-        });
+        const tsNodeDevBin = require.resolve('ts-node-dev/lib/bin.js');
+        handlerProcess = spawn(
+            process.execPath,
+            [
+                tsNodeDevBin,
+                '--transpile-only',
+                '--debounce',
+                '2000',
+                '--watch',
+                env.EZBIDS_HANDLER_DIR,
+                '-P',
+                path.join(env.EZBIDS_HANDLER_DIR, 'tsconfig.json'),
+                path.join(env.EZBIDS_HANDLER_DIR, 'handler.ts'),
+            ],
+            {
+                cwd: env.EZBIDS_HANDLER_DIR,
+                stdio: 'inherit' as const,
+                env,
+                detached: false,
+            }
+        );
         handlerProcess.on('error', (err) => console.error('Handler failed to start:', err));
     } else {
         handlerProcess = spawn(process.execPath, [path.join(env.EZBIDS_HANDLER_DIR, 'handler.cjs')], {
@@ -107,6 +121,10 @@ const startHandler = async (env: Record<string, string>): Promise<void> => {
 };
 
 const startFrontend = (): Promise<void> => {
+    console.log(`Starting frontend in ${ENVIRONMENT} environment`);
+
+    console.log('APP_DIR', APP_DIR);
+
     const preloadPath = path.join(APP_DIR, 'preload', 'preload.js');
     const win = new BrowserWindow({
         width: 1000,
@@ -119,13 +137,17 @@ const startFrontend = (): Promise<void> => {
 
     if (ENVIRONMENT === 'development') {
         win.webContents.openDevTools();
+        return win.loadURL('http://localhost:3000');
     }
 
     return win.loadFile(path.join(APP_DIR, 'dist', 'frontend', 'index.html'), {});
 };
 
 async function startApp(): Promise<void> {
-    const port = await getRandomPort();
+    let port = 8080;
+    if (ENVIRONMENT === 'production') {
+        port = await getRandomPort();
+    }
 
     /**
      * Note: These variables are separated from the rest of the env object as they will be assigned to
@@ -142,8 +164,7 @@ async function startApp(): Promise<void> {
     const ezbidsHandlerDir =
         ENVIRONMENT === 'production' ? getProjectPath('dist', 'handler') : getProjectPath('handler');
     const bidsValidatorPath = getProjectPath('node_modules', 'bids-validator', 'bin', 'bids-validator');
-    const ezbidsBackendDir =
-        ENVIRONMENT === 'production' ? getProjectPath('dist', 'backend.cjs') : getProjectPath('api', 'ezbids.js');
+    const ezbidsBackendDir = ENVIRONMENT === 'production' ? getProjectPath('dist') : getProjectPath('api');
 
     const env = {
         ...process.env,
@@ -156,12 +177,12 @@ async function startApp(): Promise<void> {
         EZBIDS_HANDLER_DIR: ezbidsHandlerDir,
         EZBIDS_PREPROCESS_PATH: path.join(
             ezbidsHandlerDir,
-            ENVIRONMENT === 'production' ? 'preprocess.cjs' : 'preprocess.js'
+            ENVIRONMENT === 'production' ? 'preprocess.cjs' : 'preprocess.ts'
         ),
-        EZBIDS_EXPAND_PATH: path.join(ezbidsHandlerDir, ENVIRONMENT === 'production' ? 'expand.cjs' : 'expand.js'),
-        EZBIDS_BIDS_PATH: path.join(ezbidsHandlerDir, ENVIRONMENT === 'production' ? 'bids.cjs' : 'bids.js'),
-        EZBIDS_CONVERT_PATH: path.join(ezbidsHandlerDir, ENVIRONMENT === 'production' ? 'convert.cjs' : 'convert.js'),
-        EZBIDS_DEFACE_PATH: path.join(ezbidsHandlerDir, ENVIRONMENT === 'production' ? 'deface.cjs' : 'deface.js'),
+        EZBIDS_EXPAND_PATH: path.join(ezbidsHandlerDir, ENVIRONMENT === 'production' ? 'expand.cjs' : 'expand.ts'),
+        EZBIDS_BIDS_PATH: path.join(ezbidsHandlerDir, ENVIRONMENT === 'production' ? 'bids.cjs' : 'bids.ts'),
+        EZBIDS_CONVERT_PATH: path.join(ezbidsHandlerDir, ENVIRONMENT === 'production' ? 'convert.cjs' : 'convert.ts'),
+        EZBIDS_DEFACE_PATH: path.join(ezbidsHandlerDir, ENVIRONMENT === 'production' ? 'deface.cjs' : 'deface.ts'),
         EZBIDS_TEMPLATE_DIR: path.join(ezbidsHandlerDir, 'templates'),
         EZBIDS_BACKEND_DIR: ezbidsBackendDir,
         BIDS_VALIDATOR_PATH: bidsValidatorPath,
@@ -179,79 +200,53 @@ async function startApp(): Promise<void> {
     await startFrontend();
 }
 
+const treeKillAsync = (pid: number, name: string): Promise<void> =>
+    new Promise((resolve) => {
+        console.log(`tree-kill ${name} (pid ${pid})`);
+        treeKill(pid, 'SIGTERM', (err) => {
+            if (err) console.log(`tree-kill ${name} error:`, err);
+            resolve();
+        });
+    });
+
+function killAll(): Promise<void> {
+    const jobs: Promise<void>[] = [];
+    if (backendProcess?.pid) {
+        const pid = backendProcess.pid;
+        backendProcess = null;
+        jobs.push(treeKillAsync(pid, 'backend'));
+    }
+    if (handlerProcess?.pid) {
+        const pid = handlerProcess.pid;
+        handlerProcess = null;
+        jobs.push(treeKillAsync(pid, 'handler'));
+    }
+    return jobs.length ? Promise.all(jobs).then(() => undefined) : Promise.resolve();
+}
+
 app.whenReady().then(async () => {
+    // This has to be inside of the app.whenReady() block to ensure that we can take control of the
+    // SIGINT signal and it isnt hijacked by npm or electron itself
+    process.on('SIGINT', () => {
+        console.log('SIGINT received');
+        app.quit();
+    });
+
     await startApp();
 });
 
-function killProcess(child: ChildProcess, name: string): void {
-    if (!child.pid) {
-        console.log(`${name} has no pid, skipping`);
-        return;
-    }
-    const pid = child.pid;
-    console.log(`killing ${name} (pid ${pid})`);
-    try {
-        if (getEzBidsPlatform() !== 'windows') {
-            console.log(`sending SIGTERM to ${name} pid ${pid}`);
-            process.kill(pid, 'SIGTERM'); // to the process itself
-            console.log(`sending SIGTERM to ${name} group -${pid}`);
-            process.kill(-pid, 'SIGTERM'); // to the whole process group
-        }
-    } catch (err) {
-        console.log(`error killing ${name}:`, (err as NodeJS.ErrnoException).code, err);
-    }
-}
+process.on('SIGTERM', () => app.quit()); // let before-quit handle it
 
-function killAll(): void {
-    if (backendProcess) {
-        killProcess(backendProcess, 'backend');
-        backendProcess = null;
-    }
-    if (handlerProcess) {
-        killProcess(handlerProcess, 'handler');
-        handlerProcess = null;
-    }
-}
-
-app.on('window-all-closed', () => {
-    killAll();
-    app.quit();
+process.on('uncaughtException', (err) => {
+    console.error('Uncaught exception:', err);
+    void killAll().finally(() => process.exit(1));
 });
 
 app.on('before-quit', (event) => {
     if (handlerProcess || backendProcess) {
         event.preventDefault();
-        killAll();
-        // Defer retry: synchronous app.quit() right after preventDefault can fail to
-        // complete shutdown on macOS (window gone, main process still running).
-        setImmediate(() => app.quit());
+        void killAll().then(() => setImmediate(() => app.quit()));
     }
 });
 
-app.on('will-quit', () => {
-    console.log('will-quit event received');
-    killAll();
-});
-
-// When Ctrl+C is pressed in the terminal, SIGINT goes to the foreground process
-// group (Electron + npm), but NOT to the handler/backend which are in their own
-// process groups (detached: true). Explicitly forward these signals so the child
-// process groups are killed before Electron exits.
-process.on('SIGINT', () => {
-    console.log('SIGINT received, killing all processes');
-    app.quit();
-    // killAll();
-});
-process.on('SIGTERM', () => {
-    console.log('SIGTERM received, killing all processes');
-    killAll();
-    app.quit();
-});
-
-// Safety net: fires even on crashes or force-quits that bypass Electron events
-process.on('exit', killAll);
-process.on('uncaughtException', (err) => {
-    console.error('Uncaught exception:', err);
-    killAll();
-    process.exit(1);
-});
+app.on('window-all-closed', () => app.quit());

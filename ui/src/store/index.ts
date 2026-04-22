@@ -13,10 +13,10 @@ import {
     Session,
     SourceDatasetObject,
     Subject,
-} from './store.types';
+} from '@/store/store.types';
 import { createStore } from 'vuex';
-import bidsEntities from '../assets/schema/objects/entities.json';
-import axios from '../axios.instance';
+import bidsEntities from '@/assets/schema/objects/entities.json';
+import axios from '@/axios.instance';
 
 const state = {
     bidsSchema: {
@@ -443,6 +443,7 @@ const store = createStore({
                     message: 'There was an error loading ezBIDS',
                     type: 'error',
                 });
+                throw e;
             }
         },
 

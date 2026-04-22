@@ -1,5 +1,5 @@
 import { NextFunction, Response } from 'express';
-import { Request } from 'express-jwt';
+import { Request as JwtRequest } from 'express-jwt';
 import * as config from './config';
 import { sessionStore } from './store';
 import { ISessionReturn } from './store/types';
@@ -12,8 +12,9 @@ export enum HTTP_STATUS {
     INTERNAL_SERVER_ERROR = 500,
 }
 
-export type EzBIDSAuthRequestObject = Request & {
-    ezBIDS: {
+/** `ezBIDS.session` is set by `validateUserCanAccessSession` before later handlers run. */
+export type EzBIDSAuthRequestObject = JwtRequest & {
+    ezBIDS?: {
         session: ISessionReturn;
     };
 };
@@ -21,7 +22,7 @@ export type EzBIDSAuthRequestObject = Request & {
 export const validateUserCanAccessSession = (onlyOwnerCanAccess: boolean) => {
     return (req: EzBIDSAuthRequestObject, res: Response, next: NextFunction) => {
         const sessionId = req.params.session_id;
-        const userId = req.auth.sub as unknown as number;
+        const userId = req.auth?.sub as unknown as number;
 
         if (!sessionId) {
             return res.status(HTTP_STATUS.BAD_REQUEST).json({ err: 'No sessionId found' });
@@ -50,7 +51,7 @@ export const validateUserCanAccessSession = (onlyOwnerCanAccess: boolean) => {
                 }
 
                 req.ezBIDS = { session };
-                return next();
+                next();
             })
             .catch((err) => {
                 console.error(err);

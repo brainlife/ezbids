@@ -20,7 +20,7 @@ import {
     runRenameSpecialChars,
     updateBidsignore,
 } from './preprocess.utils';
-import { getDcm2niixExecutablePath, log, runBidsValidator, runPython } from './utils';
+import { getDcm2niixExecutablePath, log, runBidsValidator, runNodeScript, runPython } from './utils';
 import { CMD_TIMEOUT_MS } from './preprocess.consts';
 
 const root = process.argv[2];
@@ -43,7 +43,7 @@ async function runExpand(): Promise<void> {
     log('running expand (TypeScript)');
     const expandPath = process.env.EZBIDS_EXPAND_PATH ?? path.join(resolvedHandlerDir, 'expand.js');
     try {
-        await execa(process.execPath, [expandPath, resolvedRoot], {
+        await runNodeScript([expandPath, resolvedRoot], {
             cwd: resolvedHandlerDir,
             stdio: 'inherit',
         });

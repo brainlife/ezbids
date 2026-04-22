@@ -1,53 +1,26 @@
 <template>
-    <div>
-        <div style="display: flex">
-            <div class="aside-width brainlife-lite" style="padding: 0 2rem">
+    <div style="display: flex">
+        <div
+            style="display: flex; flex-direction: column; box-sizing: border-box; height: 100vh; padding: 1rem 2rem"
+            class="brainlife-lite aside-width"
+        >
+            <div class="brainlife-lite" style="flex: 0 0 auto">
                 <div style="display: flex; align-items: center; width: 100%; height: 100%">
-                    <h1 style="color: white; margin: 0">
-                        <span style="letter-spacing: -3px; opacity: 0.6">ez</span>BIDS
+                    <h1 style="color: white; margin: 0; margin-right: 10px">
+                        <span style="letter-spacing: -3px; opacity: 0.6; margin: 0">ez</span>BIDS
                     </h1>
-                </div>
-            </div>
-            <div style="flex-grow: 1">
-                <div class="app-header" style="display: flex; align-items: center; justify-content: space-between">
                     <DisplayMode />
-                    <div>
-                        <div class="menu-footer">
-                            <a
-                                href="https://brainlife.io"
-                                target="_blank"
-                                style="margin-right: 8px; text-decoration: none"
-                            >
-                                <el-button type="success" style="display: flex; background-color: #20ab5c">
-                                    Brainlife
-                                </el-button>
-                            </a>
-                            <a
-                                href="https://github.com/brainlife/ezbids"
-                                target="_blank"
-                                style="margin-right: 8px; text-decoration: none"
-                            >
-                                <el-button type="success" style="display: flex; background-color: #20ab5c">
-                                    Github
-                                </el-button>
-                            </a>
-                            <a
-                                href="https://brainlife.io/docs/using_ezBIDS/"
-                                target="_blank"
-                                style="margin-right: 8px; text-decoration: none"
-                            >
-                                <el-button type="success" style="display: flex; background-color: #20ab5c">
-                                    Documentation
-                                </el-button>
-                            </a>
-                            <ManageUsersDialog v-if="authRequired && hasJWT"></ManageUsersDialog>
-                        </div>
-                    </div>
                 </div>
             </div>
-        </div>
-        <div style="display: flex">
-            <aside class="brainlife-lite aside-width">
+            <div class="aside-back-dashboard" style="flex: 0 0 auto">
+                <router-link :to="{ name: 'dashboard' }">
+                    <el-button class="aside-back-dashboard-btn" aria-label="Back to dashboard" size="small">
+                        <font-awesome-icon :icon="['fas', 'angle-left']" />
+                        Dashboard
+                    </el-button>
+                </router-link>
+            </div>
+            <aside style="flex: 1 1 auto; min-height: 0; overflow: auto">
                 <el-steps :active="activeValue" direction="vertical">
                     <el-step
                         v-for="page in pages"
@@ -57,8 +30,55 @@
                     />
                 </el-steps>
             </aside>
-            <div style="flex-grow: 1">
-                <section>
+            <div class="aside-external-links" role="navigation" aria-label="External resources" style="flex: 0 0 auto">
+                <el-tooltip content="Brainlife" placement="top">
+                    <a href="https://brainlife.io" target="_blank" rel="noopener noreferrer">
+                        <el-button circle class="aside-external-btn">
+                            <img src="./assets/bl_logo.png" alt="Brainlife" width="14" />
+                        </el-button>
+                    </a>
+                </el-tooltip>
+                <el-tooltip content="Github" placement="top">
+                    <a href="https://github.com/brainlife/ezbids" target="_blank" rel="noopener noreferrer">
+                        <el-button circle class="aside-external-btn">
+                            <font-awesome-icon :icon="['fab', 'github']" />
+                        </el-button>
+                    </a>
+                </el-tooltip>
+                <el-tooltip content="Documentation" placement="top">
+                    <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank" rel="noopener noreferrer">
+                        <el-button circle class="aside-external-btn">
+                            <font-awesome-icon :icon="['fas', 'book']" />
+                        </el-button>
+                    </a>
+                </el-tooltip>
+            </div>
+        </div>
+        <section
+            style="
+                display: flex;
+                flex-direction: column;
+                flex-grow: 1;
+                max-height: 100vh;
+                box-sizing: border-box;
+                padding: 1rem;
+                overflow-y: auto;
+            "
+        >
+            <template v-if="getSessionError">
+                <div style="width: 100%">
+                    <el-alert type="error" :closable="false" show-icon class="base-convert-session-error" role="alert">
+                        Cannot find the session. There may have been an error during session creation, or the uploaded
+                        data may have been deleted.
+                    </el-alert>
+
+                    <SessionDebugDownloads v-if="session?._id" wrapper-class="base-convert-error-debug" />
+                    <p v-else class="base-convert-error-no-id">No session id is available for downloads.</p>
+                </div>
+            </template>
+
+            <template v-else>
+                <div style="padding: 1rem">
                     <Upload v-if="page === 'upload'" ref="upload" />
                     <Description v-if="page === 'description'" ref="description" />
                     <Subject v-if="page === 'subject'" ref="subject" />
@@ -87,10 +107,10 @@
                             <font-awesome-icon :icon="['fas', 'angle-right']" />
                         </el-button>
                     </footer>
-                </section>
-                <niivue :path="niivuePath" @close="niivuePath = undefined" />
-            </div>
-        </div>
+                    <niivue :path="niivuePath" @close="niivuePath = undefined" />
+                </div>
+            </template>
+        </section>
     </div>
 </template>
 
@@ -98,30 +118,31 @@
 import { defineComponent } from 'vue';
 import { mapState, mapGetters } from 'vuex';
 
-import Upload from './Upload.vue';
-import Description from './Description.vue';
-import Subject from './Subject.vue';
-import Participant from './Participant.vue';
-import SeriesPage from './SeriesPage.vue';
-import Objects from './Objects.vue';
-import Events from './Events.vue';
-import Deface from './Deface.vue';
-import Finalize from './Finalize.vue';
-import Feedback from './Feedback.vue';
+import SessionDebugDownloads from '@/components/SessionDebugDownloads.vue';
+import Upload from '@/features/upload/Upload.vue';
+import Description from '@/features/description/Description.vue';
+import Subject from '@/features/subject/Subject.vue';
+import Participant from '@/features/participant/Participant.vue';
+import SeriesPage from '@/features/series/SeriesPage.vue';
+import Objects from '@/features/objects/Objects.vue';
+import Events from '@/features/events/Events.vue';
+import Deface from '@/features/deface/Deface.vue';
+import Finalize from '@/features/finalize/Finalize.vue';
+import Feedback from '@/features/feedback/Feedback.vue';
 import { authRequired, hasJWT, createEventsTSV } from './lib';
-
 //https://github.com/element-plus/element-plus/issues/436#issuecomment-961386582
 import { ElNotification } from 'element-plus';
 import 'element-plus/es/components/notification/style/css';
 
 import { setSectionIDs, funcQA, fmapQA, dwiQA, petQA, setRun, setVolumeThreshold, setIntendedFor } from './libUnsafe';
 
-import niivue from './components/niivue.vue';
-import DisplayMode from './components/DisplayMode.vue';
-import { IObject } from './store/store.types';
+import niivue from '@/components/niivue.vue';
+import { IObject } from '@/store/store.types';
+import DisplayMode from '@/components/DisplayMode.vue';
 
 export default defineComponent({
     components: {
+        SessionDebugDownloads,
         Upload,
         Description,
         Subject,
@@ -155,6 +176,12 @@ export default defineComponent({
             //item to open in niivue
             //niivueItem: undefined as IObjectItem|undefined,
             niivuePath: undefined as string | undefined,
+
+            /** Cleared in beforeUnmount so polling stops when leaving convert. */
+            sessionPollIntervalId: null as number | null,
+
+            /** Set when loadSession / loadEzbids fail (invalid session or server error). */
+            getSessionError: false,
         };
     },
 
@@ -179,7 +206,7 @@ export default defineComponent({
         backLabel(): string | null {
             switch (this.page) {
                 case 'upload':
-                    if (this.session) return 'Re-Upload'; //TODO - looks like this is broken
+                    if (this.session) return 'Re-Upload';
                     return null;
                 default:
                     return 'Back';
@@ -209,37 +236,74 @@ export default defineComponent({
 
     async created() {
         this.$store.commit('reset');
-        const isElectron = window.env.IS_ELECTRON === 'true';
         const hash = location.hash;
-        // Legacy web mode stores session id in hash. In Electron hash is router state (#/convert).
-        if (!isElectron && hash) {
-            await this.$store.dispatch('reload', hash.substring(1));
-            this.mapObjects();
-            this.$store.commit('organizeObjects');
-            this.$store.dispatch('loadDefaceStatus');
+
+        let sessionId = undefined;
+        if (!hash) {
+            ElNotification({
+                title: 'Could not load session ID',
+                message: '',
+                type: 'error',
+            });
+            return;
+        } else {
+            // For both hash location strategy (ezBIDS) and regular routing, the session ID is the last part of the hash.
+            const parts = hash.split('#');
+            sessionId = parts[parts.length - 1];
+            if (!sessionId) {
+                ElNotification({
+                    title: 'Could not load session ID',
+                    message: '',
+                    type: 'error',
+                });
+                return;
+            }
         }
 
-        window.setInterval(async () => {
-            if (this.session) {
+        try {
+            await this.$store.dispatch('reload', sessionId);
+        } catch (e) {
+            console.error(e);
+            this.getSessionError = true;
+            return;
+        }
+
+        this.mapObjects();
+        this.$store.commit('organizeObjects');
+        this.$store.dispatch('loadDefaceStatus');
+
+        this.sessionPollIntervalId = window.setInterval(async () => {
+            if (this.getSessionError) return;
+            if (!this.session) return;
+
+            try {
                 switch (this.session.status) {
                     case 'analyzed':
                     case 'finished':
                         break;
                     case 'defacing':
-                        this.$store.dispatch('loadDefaceStatus');
-                        this.$store.dispatch('loadSession', this.session._id);
+                        await this.$store.dispatch('loadDefaceStatus');
+                        await this.$store.dispatch('loadSession');
                         break;
                     default:
-                        //deface
-                        //defaced
-                        this.$store.dispatch('loadSession', this.session._id);
+                        await this.$store.dispatch('loadSession');
                 }
 
                 if (this.ezbids.notLoaded) {
                     await this.$store.dispatch('loadEzbids');
                 }
+            } catch (e) {
+                console.error(e);
+                this.getSessionError = true;
             }
         }, 5000);
+    },
+
+    beforeUnmount() {
+        if (this.sessionPollIntervalId != null) {
+            clearInterval(this.sessionPollIntervalId);
+            this.sessionPollIntervalId = null;
+        }
     },
 
     methods: {
@@ -285,8 +349,7 @@ export default defineComponent({
             const idx = this.pages.findIndex((p) => p.key === this.page);
             if (idx == 0) {
                 if (confirm('Do you really want to start over?')) {
-                    document.location.hash = '';
-                    document.location.reload();
+                    this.$router.push('/dashboard');
                 }
             } else {
                 this.$store.commit('setPage', this.pages[idx - 1].key);
@@ -368,6 +431,9 @@ export default defineComponent({
 
 :deep(.el-step__title) {
     color: #9ca3af;
+    font-size: small;
+
+    padding-bottom: 0px !important; // this extra padding is causing a scrollbar to appear
 }
 
 :deep(.el-step__title.is-process) {
@@ -376,6 +442,7 @@ export default defineComponent({
 
 :deep(.el-step__description) {
     color: #9ca3af;
+    font-size: x-small;
 }
 
 :deep(.el-step__description.is-process) {
@@ -394,66 +461,60 @@ export default defineComponent({
     background-color: #9ca3af;
     color: black;
     border-color: #9ca3af;
-    background-color: #9ca3af;
 }
 
-.app-header {
-    height: 64px;
-    max-height: 44px;
-    padding: 10px;
+.aside-back-dashboard {
+    flex-shrink: 0;
+    margin-bottom: 1rem;
+    margin-top: 1rem;
+
+    :deep(a) {
+        display: block;
+        width: 100%;
+        text-decoration: none;
+    }
 }
 
-aside {
-    height: calc(100vh - 64px - 4rem);
-    padding: 2rem;
+.aside-back-dashboard-btn {
+    width: 100%;
+    justify-content: center;
+    color: #e2e8f0 !important;
+    border-color: #718096 !important;
+    background: transparent !important;
 
-    .step {
-        padding: 1rem 0;
+    &:hover,
+    &:focus {
+        color: #fff !important;
+        border-color: #cbd5e0 !important;
+        background: rgba(255, 255, 255, 0.08) !important;
     }
 }
 
 .aside-width {
-    width: 196px;
-    min-width: 196px;
-    max-width: 196px;
+    width: 260px;
+    min-width: 260px;
+    max-width: 260px;
 }
 
-section {
-    max-height: calc(100vh - 64px - 8rem);
-    padding: 2rem;
-    overflow-y: auto;
-}
-
-.menu-footer {
-    padding: 14px;
+.aside-external-links {
     display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
     justify-content: space-between;
-
-    svg:hover {
-        color: lightgray !important;
-    }
-
-    img:hover {
-        opacity: 0.8 !important;
-    }
-
-    .menu-footer-icon {
-        font-size: 1.6rem;
-        color: white;
-        width: 28px;
-        height: 28px;
-    }
+    gap: 8px;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid #4a5568;
 }
 
-.container {
-    padding: 0 160px;
-    padding-bottom: 100px;
-}
+.aside-external-btn {
+    background-color: whitesmoke !important;
+    border-color: black !important;
 
-footer {
-    background-color: #b3c0d1;
-    color: #333;
-    line-height: 60px;
+    svg {
+        color: black !important;
+    }
 }
 
 .page-action {
@@ -466,11 +527,16 @@ footer {
     width: calc(100vw - 260px - 4rem);
     background-color: white;
     z-index: 3;
+    color: #333;
+    line-height: 60px;
 }
 
-.list-header {
-    opacity: 0.5;
-    font-weight: bold;
-    background-color: #0001;
+.base-convert-session-error {
+    margin-bottom: 1rem;
+}
+
+.base-convert-error-no-id {
+    color: #909399;
+    margin-top: 1rem;
 }
 </style>

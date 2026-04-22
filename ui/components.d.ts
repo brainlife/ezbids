@@ -21,6 +21,7 @@ declare module 'vue' {
     ElCollapseItem: typeof import('element-plus/es')['ElCollapseItem']
     ElContainer: typeof import('element-plus/es')['ElContainer']
     ElDialog: typeof import('element-plus/es')['ElDialog']
+    ElDivider: typeof import('element-plus/es')['ElDivider']
     ElDropdown: typeof import('element-plus/es')['ElDropdown']
     ElDropdownItem: typeof import('element-plus/es')['ElDropdownItem']
     ElDropdownMenu: typeof import('element-plus/es')['ElDropdownMenu']
@@ -39,7 +40,10 @@ declare module 'vue' {
     ElPopover: typeof import('element-plus/es')['ElPopover']
     ElProgress: typeof import('element-plus/es')['ElProgress']
     ElRadio: typeof import('element-plus/es')['ElRadio']
+    ElRadioButton: typeof import('element-plus/es')['ElRadioButton']
+    ElRadioGroup: typeof import('element-plus/es')['ElRadioGroup']
     ElRow: typeof import('element-plus/es')['ElRow']
+    ElScrollbar: typeof import('element-plus/es')['ElScrollbar']
     ElSelect: typeof import('element-plus/es')['ElSelect']
     ElStep: typeof import('element-plus/es')['ElStep']
     ElSteps: typeof import('element-plus/es')['ElSteps']
@@ -51,6 +55,7 @@ declare module 'vue' {
     ManageUsersDialog: typeof import('./src/components/dialogs/ManageUsersDialog.vue')['default']
     ModalityForm: typeof import('./src/components/modalityForm.vue')['default']
     Niivue: typeof import('./src/components/niivue.vue')['default']
+    SessionDebugDownloads: typeof import('./src/components/SessionDebugDownloads.vue')['default']
     Showfile: typeof import('./src/components/showfile.vue')['default']
   }
 }

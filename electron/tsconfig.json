@@ -1,14 +1,12 @@
 {
+    "extends": "../tsconfig.base.json",
     "compilerOptions": {
-        "target": "ES6",
         "module": "CommonJS",
-        "moduleResolution": "node",
-        "rootDir": ".",
-        "strict": false,
-        "esModuleInterop": true,
-        "skipLibCheck": true,
-        "forceConsistentCasingInFileNames": true,
-        "resolveJsonModule": true
+        "moduleResolution": "Node10",
+        "types": ["node"],
+        "resolveJsonModule": true,
+        "outDir": "dist",
+        "rootDir": "."
     },
     "include": ["*.ts", "main.ts", "preload/**/*.ts"],
     "exclude": ["node_modules", "dist"]

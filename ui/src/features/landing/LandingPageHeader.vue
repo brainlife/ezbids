@@ -32,7 +32,7 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapState } from 'vuex';
-import { hasJWT, authRequired } from './lib';
+import { hasJWT, authRequired } from '@/lib';
 
 export default defineComponent({
     computed: {
@@ -50,11 +50,11 @@ export default defineComponent({
         },
         redirectToBrainlifeAuth() {
             if (!authRequired() || hasJWT()) {
-                this.$router.push('/convert');
+                this.$router.push('/dashboard');
                 return;
             }
 
-            sessionStorage.setItem('auth_redirect', `${window.location.href}convert`);
+            sessionStorage.setItem('auth_redirect', `${window.location.href}dashboard`);
             window.location.href = (
                 this.config as {
                     apihost: string;
