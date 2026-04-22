@@ -5,7 +5,7 @@ module.exports = {
     preset: 'ts-jest',
     testEnvironment: 'node',
     roots: ['<rootDir>'],
-    testMatch: ['<rootDir>/api/**/*.test.ts', '<rootDir>/handler/**/*.test.ts', '<rootDir>/ui/src/**/*.test.ts'],
+    testMatch: ['<rootDir>/api/**/*.spec.ts', '<rootDir>/handler/**/*.spec.ts', '<rootDir>/ui/src/**/*.spec.ts'],
     modulePathIgnorePatterns: [
         '<rootDir>/build/',
         '<rootDir>/electron/dist/',

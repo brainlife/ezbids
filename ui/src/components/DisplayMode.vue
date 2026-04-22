@@ -8,7 +8,7 @@
                     <p style="max-width: 300px">
                         {{
                             isElectron
-                                ? 'ezBIDS is running solely in your computer. ezBIDS is not moving your data anywhere, and processing is occuring locally.'
+                                ? 'ezBIDS is running solely in your computer. ezBIDS is not moving your data anywhere, and processing is occurring locally.'
                                 : 'ezBIDS will be storing and processing your data on a secure server.'
                         }}
                     </p>

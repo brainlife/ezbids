@@ -1,5 +1,5 @@
 /**
- * NOTE: While this is a typescript file, technically our currnet workflow does not run it via typescript at all. Instead, we use esbuild to bundle the code into a single file that is then run by electron.
+ * NOTE: While this is a typescript file, technically our current workflow does not run it via typescript at all. Instead, we use esbuild to bundle the code into a single file that is then run by electron.
  * This allows us to get around the annoying issues around CommonJS, ES Modules, and other issues when using require() and import statements together.
  */
 
@@ -233,7 +233,7 @@ function killAll(): Promise<void> {
 
 app.whenReady().then(async () => {
     // This has to be inside of the app.whenReady() block to ensure that we can take control of the
-    // SIGINT signal and it isnt hijacked by npm or electron itself
+    // SIGINT signal and it is not hijacked by npm or electron itself
     process.on('SIGINT', () => {
         console.log('SIGINT received');
         app.quit();

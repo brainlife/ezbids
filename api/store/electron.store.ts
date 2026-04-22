@@ -12,7 +12,7 @@ const EZBIDS_STORE_NAME = 'ezbids-data';
 const SESSIONS_KEY = 'sessions';
 const EZBIDS_KEY = 'ezbids';
 
-// electron-store extends Conf which has get/set, but its .d.ts doesn't re-declare them.
+// electron-store extends Conf which has get/set, but its .d.ts doesn't redeclare them.
 interface StoreLike {
     get(key: string, defaultValue?: unknown): unknown;
     set(key: string, value: unknown): void;
