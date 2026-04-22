@@ -111,7 +111,9 @@ jobs:
 
             - name: Transpile main process
               working-directory: electron
-              run: npx tsc
+              run: |
+                  npm run build:electron-preload
+                  npm run build:electron-main
 
             - name: Validate Apple signing secrets
               if: matrix.platform == 'darwin'

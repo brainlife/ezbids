@@ -1,12 +1,15 @@
+/**
+ * NOTE: While this is a typescript file, technically our currnet workflow does not run it via typescript at all. Instead, we use esbuild to bundle the code into a single file that is then run by electron.
+ * This allows us to get around the annoying issues around CommonJS, ES Modules, and other issues when using require() and import statements together.
+ */
+
 /* eslint-disable no-console */
 import { app, BrowserWindow, protocol } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import net from 'net';
 import { spawn, ChildProcess } from 'child_process';
-import { createRequire } from 'module';
 import treeKill from 'tree-kill';
-const require = createRequire(import.meta.url);
 
 const ENVIRONMENT = app.isPackaged ? 'production' : 'development';
 const USER_DATA_PATH = app.getPath('userData');
@@ -120,12 +123,14 @@ const startHandler = async (env: Record<string, string>): Promise<void> => {
     }
 };
 
-const startFrontend = (): Promise<void> => {
+const startFrontend = (env: Record<string, string>): Promise<void> => {
     console.log(`Starting frontend in ${ENVIRONMENT} environment`);
 
-    console.log('APP_DIR', APP_DIR);
+    const preloadPath =
+        ENVIRONMENT === 'production'
+            ? path.join(env.PRELOAD_DIR, 'preload.js')
+            : path.join(env.PRELOAD_DIR, 'preload', 'preload.js');
 
-    const preloadPath = path.join(APP_DIR, 'preload', 'preload.js');
     const win = new BrowserWindow({
         width: 1000,
         height: 700,
@@ -165,6 +170,7 @@ async function startApp(): Promise<void> {
         ENVIRONMENT === 'production' ? getProjectPath('dist', 'handler') : getProjectPath('handler');
     const bidsValidatorPath = getProjectPath('node_modules', 'bids-validator', 'bin', 'bids-validator');
     const ezbidsBackendDir = ENVIRONMENT === 'production' ? getProjectPath('dist') : getProjectPath('api');
+    const preloadDir = ENVIRONMENT === 'production' ? getProjectPath('dist') : getProjectPath('electron');
 
     const env = {
         ...process.env,
@@ -175,6 +181,7 @@ async function startApp(): Promise<void> {
         MONGO_CONNECTION_STRING: '',
         EZBIDS_BIN_DIR: getBinDir(),
         EZBIDS_HANDLER_DIR: ezbidsHandlerDir,
+        PRELOAD_DIR: preloadDir,
         EZBIDS_PREPROCESS_PATH: path.join(
             ezbidsHandlerDir,
             ENVIRONMENT === 'production' ? 'preprocess.cjs' : 'preprocess.ts'
@@ -197,7 +204,7 @@ async function startApp(): Promise<void> {
 
     await startBackend(port, env);
     await startHandler(env);
-    await startFrontend();
+    await startFrontend(env);
 }
 
 const treeKillAsync = (pid: number, name: string): Promise<void> =>
