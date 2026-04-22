@@ -1,3 +1,4 @@
 {
-    "**/*.{js,json,ts,vue}": ["npm run style-check", "npm run lint-check", "npm run test"]
+    "**/*.{js,json,ts,vue}": ["npm run style-check", "npm run lint-check"],
+    "**/*.{js,ts,vue}": ["npm run test -- --findRelatedTests --passWithNoTests"]
 }
