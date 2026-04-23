@@ -1,6 +1,6 @@
 # ezBIDS
 
-The secure, cloud-based service for the semi-automated mapping of entire sessions of neuroimaging data to the Brain Imaging Data Structure ([BIDS](https://bids.neuroimaging.io/)) standard.  
+The secure, cloud-based service for the semi-automated mapping of entire sessions of neuroimaging data to the Brain Imaging Data Structure ([BIDS](https://bids.neuroimaging.io/)) standard.
 
 <img width="1450" alt="Screenshot 2023-11-01 at 11 50 48 AM" src="https://github.com/brainlife/ezbids/assets/2119795/2c054297-1503-4ebb-8718-336012c80b48">
 
@@ -10,7 +10,7 @@ This is the repository for a semi-supervised web-service for converting neuroima
 
 Unlike other BIDS converters, ezBIDS eliminates the need for coding and command line interfaces (CLI), doing the bulk of the work behind the scenes to save users time. Importantly, ezBIDS does not require an organizational structure for uploaded data.
 
-A series of inferenial heuritics analyze the uploaded data to provide a *first guess* BIDS structure, which is presented to users through the web-browser user interface. Users verify the *first guess* and modify the information provided as needed so as to best match the final BIDS structure. 
+A series of inferenial heuritics analyze the uploaded data to provide a _first guess_ BIDS structure, which is presented to users through the web-browser user interface. Users verify the _first guess_ and modify the information provided as needed so as to best match the final BIDS structure.
 
 Data from all major scanner vendors are accepted by ezBIDS. ezBIDS enables pseudo-anonymization by providing options for the defacing of anatomical sequences, and removes all identifying metadata information (e.g. `PatientName`) before final conversion to BIDS.
 
@@ -18,6 +18,7 @@ The BIDS output can then be downloaded back to the user's computer, or uploaded 
 [brainlife.io](https://brainlife.io/) or [OpenNeuro.org](https://openneuro.org/).
 
 Helpful links:
+
 1. [ezBIDS website](https://brainlife.io/ezbids) (Chrome or Firefox browsers preferred)
 2. [ezBIDS user documentation](https://brainlife.io/docs/using_ezBIDS/)
 3. [ezBIDS tutorial](https://brainlife.io/docs/tutorial/ezBIDS/)
@@ -29,7 +30,7 @@ To access the ezBIDS web service, please visit https://brainlife.io/ezbids. If y
 
 Users do not need to organize their uploaded data in any specific manner, and users may choose to compress (e.g. zip, tar) their uploaded data.
 
-Should users feel the need to anonymize data before uploading, we strongly recommend that subjects (and sessions, if applicable) be organized into subject (and session) folders, with explicit labeling of the preferred subjects (and sessions) IDs (e.g. `MRI_data/sub-01/ses-01/DICOMS`). Failure to do so for non-anonymized data may result in an inaccurate *first guess* and require additional edits in the web browser.
+Should users feel the need to anonymize data before uploading, we strongly recommend that subjects (and sessions, if applicable) be organized into subject (and session) folders, with explicit labeling of the preferred subjects (and sessions) IDs (e.g. `MRI_data/sub-01/ses-01/DICOMS`). Failure to do so for non-anonymized data may result in an inaccurate _first guess_ and require additional edits in the web browser.
 
 If users wish to install ezBIDS locally, to ensure that data do not leave their institution site, please see [here](https://brainlife.io/docs/using_ezBIDS/#installing-ezbids-locally).
 
@@ -41,18 +42,20 @@ ezBIDS is developed as a **monorepo** with **npm workspaces** at the repository 
 
 #### Prerequisites
 
-- **Node.js** (project targets Node 20; align local and CI versions).
-- **Docker** and **Docker Compose** for the containerized stack.
-- **Git submodules** (run `git submodule update --init --recursive` before first build; `dev.sh` does this for you).
+-   **Node.js** (project targets Node 20; align local and CI versions).
+-   **Docker** and **Docker Compose** for the containerized stack.
+-   **Git submodules** (run `git submodule update --init --recursive` before first build; `dev.sh` does this for you).
 
 ---
 
 #### Configuration model
 
-| Area | How it is configured |
-|------|-------------------------|
-| **Docker stack** | **`docker-compose.yml`**: services, ports, bind mounts, and **`environment:`** blocks (e.g. `MONGO_CONNECTION_STRING`, `BRAINLIFE_AUTHENTICATION`, `VITE_APIHOST`). Values can reference a **`.env`** file in the project directory (Compose variable substitution, e.g. `${BRAINLIFE_AUTHENTICATION}`). |
-| **Electron** | **`electron/main.ts`** builds an **`env`** object (`Record<string, string>`) that is passed to spawned backend and handler processes and merged with `process.env`. A smaller **`rendererEnv`** subset (`IS_ELECTRON`, `API_HOST`, `BRAINLIFE_AUTHENTICATION`) is assigned onto **`process.env`** for the main process and preload. Adjust behavior by changing env before launch or extending that object—not by expecting Compose env vars unless you export them into the shell before starting Electron. |
+ezBIDS can be started up in two different ways.
+
+| Area             | How it is configured                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| **Docker stack** | **`docker-compose.yml`**: services, ports, bind mounts, and **`environment:`** blocks (e.g. `MONGO_CONNECTION_STRING`, `BRAINLIFE_AUTHENTICATION`, `VITE_APIHOST`). Values can reference a **`.env`** file in the project directory (Compose variable substitution, e.g. `${BRAINLIFE_AUTHENTICATION}`).                                                                                                                                                                                                     |
+| **Electron**     | **`electron/main.ts`** builds an **`env`** object (`Record<string, string>`) that is passed to spawned backend and handler processes and merged with `process.env`. A smaller **`rendererEnv`** subset (`IS_ELECTRON`, `API_HOST`, `BRAINLIFE_AUTHENTICATION`) is assigned onto **`process.env`** for the main process and preload. Adjust behavior by changing env before launch or extending that object—not by expecting Compose env vars unless you export them into the shell before starting Electron. |
 
 ---
 
@@ -60,8 +63,8 @@ ezBIDS is developed as a **monorepo** with **npm workspaces** at the repository 
 
 The API chooses storage based on **`IS_ELECTRON`** (see `api/config.ts` and `api/store/index.ts`):
 
-- **Docker / web-style run**: **`IS_ELECTRON` is unset or not `true`**. Session and ezBIDS state use **MongoDB** via **`MONGO_CONNECTION_STRING`** (Compose wires this to the `mongodb` service).
-- **Electron**: Main sets **`IS_ELECTRON: 'true'`** and clears Mongo for the desktop path (`MONGO_CONNECTION_STRING: ''` in the spawned env). The API then uses **`electron-store`** on disk instead of Mongo.
+-   **Docker / web-style run**: **`IS_ELECTRON` is unset or not `true`**. Session and ezBIDS state use **MongoDB** via **`MONGO_CONNECTION_STRING`** (Compose wires this to the `mongodb` service).
+-   **Electron**: Main sets **`IS_ELECTRON: 'true'`** and clears Mongo for the desktop path (`MONGO_CONNECTION_STRING: ''` in the spawned env). The API then uses **`electron-store`** on disk instead of Mongo.
 
 So “which database” is really **MongoDB vs local electron-store**, keyed off Electron mode.
 
@@ -71,16 +74,15 @@ So “which database” is really **MongoDB vs local electron-store**, keyed off
 
 This runs **MongoDB**, the **API** (TypeScript via `api/dev.sh` + `tsc-watch` inside the container), the **handler** (PM2 + `handler.js`), and the **UI** (Vite dev server) together.
 
-1. From the repo root: **`npm install`** (workspaces).
-2. Start the stack, either:
-   - **`./dev.sh`** — updates submodules, installs npm deps, runs Husky prep, `./generate_keys.sh`, then **`docker compose --profile development up`** (or `docker-compose` if that is the binary you have), **or**
-   - Manually: **`docker compose --profile development up`** (add `-d` for detached).
+1. Start the stack, either:
+    - **`./dev.sh`** — updates submodules, runs **`npm install`** (workspaces), Husky prep, `./generate_keys.sh`, then **`docker compose --profile development up`** (or `docker-compose` if that is the binary you have), **or**
+    - Manually: **`docker compose --profile development up`** (add `-d` for detached). Run **`npm install`** at the repo root first if you skipped `dev.sh` and need host-side tooling (Husky, scripts, etc.).
 
 **Useful defaults from `docker-compose.yml`:**
 
-- **API**: `http://localhost:8082` (health check on `/health`). **`MONGO_CONNECTION_STRING`** points at the `mongodb` service. **`BRAINLIFE_AUTHENTICATION`** comes from your host env / `.env`.
-- **UI**: `http://localhost:3000`; **`VITE_APIHOST`** is set for the Vite dev build.
-- **Handler**: repo is bind-mounted at `/app`; **`IS_ELECTRON`** is set to `'true'` for handler-side behavior in that environment.
+-   **API**: `http://localhost:8082` (health check on `/health`). **`MONGO_CONNECTION_STRING`** points at the `mongodb` service. **`BRAINLIFE_AUTHENTICATION`** comes from your host env / `.env`.
+-   **UI**: `http://localhost:3000`; **`VITE_APIHOST`** is set for the Vite dev build.
+-   **Handler**: repo is bind-mounted at `/app`; **`IS_ELECTRON`** is set to `'true'` for handler-side behavior in that environment.
 
 API and UI images are built with **`context: .`** at the repo root; see **`.dockerignore`** for what is excluded from the build context. The **handler** image uses **`build: ./handler`** (its own context).
 
@@ -100,19 +102,54 @@ Desktop dev uses the **Electron main process** to spawn the **API** and **handle
 
 **Packaged / production-style Electron** uses pre-bundled `.cjs` files and the built UI; that path is heavier—see **`npm run electron:pack`** and **`fetch-binaries.sh`** when you need native binaries under `handler/bin`.
 
+For **local Electron development**, local RSA private/public keys and signing/notarization keys are **not utilized**. You can run `npm run electron:start-dev` without them.
+
+---
+
+#### Building the Electron app (artifacts + installers)
+
+Electron build and packaging logic is split between root workspace scripts (`package.json`) and Electron-local scripts (`electron/package.json`).
+
+**Root helper scripts (run from repo root):**
+
+-   **`npm run fetch-binaries:macos`** -> `./fetch-binaries.sh darwin arm64`
+-   **`npm run fetch-binaries:linux`** -> `./fetch-binaries.sh linux amd64`
+-   **`npm run fetch-binaries:windows`** -> `./fetch-binaries.sh windows amd64`
+-   **`npm run electron:pack-test`** -> fetch binaries, run Electron build, then `electron-builder --dir` (unsigned/unpacked app output for testing packaging contents)
+-   **`npm run electron:pack`** -> full build + `electron-builder` distributables (DMG/EXE/AppImage/DEB depending on platform/target)
+
+Note: packaging/signing keys (for example Apple certificate/API key variables) are only needed for signed release workflows, not for local desktop development.
+
+**Electron workspace scripts (in `electron/package.json`):**
+
+-   **`build:electron-api`** bundles `api/ezbids.ts` -> `electron/dist/ezbids.cjs`
+-   **`build:electron-handler`** and **`build:electron-handler-scripts`** bundle `handler/*.ts` entry points -> `electron/dist/handler/*.cjs`
+-   **`build:electron-python`**, **`build:electron-templates`**, **`build:electron-bids-spec`** copy runtime resources into `electron/dist`
+-   **`build:electron-frontend`** triggers the UI workspace build for Electron output
+-   **`build:electron-main`** and **`build:electron-preload`** build desktop entry files
+-   **`build:electron`** runs the full chain above
+-   **`app:dir`** and **`app:dist`** invoke `electron-builder`; **`app:build-dist`** runs full build then dist
+
+**About `fetch-binaries.sh`:**
+
+-   Fetches native/runtime assets from `brainlife/ezbids-binaries` release `v0.0.5` and extracts to **`handler/bin`**.
+-   Usage: **`./fetch-binaries.sh <platform> [arch]`**, where `platform` is one of `darwin|linux|windows` and `arch` is `amd64|arm64`.
+-   Requires `curl`, `jq`, `tar`, `unzip`; for private repo access set **`GITHUB_TOKEN`**.
+-   Run this before packaging whenever `handler/bin` is missing/outdated for your target platform.
+
 ---
 
 #### Other developer workflow notes
 
-- **API only (no Docker)**: **`npm run dev`** runs **`ts-node-dev`** on **`./api/ezbids.ts`** (you must provide Mongo and paths yourself, e.g. `MONGO_CONNECTION_STRING`, upload/workdir env vars as in `api/config.ts`).
-- **Transpile / production API**: **`npm run prod`** (TypeScript compile then Node on `./build/ezbids.js`).
-- **Tests / style**: **`npm test`**, **`npm run lint-check`**, **`npm run style-check`** at the root; **Husky** is set up via **`npm run prepare-husky`** (also invoked from `dev.sh`).
-- **Desktop release builds**: CI and local packaging use scripts under **`electron/package.json`** (e.g. **`build:electron`**, **`app:dist`**); see **`.github/workflows/build-desktop.yml`**.
+-   **API only (no Docker)**: **`npm run dev`** runs **`ts-node-dev`** on **`./api/ezbids.ts`** (you must provide Mongo and paths yourself, e.g. `MONGO_CONNECTION_STRING`, upload/workdir env vars as in `api/config.ts`).
+-   **Transpile / production API**: **`npm run prod`** (TypeScript compile then Node on `./build/ezbids.js`).
+-   **Tests / style**: **`npm test`**, **`npm run lint-check`**, **`npm run style-check`** at the root; **Husky** is set up via **`npm run prepare-husky`** (also invoked from `dev.sh`).
+-   **Desktop release builds**: CI and local packaging use scripts under **`electron/package.json`** (e.g. **`build:electron`**, **`app:dist`**); see **`.github/workflows/build-desktop.yml`**.
 
 ### Authors
 
--   [Daniel Levitas](djlevitas208@gmail.com)*
--   [Soichi Hayashi](soichih@gmail.com)*
+-   [Daniel Levitas](djlevitas208@gmail.com)\*
+-   [Soichi Hayashi](soichih@gmail.com)\*
 -   [Sophia Vinci-Booher](sophia.vinci-booher@vanderbilt.edu)
 -   [Anibal Heinsfeld](anibalsolon@utexas.edu)
 -   [Dheeraj Bhatia](dheeraj.bhatia@utexas.edu)
@@ -120,7 +157,8 @@ Desktop dev uses the **Electron main process** to spawn the **API** and **handle
 -   [Anthony Galassi](niconal902@gmail.com)
 -   [Guiomar Niso](guiomar.niso@ctb.upm.es)
 -   [Franco Pestilli](pestilli@utexas.edu)
-* _Both authors contributed equally to this project_
+
+*   _Both authors contributed equally to this project_
 
 ### Funding Acknowledgement
 
@@ -138,6 +176,5 @@ brainlife.io is publicly funded, and for the sustainability of the project it is
 Please use the following citation when using ezBIDS:
 
 Levitas, Daniel, et al. "ezBIDS: Guided standardization of neuroimaging data interoperable with major data archives and platforms." [Article](https://www.nature.com/articles/s41597-024-02959-0).
-
 
 Copyright © 2022 brainlife.io at University of Texas at Austin
