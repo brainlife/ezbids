@@ -17,7 +17,9 @@ services:
 
     api:
         container_name: brainlife_ezbids-api
-        build: .
+        build:
+            context: .
+            dockerfile: Dockerfile
         platform: linux/amd64
         volumes:
             - ./api:/app/api
@@ -56,10 +58,12 @@ services:
 
     ui:
         container_name: brainlife_ezbids-ui
-        build: ./ui
+        build:
+            context: .
+            dockerfile: ui/Dockerfile
         platform: linux/amd64
         volumes:
-            - ./ui/src:/ui/src #don't copy node_modules which might be compiled for mac (vite won't work)
+            - ./ui/src:/app/ui/src #don't copy node_modules which might be compiled for mac (vite won't work)
         environment:
             VITE_APIHOST: http://localhost:8082
         healthcheck:

@@ -1,5 +1,27 @@
-ui
+# This file applies only to Docker builds whose context is the repo root (`context: .`),
+# e.g. the api and ui services in docker-compose.yml. (A ui/.dockerignore is not used when
+# context is the repo root — only this file is.) Other services (handler, telemetry)
+# use their own build directories, so ignoring paths here does not affect those images.
+#
+# Shared context rules:
+# - api/ must NOT be listed — the API Dockerfile copies ./api; hiding it breaks that image.
+# - ui/ must NOT be listed — the UI Dockerfile copies ./ui after npm ci.
+#
+# handler/ is safe to exclude here — the handler image is built with context ./handler, not
+# the repo root, so this ignore list does not apply to that build.
+#
+# electron/: npm workspaces only require electron/package.json in context for the root
+# lockfile. Simple patterns like electron/* would also exclude that file. We exclude
+# heavy paths only (node_modules, dist, release); other electron sources may still be
+# sent in the context but are small compared to those directories.
+
 handler
 workdir
 test
 bids-specification
+node_modules
+ui/node_modules
+electron/node_modules
+electron/dist
+electron/release
+.git

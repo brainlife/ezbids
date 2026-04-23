@@ -11,7 +11,7 @@
         "build:electron-python": "mkdir -p dist/handler/ezBIDS_core && cp ../handler/ezBIDS_core/*.py dist/handler/ezBIDS_core/ && cp ../handler/*.py dist/handler/",
         "build:electron-templates": "mkdir -p dist/handler/templates && cp -R ../handler/templates/. dist/handler/templates/",
         "build:electron-bids-spec": "mkdir -p dist/bids-specification/src && cp -r ../bids-specification/src/schema dist/bids-specification/src/schema",
-        "build:electron-frontend": "(cd ../ui && npm run build:electron)",
+        "build:electron-frontend": "(cd .. && npm run build:electron -w ui)",
         "build:electron-main": "esbuild main.ts --bundle --platform=node --format=cjs --target=es2020 --outfile=dist/main.cjs --external:electron --external:electron-store --external:ts-node-dev",
         "build:electron-preload": "mkdir -p dist && esbuild preload/preload.ts --bundle --platform=node --format=cjs --target=es6 --outfile=preload/preload.js --external:electron --external:electron-store --external:ts-node-dev && cp preload/preload.js dist/preload.js",
         "build:electron": "rm -rf dist && npm run build:electron-api && npm run build:electron-handler && npm run build:electron-handler-scripts && npm run build:electron-python && npm run build:electron-templates && npm run build:electron-bids-spec && npm run build:electron-frontend && npm run build:electron-main && npm run build:electron-preload",
@@ -26,7 +26,7 @@
     },
     "license": "ISC",
     "dependencies": {
-        "bids-validator": "^1.14.8",
+        "bids-validator": "1.14.8",
         "electron-store": "^11.0.2",
         "tree-kill": "^1.2.2"
     },

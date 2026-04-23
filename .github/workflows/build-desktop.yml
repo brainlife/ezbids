@@ -63,12 +63,7 @@ jobs:
                   node-version: '20'
 
             - name: Install dependencies
-              run: |
-                  npm ci
-                  (cd api && npm ci)
-                  (cd handler && npm ci)
-                  (cd ui && npm ci)
-                  (cd electron && npm ci)
+              run: npm ci
 
             - name: Fetch binaries
               run: bash fetch-binaries.sh ${{ matrix.platform }} ${{ matrix.arch }}
