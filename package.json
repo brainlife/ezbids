@@ -10,7 +10,6 @@
         "electron"
     ],
     "scripts": {
-        "fetch-binaries": "./fetch-binaries.sh",
         "uidev": "cd ui && lite-server",
         "transpile": "tsc",
         "dev": "ts-node-dev --respawn --transpile-only ./api/ezbids.ts",
@@ -24,8 +23,11 @@
         "ui:dev": "npm run dev -w ui",
         "ui:build": "npm run build -w ui",
         "electron:start-dev": "npm run start-dev -w ezbids-electron",
-        "electron:build": "npm run build:electron -w ezbids-electron",
-        "electron:pack": "npm run app:dist -w ezbids-electron"
+        "electron:pack-test": "npm run fetch-binaries && npm run build:electron -w ezbids-electron && npm run app:dir -w ezbids-electron",
+        "electron:pack": "npm run app:build-dist -w ezbids-electron",
+        "fetch-binaries:macos": "./fetch-binaries.sh darwin arm64",
+        "fetch-binaries:linux": "./fetch-binaries.sh linux amd64",
+        "fetch-binaries:windows": "./fetch-binaries.sh windows amd64"
     },
     "author": "",
     "license": "MIT",

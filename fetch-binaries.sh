@@ -11,9 +11,8 @@
 #   ./fetch-binaries.sh <platform> [arch]
 #
 # Examples:
-#   ./fetch-binaries.sh darwin
-#   ./fetch-binaries.sh darwin amd64
-#   ./fetch-binaries.sh linux arm64
+#   ./fetch-binaries.sh darwin arm64
+#   ./fetch-binaries.sh linux amd64
 #   ./fetch-binaries.sh windows       # e.g. fetch Windows binaries
 #
 # Platform: darwin | linux | windows

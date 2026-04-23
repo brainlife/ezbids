@@ -33,6 +33,82 @@ Should users feel the need to anonymize data before uploading, we strongly recom
 
 If users wish to install ezBIDS locally, to ensure that data do not leave their institution site, please see [here](https://brainlife.io/docs/using_ezBIDS/#installing-ezbids-locally).
 
+### Development
+
+ezBIDS is developed as a **monorepo** with **npm workspaces** at the repository root. A single `package-lock.json` ties versions together; **`npm install` is always run from the repo root** (not inside `ui/` or `electron/` alone). Workspace packages are **`ui`** (Vite + Vue) and **`ezbids-electron`** (Electron shell under `electron/`). The Node API lives under **`api/`**, the conversion worker under **`handler/`**, and both are consumed by the root package and by the Electron bundling scripts.
+
+---
+
+#### Prerequisites
+
+- **Node.js** (project targets Node 20; align local and CI versions).
+- **Docker** and **Docker Compose** for the containerized stack.
+- **Git submodules** (run `git submodule update --init --recursive` before first build; `dev.sh` does this for you).
+
+---
+
+#### Configuration model
+
+| Area | How it is configured |
+|------|-------------------------|
+| **Docker stack** | **`docker-compose.yml`**: services, ports, bind mounts, and **`environment:`** blocks (e.g. `MONGO_CONNECTION_STRING`, `BRAINLIFE_AUTHENTICATION`, `VITE_APIHOST`). Values can reference a **`.env`** file in the project directory (Compose variable substitution, e.g. `${BRAINLIFE_AUTHENTICATION}`). |
+| **Electron** | **`electron/main.ts`** builds an **`env`** object (`Record<string, string>`) that is passed to spawned backend and handler processes and merged with `process.env`. A smaller **`rendererEnv`** subset (`IS_ELECTRON`, `API_HOST`, `BRAINLIFE_AUTHENTICATION`) is assigned onto **`process.env`** for the main process and preload. Adjust behavior by changing env before launch or extending that object—not by expecting Compose env vars unless you export them into the shell before starting Electron. |
+
+---
+
+#### Persistence: Docker vs Electron
+
+The API chooses storage based on **`IS_ELECTRON`** (see `api/config.ts` and `api/store/index.ts`):
+
+- **Docker / web-style run**: **`IS_ELECTRON` is unset or not `true`**. Session and ezBIDS state use **MongoDB** via **`MONGO_CONNECTION_STRING`** (Compose wires this to the `mongodb` service).
+- **Electron**: Main sets **`IS_ELECTRON: 'true'`** and clears Mongo for the desktop path (`MONGO_CONNECTION_STRING: ''` in the spawned env). The API then uses **`electron-store`** on disk instead of Mongo.
+
+So “which database” is really **MongoDB vs local electron-store**, keyed off Electron mode.
+
+---
+
+#### Local stack with Docker Compose
+
+This runs **MongoDB**, the **API** (TypeScript via `api/dev.sh` + `tsc-watch` inside the container), the **handler** (PM2 + `handler.js`), and the **UI** (Vite dev server) together.
+
+1. From the repo root: **`npm install`** (workspaces).
+2. Start the stack, either:
+   - **`./dev.sh`** — updates submodules, installs npm deps, runs Husky prep, `./generate_keys.sh`, then **`docker compose --profile development up`** (or `docker-compose` if that is the binary you have), **or**
+   - Manually: **`docker compose --profile development up`** (add `-d` for detached).
+
+**Useful defaults from `docker-compose.yml`:**
+
+- **API**: `http://localhost:8082` (health check on `/health`). **`MONGO_CONNECTION_STRING`** points at the `mongodb` service. **`BRAINLIFE_AUTHENTICATION`** comes from your host env / `.env`.
+- **UI**: `http://localhost:3000`; **`VITE_APIHOST`** is set for the Vite dev build.
+- **Handler**: repo is bind-mounted at `/app`; **`IS_ELECTRON`** is set to `'true'` for handler-side behavior in that environment.
+
+API and UI images are built with **`context: .`** at the repo root; see **`.dockerignore`** for what is excluded from the build context. The **handler** image uses **`build: ./handler`** (its own context).
+
+---
+
+#### Electron desktop (development)
+
+Desktop dev uses the **Electron main process** to spawn the **API** and **handler** as child processes and opens a window.
+
+1. **Install** (from repo root): **`npm install`**.
+2. **UI in dev**: Electron’s main window loads **`http://localhost:3000`** in development. Start Vite in a **separate terminal**: **`npm run ui:dev`** (or `npm run dev -w ui`).
+3. **Electron**: In another terminal from the repo root: **`npm run electron:start-dev`** (runs the **`start-dev`** script in the **`ezbids-electron`** workspace).
+
+**`start-dev`** (see `electron/package.json`) runs **`build:electron-preload`** and **`build:electron-main`** (esbuild bundles **`preload/preload.ts`** and **`electron/main.ts`**), then starts **`electron .`**. Those two entry files are **not** run through `ts-node-dev`; **after you edit `main.ts` or `preload.ts`, rerun `npm run electron:start-dev`** (or the individual `build:electron-main` / `build:electron-preload` scripts) so the bundles under `electron/dist` / preload output stay in sync.
+
+**Hot reload** applies to almost everything else in dev: **`main.ts`** spawns **`ts-node-dev`** for **`api/ezbids.ts`** and **`handler/handler.ts`** with **`--watch`** on those directories, so changes under **`api/`** and **`handler/`** reload without restarting Electron (see `startBackend` / `startHandler` in `electron/main.ts`).
+
+**Packaged / production-style Electron** uses pre-bundled `.cjs` files and the built UI; that path is heavier—see **`npm run electron:pack`** and **`fetch-binaries.sh`** when you need native binaries under `handler/bin`.
+
+---
+
+#### Other developer workflow notes
+
+- **API only (no Docker)**: **`npm run dev`** runs **`ts-node-dev`** on **`./api/ezbids.ts`** (you must provide Mongo and paths yourself, e.g. `MONGO_CONNECTION_STRING`, upload/workdir env vars as in `api/config.ts`).
+- **Transpile / production API**: **`npm run prod`** (TypeScript compile then Node on `./build/ezbids.js`).
+- **Tests / style**: **`npm test`**, **`npm run lint-check`**, **`npm run style-check`** at the root; **Husky** is set up via **`npm run prepare-husky`** (also invoked from `dev.sh`).
+- **Desktop release builds**: CI and local packaging use scripts under **`electron/package.json`** (e.g. **`build:electron`**, **`app:dist`**); see **`.github/workflows/build-desktop.yml`**.
+
 ### Authors
 
 -   [Daniel Levitas](djlevitas208@gmail.com)*
