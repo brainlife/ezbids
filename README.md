@@ -132,7 +132,7 @@ Note: packaging/signing keys (for example Apple certificate/API key variables) a
 
 **About `fetch-binaries.sh`:**
 
--   Fetches native/runtime assets from `brainlife/ezbids-binaries` release `v0.0.5` and extracts to **`handler/bin`**.
+-   Fetches native/runtime assets from `brainlife/ezbids-binaries` release `vX.X.X` and extracts to **`handler/bin`** (0.0.5 at the time of writing this).
 -   Usage: **`./fetch-binaries.sh <platform> [arch]`**, where `platform` is one of `darwin|linux|windows` and `arch` is `amd64|arm64`.
 -   Requires `curl`, `jq`, `tar`, `unzip`; for private repo access set **`GITHUB_TOKEN`**.
 -   Run this before packaging whenever `handler/bin` is missing/outdated for your target platform.

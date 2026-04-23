@@ -32,12 +32,13 @@
     },
     "devDependencies": {
         "@types/node": "^20.0.0",
-        "electron": "^40.3.0",
+        "electron": "40.3.0",
         "electron-builder": "^26.7.0",
         "esbuild": "^0.27.3",
         "typescript": "^5.0.0"
     },
     "build": {
+        "electronVersion": "40.3.0",
         "appId": "io.brainlife.ezbids.electron",
         "publish": null,
         "productName": "ezBIDS",
