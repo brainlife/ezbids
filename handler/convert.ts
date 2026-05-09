@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 const fs = require('fs');
+const path = require('path');
 const mkdirp = require('mkdirp');
 const async = require('async');
 const bidsEntitiesOrdered = require('../ui/src/assets/schema/rules/entities.json')
@@ -23,7 +24,9 @@ Object.values(bidsEntitiesOrdered).forEach(order=>{
 })
 info.entityMappings = newEntityOrdering
 
-const datasetName = info.datasetDescription.Name;
+//strip path separators from the user-supplied dataset name so it cannot escape root/bids
+const datasetName = path.basename(String(info.datasetDescription.Name || "")).replace(/^\.+/, "") || "dataset";
+info.datasetDescription.Name = datasetName;
 
 mkdirp.sync(root+"/bids/"+datasetName);
 fs.writeFileSync(root+"/bids/"+datasetName+"/finalized.json", JSON.stringify(info, null, 4)); //copy the finalized.json

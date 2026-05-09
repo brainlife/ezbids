@@ -101,7 +101,6 @@ router.get('/health', (req, res) => {
  */
 router.post('/session', validateWithJWTConfig(), (req: Request, res: express.Response, next) => {
     req.body.status = 'created';
-    req.body.request_headers = req.headers;
 
     const session = new models.Session({
         ...req.body,
@@ -220,9 +219,6 @@ router.patch(
  *         status_msg:
  *           type: string
  *           description: Status message for the session
- *         request_headers:
- *           type: object
- *           description: Headers of the request when creating the session
  *         upload_finish_date:
  *           type: string
  *           format: date-time
@@ -547,7 +543,7 @@ router.post(
                 const destPath = path.resolve(dirtyPath);
                 const mtime = mtimes[idx] / 1000; //browser uses msec.. filesystem uses sec since epoch
 
-                if (!destPath.startsWith(config.workdir)) {
+                if (path.relative(`${config.workdir}/${session._id}`, destPath).startsWith('..')) {
                     return nextFile(new Error(`invalid path: ${destPath}`));
                 }
                 const destdir = path.dirname(destPath);
