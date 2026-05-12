@@ -1,6 +1,6 @@
 {
     "name": "ezbids-electron",
-    "version": "0.0.3",
+    "version": "0.0.4",
     "description": "electron implementation for ezbids",
     "main": "dist/main.cjs",
     "scripts": {
