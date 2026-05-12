@@ -117,7 +117,7 @@ router.get('/sessions', validateWithJWTConfig(), (req: Request, res: express.Res
 
 router.post('/session', validateWithJWTConfig(), (req: Request, res: express.Response, next) => {
     const userId = req.auth?.sub;
-    if (!userId) {
+    if (userId === undefined || userId === null) {
         return res.status(HTTP_STATUS.BAD_REQUEST).json({ err: 'No userId found' });
     }
     const body = { ...req.body, status: 'created', request_headers: req.headers };
