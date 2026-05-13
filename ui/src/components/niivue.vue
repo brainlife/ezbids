@@ -12,16 +12,15 @@ import { mapState } from 'vuex';
 import { Niivue } from '@niivue/niivue';
 import axios from '../axios.instance';
 
-const nv = new Niivue({
-    dragAndDropEnabled: false,
-});
-
 export default defineComponent({
     props: ['path'],
     emits: ['close'],
     data() {
         return {
             open: false,
+            //per-component instance; el-dialog uses destroy-on-close so the prior
+            //canvas is removed each time, which would orphan a shared WebGL context
+            nv: null as any,
         };
     },
 
@@ -36,7 +35,12 @@ export default defineComponent({
     },
 
     mounted() {
+        this.nv = new Niivue({ dragAndDropEnabled: false });
         if (this.path) this.load();
+    },
+
+    beforeUnmount() {
+        if (this.nv) this.nv.closeAllVolumes();
     },
 
     methods: {
@@ -45,8 +49,8 @@ export default defineComponent({
                 const url = `${this.config.apihost}/download/${this.session._id}/${this.path}?token=${res.data}`;
                 this.open = true;
                 this.$nextTick(() => {
-                    nv.attachToCanvas(this.$refs.canvas);
-                    nv.loadVolumes([
+                    this.nv.attachToCanvas(this.$refs.canvas);
+                    this.nv.loadVolumes([
                         {
                             url: url,
                             volume: { hdr: null, img: null },
@@ -60,6 +64,7 @@ export default defineComponent({
         },
 
         close() {
+            if (this.nv) this.nv.closeAllVolumes();
             this.open = false;
             this.$emit('close');
         },

@@ -678,17 +678,14 @@ export function setIntendedFor($root: IEzbids) {
                             }
                         }
 
-                        if (Object.keys(obj.IntendedFor).length !== 0) {
-                            obj.IntendedFor?.forEach((e) => {
+                        if (obj.IntendedFor.length !== 0) {
+                            obj.IntendedFor = obj.IntendedFor.filter((e: number) => {
                                 let IntendedForObj = $root.objects.filter((o: IObject) => o.idx === e)[0];
-                                if (IntendedForObj.exclude || IntendedForObj._exclude) {
-                                    let badIndexKey: number = obj.IntendedFor.indexOf(e);
-                                    delete obj.IntendedFor[badIndexKey];
-                                }
+                                return !(IntendedForObj.exclude || IntendedForObj._exclude);
                             });
                         }
                         if (obj._type.startsWith('fmap/')) {
-                            if (Object.keys(obj.IntendedFor).length === 0) {
+                            if (obj.IntendedFor.length === 0) {
                                 obj.validationWarnings = [
                                     'It is recommended that field map (fmap) sequences have IntendedFor set to at least 1 series ID. This is necessary if you plan on using processing BIDS-apps such as fMRIPrep',
                                 ];
@@ -698,7 +695,7 @@ export function setIntendedFor($root: IEzbids) {
                                 obj.validationWarnings = [];
                             }
                         } else if (obj._type === 'perf/m0scan') {
-                            if (Object.keys(obj.IntendedFor).length === 0) {
+                            if (obj.IntendedFor.length === 0) {
                                 obj.validationErrors = [
                                     'It is required that perfusion m0scan sequences have IntendedFor set to at least 1 series ID.',
                                 ];

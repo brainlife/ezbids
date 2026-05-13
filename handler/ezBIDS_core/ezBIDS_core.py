@@ -985,7 +985,7 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
         except:
             ornt = None
 
-        if pe_direction is not None and ornt is not None and json_data["Modality"] != "MEG":
+        if pe_direction is not None and ornt is not None and modality != "MEG":
             correction = False
             proper_pe_direction, correction = correct_pe(pe_direction, ornt, correction)
             if correction is True:
