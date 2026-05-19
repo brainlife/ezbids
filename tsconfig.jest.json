@@ -12,6 +12,7 @@
     "include": [
         "api/**/*.ts",
         "handler/**/*.ts",
+        "e2e/**/*.ts",
         "ui/src/**/*.test.ts",
         "ui/src/features/dashboard/utils/gatherDroppedFiles.ts"
     ]

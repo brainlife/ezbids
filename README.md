@@ -59,17 +59,6 @@ ezBIDS can be started up in two different ways.
 
 ---
 
-#### Persistence: Docker vs Electron
-
-The API chooses storage based on **`IS_ELECTRON`** (see `api/config.ts` and `api/store/index.ts`):
-
--   **Docker / web-style run**: **`IS_ELECTRON` is unset or not `true`**. Session and ezBIDS state use **MongoDB** via **`MONGO_CONNECTION_STRING`** (Compose wires this to the `mongodb` service).
--   **Electron**: Main sets **`IS_ELECTRON: 'true'`** and clears Mongo for the desktop path (`MONGO_CONNECTION_STRING: ''` in the spawned env). The API then uses **`electron-store`** on disk instead of Mongo.
-
-So “which database” is really **MongoDB vs local electron-store**, keyed off Electron mode.
-
----
-
 #### Local stack with Docker Compose
 
 This runs **MongoDB**, the **API** (TypeScript via `api/dev.sh` + `tsc-watch` inside the container), the **handler** (PM2 + `handler.js`), and the **UI** (Vite dev server) together.
@@ -103,6 +92,17 @@ Desktop dev uses the **Electron main process** to spawn the **API** and **handle
 **Packaged / production-style Electron** uses pre-bundled `.cjs` files and the built UI; that path is heavier—see **`npm run electron:pack`** and **`fetch-binaries.sh`** when you need native binaries under `handler/bin`.
 
 For **local Electron development**, local RSA private/public keys and signing/notarization keys are **not utilized**. You can run `npm run electron:start-dev` without them.
+
+---
+
+#### Persistence: Docker vs Electron
+
+The API chooses storage based on **`IS_ELECTRON`** (see `api/config.ts` and `api/store/index.ts`):
+
+-   **Docker / web-style run**: **`IS_ELECTRON` is unset or not `true`**. Session and ezBIDS state use **MongoDB** via **`MONGO_CONNECTION_STRING`** (Compose wires this to the `mongodb` service).
+-   **Electron**: Main sets **`IS_ELECTRON: 'true'`** and clears Mongo for the desktop path (`MONGO_CONNECTION_STRING: ''` in the spawned env). The API then uses **`electron-store`** on disk instead of Mongo.
+
+So “which database” is really **MongoDB vs local electron-store**, keyed off Electron mode.
 
 ---
 

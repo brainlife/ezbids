@@ -86,7 +86,7 @@ jobs:
             - name: Clean dist
               run: rm -rf electron/dist
 
-            - name: Build JS bundles
+            - name: Build JS bundles and copy over dependencies
               working-directory: electron
               run: |
                   npm run build:electron-api

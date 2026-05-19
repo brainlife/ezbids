@@ -5,7 +5,12 @@ module.exports = {
     preset: 'ts-jest',
     testEnvironment: 'node',
     roots: ['<rootDir>'],
-    testMatch: ['<rootDir>/api/**/*.spec.ts', '<rootDir>/handler/**/*.spec.ts', '<rootDir>/ui/src/**/*.spec.ts'],
+    testMatch: [
+        '<rootDir>/api/**/*.spec.ts',
+        '<rootDir>/handler/**/*.spec.ts',
+        '<rootDir>/ui/src/**/*.spec.ts',
+        '<rootDir>/e2e/smoke-bundled-runtime.test.ts',
+    ],
     modulePathIgnorePatterns: [
         '<rootDir>/build/',
         '<rootDir>/electron/dist/',

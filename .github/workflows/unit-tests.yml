@@ -28,3 +28,14 @@ jobs:
 
       - name: Run unit tests
         run: npm test -- --ci
+
+      - name: Fetch Linux handler binaries
+        run: bash fetch-binaries.sh linux amd64
+
+      - name: Layer 1 — bundled runtime smoke
+        env:
+          EZBIDS_BIN_DIR: ${{ github.workspace }}/handler/bin
+          EZBIDS_PLATFORM: linux
+          EZBIDS_ARCH: amd64
+          BIDS_VALIDATOR_PATH: ${{ github.workspace }}/node_modules/bids-validator/bin/bids-validator
+        run: npm run smoke:bundled
