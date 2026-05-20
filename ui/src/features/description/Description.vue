@@ -25,7 +25,8 @@
             <el-form
                 ref="descForm"
                 class="description-form"
-                label-width="168px"
+                size="small"
+                label-width="140px"
                 label-position="right"
                 :model="dd"
                 :rules="rules"
@@ -72,7 +73,7 @@
                         class="full-width"
                         type="textarea"
                         placeholder="Optional acknowledgements"
-                        :autosize="{ minRows: 2, maxRows: 6 }"
+                        :autosize="{ minRows: 1, maxRows: 4 }"
                     />
                 </el-form-item>
                 <el-form-item label="How to acknowledge" prop="HowToAcknowledge">
@@ -81,7 +82,7 @@
                         class="full-width"
                         type="textarea"
                         placeholder="How you want others to cite or acknowledge this dataset"
-                        :autosize="{ minRows: 2, maxRows: 6 }"
+                        :autosize="{ minRows: 1, maxRows: 4 }"
                     />
                 </el-form-item>
                 <el-form-item label="Funding" prop="Funding">
@@ -162,7 +163,7 @@
                         class="full-width"
                         type="textarea"
                         placeholder="Content for README.md in the BIDS dataset root"
-                        :autosize="{ minRows: 10, maxRows: 25 }"
+                        :autosize="{ minRows: 5, maxRows: 14 }"
                     />
                 </el-form-item>
             </el-form>
@@ -247,21 +248,21 @@ export default defineComponent({
 .description-page {
     max-width: 920px;
     margin: 0 auto;
-    padding: 0.5rem 1.25rem 2.75rem;
+    padding: 0.25rem 1rem 1.5rem;
 }
 
 .description-intro {
-    margin-bottom: 1.75rem;
-    padding: 1.35rem 1.5rem 1.5rem;
-    border-radius: 10px;
+    margin-bottom: 1rem;
+    padding: 0.85rem 1rem 0.95rem;
+    border-radius: 8px;
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
     background: var(--el-fill-color-blank, #fff);
     box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
 }
 
 .description-intro__title {
-    margin: 0 0 0.65rem;
-    font-size: 1.25rem;
+    margin: 0 0 0.35rem;
+    font-size: 1.1rem;
     font-weight: 600;
     letter-spacing: -0.02em;
     color: var(--el-text-color-primary, #303133);
@@ -269,8 +270,8 @@ export default defineComponent({
 
 .description-intro__text {
     margin: 0;
-    font-size: 14px;
-    line-height: 1.65;
+    font-size: 13px;
+    line-height: 1.5;
     color: var(--el-text-color-regular, #606266);
 }
 
@@ -279,8 +280,8 @@ export default defineComponent({
 }
 
 .description-card {
-    padding: 1.75rem 2rem 2.25rem;
-    border-radius: 12px;
+    padding: 1rem 1.25rem 1.25rem;
+    border-radius: 10px;
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
     background: var(--el-bg-color, #fff);
     box-shadow:
@@ -289,7 +290,7 @@ export default defineComponent({
 }
 
 .description-form :deep(.el-form-item) {
-    margin-bottom: 1.35rem;
+    margin-bottom: 0.5rem;
 }
 
 .description-form :deep(.el-form-item:last-child) {
@@ -297,18 +298,29 @@ export default defineComponent({
 }
 
 .description-form :deep(.el-form-item__label) {
+    font-size: 13px;
     font-weight: 500;
     color: var(--el-text-color-regular, #606266);
-    padding-right: 16px;
+    padding-right: 12px;
+    line-height: 30px;
+}
+
+.description-form :deep(.el-form-item__content) {
+    line-height: 30px;
 }
 
 .description-form :deep(.el-input__inner),
 .description-form :deep(.el-textarea__inner) {
-    border-radius: 8px;
+    border-radius: 6px;
 }
 
 .description-form :deep(.el-select .el-input__inner) {
-    border-radius: 8px;
+    border-radius: 6px;
+}
+
+.description-form :deep(.el-select__tags) {
+    max-height: 56px;
+    overflow-y: auto;
 }
 
 .full-width {
@@ -324,18 +336,18 @@ export default defineComponent({
 .generated-block {
     width: 100%;
     box-sizing: border-box;
-    padding: 0.75rem 1.35rem 1.2rem 3rem;
-    border-radius: 8px;
+    padding: 0.5rem 0.85rem 0.65rem 1.5rem;
+    border-radius: 6px;
     background: var(--el-fill-color-light, #f5f7fa);
     border: 1px solid var(--el-border-color-extra-light, #f2f6fc);
 }
 
 .generated-row {
     display: grid;
-    grid-template-columns: minmax(90px, 110px) minmax(0, 1fr);
-    gap: 8px 18px;
+    grid-template-columns: minmax(80px, 96px) minmax(0, 1fr);
+    gap: 4px 12px;
     align-items: center;
-    margin-bottom: 1rem;
+    margin-bottom: 0.5rem;
 }
 
 .generated-row:last-child {
@@ -344,7 +356,7 @@ export default defineComponent({
 
 .generated-row__label {
     margin: 0;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 500;
     line-height: 1.35;
     color: var(--el-text-color-regular, #606266);
@@ -353,14 +365,14 @@ export default defineComponent({
 }
 
 .generated-subsection {
-    margin-top: 1.1rem;
-    padding-top: 1.1rem;
+    margin-top: 0.6rem;
+    padding-top: 0.6rem;
     border-top: 1px dashed var(--el-border-color, #dcdfe6);
 }
 
 .generated-subsection__title {
-    margin: 0 0 0.85rem;
-    font-size: 12px;
+    margin: 0 0 0.45rem;
+    font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.06em;
     text-transform: uppercase;

@@ -1,0 +1,60 @@
+name: Desktop pack smoke test
+
+on:
+    push:
+        tags:
+            - 'v*'
+    workflow_dispatch:
+
+permissions:
+    contents: read
+
+jobs:
+    smoke-test:
+        name: Pack and verify binaries (${{ matrix.platform }}-${{ matrix.arch }})
+        runs-on: ${{ matrix.os }}
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - os: macos-latest
+                      platform: darwin
+                      arch: arm64
+                    - os: ubuntu-latest
+                      platform: linux
+                      arch: amd64
+                    - os: windows-latest
+                      platform: windows
+                      arch: amd64
+
+        defaults:
+            run:
+                shell: bash
+
+        env:
+            npm_config_script_shell: bash
+            EZBIDS_PLATFORM: ${{ matrix.platform }}
+            EZBIDS_ARCH: ${{ matrix.arch }}
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  submodules: recursive
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+                  cache: npm
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Fetch binaries
+              run: ./fetch-binaries.sh ${{ matrix.platform }} ${{ matrix.arch }}
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Pack test app and smoke test binaries
+              run: npm run electron:pack-test && npm run electron:smoke-test

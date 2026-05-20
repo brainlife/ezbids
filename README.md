@@ -115,7 +115,7 @@ Electron build and packaging logic is split between root workspace scripts (`pac
 -   **`npm run fetch-binaries:macos`** -> `./fetch-binaries.sh darwin arm64`
 -   **`npm run fetch-binaries:linux`** -> `./fetch-binaries.sh linux amd64`
 -   **`npm run fetch-binaries:windows`** -> `./fetch-binaries.sh windows amd64`
--   **`npm run electron:pack-test`** -> fetch binaries, run Electron build, then `electron-builder --dir` (unsigned/unpacked app output for testing packaging contents)
+-   **`npm run electron:pack-test`** -> run Electron build, then `electron-builder --dir` (unsigned/unpacked app output for testing packaging contents; run a `fetch-binaries:*` script first if `handler/bin` is missing)
 -   **`npm run electron:pack`** -> full build + `electron-builder` distributables (DMG/EXE/AppImage/DEB depending on platform/target)
 
 Note: packaging/signing keys (for example Apple certificate/API key variables) are only needed for signed release workflows, not for local desktop development.
