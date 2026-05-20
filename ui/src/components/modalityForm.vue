@@ -1,6 +1,14 @@
 <template>
     <el-button @click="initForm()">Edit Metadata</el-button>
-    <el-dialog v-model="showDialog" title="Relevant Metadata">
+    <el-dialog
+        v-model="showDialog"
+        title="Relevant Metadata"
+        custom-class="modality-form-dialog"
+        width="90%"
+        top="5vh"
+        :append-to-body="true"
+    >
+        <div class="modality-form-dialog__scroll">
         <el-form ref="form" :model="formData" label-position="top" label-width="500px" :inline="true" :rules="rules">
             <el-row>
                 <el-col :span="8" class="grid-content required-bg">
@@ -566,12 +574,14 @@
                 </el-col>
             </el-row>
         </el-form>
-        <br />
+        </div>
 
-        <span class="dialog-footer">
-            <el-button @click="showDialog = false">Cancel</el-button>
-            <el-button type="primary" @click="submitForm">Submit</el-button>
-        </span>
+        <template #footer>
+            <span class="dialog-footer">
+                <el-button @click="showDialog = false">Cancel</el-button>
+                <el-button type="primary" @click="submitForm">Submit</el-button>
+            </span>
+        </template>
     </el-dialog>
 </template>
 
@@ -1278,6 +1288,30 @@ export default defineComponent({
     },
 });
 </script>
+<style lang="scss">
+.modality-form-dialog {
+    max-height: 90vh;
+    display: flex;
+    flex-direction: column;
+    margin-top: 5vh !important;
+    margin-bottom: 5vh;
+}
+
+.modality-form-dialog .el-dialog__body {
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.modality-form-dialog__scroll {
+    max-height: calc(90vh - 11rem);
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+</style>
+
 <style scoped>
 .editModalityInputItem {
     margin-top: 20px;
@@ -1290,7 +1324,7 @@ export default defineComponent({
 .dialog-footer {
     display: flex;
     justify-content: flex-end;
-    align-items: c enter;
+    align-items: center;
 }
 ::v-deep .el-form-item__label {
     font-size: 12px; /* Adjust the font size as required */

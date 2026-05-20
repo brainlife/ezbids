@@ -10,7 +10,7 @@
         </header>
 
         <div class="subject-layout">
-            <section class="subject-card">
+            <section class="subject-card subject-card--table">
                 <div class="subject-card__toolbar">
                     <el-dropdown size="small" @command="resetSubjects">
                         <el-button type="primary" size="small">
@@ -26,34 +26,27 @@
                     </el-dropdown>
                 </div>
 
-                <el-table :data="ezbids.subjects" size="small" class="table-align-top subject-table">
-                    <el-table-column label="DICOM Patient" width="200">
-                        <template #default="scope">
-                            <div class="patient-cell">
-                                <i class="el-icon-right patient-cell__arrow" />
-                                <div class="patient-info">
-                                    <p v-for="(info, idx) in scope.row.PatientInfo" :key="idx">
-                                        <b>PatientID</b> {{ info.PatientID }}<br />
-                                        <b>PatientName</b> {{ info.PatientName }}<br />
-                                        <b>PatientBirthDate</b> {{ info.PatientBirthDate || '(not set)' }}<br />
-                                        <b>Directory</b> {{ info.file_directory }}<br />
-                                    </p>
+                <div class="subject-table-wrap">
+                    <el-table :data="ezbids.subjects" size="small" class="table-align-top subject-table">
+                        <el-table-column label="DICOM Patient" min-width="160" width="180">
+                            <template #default="scope">
+                                <div class="patient-cell">
+                                    <i class="el-icon-right patient-cell__arrow" />
+                                    <div class="patient-info">
+                                        <p v-for="(info, idx) in scope.row.PatientInfo" :key="idx">
+                                            <b>PatientID</b> {{ info.PatientID }}<br />
+                                            <b>PatientName</b> {{ info.PatientName }}<br />
+                                            <b>PatientBirthDate</b> {{ info.PatientBirthDate || '(not set)' }}<br />
+                                            <b>Directory</b> {{ info.file_directory }}<br />
+                                        </p>
+                                    </div>
                                 </div>
-                            </div>
-                        </template>
-                    </el-table-column>
-                    <el-table-column label="Subject / Session Mappings">
-                        <template #default="scope">
-                            <div class="mapping-cell">
-                                <div>
-                                    <el-input
-                                        v-model.trim="scope.row.subject"
-                                        size="small"
-                                        @change="validate(scope.row)"
-                                    >
-                                        <template #prepend>sub-</template>
-                                    </el-input>
-                                    <div style="margin-top: 4px; line-height: normal">
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="BIDS subject" min-width="160">
+                            <template #default="scope">
+                                <div class="subject-cell">
+                                    <div class="subject-cell__exclude">
                                         <el-checkbox
                                             v-model="scope.row.exclude"
                                             title="Exclude all objects from BIDS output for this subject"
@@ -61,65 +54,65 @@
                                             Exclude this subject
                                         </el-checkbox>
                                     </div>
+                                    <el-input
+                                        v-model.trim="scope.row.subject"
+                                        size="small"
+                                        @change="validate(scope.row)"
+                                    >
+                                        <template #prepend>sub-</template>
+                                    </el-input>
+                                    <el-alert
+                                        v-for="(error, idx) in scope.row.validationErrors"
+                                        :key="idx"
+                                        show-icon
+                                        :closable="false"
+                                        type="error"
+                                        :title="error"
+                                        class="mapping-error"
+                                    />
                                 </div>
-
-                                <el-table
-                                    :data="scope.row.sessions"
-                                    size="mini"
-                                    :show-header="false"
-                                    class="session-table"
-                                >
-                                    <el-table-column :span="24">
-                                        <template #default="sessionScope">
-                                            <el-row :gutter="12">
-                                                <el-col :span="24">
-                                                    <div style="margin-left: 2rem">
-                                                        <div style="display: flex; align-items: center; gap: 0.5rem">
-                                                            <b>AcquisitionDate</b>
-                                                            {{ sessionScope.row.AcquisitionDate }}
-                                                        </div>
-                                                        <el-input
-                                                            v-model.trim="sessionScope.row.session"
-                                                            placeholder="no session"
-                                                            size="small"
-                                                            @change="validate(scope.row)"
-                                                        >
-                                                            <template #prepend>ses-</template>
-                                                        </el-input>
-                                                        <div style="margin-top: 4px; line-height: normal">
-                                                            <el-checkbox
-                                                                v-model="sessionScope.row.exclude"
-                                                                title="Exclude all objects for this session"
-                                                                class="session-checkbox"
-                                                            >
-                                                                Exclude this session
-                                                            </el-checkbox>
-                                                        </div>
-                                                    </div>
-                                                </el-col>
-                                            </el-row>
-                                        </template>
-                                    </el-table-column>
-                                </el-table>
-
-                                <el-alert
-                                    v-for="(error, idx) in scope.row.validationErrors"
-                                    :key="idx"
-                                    show-icon
-                                    :closable="false"
-                                    type="error"
-                                    :title="error"
-                                    class="mapping-error"
-                                />
-                            </div>
-                        </template>
-                    </el-table-column>
-                </el-table>
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="Sessions" min-width="160">
+                            <template #default="scope">
+                                <div v-if="scope.row.sessions?.length" class="session-list">
+                                    <div
+                                        v-for="(session, sIdx) in scope.row.sessions"
+                                        :key="`${session.AcquisitionDate}-${sIdx}`"
+                                        class="session-item"
+                                    >
+                                        <div class="session-item__exclude">
+                                            <el-checkbox
+                                                v-model="session.exclude"
+                                                title="Exclude all objects for this session"
+                                                class="session-checkbox"
+                                            >
+                                                Exclude this session
+                                            </el-checkbox>
+                                        </div>
+                                        <el-input
+                                            v-model.trim="session.session"
+                                            placeholder="no session"
+                                            size="small"
+                                            @change="validate(scope.row)"
+                                        >
+                                            <template #prepend>ses-</template>
+                                        </el-input>
+                                        <div class="session-item__date">
+                                            AcquisitionDate: {{ session.AcquisitionDate }}
+                                        </div>
+                                    </div>
+                                </div>
+                                <span v-else class="session-list__empty">No sessions</span>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </div>
             </section>
 
             <aside class="subject-card json-panel">
                 <h3 class="json-panel__title">Subject mapping JSON</h3>
-                <pre class="json-panel__content">{{ ezbids.subjects }}</pre>
+                <pre class="status">{{ ezbids.subjects }}</pre>
             </aside>
         </div>
     </div>
@@ -215,9 +208,12 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .subject-page {
-    max-width: 1400px;
+    width: 100%;
+    max-width: min(1680px, 100%);
     margin: 0 auto;
     padding: 0.5rem 1.25rem 2.75rem;
+    box-sizing: border-box;
+    overflow-x: hidden;
 }
 
 .subject-intro {
@@ -246,16 +242,34 @@ export default defineComponent({
 
 .subject-layout {
     display: grid;
-    grid-template-columns: minmax(0, 3fr) minmax(300px, 2fr);
+    grid-template-columns: 1fr;
     gap: 1rem;
     align-items: start;
+    min-width: 0;
+}
+
+@media (min-width: 1500px) {
+    .subject-layout {
+        grid-template-columns: minmax(0, 3fr) minmax(360px, 2fr);
+    }
 }
 
 .subject-card {
+    min-width: 0;
     padding: 1.25rem;
     border-radius: 12px;
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
     background: var(--el-bg-color, #fff);
+}
+
+.subject-card--table {
+    overflow: hidden;
+}
+
+.subject-table-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
 }
 
 .subject-card__toolbar {
@@ -271,6 +285,7 @@ export default defineComponent({
 .patient-cell {
     display: flex;
     align-items: flex-start;
+    vertical-align: top;
 }
 
 .patient-cell__arrow {
@@ -305,43 +320,67 @@ export default defineComponent({
     height: 20px !important;
 }
 
-.mapping-cell {
+.subject-cell {
     display: flex;
     flex-direction: column;
+    gap: 4px;
+    vertical-align: top;
+}
+
+.subject-cell__exclude {
+    line-height: normal;
 }
 
 .mapping-error {
+    margin-top: 4px;
     margin-bottom: 0;
 }
 
-.session-table {
-    padding-top: 0.25rem;
+.session-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
 }
 
-:deep(.el-table--mini .el-table__cell) {
-    padding: 0px !important;
+.session-list__empty {
+    font-size: 12px;
+    color: var(--el-text-color-placeholder, #c0c4cc);
 }
 
-:deep(.session-table.el-table::before) {
-    display: none;
+.session-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding-bottom: 0.75rem;
 }
 
-:deep(.session-table .el-table__row > td) {
-    border-bottom: none !important;
+.session-item:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+}
+
+.session-item__date {
+    margin: 4px 0;
+    font-size: 12px;
+    line-height: 1.35;
+    overflow-wrap: anywhere;
+}
+
+.session-item__exclude {
+    line-height: normal;
 }
 
 :deep(.subject-table .el-table__body tr:hover > td.el-table__cell) {
     background-color: transparent !important;
 }
 
-:deep(.session-table .el-table__body tr:hover > td.el-table__cell) {
-    background-color: transparent !important;
+:deep(td.el-table__cell) {
+    vertical-align: top;
 }
 
 .json-panel {
-    position: sticky;
-    top: 16px;
-    max-height: calc(80vh);
+    position: static;
+    max-height: none;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -354,34 +393,37 @@ export default defineComponent({
     color: var(--el-text-color-regular, #606266);
 }
 
-.json-panel__content {
-    margin: 0;
+.json-panel pre.status {
+    max-height: 320px;
+    min-height: 200px;
+}
+
+pre.status {
     flex: 1;
+    margin: 0;
+    padding: 10px;
+    border-radius: 5px;
+    background-color: #666;
+    color: #fff;
     overflow: auto;
-    padding: 0.5rem;
-    border-radius: 8px;
-    border: 1px solid var(--el-border-color-extra-light, #f2f6fc);
-    background: var(--el-fill-color-light, #f5f7fa);
-    font-size: 12px;
-    line-height: 1.45;
+    word-break: break-all;
+    min-height: 320px;
 }
 
 el-table {
     border-color: transparent !important;
 }
 
-@media (max-width: 1100px) {
-    .subject-layout {
-        grid-template-columns: 1fr;
-    }
-
+@media (min-width: 1500px) {
     .json-panel {
-        position: static;
-        max-height: none;
+        position: sticky;
+        top: 16px;
+        max-height: calc(80vh);
     }
 
-    .json-panel__content {
-        max-height: 320px;
+    .json-panel pre.status {
+        max-height: none;
+        min-height: 320px;
     }
 }
 </style>

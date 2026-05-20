@@ -14,8 +14,8 @@
             <p class="series-intro__text">Click on a series in the left panel to view/edit.</p>
         </header>
 
-        <splitpanes class="default-theme panes">
-            <pane :size="24" :min-size="16" class="series-pane series-pane--list">
+        <div class="series-workspace">
+            <aside class="series-list-panel">
                 <div class="series-list">
                     <button
                         v-for="(s, series_idx) in ezbids.series"
@@ -29,316 +29,343 @@
                         @click="ss = s"
                     >
                         <div class="series-list__top">
-                            <el-tag type="info" size="mini">#{{ series_idx }}</el-tag>
-                            <el-tag type="info" effect="plain" size="mini">
-                                {{ getObjectsFromSeries(s).length }} objs
+                            <div class="series-list__tags">
+                                <el-tag type="info" size="mini">#{{ series_idx }}</el-tag>
+                                <el-tag type="info" effect="plain" size="mini">
+                                    {{ getObjectsFromSeries(s).length }} objs
+                                </el-tag>
+                                <datatype :type="s.type" :series_idx="series_idx" :entities="s.entities" />
+                            </div>
+                        </div>
+                        <el-tooltip :content="seriesListLabel(s)" placement="top" :show-after="400">
+                            <div class="series-list__desc">{{ seriesListLabel(s) }}</div>
+                        </el-tooltip>
+                        <span v-if="seriesListExtension(s)" class="series-list__ext">{{ seriesListExtension(s) }}</span>
+                        <div
+                            v-if="s.validationErrors.length > 0 || s.validationWarnings.length > 0"
+                            class="series-list__validation"
+                        >
+                            <el-tag v-if="s.validationErrors.length > 0" type="danger" size="mini" effect="plain">
+                                {{ s.validationErrors.length }}
+                                {{ s.validationErrors.length === 1 ? 'error' : 'errors' }}
                             </el-tag>
-                            <datatype :type="s.type" :series_idx="series_idx" :entities="s.entities" />
-                        </div>
-                        <div class="series-list__desc">
-                            {{ s.SeriesDescription || 'No SeriesDescription available' }}
-                        </div>
-                        <div class="series-list__meta">
-                            <el-badge
-                                v-if="s.validationErrors.length > 0"
-                                type="danger"
-                                :value="s.validationErrors.length"
-                            >
-                                <small />
-                            </el-badge>
-                            <el-badge
-                                v-if="s.validationWarnings.length > 0"
-                                type="warning"
-                                :value="s.validationWarnings.length"
-                            >
-                                <small />
-                            </el-badge>
+                            <el-tag v-if="s.validationWarnings.length > 0" type="warning" size="mini" effect="plain">
+                                {{ s.validationWarnings.length }}
+                                {{ s.validationWarnings.length === 1 ? 'warning' : 'warnings' }}
+                            </el-tag>
                         </div>
                     </button>
                 </div>
-            </pane>
+            </aside>
 
-            <pane class="series-pane series-pane--main">
-                <div v-if="!ss" class="empty-state">
-                    <div class="empty-state__card">
-                        <p class="empty-state__message">no series selected</p>
+            <main class="series-detail-panel">
+                <div class="series-detail-scroll">
+                    <div v-if="!ss" class="empty-state">
+                        <div class="empty-state__card">
+                            <p class="empty-state__message">Select a series on the left</p>
+                        </div>
                     </div>
-                </div>
-                <div v-if="ss" class="series-main">
-                    <div class="panel-card">
-                        <h5 class="section-title">BIDS Datatype, Suffix, Entities</h5>
-                        <el-form label-width="150px">
-                            <el-alert v-if="ss.message" :title="ss.message" type="info" show-icon class="stack-alert" />
-                            <div class="stack-alert-wrap">
-                                <el-alert
-                                    v-for="(error, idx) in ss.validationErrors"
-                                    :key="idx"
-                                    show-icon
-                                    :closable="false"
-                                    type="error"
-                                    :title="error"
-                                    class="stack-alert"
-                                />
-                                <el-alert
-                                    v-for="(warn, idx) in ss.validationWarnings"
-                                    :key="idx"
-                                    show-icon
-                                    :closable="false"
-                                    type="warning"
-                                    :title="warn"
-                                    class="stack-alert"
-                                />
-                            </div>
+                    <template v-else>
+                        <div class="series-main">
+                            <div class="panel-card">
+                                <h5 class="section-title">BIDS Datatype, Suffix, Entities</h5>
+                                <el-form label-width="150px">
+                                    <el-alert
+                                        v-if="ss.message"
+                                        :title="ss.message"
+                                        type="info"
+                                        show-icon
+                                        class="stack-alert"
+                                    />
+                                    <div class="stack-alert-wrap">
+                                        <el-alert
+                                            v-for="(error, idx) in ss.validationErrors"
+                                            :key="idx"
+                                            show-icon
+                                            :closable="false"
+                                            type="error"
+                                            :title="error"
+                                            class="stack-alert"
+                                        />
+                                        <el-alert
+                                            v-for="(warn, idx) in ss.validationWarnings"
+                                            :key="idx"
+                                            show-icon
+                                            :closable="false"
+                                            type="warning"
+                                            :title="warn"
+                                            class="stack-alert"
+                                        />
+                                    </div>
 
-                            <el-form-item label="Datatype/Suffix">
-                                <el-select
-                                    v-model="ss.type"
-                                    required
-                                    filterable
-                                    placeholder="(exclude)"
-                                    size="small"
-                                    class="w80"
-                                    @change="validateAll()"
-                                >
-                                    <el-option value="exclude">(Exclude from BIDS conversion)</el-option>
-                                    <el-option-group
-                                        v-for="type in bidsSchema.datatypes"
-                                        :key="type.label"
-                                        :label="type.label"
-                                    >
-                                        <el-option
-                                            v-for="subtype in type.options"
-                                            :key="subtype.value"
-                                            :value="subtype.value"
+                                    <el-form-item label="Datatype/Suffix">
+                                        <el-select
+                                            v-model="ss.type"
+                                            required
+                                            filterable
+                                            placeholder="(exclude)"
+                                            size="small"
+                                            class="w80"
+                                            @change="validateAll()"
                                         >
-                                            {{ type.label }} / {{ subtype.label }}
-                                        </el-option>
-                                    </el-option-group>
-                                </el-select>
-                            </el-form-item>
+                                            <el-option value="exclude">(Exclude from BIDS conversion)</el-option>
+                                            <el-option-group
+                                                v-for="type in bidsSchema.datatypes"
+                                                :key="type.label"
+                                                :label="type.label"
+                                            >
+                                                <el-option
+                                                    v-for="subtype in type.options"
+                                                    :key="subtype.value"
+                                                    :value="subtype.value"
+                                                >
+                                                    {{ type.label }} / {{ subtype.label }}
+                                                </el-option>
+                                            </el-option-group>
+                                        </el-select>
+                                    </el-form-item>
 
-                            <div v-if="ss.type">
-                                <el-form-item
-                                    v-for="(v, entity) in getSomeEntities(ss.type)"
-                                    :key="entity"
-                                    :label="entity.toString() + '-' + (v == 'required' ? ' *' : '')"
-                                    class="entity-item"
-                                >
-                                    <el-popover
-                                        v-if="bidsSchema.entities[entity]"
-                                        :width="350"
-                                        :title="bidsSchema.entities[entity].name"
-                                        :content="bidsSchema.entities[entity].description"
-                                    >
-                                        <template #reference>
-                                            <el-input
-                                                v-model="ss.entities[entity]"
+                                    <div v-if="ss.type">
+                                        <el-form-item
+                                            v-for="(v, entity) in getSomeEntities(ss.type)"
+                                            :key="entity"
+                                            :label="entity.toString() + '-' + (v == 'required' ? ' *' : '')"
+                                            class="entity-item"
+                                        >
+                                            <el-popover
+                                                v-if="bidsSchema.entities[entity]"
+                                                :width="350"
+                                                :title="bidsSchema.entities[entity].name"
+                                                :content="bidsSchema.entities[entity].description"
+                                            >
+                                                <template #reference>
+                                                    <el-input
+                                                        v-model="ss.entities[entity]"
+                                                        size="small"
+                                                        :required="v == 'required'"
+                                                        @change="validateAll()"
+                                                    />
+                                                </template>
+                                            </el-popover>
+                                        </el-form-item>
+                                    </div>
+
+                                    <div v-if="ss.type && (ss.type.startsWith('fmap/') || ss.type === 'perf/m0scan')">
+                                        <el-form-item label="IntendedFor">
+                                            <el-select
+                                                v-model="ss.IntendedFor"
+                                                required
+                                                multiple
+                                                filterable
+                                                placeholder="Please select Series"
                                                 size="small"
-                                                :required="v == 'required'"
+                                                class="w80"
+                                                @change="validateAll()"
+                                            >
+                                                <el-option
+                                                    v-for="(
+                                                        series, idx
+                                                    ) in ezbids.series /*.filter(s=>s.type != 'exclude')*/"
+                                                    :key="idx"
+                                                    :label="'(#' + idx.toString() + ') ' + series.type"
+                                                    :value="idx"
+                                                >
+                                                    (#{{ idx.toString() }}) {{ series.type }}
+                                                </el-option>
+                                            </el-select>
+                                            <p class="field-note">
+                                                * <b>Recommended (Required if perf/m0scan)</b>: select Series that this
+                                                sequence should be applied to.
+                                            </p>
+                                        </el-form-item>
+                                    </div>
+
+                                    <div
+                                        v-if="
+                                            ss.type &&
+                                            !ss.type.includes('exclude') &&
+                                            !ss.type.startsWith('meg') &&
+                                            !ss.type.startsWith('pet')
+                                        "
+                                    >
+                                        <el-form-item label="B0FieldIdentifier" prop="B0FieldIdentifier">
+                                            <el-select
+                                                v-model="ss.B0FieldIdentifier"
+                                                multiple
+                                                filterable
+                                                allow-create
+                                                default-first-option
+                                                placeholder="Enter text string"
+                                                size="small"
+                                                class="w80"
                                                 @change="validateAll()"
                                             />
-                                        </template>
-                                    </el-popover>
-                                </el-form-item>
-                            </div>
-
-                            <div v-if="ss.type && (ss.type.startsWith('fmap/') || ss.type === 'perf/m0scan')">
-                                <el-form-item label="IntendedFor">
-                                    <el-select
-                                        v-model="ss.IntendedFor"
-                                        required
-                                        multiple
-                                        filterable
-                                        placeholder="Please select Series"
-                                        size="small"
-                                        class="w80"
-                                        @change="validateAll()"
-                                    >
-                                        <el-option
-                                            v-for="(series, idx) in ezbids.series /*.filter(s=>s.type != 'exclude')*/"
-                                            :key="idx"
-                                            :label="'(#' + idx.toString() + ') ' + series.type"
-                                            :value="idx"
-                                        >
-                                            (#{{ idx.toString() }}) {{ series.type }}
-                                        </el-option>
-                                    </el-select>
-                                    <p class="field-note">
-                                        * <b>Recommended (Required if perf/m0scan)</b>: select Series that this sequence
-                                        should be applied to.
-                                    </p>
-                                </el-form-item>
-                            </div>
-
-                            <div
-                                v-if="
-                                    ss.type &&
-                                    !ss.type.includes('exclude') &&
-                                    !ss.type.startsWith('meg') &&
-                                    !ss.type.startsWith('pet')
-                                "
-                            >
-                                <el-form-item label="B0FieldIdentifier" prop="B0FieldIdentifier">
-                                    <el-select
-                                        v-model="ss.B0FieldIdentifier"
-                                        multiple
-                                        filterable
-                                        allow-create
-                                        default-first-option
-                                        placeholder="Enter text string"
-                                        size="small"
-                                        class="w80"
-                                        @change="validateAll()"
-                                    />
-                                    <p class="field-note">
-                                        * <b>Recommended/Optional if no IntendedFor</b>: If this sequence will be used
-                                        for fieldmap/distortion correction, enter a text string of your choice. A good
-                                        formatting suggestion is the "datatype_suffix[index]" format (e.g.,
-                                        <b>fmap_epi0</b>, <b>fmap_phasediff1</b>, etc). If another sequence will be used
-                                        with this one for fieldmap/distortion correction, use the exact same text string
-                                        there as well. Leave field blank if unclear.
-                                    </p>
-                                </el-form-item>
-                                <el-form-item label="B0FieldSource" prop="B0FieldSource">
-                                    <el-select
-                                        v-model="ss.B0FieldSource"
-                                        multiple
-                                        filterable
-                                        allow-create
-                                        default-first-option
-                                        placeholder="Enter text string"
-                                        size="small"
-                                        class="w80"
-                                        @change="validateAll()"
-                                    />
-                                    <p class="field-note">
-                                        * <b>Recommended/Optional if no IntendedFor</b>: If fieldmap/distortion
-                                        correction will be applied to this image, enter the identical text string from
-                                        the B0FieldIdentifier field of the sequence(s) used to create the
-                                        fieldmap/distortion estimation. Leave field blank if unclear.
-                                    </p>
-                                </el-form-item>
-                            </div>
-
-                            <el-form-item label="Common Metadata">
-                                <p style="font-size: 12px; line-height: normal">
-                                    All objects under this series contain the following common metadata.
-                                </p>
-                                <p class="metadata-tags">
-                                    <el-tag type="info" size="mini">
-                                        <small>SeriesDescription: {{ ss.SeriesDescription }}</small>
-                                    </el-tag>
-                                    <el-tag type="info" size="mini">
-                                        <small>EchoTime: {{ ss.EchoTime }}</small>
-                                    </el-tag>
-                                    <el-tag type="info" size="mini">
-                                        <small>ImageType: {{ ss.ImageType }}</small>
-                                    </el-tag>
-                                    <el-tag type="info" size="mini">
-                                        <small>RepetitionTime: {{ ss.RepetitionTime }}</small>
-                                    </el-tag>
-                                </p>
-                            </el-form-item>
-
-                            <div style="margin-top: 10px">
-                                <el-form-item
-                                    v-if="
-                                        ['perf/asl', 'perf/m0scan'].includes(ss.type) ||
-                                        ss.type.startsWith('pet') ||
-                                        ss.type.startsWith('func') ||
-                                        ss.type.startsWith('fmap') ||
-                                        ss.type.startsWith('dwi') ||
-                                        ss.type.startsWith('anat') ||
-                                        ss.type.startsWith('meg')
-                                    "
-                                    label="Relevant Metadata"
-                                >
-                                    <ModalityForm :ss="ss" :ezbids="ezbids" @form-submitted="submitForm" />
-                                </el-form-item>
-                            </div>
-                        </el-form>
-                    </div>
-
-                    <div class="panel-card panel-card--objects">
-                        <p class="objects-header"><small>The following objects belongs to this series.</small></p>
-                        <div v-for="object in getObjectsFromSeries(ss)" :key="object.idx" class="object">
-                            <div class="object__head">
-                                <i class="el-icon-caret-right" />
-                                <div class="object__entities">
-                                    <div v-for="(v, k) in object._entities" :key="object.idx + '.' + k.toString()">
-                                        <span v-if="v">
-                                            {{ k }}-<b>{{ v }}</b>
-                                        </span>
+                                            <p class="field-note">
+                                                * <b>Recommended/Optional if no IntendedFor</b>: If this sequence will
+                                                be used for fieldmap/distortion correction, enter a text string of your
+                                                choice. A good formatting suggestion is the "datatype_suffix[index]"
+                                                format (e.g., <b>fmap_epi0</b>, <b>fmap_phasediff1</b>, etc). If another
+                                                sequence will be used with this one for fieldmap/distortion correction,
+                                                use the exact same text string there as well. Leave field blank if
+                                                unclear.
+                                            </p>
+                                        </el-form-item>
+                                        <el-form-item label="B0FieldSource" prop="B0FieldSource">
+                                            <el-select
+                                                v-model="ss.B0FieldSource"
+                                                multiple
+                                                filterable
+                                                allow-create
+                                                default-first-option
+                                                placeholder="Enter text string"
+                                                size="small"
+                                                class="w80"
+                                                @change="validateAll()"
+                                            />
+                                            <p class="field-note">
+                                                * <b>Recommended/Optional if no IntendedFor</b>: If fieldmap/distortion
+                                                correction will be applied to this image, enter the identical text
+                                                string from the B0FieldIdentifier field of the sequence(s) used to
+                                                create the fieldmap/distortion estimation. Leave field blank if unclear.
+                                            </p>
+                                        </el-form-item>
                                     </div>
-                                </div>
-                                <div class="object__stats">
-                                    <el-tag size="mini" type="info"
-                                        >volumes: {{ ezbids.objects[object.idx].analysisResults.NumVolumes }}</el-tag
-                                    >
-                                    <el-tag size="mini" type="info">
-                                        filesize: {{ prettyBytes(ezbids.objects[object.idx].analysisResults.filesize) }}
-                                    </el-tag>
-                                    <el-tag size="mini" type="info">
-                                        orientation: {{ ezbids.objects[object.idx].analysisResults.orientation }}
-                                    </el-tag>
-                                    <el-tag size="mini" type="info">
-                                        direction: {{ ezbids.objects[object.idx].PED }}
-                                    </el-tag>
-                                </div>
+
+                                    <el-form-item label="Common Metadata">
+                                        <p style="font-size: 12px; line-height: normal">
+                                            All objects under this series contain the following common metadata.
+                                        </p>
+                                        <p class="metadata-tags">
+                                            <el-tag type="info" size="mini">
+                                                <small>SeriesDescription: {{ ss.SeriesDescription }}</small>
+                                            </el-tag>
+                                            <el-tag type="info" size="mini">
+                                                <small>EchoTime: {{ ss.EchoTime }}</small>
+                                            </el-tag>
+                                            <el-tag type="info" size="mini">
+                                                <small>ImageType: {{ ss.ImageType }}</small>
+                                            </el-tag>
+                                            <el-tag type="info" size="mini">
+                                                <small>RepetitionTime: {{ ss.RepetitionTime }}</small>
+                                            </el-tag>
+                                        </p>
+                                    </el-form-item>
+
+                                    <div style="margin-top: 10px">
+                                        <el-form-item
+                                            v-if="
+                                                ['perf/asl', 'perf/m0scan'].includes(ss.type) ||
+                                                ss.type.startsWith('pet') ||
+                                                ss.type.startsWith('func') ||
+                                                ss.type.startsWith('fmap') ||
+                                                ss.type.startsWith('dwi') ||
+                                                ss.type.startsWith('anat') ||
+                                                ss.type.startsWith('meg')
+                                            "
+                                            label="Relevant Metadata"
+                                        >
+                                            <ModalityForm :ss="ss" :ezbids="ezbids" @form-submitted="submitForm" />
+                                        </el-form-item>
+                                    </div>
+                                </el-form>
                             </div>
-                            <div>
-                                <div v-for="(item, itemIdx) in ezbids.objects[object.idx].items" :key="itemIdx">
-                                    <div v-if="item.pngPaths">
-                                        <div v-for="(path, idx) in item.pngPaths" :key="idx">
+
+                            <div class="panel-card panel-card--objects">
+                                <p class="objects-header">
+                                    <small>The following objects belongs to this series.</small>
+                                </p>
+                                <div v-for="object in getObjectsFromSeries(ss)" :key="object.idx" class="object">
+                                    <div class="object__head">
+                                        <i class="el-icon-caret-right" />
+                                        <div class="object__entities">
                                             <div
-                                                style="
-                                                    display: flex;
-                                                    align-items: center;
-                                                    justify-content: space-between;
-                                                "
+                                                v-for="(v, k) in object._entities"
+                                                :key="object.idx + '.' + k.toString()"
                                             >
-                                                <pre>{{ path }}</pre>
-                                                <el-button type="info" size="small" @click="$emit('niivue', item.path)">
-                                                    <font-awesome-icon :icon="['fas', 'eye']" />
-                                                    NiiVue
-                                                </el-button>
+                                                <span v-if="v">
+                                                    {{ k }}-<b>{{ v }}</b>
+                                                </span>
                                             </div>
-                                            <AsyncImageLink :path="path" />
+                                        </div>
+                                        <div class="object__stats">
+                                            <el-tag size="mini" type="info"
+                                                >volumes:
+                                                {{ ezbids.objects[object.idx].analysisResults.NumVolumes }}</el-tag
+                                            >
+                                            <el-tag size="mini" type="info">
+                                                filesize:
+                                                {{ prettyBytes(ezbids.objects[object.idx].analysisResults.filesize) }}
+                                            </el-tag>
+                                            <el-tag size="mini" type="info">
+                                                orientation:
+                                                {{ ezbids.objects[object.idx].analysisResults.orientation }}
+                                            </el-tag>
+                                            <el-tag size="mini" type="info">
+                                                direction: {{ ezbids.objects[object.idx].PED }}
+                                            </el-tag>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <div v-for="(item, itemIdx) in ezbids.objects[object.idx].items" :key="itemIdx">
+                                            <div v-if="item.pngPaths">
+                                                <div v-for="(path, idx) in item.pngPaths" :key="idx">
+                                                    <div class="object__path-row">
+                                                        <pre>{{ path }}</pre>
+                                                        <el-button
+                                                            type="info"
+                                                            size="small"
+                                                            @click="$emit('niivue', item.path)"
+                                                        >
+                                                            <font-awesome-icon :icon="['fas', 'eye']" />
+                                                            NiiVue
+                                                        </el-button>
+                                                    </div>
+                                                    <AsyncImageLink :path="path" />
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div class="object__files">
+                                            <b>Files</b>
+                                            <div
+                                                v-for="(item, idx) in ezbids.objects[object.idx].items"
+                                                :key="idx"
+                                                class="object__file"
+                                            >
+                                                <div class="object__file-path">
+                                                    <span class="object__file-index">#{{ idx + 1 }}</span>
+                                                    <pre>{{ item.path }}</pre>
+                                                </div>
+                                                <showfile
+                                                    v-if="fileHasDisplayableContents(item.path)"
+                                                    :path="item.path"
+                                                />
+                                                <p v-else class="object__file-no-contents">
+                                                    no file contents to display
+                                                </p>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>
-
-                                <div style="margin-top: 10px">
-                                    <b>Files</b>
-                                    <div v-for="(item, idx) in ezbids.objects[object.idx].items" :key="idx">
-                                        <pre>{{ item.path }}</pre>
-                                        <showfile
-                                            v-if="['json', 'bval', 'bvec'].includes(item.path.split('.').pop())"
-                                            :path="item.path"
-                                        />
-                                    </div>
-                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </pane>
-
-            <pane :size="24" :min-size="16" class="series-pane series-pane--meta">
-                <div class="metadata-panel">
-                    <h5 class="section-title">Series Metadata</h5>
-                    <div v-if="ss" class="metadata-panel__content">
-                        <div class="metadata-panel__tags">
-                            <el-tag size="mini" type="info">Series #{{ ss.series_idx }}</el-tag>
-                            <el-tag size="mini" type="success">{{ ss.type }}</el-tag>
-                            <el-tag size="mini" effect="plain">{{ getObjectsFromSeries(ss).length }} objects</el-tag>
+                        <div class="metadata-panel">
+                            <h5 class="section-title">Series Metadata</h5>
+                            <div class="metadata-panel__content">
+                                <div class="metadata-panel__tags">
+                                    <el-tag size="mini" type="info">Series #{{ ss.series_idx }}</el-tag>
+                                    <el-tag size="mini" type="success">{{ ss.type }}</el-tag>
+                                    <el-tag size="mini" effect="plain"
+                                        >{{ getObjectsFromSeries(ss).length }} objects</el-tag
+                                    >
+                                </div>
+                                <pre class="metadata-panel__pre">{{ stringifyMetadata(selectedSeriesMetadata) }}</pre>
+                            </div>
                         </div>
-                        <pre class="metadata-panel__pre">{{ stringifyMetadata(selectedSeriesMetadata) }}</pre>
-                    </div>
-                    <div v-else class="metadata-panel__empty">Select a series to inspect metadata.</div>
+                    </template>
                 </div>
-            </pane>
-        </splitpanes>
+            </main>
+        </div>
         <el-collapse>
             <el-collapse-item title="Debug">
                 <pre v-if="config.debug" class="debug-pre">{{ ezbids.series }}</pre>
@@ -369,18 +396,12 @@ import metadataInfo from '@/assets/schema/rules/sidecars/metadata.yaml';
 
 import AsyncImageLink from '@/components/AsyncImageLink.vue';
 
-// @ts-ignore
-import { Splitpanes, Pane } from 'splitpanes';
-
-import 'splitpanes/dist/splitpanes.css';
-import { IEZBIDS, IObject, Series } from '@/store/store.types';
+import { IEZBIDS, IObject, IObjectItem, Series } from '@/store/store.types';
 
 export default defineComponent({
     components: {
         datatype,
         showfile,
-        Splitpanes,
-        Pane,
         AsyncImageLink,
     },
     emits: ['niivue'],
@@ -431,6 +452,65 @@ export default defineComponent({
             const idx = this.ezbids.series.indexOf(series);
             return (this.ezbids.objects as IObject[]).filter((object) => object.series_idx == idx);
         },
+
+        fileHasDisplayableContents(path: string) {
+            const ext = path.split('.').pop()?.toLowerCase() ?? '';
+            return ['json', 'bval', 'bvec'].includes(ext);
+        },
+
+        seriesListLabel(series: Series) {
+            return series.SeriesDescription || 'No SeriesDescription available';
+        },
+
+        seriesListExtension(series: Series) {
+            const extensions = new Set<string>();
+            for (const object of this.getObjectsFromSeries(series)) {
+                const ext = this.objectListExtension(object);
+                if (ext) {
+                    ext.split(', ').forEach((e) => extensions.add(e));
+                }
+            }
+            return [...extensions].join(', ');
+        },
+
+        objectListExtension(object: IObject) {
+            return this.itemExtension(this.normalizeItems(object.items));
+        },
+
+        normalizeItems(items: IObjectItem[] | IObjectItem | undefined): IObjectItem[] {
+            if (!items) return [];
+            return Array.isArray(items) ? items : [items];
+        },
+
+        itemExtension(items: IObjectItem[]) {
+            const extensions = new Set<string>();
+            for (const item of items) {
+                const ext = this.pathExtension(item.path) || this.nameExtension(item.name);
+                if (ext) extensions.add(ext);
+            }
+            return [...extensions].join(', ');
+        },
+
+        pathExtension(path: string | undefined) {
+            if (!path) return '';
+            const basename = path.split(/[/\\]/).pop() || path;
+            const lower = basename.toLowerCase();
+            if (lower.endsWith('.nii.gz')) return '.nii.gz';
+            if (lower.endsWith('.bval') || lower.endsWith('.bvec')) {
+                return basename.slice(basename.lastIndexOf('.'));
+            }
+            const dot = basename.lastIndexOf('.');
+            if (dot <= 0) return '';
+            return basename.slice(dot);
+        },
+
+        nameExtension(name: string | undefined) {
+            if (!name) return '';
+            const trimmed = name.trim();
+            if (!trimmed) return '';
+            return trimmed.startsWith('.') ? trimmed : `.${trimmed}`;
+        },
+
         stringifyMetadata(metadata: Record<string, unknown>) {
             return JSON.stringify(metadata, null, 2);
         },
@@ -643,24 +723,25 @@ export default defineComponent({
     color: var(--el-text-color-regular, #606266);
 }
 
-.splitpanes.default-theme .splitpanes__pane {
-    background-color: inherit;
-}
-
-.panes {
-    width: 100%;
-    max-width: 100%;
+.series-workspace {
+    display: grid;
+    grid-template-columns: minmax(200px, 260px) minmax(0, 1fr);
+    gap: 12px;
     margin: 1rem 0;
-    height: 80vh;
+    height: min(80vh, calc(100vh - 14rem));
+    min-height: 420px;
+    min-width: 0;
 }
 
-.series-pane {
-    display: flex;
-    flex-direction: column;
+.series-workspace > * {
     min-height: 0;
 }
 
-.series-pane--list {
+.series-list-panel {
+    display: flex;
+    flex-direction: column;
+    min-height: 0;
+    min-width: 0;
     border-right: 1px solid var(--el-border-color-lighter, #ebeef5);
     padding-right: 6px;
 }
@@ -669,8 +750,27 @@ export default defineComponent({
     display: flex;
     flex-direction: column;
     gap: 4px;
+    flex: 1;
+    min-height: 0;
+    min-width: 0;
     overflow-y: auto;
-    height: 80vh;
+}
+
+.series-detail-panel {
+    min-height: 0;
+    min-width: 0;
+    height: 100%;
+    padding-left: 2px;
+    overflow-x: hidden;
+    overflow-y: auto;
+}
+
+.series-detail-scroll {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 0 2rem 12px 2rem;
+    padding-bottom: 12px;
 }
 
 .series-list__item {
@@ -678,6 +778,7 @@ export default defineComponent({
     flex-direction: column;
     gap: 4px;
     width: 100%;
+    min-width: 0;
     margin: 0;
     padding: 8px;
     text-align: left;
@@ -707,24 +808,56 @@ export default defineComponent({
 
 .series-list__top {
     display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.series-list__tags {
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: 6px;
+    flex: 1;
+    min-width: 0;
+}
+
+.series-list :deep(.el-tooltip__trigger) {
+    display: block;
+    min-width: 0;
 }
 
 .series-list__desc {
     font-size: 12px;
-    color: var(--el-text-color-secondary, #b9bdc4);
-    word-break: break-word;
+    line-height: 1.35;
+    color: var(--el-text-color-primary, #303133);
+    min-width: 0;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+    line-clamp: 2;
+    text-overflow: ellipsis;
+    overflow-wrap: anywhere;
 }
 
-.series-list__meta {
+.series-list__ext {
+    min-width: 0;
+    font-size: 11px;
+    line-height: 1.2;
+    color: var(--el-text-color-secondary, #909399);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.series-list__validation {
     display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.series-pane--main {
-    padding-left: 14px;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    gap: 4px;
+    margin-top: auto;
+    padding-top: 4px;
 }
 
 .empty-state {
@@ -757,10 +890,7 @@ export default defineComponent({
     display: flex;
     flex-direction: column;
     gap: 12px;
-    height: 100%;
-    min-height: 0;
-    overflow-y: auto;
-    padding-bottom: 12px;
+    min-width: 0;
 }
 
 .panel-card {
@@ -768,10 +898,18 @@ export default defineComponent({
     border-radius: 8px;
     background: var(--el-bg-color, #fff);
     padding: 14px;
+    min-width: 0;
+    max-width: 100%;
+
+    :deep(.el-form-item__content) {
+        min-width: 0;
+        max-width: 100%;
+    }
 }
 
 .panel-card--objects {
     padding: 0;
+    overflow: hidden;
 }
 
 .section-title {
@@ -807,6 +945,19 @@ export default defineComponent({
     display: flex;
     flex-wrap: wrap;
     gap: 6px;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.metadata-tags :deep(.el-tag) {
+    height: auto;
+    max-width: 100%;
+    white-space: normal;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+    line-height: 1.35;
+    padding-top: 4px;
+    padding-bottom: 4px;
 }
 
 .objects-header {
@@ -818,7 +969,79 @@ export default defineComponent({
 .object {
     padding: 0 14px 14px;
     margin-bottom: 14px;
+    min-width: 0;
     border-bottom: 1px dashed var(--el-border-color-lighter, #ebeef5);
+}
+
+.series-detail-scroll pre {
+    box-sizing: border-box;
+    max-width: 100%;
+    min-width: 0;
+    margin: 0;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+.object__path-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+    margin-bottom: 0.5rem;
+
+    pre {
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+.object__files {
+    margin-top: 10px;
+
+    > b {
+        display: block;
+        margin-bottom: 0.5rem;
+    }
+}
+
+.object__file-no-contents {
+    margin: 0;
+    font-size: 12px;
+    color: var(--el-text-color-secondary, #909399);
+    text-transform: lowercase;
+}
+
+.object__file {
+    margin-bottom: 1rem;
+
+    &:last-child {
+        margin-bottom: 0;
+    }
+}
+
+.object__file-path {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 0.5rem;
+    min-width: 0;
+
+    pre {
+        flex: 1;
+        min-width: 0;
+    }
+}
+
+.object__file-index {
+    flex-shrink: 0;
+    font-size: 11px;
+    font-weight: 600;
+    line-height: 1.45;
+    color: var(--el-text-color-secondary, #909399);
+    padding-top: 2px;
 }
 
 .object:last-child {
@@ -848,18 +1071,12 @@ export default defineComponent({
     gap: 6px;
 }
 
-.series-pane--meta {
-    border-left: 1px solid var(--el-border-color-lighter, #ebeef5);
-    padding-left: 8px;
-}
-
 .metadata-panel {
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
     border-radius: 8px;
     background: var(--el-bg-color, #fff);
     padding: 12px;
-    height: 100%;
-    min-height: 0;
+    min-width: 0;
     display: flex;
     flex-direction: column;
 }
@@ -868,6 +1085,7 @@ export default defineComponent({
     display: flex;
     flex-direction: column;
     gap: 10px;
+    min-width: 0;
     min-height: 0;
     flex: 1;
 }
@@ -879,10 +1097,6 @@ export default defineComponent({
 }
 
 .metadata-panel__pre {
-    flex: 1;
-    min-height: 0;
-    overflow: auto;
-    margin: 0;
     padding: 10px;
     border-radius: 6px;
     background: #2a2d34;

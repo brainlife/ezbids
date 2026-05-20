@@ -42,8 +42,8 @@
                                 :key="sectionId"
                                 class="section-block"
                             >
-                                <div v-if="section.length > 1" class="section-divider-wrap">
-                                    <span class="section-divider">section {{ sectionId }}</span>
+                                <div class="section-divider-wrap">
+                                    <span class="section-divider">Group {{ sectionId }}</span>
                                 </div>
 
                                 <button
@@ -117,9 +117,11 @@
                 <div v-if="so && sess" class="editor-panel">
                     <el-form class="editor-form">
                         <div class="panel-card">
-                            <div style="display: flex; align-items: center; gap: 10px">
-                                <p>Series Description:</p>
-                                <p>{{ so._SeriesDescription }}</p>
+                            <div>
+                                <p style="white-space: nowrap">Series Description:</p>
+                                <p style="word-break: break-all; color: var(--el-text-color-secondary, #909399)">
+                                    {{ so._SeriesDescription }}
+                                </p>
                             </div>
                             <el-form-item>
                                 <el-checkbox v-model="so.exclude" @change="update(so)">Exclude this object</el-checkbox>
@@ -219,7 +221,6 @@
                         </div>
 
                         <div v-if="so._type.startsWith('fmap/') || so._type === 'perf/m0scan'" class="border-top">
-                            <br />
                             <el-form-item label="IntendedFor" class="form-grid-item">
                                 <el-select
                                     v-model="so.IntendedFor"
@@ -242,88 +243,93 @@
                                 This is recommended information according to the BIDS specification.
                             </p>
                         </div>
-                        <div v-if="so._type && !so._type.includes('exclude')" class="border-top">
-                            <br />
-                            <div v-if="!so._type.includes('events')" class="border-top">
-                                <div
-                                    v-if="!so._type.startsWith('meg') && !so._type.startsWith('pet')"
-                                    class="border-top"
-                                >
-                                    <el-form-item label="B0FieldIdentifier" class="form-grid-item">
-                                        <el-select
-                                            v-model="so.B0FieldIdentifier"
-                                            multiple
-                                            filterable
-                                            allow-create
-                                            default-first-option
-                                            placeholder="Enter text string"
-                                            size="small"
-                                            style="width: 100%"
-                                            @change="update(so)"
-                                        >
-                                        </el-select>
-                                    </el-form-item>
-                                    <p class="field-note">
-                                        * <b>Recommended/Optional if no IntendedFor</b>: If this sequence will be used
-                                        fieldmap correction, enter a text string of your choice. A good formatting
-                                        suggestion is the "datatype_suffix[index]" format (e.g., <b>fmap_epi0</b>,
-                                        <b>fmap_phasediff1</b>, etc). If another sequence will be used with this one for
-                                        fieldmap correction, use the exact same text string there as well. Leave field
-                                        if unclear.
-                                    </p>
-                                </div>
-                            </div>
-
-                            <br />
-                            <div v-if="!so._type.includes('events')" class="border-top">
-                                <div
-                                    v-if="!so._type.startsWith('meg') && !so._type.startsWith('pet')"
-                                    class="border-top"
-                                >
-                                    <el-form-item label="B0FieldSource" class="form-grid-item">
-                                        <el-select
-                                            v-model="so.B0FieldSource"
-                                            multiple
-                                            filterable
-                                            allow-create
-                                            default-first-option
-                                            placeholder="Enter text string"
-                                            size="small"
-                                            style="width: 100%"
-                                            @change="update(so)"
-                                        >
-                                        </el-select>
-                                    </el-form-item>
-                                    <p class="field-note">
-                                        * <b>Recommended/Optional if no IntendedFor</b>: If this sequence will be used
-                                        fieldmap correction, enter a text string of your choice. A good formatting
-                                        suggestion is the "datatype_suffix" format (e.g., fmap_epi, fmap_phasediff). If
-                                        another sequence will be used with this one for fieldmap correction, use the
-                                        same text string there as well. Leave field blank if unclear.
-                                    </p>
-                                </div>
-                                <div style="margin-bottom: 1rem">
-                                    <el-form-item
-                                        v-if="
-                                            ['perf/asl', 'perf/m0scan'].includes(so._type) ||
-                                            so._type.startsWith('pet') ||
-                                            so._type.startsWith('func') ||
-                                            so._type.startsWith('fmap') ||
-                                            so._type.startsWith('dwi') ||
-                                            so._type.startsWith('anat') ||
-                                            so._type.startsWith('meg')
-                                        "
-                                        class="form-grid-item"
-                                        label="Relevant Metadata"
+                        <div
+                            v-if="
+                                so._type &&
+                                !so._type.includes('exclude') &&
+                                (!so._type.includes('events') ||
+                                    ['perf/asl', 'perf/m0scan'].includes(so._type) ||
+                                    so._type.startsWith('pet') ||
+                                    so._type.startsWith('func') ||
+                                    so._type.startsWith('fmap') ||
+                                    so._type.startsWith('dwi') ||
+                                    so._type.startsWith('anat') ||
+                                    so._type.startsWith('meg'))
+                            "
+                            class="border-top"
+                        >
+                            <template
+                                v-if="
+                                    !so._type.includes('events') &&
+                                    !so._type.startsWith('meg') &&
+                                    !so._type.startsWith('pet')
+                                "
+                            >
+                                <el-form-item label="B0FieldIdentifier" class="form-grid-item">
+                                    <el-select
+                                        v-model="so.B0FieldIdentifier"
+                                        multiple
+                                        filterable
+                                        allow-create
+                                        default-first-option
+                                        placeholder="Enter text string"
+                                        size="small"
+                                        style="width: 100%"
+                                        @change="update(so)"
                                     >
-                                        <ModalityForm :ss="so" :ezbids="ezbids" @form-submitted="submitForm" />
-                                    </el-form-item>
-                                </div>
-                            </div>
+                                    </el-select>
+                                </el-form-item>
+                                <p class="field-note">
+                                    * <b>Recommended/Optional if no IntendedFor</b>: If this sequence will be used
+                                    fieldmap correction, enter a text string of your choice. A good formatting
+                                    suggestion is the "datatype_suffix[index]" format (e.g., <b>fmap_epi0</b>,
+                                    <b>fmap_phasediff1</b>, etc). If another sequence will be used with this one for
+                                    fieldmap correction, use the exact same text string there as well. Leave field if
+                                    unclear.
+                                </p>
+
+                                <el-form-item label="B0FieldSource" class="form-grid-item">
+                                    <el-select
+                                        v-model="so.B0FieldSource"
+                                        multiple
+                                        filterable
+                                        allow-create
+                                        default-first-option
+                                        placeholder="Enter text string"
+                                        size="small"
+                                        style="width: 100%"
+                                        @change="update(so)"
+                                    >
+                                    </el-select>
+                                </el-form-item>
+                                <p class="field-note">
+                                    * <b>Recommended/Optional if no IntendedFor</b>: If this sequence will be used
+                                    fieldmap correction, enter a text string of your choice. A good formatting
+                                    suggestion is the "datatype_suffix" format (e.g., fmap_epi, fmap_phasediff). If
+                                    another sequence will be used with this one for fieldmap correction, use the same
+                                    text string there as well. Leave field blank if unclear.
+                                </p>
+                            </template>
+
+                            <el-form-item
+                                v-if="
+                                    ['perf/asl', 'perf/m0scan'].includes(so._type) ||
+                                    so._type.startsWith('pet') ||
+                                    so._type.startsWith('func') ||
+                                    so._type.startsWith('fmap') ||
+                                    so._type.startsWith('dwi') ||
+                                    so._type.startsWith('anat') ||
+                                    so._type.startsWith('meg')
+                                "
+                                class="form-grid-item"
+                                label="Relevant Metadata"
+                            >
+                                <ModalityForm :ss="so" :ezbids="ezbids" @form-submitted="submitForm" />
+                            </el-form-item>
                         </div>
 
-                        <div v-for="(item, idx) in so.items" :key="idx" class="border-top">
-                            <div style="margin: 1rem 0">
+                        <div v-if="so.items.length" class="border-top">
+                            <div v-for="(item, idx) in so.items" :key="idx" class="item-block">
                                 <el-form-item :label="item.name || 'noname'" class="form-grid-item">
                                     <el-select
                                         v-model="item.path"
@@ -348,38 +354,50 @@
                                         NiiVue
                                     </el-button>
                                 </el-form-item>
+                                <el-form-item v-if="item.sidecar" label="sidecar" class="form-grid-item">
+                                    <el-input
+                                        v-model="item.sidecar_json"
+                                        type="textarea"
+                                        rows="10"
+                                        @blur="update(so)"
+                                    />
+                                </el-form-item>
+                                <el-form-item
+                                    v-if="item.headers"
+                                    label="Nifti Headers (read-only)"
+                                    class="form-grid-item"
+                                >
+                                    <pre class="headers">{{ item.headers }}</pre>
+                                </el-form-item>
+                                <el-form-item v-if="item.eventsBIDS" label="eventsBIDS" class="form-grid-item">
+                                    <el-table :data="item.eventsBIDS" size="mini" border style="width: 100%">
+                                        <el-table-column prop="onset" label="onset" />
+                                        <el-table-column prop="duration" label="duration" />
+                                        <el-table-column
+                                            v-if="item.eventsBIDS[0].sample"
+                                            prop="sample"
+                                            label="sample"
+                                        />
+                                        <el-table-column
+                                            v-if="item.eventsBIDS[0].trial_type"
+                                            prop="trial_type"
+                                            label="trial_type"
+                                        />
+                                        <el-table-column
+                                            v-if="item.eventsBIDS[0].response_time"
+                                            prop="response_time"
+                                            label="response_time"
+                                        />
+                                        <el-table-column v-if="item.eventsBIDS[0].value" prop="value" label="value" />
+                                        <el-table-column v-if="item.eventsBIDS[0].HED" prop="HED" label="HED" />
+                                        <el-table-column
+                                            v-if="item.eventsBIDS[0].stim_file"
+                                            prop="stim_file"
+                                            label="stim_file"
+                                        />
+                                    </el-table>
+                                </el-form-item>
                             </div>
-                            <el-form-item v-if="item.sidecar" label="sidecar" class="form-grid-item">
-                                <el-input v-model="item.sidecar_json" type="textarea" rows="10" @blur="update(so)" />
-                            </el-form-item>
-                            <el-form-item v-if="item.headers" label="Nifti Headers (read-only)" class="form-grid-item">
-                                <pre class="headers">{{ item.headers }}</pre>
-                            </el-form-item>
-                            <el-form-item v-if="item.eventsBIDS" label="eventsBIDS" class="form-grid-item">
-                                <el-table :data="item.eventsBIDS" size="mini" border style="width: 100%">
-                                    <el-table-column prop="onset" label="onset" />
-                                    <el-table-column prop="duration" label="duration" />
-                                    <el-table-column v-if="item.eventsBIDS[0].sample" prop="sample" label="sample" />
-                                    <el-table-column
-                                        v-if="item.eventsBIDS[0].trial_type"
-                                        prop="trial_type"
-                                        label="trial_type"
-                                    />
-                                    <el-table-column
-                                        v-if="item.eventsBIDS[0].response_time"
-                                        prop="response_time"
-                                        label="response_time"
-                                    />
-                                    <el-table-column v-if="item.eventsBIDS[0].value" prop="value" label="value" />
-                                    <el-table-column v-if="item.eventsBIDS[0].HED" prop="HED" label="HED" />
-                                    <el-table-column
-                                        v-if="item.eventsBIDS[0].stim_file"
-                                        prop="stim_file"
-                                        label="stim_file"
-                                    />
-                                </el-table>
-                            </el-form-item>
-                            <br />
                         </div>
 
                         <div v-if="so.analysisResults.filesize" class="analysis-summary">
@@ -391,7 +409,7 @@
                             <div v-for="(item, itemIdx) in ezbids.objects[so.idx].items" :key="itemIdx">
                                 <div v-if="item.pngPaths">
                                     <div v-for="(path, idx) in item.pngPaths" :key="idx">
-                                        <pre style="margin-top: 1rem; margin-bottom: 0.5rem">{{ path }}</pre>
+                                        <pre class="png-path">{{ path }}</pre>
                                         <AsyncImageLink :path="path" />
                                     </div>
                                 </div>
@@ -1016,6 +1034,12 @@ export default defineComponent({
     padding-top: 2px;
     margin-top: 2px;
 }
+
+.item-block + .item-block {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #f6f6f6;
+}
 pre.headers {
     height: 200px;
     overflow: auto;
@@ -1033,6 +1057,15 @@ pre.headers {
     padding: 2rem;
     border-radius: 6px;
     background-color: #f5f7fa;
+}
+
+.png-path {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    max-width: 100%;
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    word-break: break-all;
 }
 
 .debug-pre {
@@ -1059,5 +1092,6 @@ pre.headers {
     background-color: white;
     color: #999;
     padding: 0 10px;
+    font-size: 12px;
 }
 </style>
