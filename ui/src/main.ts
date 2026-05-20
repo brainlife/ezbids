@@ -18,6 +18,8 @@ import {
     faDownload,
     faQuestionCircle,
     faGlobe,
+    faUser,
+    faClock,
 } from '@fortawesome/free-solid-svg-icons';
 import 'element-plus/dist/index.css';
 import store from './store';
@@ -38,7 +40,9 @@ library.add(
     faUsers,
     faBook,
     faDownload,
-    faQuestionCircle
+    faQuestionCircle,
+    faUser,
+    faClock
 );
 
 //move to ./types?
