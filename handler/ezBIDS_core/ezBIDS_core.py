@@ -12,6 +12,7 @@ edits/modifications as they see fit, before finalizing their data into a BIDS-co
 from __future__ import division
 import os
 import re
+import shutil
 import sys
 import mne
 import json
@@ -25,6 +26,7 @@ from datetime import date
 from natsort import natsorted
 from operator import itemgetter
 from urllib.request import urlopen
+from urllib.error import URLError
 
 DATA_DIR = sys.argv[1]
 
@@ -49,7 +51,7 @@ bids_compliant = pd.read_csv(f"{DATA_DIR}/bids_compliant.log", header=None).iloc
 if bids_compliant == "true":
     bids_compliant = True
 else:
-    bid_compliant = False
+    bids_compliant = False
 
 start_time = time.perf_counter()
 analyzer_dir = os.getcwd()
@@ -300,8 +302,10 @@ def fix_multiple_dots(uploaded_img_list):
         periods that weren't the extension.
     '''
 
-    for img_path in uploaded_img_list:
-        img_file = img_path.split('/')[-1]
+    normalized_uploaded_img_list = [Path(x).as_posix() for x in uploaded_img_list]
+
+    for img_path in normalized_uploaded_img_list:
+        img_file = os.path.basename(img_path)
         typo_files = []
         fix = False
         if img_file.endswith('.nii.gz') and img_file.count('.') > 2:  # for MRI and PET
@@ -324,7 +328,7 @@ def fix_multiple_dots(uploaded_img_list):
             img_dir = os.path.dirname(img_path)
 
             corresponding_files = [
-                img_dir + '/' + x for x in os.listdir(img_dir)
+                (Path(img_dir) / x).as_posix() for x in os.listdir(img_dir)
                 if os.path.basename(img_path).split(ext)[0] in x
             ]
 
@@ -342,23 +346,26 @@ def fix_multiple_dots(uploaded_img_list):
                 else:
                     ext = '.' + typo.split('.')[-1]
 
-                typo_split_list = typo.split(ext)[0].split('.')
+                typo_dir = os.path.dirname(typo)
+                typo_base = os.path.basename(typo)
+                typo_stem = typo_base.split(ext)[0]
+                new_file_base = f"{typo_stem.replace('.', '_')}{ext}"
+                new_file_name = (Path(typo_dir) / new_file_base).as_posix()
 
-                new_file_name = f".{'_'.join(typo_split_list[1:])}{ext}"
+                shutil.move(typo, new_file_name)
 
-                os.system(f'mv {typo} {new_file_name}')
-
-                if typo in uploaded_img_list:
-                    idx = uploaded_img_list.index(typo)
-                    uploaded_img_list.pop(idx)
-                    uploaded_img_list = natsorted(uploaded_img_list + [new_file_name])
+                normalized_typo = Path(typo).as_posix()
+                if normalized_typo in normalized_uploaded_img_list:
+                    idx = normalized_uploaded_img_list.index(normalized_typo)
+                    normalized_uploaded_img_list.pop(idx)
+                    normalized_uploaded_img_list = natsorted(normalized_uploaded_img_list + [new_file_name])
 
             # Save to list file
             with open("list", "w") as f:
-                for line in uploaded_img_list:
+                for line in normalized_uploaded_img_list:
                     f.write(f"{line}\n")
 
-    return uploaded_img_list
+    return normalized_uploaded_img_list
 
 
 def generate_MEG_json_sidecars(uploaded_img_list):
@@ -391,7 +398,7 @@ def generate_MEG_json_sidecars(uploaded_img_list):
             else:
                 ext = Path(meg).suffix
 
-            fname = f"{DATA_DIR}/{meg}"
+            fname = str(Path(DATA_DIR) / meg)
             json_output_name = fname.split(ext)[0] + ".json"
             raw = mne.io.read_raw(fname, verbose=0)
             acquisition_date_time = raw.info["meas_date"].strftime("%Y-%m-%dT%H:%M:%S.%f")
@@ -436,6 +443,56 @@ def generate_MEG_json_sidecars(uploaded_img_list):
             _update_sidecar(json_output_name, "ConversionSoftware", "MNE-BIDS")
             _update_sidecar(json_output_name, "SeriesDescription", fname)
 
+UNPROCESSED_LIST_NAME = "unprocessed_list"
+
+def _normalize_upload_rel_path(p):
+    """Stable relative path for comparing list / unprocessed_list / grouped paths."""
+    if not p:
+        return ""
+    s = Path(p).as_posix()
+    while s.startswith("./"):
+        s = s[2:]
+    return s
+
+
+def _read_unprocessed_list_rows():
+    """Load unprocessed_list as [{'path': str, 'reason': str}, ...]."""
+    p = Path(DATA_DIR) / UNPROCESSED_LIST_NAME
+    rows = []
+    if not p.is_file():
+        return rows
+    text = p.read_text(encoding="utf-8", errors="replace")
+    for line in text.splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        if "\t" in line:
+            path_part, reason = line.split("\t", 1)
+        else:
+            path_part, reason = line, ""
+        path_part = path_part.strip()
+        if path_part:
+            rows.append({"path": path_part, "reason": reason.strip()})
+    return rows
+
+
+def _write_unprocessed_list(rows):
+    """Write unprocessed_list (one path\\treason per line)."""
+    p = Path(DATA_DIR) / UNPROCESSED_LIST_NAME
+    lines = []
+    for r in rows:
+        path = (r.get("path") or "").strip()
+        if not path:
+            continue
+        reason = (r.get("reason") or "").replace("\n", " ").strip()
+        lines.append(f"{path}\t{reason}")
+    p.write_text("\n".join(lines) + ("\n" if lines else ""), encoding="utf-8")
+
+
+def _unprocessed_norm_set(rows):
+    """Normalized path keys for rows from _read_unprocessed_list_rows / in-memory list."""
+    return {_normalize_upload_rel_path(r["path"]) for r in rows if r.get("path")}
+
 
 def modify_uploaded_dataset_list(uploaded_img_list):
     """
@@ -455,10 +512,6 @@ def modify_uploaded_dataset_list(uploaded_img_list):
     uploaded_files_list : list
         List of NIfTI, JSON, and bval/bvec files generated from dcm2niix
 
-    exclude_data : boolean
-        True if uploaded data doesn't come as a NIfTI/JSON pair, which is flagged for exclusion
-        from BIDS conversion.
-
     config : boolean
         True if an ezBIDS configuration file (*ezBIDS_template.json) was detected in the upload.
 
@@ -466,12 +519,21 @@ def modify_uploaded_dataset_list(uploaded_img_list):
         Path to the ezBIDS configuration file, if config == True. Otherwise, set as empty string.
     """
     uploaded_files_list = []
+    unprocessed_paths_list = _read_unprocessed_list_rows()
+    unprocessed_norm_seen = _unprocessed_norm_set(unprocessed_paths_list)
 
     uploaded_img_list = natsorted([img for img in uploaded_img_list])
+    # Do not process (or rewrite into list) paths already marked unprocessed.
+    # Technically this is the first place where we handle the unprocessed_list file. but
+    # in the future, if we want to add more checks earlier in the process, this will support that.
+    uploaded_img_list = [
+        img for img in uploaded_img_list
+        if _normalize_upload_rel_path(img) not in unprocessed_norm_seen
+    ]
 
     config = False
     config_file = ""
-    exclude_data = False
+    valid_list_imgs = []
 
     config_file_list = []
     for root, dirs, files in os.walk(DATA_DIR):
@@ -498,14 +560,22 @@ def modify_uploaded_dataset_list(uploaded_img_list):
         if not img_file.endswith(tuple(MEG_extensions)) and not img_file.endswith('blood.json'):
             try:
                 nib.load(img_file)
-            except:
-                exclude_data = True
-                print(f'{img_file} is not a properly formatted imaging file. Will not be converted by ezBIDS.')
-                break
+            except Exception as e:
+                msg = str(e).split("\n")[0][:240]
+                print(f"{img_file} is not a properly formatted imaging file. Skipping. {msg}")
+                np = _normalize_upload_rel_path(img_file)
+                if np not in unprocessed_norm_seen:
+                    unprocessed_norm_seen.add(np)
+                    unprocessed_paths_list.append(
+                        {"path": img_file, "reason": f"nib_load_failed:{msg}"}
+                    )
+                continue
+
+        valid_list_imgs.append(img_file)
 
         img_dir = os.path.dirname(img_file)
         grouped_files = [
-            img_dir + '/' + x for x in os.listdir(img_dir)
+            (Path(img_dir) / x).as_posix() for x in os.listdir(img_dir)
             if os.path.basename(img_file).split(ext)[0] + "." in x
         ]
 
@@ -523,8 +593,18 @@ def modify_uploaded_dataset_list(uploaded_img_list):
 
     # Flatten uploaded_files_list
     uploaded_files_list = natsorted([file for sublist in uploaded_files_list for file in sublist])
+    uploaded_files_list = [
+        f for f in uploaded_files_list
+        if _normalize_upload_rel_path(f) not in unprocessed_norm_seen
+    ]
 
-    return uploaded_files_list, exclude_data, config, config_file
+    _write_unprocessed_list(unprocessed_paths_list)
+
+    # Keep list file aligned with only successfully loadable entries for downstream consumers.
+    with open(Path(DATA_DIR) / "list", "w", encoding="utf-8") as fp:
+        fp.write("\n".join(valid_list_imgs) + ("\n" if len(valid_list_imgs) else ""))
+
+    return uploaded_files_list, config, config_file
 
 
 def set_IntendedFor_B0FieldIdentifier_B0FieldSource(dataset_list_unique_series, bids_compliant):
@@ -754,8 +834,12 @@ def find_cog_atlas_tasks(url):
         "test" removed, to make it easier to search the SeriesDescription
         fields for a matching task name.
     """
-    url_contents = urlopen(url)
-    data = json.load(url_contents)
+    try:
+        url_contents = urlopen(url, timeout=10)
+        data = json.load(url_contents)
+    except (URLError, TimeoutError, json.JSONDecodeError):
+        print("Warning: Unable to fetch Cognitive Atlas tasks. Continuing without task lookup.")
+        return []
     # Remove non-alphanumeric terms and "task", "test" substrings
     tasks = [re.sub("[^A-Za-z0-9]+", "", re.split(" task| test", x["name"])[0]).lower() for x in data]
     # Remove empty task name terms and ones under 2 characters (b/c hard to detect in SeriesDescription)
@@ -887,7 +971,7 @@ def determine_direction(proper_pe_direction, ornt):
     return direction
 
 
-def generate_dataset_list(uploaded_files_list, exclude_data):
+def generate_dataset_list(uploaded_files_list):
     """
     Takes list of NIfTI, JSON, (and bval/bvec) files generated from dcm2niix
     to create a list of info directories for each uploaded acquisition, where
@@ -900,10 +984,6 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
     uploaded_files_list : list
         List of NIfTI, JSON, and bval/bvec files generated from dcm2niix,
         generated from preprocess.sh
-
-    exclude_data : boolean
-        True if uploaded data doesn't come as a NIfTI/JSON pair, which is flagged for exclusion
-        from BIDS conversion.
 
     Returns
     -------
@@ -985,7 +1065,7 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
         except:
             ornt = None
 
-        if pe_direction is not None and ornt is not None and json_data["Modality"] != "MEG":
+        if pe_direction is not None and ornt is not None and modality != "MEG":
             correction = False
             proper_pe_direction, correction = correct_pe(pe_direction, ornt, correction)
             if correction is True:
@@ -1003,7 +1083,8 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
         if "StudyID" in json_data:
             study_id = json_data["StudyID"]
         else:
-            study_id = img_file.split('/')[1]  # uppermost folder in file path
+            parts = Path(img_file).parts
+            study_id = parts[1] if len(parts) > 1 else os.path.basename(img_file)
 
         # Find subject_id from json, since some files contain neither PatientID nor PatientName
         if "PatientID" in json_data:
@@ -1107,7 +1188,12 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
 
         # Get the nibabel nifti image info
         if img_file.endswith('.nii.gz'):
-            image = nib.load(img_file)
+            try:
+                image = nib.load(img_file)
+            except Exception as e:
+                image = "n/a"
+                print(f"Error loading image {img_file}: {e}")
+
             ndim = image.ndim
 
             # If RepetitionTime (TR) not in JSON metadata, add to file
@@ -1173,11 +1259,7 @@ def generate_dataset_list(uploaded_files_list, exclude_data):
         else:
             image_type = []
 
-        # Exclude data or not
-        if exclude_data is True:
-            data_type = "exclude"
-        else:
-            data_type = ""
+        data_type = ""
 
         """
         Select subject (and session, if applicable) IDs to display.
@@ -3103,13 +3185,13 @@ uploaded_img_list = fix_multiple_dots(uploaded_img_list)
 generate_MEG_json_sidecars(uploaded_img_list)
 
 # Filter uploaded files list for files that ezBIDS can't use and check for ezBIDS configuration file
-uploaded_files_list, exclude_data, config, config_file = modify_uploaded_dataset_list(uploaded_img_list)
+uploaded_files_list, config, config_file = modify_uploaded_dataset_list(uploaded_img_list)
 
 # # Generate list of all possible Cognitive Atlas task terms
 cog_atlas_tasks = find_cog_atlas_tasks(cog_atlas_url)
 
 # Create the dataset list of dictionaries
-dataset_list = generate_dataset_list(uploaded_files_list, exclude_data)
+dataset_list = generate_dataset_list(uploaded_files_list)
 
 # Get pesudo subject (and session) info
 dataset_list = organize_dataset(dataset_list)

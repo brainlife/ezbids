@@ -6,6 +6,7 @@ Create list of anatomical images to deface
 """
 
 import os, sys, json
+from pathlib import Path
 import numpy as np
 
 os.environ[ 'MPLCONFIGDIR' ] = '/tmp/'
@@ -24,7 +25,7 @@ if finalized_json['deface'] == True:
             if not ses:
                 ses = 'N/A'
             br_type = finalized_json['objects'][i]['_type']
-            anat_orig = root + '/' + finalized_json['objects'][i]['paths'][-1].split('./')[-1]
+            anat_orig = str(Path(root) / Path(finalized_json['objects'][i]['paths'][-1]))
             deface_list.append([root, anat_orig, br_type, sub, ses])
 
             

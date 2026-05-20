@@ -1,22 +1,26 @@
-import { createRouter, createWebHistory } from 'vue-router';
-import LandingPage from './LandingPage.vue';
-import BaseConvertPage from './BaseConvertPage.vue';
-import NotFound from './NotFound.vue';
-import { hasJWT, hasAuth } from './lib';
+import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router';
+import LandingPage from '@/features/landing/LandingPage.vue';
+import BaseConvertPage from '@/BaseConvertPage.vue';
+import Dashboard from '@/features/dashboard/Dashboard.vue';
+import NotFound from '@/NotFound.vue';
+import { hasJWT, authRequired } from '@/lib';
 import { ElNotification } from 'element-plus';
 
-// enable routing
+const isElectron = window.env.IS_ELECTRON === 'true';
 const router = createRouter({
-    history: createWebHistory('/ezbids'),
+    history: isElectron ? createWebHashHistory() : createWebHistory('/ezbids'),
     routes: [
-        { path: '/', name: 'base', component: LandingPage },
+        { path: '', name: 'base', component: LandingPage },
+        { path: '/', component: LandingPage },
+        { path: '/dashboard', name: 'dashboard', component: Dashboard },
+        { path: '/upload', redirect: { name: 'convert' } },
         { path: '/convert', name: 'convert', component: BaseConvertPage },
         { path: '/:pathMatch(.*)*', component: NotFound },
     ],
 });
 
 router.beforeEach((to, from) => {
-    if (hasAuth() && !hasJWT() && to.name !== 'base') {
+    if (authRequired() && !hasJWT() && to.name !== 'base') {
         ElNotification({
             title: 'Please login to continue',
             message: '',

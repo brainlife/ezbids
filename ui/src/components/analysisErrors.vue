@@ -64,6 +64,13 @@ export default defineComponent({
 </script>
 
 <style lang="scss" scoped>
+.errors {
+    white-space: break-spaces;
+    word-break: break-all;
+    padding: 1rem;
+    overflow: auto;
+}
+
 .analysisError {
     border: 3px solid var(--el-color-error);
     padding: 10px;

@@ -1,0 +1,208 @@
+name: Build Desktop App
+
+on:
+    push:
+        tags:
+            - 'v*'
+
+permissions:
+    contents: write
+
+jobs:
+    create-release:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Create release
+              uses: softprops/action-gh-release@v2
+              with:
+                  name: ${{ github.ref_name }}
+                  draft: false
+                  prerelease: false
+                  generate_release_notes: true
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    build:
+        needs: create-release
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - os: macos-latest
+                      platform: darwin
+                      arch: arm64
+                      eb_flags: --mac --arm64
+                    - os: windows-latest
+                      platform: windows
+                      arch: amd64
+                      eb_flags: --win --x64
+                    - os: ubuntu-latest
+                      platform: linux
+                      arch: amd64
+                      eb_flags: --linux --x64
+
+        runs-on: ${{ matrix.os }}
+
+        defaults:
+            run:
+                shell: bash
+
+        # specify bash for windows
+        env:
+            npm_config_script_shell: bash
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+              with:
+                  submodules: recursive
+
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '20'
+
+            - name: Install dependencies
+              run: npm ci
+
+            - name: Fetch binaries
+              run: bash fetch-binaries.sh ${{ matrix.platform }} ${{ matrix.arch }}
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Remove embedded archives / package test fixtures (mac notarization)
+              if: matrix.platform == 'darwin'
+              run: |
+                  PY_SITE="handler/bin/python-runtime/venv/lib/python3.8/site-packages"
+                  # Some vendored Python packages ship test fixtures as zip/tar archives (and sometimes odd perms).
+                  # Apple's notarization pipeline can flag these when bundled inside a signed app.
+                  rm -rf "$PY_SITE/joblib/test"
+                  rm -rf "$PY_SITE/pooch/tests"
+                  # remove dcm2niix_binaries to avoid notarization failure. We will point to the bundled dcm2niix in the app.
+                  # Note that we have pinned pypet2bids to 1.4.6 in requirements.txt, and it uses dcm2niix v1.0.20250505.
+                  # in the future, if we want to upgrade pypet2bids, we must make sure that our version of dcm2niix is compatible and vice versa.
+                  rm -rf "$PY_SITE/pypet2bids/dcm2niix_binaries"
+
+            - name: Clean dist
+              run: rm -rf electron/dist
+
+            - name: Build JS bundles
+              working-directory: electron
+              run: |
+                  npm run build:electron-api
+                  npm run build:electron-handler
+                  npm run build:electron-handler-scripts
+
+            - name: Copy Python files, BIDS schema, and templates
+              working-directory: electron
+              run: |
+                  npm run build:electron-python
+                  npm run build:electron-bids-spec
+                  npm run build:electron-templates
+
+            - name: Build frontend
+              working-directory: ui
+              run: npm run build:electron
+
+            - name: Transpile main process
+              working-directory: electron
+              run: |
+                  npm run build:electron-preload
+                  npm run build:electron-main
+
+            - name: Validate Apple signing secrets
+              if: matrix.platform == 'darwin'
+              run: |
+                  test -n "${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}"
+                  test -n "${{ secrets.APPLE_CERTIFICATE_PASSWORD }}"
+                  test -n "${{ secrets.APPLE_API_KEY_ID }}"
+                  test -n "${{ secrets.APPLE_API_ISSUER }}"
+                  test -n "${{ secrets.APPLE_API_KEY_P8_BASE64 }}"
+
+            - name: Import Apple signing certificate
+              if: matrix.platform == 'darwin'
+              uses: apple-actions/import-codesign-certs@v3
+              with:
+                  p12-file-base64: ${{ secrets.APPLE_CERTIFICATE_P12_BASE64 }}
+                  p12-password: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
+            - name: Create Apple API key file
+              if: matrix.platform == 'darwin'
+              run: |
+                  API_KEY_PATH="$RUNNER_TEMP/AuthKey_${APPLE_API_KEY_ID}.p8"
+                  # Support both GNU and BSD base64 flags on GitHub runners.
+                  if ! printf '%s' "$APPLE_API_KEY_P8_BASE64" | base64 --decode > "$API_KEY_PATH" 2>/dev/null; then
+                      printf '%s' "$APPLE_API_KEY_P8_BASE64" | base64 -D > "$API_KEY_PATH"
+                  fi
+              env:
+                  APPLE_API_KEY_P8_BASE64: ${{ secrets.APPLE_API_KEY_P8_BASE64 }}
+                  APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+
+            - name: Package (macOS signed + notarized)
+              if: matrix.platform == 'darwin'
+              working-directory: electron
+              timeout-minutes: 360
+              run: |
+                  npx electron-builder ${{ matrix.eb_flags }} &
+                  EB_PID=$!
+                  while kill -0 "$EB_PID" 2>/dev/null; do
+                      echo "[heartbeat] electron-builder still running at $(date -u +'%Y-%m-%dT%H:%M:%SZ')"
+                      ps -axo pid,ppid,etime,command | grep -E "electron-builder|app-builder|codesign|notarytool" | grep -v grep || true
+                      sleep 60
+                  done
+                  wait "$EB_PID"
+              env:
+                  # Verbose logs: builder-util registers `electron-builder`; @electron/notarize registers `electron-notarize`.
+                  DEBUG: 'electron-builder*,electron-notarize*'
+                  APPLE_API_KEY: ${{ runner.temp }}/AuthKey_${{ secrets.APPLE_API_KEY_ID }}.p8
+                  APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+                  APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+                  CSC_KEY_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+
+            - name: Package (Windows/Linux)
+              if: matrix.platform != 'darwin'
+              working-directory: electron
+              run: npx electron-builder ${{ matrix.eb_flags }}
+
+            - name: Verify macOS code signing and notarization
+              if: matrix.platform == 'darwin'
+              working-directory: electron
+              run: |
+                  # electron-builder puts the .app under release/mac-<arch>/ (not release/*.app).
+                  APP_PATH=$(find release -name '*.app' -type d | head -n 1)
+                  DMG_PATH=$(find release -maxdepth 1 -name '*.dmg' -type f | head -n 1)
+                  if [[ -z "$APP_PATH" || ! -d "$APP_PATH" ]]; then
+                      echo "No .app bundle found under electron/release (expected e.g. release/mac-arm64/*.app):"
+                      find release -maxdepth 4 -type d -print || true
+                      exit 1
+                  fi
+                  if [[ -z "$DMG_PATH" || ! -f "$DMG_PATH" ]]; then
+                      echo "No .dmg found under electron/release:"
+                      ls -la release || true
+                      exit 1
+                  fi
+
+                  echo "Verifying app signature: $APP_PATH"
+                  codesign --verify --deep --strict --verbose=2 "$APP_PATH"
+                  codesign -dv --verbose=4 "$APP_PATH" 2>&1
+
+                  # electron-notarize staples the .app; the .dmg is built afterward and usually has no separate ticket.
+                  echo "Validating notarization ticket on app bundle: $APP_PATH"
+                  xcrun stapler validate "$APP_PATH"
+
+                  echo "Gatekeeper assess app bundle: $APP_PATH"
+                  spctl --assess --verbose=4 "$APP_PATH"
+
+                  echo "DMG artifact present (notarization ticket is on the .app, not this wrapper): $DMG_PATH"
+                  test -f "$DMG_PATH"
+
+            - name: Upload artifacts to release
+              uses: softprops/action-gh-release@v2
+              with:
+                  files: |
+                      electron/release/*.dmg
+                      electron/release/*.exe
+                      electron/release/*.AppImage
+                      electron/release/*.deb
+              env:
+                  GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

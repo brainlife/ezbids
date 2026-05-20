@@ -1,0 +1,18 @@
+{
+    "extends": "./tsconfig.base.json",
+    "compilerOptions": {
+        "target": "ES2020",
+        "module": "commonjs",
+        "moduleResolution": "node",
+        "strict": true,
+        "noEmit": true,
+        "lib": ["ES2020", "DOM"],
+        "types": ["node", "jest"]
+    },
+    "include": [
+        "api/**/*.ts",
+        "handler/**/*.ts",
+        "ui/src/**/*.test.ts",
+        "ui/src/features/dashboard/utils/gatherDroppedFiles.ts"
+    ]
+}

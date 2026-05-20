@@ -2,7 +2,7 @@
 
 set -ex
 
-BRAINLIFE_AUTHENTICATION=true
+BRAINLIFE_AUTHENTICATION=false
 while getopts "d" flag; do
  case $flag in
    d)
@@ -17,8 +17,7 @@ export BRAINLIFE_AUTHENTICATION
 
 git submodule update --init --recursive
 
-(cd api && npm install)
-(cd ui && npm install)
+npm install
 
 mkdir -p /tmp/upload
 mkdir -p /tmp/workdir

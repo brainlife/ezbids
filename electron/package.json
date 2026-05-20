@@ -1,0 +1,111 @@
+{
+    "name": "ezbids-electron",
+    "version": "0.0.4",
+    "description": "electron implementation for ezbids",
+    "main": "dist/main.cjs",
+    "scripts": {
+        "start-dev": "npm run build:electron-preload && npm run build:electron-main && NODE_ENV=development electron .",
+        "build:electron-api": "esbuild ../api/ezbids.ts --bundle --platform=node --format=cjs --target=node20 --outfile=dist/ezbids.cjs --external:nan --external:electron-store",
+        "build:electron-handler": "esbuild ../handler/handler.ts --bundle --platform=node --format=cjs --target=node20 --outfile=dist/handler/handler.cjs --external:nan --external:electron-store --external:ts-node-dev",
+        "build:electron-handler-scripts": "esbuild ../handler/preprocess.ts ../handler/expand.ts ../handler/bids.ts ../handler/convert.ts ../handler/deface.ts --bundle --platform=node --format=cjs --target=node20 --outdir=dist/handler --out-extension:.js=.cjs --external:nan --external:electron-store --external:ts-node-dev",
+        "build:electron-python": "mkdir -p dist/handler/ezBIDS_core && cp ../handler/ezBIDS_core/*.py dist/handler/ezBIDS_core/ && cp ../handler/*.py dist/handler/",
+        "build:electron-templates": "mkdir -p dist/handler/templates && cp -R ../handler/templates/. dist/handler/templates/",
+        "build:electron-bids-spec": "mkdir -p dist/bids-specification/src && cp -r ../bids-specification/src/schema dist/bids-specification/src/schema",
+        "build:electron-frontend": "(cd .. && npm run build:electron -w ui)",
+        "build:electron-main": "esbuild main.ts --bundle --platform=node --format=cjs --target=es2020 --outfile=dist/main.cjs --external:electron --external:electron-store --external:ts-node-dev",
+        "build:electron-preload": "mkdir -p dist && esbuild preload/preload.ts --bundle --platform=node --format=cjs --target=es6 --outfile=preload/preload.js --external:electron --external:electron-store --external:ts-node-dev && cp preload/preload.js dist/preload.js",
+        "build:electron": "rm -rf dist && npm run build:electron-api && npm run build:electron-handler && npm run build:electron-handler-scripts && npm run build:electron-python && npm run build:electron-templates && npm run build:electron-bids-spec && npm run build:electron-frontend && npm run build:electron-main && npm run build:electron-preload",
+        "app:dir": "CSC_IDENTITY_AUTO_DISCOVERY=false env -u APPLE_API_KEY -u APPLE_API_KEY_ID -u APPLE_API_ISSUER electron-builder --dir -c.mac.identity=null",
+        "app:dist": "electron-builder",
+        "app:build-dist": "npm run build:electron && npm run app:dist"
+    },
+    "homepage": "https://github.com/brainlife/ezbids",
+    "author": {
+        "name": "Pestilli Lab",
+        "email": "pestillilab@gmail.com"
+    },
+    "license": "ISC",
+    "dependencies": {
+        "bids-validator": "1.14.8",
+        "electron-store": "^11.0.2",
+        "tree-kill": "^1.2.2"
+    },
+    "devDependencies": {
+        "@types/node": "^20.0.0",
+        "electron": "40.3.0",
+        "electron-builder": "^26.7.0",
+        "esbuild": "^0.27.3",
+        "typescript": "^5.0.0"
+    },
+    "build": {
+        "electronVersion": "40.3.0",
+        "appId": "io.brainlife.ezbids.electron",
+        "publish": null,
+        "productName": "ezBIDS",
+        "directories": {
+            "output": "release"
+        },
+        "asar": false,
+        "files": [
+            "dist/main.cjs",
+            "dist/preload.js",
+            "dist/ezbids.cjs",
+            "dist/handler/**",
+            "dist/bids-specification/**",
+            "dist/frontend/**",
+            "!node_modules/**/*.ts",
+            "!node_modules/**/*.map",
+            "!node_modules/**/build/module/**",
+            "!node_modules/**/{test,tests,__tests__,testing,spec}/**",
+            "!node_modules/**/{example,examples,demo,demos}/**",
+            "!node_modules/**/{docs,doc,documentation}/**",
+            "!node_modules/**/{CHANGELOG*,HISTORY*,README*,readme*,LICENSE,license,*.md}"
+        ],
+        "extraResources": [
+            {
+                "from": "../handler/bin",
+                "to": "bin",
+                "filter": [
+                    "**/*"
+                ]
+            }
+        ],
+        "dmg": {
+            "size": "12g",
+            "shrink": true
+        },
+        "mac": {
+            "category": "public.app-category.education",
+            "hardenedRuntime": true,
+            "gatekeeperAssess": false,
+            "entitlements": "build/entitlements.mac.plist",
+            "entitlementsInherit": "build/entitlements.mac.plist",
+            "target": [
+                {
+                    "target": "dmg"
+                }
+            ],
+            "artifactName": "ezbids-desktop-darwin-${arch}.${ext}"
+        },
+        "win": {
+            "target": [
+                {
+                    "target": "nsis"
+                }
+            ],
+            "artifactName": "ezbids-desktop-windows-${arch}.${ext}"
+        },
+        "linux": {
+            "category": "Science",
+            "target": [
+                {
+                    "target": "AppImage"
+                },
+                {
+                    "target": "deb"
+                }
+            ],
+            "artifactName": "ezbids-desktop-linux-${arch}.${ext}"
+        }
+    }
+}

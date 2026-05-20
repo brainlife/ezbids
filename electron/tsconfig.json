@@ -1,0 +1,13 @@
+{
+    "extends": "../tsconfig.base.json",
+    "compilerOptions": {
+        "module": "node16",
+        "moduleResolution": "node16",
+        "types": ["node"],
+        "resolveJsonModule": true,
+        "outDir": "dist",
+        "rootDir": "."
+    },
+    "include": ["*.ts", "main.ts", "preload/**/*.ts"],
+    "exclude": ["node_modules", "dist"]
+}

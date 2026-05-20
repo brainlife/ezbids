@@ -1,8 +1,9 @@
 {
+    "extends": "../tsconfig.base.json",
     "compilerOptions": {
-        "target": "ES6",
-        "alwaysStrict": true,
-        "sourceMap": true,
-        "module": "CommonJS"
-    }
+        "module": "CommonJS",
+        "moduleResolution": "Node10"
+    },
+    "include": ["**/*.ts"],
+    "exclude": ["**/*.js"]
 }

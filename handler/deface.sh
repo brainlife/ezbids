@@ -13,6 +13,9 @@ fi
 root=$1
 method=$(jq -r .method $root/deface.json)
 
+# allineate defacing is implemented in handler/deface.ts (Node): canonicalize + allineate binary.
+# This script is used for pydeface (parallel) and other bash-only paths.
+
 #so runDeface parallel function can access it
 export root
 export method
@@ -32,30 +35,24 @@ function runDeface() {
     defaced=$anat.defaced.nii.gz
 
     echo "--------------- defacing($method) [$idx] $anat to $defaced ----------------"
-    #if [ -f $defaced ]; then
-    #    echo "already defaced"
-    #    echo $idx >> $root/deface.finished
-    #else
-        #TODO - add other methods?
-        case $method in
-            quickshear)
-                time runROBEX.sh $anat $anat.mask.nii.gz
-                timeout 60 quickshear $anat $anat.mask.nii.gz $defaced
-            ;;
-            pydeface)
-                time pydeface --verbose --force $anat --outfile $defaced
-            ;;
-        esac
+    case $method in
+        pydeface)
+            time pydeface --verbose --force $anat --outfile $defaced
+        ;;
+        *)
+            echo "Unsupported method in deface.sh: $method (use Node deface for allineate)"
+            exit 1
+        ;;
+    esac
 
-        if [ $? -ne 0 ]; then
-            echo "defacing failed?"
-            echo $idx >> $root/deface.failed
-        else
-            #create thumbnail
-            timeout 100 $appdir/createThumbnail.py $defaced $defaced.png
-            echo $idx >> $root/deface.finished
-        fi
-    #fi
+    if [ $? -ne 0 ]; then
+        echo "defacing failed?"
+        echo $idx >> $root/deface.failed
+    else
+        #create thumbnail
+        timeout 100 $appdir/createThumbnail.py $defaced $defaced.png
+        echo $idx >> $root/deface.finished
+    fi
 }
 export -f runDeface
 

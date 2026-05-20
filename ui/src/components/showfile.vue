@@ -10,6 +10,7 @@ const convert = new Convert();
 import { mapState } from 'vuex';
 import { defineComponent } from 'vue';
 import axios from '../axios.instance';
+import { ElNotification } from 'element-plus';
 
 export default defineComponent({
     props: {
@@ -42,12 +43,18 @@ export default defineComponent({
                 );
             })
             .then((res) => {
-                const text = JSON.stringify(res.data, undefined, 4);
-                this.content = convert.toHtml(text);
-                // data from the BE will have newlines which informs indentation in the frontend
-                this.content = convert.toHtml(res.data);
+                if (typeof res.data === 'string') {
+                    this.content = convert.toHtml(res.data);
+                } else {
+                    this.content = convert.toHtml(JSON.stringify(res.data, undefined, 4));
+                }
             })
             .catch((err) => {
+                ElNotification({
+                    title: 'There was an error retrieving the file contents',
+                    message: '',
+                    type: 'error',
+                });
                 console.error(err);
             });
 

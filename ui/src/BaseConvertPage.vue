@@ -1,96 +1,114 @@
 <template>
-    <div>
-        <aside>
-            <h1 style="font-size: 25pt"><span style="letter-spacing: -3px; opacity: 0.6">ez</span>BIDS</h1>
-
-            <ul>
-                <li :class="{ active: page === 'upload' }">Upload Imaging Data</li>
-                <li :class="{ active: page === 'description' }">Dataset Description</li>
-            </ul>
-
-            <div class="section">
-                <h2 class="list-header">Dataset Mappings</h2>
-                <ul>
-                    <li :class="{ active: page === 'subject' }">Subjects/Sessions</li>
-                    <li :class="{ active: page === 'seriespage' }">Series Mapping</li>
-                    <li :class="{ active: page === 'event' }">Events</li>
-                </ul>
+    <div style="display: flex">
+        <div
+            style="display: flex; flex-direction: column; box-sizing: border-box; height: 100vh; padding: 1rem 2rem"
+            class="brainlife-lite aside-width"
+        >
+            <div class="brainlife-lite" style="flex: 0 0 auto">
+                <div style="display: flex; align-items: center; width: 100%; height: 100%">
+                    <h1 style="color: white; margin: 0; margin-right: 10px">
+                        <span style="letter-spacing: -3px; opacity: 0.6; margin: 0">ez</span>BIDS
+                    </h1>
+                    <DisplayMode />
+                </div>
             </div>
-
-            <ul>
-                <li :class="{ active: page === 'object' }">Dataset Review</li>
-            </ul>
-
-            <div class="section">
-                <h2 class="list-header">Optional</h2>
-                <ul>
-                    <li :class="{ active: page === 'deface' }">Deface</li>
-                    <li :class="{ active: page === 'participant' }">Participants Info</li>
-                </ul>
+            <div class="aside-back-dashboard" style="flex: 0 0 auto">
+                <router-link :to="{ name: 'dashboard' }">
+                    <el-button class="aside-back-dashboard-btn" aria-label="Back to dashboard" size="small">
+                        <font-awesome-icon :icon="['fas', 'angle-left']" />
+                        Dashboard
+                    </el-button>
+                </router-link>
             </div>
-
-            <ul>
-                <li :class="{ active: page === 'finalize' }">Access BIDS Data</li>
-                <li :class="{ active: page === 'feedback' }">Feedback</li>
-            </ul>
-
-            <div class="menu-footer">
-                <el-tooltip content="Open brainlife">
-                    <a href="https://brainlife.io" target="_blank" style="display: flex">
-                        <img src="./assets/bl_logo.png" class="menu-footer-icon" alt="brainlife logo" />
+            <aside style="flex: 1 1 auto; min-height: 0; overflow: auto">
+                <el-steps :active="activeValue" direction="vertical">
+                    <el-step
+                        v-for="page in pages"
+                        :key="page.key"
+                        :title="page.title"
+                        :description="page.description"
+                    />
+                </el-steps>
+            </aside>
+            <div class="aside-external-links" role="navigation" aria-label="External resources" style="flex: 0 0 auto">
+                <el-tooltip content="Brainlife" placement="top">
+                    <a href="https://brainlife.io" target="_blank" rel="noopener noreferrer">
+                        <el-button circle class="aside-external-btn">
+                            <img src="./assets/bl_logo.png" alt="Brainlife" width="14" />
+                        </el-button>
                     </a>
                 </el-tooltip>
-                <el-tooltip content="Open github">
-                    <a href="https://github.com/brainlife/ezbids" target="github">
-                        <font-awesome-icon class="menu-footer-icon" :icon="['fab', 'github']" />
+                <el-tooltip content="Github" placement="top">
+                    <a href="https://github.com/brainlife/ezbids" target="_blank" rel="noopener noreferrer">
+                        <el-button circle class="aside-external-btn">
+                            <font-awesome-icon :icon="['fab', 'github']" />
+                        </el-button>
                     </a>
                 </el-tooltip>
-                <el-tooltip content="Open documentation">
-                    <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank">
-                        <font-awesome-icon class="menu-footer-icon" :icon="['fa', 'book']" />
+                <el-tooltip content="Documentation" placement="top">
+                    <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank" rel="noopener noreferrer">
+                        <el-button circle class="aside-external-btn">
+                            <font-awesome-icon :icon="['fas', 'book']" />
+                        </el-button>
                     </a>
                 </el-tooltip>
             </div>
+        </div>
+        <section class="base-convert-main">
+            <template v-if="getSessionError">
+                <div class="base-convert-scroll">
+                    <div class="base-convert-content">
+                        <el-alert
+                            type="error"
+                            :closable="false"
+                            show-icon
+                            class="base-convert-session-error"
+                            role="alert"
+                        >
+                            Cannot find the session. There may have been an error during session creation, or the
+                            uploaded data may have been deleted.
+                        </el-alert>
 
-            <ManageUsersDialog v-if="hasAuth"></ManageUsersDialog>
+                        <SessionDebugDownloads v-if="session?._id" wrapper-class="base-convert-error-debug" />
+                        <p v-else class="base-convert-error-no-id">No session id is available for downloads.</p>
+                    </div>
+                </div>
+            </template>
 
-            <div style="width: 135px; padding: 0 10px">
-                <el-button style="color: black; width: 100%; font-family: inherit" @click="handleSignout"
-                    >Signout</el-button
-                >
-            </div>
-        </aside>
-        <section>
-            <Upload v-if="page === 'upload'" ref="upload" />
-            <Description v-if="page === 'description'" ref="description" />
-            <Subject v-if="page === 'subject'" ref="subject" />
-            <Participant v-if="page === 'participant'" ref="participant" />
-            <SeriesPage v-if="page === 'seriespage'" ref="seriespage" @niivue="openNiivue" />
-            <Events v-if="page === 'event'" ref="event" @mapObjects="mapObjects" />
-            <Objects
-                v-if="page === 'object'"
-                ref="object"
-                @niivue="openNiivue"
-                @mapObjects="mapObjects"
-                @updateObject="updateObject"
-            />
-            <Deface v-if="page === 'deface'" ref="deface" @niivue="openNiivue" />
-            <Finalize v-if="page === 'finalize'" ref="finalize" />
-            <Feedback v-if="page === 'feedback'" ref="feedback" />
-
-            <br />
-            <div v-if="session" class="page-action">
-                <el-button v-if="backLabel" :type="backButtonType" @click="back">
-                    <font-awesome-icon :icon="['fas', 'angle-left']" />
-                    {{ backLabel }}
-                </el-button>
-                <el-button v-if="nextLabel" type="primary" style="float: right" @click="next">
-                    {{ nextLabel }}
-                    <font-awesome-icon :icon="['fas', 'angle-right']" />
-                </el-button>
-            </div>
+            <template v-else>
+                <div ref="mainScroll" class="base-convert-scroll">
+                    <div class="base-convert-content">
+                        <Upload v-if="page === 'upload'" ref="upload" />
+                        <Description v-if="page === 'description'" ref="description" />
+                        <Subject v-if="page === 'subject'" ref="subject" />
+                        <SeriesPage v-if="page === 'seriespage'" ref="seriespage" @niivue="openNiivue" />
+                        <Events v-if="page === 'event'" ref="event" @mapObjects="mapObjects" />
+                        <Objects
+                            v-if="page === 'object'"
+                            ref="object"
+                            @niivue="openNiivue"
+                            @mapObjects="mapObjects"
+                            @updateObject="updateObject"
+                        />
+                        <Deface v-if="page === 'deface'" ref="deface" @niivue="openNiivue" />
+                        <Participant v-if="page === 'participant'" ref="participant" />
+                        <Finalize v-if="page === 'finalize'" ref="finalize" />
+                        <Feedback v-if="page === 'feedback'" ref="feedback" />
+                    </div>
+                </div>
+                <footer v-if="session" class="page-action">
+                    <el-button style="width: 260px" v-if="backLabel" :type="backButtonType" @click="back">
+                        <font-awesome-icon :icon="['fas', 'angle-left']" />
+                        {{ backLabel }}
+                    </el-button>
+                    <el-button style="width: 260px" v-if="nextLabel" type="primary" @click="next">
+                        {{ nextLabel }}
+                        <font-awesome-icon :icon="['fas', 'angle-right']" />
+                    </el-button>
+                </footer>
+                <niivue :path="niivuePath" @close="niivuePath = undefined" />
+            </template>
         </section>
-        <niivue :path="niivuePath" @close="niivuePath = undefined" />
     </div>
 </template>
 
@@ -98,30 +116,30 @@
 import { defineComponent } from 'vue';
 import { mapState, mapGetters } from 'vuex';
 
-import Upload from './Upload.vue';
-import Description from './Description.vue';
-import Subject from './Subject.vue';
-import Participant from './Participant.vue';
-import SeriesPage from './SeriesPage.vue';
-import Objects from './Objects.vue';
-import Events from './Events.vue';
-import Deface from './Deface.vue';
-import Finalize from './Finalize.vue';
-import Feedback from './Feedback.vue';
-import ManageUsersDialog from './components/dialogs/ManageUsersDialog.vue';
-import { IObject } from './store';
-import { hasAuth, createEventsTSV } from './lib';
-
+import SessionDebugDownloads from '@/components/SessionDebugDownloads.vue';
+import Upload from '@/features/upload/Upload.vue';
+import Description from '@/features/description/Description.vue';
+import Subject from '@/features/subject/Subject.vue';
+import Participant from '@/features/participant/Participant.vue';
+import SeriesPage from '@/features/series/SeriesPage.vue';
+import Objects from '@/features/objects/Objects.vue';
+import Events from '@/features/events/Events.vue';
+import Deface from '@/features/deface/Deface.vue';
+import Finalize from '@/features/finalize/Finalize.vue';
+import Feedback from '@/features/feedback/Feedback.vue';
+import { authRequired, hasJWT, createEventsTSV } from './lib';
 //https://github.com/element-plus/element-plus/issues/436#issuecomment-961386582
 import { ElNotification } from 'element-plus';
 import 'element-plus/es/components/notification/style/css';
 
 import { setSectionIDs, funcQA, fmapQA, dwiQA, petQA, setRun, setVolumeThreshold, setIntendedFor } from './libUnsafe';
 
-import niivue from './components/niivue.vue';
-
+import niivue from '@/components/niivue.vue';
+import { IObject } from '@/store/store.types';
+import DisplayMode from '@/components/DisplayMode.vue';
 export default defineComponent({
     components: {
+        SessionDebugDownloads,
         Upload,
         Description,
         Subject,
@@ -132,7 +150,6 @@ export default defineComponent({
         Participant,
         Finalize,
         Feedback,
-        ManageUsersDialog: ManageUsersDialog,
 
         niivue,
     },
@@ -141,21 +158,27 @@ export default defineComponent({
         return {
             //page order
             pages: [
-                'upload',
-                'description',
-                'subject',
-                'seriespage',
-                'event',
-                'object',
-                'deface',
-                'participant',
-                'finalize',
-                'feedback',
+                { title: 'Upload Imaging Data', description: '', key: 'upload' },
+                { title: 'Dataset Description', description: '', key: 'description' },
+                { title: 'Subjects/Sessions', description: 'Data Mapping (1/3)', key: 'subject' },
+                { title: 'Series Mapping', description: 'Data Mapping (2/3)', key: 'seriespage' },
+                { title: 'Events', description: 'Data Mapping (3/3)', key: 'event' },
+                { title: 'Dataset Review', description: '', key: 'object' },
+                { title: 'Deface', description: 'Optional', key: 'deface' },
+                { title: 'Participants Info', description: 'Optional', key: 'participant' },
+                { title: 'Finalize', description: '', key: 'finalize' },
+                { title: 'Feedback', description: '', key: 'feedback' },
             ],
 
             //item to open in niivue
             //niivueItem: undefined as IObjectItem|undefined,
             niivuePath: undefined as string | undefined,
+
+            /** Cleared in beforeUnmount so polling stops when leaving convert. */
+            sessionPollIntervalId: null as number | null,
+
+            /** Set when loadSession / loadEzbids fail (invalid session or server error). */
+            getSessionError: false,
         };
     },
 
@@ -163,14 +186,24 @@ export default defineComponent({
         ...mapState(['session', 'ezbids', 'events', 'page', 'config']),
         ...mapGetters(['getBIDSEntities', 'getBIDSMetadata', 'findSession', 'findSubject']),
 
-        hasAuth() {
-            return hasAuth();
+        authRequired() {
+            return authRequired();
+        },
+
+        hasJWT() {
+            return hasJWT();
+        },
+
+        activeValue() {
+            const activeIndex = this.pages.findIndex((p) => p.key === this.page);
+            if (activeIndex < 0) return 0;
+            return activeIndex;
         },
 
         backLabel(): string | null {
             switch (this.page) {
                 case 'upload':
-                    if (this.session) return 'Re-Upload'; //TODO - looks like this is broken
+                    if (this.session) return 'Re-Upload';
                     return null;
                 default:
                     return 'Back';
@@ -200,34 +233,74 @@ export default defineComponent({
 
     async created() {
         this.$store.commit('reset');
-        if (location.hash) {
-            await this.$store.dispatch('reload', location.hash.substring(1));
-            this.mapObjects();
-            this.$store.commit('organizeObjects');
-            this.$store.dispatch('loadDefaceStatus');
+        const hash = location.hash;
+
+        let sessionId = undefined;
+        if (!hash) {
+            ElNotification({
+                title: 'Could not load session ID',
+                message: '',
+                type: 'error',
+            });
+            return;
+        } else {
+            // For both hash location strategy (ezBIDS) and regular routing, the session ID is the last part of the hash.
+            const parts = hash.split('#');
+            sessionId = parts[parts.length - 1];
+            if (!sessionId) {
+                ElNotification({
+                    title: 'Could not load session ID',
+                    message: '',
+                    type: 'error',
+                });
+                return;
+            }
         }
 
-        window.setInterval(async () => {
-            if (this.session) {
+        try {
+            await this.$store.dispatch('reload', sessionId);
+        } catch (e) {
+            console.error(e);
+            this.getSessionError = true;
+            return;
+        }
+
+        this.mapObjects();
+        this.$store.commit('organizeObjects');
+        this.$store.dispatch('loadDefaceStatus');
+
+        this.sessionPollIntervalId = window.setInterval(async () => {
+            if (this.getSessionError) return;
+            if (!this.session) return;
+
+            try {
                 switch (this.session.status) {
                     case 'analyzed':
                     case 'finished':
                         break;
                     case 'defacing':
-                        this.$store.dispatch('loadDefaceStatus');
-                        this.$store.dispatch('loadSession', this.session._id);
+                        await this.$store.dispatch('loadDefaceStatus');
+                        await this.$store.dispatch('loadSession');
                         break;
                     default:
-                        //deface
-                        //defaced
-                        this.$store.dispatch('loadSession', this.session._id);
+                        await this.$store.dispatch('loadSession');
                 }
 
                 if (this.ezbids.notLoaded) {
                     await this.$store.dispatch('loadEzbids');
                 }
+            } catch (e) {
+                console.error(e);
+                this.getSessionError = true;
             }
         }, 5000);
+    },
+
+    beforeUnmount() {
+        if (this.sessionPollIntervalId != null) {
+            clearInterval(this.sessionPollIntervalId);
+            this.sessionPollIntervalId = null;
+        }
     },
 
     methods: {
@@ -242,8 +315,8 @@ export default defineComponent({
                     console.error(err);
                     ElNotification({ title: 'Failed', message: err });
                 } else {
-                    const idx = this.pages.indexOf(this.page);
-                    this.$store.commit('setPage', this.pages[idx + 1]);
+                    const idx = this.pages.findIndex((p) => p.key === this.page);
+                    this.$store.commit('setPage', this.pages[idx + 1].key);
                     switch (this.page) {
                         case 'seriespage':
                             petQA(this.ezbids);
@@ -263,21 +336,20 @@ export default defineComponent({
                             break;
                     }
 
-                    //scroll page to the top
-                    window.scrollTo(0, 0);
+                    const scrollEl = this.$refs.mainScroll as HTMLElement | undefined;
+                    scrollEl?.scrollTo({ top: 0 });
                 }
             });
         },
 
         back() {
-            const idx = this.pages.indexOf(this.page);
+            const idx = this.pages.findIndex((p) => p.key === this.page);
             if (idx == 0) {
                 if (confirm('Do you really want to start over?')) {
-                    document.location.hash = '';
-                    document.location.reload();
+                    this.$router.push('/dashboard');
                 }
             } else {
-                this.$store.commit('setPage', this.pages[idx - 1]);
+                this.$store.commit('setPage', this.pages[idx - 1].key);
             }
         },
 
@@ -350,112 +422,136 @@ export default defineComponent({
 </script>
 
 <style scoped lang="scss">
-aside h1 {
-    padding: 0;
-    margin: 0;
+.brainlife-lite {
+    background-color: #2d3748;
 }
 
-aside {
-    position: fixed;
-    width: 160px;
-    top: 0;
-    left: 0;
-    height: 100%;
+:deep(.el-step__title) {
+    color: #9ca3af;
+    font-size: small;
 
-    // background-color: #eee;
-    background: linear-gradient(
-        rgb(70, 188, 152),
-        rgb(53, 150, 121),
-        rgb(45, 113, 141),
-        rgb(31, 82, 95),
-        rgb(16, 45, 71)
-    );
+    padding-bottom: 0px !important; // this extra padding is causing a scrollbar to appear
+}
 
-    color: #333;
+:deep(.el-step__title.is-process) {
+    color: #fff;
+}
 
-    h1 {
-        padding: 10px;
-    }
+:deep(.el-step__description) {
+    color: #9ca3af;
+    font-size: x-small;
+}
 
-    h2 {
-        margin-bottom: 0px;
-        padding: 10px;
-        font-size: 110%;
-        color: white;
-    }
+:deep(.el-step__description.is-process) {
+    color: #fff;
+}
 
-    ul {
-        list-style: none;
-        padding-left: 0;
-        margin: 0;
-        color: white;
-
-        li {
-            padding: 10px;
-        }
-
-        li.active {
-            background-color: rgb(103, 194, 58);
-            color: white;
-        }
-    }
-
-    .section {
-        margin-bottom: 10px;
-
-        ul {
-            list-style: inside;
-        }
+:deep(.el-step__head.is-process) {
+    .el-step__icon {
+        color: black;
+        border-color: white;
+        background-color: white;
     }
 }
 
-.menu-footer {
-    padding: 14px;
+:deep(.el-step__icon.is-text) {
+    background-color: #9ca3af;
+    color: black;
+    border-color: #9ca3af;
+}
+
+.aside-back-dashboard {
+    flex-shrink: 0;
+    margin-bottom: 1rem;
+    margin-top: 1rem;
+
+    :deep(a) {
+        display: block;
+        width: 100%;
+        text-decoration: none;
+    }
+}
+
+.aside-back-dashboard-btn {
+    width: 100%;
+    justify-content: center;
+    color: #e2e8f0 !important;
+    border-color: #718096 !important;
+    background: transparent !important;
+
+    &:hover,
+    &:focus {
+        color: #fff !important;
+        border-color: #cbd5e0 !important;
+        background: rgba(255, 255, 255, 0.08) !important;
+    }
+}
+
+.aside-width {
+    width: 260px;
+    min-width: 260px;
+    max-width: 260px;
+}
+
+.aside-external-links {
     display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
     justify-content: space-between;
+    gap: 8px;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid #4a5568;
+}
 
-    svg:hover {
-        color: lightgray !important;
-    }
+.aside-external-btn {
+    background-color: whitesmoke !important;
+    border-color: black !important;
 
-    img:hover {
-        opacity: 0.8 !important;
-    }
-
-    .menu-footer-icon {
-        font-size: 2rem;
-        color: white;
-        width: 32px;
-        height: 32px;
+    svg {
+        color: black !important;
     }
 }
 
-section {
-    margin-left: 160px;
-    padding-bottom: 100px;
+.base-convert-main {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    max-height: 100vh;
+    min-height: 0;
+    box-sizing: border-box;
+    padding: 1rem;
+    overflow: hidden;
 }
 
-footer {
-    background-color: #b3c0d1;
-    color: #333;
-    line-height: 60px;
+.base-convert-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.base-convert-content {
+    padding: 1rem;
 }
 
 .page-action {
-    padding: 0 20px;
-    position: fixed;
-    height: 40px;
-    bottom: 0;
-    right: 0;
-    left: 160px;
-    padding: 10px;
-    background-color: #0003;
-    z-index: 3;
+    display: flex;
+    flex-shrink: 0;
+    justify-content: space-between;
+    padding: 1rem;
+    padding-bottom: 0;
+    background-color: white;
+    border-top: 1px solid var(--el-border-color-lighter, #ebeef5);
+    color: #333;
 }
 
-.list-header {
-    opacity: 0.5;
-    font-weight: bold;
-    background-color: #0001;
+.base-convert-session-error {
+    margin-bottom: 1rem;
+}
+
+.base-convert-error-no-id {
+    color: #909399;
+    margin-top: 1rem;
 }
 </style>

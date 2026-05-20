@@ -22,8 +22,8 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import LandingPageFooter from './LandingPageFooter.vue';
-import LandingPageHeader from './LandingPageHeader.vue';
+import LandingPageFooter from '@/features/landing/LandingPageFooter.vue';
+import LandingPageHeader from '@/features/landing/LandingPageHeader.vue';
 
 export default defineComponent({
     components: {
