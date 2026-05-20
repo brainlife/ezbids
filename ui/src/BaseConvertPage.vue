@@ -54,61 +54,59 @@
                 </el-tooltip>
             </div>
         </div>
-        <section
-            style="
-                display: flex;
-                flex-direction: column;
-                flex-grow: 1;
-                max-height: 100vh;
-                box-sizing: border-box;
-                padding: 1rem;
-                overflow-y: auto;
-            "
-        >
+        <section class="base-convert-main">
             <template v-if="getSessionError">
-                <div style="width: 100%">
-                    <el-alert type="error" :closable="false" show-icon class="base-convert-session-error" role="alert">
-                        Cannot find the session. There may have been an error during session creation, or the uploaded
-                        data may have been deleted.
-                    </el-alert>
+                <div class="base-convert-scroll">
+                    <div class="base-convert-content">
+                        <el-alert
+                            type="error"
+                            :closable="false"
+                            show-icon
+                            class="base-convert-session-error"
+                            role="alert"
+                        >
+                            Cannot find the session. There may have been an error during session creation, or the
+                            uploaded data may have been deleted.
+                        </el-alert>
 
-                    <SessionDebugDownloads v-if="session?._id" wrapper-class="base-convert-error-debug" />
-                    <p v-else class="base-convert-error-no-id">No session id is available for downloads.</p>
+                        <SessionDebugDownloads v-if="session?._id" wrapper-class="base-convert-error-debug" />
+                        <p v-else class="base-convert-error-no-id">No session id is available for downloads.</p>
+                    </div>
                 </div>
             </template>
 
             <template v-else>
-                <div style="padding: 1rem">
-                    <Upload v-if="page === 'upload'" ref="upload" />
-                    <Description v-if="page === 'description'" ref="description" />
-                    <Subject v-if="page === 'subject'" ref="subject" />
-                    <SeriesPage v-if="page === 'seriespage'" ref="seriespage" @niivue="openNiivue" />
-                    <Events v-if="page === 'event'" ref="event" @mapObjects="mapObjects" />
-                    <Objects
-                        v-if="page === 'object'"
-                        ref="object"
-                        @niivue="openNiivue"
-                        @mapObjects="mapObjects"
-                        @updateObject="updateObject"
-                    />
-                    <Deface v-if="page === 'deface'" ref="deface" @niivue="openNiivue" />
-                    <Participant v-if="page === 'participant'" ref="participant" />
-                    <Finalize v-if="page === 'finalize'" ref="finalize" />
-                    <Feedback v-if="page === 'feedback'" ref="feedback" />
-
-                    <br />
-                    <footer v-if="session" class="page-action">
-                        <el-button style="width: 260px" v-if="backLabel" :type="backButtonType" @click="back">
-                            <font-awesome-icon :icon="['fas', 'angle-left']" />
-                            {{ backLabel }}
-                        </el-button>
-                        <el-button style="width: 260px" v-if="nextLabel" type="primary" @click="next">
-                            {{ nextLabel }}
-                            <font-awesome-icon :icon="['fas', 'angle-right']" />
-                        </el-button>
-                    </footer>
-                    <niivue :path="niivuePath" @close="niivuePath = undefined" />
+                <div ref="mainScroll" class="base-convert-scroll">
+                    <div class="base-convert-content">
+                        <Upload v-if="page === 'upload'" ref="upload" />
+                        <Description v-if="page === 'description'" ref="description" />
+                        <Subject v-if="page === 'subject'" ref="subject" />
+                        <SeriesPage v-if="page === 'seriespage'" ref="seriespage" @niivue="openNiivue" />
+                        <Events v-if="page === 'event'" ref="event" @mapObjects="mapObjects" />
+                        <Objects
+                            v-if="page === 'object'"
+                            ref="object"
+                            @niivue="openNiivue"
+                            @mapObjects="mapObjects"
+                            @updateObject="updateObject"
+                        />
+                        <Deface v-if="page === 'deface'" ref="deface" @niivue="openNiivue" />
+                        <Participant v-if="page === 'participant'" ref="participant" />
+                        <Finalize v-if="page === 'finalize'" ref="finalize" />
+                        <Feedback v-if="page === 'feedback'" ref="feedback" />
+                    </div>
                 </div>
+                <footer v-if="session" class="page-action">
+                    <el-button style="width: 260px" v-if="backLabel" :type="backButtonType" @click="back">
+                        <font-awesome-icon :icon="['fas', 'angle-left']" />
+                        {{ backLabel }}
+                    </el-button>
+                    <el-button style="width: 260px" v-if="nextLabel" type="primary" @click="next">
+                        {{ nextLabel }}
+                        <font-awesome-icon :icon="['fas', 'angle-right']" />
+                    </el-button>
+                </footer>
+                <niivue :path="niivuePath" @close="niivuePath = undefined" />
             </template>
         </section>
     </div>
@@ -139,7 +137,6 @@ import { setSectionIDs, funcQA, fmapQA, dwiQA, petQA, setRun, setVolumeThreshold
 import niivue from '@/components/niivue.vue';
 import { IObject } from '@/store/store.types';
 import DisplayMode from '@/components/DisplayMode.vue';
-
 export default defineComponent({
     components: {
         SessionDebugDownloads,
@@ -339,8 +336,8 @@ export default defineComponent({
                             break;
                     }
 
-                    //scroll page to the top
-                    window.scrollTo(0, 0);
+                    const scrollEl = this.$refs.mainScroll as HTMLElement | undefined;
+                    scrollEl?.scrollTo({ top: 0 });
                 }
             });
         },
@@ -517,18 +514,36 @@ export default defineComponent({
     }
 }
 
+.base-convert-main {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    max-height: 100vh;
+    min-height: 0;
+    box-sizing: border-box;
+    padding: 1rem;
+    overflow: hidden;
+}
+
+.base-convert-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+.base-convert-content {
+    padding: 1rem;
+}
+
 .page-action {
     display: flex;
+    flex-shrink: 0;
     justify-content: space-between;
-    padding: 1rem 0;
-    position: fixed;
-    height: 40px;
-    bottom: 0;
-    width: calc(100vw - 260px - 4rem);
+    padding: 1rem;
+    padding-bottom: 0;
     background-color: white;
-    z-index: 3;
+    border-top: 1px solid var(--el-border-color-lighter, #ebeef5);
     color: #333;
-    line-height: 60px;
 }
 
 .base-convert-session-error {
