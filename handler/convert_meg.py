@@ -34,7 +34,7 @@ for obj in objects:
     if "meg" in obj_type:
         datatype = "meg"
 
-        raw = read_raw(obj["_SeriesDescription"], verbose=0)
+        raw = read_raw(obj["_SeriesDescription"], verbose=0, allow_maxshield=True) # allow_maxshield=True for non maxfiltered data
 
         # Get entity information
         entities = obj["_entities"]
