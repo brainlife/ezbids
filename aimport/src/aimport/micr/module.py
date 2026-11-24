@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from ..plan import Plan
     from ..pseudonyms import PseudonymKey
     from ..schema import Schema
+    from ..scrub import ScrubbedSeries
     from .metadata import ImageInfo
 
 log = logging.getLogger(__name__)
@@ -307,6 +308,79 @@ def _suffix(rec: dict, hints: set[str]) -> tuple[str | None, str]:
     return None, NO_SUFFIX_REASON
 
 
+def micr_view(records: list[dict]) -> list["ScrubbedSeries"]:
+    """The agent's view of each readable record: image facts and generic layout words only.
+
+    Never a path, a name, a date, an OME string or the acquisition date (``acquired``). Hints are
+    tokens of ``names.VOCAB``; the pixel size, wavelengths and objective are numbers and enums.
+    """
+    from ..scrub import ScrubbedSeries
+
+    out = []
+    for i, rec in enumerate(records):
+        info = rec.get("info")
+        if info is None:
+            continue
+        axes, shape = info.get("axes", ""), info.get("shape") or []
+        channels = info.get("channels") or []
+        hints = sorted(t for t in _hint_tokens(_where(rec)) if names.is_vocab(t))
+        suffix, _ = _suffix(rec, set(hints))
+        size = info.get("pixel_size") or {}
+        fields = {
+            "Dimensions": {a: int(n) for a, n in zip(axes, shape)},
+            "PixelSize": [size[a] for a in "xyz" if a in size],
+            "PixelSizeUnits": info.get("pixel_unit"),
+            "ChannelCount": len(channels),
+            "ExcitationWavelengths": [c["excitation_nm"] for c in channels if c.get("excitation_nm") is not None],
+            "EmissionWavelengths": [c["emission_nm"] for c in channels if c.get("emission_nm") is not None],
+            "ObjectiveMagnification": info.get("objective_magnification"),
+            "ObjectiveNA": info.get("objective_na"),
+            "Immersion": info.get("immersion"),
+            "FormatFamily": rec["family"],
+            "Levels": info.get("levels", 1),
+            "DataType": info.get("dtype"),
+            "Hints": hints,
+        }
+        out.append(ScrubbedSeries(MICR_INDEX_BASE + i, "", "", f"micr/{suffix or 'unknown'}", fields))
+    return out
+
+
+def _apply_agent(mp: ModulePlan, records: list[dict], client: "LLMClient | None", schema: "Schema",
+                 terms: set[str]) -> None:
+    """Ask the agent about the readable entries and apply the planner's agreement rules."""
+    from ..agent import MICR_CLASSIFY_SYSTEM, classify
+    from ..planner import AGENT_MIN, AGREE_MIN, DISAGREE_CONFIDENCE, _agent_text, _guess_text, _usable
+
+    if client is None:
+        return
+    view = micr_view(records)
+    mp.view = view
+    by_idx = {e.series_idx: e for e in mp.entries}
+    heuristic = {s.series_idx: ("micr", by_idx[s.series_idx].suffix, {}) for s in view
+                 if s.series_idx in by_idx and by_idx[s.series_idx].suffix}
+    for g in classify(view, heuristic, client, schema, MICR_CLASSIFY_SYSTEM, ("micr",)):
+        e = by_idx.get(g.series_idx)
+        if e is None or g.datatype is None or e.status not in ("ok", "unknown"):
+            continue
+        extra = {k: v for k, v in g.entities.items() if k in ("acquisition", "stain") and _usable(v, terms)}
+        if e.suffix and g.suffix == e.suffix:
+            e.confidence = max(AGREE_MIN, g.confidence)
+            for k, v in extra.items():
+                e.entities.setdefault(k, v)
+        elif e.suffix:
+            if g.confidence >= AGENT_MIN:
+                e.confidence = DISAGREE_CONFIDENCE
+                e.agent_note = _agent_text(_guess_text(g), terms)
+        elif g.confidence >= AGENT_MIN:
+            e.suffix, e.source, e.confidence = g.suffix, "agent", g.confidence
+            e.status, e.exclude = "ok", False
+            e.reason = _agent_text(g.reason, terms) or "agent"
+            for k, v in extra.items():
+                e.entities.setdefault(k, v)
+        else:
+            e.agent_note = _agent_text(_guess_text(g), terms)
+
+
 def _level0_bytes(info: dict) -> int:
     import numpy as np
 
@@ -372,7 +446,7 @@ def _stain(rec: dict) -> str | None:
 
 
 def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], schema: "Schema",
-                 target: str) -> ModulePlan:
+                 target: str, client: "LLMClient | None" = None) -> ModulePlan:
     from ..brainlife_map import to_brainlife
     from ..planner import _check_nameable, _usable
 
@@ -486,6 +560,8 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
                 mp.images[m] = None
 
     _chunks(entries, records)
+    mp.entries = entries
+    _apply_agent(mp, records, client, schema, terms)
     for e in entries:
         if e.status == "ok":
             d = dict(datatype=e.datatype, suffix=e.suffix, entities=e.entities, status=e.status,
@@ -558,7 +634,7 @@ class MicrModule:
 
     def plan(self, work: Path, key: "PseudonymKey", existing: set[str], client: "LLMClient | None",
              schema: "Schema", target: str) -> ModulePlan:
-        return plan_entries(load_records(work), key, existing, schema, target)
+        return plan_entries(load_records(work), key, existing, schema, target, client)
 
     def write(self, plan: "Plan", work: Path, input_dir: Path, terms: set[str], key: "PseudonymKey",
               schema: "Schema", dest: Callable[[str], Path]):
