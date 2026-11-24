@@ -5,11 +5,7 @@ The outcomes decide ``ephys.OUTPUT_FORMATS`` and ``ephys.MNE_READERS``; see the 
 """
 from __future__ import annotations
 
-import hashlib
 import json
-import os
-import subprocess
-import urllib.request
 from datetime import date, datetime, timezone
 from pathlib import Path
 
@@ -20,6 +16,13 @@ mne = pytest.importorskip("mne")
 mne_bids = pytest.importorskip("mne_bids")
 
 from aimport import ephys  # noqa: E402
+from ephys_fixtures import (  # noqa: E402
+    BIDS_EXAMPLES_SETS,
+    fetch_bids_examples,
+    fetch_mne_testing,
+    planted_snirf,
+    sha256,
+)
 
 MEAS_DATE = datetime(2025, 2, 15, 9, 30, 0, tzinfo=timezone.utc)
 PLANTED_SUBJECT = {
@@ -32,50 +35,6 @@ PLANTED_SUBJECT = {
 }
 ANONYMIZE = {"daysback": 40000, "keep_his": False, "keep_source": False}
 SFREQ = 256.0
-
-CACHE = Path(os.environ.get("AIMPORT_EPHYS_CACHE", "/tmp/aimport-ephys-cache"))
-
-# mne-testing-data, pinned; the files of CTF/testdata_ctf.ds that read_raw_ctf needs (empty ones skipped)
-MNE_TESTING_COMMIT = "20cc221d737a37a6ee3a9c007e91bd69541fefe9"
-CTF_FILES = {
-    "ClassFile.cls": "bd91e66437d53bfbb4cd03ce9394714b4ec4fd715bddfca3c4fabe965476378b",
-    "params.dsc": "2b4dee7383882a1fc6f1d84d5ba4c3181c461f5d6aaf5af204cc534289e5fc92",
-    "processing.cfg": "c668cb17fbe4cfec9a29c3ec85ecaf7e61278df863fbe1a9ea8e77960db4baf4",
-    "testdata_ctf.acq": "e0837500432d5f8c5ff940a53778469c1a3bf83852355fa922f256c5adc08623",
-    "testdata_ctf.hc": "37ee610fdcff3689b95c0e461fe7c18d5582109120bb39e6e12d651931eb515c",
-    "testdata_ctf.infods": "72d71ee90fea7a49b056a228101a9b84f91600585a000484061fbd7ea9f5c3b3",
-    "testdata_ctf.meg4": "30ef47c85083ff3892d5565e487287f71146646a4bff6c283638939801c7f788",
-    "testdata_ctf.newds": "5d2ace836414f294685574d3720f36ecd529b4b18668c8d54c9986e98b9e3cf9",
-    "testdata_ctf.res4": "a75ccb0a74910d1f09f1e35944ced09591f3048a850718bcda95a83e16e27146",
-}
-
-# bids-examples, pinned; data files are empty (layout and validator only)
-BIDS_EXAMPLES_COMMIT = "5e00d47b6f1db106dda1b776d5243eb41b4cb95b"
-BIDS_EXAMPLES_SETS = (
-    "eeg_cbm",
-    "eeg_rest_fmri",
-    "ieeg_epilepsy",
-    "ieeg_visual",
-    "ds000247",
-    "fnirs_tapping",
-    "fnirs_automaticity",
-    "emg_ConcurrentIndependentUnits",
-    "emg_CustomBipolar",
-    "emg_CustomBipolarFace",
-    "emg_IndependentMod",
-    "emg_MultiBodyParts",
-    "emg_Multimodal",
-    "emg_TwoHDsEMG",
-    "emg_TwoWristbands",
-)
-
-
-def _sha256(path: Path) -> str:
-    h = hashlib.sha256()
-    with open(path, "rb") as f:
-        for block in iter(lambda: f.read(1 << 20), b""):
-            h.update(block)
-    return h.hexdigest()
 
 
 def _raw_array(ch_type: str, n_ch: int = 4, seconds: float = 4.0) -> "mne.io.RawArray":
@@ -105,30 +64,16 @@ def _read_edf(src: Path, ch_type: str):
     return raw
 
 
-def _fetch_ctf() -> Path:
-    ds = CACHE / f"mne-testing-data-{MNE_TESTING_COMMIT}" / "CTF" / "testdata_ctf.ds"
-    ds.mkdir(parents=True, exist_ok=True)
-    base = f"https://raw.githubusercontent.com/mne-tools/mne-testing-data/{MNE_TESTING_COMMIT}/CTF/testdata_ctf.ds"
-    for name, digest in CTF_FILES.items():
-        dest = ds / name
-        if not dest.exists() or _sha256(dest) != digest:
-            tmp = dest.with_suffix(dest.suffix + ".part")
-            urllib.request.urlretrieve(f"{base}/{name}", tmp)
-            tmp.replace(dest)
-        assert _sha256(dest) == digest, name
-    return ds
-
-
 def _write(raw, root: Path, datatype: str, fmt: str, **kw) -> "mne_bids.BIDSPath":
     bp = mne_bids.BIDSPath(subject="01", task="rest", datatype=datatype, root=root)
     return mne_bids.write_raw_bids(raw, bp, format=fmt, verbose=False, **kw)
 
 
 def _assert_no_source_bytes(out_root: Path, sources: list[Path]) -> None:
-    src_hashes = {_sha256(s) for s in sources}
+    src_hashes = {sha256(s) for s in sources}
     outputs = [p for p in out_root.rglob("*") if p.is_file()]
     assert outputs
-    assert not [p for p in outputs if _sha256(p) in src_hashes]
+    assert not [p for p in outputs if sha256(p) in src_hashes]
 
 
 # --- readers ---------------------------------------------------------------------------------
@@ -181,7 +126,7 @@ def test_output_formats_table():
 )
 def test_anonymize_forces_conversion(tmp_path, datatype, fmt, ch_type, ext):
     if ch_type == "ctf":
-        ds = _fetch_ctf()
+        ds = fetch_mne_testing(["CTF/testdata_ctf.ds/"])["CTF/testdata_ctf.ds/"]
         sources = [p for p in ds.iterdir() if p.is_file()]
         raw = mne.io.read_raw_ctf(ds, system_clock="ignore", preload=False, verbose=False)
     else:
@@ -234,53 +179,8 @@ def test_eeg_bdf(tmp_path):
 # --- NIRS --------------------------------------------------------------------------------------
 
 
-def _write_snirf(path: Path) -> Path:
-    """A minimal continuous-wave SNIRF (2 sources, 2 detectors, 2 wavelengths) written with h5py."""
-    import h5py
-
-    n_t = 200
-    pairs = [(1, 1), (1, 2), (2, 1), (2, 2)]
-    rng = np.random.default_rng(0)
-    with h5py.File(path, "w") as f:
-        f.create_dataset("formatVersion", data=np.bytes_("1.0"))
-        nirs = f.create_group("nirs")
-        tags = nirs.create_group("metaDataTags")
-        for k, v in {
-            "SubjectID": "Smith_John",
-            "MeasurementDate": "2025-02-15",
-            "MeasurementTime": "09:30:00",
-            "LengthUnit": "mm",
-            "TimeUnit": "s",
-            "FrequencyUnit": "Hz",
-        }.items():
-            tags.create_dataset(k, data=np.bytes_(v))
-        data = nirs.create_group("data1")
-        data.create_dataset("dataTimeSeries", data=1.0 + 0.01 * rng.standard_normal((n_t, 2 * len(pairs))))
-        data.create_dataset("time", data=np.arange(n_t) / 10.0)
-        k = 1
-        for wl in (1, 2):
-            for s, d in pairs:
-                ml = data.create_group(f"measurementList{k}")
-                ml.create_dataset("sourceIndex", data=np.int32(s))
-                ml.create_dataset("detectorIndex", data=np.int32(d))
-                ml.create_dataset("wavelengthIndex", data=np.int32(wl))
-                ml.create_dataset("dataType", data=np.int32(1))
-                ml.create_dataset("dataTypeIndex", data=np.int32(1))
-                k += 1
-        probe = nirs.create_group("probe")
-        probe.create_dataset("wavelengths", data=np.array([760.0, 850.0]))
-        probe.create_dataset("sourcePos3D", data=np.array([[0.0, 0.0, 80.0], [30.0, 0.0, 80.0]]))
-        probe.create_dataset("detectorPos3D", data=np.array([[0.0, 30.0, 80.0], [30.0, 30.0, 80.0]]))
-        probe.create_dataset("sourceLabels", data=np.array([b"S1", b"S2"]))
-        probe.create_dataset("detectorLabels", data=np.array([b"D1", b"D2"]))
-        stim = nirs.create_group("stim1")
-        stim.create_dataset("name", data=np.bytes_("Jane Doe tapping"))
-        stim.create_dataset("data", data=np.array([[2.0, 5.0, 1.0], [10.0, 5.0, 1.0]]))
-    return path
-
-
 def test_nirs_from_snirf(tmp_path):
-    src = _write_snirf(tmp_path / "scratch.snirf")
+    src = planted_snirf(tmp_path)
     raw = mne.io.read_raw_snirf(src, preload=False, verbose=False)
     out = _write(raw, tmp_path / "bids", "nirs", "auto", anonymize=None)
     d = out.fpath.parent
@@ -296,24 +196,6 @@ def test_nirs_from_snirf(tmp_path):
 
 # --- validator on bids-examples (docker) ---------------------------------------------------------
 
-BIDS_EXAMPLES_CACHE = Path(os.environ.get("AIMPORT_BIDS_EXAMPLES_CACHE", "/tmp/aimport-bids-examples-cache"))
-
-
-def _fetch_bids_examples() -> Path:
-    """Shallow fetch of bids-examples at the pinned commit (its data files are empty)."""
-    dest = BIDS_EXAMPLES_CACHE / BIDS_EXAMPLES_COMMIT
-    if not (dest / "default-config.json").exists():
-        dest.mkdir(parents=True, exist_ok=True)
-        git = ["git", "-C", str(dest)]
-        subprocess.run([*git, "init", "-q"], check=True)
-        subprocess.run(
-            [*git, "fetch", "-q", "--depth", "1", "https://github.com/bids-standard/bids-examples.git", BIDS_EXAMPLES_COMMIT],
-            check=True,
-        )
-        subprocess.run([*git, "checkout", "-q", "FETCH_HEAD"], check=True)
-    return dest
-
-
 @pytest.mark.docker
 @pytest.mark.parametrize("name", BIDS_EXAMPLES_SETS)
 def test_validator_ephys_examples(name):
@@ -321,7 +203,7 @@ def test_validator_ephys_examples(name):
     with the flags bids-examples' own CI uses (``--config default-config.json --ignoreNiftiHeaders``)."""
     from aimport.validate import SCHEMA_PATH, VALIDATOR, _run, parse_report
 
-    root = _fetch_bids_examples()
+    root = fetch_bids_examples([name])[name].parent
     proc = _run(
         [
             VALIDATOR,

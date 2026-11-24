@@ -29,4 +29,35 @@ def tokens(text: str) -> set[str]:
     Use as ``assert not PLANTED & tokens(text)`` or ``assert not NATIVE & tokens(text)``.
     """
     low = text.lower()
-    return {t for t in PLANTED | NATIVE if t in low}
+    return {t for t in PLANTED | NATIVE | EPHYS_PLANTED if t in low}
+
+
+# Identifiers planted into the ephys recordings (tests/fixtures/ephys_fixtures.py), lowercase: PLANTED plus
+# the operator, the free-text annotations, the meas date in every form, and the renamed channel.
+# "tapping" is planted only in free text (SNIRF stim name "Jane Doe tapping"); the bids-examples task label
+# `tapping` is never used in a leak test.
+EPHYS_PLANTED = PLANTED | {
+    "jane doe",
+    "jdoe",
+    "eegtech_jane",
+    "dr jane",
+    "said hello",
+    "2025-02-15",
+    "20250215",
+    "15.02.25",
+    "15-feb-2025",
+    "01-jan-1970",
+    "smith pilot",
+    "smith-fp1",
+    "tapping",
+}
+
+
+def ephys_tokens(text: str) -> set[str]:
+    """The ephys planted identifiers (EPHYS_PLANTED) found in text; substring match on lowercased text.
+
+    Use ``assert not ephys_tokens(text)`` in ephys leak tests; it avoids clashes with the MRI vocabulary
+    (NATIVE) that ``tokens`` also checks.
+    """
+    low = text.lower()
+    return {t for t in EPHYS_PLANTED if t in low}
