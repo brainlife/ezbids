@@ -706,7 +706,7 @@ export default defineComponent({
     border-radius: 10px;
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
     background: var(--el-fill-color-blank, #fff);
-    box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+    box-shadow: none;
 }
 
 .series-intro__title {
@@ -1116,7 +1116,7 @@ export default defineComponent({
     margin-top: 10px;
     height: 80vh;
     overflow: auto;
-    background-color: #666;
+    background-color: var(--code-bg);
     color: white;
     padding: 10px;
     border-radius: 6px;

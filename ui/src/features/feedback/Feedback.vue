@@ -97,7 +97,7 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 a {
-    color: #409eff;
+    color: var(--el-color-primary);
 }
 
 .feedback-page {
@@ -112,7 +112,7 @@ a {
     border-radius: 10px;
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
     background: var(--el-fill-color-blank, #fff);
-    box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+    box-shadow: none;
 }
 
 .feedback-hero__title {

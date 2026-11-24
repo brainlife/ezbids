@@ -1337,17 +1337,17 @@ export default defineComponent({
 }
 
 .required-bg {
-    background: #ebf5ff;
+    background: var(--el-color-primary-light-9);
     padding-left: 10px;
 }
 
 .recommended-bg {
-    background: #e5ebf7;
+    background: var(--panel-muted);
     padding-left: 10px;
 }
 
 .optional-bg {
-    background: #ebf5ff;
+    background: var(--el-color-primary-light-9);
 
     padding-left: 10px;
 }

@@ -560,7 +560,7 @@ pre.headers {
     margin-top: 10px;
     max-height: 65vh;
     overflow: auto;
-    background-color: #666;
+    background-color: var(--code-bg);
     color: #fff;
     padding: 10px;
     border-radius: 6px;

@@ -327,7 +327,7 @@ pre.status {
     margin: 0;
     padding: 10px;
     border-radius: 5px;
-    background-color: #666;
+    background-color: var(--code-bg);
     color: #fff;
     overflow: auto;
     word-break: break-all;

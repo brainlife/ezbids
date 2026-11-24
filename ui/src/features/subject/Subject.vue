@@ -222,7 +222,7 @@ export default defineComponent({
     border-radius: 10px;
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
     background: var(--el-fill-color-blank, #fff);
-    box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+    box-shadow: none;
 }
 
 .subject-intro__title {
@@ -403,7 +403,7 @@ pre.status {
     margin: 0;
     padding: 10px;
     border-radius: 5px;
-    background-color: #666;
+    background-color: var(--code-bg);
     color: #fff;
     overflow: auto;
     word-break: break-all;
