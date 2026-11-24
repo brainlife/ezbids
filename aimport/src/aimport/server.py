@@ -507,9 +507,13 @@ class Server:
             refused: list[str] = []
             ids = self.record_subject_ids(plan, key)  # before writing, so edited subjects keep their offsets
             roots = self.claimed_roots()
+            mods = modality.modules() if any(e.modality != "mri" for e in plan.entries) else ()
+            extra: dict[str, Any] = {"exclude": roots} if roots else {}
+            if mods:  # phase-1 calls stay unchanged
+                extra.update(modules=mods, work_dir=self.work,
+                             progress=lambda msg: self.set_status("executing", self.clean(str(msg))))
             write_bids(plan, core, self.input_dir, terms, key, self.get_schema(), self.out,
-                       staged_dir=self.staged, manifest=manifest, refused=refused,
-                       **({"exclude": roots} if roots else {}))
+                       staged_dir=self.staged, manifest=manifest, refused=refused, **extra)
             key.save()  # the edited subject IDs, and the date offsets the writer creates in memory
             self.save_subject_ids(ids)
             self.set_status("executing", "defacing the anatomical images")

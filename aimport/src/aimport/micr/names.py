@@ -12,6 +12,7 @@ from typing import Iterable, Literal
 
 from ..planner import _is_date_like
 from ..scrub import _date_forms
+from . import MICR_SUFFIXES
 
 Contrast = Literal["reflectivity", "retardance", "opticaxis", "cross"]
 
@@ -166,13 +167,17 @@ def facts(rel: str) -> NameFacts:
     return out
 
 
+# a BIDS micr input's own name parts (suffixes and entity keys, exact case): vocabulary, not identifiers
+_BIDS_WORDS = frozenset(MICR_SUFFIXES) | {"photo", "acq", "stain", "chunk", "run", "sample", "sub", "ses"}
+
+
 def path_terms(rels: Iterable[str]) -> set[str]:
     """Identifying terms from paths, for redaction: tokens, donors and every form of each date."""
     terms: set[str] = set()
     for rel in rels:
         for part in _parts(rel):
             for t in _tokens(_EXT.sub("", part)):
-                if len(t) < 3 or is_vocab(t) or (t.isdigit() and len(t) < 6):
+                if len(t) < 3 or is_vocab(t) or (t.isdigit() and len(t) < 6) or t in _BIDS_WORDS:
                     continue
                 terms.add(t)
                 d = _date(t)

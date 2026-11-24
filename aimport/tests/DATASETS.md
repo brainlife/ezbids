@@ -12,7 +12,7 @@ or dropped, and say why.
 | [neurolabusc/dcm_qa](https://github.com/neurolabusc/dcm_qa) | `8215e3e` | dropped 2026-11-24 | first version of the fixture (Tasks 2–3) |
 | Synthetic OME-Zarr (`tests/fixtures/micr_fixtures.py` `ome_zarr`, written for this repo; no real pixels) | generated at test time, seed 0 | **current** | `tests/test_micr_validator.py` (microscopy Task 1: validator ruling) |
 | Synthetic sparse BigTIFF (`tests/fixtures/micr_fixtures.py` `sparse_bigtiff`, written for this repo; no pixels) | generated at test time | **current** | `tests/test_modality.py` (microscopy Task 2: claimed input is never staged or copied), `tests/test_micr_readers.py` (Task 4: bounded open) |
-| Synthetic microscopy reader fixtures (`tests/fixtures/micr_fixtures.py` `planted_ome_tiff`, `planted_svs`, `psoct_nifti`, `psoct_mat`, `striped_tiff`, `visor_tile`; written for this repo, planted identifiers only) | generated at test time, seed 0 | **current** | `tests/test_micr_readers.py` (microscopy Task 4: readers, allowlisted metadata, bounded memory), `tests/test_micr_plan.py` (Task 6: plan entries, composite input below) |
+| Synthetic microscopy reader fixtures (`tests/fixtures/micr_fixtures.py` `planted_ome_tiff`, `planted_svs`, `psoct_nifti`, `psoct_mat`, `striped_tiff`, `visor_tile`; written for this repo, planted identifiers only) | generated at test time, seed 0 | **current** | `tests/test_micr_readers.py` (microscopy Task 4: readers, allowlisted metadata, bounded memory), `tests/test_micr_plan.py` (Task 6: plan entries, composite input below), `tests/test_micr_convert.py` (Task 8: conversion, self-check and write hook; inputs below) |
 | CMC public bucket `apex-connects` (us-east-2; four objects, keys below). No licence stated: read only, network-marked tests, nothing committed or downloaded whole | keys pinned by listing, 2026-11-24 | **current** | `tests/test_micr_remote.py` `network` tests (microscopy Task 5: remote reads by range request) |
 
 ### Synthetic OME-Zarr (current)
@@ -57,6 +57,16 @@ empty stand-ins) with readable files written over it: the four `psoct_nifti` con
 names and synthetic values (0.96 um, `x_step_um` 2.5, `488nm`, `frames_per_file` 4), and
 `planted_ome_tiff` in `H17_250215/`. The raw `.dat` tile stays empty. Planted: the folder names
 (`H17`, `250215`, `MN27`, `20250422`, `Moe`) and the OME-TIFF's own identifiers, all in `MICR_PLANTED`.
+
+**Task 8 inputs (`tests/test_micr_convert.py`).** `micr_input`: `planted_ome_tiff` in `H17_250215/`
+(AcquisitionDate 2025-02-15), one `psoct_nifti` retardance volume under
+`PS-OCT/Enface/Registration/Retardance/`, and `visor_tile` in `MN27_20250422_visor_488/` (folder date
+2025-04-22). `test_samples_tsv` and `test_bids_micr_sidecar_not_companion`: a BIDS-shaped micr input,
+`sub-01/micr/sub-01_sample-A_CONF.ome.tif` (`planted_ome_tiff`) with its own `.json` sidecar, a
+`psoct_nifti` named `sub-01_sample-B_acq-retardance_OCT.nii.gz`, a `photo` PNG stand-in (4 bytes) with
+a sidecar, and a supplied `samples.tsv` (`sample-A`/`sub-01`/`cell line`/`lab B`, plus `sample-Z` of a
+`sub-99` not in the import). `test_convert_bounded_memory` converts `striped_tiff` 6000 x 6000 with the
+block limit patched to 4 MiB (after a 600 x 600 warm-up). All synthetic, generated at test time.
 
 ### CMC public bucket `apex-connects` (current)
 

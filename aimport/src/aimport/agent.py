@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import Any, Protocol
 
 from .schema import PHASE1_DATATYPES, Schema
+from .micr import MICR_SUFFIXES as _MICR_SUFFIXES
 from .scrub import ScrubbedSeries, redact
 
 DEFAULT_MODEL = "claude-opus-5-5"
@@ -43,8 +44,7 @@ Reply with ONLY a JSON array, no prose, one object per series:
 [{{"series_idx": 0, "datatype": "anat", "suffix": "T1w", "entities": {{}}, "confidence": 0.9,
 "reason": "one short sentence"}}]"""
 
-MICR_SUFFIXES = ("TEM", "SEM", "uCT", "BF", "DF", "PC", "DIC", "FLUO", "CONF", "PLI", "CARS", "2PE", "MPE",
-                 "SR", "NLO", "OCT", "SPIM", "XPCT")
+MICR_SUFFIXES = _MICR_SUFFIXES  # the BIDS micr suffixes (one list: aimport.micr)
 MICR_ENTITIES = ("acquisition", "stain")
 MICR_GENERATED = frozenset({"sample", "chunk", "run"})
 

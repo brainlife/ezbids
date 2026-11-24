@@ -24,3 +24,7 @@ NGFF_VERSION: NgffVersion = _ngff_version()
 # Conversion and reading touch at most this many bytes of pixels per block; a whole array is
 # never materialised. Readers size their dask chunks to it (tests patch it smaller).
 MAX_BLOCK_BYTES = 256 * 2**20
+
+# BIDS micr suffixes (schema 1.11.2): vocabulary, never an identifying term of an input name
+MICR_SUFFIXES = ("TEM", "SEM", "uCT", "BF", "DF", "PC", "DIC", "FLUO", "CONF", "PLI", "CARS", "2PE", "MPE",
+                 "SR", "NLO", "OCT", "SPIM", "XPCT")

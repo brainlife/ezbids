@@ -1,4 +1,4 @@
-"""The microscopy modality module: claim, scan into local records, plan entries.
+"""The microscopy modality module: claim, scan into local records, plan entries, write.
 
 Records (``<work>/micr/records.json``) hold input-relative paths, remote URLs, parsed name facts
 (donor, dates) and the image facts (``ImageInfo``, acquisition date included). They are local-only,
@@ -15,12 +15,12 @@ import re
 import uuid
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any, Callable
 from urllib.parse import urlsplit
 
-from ..modality import Claim, ModulePlan
+from ..modality import Claim, ModuleOutput, ModulePlan
 from ..plan import PlanEntry
 from . import discover, names
 from .discover import Found
@@ -432,9 +432,12 @@ def _sample_key(where: str) -> str:
 
 
 def _input_label(where: str, prefix: str) -> str | None:
+    """The input's own <prefix>-<label>: a folder, or an entity of a BIDS file name (sub-01_sample-A_...)."""
     for part in where.split("/"):
-        if part.startswith(prefix + "-") and len(part) > len(prefix) + 1:
-            return part[len(prefix) + 1:]
+        for piece in part.split("_"):
+            piece = piece.split(".")[0]
+            if piece.startswith(prefix + "-") and len(piece) > len(prefix) + 1:
+                return piece[len(prefix) + 1:]
     return None
 
 
@@ -640,5 +643,155 @@ class MicrModule:
         return plan_entries(load_records(work), key, existing, schema, target, client)
 
     def write(self, plan: "Plan", work: Path, input_dir: Path, terms: set[str], key: "PseudonymKey",
-              schema: "Schema", dest: Callable[[str], Path]):
-        raise NotImplementedError("microscopy output is written by a later aimport version")
+              schema: "Schema", dest: Callable[[str], Path],
+              progress: Callable[[str], None] | None = None) -> ModuleOutput:
+        return write_entries(plan, load_records(work), Path(input_dir), terms, key, schema, dest, progress)
+
+
+# --- write ----------------------------------------------------------------------------------------
+
+REFERENCE_PENDING = "reference datasets: Task 9"
+WRITE_PROGRESS = "writing microscopy image {k} of {n}"
+
+
+def _acquired(rec: dict) -> date | None:
+    """The record's acquisition date (ImageInfo.acquired), else the first date in its name. Used for
+    scans.tsv acq_time only, shifted by the subject's offset; never written anywhere else."""
+    raw = (rec.get("info") or {}).get("acquired") or next(iter(rec["facts"].get("dates") or []), None)
+    try:
+        return date.fromisoformat(raw) if raw else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _acq_time(day: date | None, offset_days: int) -> str:
+    if day is None:
+        return "n/a"
+    try:
+        return (day + timedelta(days=offset_days)).isoformat() + "T00:00:00"
+    except OverflowError:
+        return "n/a"
+
+
+def _inside_input(input_dir: Path, rel: str) -> Path:
+    """An input-relative member path, refused when it leaves the input folder (also through links)."""
+    root = input_dir.resolve()
+    path = (input_dir / rel).resolve()
+    if root != path and root not in path.parents:
+        raise ValueError("a microscopy input lies outside the input folder")
+    return path
+
+
+def _remote_cap(rec: dict) -> int:
+    from .remote import DEFAULT_MAX_BYTES
+
+    return max(DEFAULT_MAX_BYTES, 2 * _level0_bytes(rec.get("info") or {}) + 64 * 2**20)
+
+
+def open_record(rec: dict, input_dir: Path) -> Any:
+    """The ImageSource of a record for conversion: its file, its tiles stacked along z (VISoR), or
+    its URL read by range requests."""
+    from . import readers
+    from .convert import stack_sources
+
+    if "url" in rec:
+        from . import remote
+
+        src, _counter = remote.open_remote(rec["url"], rec["family"], max_bytes=_remote_cap(rec))
+        return src
+    members = list(rec.get("members") or [rec["rel"]])
+    if len(members) > 1 and rec["family"] != "visor":
+        raise NotImplementedError("tile groups other than VISoR positions cannot be converted yet")
+    sources = []
+    try:
+        for m in members:
+            sources.append(readers.open_image(_inside_input(input_dir, m), rec["family"]))
+        return stack_sources(sources)
+    except BaseException:
+        for s in sources:
+            s.close()
+        raise
+
+
+def _names(entries: list[PlanEntry], schema: "Schema") -> dict[str, str]:
+    """entry id -> output path (relative to the BIDS folder); a run- index for names that would clash."""
+    def name(e: PlanEntry, entities: dict[str, str]) -> str:
+        return schema.filename(e.subject, e.session, "micr", e.suffix, entities, ".ome.zarr/").rstrip("/")
+
+    names = {e.id: name(e, e.entities) for e in entries}
+    counts: dict[str, int] = defaultdict(int)
+    for n in names.values():
+        counts[n] += 1
+    taken = {n for n, c in counts.items() if c == 1}
+    for e in entries:
+        if counts[names[e.id]] > 1:
+            for run in range(1, len(entries) + 2):
+                n = name(e, {**e.entities, "run": str(run)})
+                if n not in taken:
+                    break
+            names[e.id] = n
+            taken.add(n)
+    return names
+
+
+def write_entries(plan: "Plan", records: list[dict], input_dir: Path, terms: set[str], key: "PseudonymKey",
+                  schema: "Schema", dest: Callable[[str], Path],
+                  progress: Callable[[str], None] | None = None) -> ModuleOutput:
+    """Convert every included micr entry to OME-Zarr with its sidecar, check what was written, and
+    return the rows for participants, samples and scans. Reference entries are Task 9."""
+    from ..scrub import redact
+    from . import NGFF_VERSION
+    from .convert import check_ome_zarr, to_ome_zarr
+    from .metadata import sidecar
+
+    out = ModuleOutput()
+    entries = [e for e in plan.entries if e.modality == "micr" and e.datatype == "micr" and e.status == "ok"
+               and not e.exclude and e.suffix and e.write_mode]
+    if any(e.write_mode == "reference" for e in entries):
+        raise NotImplementedError(REFERENCE_PENDING)
+    names = _names(entries, schema)
+    samples: dict[tuple[str, str], dict[str, str]] = {}
+    for k, e in enumerate(entries, 1):
+        i = e.series_idx - MICR_INDEX_BASE
+        if not 0 <= i < len(records) or records[i].get("info") is None:
+            raise ValueError("a microscopy plan entry has no scan record: scan again")
+        rec = records[i]
+        if progress is not None:
+            progress(WRITE_PROGRESS.format(k=k, n=len(entries)))
+        rel = names[e.id]
+        version = NGFF_VERSION
+        src = open_record(rec, input_dir)
+        try:
+            info = src.info
+            info.acquired = None
+            step = (lambda msg, k=k: progress(f"{WRITE_PROGRESS.format(k=k, n=len(entries))}: {msg}")) \
+                if progress is not None else None
+            path = dest(rel)
+            to_ome_zarr(src, path, version, step)
+            # numbers and vocabulary only; strings are redacted anyway (numbers are not: a pixel size
+            # equal to a path number is not identifying, and must match the NGFF scale)
+            car = {k: redact(v, terms) if isinstance(v, str) else v for k, v in sidecar(info, e).items()}
+            check_ome_zarr(path, car, version, info.shape, info.dtype)
+        finally:
+            src.close()
+        stem = rel[: -len(".ome.zarr")]
+        dest(stem + ".json").write_text(json.dumps(car, indent=2) + "\n", encoding="utf-8")
+        out.manifest.setdefault(e.id, []).append(rel)
+        out.participants.setdefault(e.subject, {"age": "n/a", "sex": "n/a"})
+        base = f"sub-{e.subject}" + (f"/ses-{e.session}" if e.session else "")
+        offset = key.date_offset_days(e.subject)
+        out.scans.setdefault((e.subject, e.session), []).append(
+            (rel[len(base) + 1:], _acq_time(_acquired(rec), offset)))
+        sample = e.entities.get("sample")
+        if sample:
+            samples.setdefault((e.subject, sample), {
+                "sample_id": f"sample-{sample}", "participant_id": f"sub-{e.subject}",
+                "sample_type": e.sample_type or DEFAULT_SAMPLE_TYPE})
+        if "rel" in rec:
+            for m in rec.get("members") or [rec["rel"]]:
+                out.images[m] = rel
+        label = _input_label(_where(rec), "sub")
+        if label and label == rec["facts"].get("donor"):
+            out.labels[e.subject_idx] = label  # as planned: supplied tables link their rows by it
+    out.samples = [samples[k] for k in sorted(samples)]
+    return out
