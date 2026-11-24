@@ -33,19 +33,16 @@ bids-validator --json "$rootDir" > $root/validator.json || true
 echo "Copying finalized.json file to ezBIDS_template.json"
 cp -r $root/finalized.json $root/ezBIDS_template.json
 
-# Create telemetry-specific files
-echo "Creating ezBIDS telemetry files"
-./telemetry.py $root
-
-# Telemetry (to hard-coded pet2bids server)
-if [ -f $root/validator.json ]; then
-    curl -H 'Content-Type: application/json' -d @$root/validator.json -X POST http://52.87.154.236/telemetry/
-fi
-
-if [ -f $root/ezBIDS_core_telemetry.json ]; then
-    curl -H 'Content-Type: application/json' -d @$root/ezBIDS_core_telemetry.json -X POST http://52.87.154.236/telemetry/
-fi
-
-if [ -f $root/ezBIDS_finalized_telemetry.json ]; then
-    curl -H 'Content-Type: application/json' -d @$root/ezBIDS_finalized_telemetry.json -X POST http://52.87.154.236/telemetry/
+# Telemetry is off by default. Setting EZBIDS_TELEMETRY_URL turns it on: the files are then created and
+# POSTed best effort (time-limited, two quick retries); a failure is only logged and never fails the step.
+telemetry_url=${EZBIDS_TELEMETRY_URL:-}
+if [ -n "$telemetry_url" ]; then
+    echo "Creating ezBIDS telemetry files"
+    ./telemetry.py $root
+    for f in validator.json ezBIDS_core_telemetry.json ezBIDS_finalized_telemetry.json; do
+        if [ -f "$root/$f" ]; then
+            curl -sS -m 10 --retry 2 --retry-connrefused --retry-max-time 20 -H 'Content-Type: application/json' \
+                -d @"$root/$f" -X POST "$telemetry_url" || echo "telemetry not sent ($f): server unreachable"
+        fi
+    done
 fi

@@ -390,7 +390,6 @@ aside {
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-    z-index: 4;
 }
 
 .brand {
