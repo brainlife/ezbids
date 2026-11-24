@@ -10,6 +10,11 @@ enabled for ``allowed_origins`` only, and preflights are answered with
 ``Access-Control-Allow-Private-Network: true`` (Starlette's allow_private_network) so an https page may call the loopback server. Inside
 the container ``serve`` binds 0.0.0.0; ``bl aimport`` must publish the port on 127.0.0.1 only
 (``-p 127.0.0.1:<port>:<port>``), or the token is the only protection.
+
+The browser viewer never sees the token: ``POST /viewer/session`` (bearer) returns a one-time code (single
+use, 60 s) and ``GET /viewer/open?code=`` trades it for an HttpOnly, SameSite=Strict session cookie. The
+cookie is accepted only on ``/viewer/*`` and ``/qa/*`` (not ``/viewer/session``); every other route stays
+bearer-only.
 """
 from __future__ import annotations
 
@@ -20,9 +25,11 @@ import hmac
 import json
 import logging
 import os
+import secrets
 import shutil
 import tempfile
 import threading
+import time
 import uuid
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict
@@ -31,7 +38,7 @@ from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict
 
 from .agent import client_from_env
@@ -66,9 +73,15 @@ OUTPUT_STATE = "output-state.json"
 # stay in the key), so an edited subject ID can be recorded in the key for the right person on execute
 SUBJECT_IDS = "subject-ids.json"
 VIEWER_PREFIXES = ("/viewer/", "/qa/")  # the browser pages: they also accept the session cookie
+VIEWER_COOKIE = "aimport_viewer"
+VIEWER_CODE_TTL_S = 60
 # set explicitly: the Python mimetypes table varies by version and platform, and responses are nosniff
 MEDIA_TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css",
                ".wasm": "application/wasm", ".map": "application/json"}
+
+
+def _now() -> float:
+    return time.monotonic()
 
 
 def _overlap(a: Path, b: Path) -> bool:
@@ -167,6 +180,8 @@ class Server:
         self.schema = None
         self.thread: threading.Thread | None = None
         self.status: dict = {"stage": "idle", "message": ""}
+        self.viewer_codes: dict[str, float] = {}  # one-time code -> expiry (_now())
+        self.viewer_sessions: set[str] = set()  # session cookies, for this server run
         saved = _read_json(work_dir / "status.json")
         if saved and isinstance(saved.get("stage"), str):
             self.status = saved
@@ -176,6 +191,33 @@ class Server:
             self.status = {"stage": "planned", "message": "plan loaded"}
         self.events.append({"stage": self.status["stage"], "message": self.status.get("message", "")})
         self.event_count = 1
+
+    # --- viewer sessions ---
+
+    def new_viewer_code(self) -> str:
+        with self.lock:
+            now = _now()
+            self.viewer_codes = {c: t for c, t in self.viewer_codes.items() if t > now}
+            code = secrets.token_hex(16)
+            self.viewer_codes[code] = now + VIEWER_CODE_TTL_S
+            return code
+
+    def redeem_viewer_code(self, code: str) -> str | None:
+        """A new session cookie for a live code (used up either way), None for an unknown or expired one."""
+        with self.lock:
+            expiry = self.viewer_codes.pop(code, None)
+            if expiry is None or expiry <= _now():
+                return None
+            session = secrets.token_hex(32)
+            self.viewer_sessions.add(session)
+            return session
+
+    def viewer_session_ok(self, cookie: str | None) -> bool:
+        if not cookie:
+            return False
+        with self.lock:
+            sessions = list(self.viewer_sessions)
+        return any(hmac.compare_digest(cookie.encode(), s.encode()) for s in sessions)
 
     # --- stage and events ---
 
@@ -564,10 +606,17 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         yield
         srv.close()
 
-    def authorize(authorization: str | None = Header(default=None)) -> None:
+    def authorize(request: Request, authorization: str | None = Header(default=None)) -> None:
+        path = request.url.path
+        if path == "/viewer/open":
+            return  # the one-time code is the credential, checked by the route
         scheme, _, given = (authorization or "").partition(" ")
-        if scheme.lower() != "bearer" or not hmac.compare_digest(given.encode(), token.encode()):
-            raise HTTPException(401, "missing or invalid token", headers={"WWW-Authenticate": "Bearer"})
+        if scheme.lower() == "bearer" and hmac.compare_digest(given.encode(), token.encode()):
+            return
+        if (path.startswith(VIEWER_PREFIXES) and path != "/viewer/session"
+                and srv.viewer_session_ok(request.cookies.get(VIEWER_COOKIE))):
+            return
+        raise HTTPException(401, "missing or invalid token", headers={"WWW-Authenticate": "Bearer"})
 
     app = FastAPI(title="aimport", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan,
                   dependencies=[Depends(authorize)])
@@ -801,6 +850,20 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         if path.is_symlink() or base not in path.resolve().parents or not path.is_file():
             raise HTTPException(404, "no such image")
         return FileResponse(path, media_type="application/octet-stream")
+
+    @app.post("/viewer/session")
+    def post_viewer_session() -> dict:
+        code = srv.new_viewer_code()
+        return {"code": code, "url": f"/viewer/open?code={code}"}
+
+    @app.get("/viewer/open")
+    def get_viewer_open(code: str = "") -> RedirectResponse:
+        session = srv.redeem_viewer_code(code)
+        if session is None:
+            raise HTTPException(401, "invalid or expired code: open the viewer again")
+        response = RedirectResponse("/viewer/", status_code=303)
+        response.set_cookie(VIEWER_COOKIE, session, httponly=True, samesite="Strict", path="/")
+        return response
 
     @app.get("/viewer/ng/{path:path}")
     def get_neuroglancer(path: str) -> FileResponse:
