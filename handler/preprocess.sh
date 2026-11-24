@@ -54,11 +54,10 @@ else
     test_root=$root
 fi
 
-if [ -f $test_root/.bidsignore]; then
-    touch $test_root/.bidsignore
-    echo "*finalized.json" > $test_root/.bidsignore
+if [ -f "$test_root/.bidsignore" ]; then
+    echo "*finalized.json" > "$test_root/.bidsignore"
 else
-    echo "*finalized.json" >> $test_root/.bidsignore
+    echo "*finalized.json" >> "$test_root/.bidsignore"
 fi
 echo "*template.json" >> $test_root/.bidsignore
 

@@ -14,10 +14,11 @@ except (ImportError, ModuleNotFoundError):
     print('pet2bids is not installed, using dcm2niix on PET directories instead')
     sys.exit(1)
 
-
 def find_img_data(dir):
     '''
     Finds all directories that contain DICOM (or other) raw imaging data.
+    Note: dcm2niix recursively searches the given directory and all subdirectories for DICOM data so this function
+    only needs to find the top-level directory of the first instance of MRI data.
     If dcm2niix output (NIfTI, JSON files) uploaded instead, ezBIDS has separate process for detecting those files.
 
     Parameters
@@ -41,7 +42,7 @@ def find_img_data(dir):
                         break
                 except:
                     # Doesn't appear to be DICOM data, so skip
-                    break
+                    pass
 
     # Complete search
     if not hasImgData:

@@ -48,7 +48,6 @@ export interface ISession {
     ownerId: number;
     allowedUsers: number[];
 
-    request_headers: any;
     upload_finish_date: Date;
 
     pre_begin_date: Date;
@@ -74,8 +73,6 @@ const sessionSchema = new Schema<ISession>({
 
     ownerId: Schema.Types.Number,
     allowedUsers: [Schema.Types.Number],
-
-    request_headers: Schema.Types.Mixed,
 
     upload_finish_date: Date, //when all files are uploaded
 

@@ -222,7 +222,6 @@ export interface ISession {
     create_date: string; //"2021-08-27T21:24:21.610Z"
     dicomCount: number; //2
     dicomDone: number; //2
-    request_headers: any; //{host: "dev1.soichi.us", x-real-ip: "45.16.200.251", x-forwarded-for: "45.16.200.251", x-forwarded-proto: "https", connection: "close", …}
     status: string; //"analyzed"
     status_msg: string; //"successfully run preprocess.sh"
 
