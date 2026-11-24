@@ -129,10 +129,35 @@ All examples use `T="Authorization: Bearer $AIMPORT_TOKEN"` and `U=http://localh
    Acknowledgements), `deface_method`, `warnings`.
 
 4. **Edit.** `PATCH /plan` takes any of `edits`, `ancillary_edits`, `dataset_description`, `dataset_name`
-   and `readme`. Edits are applied all or nothing; a bad one answers 422 and changes nothing. A `subject`
+   `readme` and `event_names`. Edits are applied all or nothing; a bad one answers 422 and changes nothing. A `subject`
    edit renames that subject in every entry; an ID the key holds for another person, or one in
    `existing_subjects`, is refused, and the new ID is recorded in the pseudonym key when the plan is
    executed (so a later import of that person gets it).
+
+   `event_names` names the codes of EEG/MEG/iEEG/NIRS/EMG events (`{"E001": "eyes closed"}`). An event
+   text is kept only when it is a safe label (a number, `Stimulus/S  1`, `BAD_*`, `Sleep stage N2`, a
+   word such as `rest` or `target`, ...) holding no identifying term; any other text becomes `E001`,
+   `E002`, ... and the original stays in `work/ephys/events.json`, never in the plan, the API or the
+   output. A name is 1 to 40 letters, digits, spaces or `_ . / + -`; an unknown code, a bad name or a
+   name holding an identifying term (also with `_ . - / +` written differently), or two codes given one name, answers 400. Kept labels are written exactly as in the recording (texts differing only in case or spacing share the label least by case-folded text). The written `trial_type` is the name. Channel names
+   that hold an identifying term (or are not plain, or longer than 32 characters) are renamed
+   `<type>_<NNN>`, for example `eeg_002`; 10-20 and sensor names stay.
+
+   Electrophysiology entries (`modality: "ephys"`) are planned from the recordings' headers:
+   - **Subject**: recordings in one `sub-<label>` folder are one person; when the MRI part of the same
+     import used that folder, they get that MRI subject's ID. Otherwise the ID comes from the pseudonym
+     key (the header's patient ID, else its name, else a run-local identity). MEG empty-room recordings
+     go to the literal subject `emptyroom` (task `noise`), which is never a key or project subject and
+     cannot be renamed.
+   - **Session**: the input's `ses-` label when it is usable (a date-like or identifying label, such as
+     MNE-BIDS's `ses-YYYYMMDD`, counts as none); otherwise `01`, `02`, ... by recording day when a subject
+     was recorded on more than one day; otherwise none.
+   - **Run**: the input's `run-` labels when every recording sharing a BIDS name (subject, session, task,
+     acq, datatype) has a usable, distinct one; otherwise, when several share a name, `1`, `2`, ... by
+     recording time.
+   - `ephys_format` (editable) is the output format, one of `BrainVision`/`EDF`/`BDF` (eeg),
+     `BrainVision`/`EDF` (ieeg; `NWB` for NWB input), `EDF`/`BDF` (emg), `FIF` (meg), `SNIRF` (nirs);
+     `keep_headshape` (editable, meg and eeg) keeps the head-shape points, which are dropped by default.
 
    ```
    curl -s -X PATCH $U/plan -H "$T" -H 'Content-Type: application/json' \
@@ -182,6 +207,46 @@ All examples use `T="Authorization: Bearer $AIMPORT_TOKEN"` and `U=http://localh
    ```
    curl -s "$U/preview/<entry id>?which=original" -H "$T" -o original.nii.gz
    ```
+
+## Electrophysiology and optical
+
+aimport also imports EEG, MEG, iEEG, fNIRS and EMG recordings, alone or beside MRI in the same folder. Each
+recording is converted (never copied) to a BIDS format and de-identified before it is written; the details are
+in [Electrophysiology output](#electrophysiology-output).
+
+| Datatype | Accepted input | Written as (`ephys_format`, first is the default) |
+|---|---|---|
+| eeg | EDF/EDF+, BDF, GDF, BrainVision, EEGLAB, Neuroscan `.cnt`, Nihon Kohden, Persyst, FIF | BrainVision, EDF, BDF |
+| ieeg | the EEG formats, NWB | BrainVision, EDF (NWB input: NWB) |
+| emg | the EEG formats with EMG channels | EDF, BDF (BDF input: BDF) |
+| meg | FIF, CTF `.ds`, KIT, BTi/4D | FIF |
+| nirs | SNIRF, NIRx, Hitachi | SNIRF |
+
+The datatype comes from a BIDS datatype folder, else the recording system, else the channel types. Change the
+format with a plan edit: `{"edits": [{"id": "<entry id>", "ephys_format": "EDF"}]}`. Recordings aimport cannot
+convert are planned `unsupported` and never written; the reason says what to do: Artinis `.oxy3/.oxy4/.oxy5`
+"export to SNIRF first", MEF3 "MEF3: export to EDF first", EGI `.mff` "EGI .mff needs the mffpy package",
+Blackrock "Blackrock needs the neo extra: pip install aimport[neo]", and EEGLAB `.set` files above 512 MB with
+embedded data. Epoched or averaged files (`-epo.fif`, `-ave.fif`) are not imported.
+
+- **Removed**: patient and recording header fields, the experimenter, descriptions and device IDs; real dates
+  (shifted to before 1925; `scans.tsv` keeps the shifted date, as for MRI); free-text annotations, which
+  become codes; channel names that hold an identifier (renamed `eeg_007`); MEG/EEG head-shape points, unless
+  you set `keep_headshape` on the entry (fiducials and HPI coils always stay). A final check re-reads every
+  written file and fails the run if anything identifying is left.
+- **Event codes**: events whose text is not a safe label are shown as `E001`, `E002`, ...; give them names
+  with `PATCH /plan {"event_names": {"E001": "eyes closed"}}` (see [Edit](#the-workflow), step 4). The names
+  are what `events.tsv` and the recordings carry.
+- **QA**: after the write, each recording gets three snapshots (traces, spectrum, channels) on `/viewer/` and
+  an interactive trace page (see [Checking the output](#checking-the-output-qa-viewer)), built from the
+  output only.
+- **Memory**: one recording is converted at a time and some formats are loaded whole. Above 2 GiB of samples
+  (channels x samples x 8 bytes) the plan warns "converting <name> loads about N GB into memory"; above
+  `AIMPORT_EPHYS_MAX_LOAD_BYTES` (default 8 GiB; pass `-e AIMPORT_EPHYS_MAX_LOAD_BYTES=...` to `docker run`)
+  the recording is `unsupported` with that reason.
+
+`tests/test_ephys_end_to_end.py` runs the whole API on planted recordings beside the planted MRI DICOMs and
+checks that no planted value reaches a model request, the plan, an API response, a QA image or the output.
 
 ## Microscopy
 
@@ -249,6 +314,24 @@ at every written image, and at each defaced image against its original, before a
 
 ![A defaced T1w in the viewer](docs/qa-viewer-t1w.png)
 
+**Electrophysiology recordings** (eeg, meg, ieeg, nirs, emg). After the write and before validation the engine
+renders three snapshots of each written recording into `work/ephys/qa/<entry id>/` (local only, never under
+`output/`, never uploaded): `traces.png` (10 s from `min(30 s, half the recording)`, up to 32 channels, the
+events from the written `events.tsv`), `psd.png` (one mean spectrum per channel type, up to 125 Hz over the
+first 60 s, shortened so one type never reads more than 64 MiB of samples) and `channels.png` (channel counts per type, bad channels from `channels.tsv` in a second colour).
+A snapshot that fails is logged by error type and does not fail the run. The trace page has the index's header (the same brainlife.io logo). On `/viewer/` the recording's data file
+shows the three thumbnails and a **Traces** link to `/viewer/traces/<entry id>`, an interactive viewer
+(uPlot): pick up to 64 channels, pan (◀ ▶ or the arrow keys), zoom (+ −, or drag across the plot), with the
+event labels as markers. NIRS shows HbO (red) and HbR (blue) from the modified Beer-Lambert law (PPF 6) when
+the recording is at most 128 MiB of samples, else the raw 760/850 nm pairs. Its data come from
+`GET /qa/traces/<entry id>?t0=&t1=&ch=0,1,2` (default: the first 32 channels, the first 10 s): at most 64
+channels, a window of at most 600 s and 4000 points per channel (min/max per bin beyond that, so single-sample
+spikes stay visible), values in µV, fT, fT/cm or µM rounded to 4 significant digits; 400 outside those limits.
+Everything is read from the written output only, so channel names are the renamed ones and event labels are
+codes (`E001`) or safe labels (any other label shows as `E???`); the PNGs carry the BIDS file name as their title and no `Software` text chunk.
+
+![The trace viewer on the planted EDF and SNIRF test recordings](docs/qa-viewer-traces.png)
+
 Microscopy images open as OME-Zarr ("Neuroglancer (OME-Zarr)"): the channels of one image are blended
 additively in their omero colours, with x and y first so the main panel is the xy plane, and each shader window is
 the written omero window. The PS-OCT contrasts of one sample (reflectivity, retardance, optic axis, cross) open
@@ -273,7 +356,8 @@ by range reads through the engine, so the browser never contacts the remote host
 What it serves, and why it stays local:
 
 - Only the output listed in the run's manifest (`/qa/data/<entry>/<index>/…`), the pre-defacing original of a
-  defaced image, and the Neuroglancer client built into the image. Never the input, `staged/`, `sourcedata/`,
+  defaced image, the electrophysiology snapshots and trace windows (`/qa/png/…`, `/qa/traces/…`), the
+  Neuroglancer client built into the image, and the trace viewer's own files (`/viewer/assets/…`). Never the input, `staged/`, `sourcedata/`,
   the keys folder or `scan.json`; never through a symlink or a path outside the output. Nothing is served
   before execute, or after a new scan.
 - For a reference OME-Zarr, `/qa/data/<entry>/<index>/<chunk key>` that is not written locally is resolved by
@@ -388,6 +472,59 @@ Entries the validator would reject for this
 import (for example phenotype rows of people who are not imported, or a top-level sidecar with no matching
 image) are better dropped in review; the validation result tells you which.
 
+### Electrophysiology output
+
+EEG, iEEG, EMG and MEG recordings are written through MNE-BIDS, one at a time, always converted to the
+entry's `ephys_format` (never a copy of the source file):
+
+- **Before writing, in memory**: renamed channels get their new names; `subject_info` keeps only sex and
+  handedness; experimenter, description, project, device, helium and file/measurement IDs are cleared;
+  head-shape points are dropped unless `keep_headshape` (fiducials, HPI coils and EEG electrodes stay);
+  every annotation becomes its kept label or code, written as the plan's event name.
+- **Dates**: MNE-BIDS anonymizes the recording date to before 1925 (the same shift for every recording of a
+  subject, so intervals are kept). EDF/BDF headers say `X X X X`, `Startdate X X X X`, `01.01.85`,
+  `00.00.00`. `scans.tsv` `acq_time` is the original date and time shifted by the subject's offset, as for
+  MRI. The `emptyroom` subject has no key offset, so its `acq_time` is `n/a`; its folder has no session.
+- **Files**: BrainVision `.vhdr` files are rebuilt with only their data, binary, channel and coordinate
+  sections and the BIDS file names; `.vmrk` markers must be event names or `Stimulus/S n` codes. Every
+  JSON sidecar keeps only the keys the BIDS 1.11.2 schema lists for its suffix (never the institution
+  keys or `DeviceSerialNumber`) and every TSV cell is redacted. MNE-BIDS's own `participants`, `scans`,
+  `README` and `dataset_description` are not used.
+- **Participants**: age in whole years at the first recording, from the header's birth date (never
+  written); sex from the header.
+- **Final check**: every written file is read again for the run's identifying terms, the original
+  dates in all their forms, copied source bytes, unexpected BrainVision sections and head-shape points
+  the plan did not keep. A finding fails the run with the BIDS path and the kind of field only, and the
+  partial output is removed.
+- EMG placement is written as `Other` ("not recorded in the source recording").
+- **Empty rooms**: each empty-room recording gets its own date shift (its own date to 1924-12-31, keeping
+  only the time of day), so no real interval between rooms, or between the subjects recorded beside them,
+  survives. A split FIF (above 2 GB) is saved again under its output names, so its parts still find each
+  other. A session file written for several runs (`coordsystem.json`, `electrodes.tsv`, `optodes.tsv`) is
+  listed once.
+- **fNIRS** (SNIRF, NIRx, Hitachi): a new SNIRF 1.1 file is written with h5py from the de-identified recording
+  (continuous-wave amplitude only), never copied from the input: `metaDataTags` holds exactly `SubjectID` (the
+  BIDS label), `MeasurementDate` and `MeasurementTime` (`unknown`) and the length, time and frequency units;
+  stim names are event names; optodes are `S<n>`/`D<n>`. MNE-BIDS then writes the sidecars, `optodes.tsv` and
+  `coordsystem.json` from that file. `acq_time` in `scans.tsv` is the original date shifted, as for EEG.
+- **NWB iEEG** is written as NWB by default (BrainVision or EDF on request): a new file with the
+  `ElectricalSeries` samples streamed from the input (16 MiB at a time), the electrodes table (a location is
+  kept only when it is made of anatomical words, else `n/a`; labels renamed by the channel rule), generated
+  names for electrode groups (`group_001`), series (`ElectricalSeries`) and non-standard interval tables,
+  interval tables reduced to a coded `label` column, `session_description` `n/a`, a new identifier, dates
+  `1900-01-01T00:00:00+00:00`, and a subject with only the BIDS label, species and sex. No processing,
+  analysis or stimulus content is written. `_ieeg.json`, `_channels.tsv`, `_electrodes.tsv` (positions converted
+  from micrometres to mm), `_coordsystem.json` and `_events.tsv` are generated.
+- **NWB channel types**: NWB stores no per-channel type, so each electrode group's type (sEEG, ECoG or DBS) is
+  guessed from its name and description. The plan entry shows it as `channel_types` (`group_001: ecog`), and
+  the reviewer can change it like any other field; it sets the channel types in the NWB-derived
+  `channels.tsv` and in a BrainVision or EDF output.
+- **NWB without a cached schema**: the NWB file does not embed the NWB schema (`/specifications`). The cached
+  schema holds library text such as author names, which the final check cannot tell apart from personal
+  names. pynwb and MNE read the file with their own installed schema. nwbinspector, and DANDI uploads, flag a
+  missing cached schema; to publish on DANDI, open the file with pynwb and write it again with the schema
+  cached.
+
 ### Known limitations
 
 - A name that appears **only in free text**, with no match in any header or table the engine read, cannot be
@@ -401,7 +538,7 @@ image) are better dropped in review; the validation result tells you which.
   same study gets the label the key recorded at scan time.
 - `<work>/ezbids.log` (ezBIDS's own output, kept for troubleshooting) holds original paths and names, like the
   input; it stays in the work folder and is never uploaded or returned by the API.
-- Phase 1 covers MRI and PET (anat, func, dwi, fmap, perf, pet) from DICOM and NIfTI; other modalities come in later phases.
+- Phase 1 covers MRI and PET (anat, func, dwi, fmap, perf, pet) from DICOM and NIfTI; phase 3 adds electrophysiology and optical recordings (see "Electrophysiology and optical"); continuous recordings only.
 
 ## BIDS version, validator and the brainlife mapping
 
@@ -421,6 +558,13 @@ image) are better dropped in review; the validation result tells you which.
 - Test data: `tests/fixtures/fetch_dcm_qa.py` fetches `neurolabusc/dcm_qa_xa30` at a pinned commit and plants fake PHI.
 - Python packages are installed exactly as `uv.lock` pins them (with hashes); the Deno download is checked against its sha256.
 - Microscopy (`micr`) packages, locked for Python 3.11 (the image): bioio 3.7.1, bioio-czi 4.1.0 (aicspylibczi), bioio-nd2 2.5.0, bioio-lif 2.0.1, tifffile 2026.3.3, ome-types 0.7.0, zarr 3.1.6, fsspec[http] 2026.9.0, dask[array] 2026.11.0, ngff-zarr 0.53.0, scipy 1.17.1, h5py 3.16.0. All have wheels for manylinux x86_64 and macOS arm64.
+- Electrophysiology and optical (`eeg`, `meg`, `ieeg`, `nirs`, `emg`) packages, locked for Python 3.11 (the image): mne 1.13.2, mne-bids 0.20.0, edfio 0.4.18 (EDF/BDF export), pybv 0.8.1 (BrainVision export), defusedxml 0.7.1, pynwb 4.2.0, matplotlib 3.11.2 (h5py 3.16.0 as above); neo 0.14.6 is the optional extra `aimport[neo]` (Blackrock) and is not in the image. All have wheels for manylinux x86_64 and macOS arm64 (pure Python, or binary wheels for matplotlib, contourpy, kiwisolver, pillow and rpds-py).
+- Ephys capability ruling (Task 1, `tests/test_ephys_capability.py`), which sets `ephys.OUTPUT_FORMATS` and `ephys.MNE_READERS`:
+  - every reader family resolves in MNE 1.13.2, MEF3 included (`read_raw_mef`); that reader imports `pymef` (MNE's optional extra, not an aimport dependency) when it opens a file, and neo has no MEF3 reader, so MEF3 input cannot be read in the image as it stands;
+  - MNE-BIDS anonymize with an explicit `format=` writes new files (no output byte-identical to the source) for eeg-BrainVision, eeg-EDF, ieeg-BrainVision (EDF source) and meg-FIF (CTF source);
+  - MNE-BIDS writes `datatype="emg"` as EDF and as BDF (`emg_placement` is required), and EEG as BDF, so BDF stays an output format;
+  - MNE-BIDS writes NIRS from an h5py-written SNIRF with `anonymize=None`: `_nirs.snirf`, `_nirs.json`, `_channels.tsv`, plus `sub-<label>_optodes.tsv` and `sub-<label>_coordsystem.json` (no task entity);
+  - the pinned validator passes the bids-examples `eeg`, `ieeg`, `meg` (`ds000247`), `fnirs` and all eight `emg_*` sets with bids-examples' CI flags (`--config default-config.json`, which ignores `EMPTY_FILE`, and `--ignoreNiftiHeaders`).
 - OME-Zarr output is NGFF **0.5** (Zarr v3, sharded) by default; set `AIMPORT_NGFF_VERSION=0.4` for Zarr v2. The validator ruling behind the default (Task 1, `tests/test_micr_validator.py`): `@bids/validator` 2.4.1 on schema 1.11.2 accepts NGFF 0.5, NGFF 0.4 and metadata-only stores (chunks deleted). It treats a `.ome.zarr/` directory as opaque: it rejects only an empty directory (`EMPTY_FILE`) and never reads `zarr.json`/`.zattrs` (a corrupt `zarr.json` passes, and sidecar `PixelSize` is not compared with the NGFF scale), so aimport checks its own OME-Zarr metadata.
 - Remote microscopy sources (`micr/remote.py`): only `https://` and `s3://` URLs (`s3://b/k` is read as `https://b.s3.amazonaws.com/k`), anonymous, with no user information, query, IP-literal or `localhost` host; redirects are followed only to the same origin or an `https` `*.amazonaws.com` host. Discovery probes `<url>/zarr.json`, then `<url>/.zattrs`, then the extension or `Content-Type`; only OME-Zarr, NIfTI and TIFF are accepted. Every read is an HTTP range request counted by a `ByteCounter` (which can cap it): an OME-Zarr store is read through zarr (metadata and the chunks asked for), a file through 64 KiB blocks, and nothing is downloaded whole. Counting the pages of a remote multi-page TIFF walks its IFD chain (one range read per page).
 - Microscopy plan entries (`micr/module.py`): the scan writes `work/micr/records.json` (local only, like `claim.json`: paths, URLs, name facts and image facts, acquisition date included), one record per image or tile group (VISoR and numbered tiles of one folder share one, raw PS-OCT `.dat` tiles one per folder). Plan entries carry only generated values: `subject_idx`/`series_idx` from 1,000,000 up, subject IDs from the pseudonym key (original `micr:id=<donor>`), samples `slice<NNN>`, the input's `sample-` label or `1, 2, ...`, `acq-<PS-OCT contrast>`, `stain-ch<nm>`, `chunk-<position or tile>` when a sample has several, a suffix from names (`OCT`, `SPIM`) or the OME acquisition mode, and a description built from the image facts. `write_mode` is `reference` for OME-Zarr (no copy, `output_bytes` 0) and `convert` otherwise (`output_bytes` = level 0 x 1.34). A remote source's donor is the nearest donor-like folder walking up from the file (`CMC/Raw/Moe/tract-tracing/MN27_.../` gives `MN27`, `CMC/Derivatives/Moe/PS-OCT/Enface/...` gives `Moe`), else its file or store name without its format/vendor fragments (`hdr`, the en-face codes `EnR`, `EnRef`, ...), never the bucket or the top folder under it (a project); remote sources without a donor share a subject when they sit under the same parent folder (contrast folders such as `Reflectivity/` skipped) with the same slice. A remote VISoR tile is planned from its first page and `frames_per_file`. Module planners run after the MRI subjects took their IDs, so MRI subject IDs and session labels are those of an MRI-only plan. Microscopy entries stay `micr` (another datatype makes them unknown, as does `micr` on an MRI entry); `sample_type` (default `tissue`) is editable within the BIDS enum. A microscopy-only scan has no DICOM-header warning; a supplementary folder (such as `sourcedata/`) holding claimed input is left out with a warning giving the count.
@@ -434,6 +578,10 @@ image) are better dropped in review; the validation result tells you which.
   `package.json` `overrides` to that commit's codeload tarball; its lockfile integrity is the hash of an archive
   GitHub generates, so `npm ci` fails if GitHub ever regenerates it differently (then update the hash after
   checking the archive's contents).
+- Trace viewer: uPlot **1.6.32** (npm `uplot`, exact pin and lockfile integrity in `viewer-client/`); `build.mjs`
+  copies its prebuilt `uPlot.iife.min.js` and `uPlot.min.css` into `<client>/vendor/uplot/`, served at
+  `/viewer/assets/uplot/`. The page's own `traces.js`/`traces.css` are in `src/aimport/static/`. No inline script,
+  so the viewer's Content-Security-Policy is unchanged.
 
 ## Defacing details
 
@@ -489,7 +637,9 @@ docker run --rm --platform linux/amd64 -v $PWD/aimport:/src brainlife/aimport:de
 The end-to-end leak test is `tests/test_end_to_end.py` (about two minutes under emulation). The microscopy one,
 `tests/test_micr_end_to_end.py`, also re-imports the bids-examples `micr_*` datasets (fetched at a pinned commit and
 cached in `/tmp/aimport-bids-examples-cache`; mount it like the DICOM cache). Its `network` test plans a CMC subset
-by range reads: `uv run pytest -m network tests/test_micr_end_to_end.py`.
+by range reads: `uv run pytest -m network tests/test_micr_end_to_end.py`. For electrophysiology,
+`tests/test_ephys_end_to_end.py` (add the ephys cache mounts listed in [tests/DATASETS.md](tests/DATASETS.md);
+about four minutes).
 
 ## What's next
 

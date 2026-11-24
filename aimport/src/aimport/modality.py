@@ -53,6 +53,7 @@ class ModulePlan:
     view: list["ScrubbedSeries"] = field(default_factory=list)
     labels: dict[int, str] = field(default_factory=dict)
     images: dict[str, str | None] = field(default_factory=dict)
+    event_names: dict[str, str] = field(default_factory=dict)  # seeds Plan.event_names (codes only)
 
 
 @dataclass
@@ -64,6 +65,8 @@ class ModuleOutput:
     chunk_map: dict | None = None
     images: dict[str, str] = field(default_factory=dict)
     labels: dict[int, str] = field(default_factory=dict)  # subject_idx -> the input's own sub- label
+    scans_with_time: bool = False  # scans rows carry a recorded time of day (else date only, at 00:00:00)
+    sex_source: str = ""  # where the module's participants sex comes from ("" = not recorded: n/a)
 
 
 class Module(Protocol):
@@ -94,10 +97,11 @@ class Module(Protocol):
 
 
 def modules() -> tuple[Module, ...]:
-    """The registered modality modules: microscopy (``micr``)."""
+    """The registered modality modules: microscopy (``micr``), then electrophysiology (``ephys``)."""
+    from .ephys.module import EphysModule
     from .micr.module import MicrModule
 
-    return (MicrModule(),)
+    return (MicrModule(), EphysModule())
 
 
 # --- claimed paths -------------------------------------------------------------
@@ -123,6 +127,23 @@ def claimed_roots(claims: Iterable[Claim]) -> list[str]:
             if r not in roots:
                 roots.append(r)
     return roots
+
+
+def drop_overlaps(claims: Sequence[Claim]) -> None:
+    """Give each input path to one module, in place: a root that lies below another module's root (a recording
+    folder that module reads whole, such as a NIRx folder holding a ``*_probeInfo.mat``) leaves the claim it is
+    in; a root two modules claim stays with the first. A module's own nested roots are kept."""
+    original = [[normalize_root(r) for r in c.roots] for c in claims]
+    seen: set[str] = set()
+    for i, c in enumerate(claims):
+        others = {r for j, roots in enumerate(original) if j != i for r in roots}
+        kept = []
+        for r in original[i]:
+            if r in seen or any(str(a) in others for a in PurePosixPath(r).parents if str(a) != "."):
+                continue
+            kept.append(r)
+        seen.update(kept)
+        c.roots = kept
 
 
 def _under(path: Path, roots: frozenset[str]) -> bool:

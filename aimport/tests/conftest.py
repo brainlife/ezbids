@@ -26,11 +26,42 @@ MICR_PLANTED = {"jane doe", "jdoe@example.org", "scope-sn-4711", "2025-02-15", "
 
 
 def tokens(text: str) -> set[str]:
-    """The known identifying terms (PLANTED | NATIVE | MICR_PLANTED) found in text.
+    """The known identifying terms (PLANTED | NATIVE | MICR_PLANTED | EPHYS_PLANTED) found in text.
 
     Matching is by substring on lowercased text, so multi-word phrases ("hospital x") and
     values with punctuation ("12343@hucheng") are caught, which a word split would miss.
     Use as ``assert not PLANTED & tokens(text)`` or ``assert not NATIVE & tokens(text)``.
     """
     low = text.lower()
-    return {t for t in PLANTED | NATIVE | MICR_PLANTED if t in low}
+    return {t for t in PLANTED | NATIVE | MICR_PLANTED | EPHYS_PLANTED if t in low}
+
+
+# Identifiers planted into the ephys recordings (tests/fixtures/ephys_fixtures.py), lowercase: PLANTED plus
+# the operator, the free-text annotations, the meas date in every form, and the renamed channel.
+# "tapping" is planted only in free text (SNIRF stim name "Jane Doe tapping"); the bids-examples task label
+# `tapping` is never used in a leak test.
+EPHYS_PLANTED = PLANTED | {
+    "jane doe",
+    "jdoe",
+    "eegtech_jane",
+    "dr jane",
+    "said hello",
+    "2025-02-15",
+    "20250215",
+    "15.02.25",
+    "15-feb-2025",
+    "01-jan-1970",
+    "smith pilot",
+    "smith-fp1",
+    "tapping",
+}
+
+
+def ephys_tokens(text: str) -> set[str]:
+    """The ephys planted identifiers (EPHYS_PLANTED) found in text; substring match on lowercased text.
+
+    Use ``assert not ephys_tokens(text)`` in ephys leak tests; it avoids clashes with the MRI vocabulary
+    (NATIVE) that ``tokens`` also checks.
+    """
+    low = text.lower()
+    return {t for t in EPHYS_PLANTED if t in low}

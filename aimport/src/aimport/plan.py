@@ -14,8 +14,8 @@ LOCKED_FIELDS = {"id", "series_idx", "subject_idx", "session_idx"}
 # brainlife_by_person and the indices) is derived: planner.apply_plan_edits re-derives it after every edit.
 EDITABLE_FIELDS = {"subject": "label", "session": "label?", "datatype": "str?", "suffix": "str?",
                    "entities": "dict", "deface": "bool", "exclude": "bool", "brainlife_datatype": "str?",
-                   "brainlife_tags": "list", "sample_type": "str?", "pixel_size": "sizes?",
-                   "pixel_size_units": "unit?"}
+                   "brainlife_tags": "list", "ephys_format": "str?", "keep_headshape": "bool", "channel_types": "dict",
+                   "sample_type": "str?", "pixel_size": "sizes?", "pixel_size_units": "unit?"}
 PIXEL_SIZE_UNITS = ("mm", "um", "nm")
 _LABEL = re.compile(r"^[a-zA-Z0-9]+$")
 
@@ -36,6 +36,10 @@ REDACTED_MARK = "[x]"  # scrub.REDACTED: a column header that held an identifyin
 NOT_UPLOADABLE = "not uploadable: "
 DATE_COLUMN = "date column "
 OLD_PLAN = "plan format from an older aimport; re-scan the input"
+# a reviewer's display name for an event code (ephys events, Task 5)
+# the BIDS subject of MEG empty-room recordings: a literal label, never from the key nor a project subject
+EMPTY_ROOM_SUBJECT = "emptyroom"
+EVENT_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _./+-]{0,39}$")
 
 
 @dataclass
@@ -65,12 +69,25 @@ class PlanEntry:
     # True once the reviewer set brainlife_datatype or brainlife_tags; later edits keep that mapping
     # until the entry's datatype, suffix or entities change
     brainlife_by_person: bool = False
-    # phase 2: the input's modality. Microscopy ("micr") entries come from a modality module, not ezBIDS
-    modality: Literal["mri", "micr"] = "mri"
+    # the input's modality: "mri" entries come from ezBIDS; microscopy ("micr") and electrophysiology
+    # ("ephys") entries come from modality modules
+    modality: Literal["mri", "micr", "ephys"] = "mri"
     sample_type: str | None = None  # micr: a value of the BIDS sample_type enum (planner checks it)
     # micr: "convert" (to OME-Zarr), "reference" (an OME-Zarr kept as is, no copy); "" = not writable
     write_mode: Literal["", "convert", "reference"] = ""
     output_bytes: int = 0  # micr: about how many bytes conversion writes to the work folder
+    # ephys: the output format, one of ephys.OUTPUT_FORMATS[datatype]; "" = not writable (unsupported input)
+    ephys_format: str = ""
+    keep_headshape: bool = False  # ephys (meg, eeg): keep the head-shape digitization points
+    event_counts: dict[str, int] = field(default_factory=dict)  # ephys: event label (after coding) -> count
+    empty_room: str | None = None  # ephys meg: the id of the paired sub-emptyroom entry
+    # ephys head-shape file (.pos/.hsp/.elp), listed but never written on its own: the id of its recording's entry
+    # (None: no recording beside it) and the reason shown while that recording's keep_headshape is on
+    headshape_of: str | None = None
+    headshape_on_reason: str = ""
+    # ephys from NWB: electrode group (generated name, group_001) -> channel type (seeg / ecog / dbs), guessed
+    # from the group's name and description; the reviewer may change the values (not the groups)
+    channel_types: dict[str, str] = field(default_factory=dict)
     # micr: the pixel size (x, y[, z]) in pixel_size_units, from the source or the reviewer; None when
     # the source does not give every spatial axis (the entry is then unknown until the reviewer sets it)
     pixel_size: list[float] | None = None
@@ -112,6 +129,8 @@ class Plan:
     ancillary: list[AncillaryEntry] = field(default_factory=list)
     dataset_description: dict = field(default_factory=dict)  # DESCRIPTION_FIELDS only are written
     scan_id: str = ""  # the scan that built this plan (scan.json); only that scan's plan can be executed
+    # ephys event code -> display name (default the code); the written trial_type. Never holds original text.
+    event_names: dict[str, str] = field(default_factory=dict)
 
     def save(self, path: Path) -> None:
         Path(path).write_text(json.dumps(asdict(self), indent=2))
@@ -162,6 +181,8 @@ class Plan:
         for edit in edits:
             entry = by_id[edit["id"]]
             for k, v in edit.items():
+                if k == "ephys_format" and v is None:
+                    v = ""
                 if k == "pixel_size" and v is not None:
                     v = [float(t) for t in v]
                 if k not in ("id", "subject", "deface"):
@@ -217,6 +238,25 @@ class Plan:
                 self.dataset_description.pop(k, None)
             else:
                 self.dataset_description[k] = v
+        self.approved = False
+
+    def set_event_names(self, edits: dict[str, str]) -> None:
+        """Rename event codes; each key must be an existing code and each value match EVENT_NAME_RE.
+
+        Raises ValueError (naming no value) for anything invalid; a bad edit changes nothing. Unapproves.
+        """
+        if not isinstance(edits, dict):
+            raise ValueError("event_names must be an object")
+        for k, v in edits.items():
+            if k not in self.event_names:
+                raise ValueError("unknown event code")
+            if not isinstance(v, str) or not EVENT_NAME_RE.fullmatch(v):
+                raise ValueError("an event name is 1 to 40 letters, digits, spaces or _ . / + -, "
+                                 "starting with a letter or digit")
+        names = [v.casefold() for v in {**self.event_names, **edits}.values()]
+        if len(set(names)) != len(names):
+            raise ValueError("two event codes would share one name")
+        self.event_names.update(edits)
         self.approved = False
 
 

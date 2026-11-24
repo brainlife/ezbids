@@ -190,9 +190,17 @@ def test_bids_target_keeps_unmapped(plan):
 
 
 def test_unsupported_datatype(fixture_core, in_dir, key, schema):
-    set_type(fixture_core, ASL, "eeg/eeg", {"task": "rest"})
+    set_type(fixture_core, ASL, "beh/beh", {"task": "rest"})
     e = one(build_plan(fixture_core, in_dir, key, set(), None, schema, "bids"), ASL)
     assert (e.status, e.exclude) == ("unsupported", True)
+
+
+def test_mri_series_never_planned_as_ephys(fixture_core, in_dir, key, schema):
+    from aimport.planner import MRI_EPHYS_REASON
+
+    set_type(fixture_core, ASL, "eeg/eeg", {"task": "rest"})
+    e = one(build_plan(fixture_core, in_dir, key, set(), None, schema, "bids"), ASL)
+    assert (e.status, e.exclude, e.reason) == ("unknown", True, MRI_EPHYS_REASON)
 
 
 def test_secondary_capture_excluded_by_default(fixture_core, in_dir, key, schema):

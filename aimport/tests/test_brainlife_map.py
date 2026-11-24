@@ -72,7 +72,8 @@ def test_every_active_row_round_trips():
             continue
         n += 1
         bl = row["brainlife"]
-        got = to_brainlife(row["bids"]["datatype"], row["bids"]["suffix"], {"task": "Rest"}, {})
+        got = to_brainlife(row["bids"]["datatype"], row["bids"]["suffix"], {"task": "Rest"}, {},
+                           row["bids"].get("extension"))
         want = ["rest"] if "tags_from" in bl else bl["tags"]
         assert got == (bl["datatype"], want)
     assert n >= 13

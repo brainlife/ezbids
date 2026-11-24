@@ -22,12 +22,13 @@ import asyncio
 import copy
 import gzip
 import hmac
+import inspect
 import json
 import logging
 import os
+import re
 import secrets
 import shutil
-import re
 import tempfile
 import threading
 import time
@@ -61,11 +62,12 @@ from .modality import (
     Claim,
     claim_terms,
     claimed_roots,
+    drop_overlaps,
     module_dir,
     normalize_root,
     redact_paths,
 )
-from .plan import NEVER_KEEP, OLD_PLAN, Plan
+from .plan import EMPTY_ROOM_SUBJECT, NEVER_KEEP, OLD_PLAN, Plan
 from .planner import DATASET_NAME_MAX, README_MAX, apply_plan_edits, build_plan, run_terms
 from .micr import reference as micr_reference
 from .micr.reference import CHUNK_MAP_NAME, write_chunk_map  # in <work>/output/, next to bids/
@@ -73,7 +75,9 @@ from .pseudonyms import KeyLockedError, PseudonymKey
 from .schema import load_schema
 from .scrub import REDACTED, redact
 from .validate import validate_bids
-from .viewer import VIEWER_CSP, entry_state, index_page, neuroglancer_client_dir, ngff_parts, oct_group, state_url
+from .ephys import qa as ephys_qa
+from .viewer import (STATIC_DIR, VIEWER_CSP, entry_state, index_page, neuroglancer_client_dir, ngff_parts, oct_group,
+                     state_url, traces_page)
 from .writer import _Writer, write_bids
 
 log = logging.getLogger("aimport")
@@ -108,6 +112,9 @@ MEDIA_TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; cha
                ".svg": "image/svg+xml", ".png": "image/png", ".woff2": "font/woff2"}
 
 
+SAFE_ENTRY_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")  # a plan entry id usable as a folder name
+
+
 def _now() -> float:
     return time.monotonic()
 
@@ -133,6 +140,24 @@ def _read_json(path: Path) -> dict | None:
 def _nonempty(path: Path) -> bool:
     return path.exists() and (not path.is_dir() or path.is_symlink() or any(path.iterdir()))
 
+
+def project_subjects(plan: Plan) -> dict[int, str]:
+    """subject_idx -> subject ID of the plan's project subjects: every entry's subject except the literal
+    empty-room subject of MEG noise recordings, which is never recorded in the key or as a project subject."""
+    return {e.subject_idx: e.subject for e in plan.entries
+            if not (e.modality == "ephys" and e.subject == EMPTY_ROOM_SUBJECT)}
+
+
+def _module_plan(m, work: Path, key: PseudonymKey, existing: set[str], client, schema, target: str,
+                 subjects: dict[str, dict]):
+    """m.plan, passing the MRI subjects by folder label to a module whose plan takes them."""
+    try:
+        takes = "subjects" in inspect.signature(m.plan).parameters
+    except (TypeError, ValueError):
+        takes = False
+    if takes:
+        return m.plan(work, key, existing, client, schema, target, subjects=subjects)
+    return m.plan(work, key, existing, client, schema, target)
 
 def _file_inside(root: Path, rel: str) -> Path | None:
     """root/rel when rel is a relative path without '..' that reaches a regular file inside root through no
@@ -215,6 +240,7 @@ class PatchBody(BaseModel):
     dataset_description: dict | None = None
     dataset_name: str | None = None
     readme: str | None = None
+    event_names: dict[str, str] | None = None
 
 
 class ApproveBody(BaseModel):
@@ -416,7 +442,7 @@ class Server:
     def renamed_subjects(self, plan: Plan) -> dict[int, str]:
         """subject_idx -> edited subject ID, for the subjects whose ID differs from the key's."""
         recorded = self.subject_ids()
-        changed = {e.subject_idx: e.subject for e in plan.entries if e.subject != recorded.get(e.subject_idx)}
+        changed = {i: sid for i, sid in project_subjects(plan).items() if sid != recorded.get(i)}
         if any(i not in recorded for i in changed):
             raise HTTPException(409, "the subject IDs of this scan are not known: scan again")
         return changed
@@ -535,8 +561,10 @@ class Server:
                 claim = m.claim(self.input_dir, list(remote))
                 self.scan_claims.append(claim)
                 claim.roots = [normalize_root(r) for r in claim.roots]
-                claim.save(module_dir(self.work, m) / CLAIM_FILE)
                 claims[m.name] = claim
+            drop_overlaps(list(claims.values()))  # each input path is read by one module
+            for m in mods:
+                claims[m.name].save(module_dir(self.work, m) / CLAIM_FILE)
             roots = claimed_roots(claims.values())
             self.set_status("scanning", "staging the input")
             # claimed input is never staged (a module reads it in place); phase-1 calls stay unchanged
@@ -573,13 +601,14 @@ class Server:
             client, schema = client_from_env(), self.get_schema()
             existing = set(info["existing_subjects"])
             # module planners run inside build_plan, after the MRI subjects took their IDs
-            planners = [lambda m=m: m.plan(module_dir(self.work, m), key, existing, client, schema, info["target"])
+            planners = [lambda subjects, m=m: _module_plan(m, module_dir(self.work, m), key, existing, client,
+                                                           schema, info["target"], subjects)
                         for m in mods]
             plan = build_plan(core, self.input_dir, key, existing, client, schema, info["target"],
                               staged_dir=staged, existing_sessions=info.get("existing_sessions") or {},
                               exclude=roots, extra_terms=frozenset(module_terms), planners=planners)
             plan.scan_id = info["scan_id"]
-            self.save_subject_ids({e.subject_idx: e.subject for e in plan.entries})
+            self.save_subject_ids(project_subjects(plan))
             key.save()
             with self.plan_lock:
                 self.save_plan(plan)
@@ -635,6 +664,7 @@ class Server:
                 defaced[eid] = [Path(p).resolve().relative_to(pre_root).as_posix() for p in paths]
             _write_json(self.work / OUTPUT_STATE,
                         {"scan_id": scan_id, "complete": True, "manifest": manifest, "defaced": defaced, **done})
+            self.render_qa(plan, manifest)
             self.set_status("executing", "validating the BIDS dataset")
             result = validate_bids(self.out)
             pterms = path_terms(terms)
@@ -652,6 +682,25 @@ class Server:
                         validation=validation, refused=_redact_obj(refused, terms))
         except Exception as e:
             self.fail(e, key, self.set_aside(scan_id))
+
+    def render_qa(self, plan: Plan, manifest: dict[str, list[str]]) -> None:
+        """The QA snapshots of each written electrophysiology recording (ephys.qa.render), into
+        <work>/ephys/qa/<entry id>/ (local only). A failure is logged by type and never fails the run."""
+        root = ephys_qa.qa_root(self.work)
+        ephys_qa.clear_cache()
+        shutil.rmtree(root, ignore_errors=True)
+        ids = [e.id for e in plan.entries if e.modality == "ephys" and manifest.get(e.id)
+               and SAFE_ENTRY_ID.fullmatch(e.id)]
+        if not ids:
+            return
+        self.set_status("executing", "rendering the QA snapshots")
+        for eid in ids:
+            try:
+                files = manifest[eid]
+                ephys_qa.render(eid, self.out / files[ephys_qa.primary_file(files)], root / eid,
+                                event_names=dict(plan.event_names or {}))
+            except Exception as e:
+                log.warning("QA snapshot failed: %s", type(e).__name__)
 
     def set_aside(self, scan_id: str) -> str:
         """After a failed execute: <work>/output/bids (possibly complete but not defaced or validated) is
@@ -1026,6 +1075,15 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
             description = srv.clean_obj(body.dataset_description) if body.dataset_description is not None else None
             dataset_name = srv.clean_obj(body.dataset_name) if body.dataset_name is not None else None
             readme = srv.clean_obj(body.readme) if body.readme is not None else None
+            if body.event_names is not None:
+                # stored redacted like all reviewer text; a name the redaction changes is refused, and no error echoes it
+                event_names = srv.clean_obj(body.event_names)
+                if event_names != body.event_names:
+                    raise HTTPException(400, "event name contains an identifying term")
+                try:
+                    plan.set_event_names(event_names)
+                except ValueError as e:
+                    raise HTTPException(400, str(e)) from None
             try:
                 if body.edits:
                     apply_plan_edits(plan, body.edits, srv.get_schema())
@@ -1205,6 +1263,18 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
                  "zarr": path.endswith(".ome.zarr"), "reference": e.write_mode == "reference",
                  "defaced": i < len(defaced.get(e.id) or [])}
                 for e in entries for i, path in enumerate(state["manifest"][e.id])]
+        qa_root = ephys_qa.qa_root(work_dir)
+        for e in entries:  # an electrophysiology recording: its snapshots and the trace viewer
+            files = state["manifest"][e.id]
+            if e.modality != "ephys" or not SAFE_ENTRY_ID.fullmatch(e.id):
+                continue
+            try:
+                primary = ephys_qa.primary_file(files)
+            except ValueError:
+                continue
+            row = next(r for r in rows if r["id"] == e.id and r["index"] == primary)
+            row["traces"] = True
+            row["pngs"] = [k for k in ephys_qa.KINDS if (qa_root / e.id / f"{k}.png").is_file()]
         return HTMLResponse(index_page(rows))
 
     @app.get("/viewer/brainlife-mark.svg")
@@ -1349,6 +1419,77 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
             originals = (state.get("defaced") or {}).get(entry_id)
             state_ = entry_state(asdict(entry), files, originals, base, compare=compare, index=index)
         return RedirectResponse(state_url(state_), status_code=303)
+
+    def ephys_output(entry_id: str) -> tuple[Path, Path, dict[str, str]]:
+        """(the data file, its QA folder, the plan's event names) of a written electrophysiology entry of the
+        manifest, else 404."""
+        state = output_state()
+        files = (state.get("manifest") or {}).get(entry_id)
+        if not files or not SAFE_ENTRY_ID.fullmatch(entry_id):
+            raise HTTPException(404, "no such recording")
+        with srv.plan_lock:
+            plan = srv.load_plan()
+        entry = next((e for e in plan.entries if e.id == entry_id), None)
+        if entry is None or entry.modality != "ephys":
+            raise HTTPException(404, "no such recording")
+        try:
+            index = ephys_qa.primary_file(files)
+        except ValueError:
+            raise HTTPException(404, "no such recording") from None
+        return (output_file(entry_id, index, "defaced"), ephys_qa.qa_root(work_dir) / entry_id,
+                dict(plan.event_names or {}))
+
+    @app.get("/qa/png/{entry_id}/{kind}.png")
+    def get_qa_png(entry_id: str, kind: str) -> FileResponse:
+        ephys_output(entry_id)
+        if kind not in ephys_qa.KINDS:
+            raise HTTPException(404, "no such snapshot")
+        file = _file_inside(ephys_qa.qa_root(work_dir), f"{entry_id}/{kind}.png")
+        if file is None:
+            raise HTTPException(404, "no such snapshot")
+        return FileResponse(file, media_type="image/png")
+
+    @app.get("/qa/traces/{entry_id}")
+    def get_qa_traces(entry_id: str, t0: float = 0.0, t1: float = ephys_qa.DEFAULT_WINDOW_S,
+                      ch: str = "") -> dict:
+        path, qa_dir, event_names = ephys_output(entry_id)
+        picks: list[int] | None = None
+        if ch:
+            parts = ch.split(",")
+            if len(parts) > ephys_qa.MAX_CHANNELS:
+                raise HTTPException(400, f"more than {ephys_qa.MAX_CHANNELS} channels")
+            if not all(p.isascii() and p.isdigit() and len(p) <= 6 for p in parts):
+                raise HTTPException(400, "ch: channel indices separated by commas")
+            picks = [int(p) for p in parts]
+        try:
+            return ephys_qa.window(entry_id, path, t0, t1, picks, qa_dir=qa_dir, event_names=event_names)
+        except ephys_qa.WindowError as e:
+            raise HTTPException(400, str(e)) from None
+        except Exception as e:
+            log.warning("trace window failed: %s", type(e).__name__)
+            raise HTTPException(500, "the recording could not be read") from None
+
+    @app.get("/viewer/traces/{entry_id}")
+    def get_viewer_traces(entry_id: str) -> HTMLResponse:
+        path, _, _ = ephys_output(entry_id)
+        return HTMLResponse(traces_page(entry_id, path.name))
+
+    @app.get("/viewer/assets/{path:path}")
+    def get_viewer_asset(path: str) -> FileResponse:
+        """The trace viewer's own files (aimport/static/) and uPlot (<client>/vendor/uplot/, uplot/...)."""
+        if path.startswith("uplot/"):
+            try:
+                base = neuroglancer_client_dir() / "vendor" / "uplot"
+            except RuntimeError:
+                raise HTTPException(404, "not found") from None
+            path = path[len("uplot/"):]
+        else:
+            base = STATIC_DIR
+        base = base.resolve()
+        file = (base / path).resolve()
+        if not path or base not in file.parents or not file.is_file():
+            raise HTTPException(404, "not found")
+        return FileResponse(file, media_type=MEDIA_TYPES.get(file.suffix, "application/octet-stream"))
 
     @app.get("/viewer/ng/{path:path}")
     def get_neuroglancer(path: str) -> FileResponse:

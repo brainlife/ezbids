@@ -10,9 +10,13 @@ from bidsschematools.schema import load_schema as _bst_load_schema
 DEFAULT_SCHEMA = Path("/opt/bids-schema/schema.json")
 SPEC_SCHEMA_DIR = Path(__file__).resolve().parents[2] / "bids-specification" / "src" / "schema"
 PHASE1_DATATYPES = ("anat", "func", "dwi", "fmap", "perf", "pet")
-SUPPORTED_DATATYPES = PHASE1_DATATYPES + ("micr",)
-# the extension each datatype's images are written with (checked when naming); default NIfTI
-CHECK_EXTS = {"micr": ".ome.zarr/"}
+MICR_DATATYPES = ("micr",)
+EPHYS_DATATYPES = ("eeg", "meg", "ieeg", "nirs", "emg")
+SUPPORTED_DATATYPES = PHASE1_DATATYPES + MICR_DATATYPES + EPHYS_DATATYPES
+# the extension a file is written with (checked when naming): microscopy by datatype, electrophysiology by
+# output format (PlanEntry.ephys_format); default NIfTI
+CHECK_EXTS = {"micr": ".ome.zarr/", "BrainVision": ".vhdr", "EDF": ".edf", "BDF": ".bdf", "FIF": ".fif",
+              "SNIRF": ".snirf", "NWB": ".nwb"}
 DEFAULT_CHECK_EXT = ".nii.gz"
 BIDS_VERSION = "1.11.2"
 
@@ -74,8 +78,33 @@ class Schema:
                     found.append(field)
         return found
 
+    def sidecar_fields(self, datatype: str, suffix: str) -> list[str]:
+        """Every metadata key the schema lists for a ``<datatype>/<suffix>.json`` sidecar (any level), and,
+        for a tabular suffix (events, channels, electrodes, ...), its column names (a column-description
+        sidecar is keyed by them).
+
+        Walks rules.sidecars, rules.json and rules.tabular_data; an entry counts when one of its selectors
+        is decidably true and none is decidably false (conditional selectors count as possible).
+        """
+        modalities = [m for m, v in self._s.rules.modalities.items() if datatype in v.datatypes]
+        values = {"datatype": [datatype], "suffix": [suffix], "modality": modalities}
+        found: list[str] = []
+        for rules, key, objects in ((self._s.rules.sidecars, "fields", self._s.objects.metadata),
+                                    (self._s.rules.json, "fields", self._s.objects.metadata),
+                                    (self._s.rules.tabular_data, "columns", self._s.objects.columns)):
+            for entry in self._leaves_sidecars(rules):
+                verdicts = [self._selector(x, values, ".json") for x in entry.get("selectors", [])]
+                if False in verdicts or True not in verdicts:
+                    continue
+                for field in entry.get(key, {}) or {}:
+                    obj = objects.get(field)
+                    name = str(obj.get("name", field)) if obj else str(field)
+                    if name not in found:
+                        found.append(name)
+        return found
+
     def _leaves_sidecars(self, node):
-        if "selectors" in node or "fields" in node:
+        if "selectors" in node or "fields" in node or "columns" in node:
             yield node
             return
         for child in node.values():
