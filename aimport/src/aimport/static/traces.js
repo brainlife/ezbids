@@ -5,21 +5,13 @@
   "use strict";
   var MAX_CHANNELS = 64;
   var MAX_WINDOW = 600;
-  var TYPE_COLOURS = ["#2f72b5", "#d55e00", "#009e73", "#cc79a7", "#b8860b", "#6a51a3"];
-  var TYPE_ORDER = ["eeg", "seeg", "ecog", "dbs", "mag", "grad", "emg", "eog", "ecg", "fnirs_cw_amplitude"];
-  var PAIR_COLOURS = ["#c0392b", "#2f72b5"]; // HbO red, HbR blue (or the lower and higher wavelength)
-  var BAD = "#a0aec0";
+  var BAD = "#a0aec0"; // the engine sends every other colour (channel.colour), one per type; HbO red, HbR blue
 
   var entry = document.body.getAttribute("data-entry");
   var $ = function (id) { return document.getElementById(id); };
   var state = { t0: 0, len: 10, ch: null, duration: null, all: [] };
   var plot = null;
   var current = null;
-
-  function colour(type) {
-    var i = TYPE_ORDER.indexOf(type);
-    return TYPE_COLOURS[(i < 0 ? TYPE_ORDER.length : i) % TYPE_COLOURS.length];
-  }
 
   function status(text) { $("tr-status").textContent = text || ""; }
 
@@ -103,10 +95,9 @@
       columns.push(data.y[k].map(function (v) {
         return v === null ? null : -row + (v - centre) / scale[c.type] * 0.8;
       }));
-      var pair = lay.pairOf[c.i];
       series.push({
         label: c.name,
-        stroke: c.bad ? BAD : pair ? PAIR_COLOURS[pair[1]] : colour(c.type),
+        stroke: c.bad ? BAD : c.colour,
         width: 1,
         dash: c.bad ? [4, 3] : undefined,
         points: { show: false },

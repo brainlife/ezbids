@@ -14,9 +14,10 @@ import re
 import threading
 from collections import OrderedDict
 from pathlib import Path
-from typing import Any
 
 import numpy as np
+
+from . import events
 
 QA_DIR = "qa"
 KINDS = ("traces", "psd", "channels")
@@ -35,9 +36,13 @@ PNG_WINDOW_S = 10.0
 PNG_START_S = 30.0
 PSD_FMAX = 125.0
 PSD_TMAX = 60.0
+# samples read for one snapshot (each PSD channel type, the traces.png window): at most this many bytes
+PSD_MAX_BYTES = 64 * 2**20
+WELCH_N_FFT = 256  # mne's compute_psd default
+MIN_WELCH_SEGMENTS = 8
 
 # NIRS: HbO/HbR computed at render time when the recording is small enough
-HB_MAX_BYTES = 512 * 2**20
+HB_MAX_BYTES = 128 * 2**20  # OD and HbO/HbR copies in float64: a peak of about 0.5 GB
 PPF = 6.0
 HB_FILE = "hb.npy"
 HB_INFO = "hb.json"
@@ -57,17 +62,33 @@ DISPLAY: dict[str, tuple[float, str]] = {
 BIDS_TYPES = {"EEG": "eeg", "SEEG": "seeg", "ECOG": "ecog", "DBS": "dbs", "EMG": "emg", "EOG": "eog",
               "ECG": "ecg", "MEGMAG": "mag", "MEGGRADPLANAR": "grad", "MEGGRADAXIAL": "grad"}
 
-# brainlife-lite palette; trace colours per channel type in a fixed, colour-blind-safe order
+# brainlife-lite palette
 PRIMARY = "#3d6a92"
 TEXT = "#2d3748"
 MUTED = "#718096"
 GRID = "#e2e8f0"
 PANEL = "#ffffff"
-BAD = "#d55e00"
-TYPE_COLOURS = ("#2f72b5", "#d55e00", "#009e73", "#cc79a7", "#b8860b", "#6a51a3")
-TYPE_ORDER = ("eeg", "seeg", "ecog", "dbs", "mag", "grad", "emg", "eog", "ecg", "fnirs_cw_amplitude")
-HBO = "#c0392b"
-HBR = "#2f72b5"
+BAD = "#a0aec0"  # bad channels: grey (dashed traces, the second bar colour)
+HBO = "#c0392b"  # red
+HBR = "#1d4e89"  # blue
+OTHER = "#4a5568"  # stim, misc and any type not below
+# one colour per channel type, every one distinct (checked with the dataviz validator; see the Task 11 report)
+COLOURS: dict[str, str] = {
+    "eeg": "#2f72b5",
+    "emg": "#009e73",
+    "eog": "#b8860b",
+    "ecg": "#cc79a7",
+    "mag": "#6a51a3",
+    "grad": "#d55e00",
+    "seeg": "#c2410c",
+    "ecog": "#7b3294",
+    "dbs": "#00a3c4",
+    "fnirs_cw_amplitude": "#3d6a92",
+    "fnirs_od": "#2c7a7b",
+    "hbo": HBO,
+    "hbr": HBR,
+}
+TYPE_ORDER = tuple(COLOURS)
 
 
 class WindowError(ValueError):
@@ -75,12 +96,7 @@ class WindowError(ValueError):
 
 
 def colour(ch_type: str) -> str:
-    if ch_type == "hbo":
-        return HBO
-    if ch_type == "hbr":
-        return HBR
-    i = TYPE_ORDER.index(ch_type) if ch_type in TYPE_ORDER else len(TYPE_ORDER)
-    return TYPE_COLOURS[i % len(TYPE_COLOURS)]
+    return COLOURS.get(ch_type, OTHER)
 
 
 def qa_root(work: Path) -> Path:
@@ -124,8 +140,28 @@ def _float(text) -> float | None:
     return v if np.isfinite(v) else None
 
 
+UNLISTED = "E???"  # an events.tsv label that is not a safe label, a plan code or a plan event name
+_CODE_RE = re.compile(rf"^{events.CODE_PREFIX}\d{{3}}$")
+
+
+def safe_label(label: str, event_names: dict[str, str] | None = None) -> str:
+    """The label as shown: kept when it is a safe label, a plan code or a plan event name (``event_names``:
+    code -> name); a name's code when only that is known; else ``UNLISTED``."""
+    names = event_names or {}
+    if events.is_safe(label) or label in names or label in names.values():
+        return label
+    if not names and _CODE_RE.match(label):
+        return label
+    return UNLISTED
+
+
+def shown_events(evs: list[dict], event_names: dict[str, str] | None) -> list[dict]:
+    return [{**e, "label": safe_label(e["label"], event_names)} for e in evs]
+
+
 def read_events(data_file: Path) -> list[dict]:
-    """``[{"onset", "duration", "label"}]`` from the written ``events.tsv`` (labels: codes or safe labels)."""
+    """``[{"onset", "duration", "label"}]`` from the written ``events.tsv`` (raw labels; ``shown_events``
+    filters them before they are drawn or served)."""
     out = []
     for row in _tsv(_sibling(data_file, "events.tsv")):
         onset = _float(row.get("onset"))
@@ -154,7 +190,7 @@ class _Recording:
     n_times: int
     ch_names: list[str]
     ch_types: list[str]
-    raw: Any = None  # the mne Raw, when there is one (compute_psd)
+    closed = False
 
     def read(self, picks: list[int], start: int, stop: int) -> np.ndarray:
         raise NotImplementedError
@@ -225,7 +261,11 @@ class _HbRecording(_Recording):
         return np.asarray(self._data[list(picks), start:stop], dtype=float)
 
     def close(self):
-        del self._data
+        data = self.__dict__.pop("_data", None)
+        mm = getattr(data, "_mmap", None)
+        del data
+        if mm is not None and not mm.closed:
+            mm.close()
 
 
 def _pairs(names: list[str], types: list[str]) -> list[list[int]]:
@@ -266,6 +306,7 @@ def open_recording(path: Path, qa_dir: Path | None = None) -> _Recording:
     except Exception:
         rec.close()
         raise
+    rec.lock = threading.Lock()  # reads of one recording, one at a time (h5py, mne readers)
     return rec
 
 
@@ -294,8 +335,15 @@ def round_sig(a: np.ndarray, digits: int = 4) -> np.ndarray:
 
 
 def _chunk_samples(rec: _Recording, n_picks: int) -> int:
-    width = max(n_picks, len(rec.ch_names) if isinstance(rec, _NwbRecording) else n_picks, 1)
-    return max(1, READ_CHUNK_BYTES // (8 * width))
+    return max(1, READ_CHUNK_BYTES // (8 * max(n_picks, 1)))
+
+
+def bounded_seconds(rec: _Recording, n_picks: int, want: float) -> float:
+    """``want`` seconds, cut so that n_picks channels of it are at most ``PSD_MAX_BYTES`` of float64 samples,
+    but never below ``MIN_WELCH_SEGMENTS`` Welch segments (nor beyond the recording)."""
+    cap = PSD_MAX_BYTES / (8 * max(n_picks, 1) * rec.sfreq)
+    floor = MIN_WELCH_SEGMENTS * WELCH_N_FFT / rec.sfreq
+    return min(max(min(want, cap), floor), rec.duration)
 
 
 def window_data(rec: _Recording, start: int, stop: int, picks: list[int]) -> tuple[np.ndarray, np.ndarray]:
@@ -339,7 +387,14 @@ _CACHE: "OrderedDict[tuple, _Recording]" = OrderedDict()
 _LOCK = threading.Lock()
 
 
+def _close(rec: _Recording) -> None:
+    with rec.lock:  # waits for a read in progress
+        rec.closed = True
+        rec.close()
+
+
 def _cached(path: Path, qa_dir: Path | None) -> _Recording:
+    """The open recording (LRU of ``CACHE_SIZE``); call with ``_LOCK`` held."""
     hb = Path(qa_dir) / HB_FILE if qa_dir is not None else None
     key = (str(path), path.stat().st_mtime_ns, str(qa_dir),
            hb.stat().st_mtime_ns if hb is not None and hb.is_file() else None)
@@ -351,14 +406,14 @@ def _cached(path: Path, qa_dir: Path | None) -> _Recording:
     _CACHE[key] = rec
     while len(_CACHE) > CACHE_SIZE:
         _, old = _CACHE.popitem(last=False)
-        old.close()
+        _close(old)
     return rec
 
 
 def clear_cache() -> None:
     with _LOCK:
         while _CACHE:
-            _CACHE.popitem()[1].close()
+            _close(_CACHE.popitem()[1])
 
 
 def check_request(t0: float, t1: float, ch: list[int] | None) -> None:
@@ -373,41 +428,62 @@ def check_request(t0: float, t1: float, ch: list[int] | None) -> None:
 
 
 def window(entry_id: str, path: Path, t0: float, t1: float, ch: list[int] | None, *,
-           qa_dir: Path | None = None) -> dict:
+           qa_dir: Path | None = None, event_names: dict[str, str] | None = None) -> dict:
     """The samples of channels ``ch`` (default the first ``DEFAULT_CHANNELS``) between t0 and t1 seconds, in
-    display units rounded to 4 significant digits; ``WindowError`` outside the limits."""
+    display units rounded to 4 significant digits; ``WindowError`` outside the limits. ``_LOCK`` is held only
+    for the cache; the read holds the recording's own lock."""
     check_request(t0, t1, ch)
-    with _LOCK:
-        rec = _cached(Path(path), qa_dir)
-        n_ch = len(rec.ch_names)
-        picks = list(range(min(DEFAULT_CHANNELS, n_ch))) if ch is None else list(ch)
-        if any(not 0 <= i < n_ch for i in picks):
-            raise WindowError("a channel index is out of range")
-        start = min(max(0, int(round(max(t0, 0.0) * rec.sfreq))), max(rec.n_times - 1, 0))
-        stop = min(rec.n_times, max(start + 1, int(round(t1 * rec.sfreq))))
-        x, y = window_data(rec, start, stop, picks)
-        channels, rows = [], []
-        for k, i in enumerate(picks):
-            factor, unit = _scale(rec.ch_types[i])
-            channels.append({"i": i, "name": rec.ch_names[i], "type": rec.ch_types[i], "unit": unit,
-                             "bad": bool(rec.bad[i])})
-            rows.append(_jsonable(round_sig(y[k] * factor)))
-        picked = set(picks)
-        lo, hi = start / rec.sfreq, stop / rec.sfreq
-        return {
-            "name": rec.name,
-            "sfreq": rec.sfreq,
-            "t0": lo,
-            "t1": hi,
-            "duration": rec.duration,
-            "channels": channels,
-            "all_channels": [{"i": i, "name": n, "type": t, "bad": bool(b)}
-                             for i, (n, t, b) in enumerate(zip(rec.ch_names, rec.ch_types, rec.bad))],
-            "x": [round(v, 6) for v in x.tolist()],
-            "y": rows,
-            "events": [e for e in rec.events if e["onset"] <= hi and e["onset"] + e["duration"] >= lo],
-            "pairs": [p for p in rec.pairs if p[0] in picked and p[1] in picked],
-        }
+    while True:
+        with _LOCK:
+            rec = _cached(Path(path), qa_dir)
+        with rec.lock:
+            if rec.closed:  # evicted between the lookup and the read: look it up again
+                continue
+            return _window(rec, t0, t1, ch, event_names)
+
+
+def channel_colours(rec: _Recording) -> list[str]:
+    """Each channel's trace colour: its type's, except NIRS pairs: HbO (or the lower wavelength) red, HbR (or
+    the higher) blue."""
+    out = [colour(t) for t in rec.ch_types]
+    for a, b in rec.pairs:
+        out[a], out[b] = HBO, HBR
+    return out
+
+
+def _window(rec: _Recording, t0: float, t1: float, ch: list[int] | None,
+            event_names: dict[str, str] | None) -> dict:
+    n_ch = len(rec.ch_names)
+    picks = list(range(min(DEFAULT_CHANNELS, n_ch))) if ch is None else list(ch)
+    if any(not 0 <= i < n_ch for i in picks):
+        raise WindowError("a channel index is out of range")
+    start = min(max(0, int(round(max(t0, 0.0) * rec.sfreq))), max(rec.n_times - 1, 0))
+    stop = min(rec.n_times, max(start + 1, int(round(t1 * rec.sfreq))))
+    x, y = window_data(rec, start, stop, picks)
+    shade = channel_colours(rec)
+    channels, rows = [], []
+    for k, i in enumerate(picks):
+        factor, unit = _scale(rec.ch_types[i])
+        channels.append({"i": i, "name": rec.ch_names[i], "type": rec.ch_types[i], "unit": unit,
+                         "bad": bool(rec.bad[i]), "colour": shade[i]})
+        rows.append(_jsonable(round_sig(y[k] * factor)))
+    picked = set(picks)
+    lo, hi = start / rec.sfreq, stop / rec.sfreq
+    return {
+        "name": rec.name,
+        "sfreq": rec.sfreq,
+        "t0": lo,
+        "t1": hi,
+        "duration": rec.duration,
+        "channels": channels,
+        "all_channels": [{"i": i, "name": n, "type": t, "bad": bool(b), "colour": shade[i]}
+                         for i, (n, t, b) in enumerate(zip(rec.ch_names, rec.ch_types, rec.bad))],
+        "x": [round(v, 6) for v in x.tolist()],
+        "y": rows,
+        "events": shown_events([e for e in rec.events if e["onset"] <= hi and e["onset"] + e["duration"] >= lo],
+                               event_names),
+        "pairs": [p for p in rec.pairs if p[0] in picked and p[1] in picked],
+    }
 
 
 # --- the snapshots ---------------------------------------------------------------------------------------
@@ -424,9 +500,10 @@ def _hb(path: Path, qa_dir: Path) -> None:
             return
         od = mne.preprocessing.nirs.optical_density(raw, verbose="error")
         hb = mne.preprocessing.nirs.beer_lambert_law(od, ppf=PPF)
-        np.save(qa_dir / HB_FILE, hb.get_data().astype(np.float32))
+        np.save(qa_dir / HB_FILE, hb.get_data().astype(np.float32))  # float32 on disk, memory-mapped to read
         (qa_dir / HB_INFO).write_text(json.dumps({"sfreq": float(hb.info["sfreq"]), "names": list(hb.ch_names),
                                                   "types": list(hb.get_channel_types())}))
+        del od, hb
     finally:
         raw.close()
 
@@ -469,11 +546,12 @@ def _offsets(y: np.ndarray, types: list[str]) -> tuple[np.ndarray, dict[str, flo
     return np.array([centred[k] / scale[t] * 0.8 for k, t in enumerate(types)]), scale
 
 
-def _traces_png(rec: _Recording, dest: Path, title: str) -> None:
+def _traces_png(rec: _Recording, dest: Path, title: str, event_names: dict[str, str] | None = None) -> None:
     picks = list(range(min(PNG_CHANNELS, len(rec.ch_names))))
     t0 = min(PNG_START_S, rec.duration / 2)
     start = int(round(t0 * rec.sfreq))
-    stop = min(rec.n_times, start + max(1, int(round(PNG_WINDOW_S * rec.sfreq))))
+    length = bounded_seconds(rec, len(picks), PNG_WINDOW_S)
+    stop = min(rec.n_times, start + max(1, int(round(length * rec.sfreq))))
     x, y = window_data(rec, start, stop, picks)
     types = [rec.ch_types[i] for i in picks]
     y = y * np.array([[_scale(t)[0]] for t in types])
@@ -481,15 +559,16 @@ def _traces_png(rec: _Recording, dest: Path, title: str) -> None:
     fig = _figure(11, max(3.0, 0.9 + 0.24 * len(picks)))
     ax = fig.add_axes((0.12, 0.12 if len(picks) > 8 else 0.2, 0.86, 0.72 if len(picks) > 8 else 0.6))
     _style(ax)
+    shade = channel_colours(rec)
     for k, i in enumerate(picks):
-        ax.plot(x, rows[k] - k, color=MUTED if rec.bad[i] else colour(types[k]), linewidth=0.7,
+        ax.plot(x, rows[k] - k, color=BAD if rec.bad[i] else shade[i], linewidth=0.7,
                 linestyle="--" if rec.bad[i] else "-")
     ax.set_yticks([-k for k in range(len(picks))])
     ax.set_yticklabels([rec.ch_names[i] for i in picks], fontsize=7, color=TEXT)
     ax.set_ylim(-len(picks) + 0.2, 0.8)
     ax.set_xlim(x[0] if len(x) else 0, x[-1] if len(x) else 1)
     ax.set_xlabel("time (s)")
-    for e in rec.events:
+    for e in shown_events(rec.events, event_names):
         if x[0] <= e["onset"] <= x[-1]:
             ax.axvline(e["onset"], color=PRIMARY, linewidth=0.8, alpha=0.8)
             ax.text(e["onset"], 0.82, e["label"], color=PRIMARY, fontsize=7, va="bottom", ha="left",
@@ -500,12 +579,13 @@ def _traces_png(rec: _Recording, dest: Path, title: str) -> None:
     _save(fig, dest)
 
 
-def _psd_png(rec: _Recording, dest: Path, title: str, raw=None) -> None:
+def _psd_png(rec: _Recording, dest: Path, title: str) -> None:
+    """One mean spectrum per channel type (at most MAX_CHANNELS of a type, evenly spaced), from the first
+    ``bounded_seconds`` of the recording: never more than PSD_MAX_BYTES of samples per type."""
     import mne
 
-    raw = raw if raw is not None else rec.raw
     by_type: dict[str, list[int]] = {}
-    for i, t in enumerate(rec.ch_types if raw is None else raw.get_channel_types()):
+    for i, t in enumerate(rec.ch_types):
         if t in DISPLAY or t == "fnirs_cw_amplitude":
             by_type.setdefault(t, []).append(i)
     by_type = {t: [ix[k] for k in np.unique(np.linspace(0, len(ix) - 1, min(len(ix), MAX_CHANNELS)).astype(int))]
@@ -513,20 +593,14 @@ def _psd_png(rec: _Recording, dest: Path, title: str, raw=None) -> None:
     fig = _figure(8, 4)
     ax = fig.add_axes((0.1, 0.14, 0.86, 0.72))
     _style(ax)
-    sfreq = raw.info["sfreq"] if raw is not None else rec.sfreq
-    fmax = min(sfreq / 2, PSD_FMAX)
-    for t in sorted(by_type, key=lambda t: (TYPE_ORDER + ("hbo", "hbr")).index(t)
-                    if t in TYPE_ORDER + ("hbo", "hbr") else 99):
+    fmax = min(rec.sfreq / 2, PSD_FMAX)
+    for t in sorted(by_type, key=lambda t: TYPE_ORDER.index(t) if t in TYPE_ORDER else len(TYPE_ORDER)):
         picks = by_type[t]
-        if raw is not None:
-            tmax = min(PSD_TMAX, raw.times[-1])
-            spec = raw.compute_psd(picks=picks, fmax=fmax, tmax=tmax, verbose="error")
-        else:
-            n = min(rec.n_times, int(PSD_TMAX * rec.sfreq))
-            data = rec.read(picks, 0, n)
-            arr = mne.io.RawArray(data, mne.create_info(len(picks), rec.sfreq, t if t in DISPLAY else "misc"),
-                                  verbose="error")
-            spec = arr.compute_psd(picks="all", fmax=fmax, verbose="error")
+        n = min(rec.n_times, max(1, int(bounded_seconds(rec, len(picks), PSD_TMAX) * rec.sfreq)))
+        arr = mne.io.RawArray(rec.read(picks, 0, n), mne.create_info(len(picks), rec.sfreq, "misc"),
+                              verbose="error")
+        spec = arr.compute_psd(picks="all", fmax=fmax, n_fft=min(WELCH_N_FFT, n), verbose="error")
+        del arr
         psd, freqs = spec.get_data(picks="all", return_freqs=True)
         factor, unit = _scale(t)
         mean = np.nanmean(psd * factor**2, axis=0)
@@ -570,7 +644,8 @@ def _channels_png(rec: _Recording, path: Path, dest: Path, title: str) -> None:
     _save(fig, dest)
 
 
-def render(entry_id: str, bids_path: Path, out_dir: Path) -> dict[str, str]:
+def render(entry_id: str, bids_path: Path, out_dir: Path, *,
+           event_names: dict[str, str] | None = None) -> dict[str, str]:
     """traces.png, psd.png and channels.png of the written recording at ``bids_path`` into ``out_dir``
     (``<work>/ephys/qa/<entry id>/``); NIRS: also hb.npy. Returns kind -> PNG path."""
     import matplotlib
@@ -582,19 +657,10 @@ def render(entry_id: str, bids_path: Path, out_dir: Path) -> dict[str, str]:
         _hb(bids_path, out_dir)
     title = bids_path.name
     rec = open_recording(bids_path, out_dir)
-    hb_raw = None
     try:
-        if isinstance(rec, _HbRecording):
-            import mne
-
-            info = mne.create_info(rec.ch_names, rec.sfreq, "misc")
-            n = min(rec.n_times, int(PSD_TMAX * rec.sfreq) + 1)
-            hb_raw = mne.io.RawArray(rec.read(list(range(len(rec.ch_names))), 0, n), info, verbose="error")
-            hb_raw.set_channel_types(dict(zip(rec.ch_names, rec.ch_types)), on_unit_change="ignore",
-                                     verbose="error")
         out = {k: out_dir / f"{k}.png" for k in KINDS}
-        _traces_png(rec, out["traces"], title)
-        _psd_png(rec, out["psd"], title, raw=hb_raw)
+        _traces_png(rec, out["traces"], title, event_names)
+        _psd_png(rec, out["psd"], title)
         _channels_png(rec, bids_path, out["channels"], title)
     finally:
         rec.close()

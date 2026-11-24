@@ -661,7 +661,8 @@ class Server:
         for eid in ids:
             try:
                 files = manifest[eid]
-                ephys_qa.render(eid, self.out / files[ephys_qa.primary_file(files)], root / eid)
+                ephys_qa.render(eid, self.out / files[ephys_qa.primary_file(files)], root / eid,
+                                event_names=dict(plan.event_names or {}))
             except Exception as e:
                 log.warning("QA snapshot failed: %s", type(e).__name__)
 
@@ -1124,8 +1125,9 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         state_ = entry_state(asdict(entry), files, originals, base, compare=compare, index=index)
         return RedirectResponse(state_url(state_), status_code=303)
 
-    def ephys_output(entry_id: str) -> tuple[Path, Path]:
-        """(the data file, its QA folder) of a written electrophysiology entry of the manifest, else 404."""
+    def ephys_output(entry_id: str) -> tuple[Path, Path, dict[str, str]]:
+        """(the data file, its QA folder, the plan's event names) of a written electrophysiology entry of the
+        manifest, else 404."""
         state = output_state()
         files = (state.get("manifest") or {}).get(entry_id)
         if not files or not SAFE_ENTRY_ID.fullmatch(entry_id):
@@ -1139,7 +1141,8 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
             index = ephys_qa.primary_file(files)
         except ValueError:
             raise HTTPException(404, "no such recording") from None
-        return output_file(entry_id, index, "defaced"), ephys_qa.qa_root(work_dir) / entry_id
+        return (output_file(entry_id, index, "defaced"), ephys_qa.qa_root(work_dir) / entry_id,
+                dict(plan.event_names or {}))
 
     @app.get("/qa/png/{entry_id}/{kind}.png")
     def get_qa_png(entry_id: str, kind: str) -> FileResponse:
@@ -1154,7 +1157,7 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
     @app.get("/qa/traces/{entry_id}")
     def get_qa_traces(entry_id: str, t0: float = 0.0, t1: float = ephys_qa.DEFAULT_WINDOW_S,
                       ch: str = "") -> dict:
-        path, qa_dir = ephys_output(entry_id)
+        path, qa_dir, event_names = ephys_output(entry_id)
         picks: list[int] | None = None
         if ch:
             parts = ch.split(",")
@@ -1164,7 +1167,7 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
                 raise HTTPException(400, "ch: channel indices separated by commas")
             picks = [int(p) for p in parts]
         try:
-            return ephys_qa.window(entry_id, path, t0, t1, picks, qa_dir=qa_dir)
+            return ephys_qa.window(entry_id, path, t0, t1, picks, qa_dir=qa_dir, event_names=event_names)
         except ephys_qa.WindowError as e:
             raise HTTPException(400, str(e)) from None
         except Exception as e:
@@ -1173,7 +1176,7 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
 
     @app.get("/viewer/traces/{entry_id}")
     def get_viewer_traces(entry_id: str) -> HTMLResponse:
-        path, _ = ephys_output(entry_id)
+        path, _, _ = ephys_output(entry_id)
         return HTMLResponse(traces_page(entry_id, path.name))
 
     @app.get("/viewer/assets/{path:path}")

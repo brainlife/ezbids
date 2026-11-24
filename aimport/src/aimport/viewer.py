@@ -109,6 +109,7 @@ def index_page(rows: list[dict]) -> str:
 
     body = ("".join(row(r) for r in rows) if rows
             else '<tr><td colspan="2">No images were written.</td></tr>')
+    header = brand_header('<h1 class="bl-app">aimport QA viewer</h1>')
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><title>aimport QA viewer</title>
 <style>
@@ -116,14 +117,34 @@ body {{ font: 14px/1.5 system-ui, sans-serif; margin: 2rem; color: #1b1f24; }}
 table {{ border-collapse: collapse; }}
 td, th {{ padding: .35rem .8rem; border-bottom: 1px solid #d8dee4; text-align: left; vertical-align: top; }}
 code {{ font-size: 13px; }}
+{BRAND_CSS}
 {EPHYS_CSS}
 </style></head>
-<body><h1>aimport QA viewer</h1>
+<body>{header}
 <p>The de-identified output, before upload. Defaced images open with the original as a hidden layer.</p>
 <table><thead><tr><th>BIDS path</th><th>View</th></tr></thead><tbody>
 {body}
 </tbody></table></body></html>
 """
+
+
+# --- the brainlife.io header (logo from brainlife-lite's src/assets/logo.svg), shared by the viewer's pages ---
+
+LOGO = "/viewer/assets/brainlife-logo.svg"
+BRAND_CSS = """\
+.bl-header { display: flex; align-items: center; gap: .75rem; margin-bottom: 1rem; }
+.bl-brand { display: inline-flex; align-items: center; gap: .45rem; color: #2d3748; text-decoration: none;
+  font: 600 16px/1 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+.bl-logo { height: 28px; width: auto; }
+.bl-divider { width: 1px; height: 22px; background: #e2e8f0; }
+.bl-app { margin: 0; font-size: 18px; font-weight: 600; color: #2d3748; }"""
+
+
+def brand_header(app: str) -> str:
+    """The logo, "brainlife.io", a divider and ``app`` (HTML: the page's name)."""
+    return (f'<header class="bl-header"><a class="bl-brand" href="/viewer/"><img class="bl-logo" src="{LOGO}" '
+            f'alt="brainlife.io logo">brainlife.io</a><span class="bl-divider" aria-hidden="true"></span>{app}'
+            f'</header>')
 
 
 # --- electrophysiology: snapshots in the index and the trace viewer page ---
@@ -151,6 +172,7 @@ def traces_page(entry_id: str, bids_name: str) -> str:
     script (VIEWER_CSP unchanged); the data come from /qa/traces/<entry id>."""
     eid = html.escape(entry_id, quote=True)
     name = html.escape(bids_name)
+    header = brand_header('<a class="bl-app tr-back" href="/viewer/">aimport QA viewer</a>')
     return f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{name} · traces</title>
@@ -158,7 +180,7 @@ def traces_page(entry_id: str, bids_name: str) -> str:
 <link rel="stylesheet" href="/viewer/assets/traces.css">
 </head>
 <body data-entry="{eid}">
-<header class="tr-bar"><a class="tr-back" href="/viewer/">QA viewer</a><h1>{name}</h1></header>
+<div class="tr-bar">{header}<span class="bl-divider" aria-hidden="true"></span><h1>{name}</h1></div>
 <main class="tr-main">
 <section class="tr-panel tr-controls" aria-label="window">
   <button type="button" id="tr-left" title="earlier (←)">◀</button>

@@ -596,11 +596,17 @@ class Series:
             raise
 
     def read(self, picks: list[int], start: int, stop: int) -> np.ndarray:
-        """(len(picks), stop - start) samples in volts."""
-        block = np.asarray(self._data[start:stop], dtype=float)
-        if block.ndim == 1:
-            block = block[:, None]
-        block = block[:, picks] * self._conversion + self._offset
+        """(len(picks), stop - start) samples in volts. Only the picked columns are read (an h5py selection of
+        the sorted unique picks), never the full width."""
+        picks = [int(i) for i in picks]
+        if self._data.ndim == 1:
+            block = np.asarray(self._data[start:stop], dtype=float)[:, None][:, picks]
+        else:
+            cols = sorted(set(picks))
+            block = np.asarray(self._data[start:stop, cols], dtype=float)
+            where = {c: k for k, c in enumerate(cols)}
+            block = block[:, [where[i] for i in picks]]
+        block = block * self._conversion + self._offset
         if self._channel_conversion is not None:
             block = block * self._channel_conversion[picks][None, :]
         return block.T

@@ -234,17 +234,17 @@ at every written image, and at each defaced image against its original, before a
 renders three snapshots of each written recording into `work/ephys/qa/<entry id>/` (local only, never under
 `output/`, never uploaded): `traces.png` (10 s from `min(30 s, half the recording)`, up to 32 channels, the
 events from the written `events.tsv`), `psd.png` (one mean spectrum per channel type, up to 125 Hz over the
-first 60 s) and `channels.png` (channel counts per type, bad channels from `channels.tsv` in a second colour).
-A snapshot that fails is logged by error type and does not fail the run. On `/viewer/` the recording's data file
+first 60 s, shortened so one type never reads more than 64 MiB of samples) and `channels.png` (channel counts per type, bad channels from `channels.tsv` in a second colour).
+A snapshot that fails is logged by error type and does not fail the run. The viewer pages carry the brainlife.io logo (from brainlife-lite). On `/viewer/` the recording's data file
 shows the three thumbnails and a **Traces** link to `/viewer/traces/<entry id>`, an interactive viewer
 (uPlot): pick up to 64 channels, pan (◀ ▶ or the arrow keys), zoom (+ −, or drag across the plot), with the
 event labels as markers. NIRS shows HbO (red) and HbR (blue) from the modified Beer-Lambert law (PPF 6) when
-the recording is at most 512 MiB of samples, else the raw 760/850 nm pairs. Its data come from
+the recording is at most 128 MiB of samples, else the raw 760/850 nm pairs. Its data come from
 `GET /qa/traces/<entry id>?t0=&t1=&ch=0,1,2` (default: the first 32 channels, the first 10 s): at most 64
 channels, a window of at most 600 s and 4000 points per channel (min/max per bin beyond that, so single-sample
 spikes stay visible), values in µV, fT, fT/cm or µM rounded to 4 significant digits; 400 outside those limits.
 Everything is read from the written output only, so channel names are the renamed ones and event labels are
-codes (`E001`) or safe labels; the PNGs carry the BIDS file name as their title and no `Software` text chunk.
+codes (`E001`) or safe labels (any other label shows as `E???`); the PNGs carry the BIDS file name as their title and no `Software` text chunk.
 
 ![The trace viewer on the planted EDF and SNIRF test recordings](docs/qa-viewer-traces.png)
 

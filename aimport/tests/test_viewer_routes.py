@@ -536,3 +536,18 @@ def test_traces_js_same_origin_and_text_only():
     assert 'credentials: "same-origin"' in js and '"/qa/traces/"' in js
     css = (viewer.STATIC_DIR / "traces.css").read_text()
     assert "@import" not in css and "url(" not in css and "http" not in css
+
+
+def test_brainlife_logo_on_viewer_pages(planned):
+    browser = viewer_client(planned)
+    r = browser.get("/viewer/assets/brainlife-logo.svg")
+    assert r.status_code == 200 and r.headers["content-type"] == "image/svg+xml"
+    assert b"<script" not in r.content and b"href=\"http" not in r.content and b"@import" not in r.content
+    header = ('<header class="bl-header"><a class="bl-brand" href="/viewer/"><img class="bl-logo" '
+              'src="/viewer/assets/brainlife-logo.svg" alt="brainlife.io logo">brainlife.io</a>'
+              '<span class="bl-divider" aria-hidden="true"></span>')
+    executed(planned)
+    page = browser.get("/viewer/").text
+    assert header + '<h1 class="bl-app">aimport QA viewer</h1></header>' in page
+    traces = viewer.traces_page("e1", "sub-01_task-rest_eeg.vhdr")
+    assert header + '<a class="bl-app tr-back" href="/viewer/">aimport QA viewer</a></header>' in traces
