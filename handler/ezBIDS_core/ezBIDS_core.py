@@ -1571,7 +1571,7 @@ def determine_unique_series(dataset_list, bids_compliant):
     From the dataset_list, group the individual acquisitions into unique series.
     Unique data is determined from 4 DICOM header values: SeriesDescription
     EchoTime, ImageType, and RepetitionTime. If EchoTime values differ
-    slightly (+/- 1 ms) and other values are the same, a unique series ID is not
+    slightly (less than 0.1 ms) and other values are the same, a unique series ID is not
     given, since EchoTime is a continuous variable.
 
     Parameters
@@ -1605,14 +1605,14 @@ def determine_unique_series(dataset_list, bids_compliant):
         descriptor = acquisition_dic["descriptor"]
         if "_RR" in acquisition_dic["SeriesDescription"]:
             heuristic_items = [
-                round(acquisition_dic["EchoTime"], 1),
+                round(acquisition_dic["EchoTime"] * 1000, 1),  # seconds in the sidecar; compare in 0.1 ms
                 acquisition_dic[descriptor].replace("_RR", ""),
                 acquisition_dic["ImageType"],
                 round(acquisition_dic["RepetitionTime"], 1)
             ]
         else:
             heuristic_items = [
-                round(acquisition_dic["EchoTime"], 1),
+                round(acquisition_dic["EchoTime"] * 1000, 1),  # seconds in the sidecar; compare in 0.1 ms
                 acquisition_dic[descriptor],
                 acquisition_dic["ImageType"],
                 round(acquisition_dic["RepetitionTime"], 1)
@@ -2412,9 +2412,14 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
                                 "according to dcm2niix's BidsGuess heuristic, and will not be converted. " \
                                 "Please modify if incorrect."
                         unique_dic["type"] = "exclude"
+                    elif suffix not in lookup_dic.get(datatype, {}) and "DERIVED" not in unique_dic["ImageType"]:
+                        # dcm2niix guesses dwi/_FA whenever "_fa" is in the description, even for an
+                        # original (scanner, non-derived) image such as the BOLD run "func-bold_task-fa_run-1";
+                        # ignore the guess and let the SeriesDescription search terms and rules below decide
+                        pass
                     elif suffix not in lookup_dic.get(datatype, {}):
-                        # e.g. dcm2niix guesses dwi/_FA (a derivative BIDS does not define) for a series
-                        # whose description merely contains "_fa"; later lookups would raise KeyError
+                        # e.g. a scanner-derived FA map guessed as dwi/_FA (a derivative BIDS does not define);
+                        # later lookups would raise KeyError
                         unique_dic["message"] = f"dcm2niix's BidsGuess ({datatype}/{suffix}) is not a valid " \
                             "BIDS datatype/suffix pair, so the acquisition will not be converted. " \
                             "Please modify if incorrect."

@@ -109,14 +109,15 @@ the pages walks the IFD chain: one range read per page (~64 MiB at the 64 KiB fi
 
 Public Siemens XA30 DICOMs from the dcm2niix test suite, about 44 MB (95 `.dcm`
 files in 23 series folders, plus one non-DICOM file, `In/XA_validation.pdf`,
-covered by `NON_DICOM_SUFFIXES`). ezBIDS first guess on the unplanted data (19
-series; the committed fixture is 137 KB):
+covered by `NON_DICOM_SUFFIXES`). ezBIDS first guess on the unplanted data (20
+series; the committed fixture is 137 KB and was made before the two core fixes noted
+below, so it has 19 series, series 7 `exclude` and both magnitudes in one `magnitude1` series):
 
 | Series folder | ezBIDS guess | Note |
 |---|---|---|
 | `5_anat-T1w_acq-tfl`, `6_anat-T1w_acq-tfl` | `anat/T1w` | one series, two runs |
-| `7_func-bold_task-fa_run-1` | `exclude` | dcm2niix guesses `dwi/_FA` because of "task-fa"; stock ezBIDS crashes on it, so the core patch excludes it. A real BOLD series that the planner must reclassify as `func/bold` |
-| `8_gre_field_mapping` | `fmap/magnitude1` | |
+| `7_func-bold_task-fa_run-1` | `func/bold` | dcm2niix guesses `dwi/_FA` because of "task-fa"; ezBIDS core ignores that guess for a non-derived image and finds `func/bold` from "bold" in the description (it excluded the series before, and the committed fixture still records `exclude`) |
+| `8_gre_field_mapping` | `fmap/magnitude1` (`_e1`), `fmap/magnitude2` (`_e2`) | two series: ezBIDS core groups series by EchoTime in 0.1 ms (TE 10 and 12.46 ms); before, both echoes were one `magnitude1` series written as `run-1`/`run-2` |
 | `9_gre_field_mapping` | `fmap/phasediff` | |
 | `10_DWI_dir80_PA`, `17_DWI_dir80_AP` | `dwi/dwi` | 21 volumes each, with bvec/bval |
 | `11`-`16_DWI_dir80_PA`, `19`-`24_DWI_dir80_AP` | `exclude` | Siemens derived maps (ADC, TRACEW, FA, tensor/B0); two FA maps have an improper data array. `15` and `23` produce no NIfTI at all |
@@ -257,3 +258,17 @@ dcm_qa_xa30 (planted, `plant=True`) is also the input of the `bl aimport` manual
 2026-11-24: final stage `validated`, 0 validator errors (55 warnings), 5 objects and 6 project files ready to
 upload, about 110 s under emulation on Apple silicon; the console output contained none of the planted
 identifiers. The run used a thin derived image because `python` in `brainlife/aimport:dev` is the system Python 2.7 and `PYTHONPATH=/src/src` is set, so `python -m aimport serve` fails without a source mount.
+
+### QA viewer check (Task 5 of the QA viewer plan)
+
+2026-11-24, image `brainlife/aimport:qa` built from this branch, real engine container (`-p 127.0.0.1:8766:8766`,
+folders under `~/.cache/aimport-qa/`), planted dcm_qa_xa30, no AI model (heuristics only): scan → approve
+(`quickshear`) → execute gave `validated`, 0 validator errors (55 warnings), 5 written entries (T1w with two
+runs, magnitude1/2, phasediff, two dwi). Then `POST /viewer/session` and the URL in headless Chromium
+(Playwright on the host): `/viewer/` listed the 5 entries by BIDS path, with none of the planted or native
+identifiers in its HTML; the T1w opened in Neuroglancer with the defaced image rendered, and switching on the
+hidden original layer showed the face; the "defaced vs original" view rendered both. Every request went to
+`127.0.0.1:8766`; the console had no errors (only WebGL performance warnings). The committed screenshots
+(`docs/qa-viewer-index.png`, `docs/qa-viewer-t1w.png`) show the defaced output only. CSP relaxation needed by
+the client: `'unsafe-eval'` in `script-src` (found earlier against the same build).
+

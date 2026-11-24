@@ -176,12 +176,49 @@ All examples use `T="Authorization: Bearer $AIMPORT_TOKEN"` and `U=http://localh
    ```
 
 8. **Preview.** After `validated` or `invalid`, `GET /preview/<entry id>?which=defaced|original&index=0` returns the image
-   file (for a viewer such as NiiVue), so you can compare before and after defacing. This is the only route
-   that returns image data, and only to this computer.
+   file (for a viewer such as NiiVue), so you can compare before and after defacing. It and the QA viewer's
+   `/qa/data` (below) are the only routes that return image data, and only to this computer.
 
    ```
    curl -s "$U/preview/<entry id>?which=original" -H "$T" -o original.nii.gz
    ```
+
+## Checking the output (QA viewer)
+
+After `validated` or `invalid` the engine serves a Neuroglancer viewer of the output itself, so a person can look
+at every written image, and at each defaced image against its original, before anything is uploaded.
+
+1. Ask for a one-time code (bearer token, like every other call):
+
+   ```
+   curl -s -X POST $U/viewer/session -H "$T"
+   # {"code": "<32 hex>", "url": "/viewer/open?code=<32 hex>"}
+   ```
+
+2. Open `$U` + `url` in a browser on the same computer within 60 seconds. The code works once; it is traded
+   for a session cookie (HttpOnly, SameSite=Strict, valid until the engine stops) and the browser lands on
+   `/viewer/`, the list of the written images by BIDS path. "Neuroglancer" opens an image;
+   "defaced vs original" shows a defaced image next to its original. A defaced image also opens with its
+   original as a hidden layer ("… (original)"): switch it on in the layer bar to compare.
+
+![The QA index](docs/qa-viewer-index.png)
+
+![A defaced T1w in the viewer](docs/qa-viewer-t1w.png)
+
+What it serves, and why it stays local:
+
+- Only the output listed in the run's manifest (`/qa/data/<entry>/<index>/…`), the pre-defacing original of a
+  defaced image, and the Neuroglancer client built into the image. Never the input, `staged/`, `sourcedata/`,
+  the keys folder or `scan.json`; never through a symlink or a path outside the output. Nothing is served
+  before execute, or after a new scan.
+- Everything comes from the engine's own origin, published on `127.0.0.1` only: no third-party viewer page and
+  no request to another host. The page's Content-Security-Policy allows only the engine itself
+  (`default-src 'self'`, `frame-ancestors 'none'`); the one relaxation the client needs is `'unsafe-eval'` in
+  `script-src`, because Neuroglancer compiles code with `new Function` (without it the image stays blank). The token is
+  never put in a URL or a page; the cookie works only on `/viewer/*` and `/qa/*`, never on the API.
+- The original (pre-defacing) layer shows the face. It is for the reviewer's eyes only, to check that the
+  defacing removed the face and nothing else: never screenshot or share it. Only the defaced output is
+  uploaded.
 
 ## AI model settings
 
@@ -306,6 +343,14 @@ image) are better dropped in review; the validation result tells you which.
 - Microscopy plan entries (`micr/module.py`): the scan writes `work/micr/records.json` (local only, like `claim.json`: paths, URLs, name facts and image facts, acquisition date included), one record per image or tile group (VISoR and numbered tiles of one folder share one, raw PS-OCT `.dat` tiles one per folder). Plan entries carry only generated values: `subject_idx`/`series_idx` from 1,000,000 up, subject IDs from the pseudonym key (original `micr:id=<donor>`), samples `slice<NNN>`, the input's `sample-` label or `1, 2, ...`, `acq-<PS-OCT contrast>`, `stain-ch<nm>`, `chunk-<position or tile>` when a sample has several, a suffix from names (`OCT`, `SPIM`) or the OME acquisition mode, and a description built from the image facts. `write_mode` is `reference` for OME-Zarr (no copy, `output_bytes` 0) and `convert` otherwise (`output_bytes` = level 0 x 1.34). A remote source's donor comes from its file or store name or one of its three nearest folders, never from the bucket or the leading segments of the URL. A remote VISoR tile is planned from its first page and `frames_per_file`. Module planners run after the MRI subjects took their IDs, so MRI subject IDs and session labels are those of an MRI-only plan. Microscopy entries stay `micr` (another datatype makes them unknown, as does `micr` on an MRI entry); `sample_type` (default `tissue`) is editable within the BIDS enum. A microscopy-only scan has no DICOM-header warning; a supplementary folder (such as `sourcedata/`) holding claimed input is left out with a warning giving the count.
 - Microscopy conversion (`micr/convert.py`, `micr/metadata.py`): each included `convert` entry becomes `sub-<s>[/ses-<s>]/micr/<name>.ome.zarr` plus its sidecar. Pixels are read block by block (a block never larger than `MAX_BLOCK_BYTES`, 256 MiB, read at call time) and a whole array is never in memory. Level 0 is written in slabs along the slowest spatial axis, full extent on the others and one shard deep, in order, so each source block (strip, plane stack) is read once (the last one is kept for the next slab); when such a slab does not fit half the block limit, the shard gets thinner along that axis (chunks down to an eighth of the default) if that makes it fit, else the slabs are as deep as fits and cut through shards, which zarr completes by read-merge-rewrite one shard at a time; only a single slice larger than half the limit falls back to shard-by-shard writing. Remote files are read with a 4 KiB read-ahead while converting. Level k of the pyramid is the 2x box mean of level k-1 as written (exact integer arithmetic, majority vote for booleans; y and x every level, z only while its pixels are not coarser than the plane), down to a largest axis of 512 or 8 levels. ngff-zarr creates each level's array (metadata only); chunks are `(1, 128, 128, 128)` (3D) or `(1, 1024, 1024)` (2D) with 4 chunks per spatial axis per shard (0.5), fewer per shard (z first) when a shard would exceed half the block limit. The group metadata is then rebuilt from the allowlisted image facts only (`ngff_attrs`: axes, scale per level, an `omero` channel `ch<nm>`/`ch<i>` per channel with the coarsest level's 0.5/99.5 percentile window; no name, OME-XML or library metadata), and the array attributes are emptied. **Pixel size is never invented:** plan entries carry `pixel_size` (x, y[, z]) and `pixel_size_units` (`mm`, `um`, `nm`) from the source; when the source lacks any spatial axis the entry is `unknown` ("pixel size unknown: set it in the plan") until the reviewer sets both (editable on microscopy entries only, positive finite numbers, one per spatial axis), and the writer refuses an entry without them. The sidecar holds that `PixelSize`/`PixelSizeUnits`, `Magnification`, `NumericalAperture` and `Immersion` when known, and for `OCT` `OCTContrast`, `OCTRetardanceKind` and `OCTOpticAxisConvention` (`n/a`). Several files that are tiles of one plane (not VISoR frame stacks) are planned `unsupported` ("tile mosaic: stitch first ..."); VISoR tiles of one position are stacked along z. After each image aimport re-opens it (zarr and ngff-zarr, NGFF structural rules) and checks the group metadata for the configured version, the axes and units, level 0's scale against the sidecar `PixelSize`, each level's shape and dtype, and the omero channel count; a failure fails the execute with a generic message. The writer adds a participants row (`n/a` age and sex; MRI demographics win; the `sex` description says when it is not from DICOM), `samples.tsv` (`sample_id`, `participant_id`, `sample_type`; merged with a supplied one by participant and sample, supplied values winning) and `scans.tsv` rows whose `acq_time` is the image's acquisition date (else the date in its name) shifted by the subject's offset, date only (`T00:00:00`, described in `scans.json` as "date only for microscopy images; time not recorded"). A BIDS-named input's own suffix and entity keys (`sub-01_sample-A_CONF`) are vocabulary, not identifying terms; its `sample-`/`sub-`/`ses-` labels are used only when they are not terms. A reference (below) is checked the same way, from its metadata only.
 - Microscopy reference datasets (`micr/reference.py`): an OME-Zarr input (`write_mode` `reference`) is never copied or converted. Under `bids/` aimport writes only new metadata: the group attributes rebuilt by `ngff_attrs` in the **source's** Zarr format (v3 → NGFF 0.5, v2 → 0.4; the chunks are not re-encoded), with the plan's pixel size, each level's factor from its size (the source's scale when the size agrees with it, else level 0's size over the level's, else a power of two), and the source's omero windows when they are four numbers per channel (else the dtype's range); and per level a `zarr.json` or `.zarray` rebuilt from the source array's structure (shape, data type, chunk grid, key encoding or separator, codecs or compressor and filters, fill value, order), with `attributes` dropped and dimension names set to the image axes. Arrays are stored at `0`, `1`, ...; no chunk is written or read (the source's chunks may be absent), and the source's `OME/` folder, consolidated metadata and array attributes are not written. Where the chunks are is in the **chunk map** `work/output/bids.chunks.json` (never under `bids/`; local only, like `records.json`, and never uploaded): `{"version": 1, "arrays": {"<array dir under bids/>": {"source": {"input": "<input-relative dir>"} | {"url": "<https URL>"}, "zarr_format", "shape", "chunk_grid" (the stored object: shard or chunk), "separator", "codec_bytes_hint" (that object's decoded bytes), ["key_encoding": "v2"]}}}`. A chunk key under an array is the same in the source and the output; `chunk_keys` lists them (a missing source object is the fill value), and `resolve(map, out_rel, input_dir)` (shared by the engine and the viewer) maps an output chunk path to its source, refusing a path not strictly inside a mapped array, a key that is not one of that array's chunk keys, an input source outside the input folder or through a symlink, and a URL `normalize_url` refuses. `output-state.json` gains `"chunk_map": "output/bids.chunks.json"` and `/status` shows that path only; a new scan and a failed execute remove the map. The scan records each OME-Zarr's layout facts (axis identity, each array's Zarr format, chunk grid, key encoding, separator and storage transformers, dataset paths, and whether the store or an array dir is reached through a symlink), and one predicate (`layout_refusal`) plans a store that cannot be referenced as is `unsupported` with its reason ("OME-Zarr layout not referenceable: axes need reordering", ...); the writer applies it again. After writing, every string in the written metadata documents (codec and filter configurations and string fill values included) is compared with the run's terms (casefold, alphanumerics only), and a match fails the execute with a generic message. With the source's own scale factors that agree with its sizes, the self-check also requires each level's scale to be the plan's pixel size times that factor.
+- QA viewer client: a standalone build of the `neuroglancer` npm package **2.41.2** (`viewer-client/`: vite, as in
+  neuroglancer's `examples/vite`; only the NIfTI source over http and image layers are included), made by a node
+  build stage with `npm ci` from `viewer-client/package-lock.json` (integrity hashes) into `/opt/neuroglancer-client`
+  and served at `/viewer/ng/`. On the host, build it with `cd viewer-client && npm ci && node build.mjs <dir>` and
+  set `AIMPORT_NEUROGLANCER_DIR=<dir>`. neuroglancer's icon dependency `ikonate` is a GitHub commit, pinned in
+  `package.json` `overrides` to that commit's codeload tarball; its lockfile integrity is the hash of an archive
+  GitHub generates, so `npm ci` fails if GitHub ever regenerates it differently (then update the hash after
+  checking the archive's contents).
 
 ## Defacing details
 

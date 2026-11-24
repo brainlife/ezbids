@@ -33,7 +33,13 @@ RUN mkdir -p /usr/local/fsl && \
     git clone https://github.com/dlevitas/FSL_binaries /usr/local/fsl && \
     rm -rf /usr/local/fsl/README.md && \
     mkdir -p /usr/local/fsl/data/standard && \
-    mv /usr/local/fsl/bin/MNI152_T1_2mm_brain.nii.gz /usr/local/fsl/data/standard
+    mv /usr/local/fsl/bin/MNI152_T1_2mm_brain.nii.gz /usr/local/fsl/data/standard && \
+    ln -sf /usr/bin/python3 /usr/local/fsl/bin/fslpython
+# The fslpython in FSL_binaries is a bare conda-forge python 3.8 binary without its own stdlib, so it
+# falls back to Debian's /usr/lib/python3.8, which has no math extension module (Debian builds it in).
+# tmpnam (#!/usr/bin/env fslpython) then fails and fslreorient2std writes its temporary matrix to
+# ./_nii.mat in the shared working directory, where parallel deface jobs can overwrite or delete each other's.
+# tmpnam only needs the standard library, so fslpython is the system python3 (also 3.8).
 
 ENV FSLDIR=/usr/local/fsl
 ENV PATH=$PATH:$FSLDIR/bin
@@ -69,9 +75,14 @@ RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesourc
 RUN apt-get update \
     && apt-get install nodejs -y
 
-RUN cd /tmp && curl -fLO https://github.com/rordenlab/dcm2niix/releases/latest/download/dcm2niix_lnx.zip \
+# dcm2niix pinned to an exact release (its BidsGuess and sidecars change between releases);
+# to update, change both ARGs: the sha256 is the release asset digest shown on GitHub
+ARG DCM2NIIX_VERSION=v1.0.20261029
+ARG DCM2NIIX_ZIP_SHA256=decc03fe9c08e696700876bd0e28fbc1dda5be11979905dfa5a5e01063cdf758
+RUN cd /tmp && curl -fL -o dcm2niix_lnx.zip https://github.com/rordenlab/dcm2niix/releases/download/${DCM2NIIX_VERSION}/dcm2niix_lnx.zip \
+    && echo "${DCM2NIIX_ZIP_SHA256}  /tmp/dcm2niix_lnx.zip" | sha256sum -c - \
     && unzip /tmp/dcm2niix_lnx.zip \
-    && mv dcm2niix /usr/local/bin
+    && mv dcm2niix /usr/local/bin && rm /tmp/dcm2niix_lnx.zip
 
 # Don't need, unless there's a reason for having the development branch ahead of scheduled release
 # RUN git clone --branch development https://github.com/rordenlab/dcm2niix.git \
