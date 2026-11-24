@@ -74,6 +74,7 @@ DONE = ("validated", "invalid")  # executed: the output matches the plan (invali
 MAX_ISSUES = 200  # validator issues listed in the status (the counts are always complete)
 MAX_EVENTS = 500
 OUTPUT_STATE = "output-state.json"
+CHUNK_MAP_NAME = "bids.chunks.json"  # micr.reference.CHUNK_MAP_NAME, in <work>/output/ next to bids/
 # subject_idx -> the subject ID the key records for that subject's original (pseudonyms only: the originals
 # stay in the key), so an edited subject ID can be recorded in the key for the right person on execute
 SUBJECT_IDS = "subject-ids.json"
@@ -199,6 +200,8 @@ class Server:
         self.staged = work_dir / "ezbids"
         self.out = work_dir / "output" / "bids"
         self.failed_out = work_dir / "output" / "bids.failed"  # what a failed execute left: never uploaded
+        # where the chunks of referenced OME-Zarr arrays are (input paths, URLs): local only, never uploaded
+        self.chunk_map = work_dir / "output" / CHUNK_MAP_NAME
         self.ezbids_log = work_dir / "ezbids.log"  # ezBIDS's own output (identifying; local only)
         self.pre = work_dir / "pre-deface"
         self.lock = threading.RLock()  # stage, events, key
@@ -444,6 +447,7 @@ class Server:
             _clear(self.pre)
             _clear(self.failed_out)
             (self.work / OUTPUT_STATE).unlink(missing_ok=True)
+        self.chunk_map.unlink(missing_ok=True)
 
     def scan(self, info: dict, key: PseudonymKey, remote: Sequence[str] = ()) -> None:
         """remote: the scan's remote sources, passed to the modules' claims (kept out of scan.json)."""
@@ -523,15 +527,27 @@ class Server:
                 if _nonempty(p):
                     _clear(p)
             (self.work / OUTPUT_STATE).unlink(missing_ok=True)
+            self.chunk_map.unlink(missing_ok=True)
             _write_json(self.work / OUTPUT_STATE, {"scan_id": scan_id, "complete": False})
             self.set_status("executing", "writing the BIDS dataset")
             manifest: dict[str, list[str]] = {}
             refused: list[str] = []
             ids = self.record_subject_ids(plan, key)  # before writing, so edited subjects keep their offsets
             roots = self.claimed_roots()
+            mods = modality.modules() if any(e.modality != "mri" for e in plan.entries) else ()
+            extra: dict[str, Any] = {"exclude": roots} if roots else {}
+            chunks: dict[str, Any] = {}
+            if mods:  # phase-1 calls stay unchanged
+                extra.update(modules=mods, work_dir=self.work, chunk_map=chunks,
+                             progress=lambda msg: self.set_status("executing", self.clean(str(msg))))
             write_bids(plan, core, self.input_dir, terms, key, self.get_schema(), self.out,
-                       staged_dir=self.staged, manifest=manifest, refused=refused,
-                       **({"exclude": roots} if roots else {}))
+                       staged_dir=self.staged, manifest=manifest, refused=refused, **extra)
+            done: dict[str, Any] = {}
+            if chunks.get("arrays"):
+                from .micr.reference import write_chunk_map
+
+                write_chunk_map(self.chunk_map, chunks["arrays"])
+                done["chunk_map"] = self.chunk_map.relative_to(self.work).as_posix()
             key.save()  # the edited subject IDs, and the date offsets the writer creates in memory
             self.save_subject_ids(ids)
             self.set_status("executing", "defacing the anatomical images")
@@ -541,7 +557,7 @@ class Server:
             for eid, paths in moved.items():
                 defaced[eid] = [Path(p).resolve().relative_to(pre_root).as_posix() for p in paths]
             _write_json(self.work / OUTPUT_STATE,
-                        {"scan_id": scan_id, "complete": True, "manifest": manifest, "defaced": defaced})
+                        {"scan_id": scan_id, "complete": True, "manifest": manifest, "defaced": defaced, **done})
             self.set_status("executing", "validating the BIDS dataset")
             result = validate_bids(self.out)
             pterms = path_terms(terms)
@@ -563,6 +579,7 @@ class Server:
     def set_aside(self, scan_id: str) -> str:
         """After a failed execute: <work>/output/bids (possibly complete but not defaced or validated) is
         renamed to bids.failed, replacing an earlier one, so nothing uploadable is left; pre-deface is kept."""
+        self.chunk_map.unlink(missing_ok=True)  # nothing of a failed execute is uploadable
         try:
             if not self.out.exists():
                 return ""
@@ -757,6 +774,8 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
             state = _read_json(work_dir / OUTPUT_STATE)
             if state and state.get("complete"):
                 status["manifest"] = state.get("manifest") or {}
+                if state.get("chunk_map"):
+                    status["chunk_map"] = state["chunk_map"]  # work-relative; never its content
         return status
 
     @app.get("/events")

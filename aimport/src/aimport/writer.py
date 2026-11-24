@@ -20,14 +20,14 @@ import re
 import shutil
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Sequence
+from typing import Callable, Sequence
 
 import nibabel as nib
 import numpy as np
 
 from .ancillary import Generated, id_maps, path_terms, write_ancillary
 from .ezbids_runner import CoreObject, CoreResult
-from .modality import ClaimedPaths
+from .modality import ClaimedPaths, Module, ModuleOutput, module_dir
 from .plan import Plan, PlanEntry
 from .planner import is_placeholder
 from .pseudonyms import PseudonymKey
@@ -41,6 +41,8 @@ NIFTI_TEXT_FIELDS = ("descrip", "aux_file", "intent_name", "db_name")
 INTENDED_DATATYPES = {"func", "dwi"}
 PLACEHOLDER_DATES = {"", "n/a", "na", "anon", "anonymous", "unknown", "none", "0", "00000000"}
 AGE_CAP = 89
+SCANS_DATE_ONLY = "date only for microscopy images; time not recorded"  # scans.json acq_time of a session with module images
+SAMPLES_HEADER = ("sample_id", "participant_id", "sample_type")
 _AGE = re.compile(r"^(\d{1,3})([DWMY])$")
 _DAYS_PER_YEAR = 365.25
 _UNIT_YEARS = {"D": 1 / _DAYS_PER_YEAR, "W": 7 / _DAYS_PER_YEAR, "M": 1 / 12, "Y": 1.0}
@@ -154,8 +156,12 @@ class _Writer:
     def __init__(self, plan: Plan, core: CoreResult, input_dir: Path, terms: set[str], key: PseudonymKey,
                  schema: Schema, out_dir: Path, staged_dir: Path,
                  manifest: dict[str, list[str]] | None = None, refused: list[str] | None = None,
-                 exclude: Sequence[str] = ()):
+                 exclude: Sequence[str] = (), modules: Sequence[Module] = (), work_dir: Path | None = None,
+                 progress: Callable[[str], None] | None = None, chunk_map: dict | None = None):
         self.refused = refused
+        self.chunk_map = chunk_map
+        self.modules, self.work_dir, self.progress = list(modules), work_dir, progress
+        self.outputs: list[ModuleOutput] = []  # what the modules wrote (rows merged into the top-level files)
         self.claimed = ClaimedPaths(input_dir, exclude)  # claimed roots: never walked for DICOMs
         self.plan, self.core, self.terms, self.key, self.schema = plan, core, terms, key, schema
         self.input_dir = Path(input_dir).resolve()
@@ -277,6 +283,7 @@ class _Writer:
             by_session.setdefault((it.entry.subject, it.entry.session), []).append(it)
         for it in items:
             self.write_item(it, by_session[(it.entry.subject, it.entry.session)])
+        outputs = self.outputs = self.write_modules()
         self.generated.jsons["dataset_description.json"] = {
             "Name": self.plan.dataset_name, "BIDSVersion": BIDS_VERSION, "DatasetType": "raw",
             "GeneratedBy": [{"Name": "brainlife.io/aimport"}]}
@@ -284,16 +291,43 @@ class _Writer:
             self.generated.texts["README.md"] = self.plan.readme
         self.write_participants(items)
         self.write_scans(by_session)
+        self.write_samples()
         # only the subjects, sessions and images written here: rows and files of anyone else are dropped,
         # and companions (events, physio, scans rows) follow the image they belong to
         images = {os.path.normpath(str(it.nifti)): it.rel for it in items}
-        ids = id_maps(self.core, [it.entry for it in items], written=images)
+        written_ids = set()
+        for out in outputs:
+            images.update(out.images)
+            written_ids |= set(out.manifest)
+        entries = [it.entry for it in items] + [e for e in self.plan.entries if e.id in written_ids]
+        ids = id_maps(self.core, entries, written=images)
+        for out in outputs:
+            for idx, label in out.labels.items():
+                if label not in ids.labels.values():  # a label mapping two ways is left out (see id_maps)
+                    ids.labels[idx] = label
         self.written += write_ancillary(self.plan, self.input_dir, self.out_dir, self.terms, ids, self.key,
                                         schema=self.schema, generated=self.generated, refused=self.refused)
         stray = list(self.out_dir.rglob("*aimport-key*"))
         if stray:
             raise RuntimeError(f"pseudonym key found in the output folder: {stray}")
         return self.written
+
+    def write_modules(self) -> list[ModuleOutput]:
+        """Each modality module writes its entries through self.dest; its manifest joins the MRI one."""
+        outputs = []
+        for m in self.modules:
+            if self.work_dir is None:
+                raise ValueError("modality modules need the work folder")
+            out = m.write(self.plan, module_dir(self.work_dir, m), self.input_dir, self.terms, self.key,
+                          self.schema, self.dest, progress=self.progress)
+            if self.manifest is not None:
+                for eid, paths in out.manifest.items():
+                    self.manifest.setdefault(eid, []).extend(paths)
+            if self.chunk_map is not None and out.chunk_map:
+                self.chunk_map.setdefault("version", out.chunk_map.get("version"))
+                self.chunk_map.setdefault("arrays", {}).update(out.chunk_map.get("arrays") or {})
+            outputs.append(out)
+        return outputs
 
     def write_item(self, it: _Item, siblings: list[_Item]) -> None:
         self.write_nifti(self.source(it.nifti), self.dest(it.rel))
@@ -312,12 +346,35 @@ class _Writer:
         self.write_json(it.stem + ".json", sidecar)
 
     def write_scans(self, by_session: dict[tuple[str, str | None], list[_Item]]) -> None:
+        rows_by: dict[tuple[str, str | None], list[tuple[str, str]]] = {}
         for (subject, session), items in by_session.items():
             offset = self.key.date_offset_days(subject)
             base = f"sub-{subject}" + (f"/ses-{session}" if session else "")
-            rows = sorted((it.rel[len(base) + 1:], _acq_time(it.obj, offset)) for it in items)
-            rel = f"{base}/sub-{subject}{f'_ses-{session}' if session else ''}_scans.tsv"
-            self.generated.tables[rel] = [["filename", "acq_time"]] + [list(r) for r in rows]
+            rows_by[(subject, session)] = [(it.rel[len(base) + 1:], _acq_time(it.obj, offset)) for it in items]
+        dated: set[tuple[str, str | None]] = set()  # sessions with module rows (date only)
+        for out in self.outputs:
+            for k, rows in out.scans.items():
+                rows_by.setdefault(k, []).extend(rows)
+                dated.add(k)
+        for (subject, session), rows in rows_by.items():
+            stem = f"sub-{subject}{f'_ses-{session}' if session else ''}_scans"
+            base = f"sub-{subject}" + (f"/ses-{session}" if session else "")
+            self.generated.tables[f"{base}/{stem}.tsv"] = [["filename", "acq_time"]] + [list(r) for r in sorted(rows)]
+            if (subject, session) in dated:
+                self.generated.jsons[f"{base}/{stem}.json"] = {"acq_time": {"Description": SCANS_DATE_ONLY}}
+
+    def write_samples(self) -> None:
+        """samples.tsv (sample_id, participant_id, sample_type): one row per subject and sample a
+        module wrote; merged with a supplied samples.tsv by (participant_id, sample_id)."""
+        rows: dict[tuple[str, str], list[str]] = {}
+        for out in self.outputs:
+            for r in out.samples:
+                rows.setdefault((r["participant_id"], r["sample_id"]),
+                                [r["sample_id"], r["participant_id"], r.get("sample_type") or NA])
+        if rows:
+            self.generated.tables["samples.tsv"] = [list(SAMPLES_HEADER)] + [rows[k] for k in sorted(rows)]
+            self.generated.jsons["samples.json"] = {
+                "sample_type": {"Description": "BIDS sample type of each sample (from the import plan)"}}
 
     # --- participants ----------------------------------------------------------
 
@@ -325,15 +382,28 @@ class _Writer:
         subjects: dict[str, list[_Item]] = {}
         for it in items:
             subjects.setdefault(it.entry.subject, []).append(it)
+        demographics = {subject: self.demographics(subjects[subject]) for subject in subjects}
+        for out in self.outputs:  # module subjects: n/a unless the MRI side knows them (MRI demographics win)
+            for subject, values in out.participants.items():
+                demographics.setdefault(subject, (values.get("age", NA), values.get("sex", NA)))
         rows = [["participant_id", "age", "sex"]]
-        for subject in sorted(subjects):
-            age, sex = self.demographics(subjects[subject])
+        for subject in sorted(demographics):
+            age, sex = demographics[subject]
             rows.append([f"sub-{subject}", age, sex])
         self.generated.tables["participants.tsv"] = rows
         self.generated.jsons["participants.json"] = {
             "age": {"Description": "age at first scan of this import", "Units": "year"},
-            "sex": {"Description": "sex from the DICOM header", "Levels": {"M": "male", "F": "female", "O": "other"}},
+            "sex": {"Description": self.sex_description(set(subjects), set(demographics)),
+                    "Levels": {"M": "male", "F": "female", "O": "other"}},
         }
+
+    @staticmethod
+    def sex_description(mri: set[str], everyone: set[str]) -> str:
+        if not everyone - mri:
+            return "sex from the DICOM header"
+        if not mri:
+            return "sex (not recorded in the microscopy input: n/a)"
+        return "sex from the DICOM header; n/a for subjects with microscopy images only"
 
     def demographics(self, items: list[_Item]) -> tuple[str, str]:
         """PatientAge/PatientSex from the DICOMs behind this subject's series, else by PatientID."""
@@ -381,10 +451,16 @@ class _Writer:
 def write_bids(plan: Plan, core: CoreResult, input_dir: Path, terms: set[str], key: PseudonymKey,
                schema: Schema, out_dir: Path, *, staged_dir: Path,
                manifest: dict[str, list[str]] | None = None, refused: list[str] | None = None,
-               exclude: Sequence[str] = ()) -> list[Path]:
+               exclude: Sequence[str] = (), modules: Sequence[Module] = (), work_dir: Path | None = None,
+               progress: Callable[[str], None] | None = None, chunk_map: dict | None = None) -> list[Path]:
     """Write the approved plan as a BIDS dataset in out_dir; returns every file written.
 
     exclude: claimed roots (input-relative), never walked for DICOM headers.
+    modules: modality modules that write their entries after the MRI images (each from its folder
+    under work_dir, through the same guarded destination); their participants, scans and samples
+    rows and their manifest entries are merged here. progress receives their progress text.
+    chunk_map, when given, is filled with the modules' chunk maps merged (``{"version", "arrays"}``:
+    where the chunks of referenced arrays are; the caller writes it outside out_dir).
 
     When manifest is given it is filled with entry id -> the NIfTI paths written for that entry
     (posix, relative to out_dir), so later steps (defacing) find exactly those files. When refused is
@@ -404,10 +480,13 @@ def write_bids(plan: Plan, core: CoreResult, input_dir: Path, terms: set[str], k
     existed = out.exists()
     out.mkdir(parents=True, exist_ok=True)
     try:
-        return _Writer(plan, core, input_dir, terms, key, schema, out, staged_dir, manifest, refused, exclude).run()
+        return _Writer(plan, core, input_dir, terms, key, schema, out, staged_dir, manifest, refused, exclude,
+                       modules, work_dir, progress, chunk_map).run()
     except BaseException:
         if manifest is not None:
             manifest.clear()
+        if chunk_map is not None:
+            chunk_map.clear()
         if existed:
             for child in out.iterdir():
                 shutil.rmtree(child) if child.is_dir() and not child.is_symlink() else child.unlink()

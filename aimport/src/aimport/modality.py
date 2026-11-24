@@ -64,6 +64,7 @@ class ModuleOutput:
     samples: list[dict[str, str]] = field(default_factory=list)
     chunk_map: dict | None = None
     images: dict[str, str] = field(default_factory=dict)
+    labels: dict[int, str] = field(default_factory=dict)  # subject_idx -> the input's own sub- label
 
 
 class Module(Protocol):
@@ -85,7 +86,12 @@ class Module(Protocol):
              schema: "Schema", target: str) -> ModulePlan: ...
 
     def write(self, plan: "Plan", work: Path, input_dir: Path, terms: set[str], key: "PseudonymKey",
-              schema: "Schema", dest: Callable[[str], Path]) -> ModuleOutput: ...
+              schema: "Schema", dest: Callable[[str], Path],
+              progress: Callable[[str], None] | None = None) -> ModuleOutput:
+        """Write the module's entries of the approved plan. ``dest(rel)`` checks an output path
+        (relative to the BIDS folder), creates its parent folder and records it; nothing may be
+        written elsewhere. Returns the rows and paths the writer merges into the top-level files."""
+        ...
 
 
 def modules() -> tuple[Module, ...]:

@@ -701,5 +701,9 @@ class EphysModule:
         return plan_entries(load_records(work), key, existing, schema, target, load_codes(work), subjects, client)
 
     def write(self, plan: "Plan", work: Path, input_dir: Path, terms: set[str], key: "PseudonymKey",
-              schema: "Schema", dest: Callable[[str], Path]):
+              schema: "Schema", dest: Callable[[str], Path], progress: Callable[[str], None] | None = None):
+        from ..modality import ModuleOutput
+
+        if not any(e.modality == "ephys" and e.status == "ok" and not e.exclude for e in plan.entries):
+            return ModuleOutput()
         raise NotImplementedError("electrophysiology output is written by a later aimport version")

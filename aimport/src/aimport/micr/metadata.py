@@ -6,6 +6,7 @@ other string value is dropped and returned as a *term* so later steps can redact
 """
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -189,3 +190,141 @@ def ome_allowlist(ome: Any, image: int = 0) -> tuple[dict[str, Any], set[str]]:
         "acquired": img.acquisition_date.date() if img.acquisition_date else None,
     }
     return fields, terms
+
+
+# --- output metadata: NGFF group attributes and BIDS sidecars, from ImageInfo only ----------------
+
+SPATIAL = ("z", "y", "x")
+NGFF_UNITS: dict[str, str] = {"mm": "millimeter", "um": "micrometer", "nm": "nanometer"}
+RETARDANCE_KINDS = frozenset({"retardance", "birefringence"})
+_PALETTE = ("00FF00", "FF00FF", "00FFFF", "FF0000", "0000FF", "FFFF00")
+
+
+class PixelSizeUnknown(ValueError):
+    """A spatial axis has no pixel size: it is never invented (the reviewer sets it in the plan)."""
+
+
+def pixel_sizes(info: ImageInfo) -> dict[str, float]:
+    """The pixel size of every spatial axis of info (in ``info.pixel_unit``). The NGFF scale and the
+    sidecar PixelSize both come from here. Raises PixelSizeUnknown when an axis has none."""
+    out = {}
+    for axis in SPATIAL:
+        if axis in info.axes:
+            value = info.pixel_size.get(axis)
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) \
+                    or value <= 0:
+                raise PixelSizeUnknown("pixel size unknown: set it in the plan")
+            out[axis] = float(value)
+    return out
+
+
+def with_plan_pixel_size(info: ImageInfo, entry: Any) -> ImageInfo:
+    """info with the plan entry's pixel size and units (the source's, or the reviewer's), x, y[, z]
+    for the image's spatial axes; PixelSizeUnknown when the entry has none or too few values."""
+    from dataclasses import replace
+
+    spatial = [a for a in "xyz" if a in info.axes]
+    values = getattr(entry, "pixel_size", None)
+    units = getattr(entry, "pixel_size_units", None)
+    if values is None or units not in _UNIT_M or len(values) != len(spatial):
+        raise PixelSizeUnknown("pixel size unknown: set it in the plan")
+    out = replace(info, pixel_size={a: float(v) for a, v in zip(spatial, values)}, pixel_unit=units)
+    pixel_sizes(out)
+    return out
+
+
+def channel_count(info: ImageInfo) -> int:
+    return int(info.shape[info.axes.index("c")]) if "c" in info.axes else 1
+
+
+def _color(ch: ChannelInfo | None, index: int, count: int) -> str:
+    if count == 1:
+        return "FFFFFF"
+    nm = None
+    if ch is not None:
+        nm = ch.emission_nm or ((ch.excitation_nm + 30) if ch.excitation_nm else None)
+    if nm:
+        return "0000FF" if nm < 480 else "00FF00" if nm < 560 else "FF8000" if nm < 610 else "FF0000"
+    return _PALETTE[index % len(_PALETTE)]
+
+
+def _window(windows: Any, index: int) -> dict[str, float]:
+    if windows and index < len(windows) and windows[index]:
+        w = windows[index]
+        return {k: float(w[k]) for k in ("min", "max", "start", "end")}
+    return {"min": 0.0, "max": 1.0, "start": 0.0, "end": 1.0}
+
+
+def omero(info: ImageInfo, windows: Any = None) -> dict:
+    """One channel per channel of the image: label ``ch<nm>``/``ch<i>`` (never a source name)."""
+    count = channel_count(info)
+    channels = []
+    for i in range(count):
+        ch = info.channels[i] if i < len(info.channels) else None
+        label = ch.name_code if ch is not None else f"ch{i}"
+        channels.append({"label": label, "color": _color(ch, i, count), "active": True,
+                         "coefficient": 1.0, "family": "linear", "inverted": False,
+                         "window": _window(windows, i)})
+    return {"channels": channels, "rdefs": {"model": "greyscale" if count == 1 else "color"}}
+
+
+def _axis(name: str, unit: str) -> dict:
+    if name in SPATIAL:
+        return {"name": name, "type": "space", "unit": NGFF_UNITS[unit]}
+    return {"name": name, "type": "channel" if name == "c" else "time"}
+
+
+def ngff_attrs(info: ImageInfo, version: str, levels: Any = None, windows: Any = None) -> dict:
+    """The whole group attributes of an OME-Zarr image, rebuilt from ``info``.
+
+    ``levels``: per pyramid level, the absolute downsampling factor of each spatial axis
+    (``[{}, {"x": 2, "y": 2}, ...]``; default one level), stored at paths ``"0"``, ``"1"``, ...
+    ``windows``: per channel ``{min, max, start, end}`` (from the coarsest level). There is no
+    ``name``, ``metadata`` or ``_creator`` and no OME-XML: nothing from a source or a library default.
+    Version ``"0.5"`` nests everything under ``"ome"``; ``"0.4"`` puts it at the top.
+    """
+    if version not in ("0.5", "0.4"):
+        raise ValueError(f"unsupported NGFF version: {version!r}")
+    levels = list(levels) if levels else [{}]
+    size = pixel_sizes(info)
+    datasets = []
+    for i, factors in enumerate(levels):
+        scale = [size[a] * factors.get(a, 1) if a in size else 1.0 for a in info.axes]
+        transforms: list[dict] = [{"type": "scale", "scale": scale}]
+        if any(factors.get(a, 1) != 1 for a in size):
+            transforms.append({"type": "translation", "translation": [
+                (factors.get(a, 1) - 1) * size[a] / 2 if a in size else 0.0 for a in info.axes]})
+        datasets.append({"path": str(i), "coordinateTransformations": transforms})
+    multiscale: dict[str, Any] = {"axes": [_axis(a, info.pixel_unit) for a in info.axes], "datasets": datasets}
+    if version == "0.4":
+        return {"multiscales": [{"version": "0.4", **multiscale}], "omero": omero(info, windows)}
+    return {"ome": {"version": "0.5", "multiscales": [multiscale], "omero": omero(info, windows)}}
+
+
+def oct_retardance_kind(contrast: str | None) -> str:
+    return contrast if contrast in RETARDANCE_KINDS else "n/a"
+
+
+def sidecar(info: ImageInfo, entry: Any) -> dict:
+    """The BIDS sidecar of a written microscopy image: PixelSize (x, y[, z]) and PixelSizeUnits, the
+    objective when known and, for OCT, the custom OCT fields. Numbers and enum values only. The pixel
+    size is the plan entry's when it has one, else info's; PixelSizeUnknown when an axis has none."""
+    if getattr(entry, "pixel_size", None) is not None:
+        info = with_plan_pixel_size(info, entry)
+    size = pixel_sizes(info)
+    out: dict[str, Any] = {
+        "PixelSize": [size[a] for a in ("x", "y", "z") if a in size],
+        "PixelSizeUnits": info.pixel_unit,
+    }
+    if info.objective_magnification:
+        out["Magnification"] = float(info.objective_magnification)
+    if info.objective_na:
+        out["NumericalAperture"] = float(info.objective_na)
+    if info.immersion:
+        out["Immersion"] = info.immersion
+    if getattr(entry, "suffix", None) == "OCT":
+        contrast = (getattr(entry, "entities", None) or {}).get("acquisition")
+        out["OCTContrast"] = contrast or "n/a"
+        out["OCTRetardanceKind"] = oct_retardance_kind(contrast)
+        out["OCTOpticAxisConvention"] = "n/a"
+    return out

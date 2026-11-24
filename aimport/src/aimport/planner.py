@@ -34,6 +34,7 @@ DISAGREE_CONFIDENCE = 0.5  # ezBIDS's guess kept but the agent disputes it
 AGENT_MIN = 0.5  # agent answers below this are not used
 CHECK_EXT = ".nii.gz"  # every phase-1 image is written as NIfTI (CHECK_EXTS: other datatypes and formats)
 MICR_DATATYPE_REASON = "microscopy input: datatype must be micr"
+PIXEL_SIZE_REASON = "pixel size unknown: set it in the plan"
 MRI_DATATYPE_REASON = "MRI input: datatype cannot be micr"
 EPHYS_DATATYPE_REASON = "electrophysiology input: datatype must be one of eeg, meg, ieeg, nirs, emg"
 MRI_EPHYS_REASON = "MRI input: datatype cannot be eeg, meg, ieeg, nirs or emg"
@@ -382,6 +383,16 @@ def _check_nameable(d: dict, subject: str, session: str | None, schema: Schema, 
                  reason=f"{d['reason']}; cannot name {d['datatype']}/{d['suffix']}: {exc}")
 
 
+def check_pixel_size(d: dict, e: PlanEntry) -> None:
+    """Rule: an "ok" microscopy entry has a pixel size for every spatial axis, and units; otherwise it
+    becomes unknown (never an invented size)."""
+    if d["status"] != "ok" or e.modality != "micr":
+        return
+    n = len(e.spatial_axes) or None
+    if e.pixel_size is None or e.pixel_size_units is None or (n is not None and len(e.pixel_size) != n):
+        d.update(status="unknown", exclude=True, reason=PIXEL_SIZE_REASON)
+
+
 def _fmap_tags(entries: list[PlanEntry]) -> None:
     """Magnitude images take their brainlife tag from the fieldmap they belong to."""
     groups: dict[tuple[int, int], list[PlanEntry]] = defaultdict(list)
@@ -415,8 +426,10 @@ def apply_plan_edits(plan: Plan, edits: list[dict], schema: Schema) -> None:
     the edit says otherwise), the brainlife datatype and tags are recomputed unless the reviewer set them (brainlife_by_person),
     and the datatypes target excludes an entry with no brainlife datatype. Secondary captures stay
     excluded_by_default. Raises like Plan.apply_edits; a bad edit changes nothing. sample_type must be a
-    value of the schema's sample_type enum (microscopy entries only). ephys_format must be an output format
-    of the entry's (new) datatype, and keep_headshape and ephys_format apply to electrophysiology entries only.
+    value of the schema's sample_type enum, and pixel_size/pixel_size_units are set on microscopy
+    entries only; a microscopy entry without a pixel size for each spatial axis stays unknown.
+    ephys_format must be an output format of the entry's (new) datatype, and keep_headshape and
+    ephys_format apply to electrophysiology entries only.
     """
     _check_sample_types(plan, edits, schema)
     _check_ephys_edits(plan, edits)
@@ -443,6 +456,9 @@ def _check_sample_types(plan: Plan, edits: list[dict], schema: Schema) -> None:
             continue  # Plan.apply_edits raises KeyError
         if e.modality == "micr" and edit.get("deface") is True:
             raise ValueError("microscopy images are never defaced")
+        for k in ("pixel_size", "pixel_size_units"):
+            if e.modality != "micr" and edit.get(k) is not None:
+                raise ValueError(f"{k} applies to microscopy entries only")
         if "sample_type" not in edit:
             continue
         if e.modality != "micr":
@@ -530,6 +546,7 @@ def _rederive(e: PlanEntry, schema: Schema, target: str, keys: set[str], was_ok:
         if not was_ok and "exclude" not in keys:
             d["exclude"] = False
         _check_nameable(d, e.subject, e.session, schema, e.modality, e.ephys_format)
+    check_pixel_size(d, e)
     e.status, e.exclude, e.reason = d["status"], d["exclude"], d["reason"]
     if not e.brainlife_by_person:
         e.brainlife_datatype, e.brainlife_tags = (

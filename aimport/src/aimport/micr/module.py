@@ -1,4 +1,4 @@
-"""The microscopy modality module: claim, scan into local records, plan entries.
+"""The microscopy modality module: claim, scan into local records, plan entries, write.
 
 Records (``<work>/micr/records.json``) hold input-relative paths, remote URLs, parsed name facts
 (donor, dates) and the image facts (``ImageInfo``, acquisition date included). They are local-only,
@@ -15,12 +15,12 @@ import re
 import uuid
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any, Callable
 from urllib.parse import urlsplit
 
-from ..modality import Claim, ModulePlan
+from ..modality import Claim, ModuleOutput, ModulePlan
 from ..plan import PlanEntry
 from . import discover, names
 from .discover import Found
@@ -432,9 +432,12 @@ def _sample_key(where: str) -> str:
 
 
 def _input_label(where: str, prefix: str) -> str | None:
+    """The input's own <prefix>-<label>: a folder, or an entity of a BIDS file name (sub-01_sample-A_...)."""
     for part in where.split("/"):
-        if part.startswith(prefix + "-") and len(part) > len(prefix) + 1:
-            return part[len(prefix) + 1:]
+        for piece in part.split("_"):
+            piece = piece.split(".")[0]
+            if piece.startswith(prefix + "-") and len(piece) > len(prefix) + 1:
+                return piece[len(prefix) + 1:]
     return None
 
 
@@ -451,7 +454,7 @@ def _stain(rec: dict) -> str | None:
 def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], schema: "Schema",
                  target: str, client: "LLMClient | None" = None) -> ModulePlan:
     from ..brainlife_map import to_brainlife
-    from ..planner import _check_nameable, _usable
+    from ..planner import _check_nameable, _usable, check_pixel_size
 
     terms: set[str] = set()
     for rec in records:
@@ -544,12 +547,16 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
         elif info is None:
             d = dict(status="unsupported", exclude=True, reason=rec.get("error") or UNREADABLE_REASON)
             write_mode = ""
+        elif is_mosaic(rec):
+            d = dict(status="unsupported", exclude=True, reason=MOSAIC_REASON)
+            write_mode = ""
         else:
             write_mode = "reference" if rec["family"] == "ome-zarr" else "convert"
             d = (dict(status="ok", exclude=False, reason=f"microscopy heuristic: {why}") if suffix
                  else dict(status="unknown", exclude=True, reason=why))
         n_files = max(1, len(rec.get("members") or []))
         output = int(_level0_bytes(info) * n_files * CONVERT_OVERHEAD) if write_mode == "convert" else 0
+        spatial, sizes, units = pixel_size_of(info)
         entries.append(PlanEntry(
             id=f"m{i}-sub{subject_idx[o]}-ses{session_idx}", series_idx=MICR_INDEX_BASE + i,
             subject_idx=subject_idx[o], session_idx=session_idx, subject=subject_ids[o], session=session,
@@ -557,6 +564,7 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
             source="heuristic" if suffix else "none", confidence=0.8 if suffix else 0.0, reason=d["reason"],
             deface=False, exclude=d["exclude"], status=d["status"], description=describe(rec, write_mode),
             modality="micr", sample_type=DEFAULT_SAMPLE_TYPE, write_mode=write_mode, output_bytes=output,
+            pixel_size=sizes, pixel_size_units=units, spatial_axes=spatial,
         ))
         if write_mode and "rel" in rec:
             for m in rec.get("members") or [rec["rel"]]:
@@ -570,6 +578,7 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
             d = dict(datatype=e.datatype, suffix=e.suffix, entities=e.entities, status=e.status,
                      exclude=e.exclude, reason=e.reason)
             _check_nameable(d, e.subject, e.session, schema, "micr")
+            check_pixel_size(d, e)
             e.status, e.exclude, e.reason = d["status"], d["exclude"], d["reason"]
         if e.status == "ok":
             e.brainlife_datatype, e.brainlife_tags = to_brainlife(e.datatype, e.suffix, e.entities, {})
@@ -581,6 +590,28 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
         mp.warnings.append(SIZE_WARNING.format(n=convert_bytes / 1e9))
     mp.entries = entries
     return mp
+
+
+MOSAIC_REASON = "tile mosaic: stitch first (aimport converts single images and VISoR stacks)"
+
+
+def is_mosaic(rec: dict) -> bool:
+    """Several files that are tiles of one plane (not VISoR frame stacks): aimport cannot stitch them."""
+    return rec["family"] not in ("visor", "raw-psoct") and len(rec.get("members") or []) > 1
+
+
+def pixel_size_of(info: dict | None) -> tuple[str, list[float] | None, str | None]:
+    """(spatial axes among "xyz", pixel size x, y[, z] or None when an axis is missing, units)."""
+    if not info:
+        return "", None, None
+    axes = info.get("axes") or ""
+    spatial = "".join(a for a in "xyz" if a in axes)
+    size = info.get("pixel_size") or {}
+    values = [size.get(a) for a in spatial]
+    if not spatial or any(not isinstance(v, (int, float)) or isinstance(v, bool) or not math.isfinite(v) or v <= 0
+                          for v in values):
+        return spatial, None, info.get("pixel_unit")
+    return spatial, [float(v) for v in values], info.get("pixel_unit")
 
 
 def _chunks(entries: list[PlanEntry], records: list[dict]) -> None:
@@ -640,5 +671,206 @@ class MicrModule:
         return plan_entries(load_records(work), key, existing, schema, target, client)
 
     def write(self, plan: "Plan", work: Path, input_dir: Path, terms: set[str], key: "PseudonymKey",
-              schema: "Schema", dest: Callable[[str], Path]):
-        raise NotImplementedError("microscopy output is written by a later aimport version")
+              schema: "Schema", dest: Callable[[str], Path],
+              progress: Callable[[str], None] | None = None) -> ModuleOutput:
+        return write_entries(plan, load_records(work), Path(input_dir), terms, key, schema, dest, progress)
+
+
+# --- write ----------------------------------------------------------------------------------------
+
+WRITE_PROGRESS = "writing microscopy image {k} of {n}"
+
+
+def _acquired(rec: dict) -> date | None:
+    """The record's acquisition date (ImageInfo.acquired), else the first date in its name. Used for
+    scans.tsv acq_time only, shifted by the subject's offset; never written anywhere else."""
+    raw = (rec.get("info") or {}).get("acquired") or next(iter(rec["facts"].get("dates") or []), None)
+    try:
+        return date.fromisoformat(raw) if raw else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _acq_time(day: date | None, offset_days: int) -> str:
+    if day is None:
+        return "n/a"
+    try:
+        return (day + timedelta(days=offset_days)).isoformat() + "T00:00:00"
+    except OverflowError:
+        return "n/a"
+
+
+def _inside_input(input_dir: Path, rel: str) -> Path:
+    """An input-relative member path, refused when it leaves the input folder (also through links)."""
+    root = input_dir.resolve()
+    path = (input_dir / rel).resolve()
+    if root != path and root not in path.parents:
+        raise ValueError("a microscopy input lies outside the input folder")
+    return path
+
+
+CONVERT_BLOCK_SIZE = 2**12  # remote read-ahead while converting (each block is read once, in pieces)
+
+
+def _remote_cap(rec: dict) -> int:
+    from .remote import DEFAULT_MAX_BYTES
+
+    return max(DEFAULT_MAX_BYTES, 2 * _level0_bytes(rec.get("info") or {}) + 64 * 2**20)
+
+
+def open_record(rec: dict, input_dir: Path) -> Any:
+    """The ImageSource of a record for conversion: its file, its tiles stacked along z (VISoR), or
+    its URL read by range requests."""
+    from . import readers
+    from .convert import stack_sources
+
+    if "url" in rec:
+        from . import remote
+
+        src, _counter = remote.open_remote(rec["url"], rec["family"], max_bytes=_remote_cap(rec),
+                                           block_size=CONVERT_BLOCK_SIZE)
+        return src
+    members = list(rec.get("members") or [rec["rel"]])
+    if len(members) > 1 and rec["family"] != "visor":
+        raise NotImplementedError("tile groups other than VISoR positions cannot be converted yet")
+    sources = []
+    try:
+        for m in members:
+            sources.append(readers.open_image(_inside_input(input_dir, m), rec["family"]))
+        return stack_sources(sources)
+    except BaseException:
+        for s in sources:
+            s.close()
+        raise
+
+
+def open_reference(rec: dict, input_dir: Path) -> Any:
+    """The OME-Zarr ImageSource of a reference record, for its metadata only (no chunk is read):
+    the store in the input folder, or the remote store under the default byte cap."""
+    from . import readers
+
+    if rec.get("family") != "ome-zarr":
+        raise ValueError("only an OME-Zarr input can be referenced")
+    if "url" in rec:
+        from . import remote
+
+        src, _counter = remote.open_remote(rec["url"], "ome-zarr")
+        return src
+    return readers.open_image(_inside_input(input_dir, rec["rel"]), "ome-zarr")
+
+
+def reference_location(rec: dict) -> dict[str, str]:
+    """The chunk-map source of a reference record's store: its input-relative folder or its URL."""
+    if "url" in rec:
+        from .remote import normalize_url
+
+        return {"url": normalize_url(rec["url"])}
+    return {"input": PurePosixPath(rec["rel"]).as_posix()}
+
+
+def with_plan_pixel_size_check(e: PlanEntry) -> None:
+    from .metadata import PixelSizeUnknown, _UNIT_M
+
+    if e.pixel_size is None or e.pixel_size_units not in _UNIT_M or \
+            (e.spatial_axes and len(e.pixel_size) != len(e.spatial_axes)):
+        raise PixelSizeUnknown("pixel size unknown: set it in the plan")
+
+
+def _names(entries: list[PlanEntry], schema: "Schema") -> dict[str, str]:
+    """entry id -> output path (relative to the BIDS folder); a run- index for names that would clash."""
+    def name(e: PlanEntry, entities: dict[str, str]) -> str:
+        return schema.filename(e.subject, e.session, "micr", e.suffix, entities, ".ome.zarr/").rstrip("/")
+
+    names = {e.id: name(e, e.entities) for e in entries}
+    counts: dict[str, int] = defaultdict(int)
+    for n in names.values():
+        counts[n] += 1
+    taken = {n for n, c in counts.items() if c == 1}
+    for e in entries:
+        if counts[names[e.id]] > 1:
+            for run in range(1, len(entries) + 2):
+                n = name(e, {**e.entities, "run": str(run)})
+                if n not in taken:
+                    break
+            names[e.id] = n
+            taken.add(n)
+    return names
+
+
+def write_entries(plan: "Plan", records: list[dict], input_dir: Path, terms: set[str], key: "PseudonymKey",
+                  schema: "Schema", dest: Callable[[str], Path],
+                  progress: Callable[[str], None] | None = None) -> ModuleOutput:
+    """Write every included micr entry with its sidecar, check what was written, and return the rows
+    for participants, samples and scans. Convert entries become OME-Zarr in the configured version;
+    reference entries (OME-Zarr inputs) get only new metadata (micr/reference.py), in their source's
+    format, and their arrays go into ``out.chunk_map``."""
+    from ..scrub import redact
+    from . import NGFF_VERSION
+    from .convert import check_ome_zarr, to_ome_zarr
+    from .metadata import sidecar, with_plan_pixel_size
+    from .reference import chunk_map, ngff_version_for, write_reference
+
+    out = ModuleOutput()
+    entries = [e for e in plan.entries if e.modality == "micr" and e.datatype == "micr" and e.status == "ok"
+               and not e.exclude and e.suffix and e.write_mode]
+    for e in entries:  # defence in depth: the planner makes these unsupported or unknown
+        i = e.series_idx - MICR_INDEX_BASE
+        if 0 <= i < len(records) and is_mosaic(records[i]):
+            raise NotImplementedError(MOSAIC_REASON)
+        with_plan_pixel_size_check(e)
+    names = _names(entries, schema)
+    samples: dict[tuple[str, str], dict[str, str]] = {}
+    arrays: dict[str, dict] = {}
+    for k, e in enumerate(entries, 1):
+        i = e.series_idx - MICR_INDEX_BASE
+        if not 0 <= i < len(records) or records[i].get("info") is None:
+            raise ValueError("a microscopy plan entry has no scan record: scan again")
+        rec = records[i]
+        if progress is not None:
+            progress(WRITE_PROGRESS.format(k=k, n=len(entries)))
+        rel = names[e.id]
+        reference = e.write_mode == "reference"
+        src = open_reference(rec, input_dir) if reference else open_record(rec, input_dir)
+        try:
+            src.info.acquired = None
+            # the plan's pixel size (from the source or the reviewer); never an invented one
+            info = src.info = with_plan_pixel_size(src.info, e)
+            path = dest(rel)
+            if reference:  # the source's Zarr format; metadata only, the chunks stay at the source
+                version = ngff_version_for(info.zarr_format)
+                for sub, facts in write_reference(src, reference_location(rec), path, info).items():
+                    arrays[f"{rel}/{sub}"] = facts
+            else:
+                version = NGFF_VERSION
+                step = (lambda msg, k=k: progress(f"{WRITE_PROGRESS.format(k=k, n=len(entries))}: {msg}")) \
+                    if progress is not None else None
+                to_ome_zarr(src, path, version, step)
+            # numbers and vocabulary only; strings are redacted anyway (numbers are not: a pixel size
+            # equal to a path number is not identifying, and must match the NGFF scale)
+            car = {k: redact(v, terms) if isinstance(v, str) else v for k, v in sidecar(info, e).items()}
+            check_ome_zarr(path, car, version, info.shape, info.dtype, reference=reference)
+        finally:
+            src.close()
+        stem = rel[: -len(".ome.zarr")]
+        dest(stem + ".json").write_text(json.dumps(car, indent=2) + "\n", encoding="utf-8")
+        out.manifest.setdefault(e.id, []).append(rel)
+        out.participants.setdefault(e.subject, {"age": "n/a", "sex": "n/a"})
+        base = f"sub-{e.subject}" + (f"/ses-{e.session}" if e.session else "")
+        offset = key.date_offset_days(e.subject)
+        out.scans.setdefault((e.subject, e.session), []).append(
+            (rel[len(base) + 1:], _acq_time(_acquired(rec), offset)))
+        sample = e.entities.get("sample")
+        if sample:
+            samples.setdefault((e.subject, sample), {
+                "sample_id": f"sample-{sample}", "participant_id": f"sub-{e.subject}",
+                "sample_type": e.sample_type or DEFAULT_SAMPLE_TYPE})
+        if "rel" in rec:
+            for m in rec.get("members") or [rec["rel"]]:
+                out.images[m] = rel
+        label = _input_label(_where(rec), "sub")
+        if label and label == rec["facts"].get("donor"):
+            out.labels[e.subject_idx] = label  # as planned: supplied tables link their rows by it
+    out.samples = [samples[k] for k in sorted(samples)]
+    if arrays:
+        out.chunk_map = chunk_map(arrays)
+    return out

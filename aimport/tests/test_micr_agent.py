@@ -119,7 +119,9 @@ def test_free_text_immersion_never_reaches_view():
 def test_agent_fills_unknown_suffix(tmp_path, key, schema):
     root = tmp_path / "in"
     (root / "x").mkdir(parents=True)
-    tifffile.imwrite(str(root / "x" / "plain.tiff"), np.zeros((16, 16), dtype=np.uint16))
+    # 1 um pixels (resolution tags, centimetre unit): a pixel size is needed for an ok entry (Task 8)
+    tifffile.imwrite(str(root / "x" / "plain.tiff"), np.zeros((16, 16), dtype=np.uint16),
+                     resolution=(1e4, 1e4), resolutionunit="CENTIMETER")
     rec = Recorder(reply_for("micr", "CONF"))
     plan = plan_with(root, tmp_path, key, schema, rec)
     (e,) = micr(plan)
