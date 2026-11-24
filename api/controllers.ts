@@ -120,7 +120,8 @@ router.post('/session', validateWithJWTConfig(), (req: Request, res: express.Res
     if (userId === undefined || userId === null) {
         return res.status(HTTP_STATUS.BAD_REQUEST).json({ err: 'No userId found' });
     }
-    const body = { ...req.body, status: 'created', request_headers: req.headers };
+    // #160: request headers are no longer stored with the session (or returned by the API)
+    const body = { ...req.body, status: 'created' };
     sessionStore
         .create({
             ...body,
@@ -233,9 +234,6 @@ router.patch(
  *         status_msg:
  *           type: string
  *           description: Status message for the session
- *         request_headers:
- *           type: object
- *           description: Headers of the request when creating the session
  *         upload_finish_date:
  *           type: string
  *           format: date-time
@@ -559,8 +557,10 @@ router.post(
                 const destPath = path.resolve(workdirResolved, String(session._id), paths[idx]);
                 const mtime = mtimes[idx] / 1000; //browser uses msec.. filesystem uses sec since epoch
 
-                const relToWorkdir = path.relative(workdirResolved, destPath);
-                if (relToWorkdir.startsWith('..') || path.isAbsolute(relToWorkdir)) {
+                // #160: the file must land inside this session's folder (not just anywhere under workdir)
+                const sessionDirResolved = path.join(workdirResolved, String(session._id));
+                const relToSession = path.relative(sessionDirResolved, destPath);
+                if (relToSession.startsWith('..') || path.isAbsolute(relToSession)) {
                     return nextFile(new Error(`invalid path: ${destPath}`));
                 }
                 const destdir = path.dirname(destPath);

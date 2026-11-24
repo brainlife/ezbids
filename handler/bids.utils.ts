@@ -56,7 +56,15 @@ export function getDatasetName(rootPath: string): string {
     if (!name || typeof name !== 'string') {
         throw new Error('datasetDescription.Name not found in finalized.json');
     }
-    return name;
+    return safeDatasetName(name);
+}
+
+/**
+ * The dataset folder name under <root>/bids: the user-supplied datasetDescription.Name without path
+ * separators or leading dots, so it cannot escape <root>/bids (master #160). convert.ts uses it too.
+ */
+export function safeDatasetName(name: unknown): string {
+    return path.basename(String(name || '')).replace(/^\.+/, '') || 'dataset';
 }
 
 /**

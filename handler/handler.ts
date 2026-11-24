@@ -125,7 +125,7 @@ async function handleUploaded(session) {
     const preprocessScript = resolveHandlerScript('preprocess', handlerDir);
 
     session.pre_begin_date = new Date();
-    session.pre_end_date = undefined;
+    session.pre_finish_date = undefined; // #160: clear the real field on a rerun
 
     session.status = 'preprocessing';
     await handle(
@@ -181,7 +181,7 @@ async function handleFinalized(session) {
     const bidsScript = resolveHandlerScript('bids', handlerDir);
 
     session.finalize_begin_date = new Date();
-    session.finalize_end_date = undefined;
+    session.finalize_finish_date = undefined; // #160
     session.status = 'bidsing';
 
     await handle(
@@ -206,7 +206,7 @@ async function handleDeface(session) {
     const defacePath = resolveHandlerScript('deface', handlerDir);
 
     session.deface_begin_date = new Date();
-    session.deface_end_date = undefined;
+    session.deface_finish_date = undefined; // #160
     session.status = 'defacing';
 
     await handle(

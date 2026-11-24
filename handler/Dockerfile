@@ -9,14 +9,20 @@ RUN apt update && \
 
 RUN apt install -y parallel python3 python3-pip tree curl unzip git jq libgl-dev bc
 
-# python packages: the same list the desktop python runtime uses (handler/requirements.txt);
-# pypet2bids comes from PyPI at a pinned release (master pinned a PET2BIDS commit for the same reason:
-# the git repo moved to uv and lost its installpoetry target)
+# python packages: handler/requirements.txt (the list the desktop python runtime uses) except pypet2bids,
+# plus pydeface/quickshear (handler/deface.sh); pypet2bids from master's tested PET2BIDS commit pin
 COPY requirements.txt /tmp/requirements.txt
-RUN pip3 install -r /tmp/requirements.txt
+RUN grep -v '^pypet2bids' /tmp/requirements.txt > /tmp/requirements-docker.txt && \
+    pip3 install -r /tmp/requirements-docker.txt && pip3 install pydeface quickshear
+
+# Install pypet2bids
+# pinned: PET2BIDS moved to uv (no more installpoetry target); this is the last commit before 2024-08-28
+RUN git clone https://github.com/openneuropet/PET2BIDS && \
+    cd PET2BIDS && git checkout 1c22d17 && make installpoetry buildpackage installpackage
 
 RUN apt-get install -y build-essential pkg-config cmake git pigz rename zstd libopenjp2-7 libgdcm-tools wget libopenblas-dev && \
     apt-get clean -y && apt-get autoclean -y && apt-get autoremove -y
+
 
 RUN touch /.pet2bidsconfig && chown 1001:1001 /.pet2bidsconfig
 RUN echo "DEFAULT_METADATA_JSON=/usr/local/lib/python3.8/dist-packages/pypet2bids/template_json.json" > /.pet2bidsconfig

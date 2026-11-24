@@ -67,7 +67,6 @@ export const sessionStore: ISessionStore = {
             update_date: now,
             ownerId: undefined,
             allowedUsers: [],
-            request_headers: undefined,
             upload_finish_date: undefined,
             pre_begin_date: undefined,
             pre_finish_date: undefined,

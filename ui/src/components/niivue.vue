@@ -86,6 +86,8 @@ export default defineComponent({
         if (this.resizeRaf) cancelAnimationFrame(this.resizeRaf);
         this.resizeObserver?.disconnect();
         this.resizeObserver = null;
+        // #160: release the per-component instance's volumes (and their WebGL buffers) on close
+        if (this.nv) this.nv.closeAllVolumes();
         this.nv = null;
     },
 
@@ -136,6 +138,7 @@ export default defineComponent({
         },
 
         close() {
+            if (this.nv) this.nv.closeAllVolumes();
             this.open = false;
             this.$emit('close');
         },

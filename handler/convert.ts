@@ -1,9 +1,11 @@
 #!/usr/bin/env node
 
 const fs = require('fs');
+const path = require('path');
 const mkdirp = require('mkdirp');
 const async = require('async');
 const bidsEntitiesOrdered = require('../ui/src/assets/schema/rules/entities.json');
+const { safeDatasetName } = require('./bids.utils');
 
 //import { IObject, Subject, Session, OrganizedSession } from '../ui/src/store'
 
@@ -23,7 +25,10 @@ Object.values(bidsEntitiesOrdered).forEach((order) => {
 });
 info.entityMappings = newEntityOrdering;
 
-const datasetName = info.datasetDescription.Name;
+//strip path separators from the user-supplied dataset name so it cannot escape root/bids (#160; the bids
+//step uses the same safeDatasetName, so both agree on the folder)
+const datasetName = safeDatasetName(info.datasetDescription.Name);
+info.datasetDescription.Name = datasetName;
 
 mkdirp.sync(root + '/bids/' + datasetName);
 fs.writeFileSync(root + '/bids/' + datasetName + '/finalized.json', JSON.stringify(info, null, 4)); //copy the finalized.json

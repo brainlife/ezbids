@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { getDatasetName, telemetryUrl, tree } from './bids.utils';
+import { getDatasetName, safeDatasetName, telemetryUrl, tree } from './bids.utils';
 
 function withTempDir(prefix: string, run: (root: string) => void): void {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), `ezbids-${prefix}-`));
@@ -148,5 +148,20 @@ describe('telemetryUrl (master #182: telemetry off by default)', () => {
         expect(
             telemetryUrl({ IS_ELECTRON: 'true', EZBIDS_TELEMETRY_URL: 'http://t.example/telemetry/' })
         ).toBeUndefined();
+    });
+});
+
+describe('safeDatasetName (master #160: the dataset name cannot escape <root>/bids)', () => {
+    it('keeps a plain name', () => {
+        expect(safeDatasetName('My Study')).toBe('My Study');
+    });
+    it('drops path separators and leading dots', () => {
+        expect(safeDatasetName('../../etc/passwd')).toBe('passwd');
+        expect(safeDatasetName('a/b/..')).toBe('dataset');
+        expect(safeDatasetName('..hidden')).toBe('hidden');
+    });
+    it('falls back to "dataset"', () => {
+        expect(safeDatasetName('')).toBe('dataset');
+        expect(safeDatasetName(undefined)).toBe('dataset');
     });
 });
