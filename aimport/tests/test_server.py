@@ -372,6 +372,16 @@ def test_execute_validates_and_reports(planned, tmp_path):
     assert "warnings" in s
 
 
+def test_status_has_manifest_after_execute(planned, tmp_path):
+    assert "manifest" not in planned.get("/status").json()
+    s = executed(planned)
+    state = json.loads((tmp_path / "work" / "output-state.json").read_text())
+    assert s["manifest"] == state["manifest"] and s["manifest"]
+    eid = next(iter(s["manifest"]))
+    assert all(not p.startswith("/") for p in s["manifest"][eid])
+    assert planned.get("/status").json()["manifest"] == s["manifest"]
+
+
 def test_execute_reports_validation_errors(planned, hooks):
     hooks.validation = ValidationResult(ok=False, errors=[{"code": "X", "message": "bad", "location": "/a"}],
                                         warnings=[{"code": "W", "message": "meh"}])

@@ -161,7 +161,8 @@ All examples use `T="Authorization: Bearer $AIMPORT_TOKEN"` and `U=http://localh
 7. **Execute.** Writes the BIDS output, defaces, validates. Poll `/status` or follow `/events` until
    `validated` (no validator errors), `invalid` (the output was written but the validator reported errors;
    it must not be uploaded: fix the plan and execute again) or `failed`. After `validated` or `invalid` the
-   status has `output_dir` and `validation` with `ok`, error and warning counts and the issues. The output
+   status has `output_dir`, `validation` with `ok`, error and warning counts and the issues, and `manifest`, the
+   output files of each plan entry (`{entry_id: [paths relative to output_dir]}`). The output
    folder is `<work>/output/bids`; the pre-defacing originals go to `<work>/pre-deface`, outside it. When a
    run fails, what it wrote is moved to `<work>/output/bids.failed` (replacing an earlier one; named in the
    status message, never to be uploaded) and `<work>/output/bids` no longer exists. A failed scan names
