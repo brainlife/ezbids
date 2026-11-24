@@ -102,3 +102,29 @@ def test_dwi_fa_map_is_still_excluded(core):
     fa = acquisition("DWI_dir80_PA_FA", "./In/13_DWI_dir80_PA_FA/sn-13.json", sidecar)
     (series,) = identify(core, [fa])
     assert series["type"] == "exclude"
+
+
+def test_fieldmap_magnitude_echoes_are_magnitude1_and_magnitude2(core):
+    # dcm_qa_xa30 series 8: one gre_field_mapping series, dcm2niix writes _e1 (TE 10 ms) and _e2 (TE 12.46 ms)
+    def magnitude(echo, te):
+        sidecar = {
+            "BidsGuess": ["fmap", f"_acq-fm2_magnitude{echo}"],
+            "ImageType": ["ORIGINAL", "PRIMARY", "M", "NONE", "MAGNITUDE"],
+            "RepetitionTime": 0.6,
+            "EchoTime": te,
+            "EchoNumber": echo,
+        }
+        return acquisition("gre_field_mapping", f"./In/8_gre_field_mapping/sn-8_e{echo}.json", sidecar)
+
+    series = identify(core, [magnitude(1, 0.01), magnitude(2, 0.01246)])
+    assert [s["type"] for s in series] == ["fmap/magnitude1", "fmap/magnitude2"]
+
+
+def test_echo_time_jitter_stays_one_series(core):
+    # determine_unique_series docstring: EchoTime differences within measurement error do not split a series
+    def run(te, n):
+        sidecar = {"ImageType": ["ORIGINAL", "PRIMARY", "M", "NONE"], "RepetitionTime": 2.3, "EchoTime": te}
+        return acquisition("anat-T1w", f"./In/{n}_anat-T1w/sn-{n}.json", sidecar)
+
+    _, unique = core["determine_unique_series"]([run(0.00241, 5), run(0.00242, 6)], False)
+    assert len(unique) == 1

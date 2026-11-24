@@ -1571,7 +1571,7 @@ def determine_unique_series(dataset_list, bids_compliant):
     From the dataset_list, group the individual acquisitions into unique series.
     Unique data is determined from 4 DICOM header values: SeriesDescription
     EchoTime, ImageType, and RepetitionTime. If EchoTime values differ
-    slightly (+/- 1 ms) and other values are the same, a unique series ID is not
+    slightly (less than 0.1 ms) and other values are the same, a unique series ID is not
     given, since EchoTime is a continuous variable.
 
     Parameters
@@ -1605,14 +1605,14 @@ def determine_unique_series(dataset_list, bids_compliant):
         descriptor = acquisition_dic["descriptor"]
         if "_RR" in acquisition_dic["SeriesDescription"]:
             heuristic_items = [
-                round(acquisition_dic["EchoTime"], 1),
+                round(acquisition_dic["EchoTime"] * 1000, 1),  # seconds in the sidecar; compare in 0.1 ms
                 acquisition_dic[descriptor].replace("_RR", ""),
                 acquisition_dic["ImageType"],
                 round(acquisition_dic["RepetitionTime"], 1)
             ]
         else:
             heuristic_items = [
-                round(acquisition_dic["EchoTime"], 1),
+                round(acquisition_dic["EchoTime"] * 1000, 1),  # seconds in the sidecar; compare in 0.1 ms
                 acquisition_dic[descriptor],
                 acquisition_dic["ImageType"],
                 round(acquisition_dic["RepetitionTime"], 1)
