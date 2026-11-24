@@ -1,8 +1,9 @@
 # aimport
 
-brainlife.io/aimport is a local, agentic data importer: you point it at a folder of neuroimaging
-data on your own computer, it works out what each series is, converts the data to BIDS, strips
-identifiers and defaces the images, validates the result, and only then is anything uploaded to
+brainlife.io/aimport is a local, agentic data importer for neuroscience data: neuroimaging (MRI, PET),
+microscopy and neurophysiology (EEG, MEG, iEEG, NIRS, EMG). You point it at a folder of data on your own
+computer, it works out what each series, image or recording is, converts the data to BIDS, strips
+identifiers and defaces the MRI, validates the result, and only then is anything uploaded to
 brainlife.io. It lives in the ezBIDS repo and reuses ezBIDS's mapping, conversion and defacing tools,
 but everything runs on your machine, so raw DICOMs with identifiers are never uploaded.
 
@@ -332,6 +333,38 @@ codes (`E001`) or safe labels (any other label shows as `E???`); the PNGs carry 
 
 ![The trace viewer on the planted EDF and SNIRF test recordings](docs/qa-viewer-traces.png)
 
+**Bad channels.** The trace page's **Bad channels** panel lists the recording's written `channels.tsv`
+(`GET /qa/channels/<entry id>`: name, type, status, reason). Tick a channel bad, add a reason if you like (at
+most 80 characters; quick picks flat, noisy, bridged, disconnected) and **Save**: the page sends
+`POST /qa/channels/<entry id>` with `{"channels": [{"name": "<name as in the output>", "status": "good"|"bad",
+"description": "<reason>"|null}]}` (only the rows changed). The engine then
+
+1. refuses (400, a generic message that never quotes the request) a name not in that `channels.tsv`, a name listed
+   twice, another status, a reason over 80 characters or one that holds a term of the run (control characters,
+   tabs and newlines are removed first); 404 before execute (`validated`/`invalid` only) or for an entry that is
+   not a written electrophysiology recording; 409 while busy; 415 without `Content-Type: application/json`; 413
+   above 256 KiB;
+2. writes the new `channels.tsv` (`status` `bad`, `status_description` the reason or `n/a`; a good channel gets
+   `n/a`; the `status_description` column is added when the table has none, as the NWB writer's) beside the
+   output, runs the ephys gate on it (and on the recording's `channels.json`, when there is one: `status` and
+   `status_description` are described there if missing), and only then renames it over the output file;
+3. validates the dataset again (the stage goes back to `validated` or `invalid`), renders that recording's
+   snapshots again (`channels.png` counts the bad channels) and drops the open trace windows, so the bad
+   channels are drawn grey and dashed.
+
+The marks are kept by entry id in `work/ephys/bad_channels.json` (local only, never served or uploaded) and are
+applied again after every execute (before the gate and the validator), so they survive plan edits; a new scan
+removes them. `GET /plan` shows only a count: `bad_channels` on each electrophysiology entry and "· <n> bad
+channels" at the end of its description. A plan edit (and so a new execute) is still needed for anything else.
+Bad time segments are not marked here.
+
+![Two channels of the planted EDF marked bad in the trace viewer](docs/qa-viewer-bad-channels.png)
+
+The session cookie is accepted on this one write route only, and only with the header `X-Aimport-Viewer: 1` and
+an `Origin` equal to the engine's own (`http://<Host>`), so a page on another site cannot send it (403); with the
+bearer token neither header is needed. The desktop app's QA modal loads the page from the engine's loopback
+origin, so its requests carry that `Origin`.
+
 Microscopy images open as OME-Zarr ("Neuroglancer (OME-Zarr)"): the channels of one image are blended
 additively in their omero colours, with x and y first so the main panel is the xy plane, and each shader window is
 the written omero window. The PS-OCT contrasts of one sample (reflectivity, retardance, optic axis, cross) open
@@ -382,7 +415,8 @@ What it serves, and why it stays local:
   `script-src`, because Neuroglancer compiles code with `new Function` (without it the image stays blank). The
   Zarr codecs (zstd, blosc) are WebAssembly that runs in the chunk worker, whose script is not an HTML page and
   gets no policy of its own, so OME-Zarr needs no `'wasm-unsafe-eval'` (checked in Chromium with zstd chunks). The token is
-  never put in a URL or a page; the cookie works only on `/viewer/*` and `/qa/*`, never on the API.
+  never put in a URL or a page; the cookie works only for reads of `/viewer/*` and `/qa/*` and for
+  `POST /qa/channels/<entry id>` from the viewer page itself (above), never on the API.
 - The original (pre-defacing) layer shows the face. It is for the reviewer's eyes only, to check that the
   defacing removed the face and nothing else: never screenshot or share it. Only the defaced output is
   uploaded.

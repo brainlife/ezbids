@@ -1,6 +1,7 @@
 // The aimport trace viewer (/viewer/traces/<entry>): windows of the written recording from /qa/traces on this
-// origin only, drawn with uPlot. Pan and zoom ask for a new window; nothing else is fetched. Text from the
-// data (channel names, event labels) is set with textContent, never parsed as HTML.
+// origin only, drawn with uPlot. Pan and zoom ask for a new window. The bad-channel panel reads the written
+// channels.tsv (/qa/channels) and saves marks to it (POST, same origin). Text from the data (channel names,
+// event labels, reasons) is set with textContent or input values, never parsed as HTML.
 (function () {
   "use strict";
   var MAX_CHANNELS = 64;
@@ -21,15 +22,17 @@
     return "/qa/traces/" + encodeURIComponent(entry) + "?" + q;
   }
 
+  function json(r) {
+    return r.json().catch(function () { return null; }).then(function (body) {
+      if (!r.ok) throw new Error(body && typeof body.detail === "string" ? body.detail : "HTTP " + r.status);
+      return body;
+    });
+  }
+
   function load() {
     status("loading…");
     fetch(url(), { credentials: "same-origin" })
-      .then(function (r) {
-        return r.json().then(function (body) {
-          if (!r.ok) throw new Error(body && typeof body.detail === "string" ? body.detail : "HTTP " + r.status);
-          return body;
-        });
-      })
+      .then(json)
       .then(function (data) { status(""); show(data); })
       .catch(function (e) { status("Could not load the traces: " + e.message); });
   }
@@ -206,6 +209,127 @@
     load();
   }
 
+  // --- bad channels: the written channels.tsv (GET /qa/channels), marked here and saved with POST ---------
+  // Only this page's own script sends X-Aimport-Viewer; the engine also checks that the Origin is its own.
+  var marks = { rows: [], changed: {}, max: 80 };
+
+  function saveStatus(text) { $("tr-save-status").textContent = text || ""; }
+
+  function loadMarks() {
+    fetch("/qa/channels/" + encodeURIComponent(entry), { credentials: "same-origin" })
+      .then(json)
+      .then(function (body) {
+        marks.max = body.max_reason || 80;
+        var list = $("tr-reasons");
+        list.textContent = "";
+        (body.reasons || []).forEach(function (r) {
+          var option = document.createElement("option");
+          option.value = r;
+          list.appendChild(option);
+        });
+        setRows(body.channels || []);
+      })
+      .catch(function (e) { saveStatus("Could not load the channel table: " + e.message); });
+  }
+
+  function setRows(rows) {
+    marks.rows = rows;
+    marks.changed = {};
+    drawMarks();
+  }
+
+  function markOf(row) { return marks.changed[row.name] || row; }
+
+  function badCount() {
+    return marks.rows.filter(function (row) { return markOf(row).status === "bad"; }).length;
+  }
+
+  function counts() {
+    $("tr-bad-count").textContent = "(" + badCount() + " of " + marks.rows.length + " bad" +
+      (Object.keys(marks.changed).length ? ", " + Object.keys(marks.changed).length + " unsaved" : "") + ")";
+    $("tr-save").disabled = !Object.keys(marks.changed).length;
+  }
+
+  function setMark(row, status, reason) {
+    var description = status === "bad" ? (reason || "").trim() || null : null;
+    if (status === row.status && description === (row.description || null)) delete marks.changed[row.name];
+    else marks.changed[row.name] = { name: row.name, status: status, description: description };
+    counts();
+  }
+
+  function cell(tr, text) {
+    var td = document.createElement("td");
+    td.textContent = text;
+    tr.appendChild(td);
+    return td;
+  }
+
+  function drawMarks() {
+    var body = $("tr-mark-list");
+    var filter = ($("tr-mark-filter").value || "").toLowerCase();
+    body.textContent = "";
+    marks.rows.forEach(function (row) {
+      if (filter && row.name.toLowerCase().indexOf(filter) < 0) return;
+      var mark = markOf(row);
+      var tr = document.createElement("tr");
+      tr.className = mark.status === "bad" ? "tr-is-bad" : "";
+      cell(tr, row.name).className = "tr-mark-name";
+      cell(tr, row.type || "");
+      var toggle = document.createElement("input");
+      toggle.type = "checkbox";
+      toggle.checked = mark.status === "bad";
+      toggle.setAttribute("aria-label", "bad: " + row.name);
+      cell(tr, "").appendChild(toggle);
+      var reason = document.createElement("input");
+      reason.type = "text";
+      reason.maxLength = marks.max;
+      reason.setAttribute("list", "tr-reasons");
+      reason.placeholder = "reason (optional)";
+      reason.value = mark.description || "";
+      reason.disabled = !toggle.checked;
+      reason.setAttribute("aria-label", "reason: " + row.name);
+      cell(tr, "").appendChild(reason);
+      toggle.addEventListener("change", function () {
+        reason.disabled = !toggle.checked;
+        tr.className = toggle.checked ? "tr-is-bad" : "";
+        setMark(row, toggle.checked ? "bad" : "good", reason.value);
+        if (toggle.checked) reason.focus();
+      });
+      reason.addEventListener("input", function () { setMark(row, "bad", reason.value); });
+      body.appendChild(tr);
+    });
+    counts();
+  }
+
+  function save() {
+    var changed = Object.keys(marks.changed).map(function (name) { return marks.changed[name]; });
+    if (!changed.length) return;
+    $("tr-save").disabled = true;
+    saveStatus("saving, then validating the dataset again…");
+    fetch("/qa/channels/" + encodeURIComponent(entry), {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json", "X-Aimport-Viewer": "1" },
+      body: JSON.stringify({ channels: changed }),
+    })
+      .then(json)
+      .then(function (body) {
+        setRows(body.channels || []);
+        var v = body.validation || {};
+        saveStatus("Saved: " + body.bad + " bad channel" + (body.bad === 1 ? "" : "s") + " in channels.tsv; " +
+          (v.ok ? "the dataset is valid." : "the dataset has " + v.error_count + " validation error(s)."));
+        $("tr-channels").textContent = ""; // the picker shows the new (bad) labels
+        load();
+      })
+      .catch(function (e) {
+        saveStatus("Not saved: " + e.message);
+        counts();
+      });
+  }
+
+  $("tr-save").addEventListener("click", save);
+  $("tr-mark-filter").addEventListener("input", drawMarks);
+
   $("tr-left").addEventListener("click", function () { go(state.t0 - state.len / 2, state.len); });
   $("tr-right").addEventListener("click", function () { go(state.t0 + state.len / 2, state.len); });
   $("tr-zin").addEventListener("click", function () { go(state.t0 + state.len / 4, state.len / 2); });
@@ -231,4 +355,5 @@
     if (plot) plot.setSize({ width: Math.max(480, $("tr-plot").clientWidth || 900), height: plot.height });
   });
   load();
+  loadMarks();
 })();

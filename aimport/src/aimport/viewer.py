@@ -357,6 +357,18 @@ def traces_page(entry_id: str, bids_name: str) -> str:
   <div id="tr-channels" class="tr-channel-list"></div>
   <button type="button" id="tr-apply" class="tr-primary">Apply</button>
 </details>
+<details class="tr-panel tr-marks" id="tr-marks"><summary>Bad channels <span id="tr-bad-count"></span></summary>
+  <p class="tr-muted">Mark a channel bad, with a short reason if you like (no names or other identifying text).
+  Saving writes <code>status</code> and <code>status_description</code> into the recording's channels.tsv and
+  validates the dataset again.</p>
+  <div class="tr-mark-tools"><input id="tr-mark-filter" type="search" placeholder="filter channels"
+    aria-label="filter channels"></div>
+  <table class="tr-mark-table"><thead><tr><th>Channel</th><th>Type</th><th>Bad</th><th>Reason</th></tr></thead>
+  <tbody id="tr-mark-list"></tbody></table>
+  <datalist id="tr-reasons"></datalist>
+  <div class="tr-mark-actions"><button type="button" id="tr-save" class="tr-primary" disabled>Save</button>
+  <span id="tr-save-status" class="tr-muted" role="status"></span></div>
+</details>
 <p id="tr-status" class="tr-muted" role="status"></p>
 <section class="tr-panel tr-plot-panel"><div id="tr-scales" class="tr-muted"></div><div id="tr-plot"></div></section>
 </main>

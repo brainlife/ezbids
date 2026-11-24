@@ -1,12 +1,16 @@
 # ezBIDS
 
-The secure, cloud-based service for the semi-automated mapping of entire sessions of neuroimaging data to the Brain Imaging Data Structure ([BIDS](https://bids.neuroimaging.io/)) standard.
+The secure, semi-automated mapping of neuroscience data (neurophysiology, neuroimaging and microscopy) to the Brain Imaging Data Structure ([BIDS](https://bids.neuroimaging.io/)) standard.  
 
 <img width="1420" alt="The ezBIDS landing page" src="docs/images/ezbids-landing.png">
 
 ### About
 
-This is the repository for a semi-supervised web-service for converting neuroimaging data files to [BIDS](https://bids.neuroimaging.io/). The web service is securely hosted at [brainlife.io/ezbids](https://brainlife.io/ezbids). For additional details on security feaures, please see [here](https://brainlife.io/docs/using_ezBIDS/#faq).
+This is the repository for ezBIDS, which converts neuroscience data files (neurophysiology, neuroimaging and microscopy) to [BIDS](https://bids.neuroimaging.io/). It has two parts:
+
+- **The ezBIDS web service**, securely hosted at [brainlife.io/ezbids](https://brainlife.io/ezbids), a semi-supervised conversion of MRI, PET and MEG data in the browser. For additional details on security features, please see [here](https://brainlife.io/docs/using_ezBIDS/#faq).
+- **aimport** ([`aimport/`](aimport/README.md)), a local importer that runs on your own computer with an optional AI agent and de-identifies data before anything is uploaded. Besides MRI and PET it imports microscopy (OME-TIFF, CZI, ND2, LIF, SVS, PS-OCT, light-sheet; OME-Zarr datasets read in place) and EEG, MEG, iEEG, NIRS and EMG recordings (BrainVision, EDF, BDF, FIF, SNIRF, NWB and more), with viewers to check the result (Neuroglancer for images, a trace viewer for recordings).
+- **ezBIDS desktop** ([`electron/`](electron/)), built from the same code: the converter (local store instead of MongoDB) and aimport run on your own computer, with no Docker and no telemetry.
 
 Unlike other BIDS converters, ezBIDS eliminates the need for coding and command line interfaces (CLI), doing the bulk of the work behind the scenes to save users time. Importantly, ezBIDS does not require an organizational structure for uploaded data.
 

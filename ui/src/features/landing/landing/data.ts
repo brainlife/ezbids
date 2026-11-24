@@ -8,11 +8,11 @@ export const STATS = [
     { value: '16', label: 'BIDS datatypes', note: `v${BIDS_VERSION}` },
     { value: '118', label: 'file suffixes', note: '174 datatype/suffix pairs' },
     { value: '451', label: 'metadata fields', note: 'sidecars, tables' },
-    { value: '160', label: 'brainlife mappings', note: '14 live · 7 planned · 139 drafts' },
+    { value: '178', label: 'brainlife mappings', note: '38 live · 1 planned · 139 drafts' },
 ];
 
-// status: 'now' = ezBIDS on the web today (and aimport for anat/func/dwi/fmap);
-// 'next' = aimport phases 2–4, in progress
+// status: 'now' = supported today, on the web (ezBIDS: MRI, PET, MEG) or on your own
+// computer (aimport: MRI, microscopy, EEG, MEG, iEEG, NIRS, EMG); 'next' = aimport phase 4, in progress
 export type Status = 'now' | 'next';
 
 export interface Datatype {
@@ -64,25 +64,24 @@ export const DATATYPES: Datatype[] = [
     },
     { id: 'perf', name: 'Perfusion (ASL)', modality: 'MRI', suffixes: 8, mapped: 8, status: 'now', where: 'ezBIDS' },
     { id: 'pet', name: 'PET', modality: 'PET', suffixes: 6, mapped: 6, status: 'now', where: 'ezBIDS' },
-    { id: 'meg', name: 'MEG', modality: 'MEG', suffixes: 11, mapped: 12, status: 'now', where: 'ezBIDS' },
     {
-        id: 'micr',
-        name: 'Microscopy · OME-Zarr · PS-OCT',
-        modality: 'Microscopy',
-        suffixes: 19,
-        mapped: 1,
-        status: 'next',
-        where: 'aimport phase 2',
+        id: 'meg',
+        name: 'MEG',
+        modality: 'MEG',
+        suffixes: 11,
+        mapped: 12,
+        status: 'now',
+        where: 'ezBIDS · aimport',
     },
-    { id: 'eeg', name: 'EEG', modality: 'EEG', suffixes: 9, mapped: 12, status: 'next', where: 'aimport phase 3' },
+    { id: 'eeg', name: 'EEG', modality: 'EEG', suffixes: 9, mapped: 12, status: 'now', where: 'aimport' },
     {
         id: 'ieeg',
         name: 'Intracranial EEG',
         modality: 'iEEG',
         suffixes: 9,
         mapped: 9,
-        status: 'next',
-        where: 'aimport phase 3',
+        status: 'now',
+        where: 'aimport',
     },
     {
         id: 'nirs',
@@ -90,8 +89,8 @@ export const DATATYPES: Datatype[] = [
         modality: 'NIRS',
         suffixes: 9,
         mapped: 9,
-        status: 'next',
-        where: 'aimport phase 3',
+        status: 'now',
+        where: 'aimport',
     },
     {
         id: 'emg',
@@ -99,8 +98,26 @@ export const DATATYPES: Datatype[] = [
         modality: 'EMG',
         suffixes: 9,
         mapped: 9,
-        status: 'next',
-        where: 'aimport phase 3',
+        status: 'now',
+        where: 'aimport',
+    },
+    {
+        id: 'micr',
+        name: 'Microscopy and PS-OCT',
+        modality: 'Microscopy',
+        suffixes: 19,
+        mapped: 19,
+        status: 'now',
+        where: 'aimport',
+    },
+    {
+        id: 'phenotype',
+        name: 'Phenotype & participants',
+        modality: 'Tables',
+        suffixes: 0,
+        mapped: 0,
+        status: 'now',
+        where: 'ezBIDS · aimport',
     },
     {
         id: 'mrs',
@@ -129,15 +146,6 @@ export const DATATYPES: Datatype[] = [
         status: 'next',
         where: 'aimport phase 4',
     },
-    {
-        id: 'phenotype',
-        name: 'Phenotype & participants',
-        modality: 'Tables',
-        suffixes: 0,
-        mapped: 0,
-        status: 'now',
-        where: 'ezBIDS · aimport',
-    },
 ];
 
 // a range on a log10 axis: [low, high] in base units (metres, seconds, bytes)
@@ -153,10 +161,10 @@ export interface Range {
 export const SPACE: Range[] = [
     {
         label: 'Microscopy',
-        lo: 1e-9,
+        lo: 1e-7,
         hi: 1e-5,
-        status: 'next',
-        note: 'electron to light-sheet and PS-OCT: 1 nm – 10 µm',
+        status: 'now',
+        note: 'confocal, slide scans, light-sheet and PS-OCT: 0.1 – 10 µm pixels',
     },
     {
         label: 'Anatomical MRI',
@@ -174,21 +182,21 @@ export const SPACE: Range[] = [
     },
     { label: 'Diffusion MRI', lo: 1e-3, hi: 2.5e-3, status: 'now', note: '1 – 2.5 mm voxels' },
     { label: 'PET', lo: 1.5e-3, hi: 5e-3, status: 'now', note: 'scanner resolution 1.5 – 5 mm' },
-    { label: 'iEEG', lo: 1e-3, hi: 1e-2, status: 'next', note: 'contact spacing 1 mm – 1 cm' },
+    { label: 'iEEG', lo: 1e-3, hi: 1e-2, status: 'now', note: 'contact spacing 1 mm – 1 cm' },
     { label: 'MEG', lo: 5e-3, hi: 2e-2, status: 'now', note: 'source localisation 5 mm – 2 cm' },
     { label: 'MRS', lo: 5e-3, hi: 3e-2, status: 'next', note: 'spectroscopic voxels 5 mm – 3 cm' },
-    { label: 'EEG', lo: 1e-2, hi: 5e-2, status: 'next', note: 'scalp sources 1 – 5 cm' },
-    { label: 'NIRS', lo: 1e-2, hi: 3e-2, status: 'next', note: 'optode channels 1 – 3 cm' },
+    { label: 'EEG', lo: 1e-2, hi: 5e-2, status: 'now', note: 'scalp sources 1 – 5 cm' },
+    { label: 'NIRS', lo: 1e-2, hi: 3e-2, status: 'now', note: 'optode channels 1 – 3 cm' },
 ];
 
 // sampling interval of a time series
 export const TIME: Range[] = [
-    { label: 'iEEG', lo: 3e-5, hi: 2e-3, status: 'next', note: '500 Hz – 30 kHz' },
-    { label: 'EMG', lo: 5e-5, hi: 1e-3, status: 'next', note: '1 – 20 kHz' },
-    { label: 'EEG', lo: 1e-4, hi: 4e-3, status: 'next', note: '250 Hz – 10 kHz' },
+    { label: 'iEEG', lo: 3e-5, hi: 2e-3, status: 'now', note: '500 Hz – 30 kHz' },
+    { label: 'EMG', lo: 5e-5, hi: 1e-3, status: 'now', note: '1 – 20 kHz' },
+    { label: 'EEG', lo: 1e-4, hi: 4e-3, status: 'now', note: '250 Hz – 10 kHz: millisecond timescales' },
     { label: 'MEG', lo: 2e-4, hi: 2e-3, status: 'now', note: '500 Hz – 5 kHz' },
     { label: 'Motion', lo: 1e-3, hi: 1e-2, status: 'next', note: '100 Hz – 1 kHz' },
-    { label: 'NIRS', lo: 1e-2, hi: 2e-1, status: 'next', note: '5 – 100 Hz' },
+    { label: 'NIRS', lo: 1e-2, hi: 2e-1, status: 'now', note: '5 – 100 Hz, typically about 10 Hz' },
     { label: 'Functional MRI', lo: 4e-1, hi: 3, status: 'now', note: 'repetition time 0.4 – 3 s' },
     { label: 'Perfusion (ASL)', lo: 3, hi: 8, status: 'now', note: 'label/control pair 3 – 8 s' },
     { label: 'PET', lo: 10, hi: 600, status: 'now', note: 'dynamic frames 10 s – 10 min' },
@@ -198,17 +206,19 @@ export const TIME: Range[] = [
 // size of one acquisition on disk
 export const SIZE: Range[] = [
     { label: 'Behavior / events', lo: 1e3, hi: 1e6, status: 'next', note: 'tables: kB – MB' },
+    { label: 'NIRS', lo: 1e6, hi: 1e8, status: 'now', note: '1 – 100 MB per recording' },
     { label: 'Anatomical MRI', lo: 5e6, hi: 2e8, status: 'now', note: '5 – 200 MB per image' },
+    { label: 'EEG / EMG', lo: 1e7, hi: 2e9, status: 'now', note: '10 MB – 2 GB per recording' },
     { label: 'PET', lo: 2e7, hi: 2e9, status: 'now', note: 'static to dynamic: 20 MB – 2 GB' },
     { label: 'Functional MRI', lo: 5e7, hi: 3e9, status: 'now', note: '50 MB – 3 GB per run' },
     { label: 'Diffusion MRI', lo: 1e8, hi: 5e9, status: 'now', note: '100 MB – 5 GB per scan' },
     { label: 'MEG', lo: 1e8, hi: 5e9, status: 'now', note: '100 MB – 5 GB per hour of recording' },
-    { label: 'iEEG', lo: 1e9, hi: 5e10, status: 'next', note: '1 – 50 GB per session' },
+    { label: 'iEEG', lo: 1e9, hi: 5e10, status: 'now', note: '1 – 50 GB per session' },
     {
         label: 'Microscopy',
-        lo: 1e10,
+        lo: 1e9,
         hi: 1e14,
-        status: 'next',
-        note: 'whole-brain light-sheet: 10 GB – 100 TB (OME-Zarr)',
+        status: 'now',
+        note: 'slide scans to whole-brain light-sheet: 1 GB – 100 TB (OME-Zarr read in place)',
     },
 ];

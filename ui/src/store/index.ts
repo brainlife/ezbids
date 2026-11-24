@@ -72,7 +72,7 @@ const state = {
                     Name: 'ezBIDS',
                     Version: '1.0.0',
                     Description:
-                        'ezBIDS is a web-based tool for converting neuroimaging datasets to BIDS, requiring neither coding nor knowledge of the BIDS specification',
+                        'ezBIDS is a web-based tool for converting neuroscience datasets to BIDS, requiring neither coding nor knowledge of the BIDS specification',
                     CodeURL: 'https://brainlife.io/ezbids/',
                     Container: {
                         Type: 'docker',
@@ -230,7 +230,7 @@ const store = createStore({
                             Name: 'ezBIDS',
                             Version: '1.0.0',
                             Description:
-                                'ezBIDS is a web-based tool for converting neuroimaging datasets to BIDS, requiring neither coding nor knowledge of the BIDS specification',
+                                'ezBIDS is a web-based tool for converting neuroscience datasets to BIDS, requiring neither coding nor knowledge of the BIDS specification',
                             CodeURL: 'https://brainlife.io/ezbids/',
                             Container: {
                                 Type: 'docker',

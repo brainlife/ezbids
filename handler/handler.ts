@@ -120,7 +120,7 @@ function handle(
 }
 
 async function handleUploaded(session) {
-    const workdir = path.join(config.workdir, String(session._id)) // a Mongo ObjectId on the web;
+    const workdir = path.join(config.workdir, String(session._id)); // a Mongo ObjectId on the web
     const handlerDir = process.env.EZBIDS_HANDLER_DIR ?? './handler';
     const preprocessScript = resolveHandlerScript('preprocess', handlerDir);
 

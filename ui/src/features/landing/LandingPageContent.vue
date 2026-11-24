@@ -4,11 +4,12 @@
             <div class="wrap hero-grid">
                 <div class="hero-copy">
                     <div class="eyebrow hero-eyebrow">ezBIDS · brainlife.io</div>
-                    <h1>Neuroimaging data to BIDS, from scanner folders to shareable datasets.</h1>
+                    <h1>Neuroscience data to BIDS, from instrument folders to shareable datasets.</h1>
                     <p class="lede">
-                        ezBIDS maps raw data and its metadata to the Brain Imaging Data Structure with guidance at every
-                        step, no coding and no BIDS expertise required. Its new local importer, aimport, adds an AI
-                        agent and removes identifying information on your own computer before anything is uploaded.
+                        Neurophysiology, neuroimaging and microscopy: ezBIDS maps raw data and its metadata to the Brain
+                        Imaging Data Structure with guidance at every step, no coding and no BIDS expertise required.
+                        Its new local importer, aimport, adds an AI agent and removes identifying information on your
+                        own computer before anything is uploaded.
                     </p>
                     <div class="cta">
                         <button class="btn p" @click="onClickGetStarted">Get started</button>
@@ -20,9 +21,12 @@
                         <a href="https://www.nature.com/articles/s41597-024-02959-0">read the paper</a>
                     </p>
                 </div>
-                <div class="hero-art" aria-label="A scanner export organised into a BIDS dataset">
+                <div
+                    class="hero-art"
+                    aria-label="An MRI export, an EEG recording and a microscopy slide organised into one BIDS dataset"
+                >
                     <div class="tree">
-                        <div class="tree-h mono">scanner export</div>
+                        <div class="tree-h mono">instrument export</div>
                         <pre class="mono">
 PATIENT_042/
   20240611/
@@ -30,9 +34,9 @@ PATIENT_042/
       IM-0001-0001.dcm
       … 176 files
     EP2D_BOLD_REST_0007/
-      IM-0002-0001.dcm
       … 9,600 files
-    DTI_64DIR_0011/</pre
+  EEG/rest_eyes_closed.vhdr
+  HISTOLOGY/slide_03.czi</pre
                         >
                     </div>
                     <div class="tree-arrow mono" aria-hidden="true">→</div>
@@ -41,13 +45,14 @@ PATIENT_042/
                         <pre class="mono">
 dataset_description.json
 participants.tsv
+samples.tsv
 sub-01/
-  ses-1/
-    anat/sub-01_ses-1_T1w.nii.gz
-    func/sub-01_ses-1_task-rest_bold.nii.gz
-    dwi/sub-01_ses-1_dwi.nii.gz
-        sub-01_ses-1_dwi.bval
-        sub-01_ses-1_dwi.bvec</pre
+  anat/sub-01_T1w.nii.gz
+  func/sub-01_task-rest_bold.nii.gz
+  eeg/sub-01_task-rest_eeg.vhdr
+     sub-01_task-rest_eeg.eeg
+  micr/sub-01_sample-1_BF.ome.zarr
+       sub-01_sample-1_BF.json</pre
                         >
                     </div>
                 </div>
@@ -70,16 +75,16 @@ sub-01/
             <div class="wrap">
                 <div class="sec-head">
                     <div class="eyebrow">Scales</div>
-                    <h2>From nanometres to years, one standard.</h2>
+                    <h2>From micrometres to years, one standard.</h2>
                     <p>
-                        The modalities BIDS describes span about eight orders of magnitude in space and thirteen in
-                        time, with single acquisitions from kilobytes to terabytes. These are the typical ranges of the
-                        data ezBIDS and aimport handle, on logarithmic axes.
+                        From microscopy pixels to scalp EEG, and from intracranial recordings to longitudinal studies,
+                        the data ezBIDS and aimport handle span about six orders of magnitude in space and thirteen in
+                        time, with single acquisitions from kilobytes to terabytes. Typical ranges, on logarithmic axes.
                     </p>
                 </div>
                 <div class="legend">
                     <span><i class="sw now"></i>Supported now</span>
-                    <span><i class="sw next"></i>In progress (aimport phases 2–4)</span>
+                    <span><i class="sw next"></i>In progress (aimport phase 4)</span>
                 </div>
                 <div class="charts">
                     <ScaleChart
@@ -109,9 +114,10 @@ sub-01/
                     <div class="eyebrow">Coverage</div>
                     <h2>Every BIDS datatype, on the way to brainlife.io.</h2>
                     <p>
-                        ezBIDS converts MRI, PET and MEG today. aimport extends it datatype by datatype, and BIDS file
-                        types are mapped to brainlife.io datatypes (or drafts of new ones) so the data is ready for Apps
-                        as soon as it lands.
+                        ezBIDS on the web converts MRI, PET and MEG. aimport, on your own computer, adds microscopy
+                        (OME-TIFF, CZI, ND2, LIF, SVS, PS-OCT, light-sheet; OME-Zarr read in place) and EEG, MEG, iEEG,
+                        NIRS and EMG recordings. BIDS file types are mapped to brainlife.io datatypes (or drafts of new
+                        ones) so the data is ready for Apps as soon as it lands.
                     </p>
                 </div>
                 <div class="legend">
@@ -153,6 +159,10 @@ sub-01/
                     <li>
                         <b>Metadata too.</b> Participants, phenotype, sessions, scans, README, CHANGES and LICENSE are
                         kept, edited or dropped in review.
+                    </li>
+                    <li>
+                        <b>Look before you upload.</b> Neuroglancer for images and OME-Zarr, a trace viewer for EEG,
+                        MEG, iEEG, NIRS and EMG, all served from your own computer.
                     </li>
                     <li>
                         <b>A pseudonym key you keep.</b> One file per project, never uploaded, so a later import of the
@@ -197,7 +207,7 @@ export default defineComponent({
             time: TIME,
             size: SIZE,
             spaceTicks: [
-                { v: 1e-9, label: '1 nm' },
+                { v: 1e-7, label: '100 nm' },
                 { v: 1e-6, label: '1 µm' },
                 { v: 1e-3, label: '1 mm' },
                 { v: 1e-1, label: '10 cm' },
@@ -440,7 +450,7 @@ export default defineComponent({
     padding: 0;
     margin: 24px 0 0;
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 16px;
     font-size: 0.9rem;
     color: var(--muted);
