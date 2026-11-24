@@ -1,4 +1,4 @@
 [codespell]
 skip = .git,*.pdf,*.svg,*.json,*.eps,*.min.js,*.yaml,bids-specification
 # ALS; OT = DICOM "Other" modality
-ignore-words-list = als,ot
+ignore-words-list = als,ot,te
