@@ -5,6 +5,7 @@
 
 # The standalone Neuroglancer client for the QA viewer (/viewer/ng/), built from aimport/viewer-client with the
 # npm versions and integrity hashes in its package-lock.json; only the static output reaches the engine image.
+# build.mjs also copies uPlot's prebuilt files to vendor/uplot/ (the ephys trace viewer, /viewer/assets/uplot/).
 # --ignore-scripts: no dependency runs code at install (core-js banner, esbuild binary check, fsevents,
 # msgpackr-extract native addon); the output is byte-identical to a build with scripts.
 FROM node:22.23.2-bookworm-slim@sha256:48e4b67d85f87bd551df43704e24d252f56cc5f8e9718841aace50f19948f0f9 AS neuroglancer-client

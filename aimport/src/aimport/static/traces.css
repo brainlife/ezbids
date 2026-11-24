@@ -1,0 +1,50 @@
+/* The aimport trace viewer (/viewer/traces/<entry>): brainlife-lite tokens, no external font. */
+:root {
+  --primary: #3d6a92;
+  --primary-dark: #2f5576;
+  --bg: #f5f5f5;
+  --panel: #fff;
+  --text: #2d3748;
+  --muted: #718096;
+  --line: #e2e8f0;
+  --ink: #1d2230;
+  --radius: 6px;
+  --font: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 var(--font); }
+.tr-bar { display: flex; align-items: center; gap: 1rem; padding: .6rem 1rem; background: var(--panel);
+  border-bottom: 1px solid var(--line); }
+.tr-bar h1 { margin: 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
+/* the brainlife.io header, as on /viewer/ (viewer.BRAND_CSS) */
+header { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 24px; background: #fff;
+  border-bottom: 1px solid var(--line); }
+header .mark { height: 32px; width: auto; }
+header .brand { font-weight: 600; font-size: 15px; color: var(--ink); }
+header .sep { width: 1px; height: 22px; background: var(--line); }
+header .app { font-weight: 600; font-size: 15px; color: var(--primary); text-decoration: none; }
+header a.app:hover { text-decoration: underline; }
+.tr-main { padding: 1rem; display: flex; flex-direction: column; gap: .75rem; }
+.tr-panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: .6rem .8rem; }
+.tr-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }
+.tr-controls input { width: 6rem; font: inherit; color: var(--text); padding: .2rem .4rem;
+  border: 1px solid var(--line); border-radius: var(--radius); }
+button { font: inherit; color: var(--text); background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius); padding: .25rem .7rem; cursor: pointer; }
+button:hover { border-color: var(--primary); }
+button.tr-primary { background: var(--primary); border-color: var(--primary); color: #fff; }
+button.tr-primary:hover { background: var(--primary-dark); }
+.tr-muted { color: var(--muted); font-size: 13px; margin: 0; }
+.tr-picker summary { cursor: pointer; font-weight: 600; }
+.tr-channel-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr)); gap: .15rem .8rem;
+  margin: .6rem 0; max-height: 14rem; overflow-y: auto; }
+.tr-channel-list label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+.tr-channel-list .tr-bad { color: #d55e00; }
+.tr-plot-panel { overflow-x: auto; }
+#tr-scales { margin-bottom: .3rem; }
+.tr-event-line { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1px dashed var(--primary);
+  pointer-events: none; }
+.tr-event-label { position: absolute; top: 2px; padding: 0 4px; font-size: 11px; color: #fff;
+  background: var(--primary); border-radius: 4px; white-space: nowrap; pointer-events: none; }
+.uplot { font-family: var(--font); }
+.uplot .u-legend { display: none; }

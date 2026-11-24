@@ -54,9 +54,11 @@ def _tokens(text: str) -> list[str]:
     return [t for t in _SPLIT.split(text) if t]
 
 
-def is_vocab(token: str) -> bool:
+def is_vocab(token: str, vocab: Iterable[str] | None = None) -> bool:
+    """Exact vocabulary match; only STRUCTURAL words may carry a digit suffix (Slice051, Pos3, ch1)."""
+    words = _VOCAB if vocab is None else vocab if isinstance(vocab, frozenset) else frozenset(vocab)
     low = token.lower()
-    if low in _VOCAB:
+    if low in words:
         return True
     m = re.fullmatch(r"([a-z]+)\d+", low)
     return bool(m) and m.group(1) in STRUCTURAL
@@ -119,8 +121,9 @@ def _trailing_tile(toks: list[str]) -> int | None:
     return int(toks[-1])
 
 
-def facts(rel: str) -> NameFacts:
+def facts(rel: str, vocab: Iterable[str] | None = None) -> NameFacts:
     parts = _parts(rel)
+    vocab = None if vocab is None else frozenset(vocab)
     out = NameFacts()
     out.donor = next((p[4:] for p in parts if p.startswith("sub-") and len(p) > 4), None)
     stems = [_EXT.sub("", p) for p in parts]
@@ -144,7 +147,7 @@ def facts(rel: str) -> NameFacts:
                     out.dates.append(d)
                 continue
             if (out.donor is None and i in donor_from and part not in VISOR_META_NAMES
-                    and not t.isdigit() and not is_vocab(t) and t.lower() not in DONOR_STOP
+                    and not t.isdigit() and not is_vocab(t, vocab) and t.lower() not in DONOR_STOP
                     and _DONOR.fullmatch(t)):
                 out.donor = t
             low = t.lower()
@@ -212,15 +215,16 @@ def _bids_words(stem: str) -> set[str]:
     return words
 
 
-def path_terms(rels: Iterable[str]) -> set[str]:
+def path_terms(rels: Iterable[str], vocab: Iterable[str] | None = None) -> set[str]:
     """Identifying terms from paths, for redaction: tokens, donors and every form of each date."""
     terms: set[str] = set()
+    vocab = None if vocab is None else frozenset(vocab)
     for rel in rels:
         for part in _parts(rel):
             stem = _EXT.sub("", part)
             bids = _bids_words(stem)
             for t in _tokens(stem):
-                if len(t) < 3 or is_vocab(t) or (t.isdigit() and len(t) < 6) or t in bids:
+                if len(t) < 3 or is_vocab(t, vocab) or (t.isdigit() and len(t) < 6) or t in bids:
                     continue
                 terms.add(t)
                 d = _date(t)
@@ -230,7 +234,7 @@ def path_terms(rels: Iterable[str]) -> set[str]:
             terms.add(text)
             for d in reads:
                 terms |= _date_forms(d.strftime("%Y%m%d"))
-        f = facts(rel)
+        f = facts(rel, vocab)
         if f.donor:
             terms.add(f.donor)
         for d in f.dates:

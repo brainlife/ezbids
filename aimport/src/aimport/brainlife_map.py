@@ -14,6 +14,8 @@ _STATUSES = {"active", "planned", "draft"}
 
 # (bids datatype, suffix) -> (brainlife datatype, fixed tags or None for tags_from: task)
 Table = dict[tuple[str, str], tuple[str, list[str] | None]]
+# (bids datatype, suffix, extension) -> the same; rows keyed by file format (eeg, meg)
+ExtTable = dict[tuple[str, str, str], tuple[str, list[str] | None]]
 
 
 def _validate_row(i: int, row: object) -> None:
@@ -92,7 +94,25 @@ def load_table(path: Path | None = None) -> Table:
     return table
 
 
+def load_ext_table(path: Path | None = None) -> ExtTable:
+    """The active rows keyed by (datatype, suffix, extension): brainlife datatypes chosen by file format."""
+    doc = _load_doc(path)
+    table: ExtTable = {}
+    for i, row in enumerate(doc.get("mappings") or []):
+        if row["status"] != "active" or "extension" not in row["bids"]:
+            continue
+        bids, bl = row["bids"], row["brainlife"]
+        key = (bids["datatype"], bids.get("suffix"), bids["extension"])
+        if key[1] is None:
+            raise ValueError(f"mappings[{i}] ({key[0]}{key[2]}): active row needs bids.suffix")
+        if key in table:
+            raise ValueError(f"mappings[{i}] ({key[0]}/{key[1]}{key[2]}): duplicate active key")
+        table[key] = (bl["datatype"], None if "tags_from" in bl else list(bl["tags"]))
+    return table
+
+
 _TABLE = load_table()
+_EXT_TABLE = load_ext_table()
 _DRAFTS = {
     (r["bids"]["datatype"], r["bids"]["suffix"]): r["brainlife"]["datatype"]
     for r in load_rows()
@@ -105,11 +125,22 @@ def draft_for(datatype: str, suffix: str) -> str | None:
     return _DRAFTS.get((datatype, suffix))
 
 
+def no_datatype_reason(datatype: str | None, suffix: str | None) -> str:
+    """The text added to a reason when the datatypes target excludes an entry: names the draft, if any."""
+    draft = draft_for(datatype, suffix) if datatype and suffix else None
+    return f"; no brainlife datatype (draft {draft}, not registered yet)" if draft else "; no brainlife datatype"
+
+
 def to_brainlife(
-    datatype: str, suffix: str, entities: dict[str, str], sidecar: dict
+    datatype: str, suffix: str, entities: dict[str, str], sidecar: dict, extension: str | None = None
 ) -> tuple[str | None, list[str]]:
-    """Return (brainlife datatype, datatype_tags); (None, []) if unmapped."""
-    hit = _TABLE.get((datatype, suffix))
+    """Return (brainlife datatype, datatype_tags); (None, []) if unmapped.
+
+    extension (the written data file's, e.g. ".eeg" for BrainVision) is looked up first among the rows
+    keyed by file format, then the (datatype, suffix) rows."""
+    hit = _EXT_TABLE.get((datatype, suffix, extension)) if extension else None
+    if hit is None:
+        hit = _TABLE.get((datatype, suffix))
     if hit is None:
         return None, []
     bl, tags = hit

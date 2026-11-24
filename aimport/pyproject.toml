@@ -30,12 +30,21 @@ dependencies = [
     "ngff-zarr",
     "scipy",
     "h5py",
+    # electrophysiology and optical (ephys)
+    "mne",
+    "mne-bids",
+    "edfio",
+    "pybv",
+    "defusedxml",
+    "pynwb",
+    "matplotlib",
     # the QA viewer's chunk proxy (micr/remote.py open_stream); already locked (anthropic needs it)
     "httpx>=0.28",
 ]
 
 [project.optional-dependencies]
 dev = ["pytest", "httpx"]
+neo = ["neo"]
 
 [dependency-groups]
 dev = ["pytest", "httpx"]
@@ -50,4 +59,5 @@ markers = [
     "docker_offline: tests that need Docker but no network",
     "docker_slow: Docker tests that take minutes per image (pydeface); run with -m docker_slow",
     "network: reads remote data over https (range reads, under 32 MiB per test)",
+    "ephys_data: downloads small pinned ephys test files the first time and caches them in AIMPORT_EPHYS_CACHE (default ~/.cache/aimport-ephys)",
 ]

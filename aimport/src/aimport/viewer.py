@@ -15,6 +15,7 @@ from pathlib import Path
 from urllib.parse import quote
 
 NEUROGLANCER_DIR = "/opt/neuroglancer-client"
+STATIC_DIR = Path(__file__).parent / "static"  # the trace viewer's own script and stylesheet (/viewer/assets/)
 # Content-Security-Policy of the viewer's HTML pages. 'unsafe-eval': the client compiles code with `new Function`
 # (annotation property serializers in neuroglancer's lib/annotation/index.js, msgpackr); without it the slices
 # stay blank, with no console error. Scripts still load only from this origin (no inline scripts); no wasm is
@@ -243,7 +244,12 @@ def index_page(rows: list[dict]) -> str:
             if r["defaced"]:
                 sep = "&amp;" if r["index"] else "?"
                 links.append(f'<a href="{href}{sep}compare=1">defaced vs original</a>')
-        return f"<tr><td><code>{html.escape(r['path'])}</code></td><td>{' · '.join(links)}</td></tr>"
+        if r.get("traces"):
+            links.append(f'<a class="qa-traces" href="/viewer/traces/{quote(r["id"], safe="")}">Traces</a>')
+        out = f"<tr><td><code>{html.escape(r['path'])}</code></td><td>{' · '.join(links)}</td></tr>"
+        if r.get("traces") and r.get("pngs"):
+            out += ephys_row(r)
+        return out
 
     body = ("".join(row(r) for r in rows) if rows
             else '<tr><td colspan="2">No images were written.</td></tr>')
@@ -257,12 +263,6 @@ def index_page(rows: list[dict]) -> str:
 * {{ box-sizing: border-box; }}
 body {{ margin: 0; background: #f5f5f5; color: var(--ink);
   font: 14px/1.5 "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }}
-header {{ display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 24px; background: #fff;
-  border-bottom: 1px solid var(--line); }}
-header .mark {{ height: 32px; width: auto; }}
-header .brand {{ font-weight: 600; font-size: 15px; color: var(--ink); }}
-header .sep {{ width: 1px; height: 22px; background: var(--line); }}
-header .app {{ font-weight: 600; font-size: 15px; color: var(--primary); }}
 main {{ max-width: 1100px; margin: 24px auto; padding: 0 16px; }}
 .panel {{ background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 20px 24px; }}
 h1 {{ margin: 0 0 4px; font-size: 20px; font-weight: 600; }}
@@ -274,13 +274,93 @@ tbody tr:hover {{ background: #f8fafc; }}
 code {{ font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; word-break: break-all; }}
 a {{ color: var(--primary); text-decoration: none; font-weight: 500; }}
 a:hover {{ text-decoration: underline; }}
+{BRAND_CSS}
+{EPHYS_CSS}
 </style></head>
-<body><header><img class="mark" src="/viewer/brainlife-mark.svg" alt="brainlife.io">
-<span class="brand">brainlife.io</span><span class="sep"></span><span class="app">aimport QA viewer</span></header>
+<body>{brand_header()}
 <main><div class="panel"><h1>Output to check before upload</h1>
 <p class="lead">The de-identified output, before upload. Defaced images open with the original as a hidden layer.
 Microscopy images open as OME-Zarr; a reference dataset is read from its source, never copied.</p>
 <table><thead><tr><th>BIDS path</th><th>View</th></tr></thead><tbody>
 {body}
 </tbody></table></div></main></body></html>
+"""
+
+
+# --- the brainlife.io header, shared by the viewer's pages: the engine's own logo (/viewer/brainlife-mark.svg) ---
+
+LOGO = "/viewer/brainlife-mark.svg"
+BRAND_CSS = """\
+header { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 24px; background: #fff;
+  border-bottom: 1px solid var(--line); }
+header .mark { height: 32px; width: auto; }
+header .brand { font-weight: 600; font-size: 15px; color: var(--ink); }
+header .sep { width: 1px; height: 22px; background: var(--line); }
+header .app { font-weight: 600; font-size: 15px; color: var(--primary); }"""  # also in static/traces.css
+
+
+def brand_header(back: bool = False) -> str:
+    """The logo, "brainlife.io", a divider and "aimport QA viewer" (a link back to the index when ``back``)."""
+    app = ('<a class="app" href="/viewer/">aimport QA viewer</a>' if back
+           else '<span class="app">aimport QA viewer</span>')
+    return (f'<header><img class="mark" src="{LOGO}" alt="brainlife.io">\n'
+            f'<span class="brand">brainlife.io</span><span class="sep"></span>{app}</header>')
+
+
+# --- electrophysiology: snapshots in the index and the trace viewer page ---
+
+# brainlife-lite tokens, scoped to the ephys rows of the index
+EPHYS_CSS = """\
+.qa-ephys td { background: #f5f5f5; border-bottom: 1px solid #e2e8f0; }
+.qa-thumbs { display: flex; flex-wrap: wrap; gap: .6rem; }
+.qa-thumbs a { display: block; background: #fff; border: 1px solid #e2e8f0; border-radius: 6px; padding: 4px; }
+.qa-thumbs img { display: block; height: 96px; width: auto; }
+a.qa-traces { color: #fff; background: #3d6a92; border-radius: 6px; padding: .1rem .55rem; text-decoration: none;
+  font-family: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }"""
+
+
+def ephys_row(r: dict) -> str:
+    """The snapshot thumbnails of an electrophysiology recording (a row under its data file)."""
+    eid = quote(r["id"], safe="")
+    thumbs = "".join(f'<a href="/qa/png/{eid}/{k}.png"><img src="/qa/png/{eid}/{k}.png" alt="{k}"></a>'
+                     for k in r["pngs"])
+    return f'<tr class="qa-ephys"><td colspan="2"><div class="qa-thumbs">{thumbs}</div></td></tr>'
+
+
+def traces_page(entry_id: str, bids_name: str) -> str:
+    """The interactive trace viewer of a written recording: uPlot and traces.js from this origin, no inline
+    script (VIEWER_CSP unchanged); the data come from /qa/traces/<entry id>."""
+    eid = html.escape(entry_id, quote=True)
+    name = html.escape(bids_name)
+    header = brand_header(back=True)
+    return f"""<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{name} · traces</title>
+<link rel="stylesheet" href="/viewer/assets/uplot/uPlot.min.css">
+<link rel="stylesheet" href="/viewer/assets/traces.css">
+</head>
+<body data-entry="{eid}">
+{header}
+<div class="tr-bar"><h1>{name}</h1></div>
+<main class="tr-main">
+<section class="tr-panel tr-controls" aria-label="window">
+  <button type="button" id="tr-left" title="earlier (←)">◀</button>
+  <button type="button" id="tr-right" title="later (→)">▶</button>
+  <button type="button" id="tr-zin" title="zoom in: shorter window (+)">+</button>
+  <button type="button" id="tr-zout" title="zoom out: longer window (−)">−</button>
+  <label>start <input id="tr-t0" type="number" min="0" step="any"> s</label>
+  <label>length <input id="tr-len" type="number" min="0.01" max="600" step="any"> s</label>
+  <button type="button" id="tr-go" class="tr-primary">Show</button>
+  <span id="tr-info" class="tr-muted"></span>
+</section>
+<details class="tr-panel tr-picker" id="tr-picker"><summary>Channels <span id="tr-count"></span></summary>
+  <div id="tr-channels" class="tr-channel-list"></div>
+  <button type="button" id="tr-apply" class="tr-primary">Apply</button>
+</details>
+<p id="tr-status" class="tr-muted" role="status"></p>
+<section class="tr-panel tr-plot-panel"><div id="tr-scales" class="tr-muted"></div><div id="tr-plot"></div></section>
+</main>
+<script src="/viewer/assets/uplot/uPlot.iife.min.js"></script>
+<script src="/viewer/assets/traces.js"></script>
+</body></html>
 """
