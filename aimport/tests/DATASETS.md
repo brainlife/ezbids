@@ -68,6 +68,12 @@ a sidecar, and a supplied `samples.tsv` (`sample-A`/`sub-01`/`cell line`/`lab B`
 `sub-99` not in the import). `test_convert_bounded_memory` converts `striped_tiff` 6000 x 6000 with the
 block limit patched to 4 MiB (after a 600 x 600 warm-up). All synthetic, generated at test time.
 
+**Task 9 inputs (`tests/test_micr_reference.py`).** `ome_zarr` stores (0.5 and 0.4) at
+`Moe_Slice_051.ome.zarr`; one 0.5 store with planted array `attributes` (`operator` "Jane Doe",
+`note` "annotation secret") and an `OME/METADATA.ome.xml` from `_planted_ome_xml`; one with a level-2
+scale of 8 where the size says 4; one with its chunks stripped (`strip_chunks`); and the same store
+served by the local Range server for the remote reference. All synthetic, generated at test time.
+
 ### CMC public bucket `apex-connects` (current)
 
 Public S3 bucket `apex-connects` (region us-east-2), read anonymously over
@@ -80,6 +86,7 @@ changed or removed key shows up as a failing `network` test.
 | Test | Key (under `s3://apex-connects/`) | What it is | Read | Cap | Bytes read (2026-11-24) |
 |---|---|---|---|---|---|
 | `test_cmc_psoct_zarr_metadata` | `CMC/Derivatives/Moe/PS-OCT/Zarr/Moe_Slice_051.ome.zarr` | PS-OCT slice, NGFF 0.5 / Zarr v3 with consolidated metadata, axes `c,y,x`, 6 levels (`scale0/image` 4 x 8500 x 11000 float32 to `scale5/image` 4 x 16 x 21), zstd, not sharded | metadata plus the whole coarsest level | 32 MiB | 15,271 |
+| `test_cmc_psoct_zarr_reference` (`tests/test_micr_reference.py`, Task 9) | `CMC/Derivatives/Moe/PS-OCT/Zarr/Moe_Slice_051.ome.zarr` | the same PS-OCT store, referenced: its scales say 16 and 64 for levels 3 and 4, whose sizes are 1/8 and 1/16 of level 0 (the rebuilt metadata follows the sizes) | group and array metadata only (no chunk) | 1 MiB | 13,118 |
 | `test_cmc_exaspim_position` | `axonal_connectomics/deskewed/H17_PO10_S5_20250417/exaSPIM.zarr/Pos0` | exaSPIM position, Zarr v3 **sharded** (`sharding_indexed`, inner chunks 64^3, blosc), NGFF 0.4-style `multiscales` attributes (no `ome` key), axes `t,c,z,y,x`, 6 levels (level 0 1 x 1 x 45256 x 14192 x 2660 uint16), 0.65 x 0.748 x 0.748 um | metadata plus one 64^3 inner chunk of the coarsest level | 32 MiB | 23,595 |
 | `test_cmc_visor_tile_header` | `CMC/Raw/Moe/tract-tracing/MN27_FH_S100_250215_visor_488/visor_488_Pos0/visor_488_0_0.tif` (4,286,188,560 bytes) and `.../MN27_FH_S100_250215_visor_488/acqinfo_metadata.json` (4,127 bytes) | VISoR raw tile: classic (not Big) TIFF written by Micro-Manager (NDTiff v3 header, `MicroManagerMetadata` tag per page, no index map in the file), pages 1024 x 2048 uint16, uncompressed, one 4 MiB strip per page, ~1025 pages (`frames_per_file`) | first IFD, the first page's one strip, and the metadata JSON (only that small JSON; never `dbpost.json` or `hh.log`) | 8 MiB | 4,325,380 |
 | `test_cmc_enface_nifti_header` | `CMC/Derivatives/Moe/PS-OCT/Enface/Registration/Retardance/Slice_001_EnR_hdr.nii.gz` (14,011,625 bytes) | PS-OCT en-face retardance, gzipped NIfTI-1, float32, 11000 x 1 x 8740, units mm | header and the first voxel (gzip from the start) | 1 MiB | 262,146 |

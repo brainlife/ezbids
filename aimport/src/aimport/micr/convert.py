@@ -477,7 +477,7 @@ def _close(a: float, b: float) -> bool:
 
 
 def check_ome_zarr(dest: Path, sidecar: dict, version: str, shape: Sequence[int] | None = None,
-                   dtype: str | None = None) -> None:
+                   dtype: str | None = None, reference: bool = False) -> None:
     """Re-open a written OME-Zarr image and check it; raises NgffCheckError on the first failure.
 
     Checks: group metadata valid for ``version`` (Zarr v3 ``zarr.json`` with ``attributes.ome`` for
@@ -485,6 +485,9 @@ def check_ome_zarr(dest: Path, sidecar: dict, version: str, shape: Sequence[int]
     axes are named from tczyx in order with the sidecar's unit; level 0's scale equals the sidecar's
     PixelSize and each level is a whole-factor downsampling of level 0; every dataset path is present
     with the expected shape and dtype; the omero channel count equals the channel axis length.
+    ``reference``: a reference dataset's metadata-only store (micr/reference.py), whose pyramid was
+    made by another tool: a level's shape may also be the rounded-up division of level 0's. No chunk
+    is read either way.
     """
     import ngff_zarr as nz
     import zarr
@@ -579,7 +582,7 @@ def check_ome_zarr(dest: Path, sidecar: dict, version: str, shape: Sequence[int]
             f = round(ratio)
             if f < 1 or not _close(ratio, f) or (n not in SPATIAL and f != 1):
                 raise _fail("a pyramid level's scale is not a whole multiple of the full resolution")
-            if int(arr.shape[k]) != base_shape[k] // f:
+            if int(arr.shape[k]) != base_shape[k] // f and not (reference and int(arr.shape[k]) == -(-base_shape[k] // f)):
                 raise _fail("a pyramid level's shape does not match its scale")
     channels = (omero or {}).get("channels") if isinstance(omero, dict) else None
     count = base_shape[names.index("c")] if "c" in names and base_shape else 1

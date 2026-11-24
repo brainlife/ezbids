@@ -12,6 +12,7 @@ import json
 import logging
 import math
 import re
+from dataclasses import dataclass
 from datetime import date, datetime
 from importlib.metadata import entry_points
 from pathlib import Path
@@ -993,7 +994,42 @@ def _open_ome_zarr(location: Any) -> _Source:
         chunks = plan_chunks(tuple(arr.shape), arr.dtype.itemsize, native=tuple(arr.chunks))
         return lvl_map.apply(da.from_zarr(arr, chunks=chunks))
 
-    return _Source(info, terms, [lambda i=i: level(i) for i in range(len(arrays))])
+    out = _Source(info, terms, [lambda i=i: level(i) for i in range(len(arrays))])
+    omero = ome.get("omero") if isinstance(ome, dict) else None
+    # what a reference dataset needs (micr/reference.py): the image group's path in the store, each
+    # level's dataset path, opened array and scale, whether the source axes are already the image's
+    # (no squeeze or transpose), and the source's display windows (numbers only)
+    out.zarr_layout = ZarrLayout(
+        group_path=group.path, datasets=[str(d["path"]) for d in ms["datasets"]], arrays=arrays,
+        scales=[_ngff_scale(ms, d, len(axes_meta)) for d in ms["datasets"]],
+        identity=(amap.perm == tuple(range(len(amap.perm))) and all(isinstance(ix, slice) for ix in amap.index)
+                  and len(amap.axes) == a0.ndim),
+        windows=_omero_windows(omero),
+    )
+    return out
+
+
+@dataclass
+class ZarrLayout:
+    group_path: str
+    datasets: list[str]
+    arrays: list[Any]
+    scales: list[list[float]]
+    identity: bool
+    windows: list[dict[str, float] | None]
+
+
+def _omero_windows(omero: Any) -> list[dict[str, float] | None]:
+    """Per channel, the source's omero window as four finite numbers, else None. Nothing else is kept."""
+    out: list[dict[str, float] | None] = []
+    channels = omero.get("channels") if isinstance(omero, dict) else None
+    for ch in channels if isinstance(channels, list) else []:
+        w = ch.get("window") if isinstance(ch, dict) else None
+        vals = {k: w.get(k) for k in ("min", "max", "start", "end")} if isinstance(w, dict) else {}
+        ok = len(vals) == 4 and all(isinstance(v, (int, float)) and not isinstance(v, bool)
+                                    and math.isfinite(v) for v in vals.values())
+        out.append({k: float(v) for k, v in vals.items()} if ok else None)
+    return out
 
 
 # --- registry ---------------------------------------------------------------------------------

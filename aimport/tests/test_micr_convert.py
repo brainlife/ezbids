@@ -515,14 +515,15 @@ def test_bids_micr_sidecar_not_companion(tmp_path, schema):
     assert "sub-01/micr/sub-01_sample-A_photo.json" not in found
 
 
-def test_reference_entries_wait_for_task_9(tmp_path, key, schema):
+def test_reference_entries_are_written_by_reference(tmp_path, key, schema, monkeypatch):
+    """OME-Zarr inputs are not converted (Task 9: micr/reference.py, tested in test_micr_reference)."""
     from fixtures.micr_fixtures import ome_zarr
 
     inp = tmp_path / "in"
     ome_zarr(inp / "Moe_Slice_051.ome.zarr", "0.5")
-    with pytest.raises(NotImplementedError, match="reference datasets: Task 9"):
-        plan_and_write(inp, tmp_path, key, schema, suffix="SPIM")
-    assert not (tmp_path / "out").exists()
+    monkeypatch.setattr(convert, "to_ome_zarr", lambda *a, **k: pytest.fail("a reference is not converted"))
+    plan_and_write(inp, tmp_path, key, schema, suffix="SPIM")
+    assert (tmp_path / "out").is_dir()
 
 
 def test_self_check_failure_fails_the_write(tmp_path, key, schema, monkeypatch):

@@ -157,8 +157,9 @@ class _Writer:
                  schema: Schema, out_dir: Path, staged_dir: Path,
                  manifest: dict[str, list[str]] | None = None, refused: list[str] | None = None,
                  exclude: Sequence[str] = (), modules: Sequence[Module] = (), work_dir: Path | None = None,
-                 progress: Callable[[str], None] | None = None):
+                 progress: Callable[[str], None] | None = None, chunk_map: dict | None = None):
         self.refused = refused
+        self.chunk_map = chunk_map
         self.modules, self.work_dir, self.progress = list(modules), work_dir, progress
         self.outputs: list[ModuleOutput] = []  # what the modules wrote (rows merged into the top-level files)
         self.claimed = ClaimedPaths(input_dir, exclude)  # claimed roots: never walked for DICOMs
@@ -322,6 +323,9 @@ class _Writer:
             if self.manifest is not None:
                 for eid, paths in out.manifest.items():
                     self.manifest.setdefault(eid, []).extend(paths)
+            if self.chunk_map is not None and out.chunk_map:
+                self.chunk_map.setdefault("version", out.chunk_map.get("version"))
+                self.chunk_map.setdefault("arrays", {}).update(out.chunk_map.get("arrays") or {})
             outputs.append(out)
         return outputs
 
@@ -448,13 +452,15 @@ def write_bids(plan: Plan, core: CoreResult, input_dir: Path, terms: set[str], k
                schema: Schema, out_dir: Path, *, staged_dir: Path,
                manifest: dict[str, list[str]] | None = None, refused: list[str] | None = None,
                exclude: Sequence[str] = (), modules: Sequence[Module] = (), work_dir: Path | None = None,
-               progress: Callable[[str], None] | None = None) -> list[Path]:
+               progress: Callable[[str], None] | None = None, chunk_map: dict | None = None) -> list[Path]:
     """Write the approved plan as a BIDS dataset in out_dir; returns every file written.
 
     exclude: claimed roots (input-relative), never walked for DICOM headers.
     modules: modality modules that write their entries after the MRI images (each from its folder
     under work_dir, through the same guarded destination); their participants, scans and samples
     rows and their manifest entries are merged here. progress receives their progress text.
+    chunk_map, when given, is filled with the modules' chunk maps merged (``{"version", "arrays"}``:
+    where the chunks of referenced arrays are; the caller writes it outside out_dir).
 
     When manifest is given it is filled with entry id -> the NIfTI paths written for that entry
     (posix, relative to out_dir), so later steps (defacing) find exactly those files. When refused is
@@ -475,10 +481,12 @@ def write_bids(plan: Plan, core: CoreResult, input_dir: Path, terms: set[str], k
     out.mkdir(parents=True, exist_ok=True)
     try:
         return _Writer(plan, core, input_dir, terms, key, schema, out, staged_dir, manifest, refused, exclude,
-                       modules, work_dir, progress).run()
+                       modules, work_dir, progress, chunk_map).run()
     except BaseException:
         if manifest is not None:
             manifest.clear()
+        if chunk_map is not None:
+            chunk_map.clear()
         if existed:
             for child in out.iterdir():
                 shutil.rmtree(child) if child.is_dir() and not child.is_symlink() else child.unlink()

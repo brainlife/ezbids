@@ -678,7 +678,6 @@ class MicrModule:
 
 # --- write ----------------------------------------------------------------------------------------
 
-REFERENCE_PENDING = "reference datasets: Task 9"
 WRITE_PROGRESS = "writing microscopy image {k} of {n}"
 
 
@@ -745,6 +744,30 @@ def open_record(rec: dict, input_dir: Path) -> Any:
         raise
 
 
+def open_reference(rec: dict, input_dir: Path) -> Any:
+    """The OME-Zarr ImageSource of a reference record, for its metadata only (no chunk is read):
+    the store in the input folder, or the remote store under the default byte cap."""
+    from . import readers
+
+    if rec.get("family") != "ome-zarr":
+        raise ValueError("only an OME-Zarr input can be referenced")
+    if "url" in rec:
+        from . import remote
+
+        src, _counter = remote.open_remote(rec["url"], "ome-zarr")
+        return src
+    return readers.open_image(_inside_input(input_dir, rec["rel"]), "ome-zarr")
+
+
+def reference_location(rec: dict) -> dict[str, str]:
+    """The chunk-map source of a reference record's store: its input-relative folder or its URL."""
+    if "url" in rec:
+        from .remote import normalize_url
+
+        return {"url": normalize_url(rec["url"])}
+    return {"input": PurePosixPath(rec["rel"]).as_posix()}
+
+
 def with_plan_pixel_size_check(e: PlanEntry) -> None:
     from .metadata import PixelSizeUnknown, _UNIT_M
 
@@ -777,18 +800,19 @@ def _names(entries: list[PlanEntry], schema: "Schema") -> dict[str, str]:
 def write_entries(plan: "Plan", records: list[dict], input_dir: Path, terms: set[str], key: "PseudonymKey",
                   schema: "Schema", dest: Callable[[str], Path],
                   progress: Callable[[str], None] | None = None) -> ModuleOutput:
-    """Convert every included micr entry to OME-Zarr with its sidecar, check what was written, and
-    return the rows for participants, samples and scans. Reference entries are Task 9."""
+    """Write every included micr entry with its sidecar, check what was written, and return the rows
+    for participants, samples and scans. Convert entries become OME-Zarr in the configured version;
+    reference entries (OME-Zarr inputs) get only new metadata (micr/reference.py), in their source's
+    format, and their arrays go into ``out.chunk_map``."""
     from ..scrub import redact
     from . import NGFF_VERSION
     from .convert import check_ome_zarr, to_ome_zarr
     from .metadata import sidecar, with_plan_pixel_size
+    from .reference import chunk_map, ngff_version_for, write_reference
 
     out = ModuleOutput()
     entries = [e for e in plan.entries if e.modality == "micr" and e.datatype == "micr" and e.status == "ok"
                and not e.exclude and e.suffix and e.write_mode]
-    if any(e.write_mode == "reference" for e in entries):
-        raise NotImplementedError(REFERENCE_PENDING)
     for e in entries:  # defence in depth: the planner makes these unsupported or unknown
         i = e.series_idx - MICR_INDEX_BASE
         if 0 <= i < len(records) and is_mosaic(records[i]):
@@ -796,6 +820,7 @@ def write_entries(plan: "Plan", records: list[dict], input_dir: Path, terms: set
         with_plan_pixel_size_check(e)
     names = _names(entries, schema)
     samples: dict[tuple[str, str], dict[str, str]] = {}
+    arrays: dict[str, dict] = {}
     for k, e in enumerate(entries, 1):
         i = e.series_idx - MICR_INDEX_BASE
         if not 0 <= i < len(records) or records[i].get("info") is None:
@@ -804,20 +829,26 @@ def write_entries(plan: "Plan", records: list[dict], input_dir: Path, terms: set
         if progress is not None:
             progress(WRITE_PROGRESS.format(k=k, n=len(entries)))
         rel = names[e.id]
-        version = NGFF_VERSION
-        src = open_record(rec, input_dir)
+        reference = e.write_mode == "reference"
+        src = open_reference(rec, input_dir) if reference else open_record(rec, input_dir)
         try:
             src.info.acquired = None
             # the plan's pixel size (from the source or the reviewer); never an invented one
             info = src.info = with_plan_pixel_size(src.info, e)
-            step = (lambda msg, k=k: progress(f"{WRITE_PROGRESS.format(k=k, n=len(entries))}: {msg}")) \
-                if progress is not None else None
             path = dest(rel)
-            to_ome_zarr(src, path, version, step)
+            if reference:  # the source's Zarr format; metadata only, the chunks stay at the source
+                version = ngff_version_for(info.zarr_format)
+                for sub, facts in write_reference(src, reference_location(rec), path, info).items():
+                    arrays[f"{rel}/{sub}"] = facts
+            else:
+                version = NGFF_VERSION
+                step = (lambda msg, k=k: progress(f"{WRITE_PROGRESS.format(k=k, n=len(entries))}: {msg}")) \
+                    if progress is not None else None
+                to_ome_zarr(src, path, version, step)
             # numbers and vocabulary only; strings are redacted anyway (numbers are not: a pixel size
             # equal to a path number is not identifying, and must match the NGFF scale)
             car = {k: redact(v, terms) if isinstance(v, str) else v for k, v in sidecar(info, e).items()}
-            check_ome_zarr(path, car, version, info.shape, info.dtype)
+            check_ome_zarr(path, car, version, info.shape, info.dtype, reference=reference)
         finally:
             src.close()
         stem = rel[: -len(".ome.zarr")]
@@ -840,4 +871,6 @@ def write_entries(plan: "Plan", records: list[dict], input_dir: Path, terms: set
         if label and label == rec["facts"].get("donor"):
             out.labels[e.subject_idx] = label  # as planned: supplied tables link their rows by it
     out.samples = [samples[k] for k in sorted(samples)]
+    if arrays:
+        out.chunk_map = chunk_map(arrays)
     return out
