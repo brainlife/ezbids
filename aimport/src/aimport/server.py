@@ -628,6 +628,10 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
             status["warnings"] = srv.load_plan().warnings
         except (HTTPException, ValueError):
             pass
+        if status["stage"] in DONE:
+            state = _read_json(work_dir / OUTPUT_STATE)
+            if state and state.get("complete"):
+                status["manifest"] = state.get("manifest") or {}
         return status
 
     @app.get("/events")

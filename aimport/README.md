@@ -7,8 +7,8 @@ brainlife.io. It lives in the ezBIDS repo and reuses ezBIDS's mapping, conversio
 but everything runs on your machine, so raw DICOMs with identifiers are never uploaded.
 
 This directory is the engine: a Docker image and a small HTTP API on your own computer. The command
-`bl aimport` and the brainlife-lite `/aimport` page that drive it are separate, upcoming work (see
-"What's next"); until then you drive the API directly, as shown below.
+`bl aimport` (cli repo) drives it and uploads the result; the brainlife-lite `/aimport` page is upcoming (see
+"What's next"). You can also drive the API directly, as shown below.
 
 ## What aimport guarantees
 
@@ -65,9 +65,11 @@ docker run --rm --platform linux/amd64 \
   -p 127.0.0.1:8765:8765 \
   -v /path/to/data:/data:ro -v /path/to/work:/work -v /path/to/keys:/keys \
   brainlife/aimport:dev \
-  python -m aimport serve --input /data --work /work --keys /keys --host 0.0.0.0 --port 8765
+  /opt/aimport-venv/bin/python -m aimport serve --input /data --work /work --keys /keys --host 0.0.0.0 --port 8765
 ```
 
+- Start the engine with `/opt/aimport-venv/bin/python`: the image's plain `python` is the ezBIDS handler's
+  older interpreter and cannot run aimport.
 - Publish the port on `127.0.0.1` only, as above. The token is the only other protection, so never
   write `-p 8765:8765` (which listens on every network interface). Inside the container `--host 0.0.0.0` is
   allowed because `AIMPORT_IN_CONTAINER=1` is set by the image.
@@ -161,7 +163,8 @@ All examples use `T="Authorization: Bearer $AIMPORT_TOKEN"` and `U=http://localh
 7. **Execute.** Writes the BIDS output, defaces, validates. Poll `/status` or follow `/events` until
    `validated` (no validator errors), `invalid` (the output was written but the validator reported errors;
    it must not be uploaded: fix the plan and execute again) or `failed`. After `validated` or `invalid` the
-   status has `output_dir` and `validation` with `ok`, error and warning counts and the issues. The output
+   status has `output_dir`, `validation` with `ok`, error and warning counts and the issues, and `manifest`, the
+   output files of each plan entry (`{entry_id: [paths relative to output_dir]}`). The output
    folder is `<work>/output/bids`; the pre-defacing originals go to `<work>/pre-deface`, outside it. When a
    run fails, what it wrote is moved to `<work>/output/bids.failed` (replacing an earlier one; named in the
    status message, never to be uploaded) and `<work>/output/bids` no longer exists. A failed scan names
@@ -353,7 +356,9 @@ The end-to-end leak test is `tests/test_end_to_end.py` (about two minutes under 
 
 ## What's next
 
-`bl aimport` (the command-line front end: runs this image, shows the plan in the terminal, runs the
-brainlife datatype validators on your host) and the brainlife-lite `/aimport` page (plan review with image
-previews) are separate, upcoming work. **Uploading to brainlife.io happens there, not in this engine**: the
-engine only produces the validated, de-identified output folder.
+`bl aimport` in the [brainlife cli](https://github.com/brainlife/cli) (branch `aimport-cli`, pending release) is the
+command-line front end: it runs this image, shows the plan in the terminal, runs the brainlife datatype
+validators on your host and uploads the result. Run `bl aimport <folder> --project <id>` (see the cli README).
+The brainlife-lite `/aimport` page (plan review with image previews) is still upcoming.
+**Uploading to brainlife.io happens in those front ends, not in this engine**: the engine only produces the
+validated, de-identified output folder.
