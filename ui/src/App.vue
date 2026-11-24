@@ -1,13 +1,27 @@
 <template>
     <div>
         <RouterView />
+        <ExternalPageDialog />
     </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import ExternalPageDialog from '@/components/dialogs/ExternalPageDialog.vue';
+import { interceptExternalLinks, openExternal } from '@/externalPage';
 
-export default defineComponent({});
+/* Nothing opens a new window: links to other sites open in ExternalPageDialog over the app (a <webview>
+   in the desktop app). electron/inAppBrowsing.ts routes any window.open that slips through to it too. */
+export default defineComponent({
+    components: { ExternalPageDialog },
+    mounted() {
+        document.addEventListener('click', interceptExternalLinks);
+        window.ezbidsInApp?.onOpen((url) => openExternal(url));
+    },
+    unmounted() {
+        document.removeEventListener('click', interceptExternalLinks);
+    },
+});
 </script>
 
 <style lang="scss">

@@ -1,41 +1,29 @@
 <template>
-    <el-affix>
-        <el-header class="header">
-            <el-row style="align-items: center">
-                <el-col :xs="0" :md="1" />
-                <el-col :xs="24" :md="22">
-                    <el-menu class="menu" :ellipsis="false" mode="horizontal">
-                        <el-menu-item index="0" class="menu-item brand-item">
-                            <img src="@/assets/brainlife-mark-light.svg" class="brand-mark" alt="brainlife.io" />
-                            <span class="brand-name">ezBIDS</span>
-                            <span class="brand-by">by brainlife.io</span>
-                        </el-menu-item>
-                        <div style="flex-grow: 1"></div>
-                        <el-menu-item index="1" class="menu-item" @click="openBrainLifeTeamPage">
-                            <el-icon>
-                                <font-awesome-icon :icon="['fas', 'arrow-up-right-from-square']" />
-                            </el-icon>
-                            TEAM
-                        </el-menu-item>
-                        <el-menu-item index="2" class="menu-item">
-                            <el-button type="primary" class="header-cta" @click="redirectToBrainlifeAuth">{{
-                                !hasAuth || hasJWT ? 'GET STARTED' : 'LOG IN / REGISTER'
-                            }}</el-button>
-                        </el-menu-item>
-                    </el-menu>
-                </el-col>
-                <el-col :xs="0" :md="1" />
-            </el-row>
-        </el-header>
-    </el-affix>
+    <header class="site-band">
+        <div class="wrap site">
+            <a class="brand" href="#" aria-label="ezBIDS home" @click.prevent="$router.push('/')">
+                <BrandLockup tone="dark" />
+            </a>
+            <nav class="nav" aria-label="Primary">
+                <a href="https://brainlife.io/docs/using_ezBIDS/">Docs</a>
+                <a href="https://brainlife.io/docs/using_aimport/">aimport</a>
+                <a href="https://brainlife.io/team/">Team</a>
+                <button class="btn" @click="redirectToBrainlifeAuth">
+                    {{ !hasAuth || hasJWT ? 'Get started' : 'Sign in' }}
+                </button>
+            </nav>
+        </div>
+    </header>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
 import { mapState } from 'vuex';
 import { hasJWT, authRequired } from '@/lib';
+import BrandLockup from '@/components/brand/BrandLockup.vue';
 
 export default defineComponent({
+    components: { BrandLockup },
     computed: {
         ...mapState(['config']),
         hasAuth() {
@@ -46,9 +34,6 @@ export default defineComponent({
         },
     },
     methods: {
-        openBrainLifeTeamPage() {
-            window.open('https://brainlife.io/team/', '_blank');
-        },
         redirectToBrainlifeAuth() {
             if (!authRequired() || hasJWT()) {
                 this.$router.push('/dashboard');
@@ -70,64 +55,57 @@ export default defineComponent({
 </script>
 
 <style scoped>
-/* for screens smaller than 992px */
-@media screen and (max-width: 992px) {
-    .menu-item {
-        font-size: var(--el-font-size-small) !important;
-    }
+/* landing-next SiteHeader: a translucent band over the hero, logo left, links right */
+.site-band {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--hero);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--hero-line);
 }
-
-/* brainlife-lite's light top bar: the brainlife.io mark top-left, quiet links, one primary action */
-.header {
-    background-color: var(--nav-bg);
-    border-bottom: 1px solid var(--line);
-    height: 64px;
-    padding: 0;
+.site {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    padding-block: 12px;
 }
-
-.menu {
-    margin: 0 auto;
-    background: transparent;
-    border-bottom: 1px solid transparent !important;
+.brand {
+    text-decoration: none !important;
 }
-
-.menu-item {
+.nav {
+    display: flex;
+    align-items: center;
+    gap: 22px;
     font-size: 0.95rem;
     font-weight: 500;
-    letter-spacing: 0.02em;
-    color: var(--ink-2);
 }
-
-.menu-item.is-active,
-.menu-item:hover {
-    color: var(--el-color-primary) !important;
-    background: transparent !important;
-    border-bottom-color: transparent !important;
+.nav a {
+    color: var(--hero-ink);
+    opacity: 0.92;
+    line-height: 1;
 }
-
-.brand-item {
-    gap: 10px;
-    color: var(--ink) !important;
+.nav a:hover {
+    opacity: 1;
+    color: var(--hero-accent);
+    text-decoration: none;
 }
-
-.brand-mark {
-    height: 38px;
-    width: auto;
+.nav .btn {
+    color: var(--hero-ink);
+    border-color: rgba(238, 243, 246, 0.35);
+    padding: 8px 14px;
+    margin-left: 6px;
+    line-height: 1;
 }
-
-.brand-name {
-    font-size: 1.3rem;
-    font-weight: 600;
-    letter-spacing: -0.01em;
+.nav .btn:hover {
+    border-color: var(--hero-accent);
+    color: var(--hero-accent);
 }
-
-.brand-by {
-    font-size: 0.75rem;
-    font-weight: 400;
-    color: var(--ink-2);
-}
-
-.header-cta {
-    font-family: inherit;
+@media (max-width: 760px) {
+    .nav a {
+        display: none;
+    }
 }
 </style>

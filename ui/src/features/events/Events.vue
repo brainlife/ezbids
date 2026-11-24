@@ -488,7 +488,7 @@ export default defineComponent({
 .events-intro {
     margin-bottom: 1.5rem;
     padding: 1.35rem 1.5rem 1.5rem;
-    border-radius: 10px;
+    border-radius: var(--panel-radius);
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
     background: var(--el-fill-color-blank, #fff);
     box-shadow: none;
@@ -511,7 +511,7 @@ export default defineComponent({
 
 .events-card {
     padding: 1.25rem;
-    border-radius: 12px;
+    border-radius: var(--panel-radius);
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
     background: var(--el-bg-color, #fff);
 }
@@ -549,7 +549,7 @@ export default defineComponent({
 .events-hint__image {
     width: 100%;
     max-width: 600px;
-    border-radius: 8px;
+    border-radius: var(--panel-radius);
     border: 1px solid var(--el-border-color-extra-light, #f2f6fc);
 }
 

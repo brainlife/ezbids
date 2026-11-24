@@ -18,7 +18,10 @@ export default defineConfig({
         },
     },
     plugins: [
-        vue(),
+        vue({
+            // the desktop app's in-app browser (ExternalPageDialog) is Electron's native <webview>
+            template: { compilerOptions: { isCustomElement: (tag) => tag === 'webview' } },
+        }),
         Components({
             resolvers: [ElementPlusResolver()],
         }),

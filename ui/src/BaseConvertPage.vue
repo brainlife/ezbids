@@ -5,13 +5,9 @@
             class="brainlife-lite aside-width"
         >
             <div class="brand" style="flex: 0 0 auto">
-                <a href="https://brainlife.io" target="_blank" rel="noopener noreferrer" aria-label="brainlife.io">
-                    <img src="./assets/brainlife-mark-light.svg" class="mark" alt="brainlife.io" />
-                </a>
-                <div class="brand-text">
-                    <div class="name">ezBIDS</div>
-                    <div class="by">by brainlife.io</div>
-                </div>
+                <router-link class="brand-link" :to="{ name: 'dashboard' }" aria-label="ezBIDS dashboard">
+                    <BrandLockup />
+                </router-link>
                 <DisplayMode class="brand-mode" />
             </div>
             <div class="aside-back-dashboard" style="flex: 0 0 auto">
@@ -34,21 +30,21 @@
             </aside>
             <div class="aside-external-links" role="navigation" aria-label="External resources" style="flex: 0 0 auto">
                 <el-tooltip content="Brainlife" placement="top">
-                    <a href="https://brainlife.io" target="_blank" rel="noopener noreferrer">
+                    <a href="https://brainlife.io">
                         <el-button circle class="aside-external-btn">
                             <img src="./assets/bl_logo.png" alt="Brainlife" width="14" />
                         </el-button>
                     </a>
                 </el-tooltip>
                 <el-tooltip content="Github" placement="top">
-                    <a href="https://github.com/brainlife/ezbids" target="_blank" rel="noopener noreferrer">
+                    <a href="https://github.com/brainlife/ezbids">
                         <el-button circle class="aside-external-btn">
                             <font-awesome-icon :icon="['fab', 'github']" />
                         </el-button>
                     </a>
                 </el-tooltip>
                 <el-tooltip content="Documentation" placement="top">
-                    <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank" rel="noopener noreferrer">
+                    <a href="https://brainlife.io/docs/using_ezBIDS/">
                         <el-button circle class="aside-external-btn">
                             <font-awesome-icon :icon="['fas', 'book']" />
                         </el-button>
@@ -139,8 +135,10 @@ import { setSectionIDs, funcQA, fmapQA, dwiQA, petQA, setRun, setVolumeThreshold
 import niivue from '@/components/niivue.vue';
 import { IObject } from '@/store/store.types';
 import DisplayMode from '@/components/DisplayMode.vue';
+import BrandLockup from '@/components/brand/BrandLockup.vue';
 export default defineComponent({
     components: {
+        BrandLockup,
         SessionDebugDownloads,
         Upload,
         Description,
@@ -438,25 +436,10 @@ export default defineComponent({
     gap: 10px;
     padding: 2px 0 4px;
 
-    .mark {
-        height: 40px;
-        width: auto;
-        display: block;
-    }
-    .brand-text {
+    .brand-link {
         flex: 1 1 auto;
         min-width: 0;
-    }
-    .name {
-        font-size: 1.25rem;
-        font-weight: 600;
-        letter-spacing: -0.01em;
-        line-height: 1.1;
-        color: var(--ink);
-    }
-    .by {
-        font-size: 0.72rem;
-        color: var(--ink-2);
+        text-decoration: none;
     }
     .brand-mode {
         flex: 0 0 100%;

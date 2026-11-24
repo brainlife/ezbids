@@ -1,16 +1,17 @@
 <template>
-    <el-container direction="vertical" class="landing-page-container">
+    <div class="lv3 landing-page-container">
         <LandingPageHeader />
         <LandingPageContent />
         <LandingPageFooter />
-    </el-container>
+    </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import LandingPageHeader from '@/features/landing/LandingPageHeader.vue';
-import LandingPageContent from '@/features/landing/LandingPageContent.vue';
-import LandingPageFooter from '@/features/landing/LandingPageFooter.vue';
+import LandingPageHeader from './LandingPageHeader.vue';
+import LandingPageContent from './LandingPageContent.vue';
+import LandingPageFooter from './LandingPageFooter.vue';
+import '@/features/landing/landing/landing.css';
 
 export default defineComponent({
     components: {
@@ -23,9 +24,7 @@ export default defineComponent({
 
 <style>
 .landing-page-container {
-    padding-bottom: 0 !important;
     height: 100%;
-    /* can't let the user make the window too small or else everything gets squished */
-    min-height: 750px;
+    overflow-y: auto;
 }
 </style>

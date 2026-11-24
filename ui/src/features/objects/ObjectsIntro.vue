@@ -20,7 +20,7 @@ export default defineComponent({
 .objects-intro {
     margin-bottom: 1.25rem;
     padding: 1.35rem 1.5rem 1.5rem;
-    border-radius: 10px;
+    border-radius: var(--panel-radius);
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
     background: var(--el-fill-color-blank, #fff);
     box-shadow: none;
