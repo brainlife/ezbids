@@ -189,3 +189,54 @@ def test_old_plan_format_rejected_clearly(tmp_path, missing):
     (tmp_path / "plan.json").write_text(json.dumps(data))
     with pytest.raises(ValueError, match="older aimport; re-scan"):
         Plan.load(tmp_path / "plan.json")
+
+
+# --- reviewer edits: editable fields only, typed, subject-wide ----------------------
+
+@pytest.mark.parametrize("field,value", [
+    ("status", "ok"), ("source", "agent"), ("confidence", 1.0), ("reason", "x"), ("agent_note", "x"),
+    ("description", "x"), ("series_idx", 1), ("subject_idx", 1), ("session_idx", 1), ("deface_opt_out", True),
+])
+def test_derived_fields_not_editable(field, value):
+    p = Plan(target="bids", entries=[entry()], approved=True)
+    with pytest.raises(ValueError, match=f"cannot edit {field}"):
+        p.apply_edits([{"id": "e1", field: value}])
+    assert p.entries[0] == entry() and p.approved is True
+
+
+@pytest.mark.parametrize("field,value", [
+    ("deface", "yes"), ("deface", 1), ("exclude", "false"), ("exclude", None), ("subject", 7), ("subject", "a-b"),
+    ("subject", None), ("session", "1_2"), ("datatype", 3), ("suffix", ["T1w"]), ("entities", {"task": 1}),
+    ("entities", ["task"]), ("brainlife_tags", "x"), ("brainlife_tags", [1]), ("brainlife_datatype", 5),
+])
+def test_bad_types_rejected(field, value):
+    p = Plan(target="bids", entries=[entry()])
+    with pytest.raises(ValueError, match=field):
+        p.apply_edits([{"id": "e1", field: value}])
+    assert p.entries[0] == entry()
+
+
+def test_datatype_edit_resets_deface():
+    p = Plan(target="bids", entries=[entry(datatype="func", suffix="bold")])
+    p.apply_edits([{"id": "e1", "datatype": "anat", "suffix": "T1w"}])
+    assert p.entries[0].deface is True and p.entries[0].deface_opt_out is False
+    p.apply_edits([{"id": "e1", "deface": False}])
+    assert p.entries[0].deface is False and p.entries[0].deface_opt_out is True
+    p.apply_edits([{"id": "e1", "datatype": "dwi", "suffix": "dwi"}])
+    assert p.entries[0].deface is False and p.entries[0].deface_opt_out is False
+    p.apply_edits([{"id": "e1", "datatype": "anat", "suffix": "T2w", "deface": False}])
+    assert p.entries[0].deface is False and p.entries[0].deface_opt_out is True
+
+
+def test_subject_edit_applies_to_the_whole_subject():
+    p = Plan(target="bids", entries=[entry(id="a"), entry(id="b", series_idx=1),
+                                     entry(id="c", subject_idx=1, subject="02")])
+    touched = p.apply_edits([{"id": "a", "subject": "ctl01"}])
+    assert [e.subject for e in p.entries] == ["ctl01", "ctl01", "02"]
+    assert {e.id for e in touched} == {"a", "b"}
+    with pytest.raises(ValueError, match="different IDs"):
+        p.apply_edits([{"id": "a", "subject": "x1"}, {"id": "b", "subject": "x2"}])
+    with pytest.raises(ValueError, match="share one subject ID"):
+        p.apply_edits([{"id": "c", "subject": "ctl01"}])
+    p.apply_edits([{"id": "a", "subject": "02"}, {"id": "c", "subject": "ctl01"}])  # a swap is fine
+    assert [e.subject for e in p.entries] == ["02", "02", "ctl01"]

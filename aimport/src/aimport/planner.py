@@ -11,12 +11,12 @@ from __future__ import annotations
 import re
 import uuid
 from collections import Counter, defaultdict
-from datetime import date
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Literal
 
 from .agent import Guess, LLMClient, classify, draft_metadata
-from .ancillary import ancillary_warnings, find_ancillary, id_maps, plan_ancillary, read_dataset_description
+from .ancillary import bids_root, ancillary_warnings, find_ancillary, id_maps, plan_ancillary, read_dataset_description
 from .brainlife_map import to_brainlife
 from .ezbids_runner import CoreResult, CoreSeries, CoreSubject
 from .plan import Plan, PlanEntry
@@ -35,15 +35,50 @@ UNVERIFIED = ("de-identification could not be verified: {why}; check description
               "for names, IDs, dates and places before approving")
 
 _MAGNITUDES = {"magnitude", "magnitude1", "magnitude2"}
+ASL_SUFFIXES = ("asl", "m0scan", "aslcontext")
+ASL_REASON = "ASL needs aslcontext.tsv and labeling metadata the importer cannot derive yet"
+README_REASON = "used as the dataset README"
 DATASET_NAME_MAX = 120
 README_MAX = 5000
 # ezBIDS and anonymizers fill missing identifiers with these; they identify no one
 _PLACEHOLDERS = {"", "n/a", "na", "anon", "anonymous", "anonymized", "unknown", "none", "0",
                  "00000000", "0000-00-00"}
+_ANON_WORDS = {"anonymized", "anonymised", "deidentified", "redacted", "removed", "subject", "patient", "test",
+               "phantom", "unknown", "none", "null", "na", "n", "a"}
+_TOKEN_SPLIT = re.compile(r"[\^\s_,.\-=/]+")
+_FILLER = re.compile(r"^(x+|0+|-+)$")
+_DOB_PLACEHOLDERS = {"00000000", "19000101", "18991230"}
 _IDENTITY_FIELDS = (("PatientID", "id"), ("PatientName", "name"), ("PatientBirthDate", "dob"))
 _DATE_FIELDS = ("AcquisitionDate", "StudyDate", "SeriesDate", "AcquisitionDateTime")
 NO_IDENTITY = ("subject identity could not be established for {n} subject(s): they get new subject IDs "
                "for this import only, not linked to earlier imports")
+SHARED_IDENTITY = ("{n} subjects share identical identifying values (ezBIDS may have split one person, or the "
+                   "values are placeholders); they got separate IDs for this import")
+
+
+def _anon_word(token: str) -> bool:
+    return token.startswith("anon") or token in _ANON_WORDS or bool(_FILLER.match(token))
+
+
+def is_placeholder(field: str, value) -> bool:
+    """Whether an identity value (PatientID, PatientName, PatientBirthDate) is a filler that identifies no one.
+
+    The value is casefolded and split on ^, spaces, _ , . - = /; it is a placeholder when nothing is left,
+    when every token is an anonymization word (anon*, redacted, subject, test, unknown, n/a, ...) or
+    filler (xxx, 000, ---), or when every token is the same single character. A birth date is also a
+    placeholder when it is 00000000, 19000101, 18991230 or before 1900.
+    """
+    text = str(value if value is not None else "").casefold().strip()
+    tokens = [t for t in _TOKEN_SPLIT.split(text) if t]
+    if not tokens or all(_anon_word(t) for t in tokens):
+        return True
+    if len(set(tokens)) == 1 and len(tokens[0]) == 1:
+        return True
+    if field == "PatientBirthDate":
+        digits = "".join(ch for ch in text if ch.isdigit())
+        if digits in _DOB_PLACEHOLDERS or (len(digits) >= 4 and int(digits[:4]) < 1900):
+            return True
+    return False
 
 
 def _valid_date(y: int, m: int, d: int) -> bool:
@@ -77,7 +112,11 @@ def _date_terms(core: CoreResult) -> set[str]:
     for value in raw:
         if not isinstance(value, str) or not value.strip():
             continue
-        value = value.strip()[:10] if "T" in value else value.strip()
+        value = value.strip()
+        if "T" in value:
+            value = value[:10]
+        elif re.match(r"^\d{12}", value):  # a DICOM DT without the T: YYYYMMDDHHMM[SS[.ffffff]]
+            value = value[:8]
         if value in _PLACEHOLDERS or value.startswith("0000"):
             continue
         terms |= _date_forms(value)
@@ -117,24 +156,24 @@ def _ezbids_type(series: CoreSeries, schema: Schema) -> tuple[str, str] | None:
     return datatype, suffix
 
 
-def _present(value) -> str:
-    text = str(value if value is not None else "").strip()
-    return "" if text.lower() in _PLACEHOLDERS else text
-
-
 def _subject_original(subject: CoreSubject) -> str | None:
-    """"id=...|name=...|dob=..." from the non-placeholder identity fields; None when all are absent."""
-    parts = []
+    """"id=...|name=...|dob=..." from the non-placeholder identity fields; None without a PatientID or
+    PatientName (a birth date alone identifies no one)."""
+    parts = {}
     for field_name, prefix in _IDENTITY_FIELDS:
-        value = next((v for v in (_present(i.get(field_name)) for i in subject.patient_info) if v), "")
+        value = next((str(v).strip() for v in (i.get(field_name) for i in subject.patient_info)
+                      if not is_placeholder(field_name, v)), "")
         if value:
-            parts.append(f"{prefix}={value}")
-    return "|".join(parts) or None
+            parts[prefix] = value
+    if not parts.get("id") and not parts.get("name"):
+        return None
+    return "|".join(f"{k}={v}" for k, v in parts.items())
 
 
 def _assign_subjects(core: CoreResult, key: PseudonymKey, existing: set[str],
-                     terms: set[str]) -> tuple[dict[int, str], int]:
-    """subject_idx -> subject ID, and how many subjects got a run-local identity.
+                     terms: set[str]) -> tuple[dict[int, str], int, int]:
+    """subject_idx -> subject ID, and how many subjects got a run-local identity because none could be
+    established, and because another subject in this run shares it.
 
     A subject with no identity, or whose identity another subject in this run shares (ezBIDS
     split one person, or two people share placeholder-like values), gets a run-local original
@@ -146,13 +185,14 @@ def _assign_subjects(core: CoreResult, key: PseudonymKey, existing: set[str],
     originals = {idx: _subject_original(s) for idx, s in by_idx.items()}
     counts = Counter(o for o in originals.values() if o is not None)
     run = uuid.uuid4().hex
-    local = [idx for idx, o in originals.items() if o is None or counts[o] > 1]
-    for idx in local:
+    absent = [idx for idx, o in originals.items() if o is None]
+    shared = [idx for idx, o in originals.items() if o is not None and counts[o] > 1]
+    for idx in absent + shared:
         originals[idx] = f"run:{run}:{idx}"
     ids = {idx: key.subject_id(originals[idx], existing, _proposed_label(by_idx[idx], core, terms))
            for idx in sorted(by_idx)}
     _assert_distinct(ids)
-    return ids, len(local)
+    return ids, len(absent), len(shared)
 
 
 def _assert_distinct(ids: dict[int, str]) -> None:
@@ -177,25 +217,73 @@ def _proposed_label(subject: CoreSubject, core: CoreResult, terms: set[str]) -> 
     return None
 
 
-def _session_labels(subject: CoreSubject, terms: set[str]) -> dict[int, str]:
-    """session_idx -> label: ezBIDS's when alphanumeric, else "1", "2", ... by acquisition date.
+def _day(value) -> date | None:
+    text = str(value or "").strip().split("T")[0]
+    for fmt in ("%Y-%m-%d", "%Y%m%d"):
+        try:
+            day = datetime.strptime(text, fmt).date()
+        except ValueError:
+            continue
+        return day if day.year >= 1900 else None
+    return None
 
-    Single-session subjects get "1" too, so a later import adding a session keeps one layout.
+
+def _session_keys(subject: CoreSubject, subject_id: str, idxs: list[int], core: CoreResult,
+                  key: PseudonymKey) -> dict[int, str | None]:
+    """session_idx -> what identifies the study in the key: "study:<StudyInstanceUID>", else
+    "date:<acquisition date shifted by the subject's offset>", else None. A key two sessions of this
+    run share (two studies on one day without UIDs) is dropped for both: they are numbered as new."""
+    sessions = subject.sessions
+    out: dict[int, str | None] = {}
+    for idx in idxs:
+        objs = [o for o in core.objects if o.subject_idx == subject.subject_idx and o.session_idx == idx]
+        uids = sorted({str(o.sidecar.get("StudyInstanceUID")).strip() for o in objs
+                       if not is_placeholder("StudyInstanceUID", o.sidecar.get("StudyInstanceUID"))})
+        if uids:
+            out[idx] = "study:" + uids[0]
+            continue
+        dates = [sessions[idx].get("AcquisitionDate")] if idx < len(sessions) else []
+        day = next((d for d in map(_day, dates + [o.acquisition_date for o in objs]) if d), None)
+        out[idx] = ("date:" + (day + timedelta(days=key.date_offset_days(subject_id))).isoformat()
+                    if day else None)
+    counts = Counter(v for v in out.values() if v)
+    return {idx: (v if v and counts[v] == 1 else None) for idx, v in out.items()}
+
+
+def _session_labels(subject: CoreSubject, subject_id: str, core: CoreResult, key: PseudonymKey,
+                    existing: list[str], terms: set[str]) -> dict[int, str]:
+    """session_idx -> label, recorded in the key per study so a re-import never reuses a label.
+
+    A study the key already holds for this subject keeps its label. Otherwise ezBIDS's label is used
+    when alphanumeric and not taken; else "1", "2", ... by acquisition date, skipping every label the
+    key holds for this subject and the project's existing sessions (existing). Single-session subjects
+    get "1" too, so a later import adding a session keeps one layout.
     """
     sessions = subject.sessions or [{}]
-    # always a ses- level, even for one session: a later import may add a second one
-    labels: dict[int, str] = {}
-    for idx, s in enumerate(sessions):
-        if _usable(s.get("session"), terms):
-            labels[idx] = s["session"]
-    taken = set(labels.values())
+    idxs = sorted(set(range(len(sessions))) | {o.session_idx for o in core.objects
+                                               if o.subject_idx == subject.subject_idx})
+    recorded = key.sessions.setdefault(subject_id, {})
+    skeys = _session_keys(subject, subject_id, idxs, core, key)
+    labels: dict[int, str] = {idx: recorded[skeys[idx]] for idx in idxs if skeys[idx] in recorded}
+    taken = set(recorded.values()) | set(existing) | set(labels.values())
+    for idx in idxs:
+        label = sessions[idx].get("session") if idx < len(sessions) else None
+        if idx not in labels and _usable(label, terms) and label not in taken:
+            labels[idx] = label
+            taken.add(label)
     n = 0
-    todo = [i for i in range(len(sessions)) if i not in labels]
-    for idx in sorted(todo, key=lambda i: (str(sessions[i].get("AcquisitionDate", "")), i)):
+
+    def when(i: int) -> tuple[str, int]:
+        return (str(sessions[i].get("AcquisitionDate", "")) if i < len(sessions) else "", i)
+
+    for idx in sorted((i for i in idxs if i not in labels), key=when):
         n += 1
         while str(n) in taken:
             n += 1
         labels[idx] = str(n)
+    run = uuid.uuid4().hex
+    for idx in idxs:  # a session with nothing to recognise it by still reserves its label
+        recorded[skeys[idx] or f"run:{run}:{idx}"] = labels[idx]
     return labels
 
 
@@ -275,9 +363,72 @@ def _fmap_tags(entries: list[PlanEntry]) -> None:
                 e.brainlife_tags = [tag]
 
 
+EDITED = "edited by the reviewer"
+_NAMING = {"subject", "session", "datatype", "suffix", "entities"}
+
+
+def apply_plan_edits(plan: Plan, edits: list[dict], schema: Schema) -> None:
+    """Apply reviewer edits (Plan.apply_edits) and re-derive what depends on them.
+
+    For every changed entry: the status comes from the same nameable check as build_plan (an entry
+    the writer cannot name becomes unknown and excluded; one that becomes nameable is included unless
+    the edit says otherwise), the brainlife datatype and tags are recomputed unless the edit sets them,
+    and the datatypes target excludes an entry with no brainlife datatype. Secondary captures stay
+    excluded_by_default. Raises like Plan.apply_edits; a bad edit changes nothing.
+    """
+    was_ok = {e.id: e.status == "ok" for e in plan.entries}
+    keys: dict[str, set[str]] = defaultdict(set)
+    for edit in edits:
+        if isinstance(edit, dict):
+            keys[edit.get("id")] |= set(edit)
+    for e in plan.apply_edits(edits):
+        _rederive(e, schema, plan.target, keys[e.id], was_ok[e.id])
+    _fmap_tags(plan.entries)
+
+
+def _rederive(e: PlanEntry, schema: Schema, target: str, keys: set[str], was_ok: bool) -> None:
+    if e.status == "excluded_by_default":  # may hold burned-in identifiers: never written
+        return
+    if not keys and not was_ok:  # renamed with its subject only: still not writable, reason unchanged
+        return
+    reason = EDITED if keys & _NAMING or not was_ok else e.reason
+    d = dict(datatype=e.datatype, suffix=e.suffix, entities=e.entities, status="ok", exclude=e.exclude,
+             reason=reason)
+    if not (e.datatype and e.suffix and schema.is_valid(e.datatype, e.suffix)):
+        d.update(status="unknown", exclude=True, reason=f"{reason}; {e.datatype}/{e.suffix} is not BIDS")
+    else:
+        if not was_ok and "exclude" not in keys:
+            d["exclude"] = False
+        _check_nameable(d, e.subject, e.session, schema)
+    e.status, e.exclude, e.reason = d["status"], d["exclude"], d["reason"]
+    if not keys & {"brainlife_datatype", "brainlife_tags"}:
+        e.brainlife_datatype, e.brainlife_tags = (to_brainlife(e.datatype, e.suffix, e.entities, {})
+                                                  if e.status == "ok" else (None, []))
+    if target == "datatypes" and e.brainlife_datatype is None and not e.exclude:
+        e.exclude, e.reason = True, f"{e.reason}; no brainlife datatype"
+
+
+def _seed_readme(plan: Plan, supplied: list[Path], input_dir: Path, terms: set[str]) -> None:
+    """The input's own README (de-identified) becomes plan.readme; its entry is then not written twice."""
+    root = bids_root(input_dir)
+    for a in plan.ancillary:
+        if a.kind != "core" or a.path.split(".")[0] != "README" or a.locked or a.action != "keep":
+            continue
+        src = next((p for p in supplied if p.relative_to(root).as_posix().split(".")[0] == "README"
+                    and p.is_file() and not p.is_symlink()), None)
+        if src is None:
+            continue
+        text = redact(src.read_text(encoding="utf-8", errors="replace"), terms)[:README_MAX]
+        plan.readme, plan.metadata_source = text, "person"
+        a.action, a.reason = "drop", README_REASON
+        return
+
+
 def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_subjects: set[str],
                client: LLMClient | None, schema: Schema, target: Literal["bids", "datatypes"],
-               staged_dir: Path | None = None) -> Plan:
+               staged_dir: Path | None = None, existing_sessions: dict[str, list[str]] | None = None) -> Plan:
+    """The reviewable plan. existing_subjects and existing_sessions (subject id -> session labels) are what
+    the brainlife project already holds, so new subject IDs and session labels do not collide with them."""
     stats: dict = {}
     terms = run_terms(core, input_dir, stats)
     warnings = []
@@ -295,10 +446,17 @@ def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_su
     guesses = {g.series_idx: g for g in classify(view, heuristic, client, schema)}
     draft = draft_metadata(view, client, terms)
 
-    sub_ids, n_local = _assign_subjects(core, key, existing_subjects, terms)
-    if n_local:
-        warnings.append(NO_IDENTITY.format(n=n_local))
-    ses_labels: dict[int, dict[int, str]] = {s.subject_idx: _session_labels(s, terms) for s in core.subjects}
+    supplied = find_ancillary(input_dir, schema)
+    has_aslcontext = any(p.name.endswith("_aslcontext.tsv") for p in supplied)  # anywhere in the input
+    sub_ids, n_absent, n_shared = _assign_subjects(core, key, existing_subjects, terms)
+    if n_shared:
+        warnings.append(SHARED_IDENTITY.format(n=n_shared))
+    if n_absent:
+        warnings.append(NO_IDENTITY.format(n=n_absent))
+    by_idx = {s.subject_idx: s for s in core.subjects}
+    ses_labels = {idx: _session_labels(by_idx.get(idx, CoreSubject(idx, "", [], [])), sid, core, key,
+                                       (existing_sessions or {}).get(sid, []), terms)
+                  for idx, sid in sub_ids.items()}
 
     series_by_idx = {s.series_idx: s for s in core.series}
     triples = sorted({(o.series_idx, o.subject_idx, o.session_idx) for o in core.objects})
@@ -308,14 +466,10 @@ def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_su
         if series is None:
             continue
         subject = sub_ids[subject_idx]
-        labels = ses_labels.setdefault(subject_idx, {})
-        if session_idx not in labels:  # a session ezBIDS did not list: the next free number
-            n = 1
-            while str(n) in labels.values():
-                n += 1
-            labels[session_idx] = str(n)
-        session = labels[session_idx]
+        session = ses_labels[subject_idx][session_idx]
         d = _decide(series, guesses.get(series_idx), schema, terms)
+        if d["datatype"] == "perf" and d["suffix"] in ASL_SUFFIXES and not has_aslcontext:
+            d["exclude"], d["reason"] = True, ASL_REASON
         _check_nameable(d, subject, session, schema)
         bl_datatype, bl_tags = (None, [])
         if d["datatype"] and d["suffix"]:
@@ -354,7 +508,8 @@ def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_su
         plan.metadata_source = "agent"
     # supplied ancillary files (participants, phenotype, README, ...) and dataset_description fields
     ids = id_maps(core, entries)
-    plan.ancillary = plan_ancillary(find_ancillary(input_dir, schema), input_dir, terms, ids, schema)
+    plan.ancillary = plan_ancillary(supplied, input_dir, terms, ids, schema)
+    _seed_readme(plan, supplied, input_dir, terms)
     plan.warnings += ancillary_warnings(plan.ancillary, ids)
     name, plan.dataset_description = read_dataset_description(input_dir, terms)
     if name:  # the dataset's own name wins over the agent's draft

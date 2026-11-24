@@ -57,7 +57,7 @@ def entry(series_idx, datatype, suffix, entities=None, subject_idx=0, session_id
     base = dict(id=f"s{series_idx}-sub{subject_idx}-ses{session_idx}", series_idx=series_idx, subject_idx=subject_idx,
                 session_idx=session_idx, subject=subject, session=session, datatype=datatype, suffix=suffix,
                 entities=entities or {}, brainlife_datatype=None, brainlife_tags=[], source="heuristic",
-                confidence=0.9, reason="", deface=False, exclude=False, status="ok", description="")
+                confidence=0.9, reason="", deface=datatype == "anat", exclude=False, status="ok", description="")
     base.update(kw)
     return PlanEntry(**base)
 
@@ -139,7 +139,7 @@ def test_layout(world, key, schema):
     assert all(p.is_file() and out.resolve() in p.resolve().parents for p in written)
     assert {p.resolve() for p in written} == {p.resolve() for p in out.rglob("*") if p.is_file()}
     dd = json.loads((out / "dataset_description.json").read_text())
-    assert dd == {"Name": "Study", "BIDSVersion": "1.11.2", "GeneratedBy": [{"Name": "brainlife.io/aimport"}]}
+    assert dd == {"Name": "Study", "BIDSVersion": "1.11.2", "DatasetType": "raw", "GeneratedBy": [{"Name": "brainlife.io/aimport"}]}
     assert (out / "README.md").read_text() == "Hello [x]"
 
 
@@ -176,7 +176,7 @@ def test_excluded_and_not_ok_never_written(world, key, schema):
 def test_sidecars_scrubbed(world, key, schema):
     world.write(key, schema)
     sc = json.loads((world.out / "sub-01/ses-1/func/sub-01_ses-1_task-rest_bold.json").read_text())
-    assert sc == {"SeriesDescription": "T1 [x]", "RepetitionTime": 2.0}
+    assert sc == {"SeriesDescription": "T1 [x]", "RepetitionTime": 2.0, "TaskName": "rest"}
 
 
 def test_no_identifiers_in_output(world, key, schema):
@@ -478,3 +478,22 @@ def test_long_identifying_term_still_blocks_paths(world, key, schema):
     world.plan.entries[2].entities = {"task": "mrn0042"}
     with pytest.raises(ValueError, match="identifying"):
         world.write(key, schema)
+
+
+def test_refuses_anat_without_deface_unless_opted_out(world, key, schema, tmp_path):
+    world.plan.entries[0].deface = False
+    with pytest.raises(ValueError, match="without defacing"):
+        world.write(key, schema)
+    assert not world.out.exists()
+    world.plan.entries[0].deface_opt_out = True
+    world.write(key, schema)
+    assert (world.out / "sub-01/ses-1/anat/sub-01_ses-1_run-1_T1w.nii.gz").is_file()
+
+
+def test_placeholder_patient_id_not_used_to_find_demographics(world, key, schema):
+    for d in world.inp.rglob("*.dcm"):
+        d.unlink()
+    write_dicom(world.inp / "someone_else" / "1.dcm", PatientID="ANONYMOUS", PatientAge="070Y", PatientSex="M")
+    world.core.subjects[0].patient_info = [{"PatientID": "ANONYMOUS"}]
+    world.write(key, schema)
+    assert read_tsv(world.out / "participants.tsv")[0]["age"] == "n/a"

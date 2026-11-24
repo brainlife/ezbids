@@ -51,6 +51,25 @@ stages (scrub, plan, review, validate, upload).
 
 Each phase ships as its own set of PRs. Phase 1 is the one to plan in detail now.
 
+The BIDS → brainlife datatype mapping lives in one data file,
+`aimport/src/aimport/data/bids_brainlife_map.yaml`, which the engine reads. Every phase
+that adds a modality updates it in the same PR: rows move from `planned` to `active`
+when the engine supports them, and new brainlife datatypes are added with the source
+they come from (e.g. a line in `cli/bids-walker.js` or the warehouse datatype).
+
+When a BIDS (datatype, suffix) has no brainlife datatype, the importer drafts one
+instead of leaving it unmapped. The draft uses BIDS as the datatype: its name is
+`neuro/<bids datatype>/<suffix, lowercased>` (e.g. `neuro/perf/asl`, `neuro/pet/pet`),
+its `files` and `bids` export spec are the BIDS files for that suffix from the pinned
+schema, and it follows the warehouse `Datatypes` model (`warehouse-next/api/models.js`).
+Drafts are generated from the schema into `aimport/src/aimport/data/datatype_drafts/`
+and listed in the mapping YAML with `status: draft`. They are registered later through a
+PR; before that PR, each draft is checked against the live registry so no existing
+datatype is duplicated. Until a draft is registered, the "datatypes" target shows the
+draft name and excludes that series from upload; the BIDS target is unaffected.
+Coverage continues past phase 1 until every BIDS datatype the schema defines is mapped
+or drafted.
+
 ## Non-goals
 
 - Replacing the hosted ezBIDS web service. It keeps running as it is.
@@ -166,6 +185,29 @@ read-only and a separate work folder for intermediates and output.
 - Exclude secondary-capture and report-screen series by default and flag them to the
   reviewer (identifiers may be burned into pixels).
 - Deface anatomical images.
+
+### Ancillary and metadata files
+
+Every non-imaging file BIDS v1.11.2 defines is supported, both when the user supplies it
+and when the importer writes it, and the reviewer can edit it before upload:
+
+- Core files: `dataset_description.json`, `README`, `CHANGES`, `LICENSE`, `CITATION.cff`,
+  `genetic_info.json`.
+- Tables with their JSON descriptions: `participants`, `samples`, `sessions`, `scans`
+  (`.tsv` + `.json`), and `phenotype/*.tsv` + `phenotype/*.json`.
+- Top-level (inherited) sidecars, e.g. `task-rest_bold.json`, and `*_events.tsv`/`.json`.
+- Folders: `code/`, `docs/`, `stimuli/` are kept only if the reviewer opts in, with text files
+  redacted; `sourcedata/` is never uploaded (it holds the raw, identifying data);
+  `derivatives/` is out of scope for phase 1.
+
+Tables are de-identified, not copied: `participant_id` values are rewritten to the
+pseudonyms and rows for people not in this import are dropped; columns that look
+identifying (name, birth date, MRN/ID, address, email, phone, free-text notes) are dropped
+by default and flagged; date columns are shifted with the per-subject offset; every text
+cell is redacted. The importer's own `age`/`sex` columns are merged with supplied ones (the
+user's values win). In review the person can keep or drop each column, edit the JSON
+descriptions (participants, phenotype), the README and the dataset description (authors,
+license, funding, ethics). The BIDS validator checks all of it before upload.
 
 ### Subject IDs and the pseudonym key
 

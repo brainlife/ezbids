@@ -1,4 +1,7 @@
-"""Pseudonym key: original identifiers -> subject IDs and per-subject date offsets.
+"""Pseudonym key: original identifiers -> subject IDs, per-subject date offsets and session labels.
+
+Format version 2 added ``sessions`` (subject id -> {session key: label}; the session key is the
+study's StudyInstanceUID, or its shifted date), so a re-import never reuses a label for another study.
 
 The key file holds identifying data. It lives in a user-chosen folder (never under the
 output folder), is never uploaded, and is always written with mode 0600.
@@ -13,7 +16,7 @@ import secrets
 import tempfile
 from pathlib import Path
 
-KEY_VERSION = 1
+KEY_VERSION = 2
 SUBJECT_RE = re.compile(r"^[a-zA-Z0-9]+$")
 PROJECT_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 OFFSET_MIN, OFFSET_MAX = -3650, -365
@@ -24,11 +27,13 @@ class KeyLockedError(Exception):
 
 
 class PseudonymKey:
-    def __init__(self, path: Path, subjects: dict[str, str], offsets: dict[str, int], lock_fd: int | None = None):
+    def __init__(self, path: Path, subjects: dict[str, str], offsets: dict[str, int], lock_fd: int | None = None,
+                 sessions: dict[str, dict[str, str]] | None = None):
         self.path = path
         self._lock_fd = lock_fd
         self.subjects = subjects  # original -> subject id
         self.offsets = offsets  # subject id -> days
+        self.sessions = sessions if sessions is not None else {}  # subject id -> {session key: label}
 
     @classmethod
     def load(cls, keys_dir: Path, project_id: str) -> PseudonymKey:
@@ -52,15 +57,20 @@ class PseudonymKey:
                 try:
                     data = json.loads(path.read_text(encoding="utf-8"))
                     version = data.get("version")
+                    if isinstance(version, int) and version < KEY_VERSION:
+                        raise ValueError(f"format version {version} is from an older aimport (it has no session "
+                                         f"records); this aimport needs version {KEY_VERSION}")
                     if version != KEY_VERSION:
                         raise ValueError(f"unsupported key file version {version!r}")
                     subjects = {str(k): str(v) for k, v in data["subjects"].items()}
                     offsets = {str(k): int(v) for k, v in data["offsets"].items()}
+                    sessions = {str(sid): {str(k): str(v) for k, v in labels.items()}
+                                for sid, labels in data["sessions"].items()}
                 except ValueError as e:
                     raise ValueError(f"invalid key file {path}: {e}") from e
                 except (KeyError, TypeError, AttributeError) as e:
                     raise ValueError(f"invalid key file {path}: missing or malformed field ({e!r})") from e
-                return cls(path, subjects, offsets, fd)
+                return cls(path, subjects, offsets, fd, sessions)
             key = cls(path, {}, {}, fd)
             key.save()
             return key
@@ -105,7 +115,7 @@ class PseudonymKey:
         if self._lock_fd is None:
             raise RuntimeError("key is closed; cannot save without holding the lock")
         payload = json.dumps(
-            {"version": KEY_VERSION, "subjects": self.subjects, "offsets": self.offsets},
+            {"version": KEY_VERSION, "subjects": self.subjects, "offsets": self.offsets, "sessions": self.sessions},
             indent=2, ensure_ascii=False,
         )
         fd, tmp = tempfile.mkstemp(dir=self.path.parent, prefix=".aimport-key-", suffix=".tmp")

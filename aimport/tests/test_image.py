@@ -34,3 +34,27 @@ def test_venv_python_pinned_and_world_readable():
         ["readlink", "-f", "/opt/aimport-venv/bin/python"], capture_output=True, text=True
     ).stdout.strip()
     assert real.startswith("/opt/uv-python/")
+
+
+@pytest.mark.docker
+def test_venv_installed_from_uv_lock():
+    """Every package in the venv is at the version uv.lock pins (the image installs from the lock)."""
+    import re
+    import tomllib
+    from importlib import metadata
+    from pathlib import Path
+
+    def norm(name: str) -> str:
+        return re.sub(r"[-_.]+", "-", name).lower()
+
+    lock = tomllib.loads((Path(__file__).parent.parent / "uv.lock").read_text())
+    pinned: dict[str, set[str]] = {}  # a name can be locked at two versions (resolution forks by Python version)
+    for p in lock["package"]:
+        if "version" in p:
+            pinned.setdefault(norm(p["name"]), set()).add(p["version"])
+    venv = Path("/opt/aimport-venv/lib/python3.11/site-packages")
+    installed = {norm(d.metadata["Name"]): d.version for d in metadata.distributions(path=[str(venv)])}
+    for name in ("fastapi", "anthropic", "pydicom", "nibabel", "autobidsify", "pytest", "httpx"):
+        assert name in installed, name
+    wrong = {n: (v, pinned.get(n)) for n, v in installed.items() if v not in pinned.get(n, set())}
+    assert not wrong, wrong

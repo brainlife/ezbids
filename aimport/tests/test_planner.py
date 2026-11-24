@@ -186,7 +186,7 @@ def test_datatypes_target_excludes_unmapped(fixture_core, in_dir, key, schema):
 
 def test_bids_target_keeps_unmapped(plan):
     asl = one(plan, ASL)
-    assert (asl.datatype, asl.suffix, asl.exclude, asl.brainlife_datatype) == ("perf", "asl", False, None)
+    assert (asl.datatype, asl.suffix, asl.exclude, asl.brainlife_datatype) == ("perf", "asl", True, None)  # excluded by default
 
 
 def test_unsupported_datatype(fixture_core, in_dir, key, schema):
@@ -337,7 +337,7 @@ def test_shared_identity_in_one_run_gets_run_local_ids(schema, in_dir, key):
     info = {"PatientID": "P1", "PatientName": "Doe^Jane"}
     p = build_plan(mini_core([info, info]), in_dir, key, set(), None, schema, "bids")
     assert len(set(subjects_of(p).values())) == 2
-    assert any("for 2 subject(s)" in w for w in p.warnings)
+    assert any(w.startswith("2 subjects share identical identifying values") for w in p.warnings)
     assert not any(k.startswith("id=") for k in key.subjects)
 
 
@@ -444,3 +444,216 @@ def test_run_terms_agree_with_build_plan(fixture_core, in_dir, key, schema, monk
     assert seen == [terms]
     assert {"smith", "john", "mrn0042"} <= {t.lower() for t in terms}
     assert "20230115" in terms and "2023-01-15" in terms
+
+
+# --- ASL excluded by default; the input's README seeds the plan's README ----------
+
+def asl_entry(p):
+    (e,) = [e for e in p.entries if e.series_idx == ASL]
+    return e
+
+
+def test_asl_excluded_by_default(plan):
+    e = asl_entry(plan)
+    assert (e.datatype, e.suffix) == ("perf", "asl")
+    assert e.exclude is True
+    assert e.reason == "ASL needs aslcontext.tsv and labeling metadata the importer cannot derive yet"
+
+
+def test_asl_kept_when_input_supplies_aslcontext(fixture_core, in_dir, key, schema):
+    perf = in_dir / "sub-01" / "perf"
+    perf.mkdir(parents=True)
+    (perf / "sub-01_aslcontext.tsv").write_text("volume_type\ncontrol\nlabel\n")
+    assert asl_entry(build_plan(fixture_core, in_dir, key, set(), None, schema, "bids")).exclude is False
+
+
+def test_input_readme_seeds_plan_readme(fixture_core, in_dir, key, schema):
+    name_patient(fixture_core)
+    (in_dir / "README").write_text("Study of Smith at Hospital X. Two T1w scans.")
+    rec = Recorder(metadata=json.dumps({"name": "Agent name", "readme": "Agent readme"}))
+    p = build_plan(fixture_core, in_dir, key, set(), rec, schema, "bids")
+    assert p.readme.startswith("Study of [x]") and "Two T1w scans." in p.readme
+    assert "smith" not in p.readme.lower() and "Agent readme" not in p.readme
+    entry = next(a for a in p.ancillary if a.path == "README")
+    assert (entry.action, entry.reason, entry.locked) == ("drop", "used as the dataset README", False)
+
+
+def test_agent_readme_when_input_has_none(fixture_core, in_dir, key, schema):
+    rec = Recorder(metadata=json.dumps({"name": "n", "readme": "Agent readme"}))
+    assert build_plan(fixture_core, in_dir, key, set(), rec, schema, "bids").readme == "Agent readme"
+
+
+# --- reviewer edits are re-derived ------------------------------------------------
+
+from aimport.planner import apply_plan_edits  # noqa: E402
+
+
+def test_func_to_anat_edit_is_defaced(fixture_core, in_dir, key, schema):
+    set_type(fixture_core, BOLD, "func/bold", {"task": "rest"})
+    p = build_plan(fixture_core, in_dir, key, set(), None, schema, "bids")
+    bold = one(p, BOLD)
+    assert (bold.status, bold.deface) == ("ok", False)
+    apply_plan_edits(p, [{"id": bold.id, "datatype": "anat", "suffix": "T1w", "entities": {}}], schema)
+    bold = one(p, BOLD)
+    assert (bold.status, bold.exclude, bold.deface, bold.source) == ("ok", False, True, "person")
+    assert bold.brainlife_datatype == "neuro/anat/t1w"
+
+
+def test_unknown_to_anat_becomes_ok(plan, schema):
+    bold = one(plan, BOLD)
+    assert (bold.status, bold.exclude) == ("unknown", True)
+    apply_plan_edits(plan, [{"id": bold.id, "datatype": "anat", "suffix": "T1w", "entities": {}}], schema)
+    bold = one(plan, BOLD)
+    assert (bold.status, bold.exclude, bold.deface) == ("ok", False, True)
+    assert bold.brainlife_datatype == "neuro/anat/t1w" and bold.reason.startswith("edited by the reviewer")
+
+
+def test_edit_to_unnameable_becomes_unknown(plan, schema):
+    t1 = one(plan, T1W)
+    apply_plan_edits(plan, [{"id": t1.id, "datatype": "func", "suffix": "bold", "entities": {}}], schema)
+    t1 = one(plan, T1W)
+    assert (t1.status, t1.exclude, t1.brainlife_datatype) == ("unknown", True, None) and "task" in t1.reason
+    apply_plan_edits(plan, [{"id": t1.id, "suffix": "nonsense"}], schema)
+    assert one(plan, T1W).status == "unknown"
+
+
+def test_edit_keeps_explicit_exclude(plan, schema):
+    bold = one(plan, BOLD)
+    apply_plan_edits(plan, [{"id": bold.id, "datatype": "anat", "suffix": "T1w", "entities": {},
+                             "exclude": True}], schema)
+    assert (one(plan, BOLD).status, one(plan, BOLD).exclude) == ("ok", True)
+
+
+def test_edit_status_rejected(plan, schema):
+    bold = one(plan, BOLD)
+    with pytest.raises(ValueError, match="cannot edit status"):
+        apply_plan_edits(plan, [{"id": bold.id, "status": "ok", "exclude": False}], schema)
+    assert one(plan, BOLD).status == "unknown"
+
+
+def test_datatypes_target_edit_without_brainlife_type_excluded(fixture_core, in_dir, key, schema):
+    p = build_plan(fixture_core, in_dir, key, set(), None, schema, "datatypes")
+    bold = one(p, BOLD)
+    apply_plan_edits(p, [{"id": bold.id, "datatype": "anat", "suffix": "T1w", "entities": {}}], schema)
+    assert one(p, BOLD).exclude is False
+    apply_plan_edits(p, [{"id": bold.id, "suffix": "PDT2"}], schema)
+    assert one(p, BOLD).exclude is True and "no brainlife datatype" in one(p, BOLD).reason
+
+
+# --- placeholder identities ---------------------------------------------------
+
+from aimport.planner import is_placeholder  # noqa: E402
+
+PLACEHOLDER_FORMS = ["", "  ", "anon", "ANONYMOUS", "Anonymous^Anonymous", "anonymized", "Anonymised", "DEIDENTIFIED",
+                     "redacted", "REMOVED", "Subject", "PATIENT", "test^test", "Phantom", "unknown", "NONE", "null",
+                     "N/A", "n.a.", "NA", "xxxx", "XXXXXX", "000000", "0", "---", "a^a", "1^1", "Z", "anon_anon",
+                     "Test Subject", "Anonymized=Patient", "x/x"]
+
+
+@pytest.mark.parametrize("value", PLACEHOLDER_FORMS)
+def test_placeholder_forms(value):
+    assert is_placeholder("PatientID", value) and is_placeholder("PatientName", value)
+
+
+@pytest.mark.parametrize("value", ["MRN0042", "Smith^John", "subject 12", "anon_01", "Xu^Li", "P1", "00042"])
+def test_real_identifiers_are_not_placeholders(value):
+    assert not is_placeholder("PatientID", value)
+
+
+@pytest.mark.parametrize("value,absent", [("00000000", True), ("19000101", True), ("18991230", True),
+                                          ("18500101", True), ("anon", True), ("", True), ("19700101", False),
+                                          ("1970-01-01", False)])
+def test_birth_date_placeholders(value, absent):
+    assert is_placeholder("PatientBirthDate", value) is absent
+
+
+@pytest.mark.parametrize("value", PLACEHOLDER_FORMS)
+def test_placeholder_identity_never_links_imports(schema, in_dir, key, value):
+    info = {"PatientID": value, "PatientName": value, "PatientBirthDate": "19800202"}
+    first = build_plan(mini_core([info]), in_dir, key, set(), None, schema, "bids")
+    second = build_plan(mini_core([info]), in_dir, key, set(), None, schema, "bids")
+    assert subjects_of(first) != subjects_of(second)
+    assert all(k.startswith("run:") for k in key.subjects)
+
+
+def test_birth_date_alone_is_run_local(schema, in_dir, key):
+    info = {"PatientID": "anon", "PatientName": "", "PatientBirthDate": "19800202"}
+    first = build_plan(mini_core([info]), in_dir, key, set(), None, schema, "bids")
+    second = build_plan(mini_core([info]), in_dir, key, set(), None, schema, "bids")
+    assert subjects_of(first) != subjects_of(second)
+    assert any("identity could not be established for 1 subject(s)" in w for w in first.warnings)
+
+
+def test_shared_values_warning_differs_from_missing_identity(schema, in_dir, key):
+    info = {"PatientID": "P1", "PatientName": "Doe^Jane"}
+    p = build_plan(mini_core([info, info, ANON]), in_dir, key, set(), None, schema, "bids")
+    assert any(w.startswith("2 subjects share identical identifying values") and "separate IDs" in w
+               for w in p.warnings)
+    assert any("could not be established for 1 subject(s)" in w for w in p.warnings)
+
+
+def test_dicom_datetime_without_t_gives_date_terms(schema, in_dir, key):
+    core = mini_core([{"PatientID": "P1"}], description="T1 20230115 run")
+    core.objects[0].sidecar["AcquisitionDateTime"] = "20230115093000.000000"
+    assert build_plan(core, in_dir, key, set(), None, schema, "bids").entries[0].description == "T1 [x] run"
+
+
+# --- re-import: session labels per study ---------------------------------------
+
+def study_core(uid="", acq_date="2023-01-10", pid="P1"):
+    series = [CoreSeries(0, "anat/T1w", {}, "", "T1", {}, Path("x.nii.gz"))]
+    sidecar = {"StudyInstanceUID": uid} if uid else {}
+    objects = [CoreObject(0, 0, 0, acq_date, "", {}, [], sidecar)]
+    subjects = [CoreSubject(0, "", [{"PatientID": pid}], [{"session": "", "AcquisitionDate": acq_date}])]
+    return CoreResult(series, objects, subjects)
+
+
+def reimport(tmp_path, schema, in_dir, *cores, existing_sessions=None):
+    labels = []
+    for core in cores:
+        with PseudonymKey.load(tmp_path / "keys2", "proj") as k:
+            p = build_plan(core, in_dir, k, set(), None, schema, "bids", existing_sessions=existing_sessions)
+            labels.append((p.entries[0].subject, p.entries[0].session))
+    return labels
+
+
+def test_new_study_gets_next_session(tmp_path, schema, in_dir):
+    assert reimport(tmp_path, schema, in_dir, study_core("1.2.3"), study_core("1.2.4", "2023-03-01")) \
+        == [("01", "1"), ("01", "2")]
+
+
+def test_same_study_reimported_keeps_its_session(tmp_path, schema, in_dir):
+    assert reimport(tmp_path, schema, in_dir, study_core("1.2.3"), study_core("1.2.4"), study_core("1.2.3")) \
+        == [("01", "1"), ("01", "2"), ("01", "1")]
+
+
+def test_session_by_date_without_study_uid(tmp_path, schema, in_dir):
+    cores = study_core(acq_date="2023-01-10"), study_core(acq_date="2023-02-10"), study_core(acq_date="2023-01-10")
+    assert [s for _, s in reimport(tmp_path, schema, in_dir, *cores)] == ["1", "2", "1"]
+    with PseudonymKey.load(tmp_path / "keys2", "proj") as k:
+        assert not any("2023" in s for s in k.sessions["01"])  # stored shifted
+
+
+def test_placeholder_study_uid_falls_back_to_date(tmp_path, schema, in_dir):
+    cores = study_core("anon", "2023-01-10"), study_core("anon", "2023-02-10")
+    assert [s for _, s in reimport(tmp_path, schema, in_dir, *cores)] == ["1", "2"]
+
+
+def test_existing_sessions_are_skipped(tmp_path, schema, in_dir):
+    labels = reimport(tmp_path, schema, in_dir, study_core("1.2.3"), existing_sessions={"01": ["1", "2"]})
+    assert labels == [("01", "3")]
+
+
+def test_input_session_label_kept_unless_taken(tmp_path, schema, in_dir):
+    a, b = study_core("1.2.3"), study_core("1.2.4")
+    a.subjects[0].sessions[0]["session"] = b.subjects[0].sessions[0]["session"] = "pre"
+    assert [s for _, s in reimport(tmp_path, schema, in_dir, a, b)] == ["pre", "1"]
+
+
+def test_subject_rename_leaves_unknown_siblings_alone(plan, schema):
+    bold, t1 = one(plan, BOLD), one(plan, T1W)
+    reason = bold.reason
+    apply_plan_edits(plan, [{"id": t1.id, "subject": "ctl01"}], schema)
+    bold = one(plan, BOLD)
+    assert (bold.subject, bold.status, bold.reason) == ("ctl01", "unknown", reason)
+    assert one(plan, T1W).status == "ok"

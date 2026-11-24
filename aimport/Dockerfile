@@ -5,6 +5,8 @@
 FROM ezbids-handler:local
 
 ARG DENO_VERSION=2.5.6
+# sha256 of deno-x86_64-unknown-linux-gnu.zip for DENO_VERSION (matches the release's .sha256sum)
+ARG DENO_ZIP_SHA256=fd4f6abc1b6a134fa9a4dba56519f1631f44c88e04e4e3e9a8ff5975dfa66e1a
 ARG BIDS_VALIDATOR_VERSION=2.4.1
 ARG UV_VERSION=0.13.9
 ARG PYTHON_VERSION=3.11.18
@@ -25,12 +27,17 @@ RUN cd /app/bids-specification/src/schema && \
 ENV UV_PYTHON_INSTALL_DIR=/opt/uv-python
 RUN pip3 install "uv==${UV_VERSION}" "rdflib<7"  # handler image: unpinned rdflib 7 breaks prov (pydeface, pypet2bids)
 RUN uv venv --python ${PYTHON_VERSION} /opt/aimport-venv && chmod -R a+rX /opt/uv-python /opt/aimport-venv
-COPY aimport/pyproject.toml aimport/README.md /tmp/aimport/
+# Dependencies exactly as locked in uv.lock (versions and hashes; --locked fails if the lock is stale),
+# then aimport itself without resolving anything again.
+COPY aimport/pyproject.toml aimport/README.md aimport/uv.lock /tmp/aimport/
 COPY aimport/src /tmp/aimport/src
-RUN uv pip install --python /opt/aimport-venv/bin/python "/tmp/aimport[dev]" && rm -rf /tmp/aimport
+RUN cd /tmp/aimport && uv export --locked --extra dev --no-emit-project -o /tmp/aimport/requirements.txt && \
+    uv pip install --python /opt/aimport-venv/bin/python --require-hashes -r /tmp/aimport/requirements.txt && \
+    uv pip install --python /opt/aimport-venv/bin/python --no-deps /tmp/aimport && rm -rf /tmp/aimport
 ENV PATH=$PATH:/opt/aimport-venv/bin
 # Tests mount the source at /src (-v $PWD/aimport:/src); run it instead of the installed copy
 ENV PYTHONPATH=/src/src
+ENV AIMPORT_IN_CONTAINER=1
 
 # BIDS v1.11.2 schema, exported from the aimport/bids-specification submodule
 COPY aimport/bids-specification/src/schema /opt/bids-spec-1.11.2/src/schema
@@ -39,6 +46,7 @@ RUN mkdir -p /opt/bids-schema && \
 
 # Deno BIDS validator (schema-based), pinned; cache warmed at build so it runs offline
 RUN curl -fsSL -o /tmp/deno.zip https://github.com/denoland/deno/releases/download/v${DENO_VERSION}/deno-x86_64-unknown-linux-gnu.zip && \
+    echo "${DENO_ZIP_SHA256}  /tmp/deno.zip" | sha256sum -c - && \
     unzip -o /tmp/deno.zip -d /usr/local/bin && rm /tmp/deno.zip
 ENV DENO_DIR=/opt/deno-cache
 RUN deno cache jsr:@bids/validator@${BIDS_VALIDATOR_VERSION} && chmod -R a+rX /opt/deno-cache

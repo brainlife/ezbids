@@ -136,11 +136,29 @@ def test_load_tightens_permissions(tmp_path):
         assert stat.S_IMODE((tmp_path / n).stat().st_mode) == 0o600
 
 
-@pytest.mark.parametrize("content", ["{not json", '{"version": 1}', '{"version": 2, "subjects": {}, "offsets": {}}', "[]"])
+@pytest.mark.parametrize("content", ["{not json", '{"version": 2}', '{"version": 3, "subjects": {}, "offsets": {}}',
+                                     '{"version": 2, "subjects": {}, "offsets": {}, "sessions": []}', "[]"])
 def test_corrupt_key_file_raises_valueerror_and_releases_lock(tmp_path, content):
     path = tmp_path / "p1.aimport-key.json"
     path.write_text(content, encoding="utf-8")
     with pytest.raises(ValueError, match="p1.aimport-key.json"):
         PseudonymKey.load(tmp_path, "p1")
-    path.write_text('{"version": 1, "subjects": {}, "offsets": {}}', encoding="utf-8")
+    path.write_text('{"version": 2, "subjects": {}, "offsets": {}, "sessions": {}}', encoding="utf-8")
     PseudonymKey.load(tmp_path, "p1").close()
+
+
+def test_old_key_version_refused_clearly(tmp_path):
+    (tmp_path / "p1.aimport-key.json").write_text('{"version": 1, "subjects": {"A": "01"}, "offsets": {}}')
+    with pytest.raises(ValueError, match="older aimport"):
+        PseudonymKey.load(tmp_path, "p1")
+    with pytest.raises(ValueError):  # not KeyLockedError: the lock was released
+        PseudonymKey.load(tmp_path, "p1")
+
+
+def test_sessions_saved(tmp_path):
+    k = PseudonymKey.load(tmp_path, "p1")
+    sid = k.subject_id("A", set())
+    k.sessions.setdefault(sid, {})["study:1.2.3"] = "1"
+    k.save()
+    k.close()
+    assert PseudonymKey.load(tmp_path, "p1").sessions == {sid: {"study:1.2.3": "1"}}

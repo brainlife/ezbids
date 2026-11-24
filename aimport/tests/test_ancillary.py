@@ -302,7 +302,7 @@ def test_dataset_description_merges_plan_fields(world, key):
                                       "BIDSVersion": "0.0", "GeneratedBy": "me"}
     world.write(key)
     dd = json.loads((world.out / "dataset_description.json").read_text())
-    assert dd == {"Name": "Study", "BIDSVersion": "1.11.2", "GeneratedBy": [{"Name": "brainlife.io/aimport"}],
+    assert dd == {"Name": "Study", "BIDSVersion": "1.11.2", "DatasetType": "raw", "GeneratedBy": [{"Name": "brainlife.io/aimport"}],
                   "Authors": ["[x] [x]", "B. Author"], "License": "CC-BY-4.0"}
 
 

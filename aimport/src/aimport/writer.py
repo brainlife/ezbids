@@ -27,6 +27,7 @@ import numpy as np
 from .ancillary import Generated, id_maps, path_terms, write_ancillary
 from .ezbids_runner import CoreObject, CoreResult
 from .plan import Plan, PlanEntry
+from .planner import is_placeholder
 from .pseudonyms import PseudonymKey
 from .schema import BIDS_VERSION, Schema
 from .scrub import MAX_FILES_PER_DIR, _read_dicom, redact, scrub_sidecar
@@ -273,7 +274,7 @@ class _Writer:
         for it in items:
             self.write_item(it, by_session[(it.entry.subject, it.entry.session)])
         self.generated.jsons["dataset_description.json"] = {
-            "Name": self.plan.dataset_name, "BIDSVersion": BIDS_VERSION,
+            "Name": self.plan.dataset_name, "BIDSVersion": BIDS_VERSION, "DatasetType": "raw",
             "GeneratedBy": [{"Name": "brainlife.io/aimport"}]}
         if self.plan.readme:
             self.generated.texts["README.md"] = self.plan.readme
@@ -297,6 +298,9 @@ class _Writer:
         for ext, rel in it.sources.items():
             shutil.copyfile(self.source(rel), self.dest(it.stem + ext))
         sidecar = {k: v for k, v in it.obj.sidecar.items() if v is not None and k != "IntendedFor"}
+        task = it.entry.entities.get("task")
+        if task and "TaskName" not in sidecar:
+            sidecar["TaskName"] = task  # BIDS requires it for task images (the label is a valid TaskName)
         if it.entry.datatype == "fmap":
             targets = sorted("bids::" + s.rel for s in siblings if s.entry.datatype in INTENDED_DATATYPES)
             if targets:
@@ -347,8 +351,8 @@ class _Writer:
         for d in dirs:
             yield from self.read_dir(d)
         ids = {str(i.get("PatientID", "")).strip() for sidx in {it.obj.subject_idx for it in items}
-               for s in self.core.subjects if s.subject_idx == sidx for i in s.patient_info}
-        ids -= {"", "anon", "anonymous", "n/a", "na", "unknown", "none", "0"}
+               for s in self.core.subjects if s.subject_idx == sidx for i in s.patient_info
+               if not is_placeholder("PatientID", i.get("PatientID"))}
         if ids:
             for dirpath, _dirs, _files in os.walk(self.input_dir):
                 for ds in self.read_dir(Path(dirpath)):
@@ -373,11 +377,15 @@ def write_bids(plan: Plan, core: CoreResult, input_dir: Path, terms: set[str], k
     When manifest is given it is filled with entry id -> the NIfTI paths written for that entry
     (posix, relative to out_dir), so later steps (defacing) find exactly those files. When refused is
     given, ancillary files the plan kept but the writer would not write are appended with the reason.
-    Raises PermissionError unless plan.approved, FileExistsError when out_dir is not empty.
+    Raises PermissionError unless plan.approved, FileExistsError when out_dir is not empty, ValueError
+    for a written anat entry with deface=False whose reviewer did not opt out (deface_opt_out).
     A failed write removes what it created.
     """
     if not plan.approved:
         raise PermissionError("the plan has not been approved")
+    for e in plan.entries:  # defence in depth: an anat image is written with its face only on request
+        if e.datatype == "anat" and e.status == "ok" and not e.exclude and not e.deface and not e.deface_opt_out:
+            raise ValueError(f"{e.id}: anatomical image without defacing and the reviewer did not opt out")
     out = Path(out_dir)
     if out.exists() and (not out.is_dir() or any(out.iterdir())):
         raise FileExistsError(f"output folder exists and is not empty: {out}")

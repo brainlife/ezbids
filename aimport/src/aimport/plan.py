@@ -2,11 +2,19 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
 from typing import Literal
 
 LOCKED_FIELDS = {"id", "series_idx", "subject_idx", "session_idx"}
+# the only PlanEntry fields a reviewer may edit, with the type each value must have ("?" also allows None).
+# Everything else (status, source, confidence, reason, agent_note, description, deface_opt_out and the
+# indices) is derived: planner.apply_plan_edits re-derives it after every edit.
+EDITABLE_FIELDS = {"subject": "label", "session": "label?", "datatype": "str?", "suffix": "str?",
+                   "entities": "dict", "deface": "bool", "exclude": "bool", "brainlife_datatype": "str?",
+                   "brainlife_tags": "list"}
+_LABEL = re.compile(r"^[a-zA-Z0-9]+$")
 
 # --- ancillary and metadata files (Task 10b) ---
 ANCILLARY_ACTIONS = ("keep", "drop", "edit")
@@ -48,6 +56,9 @@ class PlanEntry:
     status: Literal["ok", "unknown", "unsupported", "excluded_by_default"]
     description: str  # redacted SeriesDescription
     agent_note: str = ""  # set when the agent disagrees with the heuristic
+    # True only when the reviewer turned defacing off for an anat entry; the writer refuses an anat
+    # entry with deface=False unless this is set
+    deface_opt_out: bool = False
 
 
 @dataclass
@@ -83,6 +94,7 @@ class Plan:
     warnings: list[str] = field(default_factory=list)  # shown to the reviewer
     ancillary: list[AncillaryEntry] = field(default_factory=list)
     dataset_description: dict = field(default_factory=dict)  # DESCRIPTION_FIELDS only are written
+    scan_id: str = ""  # the scan that built this plan (scan.json); only that scan's plan can be executed
 
     def save(self, path: Path) -> None:
         Path(path).write_text(json.dumps(asdict(self), indent=2))
@@ -97,27 +109,55 @@ class Plan:
         data["ancillary"] = [AncillaryEntry(**a) for a in ancillary]
         return cls(**data)
 
-    def apply_edits(self, edits: list[dict]) -> None:
+    def apply_edits(self, edits: list[dict]) -> list[PlanEntry]:
+        """Apply reviewer edits to entries; returns every entry changed (a subject edit changes them all).
+
+        Only EDITABLE_FIELDS may be edited, with values of the right type. A subject edit applies to
+        every entry of that subject (subject_idx); two edits giving one subject different IDs, or two
+        subjects one ID, are refused. A datatype or suffix edit without "deface" resets deface to
+        datatype == "anat"; deface=False on an anat entry is recorded as deface_opt_out. Status and the
+        brainlife mapping are re-derived by planner.apply_plan_edits, which callers should use.
+        Raises KeyError for an unknown id and ValueError for anything else; a bad edit changes nothing.
+        """
         by_id = {e.id: e for e in self.entries}
-        valid = {f.name for f in fields(PlanEntry)}
+        known = {f.name for f in fields(PlanEntry)}
+        new_subjects: dict[int, str] = {}
         # validate everything first so a bad edit leaves the plan untouched
         for edit in edits:
-            if edit["id"] not in by_id:
-                raise KeyError(edit["id"])
-            for k in edit:
+            if not isinstance(edit, dict) or edit.get("id") not in by_id:
+                raise KeyError(edit.get("id") if isinstance(edit, dict) else edit)
+            for k, v in edit.items():
                 if k == "id":
                     continue
-                if k in LOCKED_FIELDS:
-                    raise ValueError(f"cannot edit {k}")
-                if k not in valid:
-                    raise ValueError(f"unknown field {k}")
+                if k not in EDITABLE_FIELDS:
+                    raise ValueError(f"cannot edit {k}" if k in known else f"unknown field {k}")
+                _check_type(k, v)
+            if "subject" in edit:
+                sidx = by_id[edit["id"]].subject_idx
+                if new_subjects.setdefault(sidx, edit["subject"]) != edit["subject"]:
+                    raise ValueError("two edits give one subject different IDs")
+        subjects = {e.subject_idx: e.subject for e in self.entries} | new_subjects
+        if len(set(subjects.values())) != len(subjects):
+            raise ValueError("two subjects would share one subject ID")
+        touched: dict[str, PlanEntry] = {}
         for edit in edits:
             entry = by_id[edit["id"]]
             for k, v in edit.items():
-                if k != "id":
+                if k not in ("id", "subject", "deface"):
                     setattr(entry, k, v)
+            if "deface" in edit:
+                entry.deface = edit["deface"]
+                entry.deface_opt_out = not entry.deface and entry.datatype == "anat"
+            elif "datatype" in edit or "suffix" in edit:
+                entry.deface, entry.deface_opt_out = entry.datatype == "anat", False
             entry.source = "person"
+            touched[entry.id] = entry
+        for e in self.entries:
+            if e.subject_idx in new_subjects and e.subject != new_subjects[e.subject_idx]:
+                e.subject, e.source = new_subjects[e.subject_idx], "person"
+                touched[e.id] = e
         self.approved = False
+        return list(touched.values())
 
     def apply_ancillary_edits(self, edits: list[dict]) -> None:
         """Edit ancillary entries: action, columns (partial) and content. Paths cannot change.
@@ -153,6 +193,22 @@ class Plan:
             else:
                 self.dataset_description[k] = v
         self.approved = False
+
+
+def _check_type(k: str, v) -> None:
+    kind = EDITABLE_FIELDS[k]
+    if kind.endswith("?") and v is None:
+        return
+    kind = kind.rstrip("?")
+    ok = {"bool": type(v) is bool,
+          "str": isinstance(v, str) and bool(v),
+          "label": isinstance(v, str) and bool(_LABEL.fullmatch(v)),
+          "dict": isinstance(v, dict) and all(isinstance(a, str) and isinstance(b, str) for a, b in v.items()),
+          "list": isinstance(v, list) and all(isinstance(t, str) for t in v)}[kind]
+    if not ok:
+        want = {"bool": "true or false", "str": "a non-empty string", "label": "letters and digits only",
+                "dict": "an object of strings", "list": "a list of strings"}[kind]
+        raise ValueError(f"{k} must be {want}")
 
 
 def _edit_action(a: AncillaryEntry, edit: dict) -> str:
