@@ -33,6 +33,8 @@ Should users feel the need to anonymize data before uploading, we strongly recom
 
 If users wish to install ezBIDS locally, to ensure that data do not leave their institution site, please see [here](https://brainlife.io/docs/using_ezBIDS/#installing-ezbids-locally).
 
+The raw JSON debug panels on the Subjects, Series and Objects pages show DICOM header values such as PatientName, PatientID and PatientBirthDate, so they are off by default, including in a local `docker compose` install. Developers can turn them on with `VITE_DEBUG=true docker compose up`.
+
 A local, agentic alternative is in development in [aimport/](aimport/README.md) (brainlife.io/aimport): a Docker image with a loopback API that scans a folder on your own computer, proposes the BIDS mapping (with an optional language model that only sees de-identified metadata), de-identifies and defaces the data, validates it against BIDS v1.11.2 and leaves a reviewed output folder ready to upload. Nothing identifying leaves your machine. See its README for how to use it.
 
 ### Authors

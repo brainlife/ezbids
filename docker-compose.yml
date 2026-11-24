@@ -63,6 +63,7 @@ services:
         environment:
             VITE_APIHOST: http://localhost:8082
             VITE_BRAINLIFE_AUTHENTICATION: ${BRAINLIFE_AUTHENTICATION}
+            VITE_DEBUG: ${VITE_DEBUG:-false} # true shows raw JSON debug panels (they include PatientName/PatientID)
         healthcheck:
             test: ["CMD", "curl", "-f", "http://localhost:3000"]
         ports:
