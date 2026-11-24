@@ -601,11 +601,12 @@ export default defineComponent({
 <style lang="scss" scoped>
 .drop-area {
     z-index: 0;
-    background-color: #0002;
-    color: #999;
+    background-color: var(--el-color-primary-light-9);
+    border: 2px dashed var(--el-color-primary-light-7);
+    color: var(--ink-2);
     padding: 25px;
     padding-top: 100px;
-    border-radius: 5px;
+    border-radius: 14px;
     height: 300px;
     box-sizing: border-box;
     font-size: 125%;
@@ -614,8 +615,9 @@ export default defineComponent({
     text-align: center;
 }
 .drop-area.dragging {
-    background-color: #999;
-    color: white;
+    background-color: var(--el-color-primary-light-8);
+    border-color: var(--el-color-primary);
+    color: var(--el-color-primary);
 }
 .drop-area-backdrop {
     position: absolute;
@@ -634,7 +636,7 @@ export default defineComponent({
 }
 
 pre.status {
-    background-color: #666;
+    background-color: #2d3748;
     color: white;
     height: 300px;
     overflow: auto;

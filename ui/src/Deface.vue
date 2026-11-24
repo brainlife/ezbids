@@ -269,11 +269,16 @@ export default defineComponent({
 <style lang="scss" scoped>
 .deface {
     position: fixed;
-    top: 0;
-    bottom: 60px;
-    left: 210px;
-    right: 0;
+    top: 16px;
+    bottom: 76px;
+    left: calc(var(--aside-w) + 16px);
+    right: 16px;
     overflow: auto;
+    padding: 8px 20px 20px;
+    box-sizing: border-box;
+    background: var(--panel-bg);
+    border: 1px solid var(--line);
+    border-radius: var(--panel-radius);
 }
 .table td {
     border-top: 1px solid #eee;

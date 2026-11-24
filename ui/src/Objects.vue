@@ -741,10 +741,14 @@ export default defineComponent({
 <style lang="scss" scoped>
 .objectpage {
     position: fixed;
-    top: 0;
-    bottom: 60px;
-    left: 160px;
-    right: 0;
+    top: 16px;
+    bottom: 76px;
+    left: calc(var(--aside-w) + 16px);
+    right: 16px;
+    overflow: hidden;
+    background: var(--panel-bg);
+    border: 1px solid var(--line);
+    border-radius: var(--panel-radius);
 
     width: inherit;
     height: inherit;

@@ -479,10 +479,13 @@ export default defineComponent({
 .bids-structure {
     font-size: 90%;
     position: fixed;
-    top: 0;
-    bottom: 60px;
-    left: 160px;
+    top: 16px;
+    bottom: 76px;
+    left: calc(var(--aside-w) + 16px);
     width: 350px;
+    background: var(--panel-bg);
+    border: 1px solid var(--line);
+    border-radius: var(--panel-radius);
     overflow: auto;
     padding: 5px 10px;
     overflow-y: scroll;
@@ -490,11 +493,16 @@ export default defineComponent({
 }
 .object {
     position: fixed;
-    top: 0;
-    bottom: 60px;
+    top: 16px;
+    bottom: 76px;
     overflow-y: auto;
-    left: 550px;
-    right: 0;
+    left: calc(var(--aside-w) + 16px + 350px + 12px);
+    right: 16px;
+    padding: 0 16px;
+    box-sizing: border-box;
+    background: var(--panel-bg);
+    border: 1px solid var(--line);
+    border-radius: var(--panel-radius);
     z-index: 1;
 }
 .item {
