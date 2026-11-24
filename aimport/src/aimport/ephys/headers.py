@@ -21,8 +21,12 @@ from ..scrub import MIN_TERM_LEN, _date_forms
 from .discover import VOCAB, Recording
 from .events import is_safe
 
+_ACQ_TEXT_KEY = re.compile(r"^_(run_|seq_|operator|subject|patient|comment|descr|site|institut|user|study|procedure)",
+                           re.I)
+REASON_CTF_HEADER = "CTF header unreadable"
 MAX_TEXT = 4 << 20  # bytes read from any text header or log
 _VOCAB = frozenset(v.lower() for v in VOCAB)
+EDF_ANON_DATE = date(1985, 1, 1)
 EDF_SKIP = frozenset({"X", "Startdate", "M", "F"})
 _GENERIC = frozenset({"x", "startdate", "unknown", "none", "null", "n/a", "na", "nan", "true", "false", "yes", "no",
                       "edf+c", "edf+d", "bdf+c", "bdf+d", "24bit", "male", "female", "left", "right",
@@ -40,10 +44,14 @@ _TIME = re.compile(r"^\d{1,2}:\d{2}(:\d{2})?([.,]\d+)?$")
 _MONTHS = ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
 _DMY = re.compile(r"(?<!\d)(\d{1,2})-(" + "|".join(_MONTHS) + r")-(\d{4})(?!\d)", re.I)
 _YMD = re.compile(r"(?<!\d)(\d{4})[-/.]?(\d{2})[-/.]?(\d{2})(?!\d)")
+_US = re.compile(r"(?<!\d)(\d{1,2})/(\d{1,2})/(\d{4}|\d{2})(?!\d)")
+_EDF_ANON = re.compile(r"^(startdate\s+)?(x(\s+|$))+$", re.I)  # "X X X X", "Startdate X X X X"
 _DMY_NUM = re.compile(r"(?<!\d)(\d{2})[./](\d{2})[./](\d{4})(?!\d)")
 _BV_BOILERPLATE = re.compile(
     r"pybv|vision recorder|brain ?vision|each entry|fields are|commas in|<|data orientation|sampling interval|"
     r"copyright|resolution in", re.I)
+# a channel-table row: number, name, physical channel, resolution and unit ("1  Fp1  1  0.1 µV ...")
+_BV_TABLE_ROW = re.compile(r"^\d+\s+\S+\s+\d+\s+[\d.]+\s*\S*V\b")
 _BV_MARKER_TYPES = frozenset({"new segment", "stimulus", "response", "comment", "syncstatus", "time 0",
                               "bad interval", "dc correction", "segmentation", "voltage", "average"})
 
@@ -69,8 +77,17 @@ def _ymd(text: str) -> date | None:
         return None
 
 
-def _dates_in(text: str) -> list[date]:
+def _dates_in(text: str, us: bool = False) -> list[date]:
     out = []
+    if us:
+        for m in _US.finditer(text):
+            mo, d, y = int(m[1]), int(m[2]), int(m[3])
+            if len(m[3]) == 2:
+                y += 2000 if y < 70 else 1900
+            try:
+                out.append(date(y, mo, d))
+            except ValueError:
+                pass
     for m in _DMY.finditer(text):
         try:
             out.append(date(int(m[3]), _MONTHS.index(m[2].upper()) + 1, int(m[1])))
@@ -100,18 +117,25 @@ class _Terms:
         self.terms: set[str] = set()
         self.short: set[str] = set()  # name parts of 2 characters (Li, Wu)
         self.ids: set[str] = set()  # identifiers, kept even when numeric
+        # anonymized values a format writes itself (EDF 01.01.85): never a measurement-date term
+        self.placeholders: set[date] = set()
 
-    def date(self, d: date | datetime | None) -> None:
+    def date(self, d: date | datetime | None, real: bool = False) -> None:
+        """Every written form of a date; ``real`` for a birth date, which is kept even when it equals a
+        format's placeholder."""
         if isinstance(d, datetime):
             d = d.date()
-        if isinstance(d, date) and d.year >= 1900:  # year-1 and 1900 placeholders are no one's date
-            self.terms |= _all_forms(d)
+        if not isinstance(d, date) or d.year < 1900:  # year-1 and 1900 placeholders are no one's date
+            return
+        if d in self.placeholders and not real:
+            return
+        self.terms |= _all_forms(d)
 
-    def text(self, value: Any) -> None:
-        """Free text: the whole value and every date in it."""
+    def text(self, value: Any, us: bool = False) -> None:
+        """Free text: the whole value and every date in it (``us``: also MM/DD/YY(YY), for US-format headers)."""
         for s in _strings(value):
             self.terms.add(s)
-            for d in _dates_in(s):
+            for d in _dates_in(s, us=us):
                 self.date(d)
 
     def ident(self, value: Any) -> None:
@@ -161,7 +185,7 @@ def _keep(t: str, ident: bool) -> bool:
     if len(t) < MIN_TERM_LEN:
         return False
     low = t.lower()
-    if low in _GENERIC or low in _VOCAB:
+    if low in _GENERIC or low in _VOCAB or _EDF_ANON.fullmatch(t):
         return False
     if not ident and (is_safe(t) or _MARKER_CODE.fullmatch(t)):
         return False  # an identifier stays a term even when it looks like a label ("6416")
@@ -237,7 +261,7 @@ def _raw_terms(t: _Terms, raw) -> None:
         elif k == "his_id":
             t.ident(v)
         elif k == "birthday":
-            t.date(v)
+            t.date(v, real=True)
         elif isinstance(v, str):
             t.text(v)
     t.name(info.get("experimenter"))
@@ -287,16 +311,26 @@ def read_edf_header(path: Path) -> EdfHeader:
     return EdfHeader(patient=s(8, 88), recording=s(88, 168), startdate=s(168, 176), starttime=s(176, 184))
 
 
-def _edf_field(t: _Terms, field_text: str, name_index: int | None) -> None:
+def _edf_field(t: _Terms, field_text: str, name_index: int | None, date_index: int | None,
+               birth: bool = False) -> None:
+    """One EDF patient or recording field. EDF+ subfields: the name is split into parts, the date token
+    gives its date forms, every other token (codes, IDs, numbers) is an identifier."""
     t.text(field_text)
     for i, tok in enumerate(field_text.split()):
         if tok in EDF_SKIP:
             continue
-        if i == name_index:
+        if i == date_index:
+            dates = _dates_in(tok)
+            if birth or not set(dates) & t.placeholders:
+                t.terms.add(tok)
+            for d in dates:
+                t.date(d, real=birth)
+        elif i == name_index or name_index is None:
             t.name(tok)
+            t.ident(tok)
         else:
-            t.text(tok)
-            t.text(tok.replace("_", " "))
+            t.ident(tok)
+            t.ident(tok.replace("_", " "))
 
 
 def _edf(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None:
@@ -305,11 +339,12 @@ def _edf(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None:
         head = fh.read(256)
     reserved = head[192:236].decode("latin-1").strip()
     plus = reserved.upper().startswith(("EDF+", "BDF+")) or h.recording.startswith("Startdate")
-    _edf_field(t, h.patient, 3 if plus else None)
-    _edf_field(t, h.recording, 3 if plus else None)
-    if not plus:  # plain EDF: the patient field is free text, any word may be a name
-        for tok in h.patient.split():
-            t.name(tok)
+    if plus:
+        _edf_field(t, h.patient, 3, 2, birth=True)
+        _edf_field(t, h.recording, 3, 1)
+    else:  # plain EDF: free text, any word may be a name or a code
+        _edf_field(t, h.patient, None, None)
+        _edf_field(t, h.recording, None, None)
     m = re.fullmatch(r"(\d{2})\.(\d{2})\.(\d{2})", h.startdate)
     if m:
         dd, mm, yy = (int(x) for x in m.groups())
@@ -360,9 +395,13 @@ def _gdf(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None:
 
 # --- BrainVision ------------------------------------------------------------------------------------
 
-def _bv_comment_line(t: _Terms, line: str) -> None:
+def _bv_comment_line(t: _Terms, line: str, boilerplate: bool = False) -> None:
+    """One comment line, whole and its ``key: value`` value. Only the recorder's channel-table rows are
+    skipped (they are regenerated in the output); ``boilerplate`` also skips the format's own ``;`` notes."""
     s = line.strip()
-    if not s or s.startswith("#") or s[0].isdigit() or _BV_BOILERPLATE.search(s):
+    if not s or _BV_TABLE_ROW.match(s) or (s.startswith("#") and "phys" in s.lower()):
+        return
+    if boilerplate and _BV_BOILERPLATE.search(s):
         return
     t.text(s)
     for sep in (":", "="):
@@ -384,7 +423,7 @@ def _brainvision(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None
             section = s[1:-1].strip().lower()
             continue
         if s.startswith(";"):
-            _bv_comment_line(t, s[1:])
+            _bv_comment_line(t, s[1:], boilerplate=True)
             continue
         if section == "comment" or (section and section not in technical):
             _bv_comment_line(t, s)
@@ -407,7 +446,7 @@ def _vmrk(t: _Terms, path: Path) -> None:
             section = s[1:-1].strip().lower()
             continue
         if s.startswith(";"):
-            _bv_comment_line(t, s[1:])
+            _bv_comment_line(t, s[1:], boilerplate=True)
             continue
         k, sep, v = s.partition("=")
         if section == "marker infos" and sep and re.fullmatch(r"Mk\d+", k.strip(), re.I):
@@ -547,7 +586,7 @@ def _cnt(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None:
         t.name(s(off, 20))
     for off in (101, 145, 165, 185, 205):  # hospital, medication, category, state, session label
         t.text(s(off, 20))
-    t.text(s(225, 10))
+    t.text(s(225, 10), us=True)  # Neuroscan writes MM/DD/YY
 
 
 def _nihon(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None:
@@ -620,6 +659,11 @@ def _egi(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None:
             tag = _local(el.tag)
             if tag in ("code", "label", "description", "name") or (tag == "data" and el.text):
                 t.label(el.text)
+    categories = path / "categories.xml"
+    if categories.is_file():
+        for el in _xml_root(categories).iter():
+            if _local(el.tag) in ("name", "description", "comment", "keyCode", "data") and el.text:
+                t.label(el.text)
     for log in sorted(path.glob("log_*.txt")):
         t.paths([log.name])
         for line in _read_text(log).splitlines():
@@ -630,7 +674,7 @@ def _egi(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None:
 
 # --- MEG -------------------------------------------------------------------------------------------
 
-_INFODS_KEY = re.compile(rb"([\x00-\xff]{4})(_[A-Z0-9_]+)\x00\x00\x00\x0a([\x00-\xff]{4})")
+_INFODS_KEY = re.compile(rb"([\x00-\xff]{4})(_[A-Za-z0-9_]+)\x00\x00\x00\x0a([\x00-\xff]{4})")
 
 
 def _infods(path: Path) -> list[tuple[str, str]]:
@@ -661,14 +705,16 @@ def _ctf(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None:
                 t.ident(value)
             else:
                 t.text(value)
-    try:
-        from mne.io.ctf.res4 import _read_res4
-        from mne.utils import use_log_level
+    from mne.io.ctf.res4 import _read_res4
+    from mne.utils import use_log_level
 
+    from .readers import Unsupported
+
+    try:
         with use_log_level("error"):
             res4 = _read_res4(str(path))
-    except Exception:  # noqa: BLE001 - MNE has read the header already; this is the extra text
-        res4 = {}
+    except Exception as e:  # noqa: BLE001 - never plan a recording whose header text was not read
+        raise Unsupported(REASON_CTF_HEADER) from e
     for key in ("nf_run_name", "nf_run_title", "nf_collect_descriptor", "run_desc", "nf_instruments"):
         t.text(res4.get(key))
     t.ident(res4.get("nf_subject_id"))
@@ -679,6 +725,13 @@ def _ctf(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None:
             k, sep, v = line.partition(":")
             if sep and k.strip().lower() in ("site", "institute", "purpose", "run_title", "subject", "operator"):
                 t.text(v.strip())
+    for f in sorted(path.glob("*.acq")):  # acquisition parameters: run title, date, description, sequence
+        for key, value in _infods(f):  # free-text keys only: the rest names channels and colours
+            if _ACQ_TEXT_KEY.match(key):
+                (t.path if "/" in value else t.text)(value)
+    for f in sorted(path.glob("*.hist")):  # acquisition history: free text
+        for line in _read_text(f).splitlines():
+            t.text(line.strip())
     for name_ in ("MarkerFile.mrk", "ClassFile.cls"):
         f = path / name_
         if f.is_file():
@@ -689,12 +742,65 @@ def _ctf(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None:
 
 
 def _kit(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None:
+    """The system directory's free text (system name, model, comment) and creation date; the KIT
+    format as MNE reads it has no patient or operator fields. Plus comment lines of .elp/.hsp files."""
+    import numpy as np
+    from mne.io.kit.constants import KIT
+    from mne.io.kit.kit import _read_dirs, _read_name
+
+    with open(path, "rb", buffering=0) as fid:
+        dirs = _read_dirs(fid)
+        fid.seek(dirs[KIT.DIR_INDEX_SYSTEM]["offset"])
+        np.fromfile(fid, np.int32, 3)  # version, revision, system id
+        texts = [_read_name(fid, n=128), _read_name(fid, n=128)]  # system name, model name
+        np.fromfile(fid, np.int32, 1)  # channel count
+        texts.append(_read_name(fid, n=256))  # comment
+        for text in texts:
+            t.text(text)
+            t.text(text.splitlines())
+        created = int(np.fromfile(fid, np.int32, 1)[0])
+    if created > 0:
+        t.date(datetime.fromtimestamp(created, timezone.utc))
     for rel in [*rec.companions, *rec.headshape]:
         if rel.lower().endswith((".elp", ".hsp", ".txt")):
             for line in _read_text(input_dir / rel).splitlines():
                 s = line.strip()
                 if s.startswith("%") and not re.match(r"%[A-Z]\s", s):
                     t.text(s.lstrip("% ").strip())
+
+
+def _bti(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None:
+    """Config and PDF header strings: site, DAP host, user-block user names and log folders, the
+    configuration name, process users and file names, event names. Channel names are left to Task 5."""
+    from mne.io.bti.bti import _read_bti_header
+    from mne.utils import use_log_level
+
+    pdf = next((input_dir / c for c in rec.companions if Path(c).name.lower().startswith(("c,rf", "e,rf"))), None)
+    config = next((input_dir / c for c in rec.companions if Path(c).name.lower() == "config"), None)
+    if pdf is None or config is None:
+        return
+    with use_log_level("error"):
+        info = _read_bti_header(str(pdf), str(config))
+    from mne.io.bti.bti import _read_config
+
+    cfg = _read_config(str(config))
+    hdr = cfg.get("hdr") or {}
+    t.text(hdr.get("site_name"))
+    t.ident(hdr.get("dap_hostname"))
+    for block in (cfg.get("user_blocks") or {}).values():
+        t.name((block.get("hdr") or {}).get("username"))
+        t.text(block.get("logdir"))
+        t.text(block.get("sysconfig_name"))
+    for proc in info.get("processes") or []:
+        t.name(proc.get("user"))
+        t.path(proc.get("filename"))
+    for ev in info.get("events") or []:
+        t.label(ev.get("event_name"))
+    for assoc in info.get("assocfiles") or []:
+        if isinstance(assoc, dict):
+            for v in assoc.values():
+                if isinstance(v, str):
+                    t.path(v)
 
 
 def _fif(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None:
@@ -742,6 +848,8 @@ def _nirx(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None:
             for _, key, value in _ini(_read_text(f)):
                 v = value.strip('"').replace("\\0", " ")
                 (t.name if key.lower() == "name" else t.text)(v)
+        elif low.endswith(".snirf"):  # NIRSport2 folders: the recording is a SNIRF file
+            _snirf(t, f, rec, input_dir)
         elif low.endswith("_description.json"):
             try:
                 t.text(list(_walk_py(json.loads(_read_text(f)))))
@@ -761,6 +869,12 @@ def _hitachi(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None:
             t.ident(values)
         elif key in ("Comment", "Date"):
             t.text(values)
+
+
+# the standard stim columns, and optode/landmark codes (S1, D12, Nz, LPA, Cz): these name channels and
+# fiducials, so as terms they would rename every channel built from them
+_SNIRF_DATA_LABELS = frozenset({"onset", "duration", "amplitude", "value", "trial_type"})
+_PROBE_CODE = re.compile(r"[A-Za-z]{1,3}\d{0,4}[a-z]?|[SD]\d+[_-]?[SD]?\d*|nasion|inion|lpa|rpa", re.I)
 
 
 def _snirf(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None:
@@ -786,8 +900,16 @@ def _snirf(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None:
                     else:
                         t.text(value)
             for sname, stim in group.items():
-                if sname.startswith("stim") and isinstance(stim, h5py.Group) and "name" in stim:
-                    t.label(stim["name"][()])
+                if sname.startswith("stim") and isinstance(stim, h5py.Group):
+                    if "name" in stim:
+                        t.label(stim["name"][()])
+                    if "dataLabels" in stim and stim["dataLabels"].size <= 4096:
+                        t.label([v for v in _strings(stim["dataLabels"][()]) if v.lower() not in _SNIRF_DATA_LABELS])
+            probe = group.get("probe")
+            if isinstance(probe, h5py.Group):
+                for key in ("sourceLabels", "detectorLabels", "landmarkLabels"):
+                    if key in probe and probe[key].size <= 65536:
+                        t.label([v for v in _strings(probe[key][()]) if not _PROBE_CODE.fullmatch(v)])
 
 
 # --- Blackrock -----------------------------------------------------------------------------------------
@@ -852,6 +974,7 @@ _FAMILY = {
     "fif": _fif,
     "ctf": _ctf,
     "kit": _kit,
+    "bti": _bti,
     "nirx": _nirx,
     "hitachi": _hitachi,
     "snirf": _snirf,
@@ -867,6 +990,8 @@ def harvest(rec: Recording, input_dir: Path, raw=None) -> set[str]:
     """
     input_dir = Path(input_dir)
     t = _Terms()
+    if rec.family in ("edf", "bdf"):
+        t.placeholders.add(EDF_ANON_DATE)  # 01.01.85, what Task 9 writes; a source already anonymized
     t.paths([rec.rel, *rec.companions, *rec.headshape])
     if raw is not None:
         _raw_terms(t, raw)

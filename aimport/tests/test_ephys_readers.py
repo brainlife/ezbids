@@ -316,3 +316,134 @@ def test_other_format_headers(tmp_path):
     (tmp_path / "r.nev").write_bytes(bytes(nev))
     terms = headers.harvest(Recording("r.ns5", "blackrock", companions=["r.nev"]), tmp_path)
     assert {"Smith pilot 01", "Dr Jane", "Smith John grimace"} <= terms and "spikeXYZ" not in terms
+
+
+# --- fix round 1 --------------------------------------------------------------------------------------
+
+def _patch_edf(path: Path, patient: str | None = None, recording: str | None = None,
+               startdate: str | None = None) -> Path:
+    raw = bytearray(path.read_bytes())
+    for off, width, value in ((8, 80, patient), (88, 80, recording), (168, 8, startdate)):
+        if value is not None:
+            raw[off:off + width] = value.encode("ascii").ljust(width)
+    path.write_bytes(bytes(raw))
+    return path
+
+
+def test_corrupt_ctf_res4_refused(tmp_path):
+    ds = tmp_path / "run1.ds"
+    ds.mkdir()
+    (ds / "run1.res4").write_bytes(b"MEG42RS\0" + b"\xff" * 40)
+    (ds / "run1.meg4").write_bytes(b"MEG41CP\0")
+    with pytest.raises(readers.Unsupported) as e:
+        headers.harvest(Recording("run1.ds", "ctf"), tmp_path)
+    assert e.value.reason == headers.REASON_CTF_HEADER == "CTF header unreadable"
+
+
+def test_edf_numeric_tokens_are_terms(tmp_path):
+    path = _patch_edf(fx.planted_edf(tmp_path), patient="4711 M 01-JAN-1970 Smith_John MRN 55512",
+                      recording="Startdate 15-FEB-2025 98765 EEGtech_Jane Hospital_X")
+    terms = headers.harvest(Recording(str(path.relative_to(tmp_path)), "edf"), tmp_path)
+    assert {"4711", "55512", "98765", "MRN", "EEGtech_Jane", "Smith", "John", "19700101", "20250215"} <= terms
+    assert not {"M", "X", "Startdate", "01-JAN-1970 "} & terms
+
+    plain = _patch_edf(fx.planted_edf(tmp_path / "plain"), patient="Smith 4711", recording="lab 12345 visit")
+    raw = bytearray(plain.read_bytes())
+    raw[192:236] = b" " * 44  # not EDF+
+    plain.write_bytes(bytes(raw))
+    terms = headers.harvest(Recording(str(plain.relative_to(tmp_path / "plain")), "edf"), tmp_path / "plain")
+    assert {"Smith", "4711", "12345"} <= terms
+
+
+def test_edf_anonymized_values_not_terms(tmp_path):
+    """A source already written as Task 9 writes (01.01.85, X X X X) gives no term the gate would find in
+    aimport's own output; a real birth date of 1985-01-01 is still a term."""
+    path = _patch_edf(fx.planted_edf(tmp_path), patient="X X X X", recording="Startdate 01-JAN-1985 X X X",
+                      startdate="01.01.85")
+    rec = Recording(str(path.relative_to(tmp_path)), "edf")
+    terms = headers.harvest(rec, tmp_path, readers.open_raw(rec, tmp_path))
+    assert not {"01.01.85", "01-JAN-1985", "19850101", "1985-01-01", "X X X X", "Startdate X X X X"} & terms
+    _patch_edf(path, patient="MRN0042 M 01-JAN-1985 Smith_John")
+    terms = headers.harvest(rec, tmp_path, readers.open_raw(rec, tmp_path))
+    assert {"01.01.85", "19850101", "01-JAN-1985"} <= terms
+
+
+def test_nirx_folder_snirf_harvested(tmp_path):
+    root = tmp_path / "in"
+    src = fx.planted_snirf(tmp_path / "src")
+    run = root / "run1"
+    run.mkdir(parents=True)
+    (run / "2025-02-15_001.snirf").write_bytes(src.read_bytes())
+    (run / "2025-02-15_001_config.json").write_text("{}")
+    _, recs = discover.claim(root)
+    (rec,) = recs
+    assert rec.family == "nirx"
+    terms = headers.harvest(rec, root)
+    assert {"MRN0042", "Jane Doe", "Jane Doe tapping"} <= terms
+
+
+def test_snirf_labels(tmp_path):
+    import h5py
+
+    path = fx.planted_snirf(tmp_path)
+    with h5py.File(path, "a") as f:
+        f["nirs/probe"].create_dataset("landmarkLabels", data=np.array([b"Nz", b"LPA", b"Smith ear"]))
+        f["nirs/stim1"].create_dataset("dataLabels", data=np.array([b"Onset", b"Duration", b"Amplitude",
+                                                                    b"JDoe note"]))
+    terms = headers.harvest(Recording(str(path.relative_to(tmp_path)), "snirf"), tmp_path)
+    assert {"Smith ear", "JDoe note"} <= terms
+    assert not {"Nz", "LPA", "S1", "D1", "Duration", "Amplitude", "Onset"} & terms
+
+
+def test_blackrock_other_errors_propagate(tmp_path, monkeypatch):
+    import mne
+
+    def boom(*a, **k):
+        raise ValueError("Invalid stim_channel")
+
+    monkeypatch.setattr(mne.io, "read_raw_nsx", boom)
+    (tmp_path / "r.ns5").write_bytes(b"NEURALCD" + b"\0" * 64)
+    with pytest.raises(ValueError, match="stim_channel"):
+        readers.open_raw(Recording("r.ns5", "blackrock", companions=["r.nev"]), tmp_path)
+
+
+def test_brainvision_typed_comments(tmp_path):
+    vhdr = fx.planted_brainvision(tmp_path)
+    with open(vhdr, "a", encoding="utf-8") as fh:
+        fh.write("12 March: seen by Dr Who <who@clinic.org>\n"
+                 "1     Fp1          1        0.1 µV             10              1000              Off\n")
+    rec = Recording(str(vhdr.relative_to(tmp_path)), "brainvision",
+                    companions=[str(vhdr.with_suffix(".vmrk").relative_to(tmp_path))])
+    terms = headers.harvest(rec, tmp_path)
+    assert {"12 March: seen by Dr Who <who@clinic.org>", "seen by Dr Who <who@clinic.org>"} <= terms
+    assert not any("Fp1" in t for t in terms)
+
+
+def test_cnt_us_date_and_egi_categories(tmp_path):
+    head = bytearray(900)
+    head[225:233] = b"02/15/25"
+    (tmp_path / "a.cnt").write_bytes(bytes(head))
+    assert {"20250215", "15-FEB-2025"} <= headers.harvest(Recording("a.cnt", "cnt"), tmp_path)
+    mff = tmp_path / "r.mff"
+    mff.mkdir()
+    (mff / "info.xml").write_text("<fileInfo/>")
+    (mff / "categories.xml").write_text(
+        '<categories xmlns="http://www.egi.com/categories_mff"><cat><name>Smith rest</name>'
+        "<segments><seg><description>JDOE visit</description></seg></segments></cat>"
+        "<cat><name>standard</name></cat></categories>")
+    terms = headers.harvest(Recording("r.mff", "egi"), tmp_path)
+    assert {"Smith rest", "JDOE visit"} <= terms and "standard" not in terms
+
+
+@pytest.mark.ephys_data
+def test_meg_system_header_terms(testing_recs):
+    root, recs = testing_recs
+    bti = headers.harvest(recs["BTi/erm_HFH"], root)
+    assert {"Henry Ford", "btiwd99", "msimap", "HFH_March2016", "Calib_09-Mar-16_14:15"} <= bti
+    assert not {"A1", "TRIGGER", "MxA", "WH2500", "Mar"} & bti  # channel names and month words are not terms
+    kit = headers.harvest(recs["KIT/test_as-raw.con"], root)
+    assert {"Academia Sinica", "Institute of Linguistics"} <= kit
+    assert "20120416" in kit  # the system directory's creation date
+    ctf = headers.harvest(recs["CTF/testdata_ctf.ds"], root)
+    assert {"run title", "20130429", "29-APR-2013"} <= ctf  # .acq _run_title and _run_date
+    assert not {"EEG057", "black"} & ctf  # .acq channel names and colours are not terms

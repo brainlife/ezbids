@@ -214,7 +214,11 @@ def open_raw(rec: Recording, input_dir: Path, *, headshape: bool = False):
     if fam == "blackrock":
         try:
             return mne.io.read_raw_nsx(path, **kw)
-        except Exception:  # noqa: BLE001 - a file spec MNE does not read; neo may
+        except NotImplementedError:  # NSx 2.1 (NEURALSG): MNE does not read it; neo does
+            return open_neo(path)
+        except ValueError as e:
+            if "NSx file id" not in str(e):  # MNE's "not an NSx file id it supports"
+                raise
             return open_neo(path)
     if fam == "nwb":
         raise ValueError("NWB recordings are read by ephys.nwb, not open_raw")
