@@ -48,3 +48,21 @@ button.tr-primary:hover { background: var(--primary-dark); }
   background: var(--primary); border-radius: 4px; white-space: nowrap; pointer-events: none; }
 .uplot { font-family: var(--font); }
 .uplot .u-legend { display: none; }
+/* bad channels: the written channels.tsv, marked here (a bad row and its trace are grey) */
+.tr-marks summary { cursor: pointer; font-weight: 600; }
+.tr-marks .tr-muted { margin: .4rem 0; }
+.tr-marks code { font-size: 12px; }
+.tr-mark-tools input { font: inherit; padding: .2rem .4rem; border: 1px solid var(--line); border-radius: var(--radius);
+  width: 14rem; max-width: 100%; }
+.tr-mark-table { border-collapse: collapse; width: 100%; margin: .5rem 0; font-size: 13px; display: block;
+  max-height: 18rem; overflow-y: auto; }
+.tr-mark-table th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; padding: .2rem .5rem;
+  position: sticky; top: 0; background: var(--panel); border-bottom: 1px solid var(--line); }
+.tr-mark-table td { padding: .15rem .5rem; border-bottom: 1px solid var(--line); }
+.tr-mark-table td input[type=text] { font: inherit; width: 16rem; max-width: 100%; padding: .1rem .35rem;
+  border: 1px solid var(--line); border-radius: var(--radius); }
+.tr-mark-table tr.tr-is-bad td { color: #a0aec0; background: #f7f7f8; }
+.tr-mark-table tr.tr-is-bad td.tr-mark-name { text-decoration: line-through; }
+.tr-mark-table tr.tr-is-bad td input[type=text] { color: var(--text); }
+.tr-mark-actions { display: flex; align-items: center; gap: .6rem; }
+button:disabled { opacity: .5; cursor: default; }

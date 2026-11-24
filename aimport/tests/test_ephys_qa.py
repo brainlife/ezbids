@@ -184,7 +184,9 @@ def test_traces_nirs_pairs(written, tmp_path, monkeypatch):
 # --- the engine: snapshots after execute, routes ------------------------------------------------------------
 
 
-def _run(tmp_path, monkeypatch, make_input, render=None):
+def _run(tmp_path, monkeypatch, make_input, render=None, fake_validator=True):
+    """Scan, plan, approve and execute make_input through the API; fake_validator=False runs the real BIDS
+    validator (docker tests), else every validation passes."""
     from fastapi.testclient import TestClient
 
     from aimport.server import create_app
@@ -193,8 +195,9 @@ def _run(tmp_path, monkeypatch, make_input, render=None):
     make_input(tmp_path / "in")
     monkeypatch.setattr(server, "client_from_env", lambda: None)
     monkeypatch.setattr(server, "run_ezbids", lambda *a, **k: pytest.fail("nothing is left for ezBIDS"))
-    monkeypatch.setattr(server, "validate_bids", lambda bids: ValidationResult(
-        ok=True, validator_version="2.4.1", bids_version="1.11.2"))
+    if fake_validator:
+        monkeypatch.setattr(server, "validate_bids", lambda bids: ValidationResult(
+            ok=True, validator_version="2.4.1", bids_version="1.11.2"))
     if render is not None:
         monkeypatch.setattr(qa, "render", render)
     app = create_app(tmp_path / "in", tmp_path / "work", tmp_path / "keys", "t" * 32, [], ["testserver"])

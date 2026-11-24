@@ -9,7 +9,9 @@ Local-only files in ``<work>/ephys/`` (never served, uploaded or sent to the age
 - ``terms.json``: the union of the records' terms;
 - ``events.json``: ``labels`` (normalised original description -> label) and ``codes`` (code -> normalised
   original description);
-- ``channels.json``: per recording (``rel``), the renamed channels as new name -> original name.
+- ``channels.json``: per recording (``rel``), the renamed channels as new name -> original name;
+- ``bad_channels.json``: the reviewer's bad-channel marks by entry id (``bad_channels``), applied again after
+  every write.
 
 Plan entries carry only generated text and labels: subject IDs from the pseudonym key, sessions from
 input labels or numbers, task and acq labels from the input's entities or known vocabulary, event codes.
@@ -28,7 +30,7 @@ from typing import TYPE_CHECKING, Any, Callable
 from ..micr import names
 from ..modality import Claim, ModulePlan
 from ..plan import EMPTY_ROOM_SUBJECT, PlanEntry
-from . import OUTPUT_FORMATS, channels, discover, events, headers, readers
+from . import OUTPUT_FORMATS, bad_channels, channels, discover, events, headers, readers
 from .discover import DATATYPES, VOCAB, Recording
 
 if TYPE_CHECKING:
@@ -967,6 +969,11 @@ def write_entries(plan: "Plan", work: Path, input_dir: Path, terms: set[str], ke
     finally:
         shutil.rmtree(scratch, ignore_errors=True)
 
+    # the reviewer's bad-channel marks (QA viewer), applied again to the tables just written, before the gate
+    tables = {e.id: paths[rel] for e in entries
+              if (rel := bad_channels.tsv_of(out.manifest.get(e.id) or [])) is not None and rel in paths}
+    bad_channels.reapply(work, tables)
+
     # the final gate: every written file re-read for the run's terms, the original dates and copied bytes
     if paths:
         some_rel, some_path = next(iter(paths.items()))
@@ -1006,3 +1013,19 @@ def write_entries(plan: "Plan", work: Path, input_dir: Path, terms: set[str], ke
         birthday = next((b for b in (_birthday(r) for r in mine) if b is not None), None)
         row["age"] = _age(birthday, first)
     return out
+
+
+def check_rewritten(files: list[Path], out_root: Path, work: Path, input_dir: Path, terms: set[str],
+                    series_idx: int) -> list[str]:
+    """The final gate on output files rewritten after the write (the reviewer's bad-channel marks): the run's
+    terms, every record's original dates and the recording's source files (``gate.check``'s violations)."""
+    from . import gate
+
+    records = load_records(work)
+    originals: list = []
+    for r in records:
+        info = r.get("info") or {}
+        originals += [_date_of(info.get("meas_date")), _birthday(r)]
+    i = series_idx - EPHYS_INDEX_BASE
+    sources = _source_files(records[i], Path(input_dir)) if 0 <= i < len(records) else []
+    return gate.check(files, out_root, terms, gate.forbidden_date_forms(originals), sources)
