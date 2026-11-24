@@ -7,15 +7,10 @@
                 definitions and examples, see the
                 <a
                     href="https://bids-specification.readthedocs.io/en/stable/03-modality-agnostic-files.html#dataset_descriptionjson"
-                    target="_blank"
-                    rel="noopener noreferrer"
                     >BIDS specification</a
                 >
                 and a
-                <a
-                    href="https://github.com/bids-standard/bids-examples/blob/master/ds000117/dataset_description.json"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                <a href="https://github.com/bids-standard/bids-examples/blob/master/ds000117/dataset_description.json"
                     >sample file</a
                 >.
             </p>
@@ -254,7 +249,7 @@ export default defineComponent({
 .description-intro {
     margin-bottom: 1rem;
     padding: 0.85rem 1rem 0.95rem;
-    border-radius: 8px;
+    border-radius: var(--panel-radius);
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
     background: var(--el-fill-color-blank, #fff);
     box-shadow: none;
@@ -281,7 +276,7 @@ export default defineComponent({
 
 .description-card {
     padding: 1rem 1.25rem 1.25rem;
-    border-radius: 10px;
+    border-radius: var(--panel-radius);
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
     background: var(--el-bg-color, #fff);
     box-shadow:

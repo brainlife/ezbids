@@ -186,7 +186,7 @@ export default defineComponent({
     gap: 0.6rem;
     height: auto;
     padding: 0.8rem 0.9rem;
-    border-radius: 8px;
+    border-radius: var(--panel-radius);
     border: 1px solid var(--line);
     background: var(--panel-muted);
     font-weight: 300;

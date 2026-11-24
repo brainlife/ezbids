@@ -12,12 +12,12 @@
             <h2>Feedback and Comments</h2>
             <p>
                 ezBIDS is a brand new web service and your feedback is extremely valuable. Please email
-                <a href="mailto:pestilli@utexas.edu" target="mail">pestilli@utexas.edu</a> with your experience,
-                comments, or suggestions.
+                <a href="mailto:pestilli@utexas.edu">pestilli@utexas.edu</a> with your experience, comments, or
+                suggestions.
             </p>
             <p>
                 If you ran into an issue while using ezBIDS, please open a
-                <a href="https://github.com/brainlife/ezbids/issues" target="github">GitHub issue</a>.
+                <a href="https://github.com/brainlife/ezbids/issues">GitHub issue</a>.
             </p>
         </section>
 
@@ -48,32 +48,32 @@
             <div class="avatars">
                 <div class="avatar">
                     <img src="@/assets/images/DanLevitas.png" alt="Dan Levitas" />
-                    <b><a href="mailto:dlevitas@iu.edu" target="mail">Dan Levitas</a></b>
+                    <b><a href="mailto:dlevitas@iu.edu">Dan Levitas</a></b>
                     <span>Software Engineer</span>
                 </div>
                 <div class="avatar">
                     <img src="@/assets/images/franco.jpg" alt="Franco Pestilli" />
-                    <b><a href="mailto:pestilli@utexas.edu" target="mail">Franco Pestilli</a></b>
+                    <b><a href="mailto:pestilli@utexas.edu">Franco Pestilli</a></b>
                     <span>Associate Professor</span>
                 </div>
                 <div class="avatar">
                     <img src="@/assets/images/soichi.jpg" alt="Soichi Hayashi" />
-                    <b><a href="mailto:hayashis@iu.edu" target="mail">Soichi Hayashi</a></b>
+                    <b><a href="mailto:hayashis@iu.edu">Soichi Hayashi</a></b>
                     <span>Technical Lead</span>
                 </div>
                 <div class="avatar">
                     <img src="@/assets/images/Anibal.png" alt="Anibal S. Heinsfeld" />
-                    <b><a href="mailto:anibalsolon@utexas.edu" target="mail">Anibal S. Heinsfeld</a></b>
+                    <b><a href="mailto:anibalsolon@utexas.edu">Anibal S. Heinsfeld</a></b>
                     <span>Software Engineer</span>
                 </div>
                 <div class="avatar">
                     <img src="@/assets/images/DheerajBhatia.png" alt="Dheeraj Bhatia" />
-                    <b><a href="mailto:dheeraj.bhatia@austin.utexas.edu" target="mail">Dheeraj Bhatia</a></b>
+                    <b><a href="mailto:dheeraj.bhatia@austin.utexas.edu">Dheeraj Bhatia</a></b>
                     <span>Software Engineer</span>
                 </div>
                 <div class="avatar">
                     <img src="@/assets/images/NickLee.jpeg" alt="Nick Lee" />
-                    <b><a href="mailto:niconal902@gmail.com" target="mail">Nick Lee</a></b>
+                    <b><a href="mailto:niconal902@gmail.com">Nick Lee</a></b>
                     <span>Software Engineer</span>
                 </div>
             </div>
@@ -109,7 +109,7 @@ a {
 .feedback-hero {
     margin-bottom: 1.25rem;
     padding: 1.35rem 1.5rem 1.5rem;
-    border-radius: 10px;
+    border-radius: var(--panel-radius);
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
     background: var(--el-fill-color-blank, #fff);
     box-shadow: none;
@@ -131,7 +131,7 @@ a {
 
 .feedback-card {
     padding: 1.1rem 1.25rem;
-    border-radius: 12px;
+    border-radius: var(--panel-radius);
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
     background: var(--el-bg-color, #fff);
     margin-bottom: 1rem;
@@ -162,7 +162,7 @@ p {
 
     .avatar {
         padding: 0.9rem 0.75rem 1rem;
-        border-radius: 10px;
+        border-radius: var(--panel-radius);
         border: 1px solid var(--el-border-color-lighter, #ebeef5);
         background: #fafafa;
         text-align: center;

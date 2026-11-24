@@ -3,10 +3,7 @@
         <header class="dashboard-header">
             <div class="brainlife-lite dashboard-logo-bar" style="padding-right: 10px">
                 <div class="dashboard-logo-inner">
-                    <a href="https://brainlife.io" target="_blank" rel="noopener noreferrer" aria-label="brainlife.io">
-                        <img src="@/assets/brainlife-mark-light.svg" class="dashboard-logo-mark" alt="brainlife.io" />
-                    </a>
-                    <h1 class="dashboard-logo-title">ezBIDS <span class="dashboard-logo-by">by brainlife.io</span></h1>
+                    <h1 class="dashboard-logo-title"><BrandLockup /></h1>
                 </div>
             </div>
             <div class="dashboard-header-main">
@@ -42,6 +39,7 @@ import { hasAimport } from '@/features/aimport/aimportClient';
 import DashboardInstructions from '@/features/dashboard/DashboardInstructions.vue';
 import DashboardSessions from '@/features/dashboard/DashboardSessions.vue';
 import DashboardUpload from '@/features/dashboard/DashboardUpload.vue';
+import BrandLockup from '@/components/brand/BrandLockup.vue';
 
 type RecentEntry = { _id: string; create_date: string; status?: string; update_date?: string };
 
@@ -52,6 +50,7 @@ export default defineComponent({
 
     components: {
         DashboardAimport,
+        BrandLockup,
         DashboardInstructions,
         DashboardSessions,
         DashboardUpload,

@@ -22,3 +22,10 @@ contextBridge.exposeInMainWorld('aimport', {
     showOutput: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('aimport:show-output'),
     stop: (): Promise<void> => ipcRenderer.invoke('aimport:stop'),
 });
+
+// links to other sites open in the app's dialog; the main process sends any it intercepts here (inAppBrowsing.ts)
+contextBridge.exposeInMainWorld('ezbidsInApp', {
+    onOpen: (cb: (url: string) => void) => {
+        ipcRenderer.on('ezbids:open-in-app', (_event, url: string) => cb(url));
+    },
+});

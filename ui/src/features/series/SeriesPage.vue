@@ -703,7 +703,7 @@ export default defineComponent({
 .series-intro {
     margin-bottom: 1.5rem;
     padding: 1.35rem 1.5rem 1.5rem;
-    border-radius: 10px;
+    border-radius: var(--panel-radius);
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
     background: var(--el-fill-color-blank, #fff);
     box-shadow: none;
@@ -866,7 +866,7 @@ export default defineComponent({
 
 .empty-state__card {
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
-    border-radius: 8px;
+    border-radius: var(--panel-radius);
     background: var(--el-bg-color, #fff);
     padding: 16px;
     color: var(--el-text-color-regular, #606266);
@@ -895,7 +895,7 @@ export default defineComponent({
 
 .panel-card {
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
-    border-radius: 8px;
+    border-radius: var(--panel-radius);
     background: var(--el-bg-color, #fff);
     padding: 14px;
     min-width: 0;
@@ -1073,7 +1073,7 @@ export default defineComponent({
 
 .metadata-panel {
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
-    border-radius: 8px;
+    border-radius: var(--panel-radius);
     background: var(--el-bg-color, #fff);
     padding: 12px;
     min-width: 0;

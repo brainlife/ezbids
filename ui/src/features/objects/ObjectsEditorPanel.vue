@@ -398,7 +398,7 @@ export default defineComponent({
 
 .panel-card {
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
-    border-radius: 8px;
+    border-radius: var(--panel-radius);
     background: var(--el-bg-color, #fff);
     padding: 14px;
     margin-bottom: 10px;
