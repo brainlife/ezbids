@@ -1,5 +1,5 @@
 """The electrophysiology and optical module (BIDS ``eeg``, ``meg``, ``ieeg``, ``nirs``, ``emg``): claim, scan
-into local records, plan entries.
+into local records, plan entries, write (``write_entries``: de-identify in memory, MNE-BIDS, the final gate).
 
 Local-only files in ``<work>/ephys/`` (never served, uploaded or sent to the agent):
 
@@ -21,7 +21,7 @@ import logging
 import re
 import uuid
 from collections import Counter, defaultdict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 from pathlib import Path, PurePosixPath
 from typing import TYPE_CHECKING, Any, Callable
 
@@ -702,8 +702,214 @@ class EphysModule:
 
     def write(self, plan: "Plan", work: Path, input_dir: Path, terms: set[str], key: "PseudonymKey",
               schema: "Schema", dest: Callable[[str], Path], progress: Callable[[str], None] | None = None):
-        from ..modality import ModuleOutput
+        return write_entries(plan, Path(work), Path(input_dir), terms, key, schema, dest, progress)
 
-        if not any(e.modality == "ephys" and e.status == "ok" and not e.exclude for e in plan.entries):
-            return ModuleOutput()
-        raise NotImplementedError("electrophysiology output is written by a later aimport version")
+
+# --- write --------------------------------------------------------------------------------------
+
+WRITE_PROGRESS = "writing electrophysiology recording {k} of {n}"
+SCRATCH = "scratch"
+WRITTEN_DATATYPES = ("eeg", "ieeg", "emg", "meg")
+NIRS_REASON = "NIRS output is written by a later aimport version"
+SEX_CODES = {1: "M", 2: "F"}
+SEX_SOURCE = "the recording header"
+SCANS_FORMAT = "%Y-%m-%dT%H:%M:%S"
+
+
+def _date_of(text) -> datetime | None:
+    try:
+        return datetime.fromisoformat(text) if text else None
+    except (TypeError, ValueError):
+        return None
+
+
+def _birthday(rec: dict) -> date | None:
+    text = (rec.get("info") or {}).get("birthday")
+    try:
+        return date.fromisoformat(str(text)[:10]) if text else None
+    except ValueError:
+        return None
+
+
+def _age(birthday: date | None, when: datetime | None) -> str:
+    """Whole years at ``when`` from the local birthday; 89 or more -> 89 (as writer._parse_age); else n/a."""
+    from ..writer import AGE_CAP, NA
+
+    if birthday is None or when is None:
+        return NA
+    day = when.date()
+    years = day.year - birthday.year - ((day.month, day.day) < (birthday.month, birthday.day))
+    if years < 0:
+        return NA
+    return str(min(years, AGE_CAP))
+
+
+def _source_files(rec: dict, input_dir: Path) -> list[Path]:
+    """Every claimed file of a recording (folders such as a CTF .ds expanded): no output may equal one."""
+    out: list[Path] = []
+    for rel in [rec["rel"], *(rec.get("companions") or []), *(rec.get("headshape") or [])]:
+        p = input_dir / rel
+        if p.is_dir():
+            out += [q for q in p.rglob("*") if q.is_file()]
+        elif p.is_file():
+            out.append(p)
+    return out
+
+
+def _recording(rec: dict) -> Recording:
+    return Recording(rel=rec["rel"], family=rec["family"], companions=list(rec.get("companions") or []),
+                     headshape=list(rec.get("headshape") or []), empty_room=bool(rec.get("empty_room")))
+
+
+def _open_clean(e: PlanEntry, rec: dict, input_dir: Path, renames: dict[str, str], labels: dict[str, str],
+                event_names: dict[str, str]):
+    """The recording opened lazily, channel types as planned, de-identified in memory (deid.clean)."""
+    from . import deid
+
+    raw = readers.open_raw(_recording(rec), input_dir, headshape=e.keep_headshape)
+    if rec["family"] in ("edf", "bdf"):  # MNE reads every EDF channel as eeg: the planned types by label prefix
+        names_, types = list(raw.ch_names), list(raw.get_channel_types())
+        changed = {n: t for n, t, old in zip(names_, label_types(names_, types), types) if t != old}
+        if changed:
+            raw.set_channel_types(changed, on_unit_change="ignore", verbose="error")
+    deid.clean(raw, renames=renames, labels=labels, event_names=event_names, keep_headshape=e.keep_headshape)
+    line = (rec.get("meta") or {}).get("PowerLineFrequency")
+    if raw.info.get("line_freq") is None and isinstance(line, (int, float)) and not isinstance(line, bool):
+        with raw.info._unlock():
+            raw.info["line_freq"] = float(line)
+    return raw
+
+
+def write_entries(plan: "Plan", work: Path, input_dir: Path, terms: set[str], key: "PseudonymKey",
+                  schema: "Schema", dest: Callable[[str], Path],
+                  progress: Callable[[str], None] | None = None):
+    """Write every included ephys entry (empty rooms first), run the final gate on what was written, and
+    return the participants and scans rows. ``work/ephys/scratch`` is removed in every case."""
+    import shutil
+
+    from ..modality import ModuleOutput
+    from ..scrub import redact
+    from . import gate
+    from .write import daysback, write_recording
+
+    entries = [e for e in plan.entries if e.modality == "ephys" and e.status == "ok" and not e.exclude
+               and e.datatype and e.ephys_format]
+    out = ModuleOutput(scans_with_time=True, sex_source=SEX_SOURCE)
+    if not entries:
+        return ModuleOutput()
+    if any(e.datatype not in WRITTEN_DATATYPES for e in entries):
+        raise NotImplementedError(NIRS_REASON)
+    records = load_records(work)
+    for e in entries:
+        i = e.series_idx - EPHYS_INDEX_BASE
+        if not 0 <= i < len(records) or records[i].get("info") is None or records[i].get("error"):
+            raise ValueError("an electrophysiology plan entry has no scan record: scan again")
+    rec_of = {e.id: records[e.series_idx - EPHYS_INDEX_BASE] for e in entries}
+    ev = json.loads((work / EVENTS_FILE).read_text()) if (work / EVENTS_FILE).is_file() else {}
+    label_map: dict[str, str] = ev.get("labels") or {}
+    channel_map: dict[str, dict[str, str]] = (json.loads((work / CHANNELS_FILE).read_text())
+                                              if (work / CHANNELS_FILE).is_file() else {})
+    event_names = dict(plan.event_names or {})
+    allowed_labels = {event_names.get(lab, lab) for lab in label_map.values()}
+
+    # the same daysback for every recording of a subject; the empty room has no key offset (never in the key)
+    offsets: dict[str, int] = {}
+    dates: dict[str, list[datetime]] = defaultdict(list)
+    for e in entries:
+        when = _date_of((rec_of[e.id]["info"] or {}).get("meas_date"))
+        if when is not None:
+            dates[e.subject].append(when)
+        if e.subject not in offsets:
+            offsets[e.subject] = 0 if e.subject == EMPTY_ROOM_SUBJECT else key.date_offset_days(e.subject)
+    back = {s: daysback(dates[s], offsets[s]) for s in offsets}
+
+    paths: dict[str, Path] = {}
+
+    def guarded(rel: str) -> Path:
+        p = dest(rel)
+        paths[rel] = p
+        return p
+
+    order = sorted(entries, key=lambda e: (e.subject != EMPTY_ROOM_SUBJECT, e.series_idx))
+    scratch = work / SCRATCH
+    shutil.rmtree(scratch, ignore_errors=True)
+    scratch.mkdir(parents=True)
+    rooms: dict[str, tuple[Any, str]] = {}  # empty-room entry id -> (scratch BIDSPath, output rel)
+    rel_entry: dict[str, PlanEntry] = {}
+    shifted: list[date] = []
+    try:
+        for k, e in enumerate(order, 1):
+            if progress is not None:
+                progress(WRITE_PROGRESS.format(k=k, n=len(order)))
+            rec = rec_of[e.id]
+            renames = {old: new for new, old in (channel_map.get(rec["rel"]) or {}).items()}
+            raw = _open_clean(e, rec, input_dir, renames, label_map, event_names)
+            room = rooms.get(e.empty_room or "") if e.datatype == "meg" else None
+            bps: list = []
+            rels = write_recording(e, rec, raw, scratch, guarded, schema, terms,
+                                   er_path=room[0] if room else None, days_back=back[e.subject],
+                                   labels=allowed_labels, er_rel=room[1] if room else None,
+                                   keep=e.subject == EMPTY_ROOM_SUBJECT,
+                                   meta={k2: redact(v, terms) if isinstance(v, str) else v
+                                         for k2, v in (rec.get("meta") or {}).items()},
+                                   written=bps)
+            del raw
+            if e.subject == EMPTY_ROOM_SUBJECT:
+                rooms[e.id] = (bps[0], rels[0])
+            for r in rels:
+                rel_entry[r] = e
+            out.manifest.setdefault(e.id, []).extend(r for r in rels if r not in out.manifest.get(e.id, []))
+            out.images[rec["rel"]] = rels[0]
+            base = f"sub-{e.subject}" + (f"/ses-{e.session}" if e.session else "")
+            when = _date_of((rec["info"] or {}).get("meas_date"))
+            acq = "n/a"
+            if when is not None and e.subject != EMPTY_ROOM_SUBJECT:
+                moved = when + timedelta(days=offsets[e.subject])
+                acq = moved.strftime(SCANS_FORMAT)
+                shifted.append(moved.date())
+            out.scans.setdefault((e.subject, e.session), []).append((rels[0][len(base) + 1:], acq))
+            label = _input_label(rec["rel"], "sub")
+            if label and e.subject != EMPTY_ROOM_SUBJECT and e.subject_idx >= EPHYS_INDEX_BASE:
+                out.labels.setdefault(e.subject_idx, label)
+    finally:
+        shutil.rmtree(scratch, ignore_errors=True)
+
+    # the final gate: every written file re-read for the run's terms, the original dates and copied bytes
+    if paths:
+        some_rel, some_path = next(iter(paths.items()))
+        out_root = some_path
+        for _ in PurePosixPath(some_rel).parts:
+            out_root = out_root.parent
+        originals: list = []
+        for r in records:
+            info = r.get("info") or {}
+            originals += [_date_of(info.get("meas_date")), _birthday(r)]
+        sources = [p for e in entries for p in _source_files(rec_of[e.id], input_dir)]
+        extra: dict[str, int] = {}
+        violations = gate.check(list(paths.values()), out_root, terms, gate.forbidden_date_forms(originals),
+                                sources, extra_points=extra, allowed_dates=shifted)
+        for rel, n in sorted(extra.items()):
+            e = rel_entry.get(rel)
+            if n and (e is None or not e.keep_headshape):
+                violations.append(f"{rel}: head-shape points")
+        if violations:
+            raise gate.GateError(violations)
+
+    # participants: age from the local birthday at the first recording, sex from the header
+    for e in entries:
+        if e.subject == EMPTY_ROOM_SUBJECT:
+            out.participants[e.subject] = {"age": "n/a", "sex": "n/a"}
+            continue
+        row = out.participants.setdefault(e.subject, {"age": "n/a", "sex": "n/a"})
+        info = rec_of[e.id]["info"] or {}
+        if row["sex"] == "n/a":
+            row["sex"] = SEX_CODES.get(info.get("sex"), "n/a")
+    for subject, row in out.participants.items():
+        if subject == EMPTY_ROOM_SUBJECT:
+            continue
+        mine = [rec_of[e.id] for e in entries if e.subject == subject]
+        first = min((d for d in (_date_of((r["info"] or {}).get("meas_date")) for r in mine) if d is not None),
+                    default=None)
+        birthday = next((b for b in (_birthday(r) for r in mine) if b is not None), None)
+        row["age"] = _age(birthday, first)
+    return out

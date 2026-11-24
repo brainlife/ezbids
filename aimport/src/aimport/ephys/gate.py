@@ -38,7 +38,7 @@ from pathlib import Path
 
 from ..scrub import _compiled, _fold
 from . import events
-from .headers import _DMY, _MONTHS, EDF_ANON_DATE, _all_forms, _strings
+from .headers import _DMY, _MONTHS, EDF_ANON_DATE, VHDR_SECTIONS, _all_forms, _strings
 
 ANON_BEFORE_YEAR = 1925  # MNE-BIDS anonymized dates are before 1925-01-01
 TEXT_SUFFIXES = frozenset({".json", ".tsv", ".vhdr", ".vmrk", ".txt", ".csv", ".pos", ".md"})
@@ -143,8 +143,9 @@ def _real_dates(text: str, allow: frozenset[date] = frozenset()) -> bool:
 
 class _Gate:
     def __init__(self, out_root: Path, terms: set[str], forbidden_dates: set[str], sources: list[Path],
-                 extra_points: dict[str, int] | None) -> None:
+                 extra_points: dict[str, int] | None, allowed_dates: Iterable[date] = ()) -> None:
         self.out_root = Path(out_root).resolve()
+        self.allowed = frozenset(d.date() if isinstance(d, datetime) else d for d in allowed_dates)
         bad = {t for t in (set(terms) | set(forbidden_dates)) if str(t).strip()}
         for t in set(terms):
             bad |= _reversed_names(t)
@@ -195,7 +196,7 @@ class _Gate:
         for s in _strings(text):
             if self.holds(s) or any(self.holds(p.strip()) for p in _FIELD_SPLIT.split(s) if p.strip() != s):
                 self.flag(kind)
-            if dates and _real_dates(s, allow):
+            if dates and _real_dates(s, allow | self.allowed):
                 self.flag(kind)
 
     # --- copied bytes ---
@@ -287,6 +288,25 @@ class _Gate:
             kind = {".vhdr": "header line", ".vmrk": "marker line"}.get(suffix, "text line")
             for line in text.splitlines():
                 self.ini_line(line, kind, marker=suffix == ".vmrk")
+            if suffix == ".vhdr":
+                self.vhdr_layout(path, text)
+
+    def vhdr_layout(self, path: Path, text: str) -> None:
+        """A written ``.vhdr`` holds only the sections aimport rebuilds, and names its own BIDS files."""
+        stem = path.name[: -len(".vhdr")]
+        section = ""
+        for line in text.splitlines():
+            s = line.strip()
+            if s.startswith("[") and s.endswith("]"):
+                section = s[1:-1].strip()
+                if section not in VHDR_SECTIONS:
+                    self.flag("header section")
+                continue
+            key, sep, val = s.partition("=")
+            if sep and section == "Common Infos" and key.strip().lower() in ("datafile", "markerfile"):
+                ext = ".eeg" if key.strip().lower() == "datafile" else ".vmrk"
+                if val.strip() != stem + ext:
+                    self.flag("data file name")
 
     def json(self, obj, depth: int = 0) -> None:
         if depth > 64:
@@ -346,7 +366,7 @@ class _Gate:
                 if not chunk:
                     break
                 data = tail + chunk
-                if any(self.holds_block(t) or _real_dates(t) for t in self._decodings(data)):
+                if any(self.holds_block(t) or _real_dates(t, self.allowed) for t in self._decodings(data)):
                     self.flag("file bytes")
                     return
                 tail = data[-OVERLAP:]
@@ -555,14 +575,16 @@ class _Gate:
 
 
 def check(files: list[Path], out_root: Path, terms: set[str], forbidden_dates: set[str], sources: list[Path],
-          extra_points: dict[str, int] | None = None) -> list[str]:
+          extra_points: dict[str, int] | None = None, allowed_dates: Iterable[date] = ()) -> list[str]:
     """The violations of the written ``files`` (``"<BIDS rel path>: <field kind>"``); ``[]`` when clean.
 
     ``forbidden_dates``: every form of the original meas_dates and birthdays (``forbidden_date_forms``).
     ``sources``: the claimed source files (no output file may equal one byte for byte).
     ``extra_points``: when given, filled with BIDS rel path -> number of ``FIFFV_POINT_EXTRA`` points per FIF.
+    ``allowed_dates``: the shifted dates aimport wrote itself (scans.tsv ``acq_time``); a full date from 1925
+    on that is one of them is not refused anywhere (the original-date forms still are).
     """
-    gate = _Gate(out_root, terms, forbidden_dates, sources, extra_points)
+    gate = _Gate(out_root, terms, forbidden_dates, sources, extra_points, allowed_dates)
     for path in sorted({Path(p) for p in files}):
         gate.file(path)
     return gate.violations

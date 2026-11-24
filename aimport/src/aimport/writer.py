@@ -355,7 +355,8 @@ class _Writer:
         for out in self.outputs:
             for k, rows in out.scans.items():
                 rows_by.setdefault(k, []).extend(rows)
-                dated.add(k)
+                if not out.scans_with_time:
+                    dated.add(k)
         for (subject, session), rows in rows_by.items():
             stem = f"sub-{subject}{f'_ses-{session}' if session else ''}_scans"
             base = f"sub-{subject}" + (f"/ses-{session}" if session else "")
@@ -393,12 +394,16 @@ class _Writer:
         self.generated.tables["participants.tsv"] = rows
         self.generated.jsons["participants.json"] = {
             "age": {"Description": "age at first scan of this import", "Units": "year"},
-            "sex": {"Description": self.sex_description(set(subjects), set(demographics)),
+            "sex": {"Description": self.sex_description(set(subjects), set(demographics),
+                                                        {o.sex_source for o in self.outputs if o.sex_source}),
                     "Levels": {"M": "male", "F": "female", "O": "other"}},
         }
 
     @staticmethod
-    def sex_description(mri: set[str], everyone: set[str]) -> str:
+    def sex_description(mri: set[str], everyone: set[str], sources: set[str] = frozenset()) -> str:
+        if sources:  # a module records sex (electrophysiology headers)
+            where = " or ".join((["the DICOM header"] if mri else []) + sorted(sources))
+            return f"sex from {where}; n/a when not recorded"
         if not everyone - mri:
             return "sex from the DICOM header"
         if not mri:

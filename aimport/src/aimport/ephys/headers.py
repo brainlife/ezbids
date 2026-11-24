@@ -1,4 +1,4 @@
-"""Format headers: the identifying-term harvest of one recording (and, from Task 9, the post-write rewriters).
+"""Format headers: the identifying-term harvest of one recording, and the post-write rewriters (Task 9).
 
 ``harvest(rec, input_dir, raw)`` collects every string a recording carries that the conversion drops: the
 header fields of each format, comments, metadata tags, marker/event/annotation texts that are not safe
@@ -537,7 +537,10 @@ def _h5_strings(f, obj, depth: int = 0):
         if arr.dtype.kind in "ui":
             text = "".join(chr(c) for c in arr.ravel(order="F") if c)
             yield from _strings(text)
-    elif obj.dtype == h5py.ref_dtype and obj.size < (1 << 20):
+    elif h5py.check_string_dtype(obj.dtype) is not None and obj.size < (1 << 20):
+        yield from _strings(np.asarray(obj[()]))  # variable-length or fixed strings (non-MATLAB writers)
+    elif h5py.check_ref_dtype(obj.dtype) is not None and obj.size < (1 << 20):
+        # (a variable-length string dtype compares equal to h5py.ref_dtype: both are object dtypes)
         for ref in np.asarray(obj[()]).ravel():
             if ref:
                 yield from _h5_strings(f, f[ref], depth + 1)
@@ -999,3 +1002,180 @@ def harvest(rec: Recording, input_dir: Path, raw=None) -> set[str]:
     if fn is not None and not rec.excluded:
         fn(t, input_dir / rec.rel, rec, input_dir)
     return t.result()
+
+
+# --- post-write rewriters (Task 9): files aimport wrote itself, inside its scratch or output folder ------
+
+EDF_PATIENT_ANON = "X X X X"
+EDF_RECORDING_ANON = "Startdate X X X X"
+EDF_START_DATE = "01.01.85"
+EDF_START_TIME = "00.00.00"
+VHDR_SECTIONS = ("Common Infos", "Binary Infos", "Channel Infos", "Coordinates")
+VHDR_FIRST_LINE = "Brain Vision Data Exchange Header File Version 1.0"
+_VHDR_KEYS = {
+    "common infos": frozenset({"codepage", "datafile", "markerfile", "dataformat", "dataorientation", "datatype",
+                               "numberofchannels", "samplinginterval", "averaged", "averagedsegments",
+                               "segmentdatapoints", "segmentationtype"}),
+    "binary infos": frozenset({"binaryformat", "usebigendianorder"}),
+}
+_CH_KEY = re.compile(r"^Ch\d+$", re.I)
+_MK_KEY = re.compile(r"^Mk\d+$", re.I)
+# pybv's own comment lines in the kept sections (the channel table notes); any other comment is dropped
+_PYBV_COMMENT = re.compile(r"^;\s*(written using pybv|exported using pybv|data orientation|sampling interval|each entry|"
+                           r"<resolution|fields are delimited|commas in|<channel|<date|\s*<size in data points)", re.I)
+
+
+class HeaderError(ValueError):
+    """A written header is not what aimport writes; the message names the field kind, never its text."""
+
+
+def _inside(path: Path, root: Path) -> bool:
+    path, root = Path(path).resolve(), Path(root).resolve()
+    return path == root or root in path.parents
+
+
+def rewrite_edf(path: Path, *, root: Path, labels: Iterable[str] | None = None) -> None:
+    """Clear the EDF/BDF header aimport wrote, in place: patient ``X X X X``, recording ``Startdate X X X X``,
+    startdate ``01.01.85``, starttime ``00.00.00``, every field space-padded to its fixed width.
+
+    ``root``: the folder the file must lie in (aimport's scratch or output folder; never a source). The
+    header length is checked against the signal count first. ``labels``: when given, every TAL annotation
+    text must be one of them (``HeaderError`` otherwise).
+    """
+    path = Path(path)
+    if not _inside(path, root) or path.is_symlink():
+        raise HeaderError("an EDF header can only be rewritten inside the output")
+    with open(path, "r+b") as fh:
+        head = bytearray(fh.read(256))
+        if len(head) != 256:
+            raise HeaderError("EDF header length")
+        try:
+            ns = int(head[252:256].decode("ascii").strip())
+            size = int(head[184:192].decode("ascii").strip())
+        except ValueError:
+            raise HeaderError("EDF header length") from None
+        if not 0 < ns < 100000 or size != 256 * (ns + 1) or path.stat().st_size < size:
+            raise HeaderError("EDF header length")
+        for start, width, value in ((8, 80, EDF_PATIENT_ANON), (88, 80, EDF_RECORDING_ANON),
+                                    (168, 8, EDF_START_DATE), (176, 8, EDF_START_TIME)):
+            field = value.encode("ascii").ljust(width, b" ")
+            assert len(field) == width
+            head[start:start + width] = field
+        fh.seek(0)
+        fh.write(bytes(head))
+    if labels is not None:
+        allowed = {str(x) for x in labels}
+        if any(text not in allowed for text in edf_annotation_texts(path)):
+            raise HeaderError("EDF annotation not in the event list")
+
+
+def edf_annotation_texts(path: Path) -> list[str]:
+    """The TAL annotation texts of an EDF+/BDF+ file (onsets and the empty time-keeping texts left out)."""
+    with open(path, "rb") as fh:
+        head = fh.read(256)
+        ns = int(head[252:256].decode("ascii").strip())
+        sig = fh.read(256 * ns)
+    labels = [sig[16 * i:16 * (i + 1)].decode("latin-1").strip().lower() for i in range(ns)]
+    base = 216 * ns  # samples per record: after label 16, transducer 80, dim/pmin/pmax/dmin/dmax 5 x 8, prefilter 80
+    samples = [int(sig[base + 8 * i:base + 8 * (i + 1)].decode("ascii").strip()) for i in range(ns)]
+    annot = [i for i, lab in enumerate(labels) if lab in ("edf annotations", "bdf annotations")]
+    if not annot:
+        return []
+    bps = 3 if head[0] == 0xFF else 2
+    offsets, pos = [], 0
+    for n in samples:
+        offsets.append(pos)
+        pos += n * bps
+    out: list[str] = []
+    with open(path, "rb") as fh:
+        fh.seek(256 * (ns + 1))
+        while True:
+            record = fh.read(pos)
+            if len(record) < pos or pos == 0:
+                break
+            for i in annot:
+                for tal in record[offsets[i]:offsets[i] + samples[i] * bps].split(b"\x00"):
+                    for piece in tal.split(b"\x14")[1:]:
+                        text = piece.decode("utf-8", "replace").strip()
+                        if text:
+                            out.append(text)
+    return out
+
+
+def rebuild_vhdr(path: Path, bids_stem: str) -> None:
+    """Rebuild a written BrainVision ``.vhdr`` with only ``[Common Infos]``, ``[Binary Infos]``, ``[Channel
+    Infos]`` and ``[Coordinates]`` (their known keys and channel lines, plus pybv's table comments).
+    ``DataFile``/``MarkerFile`` become ``<bids_stem>.eeg``/``.vmrk``; every other section ([Comment]) is
+    dropped."""
+    path = Path(path)
+    text = _read_text(path)
+    sections: dict[str, list[str]] = {s.lower(): [] for s in VHDR_SECTIONS}
+    current: str | None = None
+    for line in text.splitlines()[1:]:
+        s = line.strip()
+        if s.startswith("[") and s.endswith("]"):
+            name = s[1:-1].strip().lower()
+            current = name if name in sections else None
+            continue
+        if current is None or not s:
+            continue
+        if s.startswith(";"):
+            if _PYBV_COMMENT.match(s):
+                sections[current].append(s)
+            continue
+        key, sep, _ = s.partition("=")
+        key = key.strip()
+        if not sep:
+            continue
+        if current in _VHDR_KEYS:
+            if key.lower() == "datafile":
+                s = f"DataFile={bids_stem}.eeg"
+            elif key.lower() == "markerfile":
+                s = f"MarkerFile={bids_stem}.vmrk"
+            elif key.lower() not in _VHDR_KEYS[current]:
+                continue
+        elif not _CH_KEY.match(key):
+            continue
+        sections[current].append(s)
+    common = sections["common infos"]
+    if not any(x.lower().startswith("datafile=") for x in common):
+        raise HeaderError("BrainVision header without a data file")
+    if not any(x.lower().startswith("markerfile=") for x in common):
+        common.append(f"MarkerFile={bids_stem}.vmrk")
+    out = [VHDR_FIRST_LINE, ""]
+    for name in VHDR_SECTIONS:
+        lines = sections[name.lower()]
+        if lines:
+            out += [f"[{name}]", *lines, ""]
+    path.write_text("\n".join(out), encoding="utf-8")
+
+
+def check_vmrk(path: Path, allowed_labels: Iterable[str], bids_stem: str | None = None) -> None:
+    """A written ``.vmrk``: every marker description is an allowed label or a safe ``Stimulus/S  1`` code,
+    no marker carries a date from 1925 on, and ``DataFile`` is the BIDS name. ``HeaderError`` otherwise."""
+    allowed = {str(x) for x in allowed_labels}
+    section = ""
+    for line in _read_text(Path(path)).splitlines():
+        s = line.strip()
+        if s.startswith("[") and s.endswith("]"):
+            section = s[1:-1].strip().lower()
+            continue
+        if not s or s.startswith(";"):
+            continue
+        key, sep, value = s.partition("=")
+        if not sep:
+            continue
+        if section == "common infos" and key.strip().lower() == "datafile":
+            if bids_stem is not None and value.strip() != f"{bids_stem}.eeg":
+                raise HeaderError("BrainVision marker file names another data file")
+        elif section == "marker infos" and _MK_KEY.match(key.strip()):
+            fields = [f.replace(r"\1", ",") for f in value.split(",")]
+            mtype = fields[0].strip()
+            desc = fields[1].strip() if len(fields) > 1 else ""
+            if mtype.lower() not in _BV_MARKER_TYPES:
+                raise HeaderError("BrainVision marker type")
+            if desc and desc not in allowed and not is_safe(f"{mtype}/{desc}"):
+                raise HeaderError("BrainVision marker description")
+            when = fields[5].strip() if len(fields) > 5 else ""
+            if when and (not when.isdigit() or int(when[:4]) >= 1925):
+                raise HeaderError("BrainVision marker date")

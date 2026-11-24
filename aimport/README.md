@@ -293,6 +293,33 @@ Entries the validator would reject for this
 import (for example phenotype rows of people who are not imported, or a top-level sidecar with no matching
 image) are better dropped in review; the validation result tells you which.
 
+### Electrophysiology output
+
+EEG, iEEG, EMG and MEG recordings are written through MNE-BIDS, one at a time, always converted to the
+entry's `ephys_format` (never a copy of the source file):
+
+- **Before writing, in memory**: renamed channels get their new names; `subject_info` keeps only sex and
+  handedness; experimenter, description, project, device, helium and file/measurement IDs are cleared;
+  head-shape points are dropped unless `keep_headshape` (fiducials, HPI coils and EEG electrodes stay);
+  every annotation becomes its kept label or code, written as the plan's event name.
+- **Dates**: MNE-BIDS anonymizes the recording date to before 1925 (the same shift for every recording of a
+  subject, so intervals are kept). EDF/BDF headers say `X X X X`, `Startdate X X X X`, `01.01.85`,
+  `00.00.00`. `scans.tsv` `acq_time` is the original date and time shifted by the subject's offset, as for
+  MRI. The `emptyroom` subject has no key offset, so its `acq_time` is `n/a`; its folder has no session.
+- **Files**: BrainVision `.vhdr` files are rebuilt with only their data, binary, channel and coordinate
+  sections and the BIDS file names; `.vmrk` markers must be event names or `Stimulus/S n` codes. Every
+  JSON sidecar keeps only the keys the BIDS 1.11.2 schema lists for its suffix (never the institution
+  keys or `DeviceSerialNumber`) and every TSV cell is redacted. MNE-BIDS's own `participants`, `scans`,
+  `README` and `dataset_description` are not used.
+- **Participants**: age in whole years at the first recording, from the header's birth date (never
+  written); sex from the header.
+- **Final check**: every written file is read again for the run's identifying terms, the original
+  dates in all their forms, copied source bytes, unexpected BrainVision sections and head-shape points
+  the plan did not keep. A finding fails the run with the BIDS path and the kind of field only, and the
+  partial output is removed.
+- EMG placement is written as `Other` ("not recorded in the source recording"). NIRS is written by a
+  later version.
+
 ### Known limitations
 
 - A name that appears **only in free text**, with no match in any header or table the engine read, cannot be

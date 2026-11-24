@@ -140,6 +140,12 @@ def test_gate_clean_passes(tmp_path, fmt):
                                 verbose=False)
     files = [p for p in root.rglob("*") if p.is_file()]
     assert len(files) >= 5
+    if fmt == "BrainVision":  # MNE-BIDS's own .vhdr keeps a [Comment] section; Task 9's rebuild drops it
+        assert gate.check(files, root, TERMS, FORBIDDEN, sources=[]) == [
+            "sub-01/eeg/sub-01_task-rest_eeg.vhdr: header section"]
+        from aimport.ephys import headers
+
+        headers.rebuild_vhdr(bp.fpath, "sub-01_task-rest_eeg")
     extra: dict[str, int] = {}
     assert gate.check(files, root, TERMS, FORBIDDEN, sources=[], extra_points=extra) == []
     if fmt == "FIF":

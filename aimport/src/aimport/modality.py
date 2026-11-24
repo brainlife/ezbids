@@ -65,6 +65,8 @@ class ModuleOutput:
     chunk_map: dict | None = None
     images: dict[str, str] = field(default_factory=dict)
     labels: dict[int, str] = field(default_factory=dict)  # subject_idx -> the input's own sub- label
+    scans_with_time: bool = False  # scans rows carry a recorded time of day (else date only, at 00:00:00)
+    sex_source: str = ""  # where the module's participants sex comes from ("" = not recorded: n/a)
 
 
 class Module(Protocol):
