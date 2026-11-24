@@ -1,5 +1,6 @@
 # Citation metadata for ezBIDS and aimport. Every reference below was taken from the project's own
-# CITATION.cff, README or docs, or from the publisher (Crossref); see README "Built on and how to cite".
+# CITATION.cff, README or docs, or from the publisher (Crossref). The full list of tools, with their
+# licences and the source of each citation, is in CREDITS.md.
 cff-version: 1.2.0
 message: >-
   If you use ezBIDS or aimport, please cite the ezBIDS paper (preferred-citation), BIDS and the

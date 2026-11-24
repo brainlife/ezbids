@@ -686,15 +686,4 @@ validated, de-identified output folder.
 
 ## Credits
 
-aimport is developed by the Pestilli Lab at The University of Texas at Austin (brainlife.io). When you publish
-data imported with aimport, cite the ezBIDS paper, BIDS and the BIDS extension for your data type, and the tools
-your import used: the full list, with licences and citations, is in the ezBIDS README,
-["Built on and how to cite"](../README.md#built-on-and-how-to-cite) (machine-readable: [`CITATION.cff`](../CITATION.cff)).
-
-Beyond ezBIDS's own tools (dcm2niix, pydicom, NiBabel, pydeface with FSL, quickshear with ROBEX), aimport builds on:
-
-- **BIDS:** the `@bids/validator` (Deno) and bidsschematools.
-- **Microscopy:** BioIO with its CZI, ND2 and LIF readers, tifffile, ome-types, zarr-python, ngff-zarr (OME-Zarr), Dask, fsspec, SciPy and h5py.
-- **Electrophysiology and NIRS:** MNE-Python, MNE-BIDS, edfio, pybv, PyNWB, Matplotlib and defusedxml.
-- **AI (optional):** the Anthropic API (Claude), and AutoBIDSify (NeuroJSON, MIT) to route the agent to OpenAI or Qwen models.
-- **QA viewer:** Neuroglancer (images) and uPlot (recordings).
+aimport is developed by the Pestilli Lab at The University of Texas at Austin. What to cite, and every tool aimport builds on with its licence, is in [CREDITS.md](../CREDITS.md): [conversion and de-identification](../CREDITS.md#conversion-and-de-identification), [BIDS tools](../CREDITS.md#bids-tools), [microscopy](../CREDITS.md#microscopy-aimport), [electrophysiology and NIRS](../CREDITS.md#electrophysiology-and-nirs-aimport-meg-also-on-the-web), [AI](../CREDITS.md#ai-aimport-optional), [QA viewers](../CREDITS.md#viewers) and [licence notes](../CREDITS.md#licence-notes).
