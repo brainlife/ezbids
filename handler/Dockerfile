@@ -12,6 +12,10 @@ RUN apt install -y parallel python3 python3-pip tree curl unzip git jq python li
 RUN pip3 install numpy==1.23.0 nibabel==4.0.0 pandas matplotlib pyyaml==5.4.1 pydicom==2.3.1 natsort pydeface && \
     pip3 install quickshear mne mne-bids
 
+# pydeface pulls nipype -> prov, which needs rdflib < 7 (pip's resolver left rdflib 7.x and pydeface then
+# refuses to start with a VersionConflict)
+RUN pip3 install "rdflib>=4.2.1,<7" && pydeface --help >/dev/null
+
 # Install pypet2bids
 # pinned: PET2BIDS moved to uv (no more installpoetry target); this is the last commit before 2024-08-28
 RUN git clone https://github.com/openneuropet/PET2BIDS && \
