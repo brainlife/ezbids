@@ -83,8 +83,8 @@ function expand {
     done
 
     for zst in $(find $root -name "*.zst"); do
-        zst -d $zip
-        rm -rf $zip
+        zstd -d $zst
+        rm -rf $zst
     done
 }
 
