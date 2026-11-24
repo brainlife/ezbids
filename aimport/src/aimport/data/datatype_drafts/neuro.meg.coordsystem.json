@@ -1,0 +1,26 @@
+{
+    "bids": {
+        "derivatives": "meg",
+        "maps": [
+            {
+                "dest": "coordsystem.json",
+                "src": "coordsystem.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "A JSON document specifying the coordinate system(s) used for the MEG, EEG, head localization coils, and anatomical landmarks.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS coordsystem.json",
+            "ext": ".json",
+            "filename": "coordsystem.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/meg/coordsystem",
+    "readme": "# neuro/meg/coordsystem\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `meg`, suffix `coordsystem`.\n\nSource: BIDS specification v1.11.2, raw data, `meg/*_coordsystem`.\n\nRelated BIDS files in `meg/` (separate datatypes, not part of this one): `channels`, `electrodes`, `events`, `headshape`, `markers`, `meg`, `photo`, `physio`, `physioevents`, `stim`.\n\n"
+}

@@ -70,6 +70,14 @@ jobs:
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+            - name: Setup uv (aimport runtime)
+              uses: astral-sh/setup-uv@v6
+              with:
+                  version: '0.13.9'
+
+            - name: Fetch aimport runtime (Python 3.11 + locked deps, BIDS validator, QA viewer client)
+              run: bash fetch-aimport.sh ${{ matrix.platform }} ${{ matrix.arch }}
+
             - name: Remove embedded archives / package test fixtures (mac notarization)
               if: matrix.platform == 'darwin'
               run: |
@@ -109,6 +117,7 @@ jobs:
               run: |
                   npm run build:electron-preload
                   npm run build:electron-main
+                  npm run build:electron-aimport
 
             - name: Validate Apple signing secrets
               if: matrix.platform == 'darwin'

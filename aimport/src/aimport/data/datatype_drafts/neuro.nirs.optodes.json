@@ -1,0 +1,38 @@
+{
+    "bids": {
+        "derivatives": "nirs",
+        "maps": [
+            {
+                "dest": "optodes.tsv",
+                "json": "optodes.json",
+                "src": "optodes.tsv"
+            },
+            {
+                "dest": "optodes.json",
+                "src": "optodes.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Either a light emitting device, sometimes called a transmitter, or a photoelectric transducer, sometimes called a receiver.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS optodes.tsv",
+            "ext": ".tsv",
+            "filename": "optodes.tsv",
+            "id": "tsv",
+            "required": true
+        },
+        {
+            "desc": "BIDS optodes.json",
+            "ext": ".json",
+            "filename": "optodes.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/nirs/optodes",
+    "readme": "# neuro/nirs/optodes\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `nirs`, suffix `optodes`.\n\nSource: BIDS specification v1.11.2, raw data, `nirs/*_optodes`.\n\nRelated BIDS files in `nirs/` (separate datatypes, not part of this one): `channels`, `coordsystem`, `events`, `nirs`, `photo`, `physio`, `physioevents`, `stim`.\n\n"
+}

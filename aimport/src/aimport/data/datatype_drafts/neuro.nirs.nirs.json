@@ -1,0 +1,38 @@
+{
+    "bids": {
+        "derivatives": "nirs",
+        "maps": [
+            {
+                "dest": "nirs.snirf",
+                "json": "nirs.json",
+                "src": "nirs.snirf"
+            },
+            {
+                "dest": "nirs.json",
+                "src": "nirs.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Data associated with a Shared Near Infrared Spectroscopy Format file.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS nirs.snirf",
+            "ext": ".snirf",
+            "filename": "nirs.snirf",
+            "id": "snirf",
+            "required": true
+        },
+        {
+            "desc": "BIDS nirs.json",
+            "ext": ".json",
+            "filename": "nirs.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/nirs/nirs",
+    "readme": "# neuro/nirs/nirs\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `nirs`, suffix `nirs`.\n\nSource: BIDS specification v1.11.2, raw data, `nirs/*_nirs`.\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `nirs/` (separate datatypes, not part of this one): `channels`, `coordsystem`, `events`, `optodes`, `photo`, `physio`, `physioevents`, `stim`.\n\n"
+}

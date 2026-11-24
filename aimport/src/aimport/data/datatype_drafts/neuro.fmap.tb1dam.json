@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "fmap",
+        "maps": [
+            {
+                "dest": "TB1DAM.nii.gz",
+                "json": "TB1DAM.json",
+                "src": "TB1DAM.nii.gz"
+            },
+            {
+                "dest": "TB1DAM.nii",
+                "src": "TB1DAM.nii"
+            },
+            {
+                "dest": "TB1DAM.ome.zarr",
+                "json": "TB1DAM.json",
+                "src": "TB1DAM.ome.zarr"
+            },
+            {
+                "dest": "TB1DAM.json",
+                "src": "TB1DAM.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "The double-angle B1<sup>+</sup> method ([Insko and Bolinger 1993](https://doi.org/10.1006/jmra.1993.1133)) is based on the calculation of the actual angles from signal ratios, collected by two acquisitions at different nominal excitation flip angles. Common sequence types for this application include spin echo and echo planar imaging. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS TB1DAM.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "TB1DAM.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS TB1DAM.nii",
+            "ext": ".nii",
+            "filename": "TB1DAM.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS TB1DAM.ome.zarr/",
+            "dirname": "TB1DAM.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS TB1DAM.json",
+            "ext": ".json",
+            "filename": "TB1DAM.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/fmap/tb1dam",
+    "readme": "# neuro/fmap/tb1dam\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `fmap`, suffix `TB1DAM`.\n\nSource: BIDS specification v1.11.2, raw data, `fmap/*_TB1DAM`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `fmap/` (separate datatypes, not part of this one): `RB1COR`, `RB1map`, `TB1AFI`, `TB1EPI`, `TB1RFM`, `TB1SRGE`, `TB1TFL`, `TB1map`, `epi`, `fieldmap`, `m0scan`, `magnitude`, `magnitude1`, `magnitude2`, `phase1`, `phase2`, `phasediff`.\n\n"
+}

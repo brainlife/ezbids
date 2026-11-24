@@ -4,12 +4,13 @@
  */
 
 /* eslint-disable no-console */
-import { app, BrowserWindow, protocol } from 'electron';
+import { app, BrowserWindow, protocol, ipcMain } from 'electron';
 import path from 'path';
 import fs from 'fs';
 import net from 'net';
 import { spawn, ChildProcess } from 'child_process';
 import treeKill from 'tree-kill';
+import { registerAimportIpc, stopAimport, hasAimport } from './aimport/engine';
 import { enableInAppBrowsing } from './inAppBrowsing';
 
 const ENVIRONMENT = app.isPackaged ? 'production' : 'development';
@@ -205,6 +206,17 @@ async function startApp(): Promise<void> {
 
     console.log('STARTING EZBIDS DESKTOP WITH ENV:', env);
 
+    registerAimportIpc(ipcMain, {
+        env,
+        appDir: APP_DIR,
+        userDataPath: USER_DATA_PATH,
+        isPackaged: app.isPackaged,
+        resourcesPath: process.resourcesPath,
+        platform: getEzBidsPlatform(),
+        arch: getEzBidsArch(),
+        binDir: getBinDir(),
+    });
+
     await startBackend(port, env);
     await startHandler(env);
     await startFrontend(env);
@@ -231,6 +243,7 @@ function killAll(): Promise<void> {
         handlerProcess = null;
         jobs.push(treeKillAsync(pid, 'handler'));
     }
+    if (hasAimport()) jobs.push(stopAimport());
     return jobs.length ? Promise.all(jobs).then(() => undefined) : Promise.resolve();
 }
 
@@ -253,7 +266,7 @@ process.on('uncaughtException', (err) => {
 });
 
 app.on('before-quit', (event) => {
-    if (handlerProcess || backendProcess) {
+    if (handlerProcess || backendProcess || hasAimport()) {
         event.preventDefault();
         void killAll().then(() => setImmediate(() => app.quit()));
     }

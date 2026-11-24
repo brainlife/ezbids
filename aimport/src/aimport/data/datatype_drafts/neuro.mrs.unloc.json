@@ -1,0 +1,49 @@
+{
+    "bids": {
+        "derivatives": "mrs",
+        "maps": [
+            {
+                "dest": "unloc.nii.gz",
+                "json": "unloc.json",
+                "src": "unloc.nii.gz"
+            },
+            {
+                "dest": "unloc.nii",
+                "src": "unloc.nii"
+            },
+            {
+                "dest": "unloc.json",
+                "src": "unloc.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "MRS acquisitions run without localization. This includes signals detected using coil sensitivity only.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS unloc.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "unloc.nii.gz",
+            "id": "nii_gz",
+            "required": true
+        },
+        {
+            "desc": "BIDS unloc.nii",
+            "ext": ".nii",
+            "filename": "unloc.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS unloc.json",
+            "ext": ".json",
+            "filename": "unloc.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/mrs/unloc",
+    "readme": "# neuro/mrs/unloc\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `mrs`, suffix `unloc`.\n\nSource: BIDS specification v1.11.2, raw data, `mrs/*_unloc`.\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `mrs/` (separate datatypes, not part of this one): `events`, `mrsi`, `mrsref`, `svs`.\n\n"
+}

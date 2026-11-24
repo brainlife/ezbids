@@ -1,0 +1,38 @@
+{
+    "bids": {
+        "derivatives": "pet",
+        "maps": [
+            {
+                "dest": "blood.tsv",
+                "json": "blood.json",
+                "src": "blood.tsv"
+            },
+            {
+                "dest": "blood.json",
+                "src": "blood.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Blood measurements of radioactivity stored in [tabular files](SPEC_ROOT/common-principles.md#tabular-files) and located in the `pet/` directory along with the corresponding PET data.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS blood.tsv",
+            "ext": ".tsv",
+            "filename": "blood.tsv",
+            "id": "tsv",
+            "required": true
+        },
+        {
+            "desc": "BIDS blood.json",
+            "ext": ".json",
+            "filename": "blood.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/pet/blood",
+    "readme": "# neuro/pet/blood\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `pet`, suffix `blood`.\n\nSource: BIDS specification v1.11.2, raw data, `pet/*_blood`.\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `pet/` (separate datatypes, not part of this one): `events`, `pet`, `physio`, `physioevents`, `stim`.\n\n"
+}

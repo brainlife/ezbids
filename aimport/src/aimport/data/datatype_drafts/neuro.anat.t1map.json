@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "anat",
+        "maps": [
+            {
+                "dest": "T1map.nii.gz",
+                "json": "T1map.json",
+                "src": "T1map.nii.gz"
+            },
+            {
+                "dest": "T1map.nii",
+                "src": "T1map.nii"
+            },
+            {
+                "dest": "T1map.ome.zarr",
+                "json": "T1map.json",
+                "src": "T1map.ome.zarr"
+            },
+            {
+                "dest": "T1map.json",
+                "src": "T1map.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "In seconds (s). T1 maps are REQUIRED to use this suffix regardless of the method used to generate them. See [this interactive book on T1 mapping](https://qmrlab.org/t1_book/intro) for further reading on T1-mapping. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS T1map.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "T1map.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS T1map.nii",
+            "ext": ".nii",
+            "filename": "T1map.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS T1map.ome.zarr/",
+            "dirname": "T1map.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS T1map.json",
+            "ext": ".json",
+            "filename": "T1map.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/anat/t1map",
+    "readme": "# neuro/anat/t1map\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `anat`, suffix `T1map`.\n\nSource: BIDS specification v1.11.2, raw data, `anat/*_T1map`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `anat/` (separate datatypes, not part of this one): `Chimap`, `FLAIR`, `FLASH`, `IRT1`, `M0map`, `MEGRE`, `MESE`, `MP2RAGE`, `MPM`, `MTR`, `MTRmap`, `MTS`, `MTVmap`, `MTsat`, `MWFmap`, `PD`, `PDT2`, `PDmap`, `PDw`, `R1map`, `R2map`, `R2starmap`, `S0map`, `T1rho`, `T1w`, `T2map`, `T2star`, `T2starmap`, `T2starw`, `T2w`, `UNIT1`, `VFA`, `angio`, `defacemask`, `inplaneT1`, `inplaneT2`, `physio`, `physioevents`, `stim`.\n\n"
+}

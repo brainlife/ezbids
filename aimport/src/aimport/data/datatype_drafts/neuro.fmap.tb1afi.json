@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "fmap",
+        "maps": [
+            {
+                "dest": "TB1AFI.nii.gz",
+                "json": "TB1AFI.json",
+                "src": "TB1AFI.nii.gz"
+            },
+            {
+                "dest": "TB1AFI.nii",
+                "src": "TB1AFI.nii"
+            },
+            {
+                "dest": "TB1AFI.ome.zarr",
+                "json": "TB1AFI.json",
+                "src": "TB1AFI.ome.zarr"
+            },
+            {
+                "dest": "TB1AFI.json",
+                "src": "TB1AFI.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "This method ([Yarnykh 2007](https://doi.org/10.1002/mrm.21120)) calculates a B1<sup>+</sup> map from two images acquired at interleaved (two) TRs with identical RF pulses using a steady-state sequence. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS TB1AFI.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "TB1AFI.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS TB1AFI.nii",
+            "ext": ".nii",
+            "filename": "TB1AFI.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS TB1AFI.ome.zarr/",
+            "dirname": "TB1AFI.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS TB1AFI.json",
+            "ext": ".json",
+            "filename": "TB1AFI.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/fmap/tb1afi",
+    "readme": "# neuro/fmap/tb1afi\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `fmap`, suffix `TB1AFI`.\n\nSource: BIDS specification v1.11.2, raw data, `fmap/*_TB1AFI`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `fmap/` (separate datatypes, not part of this one): `RB1COR`, `RB1map`, `TB1DAM`, `TB1EPI`, `TB1RFM`, `TB1SRGE`, `TB1TFL`, `TB1map`, `epi`, `fieldmap`, `m0scan`, `magnitude`, `magnitude1`, `magnitude2`, `phase1`, `phase2`, `phasediff`.\n\n"
+}

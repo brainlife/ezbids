@@ -1,0 +1,49 @@
+{
+    "bids": {
+        "derivatives": "mrs",
+        "maps": [
+            {
+                "dest": "svs.nii.gz",
+                "json": "svs.json",
+                "src": "svs.nii.gz"
+            },
+            {
+                "dest": "svs.nii",
+                "src": "svs.nii"
+            },
+            {
+                "dest": "svs.json",
+                "src": "svs.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "MRS acquisitions where the detected MR signal is spatially localized to a single volume.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS svs.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "svs.nii.gz",
+            "id": "nii_gz",
+            "required": true
+        },
+        {
+            "desc": "BIDS svs.nii",
+            "ext": ".nii",
+            "filename": "svs.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS svs.json",
+            "ext": ".json",
+            "filename": "svs.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/mrs/svs",
+    "readme": "# neuro/mrs/svs\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `mrs`, suffix `svs`.\n\nSource: BIDS specification v1.11.2, raw data, `mrs/*_svs`.\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `mrs/` (separate datatypes, not part of this one): `events`, `mrsi`, `mrsref`, `unloc`.\n\n"
+}

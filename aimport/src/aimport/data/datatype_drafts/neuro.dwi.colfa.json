@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "dwi",
+        "maps": [
+            {
+                "dest": "colFA.nii.gz",
+                "json": "colFA.json",
+                "src": "colFA.nii.gz"
+            },
+            {
+                "dest": "colFA.nii",
+                "src": "colFA.nii"
+            },
+            {
+                "dest": "colFA.ome.zarr",
+                "json": "colFA.json",
+                "src": "colFA.ome.zarr"
+            },
+            {
+                "dest": "colFA.json",
+                "src": "colFA.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Scanner-derived parametric map encoding both the anisotropy and principal direction of the diffusion tensor. Image intensity is proportional to the Fractional Anisotropy (FA) measure; image color is determined by the principal eigenvector of the diffusion tensor, where red encodes the magnitude of the left-right component of that orientation, with green and blue similarly encoding the anterior-posterior and inferior-superior components respectively. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS colFA.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "colFA.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS colFA.nii",
+            "ext": ".nii",
+            "filename": "colFA.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS colFA.ome.zarr/",
+            "dirname": "colFA.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS colFA.json",
+            "ext": ".json",
+            "filename": "colFA.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/dwi/colfa",
+    "readme": "# neuro/dwi/colfa\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `dwi`, suffix `colFA`.\n\nSource: BIDS specification v1.11.2, raw data, `dwi/*_colFA`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `dwi/` (separate datatypes, not part of this one): `ADC`, `FA`, `S0map`, `dwi`, `expADC`, `physio`, `physioevents`, `sbref`, `stim`, `trace`.\n\n"
+}

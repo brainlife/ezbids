@@ -1,0 +1,26 @@
+{
+    "bids": {
+        "derivatives": "meg",
+        "maps": [
+            {
+                "dest": "headshape.pos",
+                "src": "headshape.pos"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "The 3-D locations of points that describe the head shape and/or electrode locations can be digitized and stored in separate files.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS headshape.pos",
+            "ext": ".pos",
+            "filename": "headshape.pos",
+            "id": "pos",
+            "required": true
+        }
+    ],
+    "name": "neuro/meg/headshape",
+    "readme": "# neuro/meg/headshape\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `meg`, suffix `headshape`.\n\nSource: BIDS specification v1.11.2, raw data, `meg/*_headshape`.\n\nRelated BIDS files in `meg/` (separate datatypes, not part of this one): `channels`, `coordsystem`, `electrodes`, `events`, `markers`, `meg`, `photo`, `physio`, `physioevents`, `stim`.\n\n"
+}

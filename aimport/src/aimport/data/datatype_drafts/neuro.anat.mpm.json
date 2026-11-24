@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "anat",
+        "maps": [
+            {
+                "dest": "MPM.nii.gz",
+                "json": "MPM.json",
+                "src": "MPM.nii.gz"
+            },
+            {
+                "dest": "MPM.nii",
+                "src": "MPM.nii"
+            },
+            {
+                "dest": "MPM.ome.zarr",
+                "json": "MPM.json",
+                "src": "MPM.ome.zarr"
+            },
+            {
+                "dest": "MPM.json",
+                "src": "MPM.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "The MPM approaches (a.k.a hMRI) involves the acquisition of highly-similar anatomical images that differ in terms of application of a magnetization transfer RF pulse (MTon or MToff), flip angle and (optionally) echo time and magnitue/phase parts ([Weiskopf et al. 2013](https://doi.org/10.3389/fnins.2013.00095)). See [here](https://owncloud.gwdg.de/index.php/s/iv2TOQwGy4FGDDZ) for suggested MPM acquisition protocols. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS MPM.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "MPM.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS MPM.nii",
+            "ext": ".nii",
+            "filename": "MPM.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS MPM.ome.zarr/",
+            "dirname": "MPM.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS MPM.json",
+            "ext": ".json",
+            "filename": "MPM.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/anat/mpm",
+    "readme": "# neuro/anat/mpm\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `anat`, suffix `MPM`.\n\nSource: BIDS specification v1.11.2, raw data, `anat/*_MPM`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `anat/` (separate datatypes, not part of this one): `Chimap`, `FLAIR`, `FLASH`, `IRT1`, `M0map`, `MEGRE`, `MESE`, `MP2RAGE`, `MTR`, `MTRmap`, `MTS`, `MTVmap`, `MTsat`, `MWFmap`, `PD`, `PDT2`, `PDmap`, `PDw`, `R1map`, `R2map`, `R2starmap`, `S0map`, `T1map`, `T1rho`, `T1w`, `T2map`, `T2star`, `T2starmap`, `T2starw`, `T2w`, `UNIT1`, `VFA`, `angio`, `defacemask`, `inplaneT1`, `inplaneT2`, `physio`, `physioevents`, `stim`.\n\n"
+}

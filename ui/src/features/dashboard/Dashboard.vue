@@ -18,6 +18,7 @@
 
         <main class="dashboard-main">
             <DashboardUpload />
+            <DashboardAimport v-if="aimportAvailable" />
 
             <div class="dashboard-bottom">
                 <div class="dashboard-bottom-item">
@@ -33,6 +34,8 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import DashboardAimport from '@/features/dashboard/DashboardAimport.vue';
+import { hasAimport } from '@/features/aimport/aimportClient';
 import DashboardInstructions from '@/features/dashboard/DashboardInstructions.vue';
 import DashboardSessions from '@/features/dashboard/DashboardSessions.vue';
 import DashboardUpload from '@/features/dashboard/DashboardUpload.vue';
@@ -46,6 +49,7 @@ export default defineComponent({
     name: 'EzbidsDashboard',
 
     components: {
+        DashboardAimport,
         BrandLockup,
         DashboardInstructions,
         DashboardSessions,
@@ -55,6 +59,7 @@ export default defineComponent({
     data() {
         return {
             recentSessions: [] as RecentEntry[],
+            aimportAvailable: hasAimport(),
         };
     },
 

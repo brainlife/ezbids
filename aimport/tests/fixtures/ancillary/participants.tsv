@@ -1,0 +1,4 @@
+participant_id	age	sex	name	dob	visit_date	site	handedness	notes	email	hospital_id
+sub-01	45	F	John Smith	1970-01-01	2023-01-10	Hospital X	R	John was late	john.smith@example.org	MRN0042
+sub-MRN0042	95	M	Jane Doe	19700101	20230214	Main campus	L	n/a	jd@example.org	H-7
+sub-99	30	F	Smith Jr	1993-05-05	2023-03-01	Hospital X	R	MRN0042 followup	n/a	H-8

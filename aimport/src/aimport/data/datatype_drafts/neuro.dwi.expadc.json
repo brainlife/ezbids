@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "dwi",
+        "maps": [
+            {
+                "dest": "expADC.nii.gz",
+                "json": "expADC.json",
+                "src": "expADC.nii.gz"
+            },
+            {
+                "dest": "expADC.nii",
+                "src": "expADC.nii"
+            },
+            {
+                "dest": "expADC.ome.zarr",
+                "json": "expADC.json",
+                "src": "expADC.ome.zarr"
+            },
+            {
+                "dest": "expADC.json",
+                "src": "expADC.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Exponential ADC / Attenuation Coefficient / Attenuation Factor map, as the ratio of trace-weighted to non-diffusion-weighted image intensity Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS expADC.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "expADC.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS expADC.nii",
+            "ext": ".nii",
+            "filename": "expADC.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS expADC.ome.zarr/",
+            "dirname": "expADC.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS expADC.json",
+            "ext": ".json",
+            "filename": "expADC.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/dwi/expadc",
+    "readme": "# neuro/dwi/expadc\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `dwi`, suffix `expADC`.\n\nSource: BIDS specification v1.11.2, raw data, `dwi/*_expADC`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `dwi/` (separate datatypes, not part of this one): `ADC`, `FA`, `S0map`, `colFA`, `dwi`, `physio`, `physioevents`, `sbref`, `stim`, `trace`.\n\n"
+}

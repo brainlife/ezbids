@@ -8,6 +8,6 @@
         "outDir": "dist",
         "rootDir": "."
     },
-    "include": ["*.ts", "main.ts", "preload/**/*.ts"],
+    "include": ["*.ts", "main.ts", "preload/**/*.ts", "aimport/**/*.ts"],
     "exclude": ["node_modules", "dist"]
 }

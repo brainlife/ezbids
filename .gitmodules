@@ -2,3 +2,6 @@
 	path = bids-specification
 	url = https://github.com/bids-standard/bids-specification
 	branch = master
+[submodule "aimport/bids-specification"]
+	path = aimport/bids-specification
+	url = https://github.com/bids-standard/bids-specification

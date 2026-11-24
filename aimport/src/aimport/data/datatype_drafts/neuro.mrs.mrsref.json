@@ -1,0 +1,49 @@
+{
+    "bids": {
+        "derivatives": "mrs",
+        "maps": [
+            {
+                "dest": "mrsref.nii.gz",
+                "json": "mrsref.json",
+                "src": "mrsref.nii.gz"
+            },
+            {
+                "dest": "mrsref.nii",
+                "src": "mrsref.nii"
+            },
+            {
+                "dest": "mrsref.json",
+                "src": "mrsref.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "An MRS acquisition collected to serve as a concentration reference for absolute quantification or as a calibration reference for preprocessing (for example, eddy-current correction).",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS mrsref.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "mrsref.nii.gz",
+            "id": "nii_gz",
+            "required": true
+        },
+        {
+            "desc": "BIDS mrsref.nii",
+            "ext": ".nii",
+            "filename": "mrsref.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS mrsref.json",
+            "ext": ".json",
+            "filename": "mrsref.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/mrs/mrsref",
+    "readme": "# neuro/mrs/mrsref\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `mrs`, suffix `mrsref`.\n\nSource: BIDS specification v1.11.2, raw data, `mrs/*_mrsref`.\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `mrs/` (separate datatypes, not part of this one): `events`, `mrsi`, `svs`, `unloc`.\n\n"
+}

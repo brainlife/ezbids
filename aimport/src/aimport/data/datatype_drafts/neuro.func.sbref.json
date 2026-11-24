@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "func",
+        "maps": [
+            {
+                "dest": "sbref.nii.gz",
+                "json": "sbref.json",
+                "src": "sbref.nii.gz"
+            },
+            {
+                "dest": "sbref.nii",
+                "src": "sbref.nii"
+            },
+            {
+                "dest": "sbref.ome.zarr",
+                "json": "sbref.json",
+                "src": "sbref.ome.zarr"
+            },
+            {
+                "dest": "sbref.json",
+                "src": "sbref.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Single-band reference for one or more multi-band `dwi` images. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS sbref.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "sbref.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS sbref.nii",
+            "ext": ".nii",
+            "filename": "sbref.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS sbref.ome.zarr/",
+            "dirname": "sbref.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS sbref.json",
+            "ext": ".json",
+            "filename": "sbref.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/func/sbref",
+    "readme": "# neuro/func/sbref\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `func`, suffix `sbref`.\n\nSource: BIDS specification v1.11.2, raw data, `func/*_sbref`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `func/` (separate datatypes, not part of this one): `bold`, `cbv`, `events`, `noRF`, `phase`, `physio`, `physioevents`, `stim`.\n\n"
+}

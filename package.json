@@ -28,7 +28,8 @@
         "electron:pack": "npm run app:build-dist -w ezbids-electron",
         "fetch-binaries:macos": "./fetch-binaries.sh darwin arm64",
         "fetch-binaries:linux": "./fetch-binaries.sh linux amd64",
-        "fetch-binaries:windows": "./fetch-binaries.sh windows amd64"
+        "fetch-binaries:windows": "./fetch-binaries.sh windows amd64",
+        "fetch-aimport": "./fetch-aimport.sh"
     },
     "author": "",
     "license": "MIT",

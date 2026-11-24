@@ -1,0 +1,38 @@
+{
+    "bids": {
+        "derivatives": "nirs",
+        "maps": [
+            {
+                "dest": "channels.json",
+                "src": "channels.json"
+            },
+            {
+                "dest": "channels.tsv",
+                "json": "channels.json",
+                "src": "channels.tsv"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Channel information.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS channels.json",
+            "ext": ".json",
+            "filename": "channels.json",
+            "id": "json",
+            "required": false
+        },
+        {
+            "desc": "BIDS channels.tsv",
+            "ext": ".tsv",
+            "filename": "channels.tsv",
+            "id": "tsv",
+            "required": true
+        }
+    ],
+    "name": "neuro/nirs/channels",
+    "readme": "# neuro/nirs/channels\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `nirs`, suffix `channels`.\n\nSource: BIDS specification v1.11.2, raw data, `nirs/*_channels`.\n\nRelated BIDS files in `nirs/` (separate datatypes, not part of this one): `coordsystem`, `events`, `nirs`, `optodes`, `photo`, `physio`, `physioevents`, `stim`.\n\n"
+}
