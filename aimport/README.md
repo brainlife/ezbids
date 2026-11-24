@@ -1,8 +1,9 @@
 # aimport
 
-brainlife.io/aimport is a local, agentic data importer: you point it at a folder of neuroimaging
-data on your own computer, it works out what each series is, converts the data to BIDS, strips
-identifiers and defaces the images, validates the result, and only then is anything uploaded to
+brainlife.io/aimport is a local, agentic data importer for neuroscience data: neuroimaging (MRI, PET),
+microscopy and neurophysiology (EEG, MEG, iEEG, NIRS, EMG). You point it at a folder of data on your own
+computer, it works out what each series, image or recording is, converts the data to BIDS, strips
+identifiers and defaces the MRI, validates the result, and only then is anything uploaded to
 brainlife.io. It lives in the ezBIDS repo and reuses ezBIDS's mapping, conversion and defacing tools,
 but everything runs on your machine, so raw DICOMs with identifiers are never uploaded.
 
