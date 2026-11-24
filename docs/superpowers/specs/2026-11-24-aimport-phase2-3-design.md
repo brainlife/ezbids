@@ -93,6 +93,21 @@ validated BIDS dataset is uploaded. The user asked for good readers and visualiz
   pinned BIDS validator accepts 0.5; if it does not, 0.4 becomes the default until it does.
   Small 2D images may stay OME-TIFF. An input that is already OME-Zarr is rewritten (metadata
   rebuilt from the allowlist) without re-encoding chunks where possible.
+- **Large data is never copied locally** (PS-OCT, VISoR, exaSPIM; the user's rule). For these:
+  - no staging copy: the reader opens the input in place (read-only mount), or reads a remote
+    store (`s3://`, `https://`) through fsspec with range requests, without downloading it;
+  - when the input is already OME-Zarr (v2 or v3), the output is a **reference dataset**:
+    aimport writes only the new, de-identified metadata (`zarr.json`/`.zattrs`, sidecars,
+    `samples.tsv`, names) locally, plus a chunk map `{output chunk path: source chunk path or URL}`.
+    The upload streams each chunk from its source to brainlife.io, so chunk data never lands on
+    local disk. The preflight treats the chunk map as the only allowed source list, never
+    symlinks.
+  - When conversion is unavoidable (TIFF tiles to OME-Zarr), it streams block by block. The only
+    local copy is the converted output, and the user is told the size first. A remote
+    destination (the brainlife project's storage) can be the write target, so even that copy is
+    skipped.
+  - The QA viewer reads the same sources through `/qa/data`, which proxies range reads from the
+    chunk map. Neuroglancer never needs the full volume.
 - **Scale**: inputs reach gigabytes per file (VISoR raw TIFF tiles, about 4.3 GB) and terabytes
   per dataset (exaSPIM). Conversion streams with dask (block-wise reads, never a whole volume in
   memory), writes sharded chunks, and reports progress per tile. Planning reads metadata and a
@@ -151,8 +166,9 @@ validated BIDS dataset is uploaded. The user asked for good readers and visualiz
 
 The CMC publication on brainlife (`connects.brainlife.io/publications/CMC`, doi
 10.25663/brainlife.pub.64) has public data in the `apex-connects` S3 bucket (us-east-2) for
-three phase 2 cases. Its record states no licence, so only small subsets are downloaded at test
-time; none are committed.
+three phase 2 cases. These datasets are large and **must not be copied locally**. Tests read
+only metadata and coarse levels over HTTP range requests (network-marked tests), never whole
+files; nothing is committed. The record states no licence.
 
 | Case | Source in `apex-connects` | Format | Maps to |
 |---|---|---|---|
@@ -189,9 +205,10 @@ Notes for de-identification:
 - Microscopy:
   - `bids-examples` `micr_SPIM` (OME-TIFF), `micr_SEMzarr`, `micr_XPCTzarr`, `micr_SEM` (PNG);
   - an IDR public OME-Zarr sample;
-  - **CMC subsets** (see above): one PS-OCT slice in four contrasts (NIfTI), the coarse levels of
-    `Moe_Slice_051.ome.zarr`, a cropped VISoR tile read over HTTP ranges, and a coarse exaSPIM
-    level;
+  - **CMC, read remotely** (see above): `zarr.json` and the coarsest level of
+    `Moe_Slice_051.ome.zarr` and of one exaSPIM position, the header and one strip of a VISoR TIFF
+    tile, and the header of one en-face NIfTI. Everything is read over HTTP ranges and nothing is
+    downloaded whole;
   - a synthetic PS-OCT fixture with planted identifiers for the leak test.
 - Electrophysiology:
   - `mne-testing-data` for reader coverage (EDF, BDF, BrainVision, EEGLAB, EGI, Nihon Kohden,
