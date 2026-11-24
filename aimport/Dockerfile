@@ -5,10 +5,12 @@
 
 # The standalone Neuroglancer client for the QA viewer (/viewer/ng/), built from aimport/viewer-client with the
 # npm versions and integrity hashes in its package-lock.json; only the static output reaches the engine image.
+# --ignore-scripts: no dependency runs code at install (core-js banner, esbuild binary check, fsevents,
+# msgpackr-extract native addon); the output is byte-identical to a build with scripts.
 FROM node:22.23.2-bookworm-slim@sha256:48e4b67d85f87bd551df43704e24d252f56cc5f8e9718841aace50f19948f0f9 AS neuroglancer-client
 WORKDIR /build
 COPY aimport/viewer-client/package.json aimport/viewer-client/package-lock.json aimport/viewer-client/build.mjs aimport/viewer-client/index.html ./
-RUN npm ci --no-audit --no-fund && node build.mjs /opt/neuroglancer-client
+RUN npm ci --ignore-scripts --no-audit --no-fund && node build.mjs /opt/neuroglancer-client
 
 FROM ezbids-handler:local
 
