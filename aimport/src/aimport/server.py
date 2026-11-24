@@ -38,7 +38,7 @@ from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict
 
 from .agent import client_from_env
@@ -58,7 +58,7 @@ from .pseudonyms import KeyLockedError, PseudonymKey
 from .schema import load_schema
 from .scrub import redact
 from .validate import validate_bids
-from .viewer import VIEWER_CSP, neuroglancer_client_dir
+from .viewer import VIEWER_CSP, entry_state, index_page, neuroglancer_client_dir, state_url
 from .writer import _Writer, write_bids
 
 log = logging.getLogger("aimport")
@@ -900,13 +900,41 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         response.set_cookie(VIEWER_COOKIE, session, httponly=True, samesite="strict", path="/")
         return response
 
+    def written() -> tuple[dict, list]:
+        """The output state and the plan entries it holds images for, in plan order."""
+        state = output_state()
+        manifest = state.get("manifest") or {}
+        with srv.plan_lock:
+            plan = srv.load_plan()
+        return state, [e for e in plan.entries if manifest.get(e.id)]
+
+    @app.get("/viewer/")
+    def get_viewer_index() -> HTMLResponse:
+        state, entries = written()
+        rows = [{"id": e.id, "paths": state["manifest"][e.id],
+                 "nifti": state["manifest"][e.id][0].endswith((".nii", ".nii.gz")),
+                 "defaced": bool((state.get("defaced") or {}).get(e.id))} for e in entries]
+        return HTMLResponse(index_page(rows))
+
+    @app.get("/viewer/entry/{entry_id}")
+    def get_viewer_entry(entry_id: str, request: Request, compare: bool = False) -> RedirectResponse:
+        state, entries = written()
+        entry = next((e for e in entries if e.id == entry_id), None)
+        files = state["manifest"][entry_id] if entry else None
+        if not files or not files[0].endswith((".nii", ".nii.gz")):
+            raise HTTPException(404, "no such image")
+        originals = (state.get("defaced") or {}).get(entry_id)
+        base = str(request.base_url).rstrip("/")  # the Host check allows only this server's own names
+        return RedirectResponse(state_url(entry_state(asdict(entry), files, originals, base, compare=compare)),
+                                status_code=303)
+
     @app.get("/viewer/ng/{path:path}")
     def get_neuroglancer(path: str) -> FileResponse:
         try:
             base = neuroglancer_client_dir()
         except RuntimeError as e:
             raise HTTPException(404, str(e)) from None
-        file = (base / path).resolve()
+        file = (base / (path or "index.html")).resolve()
         if base not in file.parents or not file.is_file():
             raise HTTPException(404, "not found")
         return FileResponse(file, media_type=MEDIA_TYPES.get(file.suffix, "application/octet-stream"))

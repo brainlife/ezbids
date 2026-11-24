@@ -1,6 +1,7 @@
 """The QA viewer routes: the served Neuroglancer client, the browser session and the checked output data."""
 import json
 import os
+from urllib.parse import unquote, urlsplit
 
 import pytest
 from fastapi.testclient import TestClient
@@ -8,6 +9,7 @@ from fastapi.testclient import TestClient
 from aimport import server, viewer
 from aimport.server import VIEWER_COOKIE
 from aimport.viewer import VIEWER_CSP, neuroglancer_client_dir
+from conftest import NATIVE, PLANTED, tokens
 from test_server import SCAN, TOKEN, apps, client, executed, hooks, make_client, planned, wait_stage  # noqa: F401
 INDEX = b"<!doctype html><html><head><script type=module src=./assets/index-x.js></script></head></html>"
 
@@ -64,15 +66,22 @@ def test_serves_client(client):
     assert client.get("/viewer/ng/assets/x.wasm").headers["content-type"] == "application/wasm"
 
 
+def test_client_root_is_index(client):
+    r = client.get("/viewer/ng/")  # state_url points here
+    assert r.status_code == 200 and r.content == INDEX
+    assert r.headers["content-security-policy"] == VIEWER_CSP
+
+
 def test_client_range(client):
     r = client.get("/viewer/ng/index.html", headers={"Range": "bytes=0-9"})
     assert r.status_code == 206
     assert r.content == INDEX[:10]
 
 
-@pytest.mark.parametrize("path", ["/viewer/ng/../server.py", "/viewer/ng/%2e%2e/x", "/viewer/ng/assets/%2e%2e/%2e%2e/ng/index.html/..",
+@pytest.mark.parametrize("path", ["/viewer/ng/../server.py", "/viewer/ng/%2e%2e/x",
+                                  "/viewer/ng/assets/%2e%2e/%2e%2e/ng/index.html/..",
                                   "/viewer/ng/assets", "/viewer/ng/%2e%2e/%2e%2e/%2e%2e/etc/passwd",
-                                  "/viewer/ng//etc/passwd", "/viewer/ng/%2Fetc%2Fpasswd", "/viewer/ng/",
+                                  "/viewer/ng//etc/passwd", "/viewer/ng/%2Fetc%2Fpasswd",
                                   "/viewer/ng/missing.js"])
 def test_client_traversal(client, path):
     assert client.get(path).status_code == 404
@@ -292,3 +301,84 @@ def test_qa_data_with_cookie_only(planned):
     browser = viewer_client(planned)
     assert browser.get(data_url(planned, eid)).status_code == 200
     assert browser.get(f"/preview/{eid}").status_code == 401  # bearer-only route
+
+
+# --- the QA index and the entry states ---
+
+def decoded_state(location: str) -> dict:
+    assert location.startswith("/viewer/ng/#!")
+    return json.loads(unquote(urlsplit(location).fragment[1:]))
+
+
+def test_viewer_index(planned):
+    assert planned.get("/viewer/").status_code == 404  # before execute
+    executed(planned)
+    manifest = planned.get("/status").json()["manifest"]
+    entries = planned.get("/plan").json()["entries"]
+    written = [e["id"] for e in entries if not e["exclude"] and e["status"] == "ok" and e["datatype"]]
+    assert set(manifest) == set(written) and written
+    excluded = [e["id"] for e in entries if e["id"] not in manifest]
+    assert excluded  # the fixture plan has entries that are not written
+    browser = viewer_client(planned)
+    r = browser.get("/viewer/")
+    assert r.status_code == 200
+    assert r.headers["content-type"].startswith("text/html")
+    assert r.headers["content-security-policy"] == VIEWER_CSP
+    assert r.headers["cache-control"] == "no-store"
+    page = r.text
+    for eid, paths in manifest.items():
+        assert f'href="/viewer/entry/{eid}"' in page
+        assert all(p in page for p in paths)
+    for eid in excluded:
+        assert f"/viewer/entry/{eid}\"" not in page
+    defaced = t1w(planned)
+    assert f'href="/viewer/entry/{defaced}?compare=1">defaced vs original' in page
+    assert page.count("defaced vs original</a>") == len(json.loads(
+        (planned.app.state.server.work / "output-state.json").read_text())["defaced"])
+    assert not (PLANTED | NATIVE) & tokens(page)
+    assert "http://" not in page and "https://" not in page and "<script" not in page  # no external assets
+
+
+def test_viewer_entry_redirect(planned):
+    eid = t1w(planned)
+    executed(planned)
+    browser = viewer_client(planned)
+    r = browser.get(f"/viewer/entry/{eid}", follow_redirects=False)
+    assert r.status_code == 303
+    state = decoded_state(r.headers["location"])
+    base = "http://testserver"
+    assert state["layout"] == "4panel"
+    names = [layer["name"] for layer in state["layers"]]
+    assert len(names) == 2 and names[1] == names[0] + " (original)"
+    assert state["layers"][1]["visible"] is False and "visible" not in state["layers"][0]
+    for layer in state["layers"]:
+        assert layer["source"].startswith(base + "/qa/data/")
+        assert layer["source"].endswith(".nii.gz|gzip:|nifti:") or layer["source"].endswith("|gzip:|nifti:")
+    text = json.dumps(state)
+    assert "appspot" not in text and TOKEN not in text
+    assert text.count("http") == text.count(base)
+    # the sources are served, to the cookie, as the defaced and the original image
+    for layer, want in zip(state["layers"], (b"defaced-", b"original-")):
+        url = layer["source"].split("|", 1)[0].removeprefix(base)
+        assert browser.get(url).content == want + eid.encode()
+    r = browser.get(f"/viewer/entry/{eid}", params={"compare": 1}, follow_redirects=False)
+    state = decoded_state(r.headers["location"])
+    assert state["layout"]["type"] == "row"
+    assert all(layer.get("visible", True) for layer in state["layers"])
+
+
+def test_viewer_entry_not_defaced_and_missing(planned):
+    executed(planned)
+    manifest = planned.get("/status").json()["manifest"]
+    defaced = json.loads((planned.app.state.server.work / "output-state.json").read_text())["defaced"]
+    other = next(eid for eid in manifest if eid not in defaced)
+    state = decoded_state(planned.get(f"/viewer/entry/{other}", follow_redirects=False).headers["location"])
+    assert len(state["layers"]) == 1
+    assert planned.get("/viewer/entry/nope", follow_redirects=False).status_code == 404
+
+
+def test_viewer_pages_need_auth(planned, make_client):
+    executed(planned)
+    anon = make_client(auth=False)
+    assert anon.get("/viewer/").status_code == 401
+    assert anon.get(f"/viewer/entry/{t1w(planned)}", follow_redirects=False).status_code == 401
