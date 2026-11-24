@@ -96,6 +96,7 @@ async function runDcm2niix(itemPath: string): Promise<{ status: number; stderr: 
 async function runDcm2niix4Pet(itemPath: string): Promise<{ status: number; stderr: string }> {
     log(`----------------------- dcm2niix4pet: ${itemPath} ------------------------`);
     const r = await runPython(['-m', 'pypet2bids.dcm2niix4pet', '--silent', itemPath], {
+        pet2bids: true,
         cwd: resolvedRoot,
         timeout: CMD_TIMEOUT_MS,
         reject: true,
@@ -110,6 +111,7 @@ async function runDcm2niix4Pet(itemPath: string): Promise<{ status: number; stde
 async function runEcatPet2Bids(itemPath: string): Promise<{ status: number; stderr: string }> {
     log(`----------------------- ecatpet2bids: ${itemPath} ------------------------`);
     const r = await runPython(['-m', 'pypet2bids.ecat_cli', itemPath, '--convert'], {
+        pet2bids: true,
         cwd: resolvedRoot,
         timeout: CMD_TIMEOUT_MS,
     });

@@ -6,8 +6,9 @@ set -euo pipefail
 
 fail() { echo "FAIL: $*"; exit 1; }
 
-# dcm2niix is the pinned release, not "latest"
-want=v1.0.20261029
+# dcm2niix is the pinned release (handler/dcm2niix.env), not "latest"
+. /etc/ezbids/dcm2niix.env
+want=$DCM2NIIX_VERSION
 got=$(dcm2niix --version 2>&1 || true)
 [[ "$got" == *"$want"* ]] || fail "dcm2niix is not $want: $got"
 echo "ok: dcm2niix $want"

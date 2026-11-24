@@ -86,10 +86,15 @@ jobs:
                   # Apple's notarization pipeline can flag these when bundled inside a signed app.
                   rm -rf "$PY_SITE/joblib/test"
                   rm -rf "$PY_SITE/pooch/tests"
-                  # remove dcm2niix_binaries to avoid notarization failure. We will point to the bundled dcm2niix in the app.
-                  # Note that we have pinned pypet2bids to 1.4.6 in requirements.txt, and it uses dcm2niix v1.0.20250505.
-                  # in the future, if we want to upgrade pypet2bids, we must make sure that our version of dcm2niix is compatible and vice versa.
-                  rm -rf "$PY_SITE/pypet2bids/dcm2niix_binaries"
+
+            - name: Remove pypet2bids' own dcm2niix (all platforms)
+              shell: bash
+              run: |
+                  # pypet2bids 1.4.6 ships zipped dcm2niix builds of its own and falls back to them. The app uses only the
+                  # pinned dcm2niix from handler/dcm2niix.env (fetch-binaries.sh); handler/utils.ts pet2bidsEnv() points
+                  # pypet2bids at it. Deleting the zips also keeps unsigned binaries out of the notarized mac app.
+                  rm -rf "handler/bin/python-runtime/venv/lib/python3.8/site-packages/pypet2bids/dcm2niix_binaries" \
+                         "handler/bin/python-runtime/venv/Lib/site-packages/pypet2bids/dcm2niix_binaries"
 
             - name: Clean dist
               run: rm -rf electron/dist

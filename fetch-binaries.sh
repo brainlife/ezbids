@@ -3,6 +3,9 @@
 # Fetches ezbids-binaries release assets for a given platform and extracts them
 # into handler/bin with one subfolder per library.
 #
+# dcm2niix is NOT taken from ezbids-binaries: it comes from the official rordenlab/dcm2niix release pinned in
+# handler/dcm2niix.env (the same pin as the web handler image), via handler/fetch-dcm2niix.sh (sha256 + version check).
+#
 # Allineate (skull strip / deface): when the release includes an `allineate-<platform>-<arch>`
 # archive, it is extracted to handler/bin/allineate/ with the `allineate` binary and MNI
 # template/mask files expected by handler/deface.ts (allineate skull-strip).
@@ -84,6 +87,9 @@ if [[ -z "$matching" ]]; then
     exit 1
 fi
 
+# dcm2niix comes from the official release (below), never from ezbids-binaries
+matching=$(echo "$matching" | grep -v -i '^dcm2niix' || true)
+
 # Ensure Windows 7z console exe and loader DLL (7z.exe loads 7z.dll from the same folder)
 if [[ "$platform" == "windows" && "$arch" == "amd64" ]]; then
     sevenz_exe="7z-windows-amd64.exe"
@@ -115,7 +121,7 @@ fi
 matching="${matching//$'\r'/}"
 
 # Derive library name from asset filename:
-#   7z-darwin-arm64, 7z-windows-amd64.exe, dcm2niix-linux-amd64 -> 7z, dcm2niix
+#   7z-darwin-arm64, 7z-windows-amd64.exe, allineate-linux-amd64 -> 7z, allineate
 #   python-runtime-darwin-arm64.tar.gz -> python-runtime
 #   7z.dll -> base "7z", no "-windows-amd64" infix -> else branch uses base as lib name
 library_from_name() {
@@ -195,5 +201,9 @@ while IFS=$'\t' read -r name url; do
     set_user_permissions "$subdir"
     echo "Set user permissions (u+rwx) on: $subdir"
 done <<< "$matching"
+
+echo "Fetching dcm2niix from the official release (handler/dcm2niix.env)"
+rm -rf "$BIN_BASE/dcm2niix"
+"$SCRIPT_DIR/handler/fetch-dcm2niix.sh" "$platform" "$arch" "$BIN_BASE/dcm2niix"
 
 echo "Done."

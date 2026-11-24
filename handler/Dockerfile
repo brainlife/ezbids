@@ -78,14 +78,12 @@ RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesourc
 RUN apt-get update \
     && apt-get install nodejs -y
 
-# dcm2niix pinned to an exact release (its BidsGuess and sidecars change between releases);
-# to update, change both ARGs: the sha256 is the release asset digest shown on GitHub
-ARG DCM2NIIX_VERSION=v1.0.20261029
-ARG DCM2NIIX_ZIP_SHA256=decc03fe9c08e696700876bd0e28fbc1dda5be11979905dfa5a5e01063cdf758
-RUN cd /tmp && curl -fL -o dcm2niix_lnx.zip https://github.com/rordenlab/dcm2niix/releases/download/${DCM2NIIX_VERSION}/dcm2niix_lnx.zip \
-    && echo "${DCM2NIIX_ZIP_SHA256}  /tmp/dcm2niix_lnx.zip" | sha256sum -c - \
-    && unzip /tmp/dcm2niix_lnx.zip \
-    && mv dcm2niix /usr/local/bin && rm /tmp/dcm2niix_lnx.zip
+# dcm2niix: the pinned official release from handler/dcm2niix.env (the same file the desktop app's
+# fetch-binaries.sh reads), sha256-checked; the build fails unless `dcm2niix -v` prints the pinned tag.
+# It lives in the TypeScript handler's tool layout and is also /usr/local/bin/dcm2niix (pypet2bids finds it on PATH).
+COPY dcm2niix.env fetch-dcm2niix.sh /etc/ezbids/
+RUN bash /etc/ezbids/fetch-dcm2niix.sh linux amd64 /opt/ezbids-bin/dcm2niix \
+    && ln -sf /opt/ezbids-bin/dcm2niix/dcm2niix-linux-amd64 /usr/local/bin/dcm2niix
 
 # Don't need, unless there's a reason for having the development branch ahead of scheduled release
 # RUN git clone --branch development https://github.com/rordenlab/dcm2niix.git \
@@ -114,8 +112,7 @@ RUN git clone https://github.com/bids-standard/bids-validator
 ENV EZBIDS_BIN_DIR=/opt/ezbids-bin EZBIDS_PLATFORM=linux EZBIDS_ARCH=amd64
 ENV EZBIDS_TEMPLATE_DIR=/app/handler/templates
 ENV BIDS_VALIDATOR_PATH=/usr/lib/node_modules/bids-validator/bin/bids-validator
-RUN mkdir -p $EZBIDS_BIN_DIR/dcm2niix $EZBIDS_BIN_DIR/7z $EZBIDS_BIN_DIR/allineate && \
-    ln -s /usr/local/bin/dcm2niix $EZBIDS_BIN_DIR/dcm2niix/dcm2niix-linux-amd64
+RUN mkdir -p $EZBIDS_BIN_DIR/7z $EZBIDS_BIN_DIR/allineate
 
 # 7-Zip (expand step): the same release asset the desktop app ships (brainlife/ezbids-binaries)
 ARG EZBIDS_BINARIES_TAG=v0.0.5
@@ -138,3 +135,9 @@ RUN apt-get update && apt-get install -y zlib1g-dev && \
 # install source code from local
 WORKDIR /app/handler
 RUN npm -g install pm2
+
+# pydeface pulls nipype -> prov, which needs rdflib < 7 (pip 20's resolver left rdflib 7.x and pydeface then
+# refuses to start with a VersionConflict)
+RUN pip3 install "rdflib>=4.2.1,<7" && pydeface --help >/dev/null
+# pypet2bids must use the pinned dcm2niix above (on PATH), never the copies it ships
+RUN rm -rf /usr/local/lib/python3.8/dist-packages/pypet2bids/dcm2niix_binaries

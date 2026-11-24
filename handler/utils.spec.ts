@@ -4,7 +4,7 @@ import * as path from 'path';
 
 jest.mock('execa', () => ({ execa: jest.fn() }));
 
-import { getPythonExecutablePath, nodeArgsForScript, resolveHandlerScript } from './utils';
+import { getPythonExecutablePath, nodeArgsForScript, pet2bidsEnv, resolveHandlerScript } from './utils';
 
 describe('handler script resolution (web handler runs .ts from source; desktop runs bundled .cjs)', () => {
     let dir: string;
@@ -58,5 +58,21 @@ describe('python (bundled runtime on the desktop, system python3 in the web imag
         process.env.EZBIDS_PLATFORM = 'darwin';
         expect(getPythonExecutablePath()).toBe(path.join(bin, 'python-runtime', 'python', 'bin', 'python3'));
         fs.rmSync(bin, { recursive: true, force: true });
+    });
+});
+
+describe('pet2bidsEnv (pypet2bids uses our pinned dcm2niix)', () => {
+    it('gives pypet2bids a HOME whose .pet2bidsconfig names our binary', () => {
+        const base = fs.mkdtempSync(path.join(os.tmpdir(), 'ezbids-p2b-'));
+        const env = pet2bidsEnv('/opt/ezbids-bin/dcm2niix/dcm2niix-linux-amd64', base);
+        expect(env.HOME).toBe(env.USERPROFILE);
+        expect(env.DCM2NIIX_PATH).toBe('/opt/ezbids-bin/dcm2niix/dcm2niix-linux-amd64');
+        expect(fs.readFileSync(path.join(env.HOME as string, '.pet2bidsconfig'), 'utf8')).toBe(
+            'DCM2NIIX_PATH=/opt/ezbids-bin/dcm2niix/dcm2niix-linux-amd64\n'
+        );
+        fs.rmSync(base, { recursive: true, force: true });
+    });
+    it('changes nothing without a dcm2niix', () => {
+        expect(pet2bidsEnv(undefined)).toEqual({});
     });
 });

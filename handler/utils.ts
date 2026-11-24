@@ -1,6 +1,7 @@
 import { execa, Options } from 'execa';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as os from 'os';
 
 /** Resolved path to `<EZBIDS_BIN_DIR>/<tool>` (e.g. 7z, dcm2niix, python-runtime). Callers add executable names and `.exe` where needed. */
 export function getBinPath(tool: string): string {
@@ -46,16 +47,14 @@ export function getDcm2niixExecutablePath(): string {
     return path.resolve(path.join(getBinPath('dcm2niix'), fileName));
 }
 
+/** Our dcm2niix (bundled / image layout) first, so pypet2bids and ezBIDS_core never pick up another one. */
 function getPythonDcm2niixPath(): string | undefined {
-    if (process.env.DCM2NIIX_PATH) {
-        return process.env.DCM2NIIX_PATH;
-    }
     const hasBundledEnv = !!(process.env.EZBIDS_BIN_DIR && process.env.EZBIDS_PLATFORM && process.env.EZBIDS_ARCH);
-    if (!hasBundledEnv) {
-        return undefined;
+    if (hasBundledEnv) {
+        const bundledDcm2niix = getDcm2niixExecutablePath();
+        if (fs.existsSync(bundledDcm2niix)) return bundledDcm2niix;
     }
-    const bundledDcm2niix = getDcm2niixExecutablePath();
-    return fs.existsSync(bundledDcm2niix) ? bundledDcm2niix : undefined;
+    return process.env.DCM2NIIX_PATH || undefined;
 }
 
 // in the future, if we want some sort of more sophisticated logging, we can replace this function
@@ -64,13 +63,31 @@ export function log(msg: string): void {
     console.log(msg);
 }
 
-export async function runPython(argv: string[], opts: Options): Promise<{ status: number; stderr: string }> {
+/**
+ * Environment that makes pypet2bids use our dcm2niix (the pinned one in handler/dcm2niix.env) on every platform.
+ * pypet2bids reads ~/.pet2bidsconfig first (on Windows the only lookup besides its own bundled copy), then
+ * `dcm2niix` on PATH, so a user's own config or dcm2niix would win. Its HOME (USERPROFILE on Windows) is a
+ * folder of ours whose .pet2bidsconfig names our binary.
+ */
+export function pet2bidsEnv(dcm2niix: string | undefined, baseDir: string = os.tmpdir()): NodeJS.ProcessEnv {
+    if (!dcm2niix) return {};
+    const home = path.join(baseDir, 'ezbids-pet2bids-home');
+    fs.mkdirSync(home, { recursive: true });
+    fs.writeFileSync(path.join(home, '.pet2bidsconfig'), `DCM2NIIX_PATH=${dcm2niix}\n`);
+    return { HOME: home, USERPROFILE: home, DCM2NIIX_PATH: dcm2niix };
+}
+
+export async function runPython(
+    argv: string[],
+    opts: Options & { pet2bids?: boolean }
+): Promise<{ status: number; stderr: string }> {
     const pythonRoot = getBinPath('python-runtime');
     const pythonExe = getPythonExecutablePath();
     const pythonDcm2niixPath = getPythonDcm2niixPath();
+    const { pet2bids, ...execOpts } = opts;
     const withTimeout = opts.timeout !== undefined && opts.timeout !== null;
     const result = await execa(pythonExe, argv, {
-        ...opts,
+        ...execOpts,
         ...(withTimeout ? { timeout: opts.timeout, stdio: 'pipe' as const } : { stdio: 'inherit' as const }),
         env: {
             ...process.env,
@@ -81,6 +98,7 @@ export async function runPython(argv: string[], opts: Options): Promise<{ status
                   }
                 : {}),
             ...(pythonDcm2niixPath ? { DCM2NIIX_PATH: pythonDcm2niixPath } : {}),
+            ...(pet2bids ? pet2bidsEnv(pythonDcm2niixPath) : {}),
         },
     });
     const status = result.exitCode ?? -1;
