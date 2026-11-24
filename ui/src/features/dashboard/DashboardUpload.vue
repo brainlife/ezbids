@@ -340,9 +340,8 @@ export default defineComponent({
 <style scoped lang="scss">
 .dashboard-card {
     background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
-    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: var(--panel-radius);
+    border: 1px solid var(--line);
     padding: 1.25rem 1.5rem 1.5rem;
     min-height: 0;
 }
@@ -356,13 +355,13 @@ export default defineComponent({
 .dashboard-cta-title {
     margin: 0 0 1rem;
     font-size: 1.1rem;
-    font-weight: 700;
-    color: #2d3748;
+    font-weight: 500;
+    color: var(--ink);
 }
 
 .dashboard-cta-sub {
     margin: 0;
-    color: #718096;
+    color: var(--ink-2);
     line-height: 1.55;
     max-width: 42rem;
 }
@@ -383,9 +382,9 @@ export default defineComponent({
 .dashboard-drop {
     position: relative;
     min-height: 100px;
-    background: linear-gradient(145deg, #edf2f7, #e2e8f0);
-    border: 2px dashed #a0aec0;
-    border-radius: 10px;
+    background: var(--el-color-primary-light-9);
+    border: 2px dashed var(--el-color-primary-light-6);
+    border-radius: var(--panel-radius);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -399,9 +398,9 @@ export default defineComponent({
 }
 
 .dashboard-drop.is-dragging {
-    background: #cbd5e0;
-    border-color: #4299e1;
-    box-shadow: inset 0 0 0 2px rgba(66, 153, 225, 0.35);
+    background: var(--el-color-primary-light-8);
+    border-color: var(--el-color-primary);
+    box-shadow: inset 0 0 0 2px rgba(61, 106, 146, 0.25);
 }
 
 .dashboard-drop-content {
@@ -411,7 +410,7 @@ export default defineComponent({
     flex-direction: column;
     align-items: center;
     gap: 0.75rem;
-    color: #4a5568;
+    color: var(--ink);
 }
 
 .dashboard-drop-line {
@@ -422,14 +421,14 @@ export default defineComponent({
 .dashboard-drop-or {
     margin: 0;
     font-size: 0.8rem;
-    font-weight: 600;
+    font-weight: 500;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: #a0aec0;
+    color: var(--ink-3);
 }
 
 .dashboard-upload-progress {
-    color: #2d3748;
+    color: var(--ink);
 }
 
 .dashboard-upload-heading {

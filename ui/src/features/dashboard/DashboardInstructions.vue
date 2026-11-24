@@ -51,9 +51,8 @@ export default defineComponent({
 <style scoped lang="scss">
 .instructions-panel {
     background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
-    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: var(--panel-radius);
+    border: 1px solid var(--line);
     padding: 1.25rem 1.5rem 1.5rem;
     min-height: 0;
     min-width: 0;
@@ -66,8 +65,8 @@ export default defineComponent({
 .instructions-panel__title {
     margin: 0 0 1rem;
     font-size: 1.1rem;
-    font-weight: 700;
-    color: #2d3748;
+    font-weight: 500;
+    color: var(--ink);
 }
 
 .instructions-panel__body {
@@ -78,18 +77,19 @@ export default defineComponent({
 .instructions-panel__subheading {
     margin: 0 0 0.5rem;
     font-size: 1rem;
-    color: #2d3748;
+    font-weight: 500;
+    color: var(--ink);
 }
 
 .instructions-panel__muted {
-    color: #718096;
+    color: var(--ink-2);
     line-height: 1.55;
     margin: 0 0 0.75rem;
     overflow-wrap: break-word;
 }
 
 .instructions-panel__link {
-    color: #2b6cb0;
+    color: var(--el-color-primary);
     text-decoration: none;
 }
 
@@ -104,7 +104,6 @@ export default defineComponent({
     margin-top: 0.5rem;
     border-radius: 8px;
     overflow: hidden;
-    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
     aspect-ratio: 16 / 9;
     background: #000;
 }
