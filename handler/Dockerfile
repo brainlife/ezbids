@@ -69,9 +69,14 @@ RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesourc
 RUN apt-get update \
     && apt-get install nodejs -y
 
-RUN cd /tmp && curl -fLO https://github.com/rordenlab/dcm2niix/releases/latest/download/dcm2niix_lnx.zip \
+# dcm2niix pinned to an exact release (its BidsGuess and sidecars change between releases);
+# to update, change both ARGs: the sha256 is the release asset digest shown on GitHub
+ARG DCM2NIIX_VERSION=v1.0.20261029
+ARG DCM2NIIX_ZIP_SHA256=decc03fe9c08e696700876bd0e28fbc1dda5be11979905dfa5a5e01063cdf758
+RUN cd /tmp && curl -fL -o dcm2niix_lnx.zip https://github.com/rordenlab/dcm2niix/releases/download/${DCM2NIIX_VERSION}/dcm2niix_lnx.zip \
+    && echo "${DCM2NIIX_ZIP_SHA256}  /tmp/dcm2niix_lnx.zip" | sha256sum -c - \
     && unzip /tmp/dcm2niix_lnx.zip \
-    && mv dcm2niix /usr/local/bin
+    && mv dcm2niix /usr/local/bin && rm /tmp/dcm2niix_lnx.zip
 
 # Don't need, unless there's a reason for having the development branch ahead of scheduled release
 # RUN git clone --branch development https://github.com/rordenlab/dcm2niix.git \
