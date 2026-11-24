@@ -300,6 +300,11 @@ image) are better dropped in review; the validation result tells you which.
 - BIDS validator: `@bids/validator` **2.4.1** (Deno 2.5.6), run through the `bids-validator-2` wrapper. That release bundles an older schema (it flags `BIDSVersion` 1.11.2 as unknown), so the wrapper defaults `--schema file:///opt/bids-schema/schema.json` unless `--schema`/`-s` is given. Works offline. Useful flags: `--format json` (`--json` is deprecated), `--schema <URL>`, `--ignoreNiftiHeaders`, `-o <file>`.
 - Test data: `tests/fixtures/fetch_dcm_qa.py` fetches `neurolabusc/dcm_qa_xa30` at a pinned commit and plants fake PHI.
 - Python packages are installed exactly as `uv.lock` pins them (with hashes); the Deno download is checked against its sha256.
+- QA viewer client: a standalone build of the `neuroglancer` npm package **2.41.2** (`viewer-client/`: vite, as in
+  neuroglancer's `examples/vite`; only the NIfTI source over http and image layers are included), made by a node
+  build stage with `npm ci` from `viewer-client/package-lock.json` (integrity hashes) into `/opt/neuroglancer-client`
+  and served at `/viewer/ng/`. On the host, build it with `cd viewer-client && npm ci && node build.mjs <dir>` and
+  set `AIMPORT_NEUROGLANCER_DIR=<dir>`.
 
 ## Defacing details
 

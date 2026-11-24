@@ -2,6 +2,14 @@
 #   docker build --platform linux/amd64 -t ezbids-handler:local handler/
 #   docker build --platform linux/amd64 -t brainlife/aimport:dev -f aimport/Dockerfile .
 # Local only: never push.
+
+# The standalone Neuroglancer client for the QA viewer (/viewer/ng/), built from aimport/viewer-client with the
+# npm versions and integrity hashes in its package-lock.json; only the static output reaches the engine image.
+FROM node:22.23.2-bookworm-slim@sha256:48e4b67d85f87bd551df43704e24d252f56cc5f8e9718841aace50f19948f0f9 AS neuroglancer-client
+WORKDIR /build
+COPY aimport/viewer-client/package.json aimport/viewer-client/package-lock.json aimport/viewer-client/build.mjs aimport/viewer-client/index.html ./
+RUN npm ci --no-audit --no-fund && node build.mjs /opt/neuroglancer-client
+
 FROM ezbids-handler:local
 
 ARG DENO_VERSION=2.5.6
@@ -38,6 +46,9 @@ ENV PATH=$PATH:/opt/aimport-venv/bin
 # Tests mount the source at /src (-v $PWD/aimport:/src); run it instead of the installed copy
 ENV PYTHONPATH=/src/src
 ENV AIMPORT_IN_CONTAINER=1
+
+# The QA viewer's Neuroglancer client (aimport.viewer.neuroglancer_client_dir)
+COPY --from=neuroglancer-client /opt/neuroglancer-client /opt/neuroglancer-client
 
 # BIDS v1.11.2 schema, exported from the aimport/bids-specification submodule
 COPY aimport/bids-specification/src/schema /opt/bids-spec-1.11.2/src/schema

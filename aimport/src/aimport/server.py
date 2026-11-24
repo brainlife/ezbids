@@ -862,7 +862,7 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         if session is None:
             raise HTTPException(401, "invalid or expired code: open the viewer again")
         response = RedirectResponse("/viewer/", status_code=303)
-        response.set_cookie(VIEWER_COOKIE, session, httponly=True, samesite="Strict", path="/")
+        response.set_cookie(VIEWER_COOKIE, session, httponly=True, samesite="strict", path="/")
         return response
 
     @app.get("/viewer/ng/{path:path}")
