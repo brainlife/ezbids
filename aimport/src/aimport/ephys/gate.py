@@ -16,11 +16,13 @@ What is read, per file:
   of ``FIFFV_POINT_EXTRA`` points is recorded in ``extra_points``;
 - SNIRF/NWB: every string dataset, attribute and object name (h5py ``visititems``);
 - BrainVision ``.eeg`` (binary samples): skipped;
-- anything else: its bytes, as Latin-1 and UTF-16, in overlapping blocks.
+- anything else (and text above ``TEXT_MAX``): its bytes, as UTF-8, Latin-1 and UTF-16, in overlapping
+  blocks; a JSON sidecar above ``JSON_MAX`` is refused unread (``oversized sidecar``).
 
 Any file: size and SHA-256 equal to a source file -> ``copied source bytes`` (sizes first; only equal sizes
 are hashed). The relative path itself is checked too. Text is matched with ``events.holds_term`` against the
-terms and the original-date forms; a full date from 1925 on (a shifted or real date) is allowed only in
+terms, the ``LAST, FIRST`` forms of 2-3 word names and the original-date forms; terms of ``SQUASHED_MIN``+
+characters with a letter are also found run together inside longer text (``JaneDoe tapping``); a full date from 1925 on (a shifted or real date) is allowed only in
 ``scans.tsv`` ``acq_time``. A file that cannot be read fails closed (``unreadable``).
 """
 from __future__ import annotations
@@ -28,6 +30,8 @@ from __future__ import annotations
 import hashlib
 import json
 import re
+import sys
+import unicodedata
 from collections.abc import Iterable
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -41,7 +45,9 @@ TEXT_SUFFIXES = frozenset({".json", ".tsv", ".vhdr", ".vmrk", ".txt", ".csv", ".
 SKIP_SUFFIXES = frozenset({".eeg"})  # BrainVision binary samples
 EDF_SUFFIXES = frozenset({".edf", ".bdf"})
 H5_SUFFIXES = frozenset({".snirf", ".nwb"})
-TEXT_MAX = 16 << 20  # a larger text file is scanned in blocks
+TEXT_MAX = 4 << 20  # a larger text file is scanned in blocks
+JSON_MAX = 4 << 20  # a larger sidecar is refused unread (sidecars are a few KB)
+SQUASHED_MIN = 5  # terms this long without separators are also matched inside run-together text
 BLOCK = 1 << 20
 OVERLAP = 4096
 FIELD_MAX = 1 << 16  # longer strings are matched in blocks
@@ -86,6 +92,33 @@ def forbidden_date_forms(dates: Iterable[date | datetime | None]) -> set[str]:
     return out
 
 
+_SQUASH = re.compile(r"[\W_]+")
+_NAME_WORD = re.compile(r"[^\W\d_]{2,}")
+
+
+_COMBINING: dict[int, None] | None = None
+
+
+def _fold_fast(text: str) -> str:
+    """``scrub._fold`` (NFKD, combining marks removed, casefold) on the whole string at C speed: no
+    per-character objects, so a 1 MiB block stays a few MiB."""
+    global _COMBINING
+    if text.isascii():
+        return text.lower()
+    if _COMBINING is None:
+        _COMBINING = {c: None for c in range(sys.maxunicode + 1) if unicodedata.combining(chr(c))}
+    return unicodedata.normalize("NFKD", text).translate(_COMBINING).casefold()
+
+
+def _reversed_names(term: str) -> set[str]:
+    """``LAST, FIRST`` and ``LAST FIRST`` of a 2-3 word name term (``Doe, Jane`` for ``Jane Doe``)."""
+    words = str(term).split()
+    if not 2 <= len(words) <= 3 or not all(_NAME_WORD.fullmatch(w) for w in words):
+        return set()
+    rest = " ".join(words[:-1])
+    return {f"{words[-1]}, {rest}", f"{words[-1]} {rest}"}
+
+
 def _real_dates(text: str, allow: frozenset[date] = frozenset()) -> bool:
     """True when the text holds a full date from 1925 on (anonymized dates are earlier)."""
     found: list[date] = []
@@ -112,7 +145,15 @@ class _Gate:
     def __init__(self, out_root: Path, terms: set[str], forbidden_dates: set[str], sources: list[Path],
                  extra_points: dict[str, int] | None) -> None:
         self.out_root = Path(out_root).resolve()
-        self.bad = frozenset(t for t in (set(terms) | set(forbidden_dates)) if str(t).strip())
+        bad = {t for t in (set(terms) | set(forbidden_dates)) if str(t).strip()}
+        for t in set(terms):
+            bad |= _reversed_names(t)
+        self.bad = frozenset(bad)
+        self.forbidden = frozenset(forbidden_dates)
+        squashed = {_SQUASH.sub("", _fold_fast(str(t))) for t in bad}
+        # digit-only forms (dates, numbers) are left out: squashed, they would match inside decimal numbers
+        squashed = sorted((q for q in squashed if len(q) >= SQUASHED_MIN and not q.isdigit()), key=len, reverse=True)
+        self.squashed = re.compile("|".join(map(re.escape, squashed))) if squashed else None
         self.violations: list[str] = []
         self.rel = ""
         self.extra_points = extra_points
@@ -133,15 +174,21 @@ class _Gate:
         if len(text) > FIELD_MAX:
             return self.holds_block(text)
         folded = _fold(text)
-        return events.holds_term(folded, self.bad)
+        return events.holds_term(folded, self.bad) or self.holds_squashed(folded)
+
+    def holds_squashed(self, folded: str) -> bool:
+        """A term of ``SQUASHED_MIN``+ characters without separators inside the text without separators
+        (``JaneDoe tapping``, ``DOE,JANE``)."""
+        return self.squashed is not None and bool(self.squashed.search(_SQUASH.sub("", folded)))
 
     def holds_block(self, text: str) -> bool:
-        """A long block: the term pattern on the folded text, also with separators as spaces."""
+        """A long block: the term pattern on the folded text, also with separators as spaces, and squashed."""
         _, pattern = _compiled(self.bad)
         if pattern is None:
             return False
-        folded = text.lower() if text.isascii() else _fold(text)
-        return bool(pattern.search(folded) or pattern.search(events.SEPARATORS.sub(" ", folded)))
+        folded = _fold_fast(text)
+        return bool(pattern.search(folded) or pattern.search(events.SEPARATORS.sub(" ", folded))
+                    or self.holds_squashed(folded))
 
     def value(self, text, kind: str, dates: bool = True, allow: frozenset[date] = frozenset()) -> None:
         """One string field: the whole, its pieces, and (``dates``) any full date from 1925 on."""
@@ -209,7 +256,7 @@ class _Gate:
                 self.fif(path)
             elif suffix in H5_SUFFIXES:
                 self.h5(path)
-            elif suffix in TEXT_SUFFIXES and path.stat().st_size <= TEXT_MAX:
+            elif suffix in TEXT_SUFFIXES and (suffix == ".json" or path.stat().st_size <= TEXT_MAX):
                 self.text(path, suffix)
             else:
                 self.blocks(path)
@@ -228,9 +275,12 @@ class _Gate:
             return data.decode("latin-1")
 
     def text(self, path: Path, suffix: str) -> None:
+        if suffix == ".json" and path.stat().st_size > JSON_MAX:
+            self.flag("oversized sidecar")
+            return
         text = self._decode(path.read_bytes())
         if suffix == ".json":
-            self.json(json.loads(text))
+            self.json(json.loads(text))  # size-checked by the caller (JSON_MAX)
         elif suffix == ".tsv":
             self.tsv(text, scans=path.name.endswith("scans.tsv"))
         else:
@@ -253,6 +303,10 @@ class _Gate:
             self.value(obj, "sidecar value")
         elif isinstance(obj, int) and not isinstance(obj, bool):
             self.value(str(obj), "sidecar value")
+        elif isinstance(obj, float):
+            self.value(repr(obj), "sidecar value")
+            if obj.is_integer():
+                self.value(str(int(obj)), "sidecar value")
 
     def tsv(self, text: str, scans: bool) -> None:
         lines = text.splitlines()
@@ -292,16 +346,21 @@ class _Gate:
                 if not chunk:
                     break
                 data = tail + chunk
-                texts = [data.decode("latin-1")]
-                for start in (0, 1):
-                    part = data[start:]
-                    part = part[:len(part) - len(part) % 2]
-                    texts.append(part.decode("utf-16-le", "replace"))
-                    texts.append(part.decode("utf-16-be", "replace"))
-                if any(self.holds_block(t) for t in texts) or _real_dates(texts[0]):
+                if any(self.holds_block(t) or _real_dates(t) for t in self._decodings(data)):
                     self.flag("file bytes")
                     return
                 tail = data[-OVERLAP:]
+
+    @staticmethod
+    def _decodings(data: bytes):
+        """The block as UTF-8 (errors ignored), Latin-1 and UTF-16 LE/BE at both byte alignments, one at a time."""
+        yield data.decode("utf-8", "ignore")
+        yield data.decode("latin-1")
+        for start in (0, 1):
+            part = data[start:]
+            part = part[:len(part) - len(part) % 2]
+            yield part.decode("utf-16-le", "replace")
+            yield part.decode("utf-16-be", "replace")
 
     # --- EDF / BDF ---
 
@@ -408,13 +467,36 @@ class _Gate:
         for key in ("file_id", "meas_id"):
             ident = info.get(key) or {}
             secs = int(ident.get("secs") or 0) if isinstance(ident, dict) else 0
-            if secs:  # 0 is MNE's anonymized value
-                d = datetime.fromtimestamp(secs, timezone.utc).date()
-                if forbidden_date_forms([d]) & self.bad:
-                    self.flag("file id")
+            if self.original_date((secs,)):
+                self.flag("file id")
+        helium = info.get("helium_info") or {}
+        if self.original_date(helium.get("meas_date")):
+            self.flag("helium info")
+        for record in info.get("proc_history") or []:
+            block = record.get("block_id") or {}
+            stamps = [record.get("date"), (block.get("secs"),) if isinstance(block, dict) else None]
+            if any(self.original_date(s) for s in stamps):
+                self.flag("processing history")
+            self.value(record.get("experimenter"), "processing history", dates=False)
+            self.value(record.get("creator"), "processing history", dates=False)
         if self.extra_points is not None:
             self.extra_points[self.rel] = sum(1 for d in info.get("dig") or []
                                               if d.get("kind") == FIFF.FIFFV_POINT_EXTRA)
+
+    def original_date(self, value) -> bool:
+        """True when a date, datetime or FIF stamp ``(secs, ...)`` is an original date (0 is MNE's anonymized
+        stamp; DATE_NONE is no date)."""
+        if isinstance(value, (tuple, list)) or (hasattr(value, "shape") and getattr(value, "size", 0) >= 1):
+            try:
+                secs = int(value[0])
+            except (TypeError, ValueError, IndexError):
+                return False
+            if secs <= 0 or secs >= 2**31 - 1:
+                return False
+            value = datetime.fromtimestamp(secs, timezone.utc)
+        if isinstance(value, (date, datetime)):
+            return bool(forbidden_date_forms([value]) & self.forbidden)
+        return False
 
     # --- SNIRF / NWB ---
 
@@ -458,7 +540,7 @@ class _Gate:
                     or h5py.check_ref_dtype(obj.dtype) is not None:  # (object dtypes compare equal to refs)
                 return
             kind = kind_of(name)
-            dates = name.rsplit("/", 1)[-1] not in NWB_WRITE_TIME
+            dates = name not in NWB_WRITE_TIME  # only the root dataset (h5py names are relative to the root)
             if obj.shape == () or obj.shape is None:
                 for s in strings_of(obj[()]):
                     self.value(s, kind, dates=dates)

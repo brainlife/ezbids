@@ -248,3 +248,142 @@ def test_gate_bounded(tmp_path):
         tracemalloc.stop()
     assert v == ["sub-01/eeg/sub-01_task-rest_eeg.bdf: annotation"]
     assert peak < 32 * 2**20, peak
+
+
+# --- fix round 1 ---------------------------------------------------------------------------------------
+
+def _sidecar(out: Path, name: str, obj) -> Path:
+    p = out / "sub-01" / "eeg" / name
+    p.parent.mkdir(parents=True, exist_ok=True)
+    p.write_text(json.dumps(obj, ensure_ascii=False))
+    return p
+
+
+def test_gate_squashed_names_inside_text(tmp_path):
+    out = tmp_path / "out"
+    files = [_sidecar(out, "sub-01_task-a_eeg.json", {"Notes": "JaneDoe tapping"}),
+             _sidecar(out, "sub-01_task-b_eeg.json", {"Notes": "x" * 70000 + " JaneDoe"}),
+             _sidecar(out, "sub-01_task-c_eeg.json", {"Notes": "DOE, JANE"}),
+             _sidecar(out, "sub-01_task-d_eeg.json", {"Notes": "visit by Doe Jane"})]
+    v = gate.check(files, out, {"Jane Doe"}, set(), sources=[])
+    assert v == [f"sub-01/eeg/sub-01_task-{t}_eeg.json: sidecar value" for t in "abcd"]
+
+
+def test_gate_squashed_matching_limits(tmp_path):
+    """Run-together matching applies only to terms of 5+ characters with a letter (short names and
+    digit-only date forms would match inside unrelated words and decimal numbers)."""
+    out = tmp_path / "out"
+    side = _sidecar(out, "sub-01_task-a_eeg.json", {"Notes": "OliWuzzle", "Value": "15.02251"})
+    events_tsv = out / "sub-01" / "eeg" / "sub-01_task-a_events.tsv"
+    events_tsv.write_text("onset\tduration\tvalue\n2025.02151\t0\t150.2251\n")
+    assert gate.check([side, events_tsv], out, {"Li Wu"}, gate.forbidden_date_forms([fx.MEAS_DATE]),
+                      sources=[]) == []
+
+
+def test_gate_json_numbers(tmp_path):
+    out = tmp_path / "out"
+    files = [_sidecar(out, "sub-01_task-a_eeg.json", {"X": 20250215.0}),
+             _sidecar(out, "sub-01_task-b_eeg.json", {"X": 20250215}),
+             _sidecar(out, "sub-01_task-c_eeg.json", {"SamplingFrequency": 256.0})]
+    v = gate.check(files, out, set(), gate.forbidden_date_forms([fx.MEAS_DATE]), sources=[])
+    assert v == ["sub-01/eeg/sub-01_task-a_eeg.json: sidecar value", "sub-01/eeg/sub-01_task-b_eeg.json: sidecar value"]
+
+
+def test_gate_utf8_in_blocks(tmp_path):
+    """UTF-8 text is found in an unknown binary file and in a text file too large to parse (> 16 MiB)."""
+    out = tmp_path / "out"
+    (out / "sub-01" / "eeg").mkdir(parents=True)
+    blob = out / "sub-01" / "sub-01_notes.bin"
+    blob.write_bytes(b"\x00" * 8 + "Müller".encode("utf-8") + b"\x00" * 8)
+    big = out / "sub-01" / "eeg" / "sub-01_task-rest_events.tsv"
+    row = b"1.0\t0\tE001\n" * 1000
+    with open(big, "wb") as fh:
+        fh.write(b"onset\tduration\ttrial_type\n")
+        for _ in range((17 << 20) // len(row)):
+            fh.write(row)
+        fh.write("2.0\t0\tMüller\n".encode("utf-8"))
+    assert big.stat().st_size > 16 << 20
+    v = gate.check([blob, big], out, {"Müller"}, set(), sources=[])
+    assert v == ["sub-01/eeg/sub-01_task-rest_events.tsv: file bytes", "sub-01/sub-01_notes.bin: file bytes"]
+
+
+def test_gate_large_text_bounded(tmp_path, monkeypatch):
+    """A text file above TEXT_MAX is scanned block by block, so the peak does not grow with the file
+    (TEXT_MAX lowered here to keep the traced run short)."""
+    monkeypatch.setattr(gate, "TEXT_MAX", 1 << 20)
+    out = tmp_path / "out"
+    (out / "sub-01" / "eeg").mkdir(parents=True)
+    big = out / "sub-01" / "eeg" / "sub-01_task-rest_events.tsv"
+    row = "1.0\t0\tE001 é\n".encode("utf-8") * 1000
+    with open(big, "wb") as fh:
+        fh.write(b"onset\tduration\ttrial_type\n")
+        for _ in range((gate.TEXT_MAX + (1 << 20)) // len(row)):
+            fh.write(row)
+    assert big.stat().st_size > gate.TEXT_MAX
+    tracemalloc.start()
+    try:
+        v = gate.check([big], out, TERMS | {"Müller"}, FORBIDDEN, sources=[])
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert v == []
+    assert peak < 32 * 2**20, peak
+
+
+def test_gate_oversized_json_bounded(tmp_path):
+    out = tmp_path / "out"
+    side = out / "sub-01" / "eeg" / "sub-01_task-rest_eeg.json"
+    side.parent.mkdir(parents=True)
+    with open(side, "w") as fh:
+        fh.write('{"Notes": [')
+        fh.write(", ".join(['"n/a"'] * ((5 << 20) // 7)))
+        fh.write("]}")
+    assert side.stat().st_size > gate.JSON_MAX
+    tracemalloc.start()
+    try:
+        v = gate.check([side], out, TERMS, FORBIDDEN, sources=[])
+        _, peak = tracemalloc.get_traced_memory()
+    finally:
+        tracemalloc.stop()
+    assert v == ["sub-01/eeg/sub-01_task-rest_eeg.json: oversized sidecar"]
+    assert peak < 32 * 2**20, peak
+
+
+def test_gate_fif_helium_and_proc_history(tmp_path):
+    import mne
+
+    stamp = int(fx.MEAS_DATE.timestamp())
+    info = mne.create_info(["MEG0111"], fx.SFREQ, "mag")
+    with info._unlock():
+        info["helium_info"] = {"he_level_raw": 1.0, "helium_level": 90.0, "orig_file_guid": "mne_anonymize",
+                               "meas_date": fx.MEAS_DATE}
+        info["proc_history"] = [{"block_id": {"version": 1, "machid": np.zeros(2, ">i4"), "secs": stamp, "usecs": 0},
+                                 "date": np.array([stamp, 0], ">i4"), "experimenter": "mne_anonymize",
+                                 "creator": "mne", "max_info": {"sss_info": {}, "max_st": {}, "sss_ctc": {},
+                                                                "sss_cal": {}}}]
+    raw = mne.io.RawArray(np.zeros((1, 256)), info, verbose=False)
+    out = tmp_path / "out"
+    fif = out / "sub-01" / "meg" / "sub-01_task-rest_meg.fif"
+    fif.parent.mkdir(parents=True)
+    raw.save(fif, verbose=False)
+    v = gate.check([fif], out, set(), gate.forbidden_date_forms([fx.MEAS_DATE]), sources=[])
+    assert "sub-01/meg/sub-01_task-rest_meg.fif: helium info" in v
+    assert "sub-01/meg/sub-01_task-rest_meg.fif: processing history" in v
+    assert gate.check([fif], out, set(), gate.forbidden_date_forms([date(2020, 1, 1)]), sources=[]) == []
+
+
+def test_gate_nwb_write_time_only_at_root(tmp_path):
+    import h5py
+
+    out = tmp_path / "out"
+    nwb = out / "sub-01" / "ieeg" / "sub-01_task-rest_ieeg.nwb"
+    nwb.parent.mkdir(parents=True)
+    now = datetime.now(timezone.utc).isoformat()
+    with h5py.File(nwb, "w") as f:
+        f.create_dataset("file_create_date", data=[now.encode()])
+        f.create_dataset("session_start_time", data=b"1915-08-12T10:00:00+00:00")
+    assert gate.check([nwb], out, TERMS, FORBIDDEN, sources=[]) == []
+    with h5py.File(nwb, "a") as f:
+        f.create_group("general").create_dataset("file_create_date", data=[now.encode()])
+    assert gate.check([nwb], out, TERMS, FORBIDDEN, sources=[]) == [
+        "sub-01/ieeg/sub-01_task-rest_ieeg.nwb: string dataset"]
