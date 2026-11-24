@@ -2,12 +2,15 @@
 from __future__ import annotations
 
 import gzip
+import logging
 import os
 import re
 from dataclasses import dataclass
 from pathlib import Path
 
 from ..modality import Claim
+
+log = logging.getLogger(__name__)
 
 FAMILIES = ("ome-zarr", "ome-tiff", "tiff", "svs", "czi", "nd2", "lif", "nifti", "mat", "raw-psoct",
             "unsupported", "visor-meta")
@@ -90,8 +93,35 @@ def _family(name: str, path: Path, rel: str) -> str | None:
     return None
 
 
+def claim_remote(urls: list[str] | None) -> tuple[list[str], list[Found]]:
+    """Probe each remote URL (``remote.probe``); keep the ones that are OME-Zarr, NIfTI or TIFF.
+
+    Returns the normalised URLs and their ``Found`` entries (``rel`` and ``group`` are the URL;
+    local-only, like every other claim record). A refused or unreadable URL is skipped with a
+    warning that does not name it.
+    """
+    from . import remote as _remote
+
+    kept: list[str] = []
+    found: list[Found] = []
+    for i, url in enumerate(urls or []):
+        try:
+            norm = _remote.normalize_url(url)
+            family = _remote.probe(norm)
+        except Exception as exc:  # noqa: BLE001 - one bad source must not stop the scan
+            log.warning("remote source %d skipped: %s", i + 1, type(exc).__name__)
+            continue
+        if family not in _remote.ALLOWED_FAMILIES:
+            log.warning("remote source %d skipped: not OME-Zarr, NIfTI or TIFF", i + 1)
+            continue
+        if norm not in kept:
+            kept.append(norm)
+            found.append(Found(norm, family, norm))
+    return kept, found
+
+
 def claim(input_dir: Path, remote: list[str] | None = None) -> tuple[Claim, list[Found]]:
-    """Claim microscopy inputs under input_dir. ``remote`` is passed through unprobed (Task 5)."""
+    """Claim microscopy inputs under input_dir, and the remote URLs that probe as microscopy."""
     input_dir = Path(input_dir)
     found: list[Found] = []
     roots: list[str] = []
@@ -124,4 +154,5 @@ def claim(input_dir: Path, remote: list[str] | None = None) -> tuple[Claim, list
                     add_root(rel, fam, (rel_dir or ".") if fam == "tiff" else None)
 
     walk(input_dir, "")
-    return Claim(roots=roots, remote=list(remote or [])), found
+    urls, remote_found = claim_remote(remote)
+    return Claim(roots=roots, remote=urls), found + remote_found

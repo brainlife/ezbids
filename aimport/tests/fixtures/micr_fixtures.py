@@ -41,15 +41,16 @@ def ome_zarr(
     version: str,
     shape: tuple[int, int, int, int] = (2, 8, 64, 64),
     pixel_size_um: tuple[float, float, float] = (1.0, 0.5, 0.5),
+    levels: int = 2,
 ) -> Path:
-    """Write a 2-level c,z,y,x OME-Zarr at dest (NGFF "0.5": Zarr v3 sharded; "0.4": Zarr v2)."""
+    """Write a c,z,y,x OME-Zarr pyramid (y, x halved per level; 2 levels by default) at dest
+    (NGFF "0.5": Zarr v3 sharded; "0.4": Zarr v2)."""
     if version not in ("0.5", "0.4"):
         raise ValueError(f"version must be '0.5' or '0.4', got {version!r}")
     dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(0)
     data = rng.integers(0, 4096, size=shape, dtype=np.uint16)
-    levels = 2
     ms = _multiscales(version, pixel_size_um, levels)
     if version == "0.5":
         root = zarr.open_group(str(dest), mode="w", zarr_format=3)

@@ -50,13 +50,19 @@ def test_zarr_root_not_walked(tmp_path, monkeypatch):
     assert len(calls) < 50
 
 
-def test_tile_folder_shares_group_and_remote_passthrough(tmp_path):
+def test_tile_folder_shares_group_and_remote_probed(tmp_path, monkeypatch):
+    from aimport.micr import remote
+
     for i in (1, 2):
         d = tmp_path / "s" / "tiles"
         d.mkdir(parents=True, exist_ok=True)
         (d / f"t_{i}.tif").touch()
-    claim, found = discover.claim(tmp_path, ["https://x/y"])
-    assert {f.group for f in found} == {"s/tiles"} and claim.remote == ["https://x/y"]
+    probes = {"https://x.org/y": "ome-zarr", "https://x.org/z": None}
+    monkeypatch.setattr(remote, "probe", lambda url: probes[url])
+    claim, found = discover.claim(tmp_path, ["https://x.org/y/", "https://x.org/z", "http://x.org/w"])
+    assert {f.group for f in found if f.family == "tiff"} == {"s/tiles"}
+    assert claim.remote == ["https://x.org/y"]
+    assert [(f.rel, f.family) for f in found if f.rel.startswith("https:")] == [("https://x.org/y", "ome-zarr")]
 
 
 def test_facts():

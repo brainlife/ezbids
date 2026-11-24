@@ -34,7 +34,7 @@ from .metadata import (
 
 __all__ = [
     "BIOFORMATS_MESSAGE", "MAT_V5_MAX_BYTES", "ChannelInfo", "ImageInfo", "ImageSource",
-    "UnsupportedFormat", "open_image", "plan_chunks", "register_reader",
+    "UnsupportedFormat", "apply_visor_meta", "open_image", "plan_chunks", "register_reader",
 ]
 
 log = logging.getLogger(__name__)
@@ -347,7 +347,7 @@ def _svs_extra(page: Any) -> tuple[float | None, date | None]:
     return (float(mag) if isinstance(mag, (int, float)) else None), when
 
 
-def _tiff_level(tif: Any, series: Any, i: int, amap: _AxisMap, path: Path) -> Any:
+def _tiff_level(tif: Any, series: Any, i: int, amap: _AxisMap, path: Path | None) -> Any:
     import dask.array as da
     import zarr
 
@@ -360,10 +360,14 @@ def _tiff_level(tif: Any, series: Any, i: int, amap: _AxisMap, path: Path) -> An
         arr = da.from_zarr(z, chunks=plan_chunks(z.shape, itemsize, limit, native))
     elif lvl.dataoffset is not None:
         # one strip/tile larger than the block limit, stored uncompressed and contiguous:
-        # map the file and read row blocks, never the whole plane.
+        # map the file (or, for a remote file, range-read it) in row blocks, never the whole plane.
         dtype = np.dtype(lvl.dtype).newbyteorder(tif.byteorder)
-        mm = np.memmap(path, dtype=dtype, mode="r", offset=lvl.dataoffset, shape=tuple(lvl.shape))
-        arr = _from_array(mm, plan_chunks(tuple(lvl.shape), itemsize, limit))
+        shape = tuple(lvl.shape)
+        if path is not None:
+            mm = np.memmap(path, dtype=dtype, mode="r", offset=lvl.dataoffset, shape=shape)
+        else:
+            mm = _ContiguousFile(tif.filehandle, lvl.dataoffset, dtype, shape)
+        arr = _from_array(mm, plan_chunks(shape, itemsize, limit))
     else:
         log.warning("TIFF chunks (%d bytes) exceed the block limit and are compressed",
                     _chunk_bytes(native, itemsize))
@@ -371,11 +375,36 @@ def _tiff_level(tif: Any, series: Any, i: int, amap: _AxisMap, path: Path) -> An
     return amap.apply(arr)
 
 
-def _open_tiff(location: str | Path, family: str) -> _Source:
+class _ContiguousFile:
+    """Array view of a contiguous, uncompressed C-order block of a file object (remote TIFFs)."""
+
+    def __init__(self, fh: Any, offset: int, dtype: np.dtype, shape: tuple[int, ...]):
+        self.fh, self.offset, self.dtype, self.shape, self.ndim = fh, offset, dtype, shape, len(shape)
+
+    def __getitem__(self, key: Any) -> Any:
+        key = key if isinstance(key, tuple) else (key,)
+        lead = key[0] if key else slice(None)
+        start, stop, _ = lead.indices(self.shape[0]) if isinstance(lead, slice) else (lead, lead + 1, 1)
+        row = int(np.prod(self.shape[1:], dtype=np.int64)) * self.dtype.itemsize
+        with self.fh.lock:
+            self.fh.seek(self.offset + start * row)
+            buf = self.fh.read((stop - start) * row)
+        block = np.frombuffer(buf, dtype=self.dtype).reshape((stop - start,) + self.shape[1:])
+        rest = (slice(None),) + tuple(key[1:])
+        out = block[rest]
+        return out if isinstance(lead, slice) else out[0]
+
+
+def _is_path(location: Any) -> bool:
+    return isinstance(location, (str, Path))
+
+
+def _open_tiff(location: Any, family: str) -> _Source:
+    """``location``: a path, or a seekable binary file object (a remote file, ``micr.remote``)."""
     import tifffile
 
-    path = Path(location)
-    tif = tifffile.TiffFile(str(path))
+    path = Path(location) if _is_path(location) else None
+    tif = tifffile.TiffFile(str(path) if path is not None else location)
     try:
         series = tif.series
         skipped: list[str] = []
@@ -437,10 +466,14 @@ def _open_tiff(location: str | Path, family: str) -> _Source:
 
 # --- VISoR tiles: TIFF pixels, pixel size and channel from acqinfo_metadata.json --------------
 
-# Key-name patterns for numeric fields of acqinfo_metadata.json (flattened, lowercased).
+# Key-name patterns for numeric fields of acqinfo_metadata.json (flattened, lowercased; the last
+# path component, list indices included). The real CMC files (version 0.0.3, DATASETS.md) have
+# settings.pixel_spacing_um, positions[i].x_step_um (VISoR scans the stage along x, so x_step is
+# the spacing between the frames of a raw tile) and excitation_wavelengths[i] as text ("488nm").
 _VISOR_XY = re.compile(r"(pixel|voxel)[ _]?(size|spacing|res(olution)?)(?![ _]?z)|resolution[ _]?xy?\b|um[ _]?per[ _]?pixel")
-_VISOR_Z = re.compile(r"(z[ _]?(step|spacing|res(olution)?)|step[ _]?z|slice[ _]?(thickness|spacing|interval)|(pixel|voxel)[ _]?(size|spacing)[ _]?z)")
+_VISOR_Z = re.compile(r"(z[ _]?(step|spacing|res(olution)?)|step[ _]?z|slice[ _]?(thickness|spacing|interval)|(pixel|voxel)[ _]?(size|spacing)[ _]?z|\bx[ _]?step)")
 _VISOR_CH = re.compile(r"(wave[ _]?length|laser|excitation|channel|ex\b)")
+_WAVELENGTH_TEXT = re.compile(r"\s*(\d{3}(?:\.\d+)?)\s*(?:nm)?\s*", re.IGNORECASE)
 
 
 def _flatten(obj: Any, prefix: str = "") -> list[tuple[str, Any]]:
@@ -457,13 +490,17 @@ def _flatten(obj: Any, prefix: str = "") -> list[tuple[str, Any]]:
 
 
 def visor_facts(meta: dict) -> tuple[dict[str, float], float | None]:
-    """(pixel_size in um, excitation nm) from the numeric fields of acqinfo_metadata.json."""
+    """(pixel_size in um, excitation nm) from acqinfo_metadata.json: numeric fields, and wavelengths
+    written as text ("488nm"). Other strings are never read for facts."""
     size: dict[str, float] = {}
     channel = None
     for key, value in _flatten(meta):
+        k = key.lower().rsplit(".", 1)[-1]
+        if isinstance(value, str) and _VISOR_CH.search(k):  # "488nm": a wavelength as text
+            m = _WAVELENGTH_TEXT.fullmatch(value)
+            value = float(m.group(1)) if m else None
         if isinstance(value, bool) or not isinstance(value, (int, float)) or value <= 0:
             continue
-        k = key.lower().rsplit(".", 1)[-1]
         if "z" not in size and _VISOR_Z.search(k):
             size["z"] = float(value)
         elif "x" not in size and _VISOR_XY.search(k):
@@ -473,9 +510,23 @@ def visor_facts(meta: dict) -> tuple[dict[str, float], float | None]:
     return size, channel
 
 
-def _open_visor(location: str | Path) -> _Source:
+def apply_visor_meta(src: Any, meta: dict) -> None:
+    """Pixel size and channel from a parsed acqinfo_metadata.json; its strings become terms."""
+    src.terms |= collect_terms(meta)
+    size, channel = visor_facts(meta)
+    if size:
+        src.info.pixel_size = size
+        src.info.pixel_unit = "um"
+    if channel is not None and len(src.info.channels) == 1:
+        src.info.channels = [ChannelInfo(channel, None, channel_code(channel, 0))]
+
+
+def _open_visor(location: Any) -> _Source:
+    """A VISoR tile. For a file object (remote), ``micr.remote`` reads the metadata JSON itself."""
+    src = _open_tiff(location, "visor")
+    if not _is_path(location):
+        return src
     tile = Path(location)
-    src = _open_tiff(tile, "visor")
     for folder in (tile.parent, tile.parent.parent):
         meta_path = folder / "acqinfo_metadata.json"
         if meta_path.is_file():
@@ -483,13 +534,8 @@ def _open_visor(location: str | Path) -> _Source:
                 meta = json.loads(meta_path.read_text(errors="replace"))
             except (OSError, ValueError):
                 break
-            src.terms |= collect_terms(meta)
-            size, channel = visor_facts(meta)
-            if size:
-                src.info.pixel_size = size
-                src.info.pixel_unit = "um"
-            if channel is not None and len(src.info.channels) == 1:
-                src.info.channels = [ChannelInfo(channel, None, channel_code(channel, 0))]
+            if isinstance(meta, dict):
+                apply_visor_meta(src, meta)
             break
     return src
 
@@ -565,10 +611,23 @@ _NIFTI_UNIT: dict[str, tuple[PixelUnit, float]] = {
 }
 
 
-def _open_nifti(location: str | Path) -> _Source:
+def _load_nifti(location: Any) -> Any:
+    import gzip
+
     import nibabel as nib
 
-    img = nib.load(str(location))
+    if _is_path(location):
+        return nib.load(str(location))
+    # a seekable binary file object (a remote file): gzip is detected from its magic bytes
+    pos = location.tell()
+    magic = location.read(2)
+    location.seek(pos)
+    stream = gzip.GzipFile(fileobj=location, mode="rb") if magic == b"\x1f\x8b" else location
+    return nib.Nifti1Image.from_stream(stream)
+
+
+def _open_nifti(location: Any) -> _Source:
+    img = _load_nifti(location)
     hdr = img.header
     proxy = img.dataobj
     shape = tuple(int(s) for s in img.shape)

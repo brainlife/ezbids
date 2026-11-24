@@ -13,10 +13,12 @@ or dropped, and say why.
 | Synthetic OME-Zarr (`tests/fixtures/micr_fixtures.py` `ome_zarr`, written for this repo; no real pixels) | generated at test time, seed 0 | **current** | `tests/test_micr_validator.py` (microscopy Task 1: validator ruling) |
 | Synthetic sparse BigTIFF (`tests/fixtures/micr_fixtures.py` `sparse_bigtiff`, written for this repo; no pixels) | generated at test time | **current** | `tests/test_modality.py` (microscopy Task 2: claimed input is never staged or copied), `tests/test_micr_readers.py` (Task 4: bounded open) |
 | Synthetic microscopy reader fixtures (`tests/fixtures/micr_fixtures.py` `planted_ome_tiff`, `planted_svs`, `psoct_nifti`, `psoct_mat`, `striped_tiff`, `visor_tile`; written for this repo, planted identifiers only) | generated at test time, seed 0 | **current** | `tests/test_micr_readers.py` (microscopy Task 4: readers, allowlisted metadata, bounded memory) |
+| CMC public bucket `apex-connects` (us-east-2; four objects, keys below). No licence stated: read only, network-marked tests, nothing committed or downloaded whole | keys pinned by listing, 2026-11-24 | **current** | `tests/test_micr_remote.py` `network` tests (microscopy Task 5: remote reads by range request) |
 
 ### Synthetic OME-Zarr (current)
 
-`ome_zarr(dest, version)` writes a 2-level `c,z,y,x` uint16 store, default shape `(2, 8, 64, 64)`,
+`ome_zarr(dest, version, levels=2)` writes a `c,z,y,x` uint16 pyramid (y and x halved per level; 2
+levels by default, 4 in `test_micr_remote.py` `test_coarse_level_only`), default shape `(2, 8, 64, 64)`,
 pixel size 1.0 × 0.5 × 0.5 µm (z, y, x), random values from seed 0. NGFF `"0.5"` is Zarr v3 with one
 shard per channel; `"0.4"` is Zarr v2. `strip_chunks` deletes every chunk and shard file, leaving only
 Zarr metadata: what a reference dataset looks like locally.
@@ -41,13 +43,42 @@ Written for Task 4; every identifier in them is listed in `tests/conftest.py` `M
 | `striped_tiff(dest, (6000, 6000), uint16)` | uncompressed single plane, 16 rows per strip, pixels never written (sparse, ~30 KiB on disk) | none |
 | `visor_tile(dest_dir)` | `visor_488_Pos0/visor_488_0001.tif` (4 x 32 x 32 uint16) plus `acqinfo_metadata.json` | `operator` `Jane Doe`, `host` `lab-workstation-7`, `date` `20250422` |
 
-**VISoR `acqinfo_metadata.json` key names.** The real CMC file was not read (the CMC data is not
-copied or downloaded for this task), so the fixture's keys are synthetic: `pixel_size`, `z_step`,
-`wavelength` (numeric, kept) and `operator`, `host`, `date` (strings, dropped as terms). The reader
-(`readers.visor_facts`) takes numeric fields only, matching key names by pattern: pixel/voxel
-size, spacing or resolution (x, y); z step, slice thickness/spacing (z); wavelength, laser,
-excitation or channel between 350 and 900 (excitation nm). Record the real key names here when the
-network-marked CMC test (Task 5) first reads the file's header.
+**VISoR `acqinfo_metadata.json` key names.** The fixture's keys are synthetic: `pixel_size`,
+`z_step`, `wavelength` (numeric, kept) and `operator`, `host`, `date` (strings, dropped as terms). The
+reader (`readers.visor_facts`) matches key names by pattern: pixel/voxel size, spacing or resolution
+(x, y); z step, slice thickness/spacing, or `x_step` (z); wavelength, laser, excitation or channel
+between 350 and 900 (excitation nm, numeric or text such as `488nm`). The real CMC key names are
+recorded under "CMC public bucket" below; `test_visor_real_key_names` uses them with synthetic values.
+
+### CMC public bucket `apex-connects` (current)
+
+Public S3 bucket `apex-connects` (region us-east-2), read anonymously over
+`https://apex-connects.s3.amazonaws.com/`. **No licence stated: read only, network-marked tests,
+nothing committed or downloaded whole.** Every `network` test passes a byte cap to its
+`ByteCounter` (reads stop past it) and asserts the total. Keys were pinned on 2026-11-24 by listing
+the bucket anonymously (S3 ListObjectsV2, prefixes only); there is no commit to pin, so a
+changed or removed key shows up as a failing `network` test.
+
+| Test | Key (under `s3://apex-connects/`) | What it is | Read | Cap | Bytes read (2026-11-24) |
+|---|---|---|---|---|---|
+| `test_cmc_psoct_zarr_metadata` | `CMC/Derivatives/Moe/PS-OCT/Zarr/Moe_Slice_051.ome.zarr` | PS-OCT slice, NGFF 0.5 / Zarr v3 with consolidated metadata, axes `c,y,x`, 6 levels (`scale0/image` 4 x 8500 x 11000 float32 to `scale5/image` 4 x 16 x 21), zstd, not sharded | metadata plus the whole coarsest level | 32 MiB | 15,271 |
+| `test_cmc_exaspim_position` | `axonal_connectomics/deskewed/H17_PO10_S5_20250417/exaSPIM.zarr/Pos0` | exaSPIM position, Zarr v3 **sharded** (`sharding_indexed`, inner chunks 64^3, blosc), NGFF 0.4-style `multiscales` attributes (no `ome` key), axes `t,c,z,y,x`, 6 levels (level 0 1 x 1 x 45256 x 14192 x 2660 uint16), 0.65 x 0.748 x 0.748 um | metadata plus one 64^3 inner chunk of the coarsest level | 32 MiB | 23,595 |
+| `test_cmc_visor_tile_header` | `CMC/Raw/Moe/tract-tracing/MN27_FH_S100_250215_visor_488/visor_488_Pos0/visor_488_0_0.tif` (4,286,188,560 bytes) and `.../MN27_FH_S100_250215_visor_488/acqinfo_metadata.json` (4,127 bytes) | VISoR raw tile: classic (not Big) TIFF written by Micro-Manager (NDTiff v3 header, `MicroManagerMetadata` tag per page, no index map in the file), pages 1024 x 2048 uint16, uncompressed, one 4 MiB strip per page, ~1025 pages (`frames_per_file`) | first IFD, the first page's one strip, and the metadata JSON (only that small JSON; never `dbpost.json` or `hh.log`) | 8 MiB | 4,325,380 |
+| `test_cmc_enface_nifti_header` | `CMC/Derivatives/Moe/PS-OCT/Enface/Registration/Retardance/Slice_001_EnR_hdr.nii.gz` (14,011,625 bytes) | PS-OCT en-face retardance, gzipped NIfTI-1, float32, 11000 x 1 x 8740, units mm | header and the first voxel (gzip from the start) | 1 MiB | 262,146 |
+
+**Real VISoR `acqinfo_metadata.json` key names** (read from the JSON above; values shown only for
+the facts used): `version` (`"0.0.3"`), `channels` (1), `excitation_wavelengths` (list of text,
+`["488nm"]`), `positions[]` with `x_start_um`, `x_end_um`, `y_start_um`, `z_start_um`, `x_step_um`
+(2.5), `settings` with `sheet_angle` (45.0), `pixel_spacing_um` (0.96), `image_size_xy` ([2048, 1024]),
+`frames_per_file` (1025), `strip_overlap_pixels`, `dtype` (`"uint16"`), `flipped`, `rotated`, and
+`stripdirs`, `file` (strings). These differ from the synthetic fixture's names, so `visor_facts` now
+also reads wavelengths written as text and takes `x_step` (the stage step between the frames of a
+raw tile; VISoR scans along stage x) as the z spacing: 0.96 x 0.96 x 2.5 um, excitation 488 nm.
+
+**Reading a whole remote multi-page TIFF is not cheap.** The tile's IFDs sit one per 4 MiB page and
+are not evenly spaced (each page carries a variable-length `MicroManagerMetadata` tag), so counting
+the pages walks the IFD chain: one range read per page (~64 MiB at the 64 KiB file block size).
+`open_remote(url, "tiff")` does that under its byte cap; the network test reads the first page only.
 
 ### dcm_qa_xa30 (current)
 
@@ -187,6 +218,7 @@ found in the lowercased text by substring (so phrases like `hospital x` and valu
 ## How the tests are run
 
 - Host unit tests: `cd aimport && uv run pytest -m "not docker and not docker_offline"`
+- Network tests (CMC bucket, by hand; range reads under each test's byte cap): `cd aimport && uv run pytest -m network`
 - In the image: `docker run --rm --platform linux/amd64 -v $PWD/aimport:/src brainlife/aimport:dev pytest -m docker /src/tests`
 - Offline: the same with `--network none -m docker_offline`, plus a cache mount holding the xa30 tarball, because
   the fetch cannot download: `-v <cache dir>:/tmp/aimport-dcm-qa-cache` (the tarball is
