@@ -62,3 +62,5 @@ electron/**/*.cjs
 electron/**/*.cjs.map
 electron/ezbids.key
 electron/ezbids.pub
+# aimport desktop runtime (fetch-aimport.sh)
+electron/aimport/runtime

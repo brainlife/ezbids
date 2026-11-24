@@ -12,9 +12,10 @@
         "build:electron-templates": "mkdir -p dist/handler/templates && cp -R ../handler/templates/. dist/handler/templates/",
         "build:electron-bids-spec": "mkdir -p dist/bids-specification/src && cp -r ../bids-specification/src/schema dist/bids-specification/src/schema",
         "build:electron-frontend": "(cd .. && npm run build:electron -w ui)",
+        "build:electron-aimport": "test -f aimport/runtime/schema.json || (echo 'run ../fetch-aimport.sh first' && exit 1)",
         "build:electron-main": "esbuild main.ts --bundle --platform=node --format=cjs --target=es2020 --outfile=dist/main.cjs --external:electron --external:electron-store --external:ts-node-dev",
         "build:electron-preload": "mkdir -p dist && esbuild preload/preload.ts --bundle --platform=node --format=cjs --target=es6 --outfile=preload/preload.js --external:electron --external:electron-store --external:ts-node-dev && cp preload/preload.js dist/preload.js",
-        "build:electron": "rm -rf dist && npm run build:electron-api && npm run build:electron-handler && npm run build:electron-handler-scripts && npm run build:electron-python && npm run build:electron-templates && npm run build:electron-bids-spec && npm run build:electron-frontend && npm run build:electron-main && npm run build:electron-preload",
+        "build:electron": "rm -rf dist && npm run build:electron-api && npm run build:electron-handler && npm run build:electron-handler-scripts && npm run build:electron-python && npm run build:electron-templates && npm run build:electron-bids-spec && npm run build:electron-frontend && npm run build:electron-aimport && npm run build:electron-main && npm run build:electron-preload",
         "app:dir": "CSC_IDENTITY_AUTO_DISCOVERY=false env -u APPLE_API_KEY -u APPLE_API_KEY_ID -u APPLE_API_ISSUER electron-builder --dir -c.mac.identity=null",
         "app:dist": "electron-builder",
         "app:build-dist": "npm run build:electron && npm run app:dist"
@@ -65,6 +66,13 @@
             {
                 "from": "../handler/bin",
                 "to": "bin",
+                "filter": [
+                    "**/*"
+                ]
+            },
+            {
+                "from": "aimport/runtime",
+                "to": "aimport",
                 "filter": [
                     "**/*"
                 ]
