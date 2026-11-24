@@ -37,8 +37,12 @@ SYSTEM_WORDS = ("ctf", "kit", "bti", "4d", "egi", "nirx", "neuromag", "megin", "
                 "biosemi", "brainvision", "brainproducts", "eeglab", "neuroscan", "compumedics", "persyst", "nihon",
                 "kohden", "nihonkohden", "hitachi", "blackrock", "snirf", "nwb", "natus", "micromed", "mef",
                 "mff", "geodesic", "yokogawa", "ricoh", "artinis", "shimadzu", "mne", "matlab", "fieldtrip")
-_VOCAB = _VOCAB | frozenset(SYSTEM_WORDS)
-HARVEST_VOCAB = tuple(VOCAB) + SYSTEM_WORDS
+# generic file-name words of vendor folders (NIRx "nirx_15_3_recording", "<name>_config.txt") and companion
+# extensions: as terms they would redact sidecar keys such as RecordingDuration
+FILE_WORDS = ("recording", "recordings", "config", "probeinfo", "avg", "inf", "tpl", "txt", "dat", "evt", "hdr",
+              "wl1", "wl2", "set", "mat", "csv", "json", "tsv")
+_VOCAB = _VOCAB | frozenset(SYSTEM_WORDS) | frozenset(FILE_WORDS)
+HARVEST_VOCAB = tuple(VOCAB) + SYSTEM_WORDS + FILE_WORDS
 _MARKER_CODE = re.compile(r"^[SR]\s*\d{1,4}$")
 _TIME = re.compile(r"^\d{1,2}:\d{2}(:\d{2})?([.,]\d+)?$")
 _MONTHS = ("JAN", "FEB", "MAR", "APR", "MAY", "JUN", "JUL", "AUG", "SEP", "OCT", "NOV", "DEC")
@@ -964,6 +968,12 @@ def _blackrock(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None:
                     t.label(bytes(arr[row, text_off:]).split(b"\x00")[0].decode("latin-1", "replace"))
 
 
+def _nwb(t: _Terms, path: Path, rec: Recording, input_dir: Path) -> None:
+    from . import nwb
+
+    nwb.collect(t, path)
+
+
 _FAMILY = {
     "edf": _edf,
     "bdf": _edf,
@@ -982,13 +992,14 @@ _FAMILY = {
     "hitachi": _hitachi,
     "snirf": _snirf,
     "blackrock": _blackrock,
+    "nwb": _nwb,
 }
 
 
 def harvest(rec: Recording, input_dir: Path, raw=None) -> set[str]:
     """The identifying terms of one recording (headers, metadata, free text, paths); local use only.
 
-    ``raw`` is the recording opened by ``readers.open_raw`` (``None`` for NWB, which Task 10 reads).
+    ``raw`` is the recording opened by ``readers.open_raw`` (``None`` for NWB, read by ``nwb.collect``).
     A header that cannot be parsed raises, so a recording is never planned with a partial harvest.
     """
     input_dir = Path(input_dir)
@@ -1179,3 +1190,42 @@ def check_vmrk(path: Path, allowed_labels: Iterable[str], bids_stem: str | None 
             when = fields[5].strip() if len(fields) > 5 else ""
             if when and (not when.isdigit() or int(when[:4]) >= 1925):
                 raise HeaderError("BrainVision marker date")
+
+
+SNIRF_TAGS = ("SubjectID", "MeasurementDate", "MeasurementTime", "LengthUnit", "TimeUnit", "FrequencyUnit")
+SNIRF_GROUPS = frozenset({"metaDataTags", "data1", "probe"})
+
+
+def check_snirf(path: Path, subject_label: str, allowed_labels: Iterable[str]) -> None:
+    """A written SNIRF: ``/nirs*/metaDataTags`` holds exactly the six tags (``SubjectID`` the BIDS label, the
+    measurement date and time ``unknown``), every ``stim*/name`` is an allowed label, and ``/nirs`` holds no
+    other group. ``HeaderError`` otherwise (the message names the field kind, never its text)."""
+    import h5py
+
+    allowed = {str(x) for x in allowed_labels}
+
+    def text(ds) -> str:
+        v = ds[()]
+        if hasattr(v, "reshape") and getattr(v, "size", 1):
+            v = v.reshape(-1)[0]
+        return v.decode("utf-8", "replace") if isinstance(v, bytes) else str(v)
+
+    with h5py.File(path, "r") as f:
+        groups = [k for k in f if re.fullmatch(r"nirs\d*", k)]
+        if set(f) - set(groups) - {"formatVersion"} or not groups:
+            raise HeaderError("SNIRF root")
+        for g in groups:
+            nirs = f[g]
+            tags = nirs.get("metaDataTags")
+            if tags is None or sorted(tags) != sorted(SNIRF_TAGS):
+                raise HeaderError("SNIRF metaDataTags")
+            if text(tags["SubjectID"]) != subject_label:
+                raise HeaderError("SNIRF SubjectID")
+            if text(tags["MeasurementDate"]) != "unknown" or text(tags["MeasurementTime"]) != "unknown":
+                raise HeaderError("SNIRF measurement date")
+            for name in nirs:
+                if re.fullmatch(r"stim\d+", name):
+                    if text(nirs[name]["name"]) not in allowed:
+                        raise HeaderError("SNIRF stim name")
+                elif name not in SNIRF_GROUPS:
+                    raise HeaderError("SNIRF group")

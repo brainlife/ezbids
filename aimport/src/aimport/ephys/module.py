@@ -49,7 +49,6 @@ CHANNELS_FILE = "channels.json"
 EPHYS_INDEX_BASE = 2_000_000
 PROGRESS = "reading recording headers ({k} of {n})"
 UNREADABLE_REASON = "could not be read as an electrophysiology recording"
-NWB_REASON = "NWB input is read by a later aimport version"
 HEADSHAPE_WARNING = "head-shape points found and dropped by default (keep_headshape to keep)"
 LOAD_WARNING = "converting {name} loads about {n:.1f} GB into memory"
 NO_IDENTITY = ("electrophysiology: subject identity could not be established for {n} subject(s): they get new "
@@ -125,11 +124,19 @@ def _read(rec: Recording, input_dir: Path) -> tuple[dict | None, set[str], str |
             terms = _path_terms(rec)
         return None, terms, rec.excluded, [], [], []
     if rec.family == "nwb":
+        from . import nwb
+
         try:
+            info = nwb.read_meta(input_dir / rec.rel)
             terms = headers.harvest(rec, input_dir, None)
-        except Exception:  # noqa: BLE001
-            terms = _path_terms(rec)
-        return None, terms, NWB_REASON, [], [], []
+            ch_names, ch_types = nwb.recording_channels(input_dir / rec.rel)
+            his = nwb.subject_id(input_dir / rec.rel)
+        except Exception as exc:  # noqa: BLE001 - one unreadable recording must not stop the scan
+            log.warning("NWB recording could not be read: %s", type(exc).__name__)
+            return None, _path_terms(rec), UNREADABLE_REASON, [], [], []
+        view = info.view()
+        view.update(meas_date=_iso(info.meas_date), birthday=_iso(info.birthday), **({"his_id": his} if his else {}))
+        return view, terms, None, ch_names, ch_types, list(info.annotations)
     try:
         raw = readers.open_raw(rec, input_dir)
         info = readers.info_from_raw(rec, raw)
@@ -393,7 +400,10 @@ def describe(rec: dict, fmt: str) -> str:
 
 
 def _default_format(datatype: str | None, family: str) -> str:
+    """The datatype's first format; BDF for EMG from BDF; NWB for NWB iEEG (NWB is offered for NWB input only)."""
     formats = OUTPUT_FORMATS.get(datatype or "", ())
+    if family == "nwb" and "NWB" in formats:
+        return "NWB"
     if datatype == "emg" and family == "bdf" and "BDF" in formats:
         return "BDF"
     return next((f for f in formats if f != "NWB"), "")
@@ -709,8 +719,8 @@ class EphysModule:
 
 WRITE_PROGRESS = "writing electrophysiology recording {k} of {n}"
 SCRATCH = "scratch"
-WRITTEN_DATATYPES = ("eeg", "ieeg", "emg", "meg")
-NIRS_REASON = "NIRS output is written by a later aimport version"
+WRITTEN_DATATYPES = ("eeg", "ieeg", "emg", "meg", "nirs")
+NO_FORMAT = "an included electrophysiology entry has no output format: plan again"
 SEX_CODES = {1: "M", 2: "F"}
 SEX_SOURCE = "the recording header"
 SCANS_FORMAT = "%Y-%m-%dT%H:%M:%S"
@@ -761,12 +771,27 @@ def _recording(rec: dict) -> Recording:
                      headshape=list(rec.get("headshape") or []), empty_room=bool(rec.get("empty_room")))
 
 
+def _snirf_units(rec: dict, input_dir: Path) -> dict[str, str] | None:
+    """The source SNIRF's units (a SNIRF file, or the SNIRF of a NIRSport2 folder); None for other inputs."""
+    from . import snirf
+
+    files = [rec["rel"]] if rec["family"] == "snirf" else [c for c in rec.get("companions") or []
+                                                            if c.lower().endswith(".snirf")]
+    return snirf.source_units(input_dir / files[0]) if files else None
+
+
 def _open_clean(e: PlanEntry, rec: dict, input_dir: Path, renames: dict[str, str], labels: dict[str, str],
                 event_names: dict[str, str]):
-    """The recording opened lazily, channel types as planned, de-identified in memory (deid.clean)."""
+    """The recording opened lazily (NWB input written as another format: loaded through ``nwb.to_raw``),
+    channel types as planned, de-identified in memory (deid.clean)."""
     from . import deid
 
-    raw = readers.open_raw(_recording(rec), input_dir, headshape=e.keep_headshape)
+    if rec["family"] == "nwb":
+        from . import nwb
+
+        raw = nwb.to_raw(input_dir / rec["rel"])
+    else:
+        raw = readers.open_raw(_recording(rec), input_dir, headshape=e.keep_headshape)
     if rec["family"] in ("edf", "bdf"):  # MNE reads every EDF channel as eeg: the planned types by label prefix
         names_, types = list(raw.ch_names), list(raw.get_channel_types())
         changed = {n: t for n, t, old in zip(names_, label_types(names_, types), types) if t != old}
@@ -790,15 +815,17 @@ def write_entries(plan: "Plan", work: Path, input_dir: Path, terms: set[str], ke
     from ..modality import ModuleOutput
     from ..scrub import redact
     from . import gate
-    from .write import daysback, write_recording
+    from .write import daysback, write_nirs, write_nwb, write_recording
 
     entries = [e for e in plan.entries if e.modality == "ephys" and e.status == "ok" and not e.exclude
-               and e.datatype and e.ephys_format]
+               and e.datatype]
     out = ModuleOutput(scans_with_time=True, sex_source=SEX_SOURCE)
     if not entries:
         return ModuleOutput()
+    if any(not e.ephys_format for e in entries):
+        raise ValueError(NO_FORMAT)
     if any(e.datatype not in WRITTEN_DATATYPES for e in entries):
-        raise NotImplementedError(NIRS_REASON)
+        raise ValueError("an electrophysiology entry has a datatype aimport does not write")
     records = load_records(work)
     for e in entries:
         i = e.series_idx - EPHYS_INDEX_BASE
@@ -812,29 +839,39 @@ def write_entries(plan: "Plan", work: Path, input_dir: Path, terms: set[str], ke
     event_names = dict(plan.event_names or {})
     allowed_labels = {event_names.get(lab, lab) for lab in label_map.values()}
 
-    # the same daysback for every recording of a subject; the empty room has no key offset (never in the key)
+    # the same daysback for every recording of a subject. Each empty room has its own (its date alone, no key
+    # offset): one shared shift would keep the real gaps between the rooms, and so between subjects' sessions
     offsets: dict[str, int] = {}
     dates: dict[str, list[datetime]] = defaultdict(list)
     for e in entries:
         when = _date_of((rec_of[e.id]["info"] or {}).get("meas_date"))
-        if when is not None:
+        if when is not None and e.subject != EMPTY_ROOM_SUBJECT:
             dates[e.subject].append(when)
         if e.subject not in offsets:
             offsets[e.subject] = 0 if e.subject == EMPTY_ROOM_SUBJECT else key.date_offset_days(e.subject)
-    back = {s: daysback(dates[s], offsets[s]) for s in offsets}
+    back: dict[str, int] = {}
+    for e in entries:
+        if e.subject == EMPTY_ROOM_SUBJECT:
+            when = _date_of((rec_of[e.id]["info"] or {}).get("meas_date"))
+            back[e.id] = daysback([when] if when is not None else [], 0)
+        else:
+            back[e.id] = daysback(dates[e.subject], offsets[e.subject])
 
     paths: dict[str, Path] = {}
 
     def guarded(rel: str) -> Path:
-        p = dest(rel)
-        paths[rel] = p
-        return p
+        """dest(rel) once per output file: a session file written again for another run (coordsystem,
+        electrodes) is overwritten in place, not counted twice."""
+        if rel not in paths:
+            paths[rel] = dest(rel)
+        return paths[rel]
 
     order = sorted(entries, key=lambda e: (e.subject != EMPTY_ROOM_SUBJECT, e.series_idx))
     scratch = work / SCRATCH
     shutil.rmtree(scratch, ignore_errors=True)
     scratch.mkdir(parents=True)
-    rooms: dict[str, tuple[Any, str]] = {}  # empty-room entry id -> (scratch BIDSPath, output rel)
+    rooms: dict[str, str] = {}  # empty-room entry id -> its output rel
+    listed: set[str] = set()  # rels already in an entry's manifest
     rel_entry: dict[str, PlanEntry] = {}
     shifted: list[date] = []
     try:
@@ -843,22 +880,27 @@ def write_entries(plan: "Plan", work: Path, input_dir: Path, terms: set[str], ke
                 progress(WRITE_PROGRESS.format(k=k, n=len(order)))
             rec = rec_of[e.id]
             renames = {old: new for new, old in (channel_map.get(rec["rel"]) or {}).items()}
-            raw = _open_clean(e, rec, input_dir, renames, label_map, event_names)
-            room = rooms.get(e.empty_room or "") if e.datatype == "meg" else None
-            bps: list = []
-            rels = write_recording(e, rec, raw, scratch, guarded, schema, terms,
-                                   er_path=room[0] if room else None, days_back=back[e.subject],
-                                   labels=allowed_labels, er_rel=room[1] if room else None,
-                                   keep=e.subject == EMPTY_ROOM_SUBJECT,
-                                   meta={k2: redact(v, terms) if isinstance(v, str) else v
-                                         for k2, v in (rec.get("meta") or {}).items()},
-                                   written=bps)
-            del raw
+            meta = {k2: redact(v, terms) if isinstance(v, str) else v for k2, v in (rec.get("meta") or {}).items()}
+            if e.ephys_format == "NWB":
+                written_labels = {k2: event_names.get(v, v) for k2, v in label_map.items()}
+                rels = write_nwb(e, input_dir / rec["rel"], scratch, guarded, schema, terms, labels=written_labels,
+                                 renames=renames, meta=meta)
+            else:
+                raw = _open_clean(e, rec, input_dir, renames, label_map, event_names)
+                if e.datatype == "nirs":
+                    rels = write_nirs(e, raw, scratch, guarded, schema, terms, labels=allowed_labels,
+                                      units=_snirf_units(rec, input_dir), meta=meta)
+                else:
+                    rels = write_recording(e, rec, raw, scratch, guarded, schema, terms, days_back=back[e.id],
+                                           labels=allowed_labels, er_rel=rooms.get(e.empty_room or "")
+                                           if e.datatype == "meg" else None, meta=meta)
+                del raw
             if e.subject == EMPTY_ROOM_SUBJECT:
-                rooms[e.id] = (bps[0], rels[0])
+                rooms[e.id] = rels[0]
             for r in rels:
-                rel_entry[r] = e
-            out.manifest.setdefault(e.id, []).extend(r for r in rels if r not in out.manifest.get(e.id, []))
+                rel_entry.setdefault(r, e)
+            out.manifest.setdefault(e.id, []).extend(r for r in rels if r not in listed)
+            listed.update(rels)
             out.images[rec["rel"]] = rels[0]
             base = f"sub-{e.subject}" + (f"/ses-{e.session}" if e.session else "")
             when = _date_of((rec["info"] or {}).get("meas_date"))

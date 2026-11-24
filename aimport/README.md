@@ -317,8 +317,24 @@ entry's `ephys_format` (never a copy of the source file):
   dates in all their forms, copied source bytes, unexpected BrainVision sections and head-shape points
   the plan did not keep. A finding fails the run with the BIDS path and the kind of field only, and the
   partial output is removed.
-- EMG placement is written as `Other` ("not recorded in the source recording"). NIRS is written by a
-  later version.
+- EMG placement is written as `Other` ("not recorded in the source recording").
+- **Empty rooms**: each empty-room recording gets its own date shift (its own date to 1924-12-31, keeping
+  only the time of day), so no real interval between rooms, or between the subjects recorded beside them,
+  survives. A split FIF (above 2 GB) is saved again under its output names, so its parts still find each
+  other. A session file written for several runs (`coordsystem.json`, `electrodes.tsv`, `optodes.tsv`) is
+  listed once.
+- **fNIRS** (SNIRF, NIRx, Hitachi): a new SNIRF 1.1 file is written with h5py from the de-identified recording
+  (continuous-wave amplitude only), never copied from the input: `metaDataTags` holds exactly `SubjectID` (the
+  BIDS label), `MeasurementDate` and `MeasurementTime` (`unknown`) and the length, time and frequency units;
+  stim names are event names; optodes are `S<n>`/`D<n>`. MNE-BIDS then writes the sidecars, `optodes.tsv` and
+  `coordsystem.json` from that file. `acq_time` in `scans.tsv` is the original date shifted, as for EEG.
+- **NWB iEEG** is written as NWB by default (BrainVision or EDF on request): a new file with the
+  `ElectricalSeries` samples streamed from the input (16 MiB at a time), the electrodes table (locations and
+  group names redacted, labels renamed by the channel rule), interval tables reduced to a coded `label`
+  column, `session_description` `n/a`, a new identifier, dates `1900-01-01T00:00:00+00:00`, and a subject with
+  only the BIDS label, species and sex. No processing, analysis, stimulus or cached schema is written.
+  `_ieeg.json`, `_channels.tsv`, `_electrodes.tsv` (positions converted from micrometres to mm),
+  `_coordsystem.json` and `_events.tsv` are generated.
 
 ### Known limitations
 

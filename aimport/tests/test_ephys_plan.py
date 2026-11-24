@@ -110,7 +110,7 @@ def test_bids_folder_wins_and_emg_from_bdf_keeps_bdf():
     assert ephys_module.datatype_of({"rel": "x.nwb", "family": "nwb", "info": None})[0] == "ieeg"
     assert ephys_module._default_format("emg", "bdf") == "BDF"
     assert ephys_module._default_format("emg", "edf") == "EDF"
-    assert ephys_module._default_format("ieeg", "nwb") == "BrainVision"
+    assert ephys_module._default_format("ieeg", "nwb") == "NWB"
 
 
 # --- scan records ------------------------------------------------------------------------------
