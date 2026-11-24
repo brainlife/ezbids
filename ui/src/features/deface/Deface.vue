@@ -271,7 +271,7 @@ export default defineComponent({
     border-radius: 10px;
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
     background: var(--el-fill-color-blank, #fff);
-    box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+    box-shadow: none;
 }
 
 .deface-intro__title {
@@ -358,14 +358,14 @@ export default defineComponent({
     margin: 0;
 }
 .missingThumb.fail {
-    background-color: #c44;
+    background-color: var(--el-color-danger);
     color: white;
 }
 .el-form-item {
     margin-bottom: 0;
 }
 pre.status {
-    background-color: #666;
+    background-color: var(--code-bg);
     color: white;
     height: 125px;
     overflow: auto;

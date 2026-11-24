@@ -2,7 +2,7 @@
     <div>
         <div v-if="!session" class="upload-session-pending">
             <h3 style="margin-top: 0">Loading session …</h3>
-            <p style="color: gray; margin-top: 8px">
+            <p style="color: var(--ink-3); margin-top: 8px">
                 New datasets are uploaded from the dashboard. If this message persists,
                 <router-link :to="{ name: 'dashboard' }">go to the dashboard</router-link>
                 or open your saved session link.
@@ -15,7 +15,7 @@
                     Waiting for upload
                     <font-awesome-icon icon="spinner" pulse />
                 </h3>
-                <p style="color: gray">
+                <p style="color: var(--ink-3)">
                     File transfer is handled on the dashboard. If you still see this after a long wait, return to the
                     dashboard and try again, or refresh this page.
                 </p>
@@ -138,7 +138,7 @@ export default defineComponent({
 }
 
 pre.status {
-    background-color: #666;
+    background-color: var(--code-bg);
     color: white;
     height: 300px;
     overflow: auto;

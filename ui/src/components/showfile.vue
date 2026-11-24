@@ -67,7 +67,7 @@ export default defineComponent({
 </script>
 <style scoped>
 pre {
-    background-color: #333;
+    background-color: var(--code-bg);
     color: white;
     margin: 0;
     overflow: auto;

@@ -116,9 +116,8 @@ export default defineComponent({
 <style scoped lang="scss">
 .dashboard-card {
     background: #fff;
-    border-radius: 12px;
-    box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
-    border: 1px solid rgba(226, 232, 240, 0.9);
+    border-radius: var(--panel-radius);
+    border: 1px solid var(--line);
     align-self: stretch;
     box-sizing: border-box;
     width: 100%;
@@ -138,12 +137,12 @@ export default defineComponent({
 .dashboard-section-title {
     margin: 0 0 1rem;
     font-size: 1.1rem;
-    font-weight: 700;
-    color: #2d3748;
+    font-weight: 500;
+    color: var(--ink);
 }
 
 .dashboard-muted {
-    color: #718096;
+    color: var(--ink-2);
     line-height: 1.55;
     margin: 0 0 0.75rem;
 }
@@ -187,22 +186,24 @@ export default defineComponent({
     gap: 0.6rem;
     height: auto;
     padding: 0.8rem 0.9rem;
-    border-radius: 10px;
-    border: 1px solid #e2e8f0;
-    background: #f8fafc;
+    border-radius: 8px;
+    border: 1px solid var(--line);
+    background: var(--panel-muted);
+    font-weight: 300;
     overflow-wrap: anywhere;
 }
 
-.dashboard-session-button:hover {
-    border-color: #cbd5e1;
-    background: #f1f5f9;
+.dashboard-session-button:hover,
+.dashboard-session-button:focus {
+    border-color: var(--el-color-primary-light-7);
+    background: var(--el-color-primary-light-9);
 }
 
 .dashboard-session-id {
     margin: 0;
     font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
     font-size: 0.75rem;
-    color: #475569;
+    color: var(--ink-2);
     margin-bottom: 0.8rem;
     word-break: break-all;
 }
@@ -223,27 +224,27 @@ export default defineComponent({
 
 .dashboard-session-label {
     font-size: 0.7rem;
-    font-weight: 600;
-    color: #64748b;
+    font-weight: 500;
+    color: var(--ink-2);
     text-transform: uppercase;
     letter-spacing: 0.04em;
 }
 
 .dashboard-session-value {
     font-size: 0.84rem;
-    color: #1e293b;
+    color: var(--ink);
 }
 
 .dashboard-status-success {
-    color: #15803d;
+    color: var(--el-color-success);
 }
 
 .dashboard-status-failure {
-    color: #b91c1c;
+    color: var(--el-color-danger);
 }
 
 .dashboard-status-pending {
-    color: #ff8c00;
+    color: #946c12;
 }
 
 .dashboard-session-message {
@@ -258,6 +259,6 @@ export default defineComponent({
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: rgb(129, 138, 152);
+    color: var(--ink-3);
 }
 </style>
