@@ -73,11 +73,13 @@ OUTPUT_STATE = "output-state.json"
 # stay in the key), so an edited subject ID can be recorded in the key for the right person on execute
 SUBJECT_IDS = "subject-ids.json"
 VIEWER_PREFIXES = ("/viewer/", "/qa/")  # the browser pages: they also accept the session cookie
-VIEWER_COOKIE = "aimport_viewer"
+VIEWER_COOKIE = "aimport_viewer_"  # + a random suffix per server run: cookies ignore the port, so two engines on
+# the same host would otherwise replace each other's session
 VIEWER_CODE_TTL_S = 60
 # set explicitly: the Python mimetypes table varies by version and platform, and responses are nosniff
 MEDIA_TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css",
-               ".wasm": "application/wasm", ".map": "application/json"}
+               ".wasm": "application/wasm", ".map": "application/json", ".json": "application/json",
+               ".svg": "image/svg+xml", ".png": "image/png", ".woff2": "font/woff2"}
 
 
 def _now() -> float:
@@ -198,6 +200,7 @@ class Server:
         self.status: dict = {"stage": "idle", "message": ""}
         self.viewer_codes: dict[str, float] = {}  # one-time code -> expiry (_now())
         self.viewer_sessions: set[str] = set()  # session cookies, for this server run
+        self.viewer_cookie = VIEWER_COOKIE + secrets.token_hex(4)  # the session cookie's name, for this run
         saved = _read_json(work_dir / "status.json")
         if saved and isinstance(saved.get("stage"), str):
             self.status = saved
@@ -630,7 +633,7 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         if scheme.lower() == "bearer" and hmac.compare_digest(given.encode(), token.encode()):
             return
         if (path.startswith(VIEWER_PREFIXES) and path != "/viewer/session"
-                and srv.viewer_session_ok(request.cookies.get(VIEWER_COOKIE))):
+                and srv.viewer_session_ok(request.cookies.get(srv.viewer_cookie))):
             return
         raise HTTPException(401, "missing or invalid token", headers={"WWW-Authenticate": "Bearer"})
 
@@ -897,7 +900,7 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         if session is None:
             raise HTTPException(401, "invalid or expired code: open the viewer again")
         response = RedirectResponse("/viewer/", status_code=303)
-        response.set_cookie(VIEWER_COOKIE, session, httponly=True, samesite="strict", path="/")
+        response.set_cookie(srv.viewer_cookie, session, httponly=True, samesite="strict", path="/")
         return response
 
     def written() -> tuple[dict, list]:

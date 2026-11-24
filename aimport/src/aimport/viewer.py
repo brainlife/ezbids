@@ -20,7 +20,7 @@ NEUROGLANCER_DIR = "/opt/neuroglancer-client"
 # stay blank, with no console error. Scripts still load only from this origin (no inline scripts); no wasm is
 # bundled, so no 'wasm-unsafe-eval'.
 VIEWER_CSP = ("default-src 'self'; script-src 'self' 'unsafe-eval'; img-src 'self' data: blob:; "
-              "worker-src 'self' blob:; style-src 'self' 'unsafe-inline'")
+              "worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'")
 
 
 def neuroglancer_client_dir() -> Path:

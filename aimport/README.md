@@ -304,7 +304,10 @@ image) are better dropped in review; the validation result tells you which.
   neuroglancer's `examples/vite`; only the NIfTI source over http and image layers are included), made by a node
   build stage with `npm ci` from `viewer-client/package-lock.json` (integrity hashes) into `/opt/neuroglancer-client`
   and served at `/viewer/ng/`. On the host, build it with `cd viewer-client && npm ci && node build.mjs <dir>` and
-  set `AIMPORT_NEUROGLANCER_DIR=<dir>`.
+  set `AIMPORT_NEUROGLANCER_DIR=<dir>`. neuroglancer's icon dependency `ikonate` is a GitHub commit, pinned in
+  `package.json` `overrides` to that commit's codeload tarball; its lockfile integrity is the hash of an archive
+  GitHub generates, so `npm ci` fails if GitHub ever regenerates it differently (then update the hash after
+  checking the archive's contents).
 
 ## Defacing details
 

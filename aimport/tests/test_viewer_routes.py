@@ -7,7 +7,6 @@ import pytest
 from fastapi.testclient import TestClient
 
 from aimport import server, viewer
-from aimport.server import VIEWER_COOKIE
 from aimport.viewer import VIEWER_CSP, neuroglancer_client_dir
 from conftest import NATIVE, PLANTED, tokens
 from test_server import SCAN, TOKEN, apps, client, executed, hooks, make_client, planned, wait_stage  # noqa: F401
@@ -22,9 +21,14 @@ def ng_client(tmp_path, monkeypatch):
     (d / "index.html").write_bytes(INDEX)
     (d / "assets" / "index-x.js").write_text("console.log(1)")
     (d / "assets" / "chunk_worker.bundle-x.js").write_text("")
-    (d / "assets" / "x.wasm").write_bytes(b"\0asm")
+    for name in ("x.wasm", "x.svg", "x.png", "x.woff2", "x.json"):
+        (d / "assets" / name).write_bytes(b"\0")
     monkeypatch.setenv("AIMPORT_NEUROGLANCER_DIR", str(d))
     return d
+
+
+def cookie_name(client: TestClient) -> str:
+    return client.app.state.server.viewer_cookie
 
 
 def viewer_client(client: TestClient) -> TestClient:
@@ -33,7 +37,7 @@ def viewer_client(client: TestClient) -> TestClient:
     browser = TestClient(client.app)
     r = browser.get(f"/viewer/open?code={code}", follow_redirects=False)
     assert r.status_code == 303, r.text
-    assert browser.cookies.get(VIEWER_COOKIE)
+    assert browser.cookies.get(cookie_name(client))
     return browser
 
 
@@ -63,7 +67,9 @@ def test_serves_client(client):
     assert r.headers["content-type"].startswith("text/javascript")
     assert r.headers["x-content-type-options"] == "nosniff"
     assert "content-security-policy" not in r.headers
-    assert client.get("/viewer/ng/assets/x.wasm").headers["content-type"] == "application/wasm"
+    for name, media in (("x.wasm", "application/wasm"), ("x.svg", "image/svg+xml"), ("x.png", "image/png"),
+                        ("x.woff2", "font/woff2"), ("x.json", "application/json")):
+        assert client.get(f"/viewer/ng/assets/{name}").headers["content-type"] == media
 
 
 def test_client_root_is_index(client):
@@ -78,7 +84,7 @@ def test_client_range(client):
     assert r.content == INDEX[:10]
 
 
-@pytest.mark.parametrize("path", ["/viewer/ng/../server.py", "/viewer/ng/%2e%2e/x",
+@pytest.mark.parametrize("path", ["/viewer/ng/%2e%2e/x",
                                   "/viewer/ng/assets/%2e%2e/%2e%2e/ng/index.html/..",
                                   "/viewer/ng/assets", "/viewer/ng/%2e%2e/%2e%2e/%2e%2e/etc/passwd",
                                   "/viewer/ng//etc/passwd", "/viewer/ng/%2Fetc%2Fpasswd",
@@ -89,6 +95,22 @@ def test_client_traversal(client, path):
 
 def test_client_needs_auth(make_client):
     assert make_client(auth=False).get("/viewer/ng/index.html").status_code == 401
+
+
+@pytest.mark.parametrize("path", ["/viewer/ng/%2e%2e/secret.txt", "/viewer/ng/assets/%2e%2e/%2e%2e/secret.txt",
+                                  "/viewer/ng/%2E%2E/secret.txt"])
+def test_client_escape_to_existing_file(client, ng_client, path):
+    (ng_client.parent / "secret.txt").write_text("secret")  # next to the client folder: one '..' away
+    r = client.get(path)
+    assert r.status_code == 404 and b"secret" not in r.content
+
+
+def test_cookie_name_per_run(make_client):
+    a, b = make_client(), make_client()
+    assert cookie_name(a) != cookie_name(b) and cookie_name(a).startswith("aimport_viewer_")
+    browser = viewer_client(a)
+    browser.cookies.set(cookie_name(b), browser.cookies.get(cookie_name(a)))
+    assert TestClient(b.app, cookies=dict(browser.cookies)).get("/viewer/ng/index.html").status_code == 401
 
 
 def test_client_symlink_out(client, ng_client, tmp_path):
@@ -135,7 +157,7 @@ def test_exchange_sets_cookie(client):
     cookie = r.headers["set-cookie"]
     name, _, rest = cookie.partition("=")
     value = rest.split(";")[0]
-    assert name == VIEWER_COOKIE and len(value) == 64 and int(value, 16) >= 0
+    assert name == cookie_name(client) and len(value) == 64 and int(value, 16) >= 0
     attrs = {a.strip().lower() for a in cookie.split(";")[1:]}  # attribute names and SameSite values: any case
     assert {"httponly", "samesite=strict", "path=/"} <= attrs
     assert "secure" not in cookie.lower()
@@ -191,9 +213,9 @@ def test_bearer_still_works(client):
 def test_wrong_cookie(client):
     viewer_client(client)
     browser = TestClient(client.app)
-    browser.cookies.set(VIEWER_COOKIE, "0" * 64)
+    browser.cookies.set(cookie_name(client), "0" * 64)
     assert browser.get("/viewer/ng/index.html").status_code == 401
-    browser.cookies.set(VIEWER_COOKIE, "")
+    browser.cookies.set(cookie_name(client), "")
     assert browser.get("/viewer/ng/index.html").status_code == 401
 
 
