@@ -153,8 +153,8 @@ export async function runBidsValidator(
  */
 export function nodeArgsForScript(args: string[], env: NodeJS.ProcessEnv = process.env): string[] {
     const scriptArgs = [...args];
-    const isTs = /\.ts$/.test(scriptArgs[0] ?? '');
-    if (env.ENVIRONMENT === 'development' || isTs) {
+    const isTypeScript = /\.ts$/.test(scriptArgs[0] ?? '');
+    if (env.ENVIRONMENT === 'development' || isTypeScript) {
         const handlerDir = env.EZBIDS_HANDLER_DIR ?? __dirname;
         const tsNodeDevBin = require.resolve('ts-node-dev/lib/bin.js');
         const watch = env.ENVIRONMENT === 'development' ? ['--debounce', '2000', '--watch', handlerDir] : [];
