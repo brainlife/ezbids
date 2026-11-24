@@ -13,7 +13,7 @@ import uuid
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal, Sequence
+from typing import TYPE_CHECKING, Callable, Literal, Sequence
 
 from .agent import Guess, LLMClient, classify, draft_metadata
 from .ancillary import bids_root, ancillary_warnings, find_ancillary, id_maps, plan_ancillary, read_dataset_description
@@ -412,15 +412,23 @@ def apply_plan_edits(plan: Plan, edits: list[dict], schema: Schema) -> None:
 
 
 def _check_sample_types(plan: Plan, edits: list[dict], schema: Schema) -> None:
+    """Microscopy-only edit rules: sample_type is a value of the schema enum (never None) and only
+    for micr entries; deface is never turned on for a micr entry."""
     by_id = {e.id: e for e in plan.entries}
     allowed = None
     for edit in edits:
-        if not isinstance(edit, dict) or edit.get("sample_type") is None:
+        if not isinstance(edit, dict):
             continue
         e = by_id.get(edit.get("id"))
         if e is None:
             continue  # Plan.apply_edits raises KeyError
+        if e.modality == "micr" and edit.get("deface") is True:
+            raise ValueError("microscopy images are never defaced")
+        if "sample_type" not in edit:
+            continue
         if e.modality != "micr":
+            if edit["sample_type"] is None:
+                continue
             raise ValueError("sample_type applies to microscopy entries only")
         allowed = schema.sample_types() if allowed is None else allowed
         if edit["sample_type"] not in allowed:
@@ -474,17 +482,21 @@ def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_su
                client: LLMClient | None, schema: Schema, target: Literal["bids", "datatypes"],
                staged_dir: Path | None = None, existing_sessions: dict[str, list[str]] | None = None,
                exclude: Sequence[str] = (), modules: Sequence["ModulePlan"] = (),
-               extra_terms: frozenset[str] = frozenset()) -> Plan:
+               extra_terms: frozenset[str] = frozenset(),
+               planners: Sequence[Callable[[], "ModulePlan"]] = ()) -> Plan:
     """The reviewable plan. existing_subjects and existing_sessions (subject id -> session labels) are what
     the brainlife project already holds, so new subject IDs and session labels do not collide with them.
     exclude: claimed roots (input-relative), never walked for DICOM headers or planned as ancillary.
     modules: the modality modules' plans (entries, warnings, views, subject labels, images), appended;
-    extra_terms: their identifying terms, redacted like the run's own."""
+    planners: module planners, called once the MRI subjects hold their IDs in the key, so the MRI subject
+    IDs and session labels are those of an MRI-only plan; extra_terms: the modules' identifying terms,
+    redacted like the run's own (not used for the MRI subject and session labels, for the same reason)."""
     stats: dict = {}
-    terms = run_terms(core, input_dir, stats, exclude) | set(extra_terms)
+    mri_terms = run_terms(core, input_dir, stats, exclude)
+    terms = mri_terms | set(extra_terms)
     warnings = []
     if stats.get("dicom_files_read", 0) == 0:
-        if core.series or not modules:  # a microscopy-only scan has no DICOM headers to read
+        if core.series or not (modules or planners):  # a microscopy-only scan has no DICOM headers to read
             warnings.append(UNVERIFIED.format(why="no DICOM headers were read"))
     elif stats.get("term_count", 0) == 0:
         warnings.append(UNVERIFIED.format(why="no identifying values were found"))
@@ -496,22 +508,23 @@ def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_su
         if ht is not None:
             heuristic[s.series_idx] = (ht[0], ht[1], _clean_entities(s.entities, terms))
     guesses = {g.series_idx: g for g in classify(view, heuristic, client, schema)}
-    draft = draft_metadata(view + [v for mp in modules for v in mp.view], client, terms)
 
     hidden: list[Path] = []
     supplied = find_ancillary(input_dir, schema, exclude, hidden=hidden)
     if hidden:
         warnings.append(HIDDEN_ANCILLARY.format(n=len(hidden)))
     has_aslcontext = any(p.name.endswith("_aslcontext.tsv") for p in supplied)  # anywhere in the input
-    sub_ids, n_absent, n_shared = _assign_subjects(core, key, existing_subjects, terms)
+    sub_ids, n_absent, n_shared = _assign_subjects(core, key, existing_subjects, mri_terms)
     if n_shared:
         warnings.append(SHARED_IDENTITY.format(n=n_shared))
     if n_absent:
         warnings.append(NO_IDENTITY.format(n=n_absent))
     by_idx = {s.subject_idx: s for s in core.subjects}
     ses_labels = {idx: _session_labels(by_idx.get(idx, CoreSubject(idx, "", [], [])), sid, core, key,
-                                       (existing_sessions or {}).get(sid, []), terms)
+                                       (existing_sessions or {}).get(sid, []), mri_terms)
                   for idx, sid in sub_ids.items()}
+    modules = list(modules) + [plan_module() for plan_module in planners]  # after the MRI subjects
+    draft = draft_metadata(view + [v for mp in modules for v in mp.view], client, terms)
 
     series_by_idx = {s.series_idx: s for s in core.series}
     triples = sorted({(o.series_idx, o.subject_idx, o.session_idx) for o in core.objects})

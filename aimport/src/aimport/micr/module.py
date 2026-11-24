@@ -206,6 +206,25 @@ def _where(rec: dict) -> str:
     return rec["rel"]
 
 
+REMOTE_DONOR_FOLDERS = 3  # a remote donor comes from the file or store name, or this many nearest folders
+
+
+def remote_donor(path: str) -> str | None:
+    """The donor of a remote source: from its file or store name, else one of its nearest folders
+    (nearest first), by the names.facts rule applied to each segment alone. Never from the bucket or
+    the leading segments of the URL (``CMC/...`` is a project, not a donor)."""
+    parts = [p for p in path.split("/") if p]
+    if not parts:
+        return None
+    for seg in [parts[-1], *reversed(parts[-1 - REMOTE_DONOR_FOLDERS:-1])]:
+        if seg.startswith("sub-") and len(seg) > 4:
+            return seg[4:]
+        donor = names.facts(seg).donor
+        if donor:
+            return donor
+    return None
+
+
 def _url_terms(url: str) -> set[str]:
     parts = urlsplit(url)
     terms = {url, parts.netloc}
@@ -244,10 +263,26 @@ def scan_records(input_dir: Path, claim: Claim, found: list[Found] | None,
         facts = names.facts(g.members[0] if g.family == "raw-psoct" else where)
         terms |= names.path_terms([where, *g.members])
         if g.remote:
+            facts.donor = remote_donor(where)
             terms |= _url_terms(g.group)
+            if facts.donor:
+                terms.add(facts.donor)
+        if error and error not in (RAW_REASON, UNREADABLE_REASON):
+            error = _clean_error(error, terms)
         rec.update(facts=_facts_dict(facts), info=info, error=error, terms=sorted(terms))
         records.append(rec)
     return records
+
+
+_QUOTED = re.compile("'[^']*'|\"[^\"]*\"")
+
+
+def _clean_error(message: str, terms: set[str]) -> str:
+    """A reader's UnsupportedFormat message for the plan: quoted values (axis names and the like,
+    read from the file) dropped, then redacted with the record's terms."""
+    from ..scrub import redact
+
+    return redact(_QUOTED.sub("(value not shown)", message), terms)
 
 
 def load_records(work: Path) -> list[dict]:

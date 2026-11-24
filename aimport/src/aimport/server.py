@@ -467,11 +467,12 @@ class Server:
             self.set_status("scanning", "building the plan")
             client, schema = client_from_env(), self.get_schema()
             existing = set(info["existing_subjects"])
-            module_plans = [m.plan(module_dir(self.work, m), key, existing, client, schema, info["target"])
-                            for m in mods]
+            # module planners run inside build_plan, after the MRI subjects took their IDs
+            planners = [lambda m=m: m.plan(module_dir(self.work, m), key, existing, client, schema, info["target"])
+                        for m in mods]
             plan = build_plan(core, self.input_dir, key, existing, client, schema, info["target"],
                               staged_dir=staged, existing_sessions=info.get("existing_sessions") or {},
-                              exclude=roots, modules=module_plans, extra_terms=frozenset(module_terms))
+                              exclude=roots, extra_terms=frozenset(module_terms), planners=planners)
             plan.scan_id = info["scan_id"]
             self.save_subject_ids({e.subject_idx: e.subject for e in plan.entries})
             key.save()

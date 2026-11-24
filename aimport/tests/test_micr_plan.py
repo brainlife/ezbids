@@ -20,6 +20,7 @@ from aimport.micr.module import MICR_INDEX_BASE, RAW_REASON, MicrModule
 from aimport.planner import MICR_DATATYPE_REASON, UNVERIFIED, apply_plan_edits, build_plan
 from aimport.pseudonyms import PseudonymKey
 from conftest import MICR_PLANTED, tokens
+from test_micr_remote import local_servers  # noqa: F401 - the local Range server fixture
 from fixtures.micr_fixtures import (PSOCT_CONTRASTS, cmc_tree, ome_zarr, planted_ome_tiff,
                                     psoct_nifti)
 
@@ -75,10 +76,9 @@ def scan(inp: Path, work: Path, progress=None) -> tuple[MicrModule, modality.Cla
 def make_plan(inp, tmp_path, key, schema, core=None, target="bids"):
     work = tmp_path / "work"
     m, claim = scan(inp, work)
-    mp = m.plan(work / "micr", key, set(), None, schema, target)
-    plan = build_plan(core or CoreResult(), inp, key, set(), None, schema, target, exclude=claim.roots,
-                      modules=[mp], extra_terms=frozenset(m.terms(work / "micr")))
-    return plan
+    return build_plan(core or CoreResult(), inp, key, set(), None, schema, target, exclude=claim.roots,
+                      extra_terms=frozenset(m.terms(work / "micr")),
+                      planners=[lambda: m.plan(work / "micr", key, set(), None, schema, target)])
 
 
 def micr(plan):
@@ -197,6 +197,11 @@ def test_edit_micr_entry(inp, tmp_path, key, schema):
     assert e.status == "ok" and not e.exclude
     with pytest.raises(ValueError):
         apply_plan_edits(plan, [{"id": e.id, "sample_type": "bogus"}], schema)
+    with pytest.raises(ValueError):
+        apply_plan_edits(plan, [{"id": e.id, "sample_type": None}], schema)
+    with pytest.raises(ValueError):
+        apply_plan_edits(plan, [{"id": e.id, "deface": True}], schema)
+    assert e.deface is False
     assert e.sample_type == "tissue"
     apply_plan_edits(plan, [{"id": e.id, "sample_type": "organoid"}], schema)
     assert e.sample_type == "organoid"
@@ -228,6 +233,11 @@ def test_indices_do_not_collide(inp, tmp_path, key, schema):
     assert not {e.subject_idx for e in mri} & {e.subject_idx for e in micr(plan)}
     assert all(e.subject_idx >= MICR_INDEX_BASE and e.series_idx >= MICR_INDEX_BASE for e in micr(plan))
     assert len({e.id for e in plan.entries}) == len(plan.entries)
+    # MRI subject IDs are those of an MRI-only plan of the same core (micr is planned after them)
+    with PseudonymKey.load(tmp_path / "keys-mri-only", "proj") as other:
+        mri_only = build_plan(copy.deepcopy(parse_core(FIXTURES / "ezbids_core_siemens.json")), tmp_path / "empty",
+                              other, set(), None, schema, "bids")
+    assert [(e.id, e.subject, e.session) for e in mri] == [(e.id, e.subject, e.session) for e in mri_only.entries]
     before = [(e.id, e.subject, e.status) for e in micr(plan)]
     apply_plan_edits(plan, [{"id": mri[0].id, "subject": "zz9"}], schema)
     assert [(e.id, e.subject, e.status) for e in micr(plan)] == before
@@ -317,3 +327,94 @@ def test_claimed_paths_lookup_is_per_ancestor(tmp_path):
     assert hits == 2_000 and misses == 0
     assert claimed.reaches(tmp_path / "tiles") and not claimed.reaches(tmp_path / "other")
     assert time.perf_counter() - start < 5  # linear scans over 20,000 roots would take minutes
+
+
+@pytest.mark.parametrize("url", [
+    "https://apex-connects.s3.amazonaws.com/CMC/Derivatives/Moe/PS-OCT/Zarr/Moe_Slice_051.ome.zarr",
+    "https://s3.amazonaws.com/apex-connects/CMC/Derivatives/Moe/PS-OCT/Zarr/Moe_Slice_051.ome.zarr",
+])
+def test_remote_donor_from_name_tail_psoct(url):
+    from urllib.parse import urlsplit
+
+    assert micr_module.remote_donor(urlsplit(url).path) == "Moe"
+
+
+@pytest.mark.parametrize("url", [
+    "https://apex-connects.s3.amazonaws.com/CMC/Raw/Moe/tract-tracing/MN27_FH_S100_250215_visor_488/"
+    "visor_488_Pos0/visor_488_0_0.tif",
+    "https://s3.us-east-2.amazonaws.com/apex-connects/CMC/Raw/Moe/tract-tracing/MN27_FH_S100_250215_visor_488/"
+    "visor_488_Pos0/visor_488_0_0.tif",
+])
+def test_remote_donor_from_nearest_folder(url):
+    from urllib.parse import urlsplit
+
+    assert micr_module.remote_donor(urlsplit(url).path) == "MN27"
+
+
+def test_remote_records_never_take_bucket_or_project_as_donor(tmp_path, key, schema, monkeypatch):
+    urls = ["https://s3.amazonaws.com/apex-connects/CMC/Derivatives/Moe/PS-OCT/Zarr/Moe_Slice_051.ome.zarr",
+            "https://apex-connects.s3.amazonaws.com/CMC/Raw/Moe/tract-tracing/MN27_FH_S100_250215_visor_488/"
+            "visor_488_Pos0/visor_488_0_0.tif",
+            "https://apex-connects.s3.amazonaws.com/CMC/Derivatives/stitched/data/0/image.ome.zarr"]
+    families = ["ome-zarr", "tiff", "ome-zarr"]
+    monkeypatch.setattr(micr_module, "_read", lambda input_dir, g: (None, set(), micr_module.UNREADABLE_REASON))
+    claim = modality.Claim(roots=[], remote=urls)
+    found = [micr_module.Found(u, f, u) for u, f in zip(urls, families)]
+    records = micr_module.scan_records(tmp_path, claim, found, lambda msg: None)
+    donors = [r["facts"]["donor"] for r in records]
+    assert sorted(d for d in donors if d) == ["MN27", "Moe"] and donors.count(None) == 1
+    mp = micr_module.plan_entries(records, key, set(), schema, "bids")
+    assert {"micr:id=Moe", "micr:id=MN27"} <= set(key.subjects)
+    assert not [o for o in key.subjects if o.startswith("micr:id=") and o not in ("micr:id=Moe", "micr:id=MN27")]
+    assert any(w.startswith("microscopy: no donor code was found for 1 ") for w in mp.warnings)
+    text = json.dumps([asdict(e) for e in mp.entries] + mp.warnings)
+    assert "apex" not in text and "amazonaws" not in text and "CMC" not in text
+
+
+def test_unsupported_reason_redacted(inp, tmp_path, key, schema, monkeypatch):
+    from aimport.micr import readers
+
+    def broken(location):
+        raise readers.UnsupportedFormat("cannot map axes 'Jane Doe' onto tczyx in H17_250215 for H17")
+
+    monkeypatch.setitem(readers._ADAPTERS, "ome-tiff", broken)
+    plan = make_plan(inp, tmp_path, key, schema)
+    e = next(e for e in micr(plan) if e.description.startswith("OME-TIFF"))
+    assert e.status == "unsupported" and e.exclude
+    assert "cannot map axes" in e.reason
+    assert not MICR_PLANTED & tokens(e.reason) and "Jane" not in e.reason
+
+
+def test_photo_row_has_no_brainlife_datatype():
+    from aimport.brainlife_map import load_rows
+
+    (row,) = [r for r in load_rows() if r["bids"] == {"datatype": "micr", "suffix": "photo"}]
+    assert row["status"] == "planned" and row["brainlife"] is None
+    assert to_brainlife("micr", "photo", {}, {}) == (None, [])
+
+
+def test_remote_visor_reads_first_page_only(local_servers, monkeypatch):  # noqa: F811
+    from aimport.micr import remote
+
+    base, root, _ = local_servers("served")
+    folder = root / "MN27_x_visor_488" / "visor_488_Pos0"
+    folder.mkdir(parents=True)
+    tile = folder / "visor_488_0_0.tif"
+    with tifffile.TiffWriter(str(tile)) as tw:  # 64 pages of 512 KiB, each with its own description
+        for i in range(64):
+            tw.write(np.full((512, 512), i, dtype=np.uint16), photometric="minisblack", metadata=None,
+                     description=f"frame {i} " + "x" * (i * 37))
+    (root / "MN27_x_visor_488" / "acqinfo_metadata.json").write_text(json.dumps(ACQINFO))
+    counters = []
+    real_open = remote.open_file
+
+    def counted(url, *a, **k):
+        fh, counter = real_open(url, *a, **k)
+        counters.append(counter)
+        return fh, counter
+
+    monkeypatch.setattr(remote, "open_file", counted)
+    info, _terms = micr_module._remote_visor(f"{base}/MN27_x_visor_488/visor_488_Pos0/visor_488_0_0.tif")
+    assert info.shape == (4, 512, 512) and info.channels[0].name_code == "ch488"
+    assert tile.stat().st_size > 32 * 2**20
+    assert counters and counters[0].total < 2**20  # the first IFD only, never the page chain

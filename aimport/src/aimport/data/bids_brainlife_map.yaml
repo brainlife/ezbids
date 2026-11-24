@@ -165,7 +165,7 @@ mappings:
     status: active
     ref: brainlife-lite (ProjectDataS3, Zarr viewers)
   - bids: {datatype: micr, suffix: photo}
-    brainlife: {datatype: neuro/ome-zarr, tags: [photo]}
+    brainlife: null  # placeholder: no brainlife datatype chosen; never mapped to neuro/ome-zarr
     status: planned
     ref: brainlife-lite (ProjectDataS3, Zarr viewers)
     note: photographs of a sample (.jpg, .png, .tif), not microscopy images; not imported yet, so no draft
