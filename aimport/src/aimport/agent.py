@@ -12,7 +12,7 @@ import re
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from .schema import PHASE1_DATATYPES, Schema
+from .schema import EPHYS_DATATYPES, PHASE1_DATATYPES, Schema
 from .scrub import ScrubbedSeries, redact
 
 DEFAULT_MODEL = "claude-opus-5-5"
@@ -68,6 +68,32 @@ Answer every series with datatype micr and a suffix, and fill the entities that 
 
 Reply with ONLY a JSON array, no prose, one object per series:
 [{{"series_idx": 0, "datatype": "micr", "suffix": "CONF", "entities": {{}},
+"confidence": 0.9, "reason": "one short sentence"}}]"""
+
+EPHYS_ENTITIES = ("task", "acq", "run")
+EPHYS_GENERATED = frozenset({"run"})
+
+EPHYS_CLASSIFY_SYSTEM = f"""You classify electrophysiology and optical recordings for a BIDS (Brain Imaging Data Structure) dataset.
+
+The user message is a JSON object {{"series": [...]}}. Each series has: series_idx, description,
+protocol, ezbids_type, fields (recording facts) and ezbids_guess (what the heuristics decided:
+datatype, suffix, entities; null when there was no guess). The description and protocol are empty
+on purpose. fields holds only FormatFamily, SystemFamily, SamplingFrequency, ChannelCount,
+ChannelTypes (a histogram), DurationSeconds, EventCounts (coded event labels such as E001 and how
+often each occurs), LineFrequency, HasDigitization, Wavelengths and Hints (generic words from the
+file layout). Confirm or dispute each guess from those facts.
+
+Answer every series with a BIDS datatype and a suffix, and fill the entities that apply. Rules:
+- datatype must be one of: {", ".join(EPHYS_DATATYPES)}.
+- suffix equals the datatype (eeg for eeg, meg for meg, ieeg for ieeg, nirs for nirs, emg for emg).
+- entities may only be: {", ".join(EPHYS_ENTITIES)}. Do not answer run: aimport assigns it.
+- task must be a lowercase alphanumeric word chosen from Hints, or unknown.
+- acq is a short alphanumeric label only when Hints support it.
+- If you cannot tell what a recording is, answer datatype null and suffix null with low confidence.
+- confidence is a number from 0 to 1.
+
+Reply with ONLY a JSON array, no prose, one object per series:
+[{{"series_idx": 0, "datatype": "eeg", "suffix": "eeg", "entities": {{"task": "rest"}},
 "confidence": 0.9, "reason": "one short sentence"}}]"""
 
 METADATA_SYSTEM = """You write dataset-level metadata for a BIDS dataset from a list of its acquisitions.

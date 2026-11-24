@@ -36,6 +36,7 @@ if TYPE_CHECKING:
     from ..plan import Plan
     from ..pseudonyms import PseudonymKey
     from ..schema import Schema
+    from ..scrub import ScrubbedSeries
 
 log = logging.getLogger(__name__)
 
@@ -67,6 +68,9 @@ EDF_LABEL_TYPES = {"EEG": "eeg", "SEEG": "seeg", "ECOG": "ecog", "DBS": "dbs", "
                    "EKG": "ecg", "EOG": "eog", "RESP": "resp", "STIM": "stim", "MISC": "misc"}
 EDF_PLACEHOLDERS = frozenset({"x", "0"})
 _TOKEN = re.compile(r"[^a-z0-9]+")
+EXT_WORDS = frozenset({"edf", "bdf", "gdf", "vhdr", "vmrk", "fdt", "fif", "snirf", "nwb", "sqd", "con", "cnt", "lay",
+                       "hdr", "wl1", "wl2", "evt", "tri", "ds", "mff", "mefd", "nev", "ns1", "ns2", "ns3", "ns4",
+                       "ns5", "ns6", "set", "pos", "hsp", "mrk", "elp"})
 _CODE = re.compile(rf"^{events.CODE_PREFIX}\d{{3}}$")
 
 
@@ -256,6 +260,87 @@ def datatype_of(rec: dict) -> tuple[str | None, str]:
     return "eeg", "EEG channel types"
 
 
+def _hint_tokens(rel: str) -> list[str]:
+    """The generic words of a path that are in the electrophysiology vocabulary (never other text)."""
+    vocab = frozenset(discover.EPHYS_VOCAB)
+    return sorted({t for t in _TOKEN.split(rel.lower()) if t in vocab and t not in EXT_WORDS})
+
+
+def ephys_view(records: list[dict]) -> list["ScrubbedSeries"]:
+    """The agent's view of each readable record: recording facts, coded event counts and generic layout
+    words only.
+
+    Never a path, a name, a date, a channel name or annotation text. ``Hints`` are tokens of
+    ``discover.EPHYS_VOCAB`` (); the event labels are codes (E001) or
+    safe labels; the rest are numbers and enums.
+    """
+    from ..scrub import ScrubbedSeries
+
+    out = []
+    for i, rec in enumerate(records):
+        info = rec.get("info")
+        if info is None or rec.get("error"):
+            continue
+        datatype, _ = datatype_of(rec)
+        # a safe label such as "Stimulus/S  1" is sent as "Stimulus S 1": no slash, one space between words
+        counts = Counter(" ".join(lab.replace("/", " ").split()) for lab in rec.get("event_labels") or []
+                         if _CODE.fullmatch(lab) or events.is_safe(lab))
+        fields = {
+            "FormatFamily": rec["family"],
+            "SystemFamily": readers.SYSTEM_FAMILIES.get(rec["family"], "electrophysiology").replace("/", " "),
+            "SamplingFrequency": info.get("sfreq"),
+            "ChannelCount": info.get("n_channels"),
+            "ChannelTypes": dict(sorted((info.get("ch_types") or {}).items())),
+            "DurationSeconds": round(float(info.get("duration_s") or 0)),
+            "EventCounts": dict(sorted(counts.items())),
+            "LineFrequency": info.get("line_freq"),
+            "HasDigitization": bool(info.get("has_dig")),
+            "Wavelengths": list(info.get("wavelengths") or []),
+            "Hints": _hint_tokens(rec["rel"]),
+        }
+        out.append(ScrubbedSeries(EPHYS_INDEX_BASE + i, "", "", f"{datatype or 'unknown'}/{datatype or 'unknown'}",
+                                  fields))
+    return out
+
+
+def _apply_agent(mp: ModulePlan, records: list[dict], kinds: list[tuple[str | None, str]], formats: list[str],
+                 entities: list[dict[str, str]], client: "LLMClient | None", schema: "Schema",
+                 terms: set[str]) -> dict[int, dict]:
+    """Ask the agent about the readable recordings and apply the planner's agreement rules.
+
+    Returns ``{record index: {"confidence", "note"}}``; a task the heuristic left unknown, and acq, are
+    filled into ``entities`` in place (the task only from the record's own Hints).
+    """
+    from ..agent import EPHYS_CLASSIFY_SYSTEM, EPHYS_GENERATED, classify
+    from ..planner import AGENT_MIN, AGREE_MIN, DISAGREE_CONFIDENCE, _agent_text, _guess_text, _usable
+
+    out: dict[int, dict] = {}
+    if client is None:
+        return out
+    view = ephys_view(records)
+    mp.view = view
+    ok = {EPHYS_INDEX_BASE + i for i in range(len(records)) if formats[i] and kinds[i][0]}
+    heuristic = {s.series_idx: (kinds[s.series_idx - EPHYS_INDEX_BASE][0], kinds[s.series_idx - EPHYS_INDEX_BASE][0],
+                                dict(entities[s.series_idx - EPHYS_INDEX_BASE]))
+                 for s in view if s.series_idx in ok}
+    for g in classify(view, heuristic, client, schema, EPHYS_CLASSIFY_SYSTEM, DATATYPES, EPHYS_GENERATED):
+        if g.series_idx not in ok or g.datatype is None:
+            continue
+        i = g.series_idx - EPHYS_INDEX_BASE
+        hints = set(next(s for s in view if s.series_idx == g.series_idx).fields["Hints"])
+        task, acq = g.entities.get("task"), g.entities.get("acq")
+        if g.datatype == kinds[i][0]:
+            out[i] = {"confidence": max(AGREE_MIN, g.confidence), "note": ""}
+            if entities[i].get("task") == UNKNOWN_TASK and task and task == task.lower() and task in hints \
+                    and _usable(task, terms):
+                entities[i]["task"] = task
+            if acq and "acq" not in entities[i] and _usable(acq, terms):
+                entities[i]["acq"] = acq
+        elif g.confidence >= AGENT_MIN:
+            out[i] = {"confidence": DISAGREE_CONFIDENCE, "note": _agent_text(_guess_text(g), terms)}
+    return out
+
+
 def _placeholder(field_name: str, value) -> bool:
     from ..planner import is_placeholder
 
@@ -331,7 +416,8 @@ def _identity(rec: dict) -> str | None:
 
 def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], schema: "Schema",
                  target: str, codes: list[str] | None = None,
-                 mri_subjects: dict[str, dict] | None = None) -> ModulePlan:
+                 mri_subjects: dict[str, dict] | None = None,
+                 client: "LLMClient | None" = None) -> ModulePlan:
     """The ephys plan. mri_subjects: the MRI path's subjects by their input sub- folder label,
     ``{label: {"idx", "id", "sessions": {ses folder label: (session_idx, session)}, "only": (session_idx,
     session) | None}}``; recordings in that folder join that subject."""
@@ -478,6 +564,7 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
 
     formats = [_default_format(dt, rec["family"]) if rec.get("info") is not None and not rec.get("error") else ""
                for rec, (dt, _) in zip(records, kinds)]
+    agent = _apply_agent(mp, records, kinds, formats, entities, client, schema, terms)
 
     # runs: recordings sharing (subject, session, task, acq) in one datatype (so one BIDS name) keep the
     # input's run labels when every one has a usable, distinct one; else, when there are several, they are
@@ -540,6 +627,9 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
             description=describe(rec, fmt), modality="ephys", ephys_format=fmt,
             event_counts=dict(Counter(rec.get("event_labels") or [])),
         ))
+        if i in agent and d["status"] == "ok":
+            entries[-1].confidence = agent[i]["confidence"]
+            entries[-1].agent_note = agent[i]["note"]
     _pair_empty_room(entries, records, empty)
     if headshape:
         mp.warnings.append(HEADSHAPE_WARNING)
@@ -608,7 +698,7 @@ class EphysModule:
     def plan(self, work: Path, key: "PseudonymKey", existing: set[str], client: "LLMClient | None",
              schema: "Schema", target: str, subjects: dict[str, dict] | None = None) -> ModulePlan:
         """subjects: the MRI subjects by input sub- folder label (planner.build_plan passes them)."""
-        return plan_entries(load_records(work), key, existing, schema, target, load_codes(work), subjects)
+        return plan_entries(load_records(work), key, existing, schema, target, load_codes(work), subjects, client)
 
     def write(self, plan: "Plan", work: Path, input_dir: Path, terms: set[str], key: "PseudonymKey",
               schema: "Schema", dest: Callable[[str], Path]):
