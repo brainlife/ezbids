@@ -33,8 +33,10 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
+from typing import Sequence
 
 from .ezbids_runner import CoreResult
+from .modality import ClaimedPaths
 from .plan import (
     DATE_COLUMN,
     DESCRIPTION_FIELDS,
@@ -65,7 +67,8 @@ TEXT_ONLY_FOLDERS = ("code", "docs", "logs")  # binary files are never uploaded 
 TABLE_STEMS = ("participants", "samples")
 SUB_TABLES = ("sessions", "scans")
 KEY_NAME = "aimport-key"
-IMAGE_EXTS = (".nii.gz", ".nii")
+# an image's own sidecar (<stem>.json next to <stem><ext>) is not a companion; .ome.tif before .tif
+IMAGE_EXTS = (".nii.gz", ".nii", ".ome.zarr", ".ome.tif", ".ome.btf", ".png", ".tif")
 COMPANION_EXTS = (".tsv.gz", ".tsv", ".json")
 # Headers that name a person, a birth date, a record number, a place or free text. Matched as a
 # substring, so first_name/surname/dateofbirth are caught; a false match only drops a column by default.
@@ -253,7 +256,8 @@ def _root_names(schema: Schema) -> dict[str, str]:
     return names
 
 
-def find_ancillary(input_dir: Path, schema: Schema) -> list[Path]:
+def find_ancillary(input_dir: Path, schema: Schema, exclude: Sequence[str] = (),
+                   hidden: list[Path] | None = None) -> list[Path]:
     """Ancillary files and folders under the BIDS root of input_dir (paths start with that root).
 
     The root: rules.files.common.core/tables (files, and code/ docs/ stimuli/ logs/ sourcedata/
@@ -261,7 +265,9 @@ def find_ancillary(input_dir: Path, schema: Schema) -> list[Path]:
     and scans tables and inherited sidecars; sub-*/ses-*/: scans and inherited sidecars;
     sub-*/[ses-*/]<datatype>/: per-run companions (events, physio, ...; not the images' own
     sidecars). Hidden files and *aimport-key* are skipped. Links that match are returned (and
-    planned as not uploadable); links are never followed into.
+    planned as not uploadable); links are never followed into. Nothing under a claimed root (exclude,
+    input-relative), and no folder or link leading to one, is returned; hidden, when given, gets the
+    folders and links left out only because they hold a claimed root (sourcedata/ with microscopy).
     """
     root = bids_root(input_dir)
     if not root.is_dir():
@@ -284,6 +290,15 @@ def find_ancillary(input_dir: Path, schema: Schema) -> list[Path]:
         elif child.is_file() and child.name not in FOLDERS and (child.name in names
                                                                 or _root_inherited(child.name, schema)):
             found.append(child)
+    if exclude:
+        claimed = ClaimedPaths(input_dir, exclude)
+        kept = []
+        for p in found:
+            if not claimed.reaches(p):
+                kept.append(p)
+            elif hidden is not None and not claimed.covers(p):
+                hidden.append(p)
+        found = kept
     return found
 
 
@@ -895,17 +910,26 @@ class Generated:
     texts: dict[str, str] = field(default_factory=dict)
 
 
-def _merge(generated: list[list[str]], header: list[str], rows: list[dict], key: str) -> tuple[list[str], list[dict]]:
-    """Generated participants rows (in their order) with the supplied columns; supplied values win
-    unless empty or n/a; supplied rows of other subjects are appended."""
+def _merge(generated: list[list[str]], header: list[str], rows: list[dict],
+           key: str | tuple[str, ...]) -> tuple[list[str], list[dict]]:
+    """Generated rows (participants by participant_id, samples by (participant_id, sample_id); in their
+    order) with the supplied columns; supplied values win unless empty or n/a; supplied rows of other
+    keys are appended. The first key column comes first, as supplied."""
+    keys = (key,) if isinstance(key, str) else tuple(key)
     g_header, g_rows = generated[0], [dict(zip(generated[0], r)) for r in generated[1:]]
-    out_header = [key] + [h for h in header if h != key] + [h for h in g_header if h not in header and h != key]
-    by_key: dict[str, dict] = {}
+    lead = keys[0] if len(keys) == 1 else next((h for h in header if h in keys), keys[0])
+    out_header = [lead] + [h for h in header if h != lead] + [h for h in g_header if h not in header and h != lead]
+    out_header = list(dict.fromkeys(out_header))
+
+    def k(r: dict) -> tuple[str, ...]:
+        return tuple(r.get(c, "") for c in keys)
+
+    by_key: dict[tuple[str, ...], dict] = {}
     for r in rows:
-        by_key.setdefault(r.get(key, ""), r)
+        by_key.setdefault(k(r), r)
     out = []
     for g in g_rows:
-        s = by_key.pop(g.get(key, ""), {})
+        s = by_key.pop(k(g), {})
         row = {}
         for h in out_header:
             first, second = s.get(h), g.get(h)
@@ -1118,7 +1142,9 @@ class _AncillaryWriter:
         gen = self.gen.tables.pop(dest, None)
         supplied = set(out_header)
         if gen is not None and "participant_id" in gen[0]:
-            out_header, out = _merge(gen, out_header, out, "participant_id")
+            key = (("participant_id", "sample_id") if "sample_id" in gen[0] and "sample_id" in out_header
+                   else "participant_id")
+            out_header, out = _merge(gen, out_header, out, key)
             self.from_generated[dest] = {h for h in out_header if h not in supplied}
         self.write_rows(dest, out_header, out)
 

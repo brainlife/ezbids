@@ -11,11 +11,12 @@ import re
 import unicodedata
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 import pydicom
 
 from .ezbids_runner import CoreResult, CoreSeries
+from .modality import ClaimedPaths
 
 MIN_TERM_LEN = 3
 REDACTED = "[x]"
@@ -162,15 +163,19 @@ def _read_dicom(path: Path):
     return ds if ("PatientName" in ds or "SOPClassUID" in ds) else None
 
 
-def _header_terms(input_dir: Path, stats: dict) -> set[str]:
+def _header_terms(input_dir: Path, stats: dict, exclude: Sequence[str] = ()) -> set[str]:
     """Identifying values from DICOM headers under input_dir.
 
     In every directory files are read until one yields a term (DICOMDIR, presentation
     states and already-anonymized objects yield none), at most MAX_FILES_PER_DIR files;
-    everything read is unioned.
+    everything read is unioned. Claimed roots (exclude) are never entered or read.
     """
     terms: set[str] = set()
-    for dirpath, _dirs, files in os.walk(input_dir):
+    claimed = ClaimedPaths(input_dir, exclude)
+    for dirpath, dirs, files in os.walk(input_dir):
+        claimed.prune(Path(dirpath), dirs)
+        if claimed:
+            files = [f for f in files if not claimed.covers(Path(dirpath) / f)]
         for name in sorted(files)[:MAX_FILES_PER_DIR]:
             ds = _read_dicom(Path(dirpath) / name)
             if ds is None:
@@ -182,11 +187,13 @@ def _header_terms(input_dir: Path, stats: dict) -> set[str]:
     return terms
 
 
-def identifying_terms(core: CoreResult, input_dir: Path, stats: dict | None = None) -> set[str]:
+def identifying_terms(core: CoreResult, input_dir: Path, stats: dict | None = None,
+                      exclude: Sequence[str] = ()) -> set[str]:
     """Every identifying value in the ezBIDS output and in the input DICOM headers.
 
     Terms keep their original case (``redact`` ignores case and accents). When stats is
-    given it is filled with {"dicom_files_read": int, "term_count": int}.
+    given it is filled with {"dicom_files_read": int, "term_count": int}. Claimed roots (exclude,
+    input-relative) are not walked.
     """
     counts = {"dicom_files_read": 0}
     terms: set[str] = set()
@@ -195,7 +202,7 @@ def identifying_terms(core: CoreResult, input_dir: Path, stats: dict | None = No
             terms |= _ds_terms(info.get)
     for sidecar in [s.sidecar for s in core.series] + [o.sidecar for o in core.objects]:
         terms |= _ds_terms(sidecar.get)
-    terms |= _header_terms(Path(input_dir), counts)
+    terms |= _header_terms(Path(input_dir), counts, exclude)
     if stats is not None:
         stats["dicom_files_read"] = counts["dicom_files_read"]
         stats["term_count"] = len(terms)
