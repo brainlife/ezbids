@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from dataclasses import asdict, dataclass, field, fields
 from pathlib import Path
@@ -13,7 +14,9 @@ LOCKED_FIELDS = {"id", "series_idx", "subject_idx", "session_idx"}
 # brainlife_by_person and the indices) is derived: planner.apply_plan_edits re-derives it after every edit.
 EDITABLE_FIELDS = {"subject": "label", "session": "label?", "datatype": "str?", "suffix": "str?",
                    "entities": "dict", "deface": "bool", "exclude": "bool", "brainlife_datatype": "str?",
-                   "brainlife_tags": "list", "sample_type": "str?"}
+                   "brainlife_tags": "list", "sample_type": "str?", "pixel_size": "sizes?",
+                   "pixel_size_units": "unit?"}
+PIXEL_SIZE_UNITS = ("mm", "um", "nm")
 _LABEL = re.compile(r"^[a-zA-Z0-9]+$")
 
 # --- ancillary and metadata files (Task 10b) ---
@@ -68,6 +71,11 @@ class PlanEntry:
     # micr: "convert" (to OME-Zarr), "reference" (an OME-Zarr kept as is, no copy); "" = not writable
     write_mode: Literal["", "convert", "reference"] = ""
     output_bytes: int = 0  # micr: about how many bytes conversion writes to the work folder
+    # micr: the pixel size (x, y[, z]) in pixel_size_units, from the source or the reviewer; None when
+    # the source does not give every spatial axis (the entry is then unknown until the reviewer sets it)
+    pixel_size: list[float] | None = None
+    pixel_size_units: Literal["mm", "um", "nm"] | None = None
+    spatial_axes: str = ""  # micr: the image's spatial axes among "xyz" (derived; the length of pixel_size)
 
 
 @dataclass
@@ -154,6 +162,8 @@ class Plan:
         for edit in edits:
             entry = by_id[edit["id"]]
             for k, v in edit.items():
+                if k == "pixel_size" and v is not None:
+                    v = [float(t) for t in v]
                 if k not in ("id", "subject", "deface"):
                     setattr(entry, k, v)
             if "deface" in edit:
@@ -219,10 +229,15 @@ def _check_type(k: str, v) -> None:
           "str": isinstance(v, str) and bool(v),
           "label": isinstance(v, str) and bool(_LABEL.fullmatch(v)),
           "dict": isinstance(v, dict) and all(isinstance(a, str) and isinstance(b, str) for a, b in v.items()),
-          "list": isinstance(v, list) and all(isinstance(t, str) for t in v)}[kind]
+          "list": isinstance(v, list) and all(isinstance(t, str) for t in v),
+          "sizes": isinstance(v, list) and len(v) in (2, 3) and all(
+              isinstance(t, (int, float)) and not isinstance(t, bool) and math.isfinite(t) and t > 0 for t in v),
+          "unit": v in PIXEL_SIZE_UNITS}[kind]
     if not ok:
         want = {"bool": "true or false", "str": "a non-empty string", "label": "letters and digits only",
-                "dict": "an object of strings", "list": "a list of strings"}[kind]
+                "dict": "an object of strings", "list": "a list of strings",
+                "sizes": "a list of 2 or 3 positive numbers (x, y[, z])",
+                "unit": f"one of {', '.join(PIXEL_SIZE_UNITS)}"}[kind]
         raise ValueError(f"{k} must be {want}")
 
 

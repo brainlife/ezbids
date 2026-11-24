@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import csv
 import gc
+from dataclasses import asdict
 import json
 import time
 import tracemalloc
@@ -18,14 +19,15 @@ from aimport import micr, modality, server
 from aimport.ancillary import find_ancillary
 from aimport.ezbids_runner import CoreResult
 from aimport.micr import convert, metadata, readers
-from aimport.micr.convert import NgffCheckError, check_ome_zarr, to_ome_zarr
-from aimport.micr.metadata import ChannelInfo, ImageInfo, ngff_attrs, sidecar
+from aimport.micr.convert import NgffCheckError, box_mean, check_ome_zarr, to_ome_zarr
+from aimport.micr.metadata import ImageInfo, PixelSizeUnknown, ngff_attrs, sidecar
 from aimport.micr.module import MicrModule
 from aimport.plan import PlanEntry
 from aimport.planner import apply_plan_edits, build_plan
 from aimport.pseudonyms import PseudonymKey
 from aimport.writer import SCANS_DATE_ONLY, write_bids
 from conftest import MICR_PLANTED
+from test_micr_remote import local_servers  # noqa: F401 - the local Range server fixture
 from fixtures.micr_fixtures import (PLANTED_PIXEL_SIZE_UM, planted_ome_tiff, psoct_nifti, striped_tiff,
                                     visor_tile)
 
@@ -108,8 +110,10 @@ def test_convert_pyramid_levels(tmp_path):
     assert max(3000 // last["y"], 2000 // last["x"]) <= convert.PYRAMID_MAX_SIDE
     assert all(f.get("z", 1) == 1 for f in levels[:3])  # z (4 um) is coarser than the plane until 4 um
     # a 2D stripe: one level per halving down to 512
-    flat = ImageInfo(family="tiff", axes="yx", shape=(6000, 6000), dtype="uint16")
+    flat = ImageInfo(family="tiff", axes="yx", shape=(6000, 6000), dtype="uint16", pixel_size={"x": 1.0, "y": 1.0})
     assert [f.get("x", 1) for f in convert.pyramid_levels(flat)] == [1, 2, 4, 8, 16]
+    with pytest.raises(PixelSizeUnknown):  # never an invented pixel size
+        convert.pyramid_levels(ImageInfo(family="tiff", axes="yx", shape=(6000, 6000), dtype="uint16"))
 
 
 def test_write_layout_defaults_and_budget(monkeypatch):
@@ -118,11 +122,31 @@ def test_write_layout_defaults_and_budget(monkeypatch):
     assert chunks == {"c": 1, "z": 128, "y": 128, "x": 128}
     assert per_shard == {"z": 2, "y": 4, "x": 4}  # a shard is written whole: at most half the block limit
     assert convert.write_layout(info, "0.4") == (chunks, {"z": 1, "y": 1, "x": 1})
+    # a full-width slab one shard deep must fit the budget: the shard gets thinner along y first
     flat = ImageInfo(family="tiff", axes="yx", shape=(60000, 60000), dtype="uint16")
-    assert convert.write_layout(flat, "0.5") == ({"y": 1024, "x": 1024}, {"y": 4, "x": 4})
+    assert convert.write_layout(flat, "0.5") == ({"y": 1024, "x": 1024}, {"y": 1, "x": 4})
     monkeypatch.setattr(micr, "MAX_BLOCK_BYTES", 4 * MiB)  # read at call time
     chunks, per_shard = convert.write_layout(flat, "0.5")
     assert 2 * np.prod(list(chunks.values())) * np.prod(list(per_shard.values())) <= 2 * MiB
+
+
+def _sized(src, **size):
+    src.info.pixel_size = size or {"x": 1.0, "y": 1.0}
+    return src
+
+
+def _counted(src):
+    """src whose level 0 counts the bytes of every source block computed (no slice reaches the reader)."""
+    arr = src.level(0)
+    seen = []
+
+    def count(block):
+        seen.append(block.nbytes)
+        return block
+
+    counted = arr.map_blocks(count, dtype=arr.dtype)
+    src.level = lambda i: counted
+    return src, seen
 
 
 def test_convert_bounded_memory(tmp_path, monkeypatch):
@@ -131,10 +155,10 @@ def test_convert_bounded_memory(tmp_path, monkeypatch):
     assert 6000 * 6000 * 2 > 4 * MiB
     # warm up once (imports and first-call caches of dask, zarr and ngff-zarr are not conversion memory)
     with readers.open_image(striped_tiff(tmp_path / "small.tif", (600, 600)), "tiff") as small:
-        to_ome_zarr(small, tmp_path / "small.ome.zarr", "0.5")
+        to_ome_zarr(_sized(small), tmp_path / "small.ome.zarr", "0.5")
     seen = []
     with readers.open_image(big, "tiff") as src:
-        _, peak = _peak(lambda: to_ome_zarr(src, tmp_path / "big.ome.zarr", "0.5", seen.append))
+        _, peak = _peak(lambda: to_ome_zarr(_sized(src), tmp_path / "big.ome.zarr", "0.5", seen.append))
     assert peak < 12 * MiB, peak
     assert zarr.open_array(str(tmp_path / "big.ome.zarr" / "0"), mode="r").shape == (6000, 6000)
     # progress per level and per block, numbers only
@@ -142,22 +166,70 @@ def test_convert_bounded_memory(tmp_path, monkeypatch):
     assert any(m.startswith("converting: level 5 of 5") for m in seen)
 
 
-def test_convert_never_reads_whole_array(tmp_path, monkeypatch):
-    """Every read of the source is one block of the shard grid, never the whole level."""
+def test_convert_bounded_memory_3d(tmp_path, monkeypatch):
+    """A c,z,y,x stack (57 MB, sparse on disk) at a 4 MiB block limit."""
+    import tifffile
+
+    monkeypatch.setattr(micr, "MAX_BLOCK_BYTES", 4 * MiB)
+    path = tmp_path / "stack.tif"
+    tifffile.imwrite(str(path), shape=(2, 40, 600, 600), dtype=np.uint16, photometric="minisblack",
+                     metadata={"axes": "CZYX"})
+    small = tmp_path / "small.tif"
+    tifffile.imwrite(str(small), shape=(2, 4, 60, 60), dtype=np.uint16, photometric="minisblack",
+                     metadata={"axes": "CZYX"})
+    size = {"x": 1.0, "y": 1.0, "z": 2.0}
+    with readers.open_image(small, "tiff") as warm:
+        to_ome_zarr(_sized(warm, **size), tmp_path / "small.ome.zarr", "0.5")
+    with readers.open_image(path, "tiff") as src:
+        assert src.info.axes == "czyx"
+        src, reads = _counted(_sized(src, **size))
+        _, peak = _peak(lambda: to_ome_zarr(src, tmp_path / "stack.ome.zarr", "0.5"))
+    assert peak < 12 * MiB, peak
+    assert sum(reads) <= 1.1 * 2 * 40 * 600 * 600 * 2
+    assert zarr.open_array(str(tmp_path / "stack.ome.zarr" / "0"), mode="r").shape == (2, 40, 600, 600)
+
+
+def test_convert_reads_each_source_block_once(tmp_path, monkeypatch):
     monkeypatch.setattr(micr, "MAX_BLOCK_BYTES", 4 * MiB)
     big = striped_tiff(tmp_path / "striped.tif", (3000, 3000), np.uint16)
-    sizes = []
-    real = convert._Blocks.__getitem__
-
-    def spy(self, k):
-        block = real(self, k)
-        sizes.append(block.nbytes)
-        return block
-
-    monkeypatch.setattr(convert._Blocks, "__getitem__", spy)
     with readers.open_image(big, "tiff") as src:
+        src, reads = _counted(_sized(src))
+        assert len(src.level(0).chunks[0]) > 1  # several source strips
         to_ome_zarr(src, tmp_path / "o.ome.zarr", "0.5")
-    assert sizes and max(sizes) <= 2 * MiB < 3000 * 3000 * 2
+    assert sum(reads) <= 1.1 * 3000 * 3000 * 2, sum(reads) / (3000 * 3000 * 2)
+
+
+def test_convert_remote_under_byte_cap(tmp_path, local_servers, monkeypatch):  # noqa: F811
+    from aimport.micr import remote
+
+    monkeypatch.setattr(micr, "MAX_BLOCK_BYTES", 4 * MiB)
+    base, root, _ = local_servers("served")
+    tif = striped_tiff(root / "s.tif", (3000, 3000), np.uint16)
+    tifffile_bytes = tif.stat().st_size
+    from aimport.micr.module import CONVERT_BLOCK_SIZE
+
+    src, counter = remote.open_remote(f"{base}/s.tif", "tiff", max_bytes=int(1.1 * 3000 * 3000 * 2) + 2**20,
+                                      block_size=CONVERT_BLOCK_SIZE)
+    try:
+        to_ome_zarr(_sized(src), tmp_path / "o.ome.zarr", "0.5")  # ByteBudgetExceeded past the cap
+    finally:
+        src.close()
+    assert counter.total <= 1.1 * 3000 * 3000 * 2 + 2**20 and tifffile_bytes > 0
+    assert zarr.open_array(str(tmp_path / "o.ome.zarr" / "0"), mode="r").shape == (3000, 3000)
+
+
+def test_downsample_exact_integers_and_bool():
+    big = np.array([2**64 - 1, 2**64 - 1, 2**64 - 3, 2**64 - 1], dtype=np.uint64).reshape(1, 2, 1, 2)
+    assert box_mean(big, (1, 3), np.dtype(np.uint64))[0, 0] == 2**64 - 1  # mean max - 0.5, half up
+    exact = np.array([2**62 + 1, 2**62 + 3], dtype=np.int64).reshape(1, 2)
+    assert box_mean(exact, (1,), np.dtype(np.int64))[0] == 2**62 + 2  # float64 would give 2**62
+    neg = np.array([-3, -2, -2, -2], dtype=np.int16).reshape(1, 2, 1, 2)
+    assert box_mean(neg, (1, 3), np.dtype(np.int16))[0, 0] == -2
+    votes = np.array([[True, True], [True, False]]).reshape(1, 2, 1, 2)
+    assert box_mean(votes, (1, 3), np.dtype(bool)).dtype == np.bool_
+    assert box_mean(votes, (1, 3), np.dtype(bool))[0, 0]
+    tie = np.array([[True, False], [True, False]]).reshape(1, 2, 1, 2)
+    assert not box_mean(tie, (1, 3), np.dtype(bool))[0, 0]
 
 
 def test_visor_tiles_stacked_along_z(tmp_path, key, schema):
@@ -244,9 +316,19 @@ def test_sidecar_required_fields():
     assert car["OCTOpticAxisConvention"] == "n/a"
     oct_entry.entities["acquisition"] = "reflectivity"
     assert sidecar(info, oct_entry)["OCTRetardanceKind"] == "n/a"
+    # the plan's pixel size (source or reviewer) wins; 2D: x, y only; no OCT fields for other suffixes
     oct_entry.suffix = "SPIM"
-    plain = sidecar(ImageInfo(family="tiff", axes="yx", shape=(8, 8), dtype="uint8"), oct_entry)
-    assert plain == {"PixelSize": [1.0, 1.0], "PixelSizeUnits": "um"}  # 2D: x, y only; no OCT fields
+    plain_info = ImageInfo(family="tiff", axes="yx", shape=(8, 8), dtype="uint8")
+    with pytest.raises(PixelSizeUnknown, match="pixel size unknown: set it in the plan"):
+        sidecar(plain_info, oct_entry)  # never invented
+    oct_entry.pixel_size, oct_entry.pixel_size_units = [0.25, 0.5], "nm"
+    assert sidecar(plain_info, oct_entry) == {"PixelSize": [0.25, 0.5], "PixelSizeUnits": "nm"}
+    oct_entry.pixel_size = [0.25, 0.5, 1.0]  # three values for a 2D image
+    with pytest.raises(PixelSizeUnknown):
+        sidecar(plain_info, oct_entry)
+    with pytest.raises(PixelSizeUnknown):  # one spatial axis missing in the source
+        sidecar(ImageInfo(family="tiff", axes="zyx", shape=(2, 8, 8), dtype="uint8",
+                          pixel_size={"x": 1.0, "y": 1.0}), None)
 
 
 # --- self-check ----------------------------------------------------------------------------------
@@ -379,7 +461,7 @@ def test_scans_shifted(tmp_path, key, schema):
     assert read_tsv(out / f"sub-{octe.subject}" / f"sub-{octe.subject}_scans.tsv")[0]["acq_time"] == "n/a"
     scans_json = json.loads((out / f"sub-{conf.subject}" / f"sub-{conf.subject}_scans.json").read_text())
     assert scans_json == {"acq_time": {"Description": SCANS_DATE_ONLY}} and SCANS_DATE_ONLY == \
-        "date only; time not recorded"
+        "date only for microscopy images; time not recorded"
     for p in out.rglob("*"):
         if p.is_file():
             data = p.read_bytes()
@@ -526,3 +608,123 @@ def test_server_execute_self_check_failure(tmp_path, monkeypatch):
     head = s["message"].split(";")[0]
     assert head.startswith("NgffCheckError: OME-Zarr self-check failed")
     assert str(inp) not in s["message"] and "H17" not in s["message"] and "stack" not in s["message"]
+
+
+# --- planning rules (fix round 1) -----------------------------------------------------------------
+
+
+def _plan(inp: Path, tmp_path: Path, key, schema):
+    work = tmp_path / "work"
+    m = MicrModule()
+    claim = m.claim(inp, [])
+    m.scan(inp, claim, work / "micr", lambda msg: None)
+    return build_plan(CoreResult(), inp, key, set(), None, schema, "bids", exclude=claim.roots,
+                      extra_terms=frozenset(m.terms(work / "micr")),
+                      planners=[lambda: m.plan(work / "micr", key, set(), None, schema, "bids")]), m, claim, work
+
+
+def test_pixel_size_from_source_in_plan(tmp_path, key, schema):
+    plan, *_ = _plan(micr_input(tmp_path / "in"), tmp_path, key, schema)
+    by_suffix = {e.suffix: e for e in plan.entries if e.modality == "micr"}
+    assert by_suffix["OCT"].pixel_size == [10.0, 10.0, 2.5] and by_suffix["OCT"].pixel_size_units == "um"
+    assert by_suffix["OCT"].spatial_axes == "xyz"
+    assert by_suffix[None].pixel_size == [0.5, 0.5, 2.0]  # the planted OME-TIFF (suffix still unknown)
+
+
+def test_pixel_size_unknown_until_set(tmp_path, key, schema):
+    import tifffile
+
+    inp = tmp_path / "in"
+    (inp / "x").mkdir(parents=True)
+    tifffile.imwrite(str(inp / "x" / "visor_488_0001.tif"), np.zeros((4, 32, 32), dtype=np.uint16),
+                     photometric="minisblack", metadata=None)  # a light-sheet name: suffix SPIM, no size
+    plan, m, claim, work = _plan(inp, tmp_path, key, schema)
+    (e,) = [e for e in plan.entries if e.modality == "micr"]
+    assert e.suffix == "SPIM" and (e.status, e.exclude) == ("unknown", True)
+    assert e.reason == "pixel size unknown: set it in the plan" and e.pixel_size is None
+    assert e.spatial_axes == "xyz"
+    for bad in ([1.0], [0, 1, 1], [1, 1, float("inf")], [1, 1, float("nan")], ["1", 1, 1], [True, 1, 1],
+                [1, 1, 1, 1], 1.0):
+        with pytest.raises(ValueError):
+            apply_plan_edits(plan, [{"id": e.id, "pixel_size": bad}], schema)
+    with pytest.raises(ValueError):
+        apply_plan_edits(plan, [{"id": e.id, "pixel_size_units": "inch"}], schema)
+    apply_plan_edits(plan, [{"id": e.id, "pixel_size": [1.0, 1.0]}], schema)  # 2 values for x, y, z
+    assert e.status == "unknown" and e.reason == "pixel size unknown: set it in the plan"
+    apply_plan_edits(plan, [{"id": e.id, "pixel_size": [0.5, 0.5, 4], "pixel_size_units": "um"}], schema)
+    assert (e.status, e.exclude, e.pixel_size) == ("ok", False, [0.5, 0.5, 4.0])
+    plan.approved = True
+    staged = tmp_path / "staged"
+    staged.mkdir()
+    out = tmp_path / "out"
+    write_bids(plan, CoreResult(), inp, m.terms(work / "micr"), key, schema, out, staged_dir=staged,
+               exclude=claim.roots, modules=modality.modules(), work_dir=work)
+    (car,) = [json.loads(p.read_text()) for p in out.rglob("*_SPIM.json")]
+    assert car["PixelSize"] == [0.5, 0.5, 4.0] and car["PixelSizeUnits"] == "um"
+    (store,) = out.rglob("*.ome.zarr")
+    scale = _multiscale(_group_attrs(store, micr.NGFF_VERSION), micr.NGFF_VERSION)["datasets"][0]
+    assert scale["coordinateTransformations"][0]["scale"][-3:] == [4.0, 0.5, 0.5]
+
+
+def test_pixel_size_edit_refused_on_mri_entries(schema):
+    from aimport.plan import Plan
+
+    mri = PlanEntry("e0", 0, 0, 0, "01", None, "anat", "T1w", {}, None, [], "heuristic", 0.8, "", True, False,
+                    "ok", "")
+    plan = Plan(target="bids", entries=[mri])
+    with pytest.raises(ValueError, match="microscopy entries only"):
+        apply_plan_edits(plan, [{"id": "e0", "pixel_size": [1.0, 1.0, 1.0]}], schema)
+    with pytest.raises(ValueError, match="microscopy entries only"):
+        apply_plan_edits(plan, [{"id": "e0", "pixel_size_units": "um"}], schema)
+
+
+def test_writer_refuses_missing_pixel_size(tmp_path, key, schema):
+    inp = micr_input(tmp_path / "in")
+    plan, m, claim, work = _plan(inp, tmp_path, key, schema)
+    apply_plan_edits(plan, [{"id": e.id, "suffix": "CONF"} for e in plan.entries if e.status == "unknown"], schema)
+    e = next(e for e in plan.entries if e.modality == "micr" and e.status == "ok")
+    e.pixel_size = None  # a hand-edited plan.json: the writer still refuses it
+    plan.approved = True
+    staged = tmp_path / "staged"
+    staged.mkdir()
+    with pytest.raises(PixelSizeUnknown):
+        write_bids(plan, CoreResult(), inp, m.terms(work / "micr"), key, schema, tmp_path / "out",
+                   staged_dir=staged, exclude=claim.roots, modules=modality.modules(), work_dir=work)
+
+
+def test_mosaic_planned_unsupported(tmp_path, key, schema):
+    import tifffile
+
+    inp = tmp_path / "in"
+    (inp / "mosaic").mkdir(parents=True)
+    for n in (1, 2, 3):
+        tifffile.imwrite(str(inp / "mosaic" / f"Slice_051_Tile_000{n}.tif"), np.zeros((16, 16), dtype=np.uint16),
+                         photometric="minisblack", metadata=None)
+    plan, *_ = _plan(inp, tmp_path, key, schema)
+    (e,) = [e for e in plan.entries if e.modality == "micr"]
+    assert (e.status, e.exclude, e.write_mode) == ("unsupported", True, "")
+    assert e.reason == "tile mosaic: stitch first (aimport converts single images and VISoR stacks)"
+
+
+def test_file_name_label_that_is_a_term_refused(tmp_path, key, schema):
+    """A sample label read from a BIDS file name is used only when it is not an identifying term."""
+    import tifffile
+
+    from aimport.micr.module import plan_entries
+
+    inp = tmp_path / "in"
+    (inp / "sub-01" / "micr").mkdir(parents=True)
+    tifffile.imwrite(str(inp / "sub-01" / "micr" / "sub-01_sample-JDoe12_CONF.tif"),
+                     np.zeros((16, 16), dtype=np.uint16), photometric="minisblack", metadata=None,
+                     resolution=(1e4, 1e4), resolutionunit="CENTIMETER")
+    m = MicrModule()
+    claim = m.claim(inp, [])
+    m.scan(inp, claim, tmp_path / "work" / "micr", lambda msg: None)
+    records = json.loads((tmp_path / "work" / "micr" / "records.json").read_text())
+    records[0]["terms"] = sorted(set(records[0]["terms"]) | {"jdoe12"})
+    mp = plan_entries(records, key, set(), schema, "bids")
+    (e,) = mp.entries
+    assert e.entities["sample"] != "JDoe12" and "jdoe12" not in json.dumps(asdict(e)).lower()
+    # and without the term the BIDS name's own label is used
+    records[0]["terms"] = [t for t in records[0]["terms"] if t.lower() != "jdoe12"]
+    assert plan_entries(records, key, set(), schema, "bids").entries[0].entities["sample"] == "JDoe12"

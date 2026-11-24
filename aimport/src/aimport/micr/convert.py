@@ -14,10 +14,12 @@ the validator treats ``.ome.zarr`` as opaque, so aimport validates its own outpu
 """
 from __future__ import annotations
 
+import itertools
 import json
 import math
 import os
 import shutil
+from collections import OrderedDict
 from pathlib import Path
 from typing import Any, Callable, Sequence
 
@@ -72,7 +74,50 @@ def write_layout(info: ImageInfo, version: str, limit: int | None = None) -> tup
     while nbytes() > budget and any(chunks[a] > 1 for a in spatial):
         big = max(spatial, key=lambda a: chunks[a])
         chunks[big] = max(1, chunks[big] // 2)
+    # level 0 is written in slabs along the slowest spatial axis, full extent on the others, so each
+    # source block (strips, planes) is read once: a slab is one shard deep. When a full-extent slab
+    # does not fit the budget, the shard (then the chunk, down to an eighth of the default) gets
+    # thinner along that axis, but only if that makes it fit; otherwise the defaults stay and level 0
+    # goes shard by shard.
+    lead, rest = spatial[0], spatial[1:]
+    row = itemsize * math.prod(int(shape[a]) for a in rest)
+    floor = max(1, side // 8)
+    if row * min(chunks[lead], floor) <= budget < row * chunks[lead] * per_shard[lead]:
+        while row * chunks[lead] * per_shard[lead] > budget and per_shard[lead] > 1:
+            per_shard[lead] //= 2
+        while row * chunks[lead] > budget and chunks[lead] > floor:
+            chunks[lead] //= 2
     return chunks, per_shard
+
+
+def level0_slab(info: ImageInfo, grid: tuple[int, ...], budget: int,
+                source: tuple[tuple[int, ...], ...] | None = None) -> tuple[tuple[int, ...], bool]:
+    """(blocks level 0 is written in, whether they cut through shards).
+
+    Preferred: one shard deep along the first spatial axis and the full extent along the others, so
+    each block is whole shards and the source (strips, plane stacks) is read once in order. When that
+    does not fit the budget but one full-extent slice does, the blocks are full-extent slabs as deep
+    as the budget and the source's own blocks allow: each source block is still read once, and the
+    shards they cut through are completed by later slabs (read, merged, rewritten). When even one
+    slice is larger than the budget, level 0 goes shard by shard (a source block may then be read
+    again for each shard it overlaps)."""
+    itemsize = np.dtype(info.dtype).itemsize
+    spatial = [i for i, a in enumerate(info.axes) if a in SPATIAL]
+    lead = spatial[0]
+    full = list(grid)
+    for i in spatial[1:]:
+        full[i] = int(info.shape[i])
+    slice_bytes = itemsize * math.prod(min(s, int(n)) for i, (s, n) in enumerate(zip(full, info.shape))
+                                       if i != lead)
+    if slice_bytes * min(grid[lead], int(info.shape[lead])) <= budget:
+        return tuple(full), False
+    if slice_bytes <= budget:
+        depth = budget // slice_bytes
+        if source is not None:
+            depth = min(depth, max(int(c) for c in source[lead]))
+        full[lead] = max(1, depth)
+        return tuple(full), True
+    return tuple(grid), False
 
 
 def pyramid_levels(info: ImageInfo) -> list[dict[str, int]]:
@@ -105,17 +150,57 @@ def pyramid_levels(info: ImageInfo) -> list[dict[str, int]]:
 
 
 class _Blocks:
-    """Array-like over a source dask array: each read computes just that region (dask fuses the slice
-    into the source's own reads) on the synchronous scheduler."""
+    """Array-like over a source dask array for level 0. A read assembles its region from whole source
+    blocks, each computed on the synchronous scheduler; the most recent blocks are kept (at most
+    ``cache_bytes``, at least one block), so with level 0 written in slabs along the slowest axis each
+    source block is read once."""
 
-    def __init__(self, arr: Any, report: Callable[[], None]):
+    def __init__(self, arr: Any, report: Callable[[], None], cache_bytes: int):
         self.arr, self.shape, self.dtype, self.ndim = arr, tuple(arr.shape), np.dtype(arr.dtype), arr.ndim
-        self.report = report
+        self.report, self.cache_bytes = report, max(1, cache_bytes)
+        self.bounds = [np.cumsum((0,) + tuple(int(c) for c in cs)) for cs in arr.chunks]
+        self.cache: OrderedDict[tuple[int, ...], np.ndarray] = OrderedDict()
+
+    def _block(self, idx: tuple[int, ...]) -> np.ndarray:
+        if idx in self.cache:
+            self.cache.move_to_end(idx)
+            return self.cache[idx]
+        need = self.dtype.itemsize * math.prod(int(b[i + 1] - b[i]) for b, i in zip(self.bounds, idx))
+        while self.cache and sum(b.nbytes for b in self.cache.values()) + need > self.cache_bytes:
+            self.cache.popitem(last=False)  # room first: never two large blocks at once
+        block = np.asarray(self.arr.blocks[idx].compute(scheduler="synchronous"))
+        self.cache[idx] = block
+        return block
 
     def __getitem__(self, key: Any) -> np.ndarray:
-        block = np.asarray(self.arr[key].compute(scheduler="synchronous"))
+        key = key if isinstance(key, tuple) else (key,)
+        region = [k.indices(n)[:2] for k, n in zip(key, self.shape)]
+        out = np.empty(tuple(b - a for a, b in region), dtype=self.dtype)
+        ranges = []
+        for (a, b), bounds in zip(region, self.bounds):
+            first = int(np.searchsorted(bounds, a, side="right")) - 1
+            last = int(np.searchsorted(bounds, b, side="left")) - 1
+            ranges.append(range(first, max(first, last) + 1))
+        needed = list(itertools.product(*ranges))
+        for idx in [i for i in self.cache if i not in set(needed)]:
+            del self.cache[idx]  # behind the writer: never needed again (regions go forward)
+        for idx in needed:
+            block = self._block(idx)
+            src, dst = [], []
+            for (a, b), bounds, i in zip(region, self.bounds, idx):
+                lo, hi = max(a, int(bounds[i])), min(b, int(bounds[i + 1]))
+                src.append(slice(lo - int(bounds[i]), hi - int(bounds[i])))
+                dst.append(slice(lo - a, hi - a))
+            out[tuple(dst)] = block[tuple(src)]
+            # regions go forward (C order): a block that ends inside this region is not read again
+            if all(int(bounds[i + 1]) <= b for (a, b), bounds, i in zip(region, self.bounds, idx)):
+                self.cache.pop(idx, None)
+            del block
         self.report()
-        return block
+        return out
+
+    def release(self) -> None:
+        self.cache.clear()
 
 
 class _Downsample:
@@ -145,16 +230,26 @@ class _Downsample:
             sub[lead] = (r0, r1)
             src = np.asarray(self.prev[tuple(slice(a * f, b * f) for (a, b), f in zip(sub, self.factors))])
             shaped = src.reshape([n for (a, b), f in zip(sub, self.factors) for n in (b - a, f)])
-            mean = shaped.mean(axis=tuple(range(1, 2 * self.ndim, 2)))
-            if np.issubdtype(self.dtype, np.integer):
-                info = np.iinfo(self.dtype)
-                np.rint(mean, out=mean)
-                np.clip(mean, info.min, info.max, out=mean)
+            mean = box_mean(shaped, tuple(range(1, 2 * self.ndim, 2)), self.dtype)
             out[tuple(slice(a - start, b - start) if i == lead else slice(None)
-                      for i, (a, b) in enumerate(sub))] = mean.astype(self.dtype, copy=False)
+                      for i, (a, b) in enumerate(sub))] = mean
             del src, shaped, mean
         self.report()
         return out
+
+
+def box_mean(x: np.ndarray, axes: tuple[int, ...], dtype: np.dtype) -> np.ndarray:
+    """The mean over ``axes`` (the boxes), in ``dtype``. Booleans: majority vote (a tie is False).
+    Integers: exact, without floating point (round half up): sum(x // n) + (sum(x % n) + n // 2) // n,
+    which cannot overflow because each x // n is at most max / n. Floats: float64 mean."""
+    n = math.prod(x.shape[a] for a in axes)
+    if dtype == np.bool_:
+        return (np.count_nonzero(x, axis=axes) * 2 > n)
+    if np.issubdtype(dtype, np.integer):
+        q = (x // n).sum(axis=axes, dtype=dtype)
+        r = (x % n).sum(axis=axes, dtype=np.int64)
+        return (q + ((r + n // 2) // n).astype(dtype)).astype(dtype, copy=False)
+    return x.mean(axis=axes, dtype=np.float64).astype(dtype, copy=False)
 
 
 def _counter(progress: Callable[[str], None] | None, level: int, n_levels: int, total: int) -> Callable[[], None]:
@@ -209,10 +304,14 @@ def to_ome_zarr(src: Any, dest: Path, version: str | None = None,
             else:
                 rel = tuple(factors.get(a, 1) // levels[k - 1].get(a, 1) for a in info.axes)
                 shape = tuple(int(n) // f for n, f in zip(prev.shape, rel))
-            total = math.prod(math.ceil(n / g) for n, g in zip(shape, grid))
+            blocks, partial = level0_slab(info, grid, budget, arr.chunks) if k == 0 else (grid, False)
+            total = math.prod(math.ceil(n / g) for n, g in zip(shape, blocks))
             report = _counter(progress, k, len(levels), total)
-            data = _Blocks(arr, report) if k == 0 else _Downsample(prev, rel, budget, report)
-            _write_level(dest, k, data, info.axes, chunks, grid, per_shard, version)
+            data = (_Blocks(arr, report, int(micr.MAX_BLOCK_BYTES)) if k == 0
+                    else _Downsample(prev, rel, budget, report))
+            _write_level(dest, k, data, info.axes, chunks, blocks, per_shard, version, partial)
+            if k == 0:
+                data.release()
             prev = zarr.open_array(str(dest / str(k)), mode="r")
         windows = _windows(dest, info, len(levels) - 1)
         _write_group(dest, version, ngff_attrs(info, version, levels, windows))
@@ -222,25 +321,26 @@ def to_ome_zarr(src: Any, dest: Path, version: str | None = None,
     return sum(p.stat().st_size for p in dest.rglob("*") if p.is_file())
 
 
-def _write_level(dest: Path, k: int, data: Any, axes: str, chunks: dict[str, int], grid: tuple[int, ...],
-                 per_shard: dict[str, int], version: str) -> None:
-    """One level through ngff-zarr into ``dest/.level``, its array moved to ``dest/<k>`` with empty
-    attributes; the scratch store (and every group node ngff-zarr made) is removed."""
-    import dask
+def _write_level(dest: Path, k: int, data: Any, axes: str, chunks: dict[str, int], blocks: tuple[int, ...],
+                 per_shard: dict[str, int], version: str, partial: bool = False) -> None:
+    """One level: ngff-zarr creates the array (shape, dtype, chunks, shards and codecs; metadata only)
+    in ``dest/.level``, it is moved to ``dest/<k>`` with empty attributes, and the pixels are then
+    written region by region (``blocks``, whole shards each) in C order, so reads of the source move
+    forward through it. The scratch store (and every group node ngff-zarr made) is removed."""
     import dask.array as da
     import ngff_zarr as nz
+    import zarr
 
-    meta = np.empty((0,) * len(axes), dtype=data.dtype)
-    darr = da.from_array(data, chunks=tuple(min(g, max(1, n)) for g, n in zip(grid, data.shape)),
-                         name=False, asarray=False, fancy=False, meta=meta)
-    image = nz.to_ngff_image(darr, dims=list(axes))
+    shape = tuple(int(n) for n in data.shape)
+    template = da.zeros(shape, chunks=tuple(min(chunks[a], max(1, n)) for a, n in zip(axes, shape)),
+                        dtype=data.dtype)  # never computed: metadata only
+    image = nz.to_ngff_image(template, dims=list(axes))
     ms = nz.to_multiscales(image, scale_factors=[], chunks={a: chunks[a] for a in axes}, cache=False,
                            axis_order="preserve")
     scratch = dest / ".level"
     shard = {a: n for a, n in per_shard.items() if n > 1} if version == "0.5" else None
-    with dask.config.set(scheduler="synchronous"):
-        nz.to_ngff_zarr(scratch, ms, version=version, chunks_per_shard=shard or None,
-                        consolidate_metadata=False)
+    nz.to_ngff_zarr(scratch, ms, version=version, chunks_per_shard=shard or None, consolidate_metadata=False,
+                    metadata_only=True)
     paths = _ngff_paths(scratch, version)
     if len(paths) != 1:
         raise _fail("ngff-zarr wrote an unexpected number of levels")
@@ -256,6 +356,15 @@ def _write_level(dest: Path, k: int, data: Any, axes: str, chunks: dict[str, int
         (target / "zarr.json").write_text(json.dumps(meta_json, indent=2))
     else:
         (target / ".zattrs").unlink(missing_ok=True)
+    z = zarr.open_array(str(target), mode="r+")
+    if tuple(z.shape) != shape:
+        raise _fail("ngff-zarr created an array of an unexpected shape")
+    starts = [range(0, n, max(1, b)) for n, b in zip(shape, blocks)]
+    # blocks that cut through shards (or chunks) make zarr read, merge and rewrite them: one at a time
+    with zarr.config.set({"async.concurrency": 1} if partial else {}):
+        for corner in itertools.product(*starts):
+            region = tuple(slice(c, min(n, c + b)) for c, n, b in zip(corner, shape, blocks))
+            z[region] = data[region]
 
 
 def _read_json(path: Path) -> Any:

@@ -6,6 +6,7 @@ other string value is dropped and returned as a *term* so later steps can redact
 """
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
 from datetime import date, datetime
@@ -195,19 +196,40 @@ def ome_allowlist(ome: Any, image: int = 0) -> tuple[dict[str, Any], set[str]]:
 
 SPATIAL = ("z", "y", "x")
 NGFF_UNITS: dict[str, str] = {"mm": "millimeter", "um": "micrometer", "nm": "nanometer"}
-DEFAULT_PIXEL_SIZE = 1.0  # an axis whose pixel size the source does not give (written, never guessed finer)
 RETARDANCE_KINDS = frozenset({"retardance", "birefringence"})
 _PALETTE = ("00FF00", "FF00FF", "00FFFF", "FF0000", "0000FF", "FFFF00")
 
 
+class PixelSizeUnknown(ValueError):
+    """A spatial axis has no pixel size: it is never invented (the reviewer sets it in the plan)."""
+
+
 def pixel_sizes(info: ImageInfo) -> dict[str, float]:
-    """The pixel size of every spatial axis of info (in ``info.pixel_unit``); an axis the source does
-    not give is ``DEFAULT_PIXEL_SIZE``. The NGFF scale and the sidecar PixelSize both come from here."""
+    """The pixel size of every spatial axis of info (in ``info.pixel_unit``). The NGFF scale and the
+    sidecar PixelSize both come from here. Raises PixelSizeUnknown when an axis has none."""
     out = {}
     for axis in SPATIAL:
         if axis in info.axes:
             value = info.pixel_size.get(axis)
-            out[axis] = float(value) if isinstance(value, (int, float)) and value > 0 else DEFAULT_PIXEL_SIZE
+            if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) \
+                    or value <= 0:
+                raise PixelSizeUnknown("pixel size unknown: set it in the plan")
+            out[axis] = float(value)
+    return out
+
+
+def with_plan_pixel_size(info: ImageInfo, entry: Any) -> ImageInfo:
+    """info with the plan entry's pixel size and units (the source's, or the reviewer's), x, y[, z]
+    for the image's spatial axes; PixelSizeUnknown when the entry has none or too few values."""
+    from dataclasses import replace
+
+    spatial = [a for a in "xyz" if a in info.axes]
+    values = getattr(entry, "pixel_size", None)
+    units = getattr(entry, "pixel_size_units", None)
+    if values is None or units not in _UNIT_M or len(values) != len(spatial):
+        raise PixelSizeUnknown("pixel size unknown: set it in the plan")
+    out = replace(info, pixel_size={a: float(v) for a, v in zip(spatial, values)}, pixel_unit=units)
+    pixel_sizes(out)
     return out
 
 
@@ -285,7 +307,10 @@ def oct_retardance_kind(contrast: str | None) -> str:
 
 def sidecar(info: ImageInfo, entry: Any) -> dict:
     """The BIDS sidecar of a written microscopy image: PixelSize (x, y[, z]) and PixelSizeUnits, the
-    objective when known and, for OCT, the custom OCT fields. Numbers and enum values only."""
+    objective when known and, for OCT, the custom OCT fields. Numbers and enum values only. The pixel
+    size is the plan entry's when it has one, else info's; PixelSizeUnknown when an axis has none."""
+    if getattr(entry, "pixel_size", None) is not None:
+        info = with_plan_pixel_size(info, entry)
     size = pixel_sizes(info)
     out: dict[str, Any] = {
         "PixelSize": [size[a] for a in ("x", "y", "z") if a in size],

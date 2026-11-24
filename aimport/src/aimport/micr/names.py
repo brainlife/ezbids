@@ -167,8 +167,20 @@ def facts(rel: str) -> NameFacts:
     return out
 
 
-# a BIDS micr input's own name parts (suffixes and entity keys, exact case): vocabulary, not identifiers
-_BIDS_WORDS = frozenset(MICR_SUFFIXES) | {"photo", "acq", "stain", "chunk", "run", "sample", "sub", "ses"}
+_BIDS_SUFFIX_WORDS = frozenset(MICR_SUFFIXES) | {"photo"}
+_BIDS_NAME = re.compile(r"^((?:[a-zA-Z0-9]+-[a-zA-Z0-9]+_)+)([a-zA-Z0-9]+)$")
+
+
+def _bids_words(stem: str) -> set[str]:
+    """The vocabulary of a BIDS-entity name (``sub-01_sample-A_CONF``): its entity keys (before ``-``)
+    and its suffix when that is a micr suffix. Any other name (``SEM_250215``) has none."""
+    m = _BIDS_NAME.match(stem)
+    if not m:
+        return set()
+    words = {pair.split("-", 1)[0] for pair in m.group(1).rstrip("_").split("_")}
+    if m.group(2) in _BIDS_SUFFIX_WORDS:
+        words.add(m.group(2))
+    return words
 
 
 def path_terms(rels: Iterable[str]) -> set[str]:
@@ -176,8 +188,10 @@ def path_terms(rels: Iterable[str]) -> set[str]:
     terms: set[str] = set()
     for rel in rels:
         for part in _parts(rel):
-            for t in _tokens(_EXT.sub("", part)):
-                if len(t) < 3 or is_vocab(t) or (t.isdigit() and len(t) < 6) or t in _BIDS_WORDS:
+            stem = _EXT.sub("", part)
+            bids = _bids_words(stem)
+            for t in _tokens(stem):
+                if len(t) < 3 or is_vocab(t) or (t.isdigit() and len(t) < 6) or t in bids:
                     continue
                 terms.add(t)
                 d = _date(t)

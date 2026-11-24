@@ -449,12 +449,14 @@ def _close_also(src: Any, closer: Any) -> None:
     src.close = close
 
 
-def open_remote(url: str, family: str, max_bytes: int = DEFAULT_MAX_BYTES) -> tuple[Any, ByteCounter]:
+def open_remote(url: str, family: str, max_bytes: int = DEFAULT_MAX_BYTES,
+                block_size: int = FILE_BLOCK_SIZE) -> tuple[Any, ByteCounter]:
     """``readers.open_image`` on a remote source: (ImageSource, ByteCounter of its reads).
 
     ``family`` is ``ome-zarr``, ``nifti``, ``tiff`` or ``visor`` (a TIFF tile whose pixel size and
     channel come from ``acqinfo_metadata.json`` next to it or one folder up). Closing the source
-    closes its HTTP session.
+    closes its HTTP session. ``block_size`` is a file's read-ahead (conversion passes a small one:
+    its strips are read concurrently, so read-ahead would mostly be fetched and dropped).
     """
     from . import readers
 
@@ -470,7 +472,7 @@ def open_remote(url: str, family: str, max_bytes: int = DEFAULT_MAX_BYTES) -> tu
         return src, counter
     if fam not in ("nifti", "tiff", "visor"):
         raise RemoteRefused(f"family {family!r} is not read remotely")
-    fh, counter = open_file(url, max_bytes)
+    fh, counter = open_file(url, max_bytes, block_size)
     try:
         src = readers.open_image(fh, fam)
     except BaseException:

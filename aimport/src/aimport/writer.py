@@ -41,7 +41,7 @@ NIFTI_TEXT_FIELDS = ("descrip", "aux_file", "intent_name", "db_name")
 INTENDED_DATATYPES = {"func", "dwi"}
 PLACEHOLDER_DATES = {"", "n/a", "na", "anon", "anonymous", "unknown", "none", "0", "00000000"}
 AGE_CAP = 89
-SCANS_DATE_ONLY = "date only; time not recorded"  # scans.json acq_time of a session with module images
+SCANS_DATE_ONLY = "date only for microscopy images; time not recorded"  # scans.json acq_time of a session with module images
 SAMPLES_HEADER = ("sample_id", "participant_id", "sample_type")
 _AGE = re.compile(r"^(\d{1,3})([DWMY])$")
 _DAYS_PER_YEAR = 365.25
@@ -389,8 +389,17 @@ class _Writer:
         self.generated.tables["participants.tsv"] = rows
         self.generated.jsons["participants.json"] = {
             "age": {"Description": "age at first scan of this import", "Units": "year"},
-            "sex": {"Description": "sex from the DICOM header", "Levels": {"M": "male", "F": "female", "O": "other"}},
+            "sex": {"Description": self.sex_description(set(subjects), set(demographics)),
+                    "Levels": {"M": "male", "F": "female", "O": "other"}},
         }
+
+    @staticmethod
+    def sex_description(mri: set[str], everyone: set[str]) -> str:
+        if not everyone - mri:
+            return "sex from the DICOM header"
+        if not mri:
+            return "sex (not recorded in the microscopy input: n/a)"
+        return "sex from the DICOM header; n/a for subjects with microscopy images only"
 
     def demographics(self, items: list[_Item]) -> tuple[str, str]:
         """PatientAge/PatientSex from the DICOMs behind this subject's series, else by PatientID."""

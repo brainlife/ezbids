@@ -454,7 +454,7 @@ def _stain(rec: dict) -> str | None:
 def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], schema: "Schema",
                  target: str, client: "LLMClient | None" = None) -> ModulePlan:
     from ..brainlife_map import to_brainlife
-    from ..planner import _check_nameable, _usable
+    from ..planner import _check_nameable, _usable, check_pixel_size
 
     terms: set[str] = set()
     for rec in records:
@@ -547,12 +547,16 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
         elif info is None:
             d = dict(status="unsupported", exclude=True, reason=rec.get("error") or UNREADABLE_REASON)
             write_mode = ""
+        elif is_mosaic(rec):
+            d = dict(status="unsupported", exclude=True, reason=MOSAIC_REASON)
+            write_mode = ""
         else:
             write_mode = "reference" if rec["family"] == "ome-zarr" else "convert"
             d = (dict(status="ok", exclude=False, reason=f"microscopy heuristic: {why}") if suffix
                  else dict(status="unknown", exclude=True, reason=why))
         n_files = max(1, len(rec.get("members") or []))
         output = int(_level0_bytes(info) * n_files * CONVERT_OVERHEAD) if write_mode == "convert" else 0
+        spatial, sizes, units = pixel_size_of(info)
         entries.append(PlanEntry(
             id=f"m{i}-sub{subject_idx[o]}-ses{session_idx}", series_idx=MICR_INDEX_BASE + i,
             subject_idx=subject_idx[o], session_idx=session_idx, subject=subject_ids[o], session=session,
@@ -560,6 +564,7 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
             source="heuristic" if suffix else "none", confidence=0.8 if suffix else 0.0, reason=d["reason"],
             deface=False, exclude=d["exclude"], status=d["status"], description=describe(rec, write_mode),
             modality="micr", sample_type=DEFAULT_SAMPLE_TYPE, write_mode=write_mode, output_bytes=output,
+            pixel_size=sizes, pixel_size_units=units, spatial_axes=spatial,
         ))
         if write_mode and "rel" in rec:
             for m in rec.get("members") or [rec["rel"]]:
@@ -573,6 +578,7 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
             d = dict(datatype=e.datatype, suffix=e.suffix, entities=e.entities, status=e.status,
                      exclude=e.exclude, reason=e.reason)
             _check_nameable(d, e.subject, e.session, schema, "micr")
+            check_pixel_size(d, e)
             e.status, e.exclude, e.reason = d["status"], d["exclude"], d["reason"]
         if e.status == "ok":
             e.brainlife_datatype, e.brainlife_tags = to_brainlife(e.datatype, e.suffix, e.entities, {})
@@ -584,6 +590,28 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
         mp.warnings.append(SIZE_WARNING.format(n=convert_bytes / 1e9))
     mp.entries = entries
     return mp
+
+
+MOSAIC_REASON = "tile mosaic: stitch first (aimport converts single images and VISoR stacks)"
+
+
+def is_mosaic(rec: dict) -> bool:
+    """Several files that are tiles of one plane (not VISoR frame stacks): aimport cannot stitch them."""
+    return rec["family"] not in ("visor", "raw-psoct") and len(rec.get("members") or []) > 1
+
+
+def pixel_size_of(info: dict | None) -> tuple[str, list[float] | None, str | None]:
+    """(spatial axes among "xyz", pixel size x, y[, z] or None when an axis is missing, units)."""
+    if not info:
+        return "", None, None
+    axes = info.get("axes") or ""
+    spatial = "".join(a for a in "xyz" if a in axes)
+    size = info.get("pixel_size") or {}
+    values = [size.get(a) for a in spatial]
+    if not spatial or any(not isinstance(v, (int, float)) or isinstance(v, bool) or not math.isfinite(v) or v <= 0
+                          for v in values):
+        return spatial, None, info.get("pixel_unit")
+    return spatial, [float(v) for v in values], info.get("pixel_unit")
 
 
 def _chunks(entries: list[PlanEntry], records: list[dict]) -> None:
@@ -682,6 +710,9 @@ def _inside_input(input_dir: Path, rel: str) -> Path:
     return path
 
 
+CONVERT_BLOCK_SIZE = 2**12  # remote read-ahead while converting (each block is read once, in pieces)
+
+
 def _remote_cap(rec: dict) -> int:
     from .remote import DEFAULT_MAX_BYTES
 
@@ -697,7 +728,8 @@ def open_record(rec: dict, input_dir: Path) -> Any:
     if "url" in rec:
         from . import remote
 
-        src, _counter = remote.open_remote(rec["url"], rec["family"], max_bytes=_remote_cap(rec))
+        src, _counter = remote.open_remote(rec["url"], rec["family"], max_bytes=_remote_cap(rec),
+                                           block_size=CONVERT_BLOCK_SIZE)
         return src
     members = list(rec.get("members") or [rec["rel"]])
     if len(members) > 1 and rec["family"] != "visor":
@@ -711,6 +743,14 @@ def open_record(rec: dict, input_dir: Path) -> Any:
         for s in sources:
             s.close()
         raise
+
+
+def with_plan_pixel_size_check(e: PlanEntry) -> None:
+    from .metadata import PixelSizeUnknown, _UNIT_M
+
+    if e.pixel_size is None or e.pixel_size_units not in _UNIT_M or \
+            (e.spatial_axes and len(e.pixel_size) != len(e.spatial_axes)):
+        raise PixelSizeUnknown("pixel size unknown: set it in the plan")
 
 
 def _names(entries: list[PlanEntry], schema: "Schema") -> dict[str, str]:
@@ -742,13 +782,18 @@ def write_entries(plan: "Plan", records: list[dict], input_dir: Path, terms: set
     from ..scrub import redact
     from . import NGFF_VERSION
     from .convert import check_ome_zarr, to_ome_zarr
-    from .metadata import sidecar
+    from .metadata import sidecar, with_plan_pixel_size
 
     out = ModuleOutput()
     entries = [e for e in plan.entries if e.modality == "micr" and e.datatype == "micr" and e.status == "ok"
                and not e.exclude and e.suffix and e.write_mode]
     if any(e.write_mode == "reference" for e in entries):
         raise NotImplementedError(REFERENCE_PENDING)
+    for e in entries:  # defence in depth: the planner makes these unsupported or unknown
+        i = e.series_idx - MICR_INDEX_BASE
+        if 0 <= i < len(records) and is_mosaic(records[i]):
+            raise NotImplementedError(MOSAIC_REASON)
+        with_plan_pixel_size_check(e)
     names = _names(entries, schema)
     samples: dict[tuple[str, str], dict[str, str]] = {}
     for k, e in enumerate(entries, 1):
@@ -762,8 +807,9 @@ def write_entries(plan: "Plan", records: list[dict], input_dir: Path, terms: set
         version = NGFF_VERSION
         src = open_record(rec, input_dir)
         try:
-            info = src.info
-            info.acquired = None
+            src.info.acquired = None
+            # the plan's pixel size (from the source or the reviewer); never an invented one
+            info = src.info = with_plan_pixel_size(src.info, e)
             step = (lambda msg, k=k: progress(f"{WRITE_PROGRESS.format(k=k, n=len(entries))}: {msg}")) \
                 if progress is not None else None
             path = dest(rel)
