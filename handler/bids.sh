@@ -37,15 +37,13 @@ cp -r $root/finalized.json $root/ezBIDS_template.json
 echo "Creating ezBIDS telemetry files"
 ./telemetry.py $root
 
-# Telemetry (to hard-coded pet2bids server)
-if [ -f $root/validator.json ]; then
-    curl -H 'Content-Type: application/json' -d @$root/validator.json -X POST http://52.87.154.236/telemetry/
-fi
-
-if [ -f $root/ezBIDS_core_telemetry.json ]; then
-    curl -H 'Content-Type: application/json' -d @$root/ezBIDS_core_telemetry.json -X POST http://52.87.154.236/telemetry/
-fi
-
-if [ -f $root/ezBIDS_finalized_telemetry.json ]; then
-    curl -H 'Content-Type: application/json' -d @$root/ezBIDS_finalized_telemetry.json -X POST http://52.87.154.236/telemetry/
-fi
+# Telemetry (to hard-coded pet2bids server). Best effort: it is sent whenever the server answers (with
+# two quick retries), but an unreachable or slow server must never fail the conversion, so each POST is
+# time-limited and its failure is only logged. EZBIDS_TELEMETRY_URL overrides the address; empty turns it off.
+telemetry_url=${EZBIDS_TELEMETRY_URL-http://52.87.154.236/telemetry/}
+for f in validator.json ezBIDS_core_telemetry.json ezBIDS_finalized_telemetry.json; do
+    if [ -n "$telemetry_url" ] && [ -f "$root/$f" ]; then
+        curl -sS -m 10 --retry 2 --retry-connrefused --retry-max-time 20 -H 'Content-Type: application/json' -d @"$root/$f" -X POST "$telemetry_url" \
+            || echo "telemetry not sent ($f): server unreachable"
+    fi
+done
