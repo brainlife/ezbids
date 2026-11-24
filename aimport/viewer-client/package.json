@@ -1,0 +1,20 @@
+{
+  "name": "aimport-viewer-client",
+  "version": "0.0.0",
+  "private": true,
+  "description": "The standalone Neuroglancer client the aimport engine serves at /viewer/ng/ (built with vite, as in neuroglancer's examples/vite)",
+  "type": "module",
+  "license": "Apache-2.0",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "dependencies": {
+    "neuroglancer": "2.41.2"
+  },
+  "devDependencies": {
+    "vite": "6.4.6"
+  },
+  "overrides": {
+    "ikonate": "https://codeload.github.com/mikolajdobrucki/ikonate/tar.gz/a86b4107c6ec717e7877f880a930d1ccf0b59d89"
+  }
+}

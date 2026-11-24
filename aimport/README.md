@@ -176,12 +176,49 @@ All examples use `T="Authorization: Bearer $AIMPORT_TOKEN"` and `U=http://localh
    ```
 
 8. **Preview.** After `validated` or `invalid`, `GET /preview/<entry id>?which=defaced|original&index=0` returns the image
-   file (for a viewer such as NiiVue), so you can compare before and after defacing. This is the only route
-   that returns image data, and only to this computer.
+   file (for a viewer such as NiiVue), so you can compare before and after defacing. It and the QA viewer's
+   `/qa/data` (below) are the only routes that return image data, and only to this computer.
 
    ```
    curl -s "$U/preview/<entry id>?which=original" -H "$T" -o original.nii.gz
    ```
+
+## Checking the output (QA viewer)
+
+After `validated` or `invalid` the engine serves a Neuroglancer viewer of the output itself, so a person can look
+at every written image, and at each defaced image against its original, before anything is uploaded.
+
+1. Ask for a one-time code (bearer token, like every other call):
+
+   ```
+   curl -s -X POST $U/viewer/session -H "$T"
+   # {"code": "<32 hex>", "url": "/viewer/open?code=<32 hex>"}
+   ```
+
+2. Open `$U` + `url` in a browser on the same computer within 60 seconds. The code works once; it is traded
+   for a session cookie (HttpOnly, SameSite=Strict, valid until the engine stops) and the browser lands on
+   `/viewer/`, the list of the written images by BIDS path. "Neuroglancer" opens an image;
+   "defaced vs original" shows a defaced image next to its original. A defaced image also opens with its
+   original as a hidden layer ("… (original)"): switch it on in the layer bar to compare.
+
+![The QA index](docs/qa-viewer-index.png)
+
+![A defaced T1w in the viewer](docs/qa-viewer-t1w.png)
+
+What it serves, and why it stays local:
+
+- Only the output listed in the run's manifest (`/qa/data/<entry>/<index>/…`), the pre-defacing original of a
+  defaced image, and the Neuroglancer client built into the image. Never the input, `staged/`, `sourcedata/`,
+  the keys folder or `scan.json`; never through a symlink or a path outside the output. Nothing is served
+  before execute, or after a new scan.
+- Everything comes from the engine's own origin, published on `127.0.0.1` only: no third-party viewer page and
+  no request to another host. The page's Content-Security-Policy allows only the engine itself
+  (`default-src 'self'`, `frame-ancestors 'none'`); the one relaxation the client needs is `'unsafe-eval'` in
+  `script-src`, because Neuroglancer compiles code with `new Function` (without it the image stays blank). The token is
+  never put in a URL or a page; the cookie works only on `/viewer/*` and `/qa/*`, never on the API.
+- The original (pre-defacing) layer shows the face. It is for the reviewer's eyes only, to check that the
+  defacing removed the face and nothing else: never screenshot or share it. Only the defaced output is
+  uploaded.
 
 ## AI model settings
 
@@ -300,6 +337,14 @@ image) are better dropped in review; the validation result tells you which.
 - BIDS validator: `@bids/validator` **2.4.1** (Deno 2.5.6), run through the `bids-validator-2` wrapper. That release bundles an older schema (it flags `BIDSVersion` 1.11.2 as unknown), so the wrapper defaults `--schema file:///opt/bids-schema/schema.json` unless `--schema`/`-s` is given. Works offline. Useful flags: `--format json` (`--json` is deprecated), `--schema <URL>`, `--ignoreNiftiHeaders`, `-o <file>`.
 - Test data: `tests/fixtures/fetch_dcm_qa.py` fetches `neurolabusc/dcm_qa_xa30` at a pinned commit and plants fake PHI.
 - Python packages are installed exactly as `uv.lock` pins them (with hashes); the Deno download is checked against its sha256.
+- QA viewer client: a standalone build of the `neuroglancer` npm package **2.41.2** (`viewer-client/`: vite, as in
+  neuroglancer's `examples/vite`; only the NIfTI source over http and image layers are included), made by a node
+  build stage with `npm ci` from `viewer-client/package-lock.json` (integrity hashes) into `/opt/neuroglancer-client`
+  and served at `/viewer/ng/`. On the host, build it with `cd viewer-client && npm ci && node build.mjs <dir>` and
+  set `AIMPORT_NEUROGLANCER_DIR=<dir>`. neuroglancer's icon dependency `ikonate` is a GitHub commit, pinned in
+  `package.json` `overrides` to that commit's codeload tarball; its lockfile integrity is the hash of an archive
+  GitHub generates, so `npm ci` fails if GitHub ever regenerates it differently (then update the hash after
+  checking the archive's contents).
 
 ## Defacing details
 

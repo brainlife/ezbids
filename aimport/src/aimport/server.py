@@ -10,6 +10,11 @@ enabled for ``allowed_origins`` only, and preflights are answered with
 ``Access-Control-Allow-Private-Network: true`` (Starlette's allow_private_network) so an https page may call the loopback server. Inside
 the container ``serve`` binds 0.0.0.0; ``bl aimport`` must publish the port on 127.0.0.1 only
 (``-p 127.0.0.1:<port>:<port>``), or the token is the only protection.
+
+The browser viewer never sees the token: ``POST /viewer/session`` (bearer) returns a one-time code (single
+use, 60 s) and ``GET /viewer/open?code=`` trades it for an HttpOnly, SameSite=Strict session cookie. The
+cookie is accepted only on ``/viewer/*`` and ``/qa/*`` (not ``/viewer/session``); every other route stays
+bearer-only.
 """
 from __future__ import annotations
 
@@ -20,18 +25,20 @@ import hmac
 import json
 import logging
 import os
+import secrets
 import shutil
 import tempfile
 import threading
+import time
 import uuid
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel, ConfigDict
 
 from .agent import client_from_env
@@ -51,6 +58,7 @@ from .pseudonyms import KeyLockedError, PseudonymKey
 from .schema import load_schema
 from .scrub import redact
 from .validate import validate_bids
+from .viewer import VIEWER_CSP, entry_state, index_page, neuroglancer_client_dir, state_url
 from .writer import _Writer, write_bids
 
 log = logging.getLogger("aimport")
@@ -64,6 +72,18 @@ OUTPUT_STATE = "output-state.json"
 # subject_idx -> the subject ID the key records for that subject's original (pseudonyms only: the originals
 # stay in the key), so an edited subject ID can be recorded in the key for the right person on execute
 SUBJECT_IDS = "subject-ids.json"
+VIEWER_PREFIXES = ("/viewer/", "/qa/")  # the browser pages: they also accept the session cookie
+VIEWER_COOKIE = "aimport_viewer_"  # + a random suffix per server run: cookies ignore the port, so two engines on
+# the same host would otherwise replace each other's session
+VIEWER_CODE_TTL_S = 60
+# set explicitly: the Python mimetypes table varies by version and platform, and responses are nosniff
+MEDIA_TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css",
+               ".wasm": "application/wasm", ".map": "application/json", ".json": "application/json",
+               ".svg": "image/svg+xml", ".png": "image/png", ".woff2": "font/woff2"}
+
+
+def _now() -> float:
+    return time.monotonic()
 
 
 def _overlap(a: Path, b: Path) -> bool:
@@ -86,6 +106,22 @@ def _read_json(path: Path) -> dict | None:
 
 def _nonempty(path: Path) -> bool:
     return path.exists() and (not path.is_dir() or path.is_symlink() or any(path.iterdir()))
+
+
+def _file_inside(root: Path, rel: str) -> Path | None:
+    """root/rel when rel is a relative path without '..' that reaches a regular file inside root through no
+    symlink (checked at every component), else None."""
+    pure = PurePosixPath(rel)
+    if not rel or pure.is_absolute() or any(part in ("..", ".") for part in rel.split("/")):
+        return None
+    path = root
+    for part in pure.parts:
+        path = path / part
+        if path.is_symlink():
+            return None
+    if root.resolve() not in path.resolve().parents or not path.is_file():
+        return None
+    return path
 
 
 def _clear(path: Path) -> None:
@@ -162,6 +198,9 @@ class Server:
         self.schema = None
         self.thread: threading.Thread | None = None
         self.status: dict = {"stage": "idle", "message": ""}
+        self.viewer_codes: dict[str, float] = {}  # one-time code -> expiry (_now())
+        self.viewer_sessions: set[str] = set()  # session cookies, for this server run
+        self.viewer_cookie = VIEWER_COOKIE + secrets.token_hex(4)  # the session cookie's name, for this run
         saved = _read_json(work_dir / "status.json")
         if saved and isinstance(saved.get("stage"), str):
             self.status = saved
@@ -171,6 +210,33 @@ class Server:
             self.status = {"stage": "planned", "message": "plan loaded"}
         self.events.append({"stage": self.status["stage"], "message": self.status.get("message", "")})
         self.event_count = 1
+
+    # --- viewer sessions ---
+
+    def new_viewer_code(self) -> str:
+        with self.lock:
+            now = _now()
+            self.viewer_codes = {c: t for c, t in self.viewer_codes.items() if t > now}
+            code = secrets.token_hex(16)
+            self.viewer_codes[code] = now + VIEWER_CODE_TTL_S
+            return code
+
+    def redeem_viewer_code(self, code: str) -> str | None:
+        """A new session cookie for a live code (used up either way), None for an unknown or expired one."""
+        with self.lock:
+            expiry = self.viewer_codes.pop(code, None)
+            if expiry is None or expiry <= _now():
+                return None
+            session = secrets.token_hex(32)
+            self.viewer_sessions.add(session)
+            return session
+
+    def viewer_session_ok(self, cookie: str | None) -> bool:
+        if not cookie:
+            return False
+        with self.lock:
+            sessions = list(self.viewer_sessions)
+        return any(hmac.compare_digest(cookie.encode(), s.encode()) for s in sessions)
 
     # --- stage and events ---
 
@@ -559,10 +625,17 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         yield
         srv.close()
 
-    def authorize(authorization: str | None = Header(default=None)) -> None:
+    def authorize(request: Request, authorization: str | None = Header(default=None)) -> None:
+        path = request.url.path
+        if path == "/viewer/open":
+            return  # the one-time code is the credential, checked by the route
         scheme, _, given = (authorization or "").partition(" ")
-        if scheme.lower() != "bearer" or not hmac.compare_digest(given.encode(), token.encode()):
-            raise HTTPException(401, "missing or invalid token", headers={"WWW-Authenticate": "Bearer"})
+        if scheme.lower() == "bearer" and hmac.compare_digest(given.encode(), token.encode()):
+            return
+        if (path.startswith(VIEWER_PREFIXES) and path != "/viewer/session"
+                and srv.viewer_session_ok(request.cookies.get(srv.viewer_cookie))):
+            return
+        raise HTTPException(401, "missing or invalid token", headers={"WWW-Authenticate": "Bearer"})
 
     app = FastAPI(title="aimport", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan,
                   dependencies=[Depends(authorize)])
@@ -571,6 +644,16 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         app.add_middleware(CORSMiddleware, allow_origins=list(allowed_origins), allow_methods=["GET", "POST", "PATCH"],
                            allow_headers=["Authorization", "Content-Type"], allow_private_network=True,
                            max_age=600)
+
+    @app.middleware("http")
+    async def viewer_headers(request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith(VIEWER_PREFIXES):
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            if response.headers.get("content-type", "").startswith("text/html"):
+                response.headers["Content-Security-Policy"] = VIEWER_CSP
+        return response
 
     @app.middleware("http")
     async def no_private_network_for_others(request: Request, call_next):
@@ -767,24 +850,101 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         except KeyLockedError as e:
             raise key_locked(e) from None
 
-    @app.get("/preview/{entry_id}")
-    def get_preview(entry_id: str, which: Literal["original", "defaced"] = "defaced",
-                    index: int = Query(default=0, ge=0)) -> FileResponse:
+    def output_state() -> dict:
+        """The complete output state of the current scan, after execute (validated or invalid), else 404."""
         state = _read_json(work_dir / OUTPUT_STATE)
-        if srv.status["stage"] not in DONE or not state or not state.get("complete"):
+        info = _read_json(work_dir / "scan.json") or {}
+        if (srv.status["stage"] not in DONE or not state or not state.get("complete")
+                or state.get("scan_id") != info.get("scan_id")):
             raise HTTPException(404, "nothing to preview: execute the plan first")
+        return state
+
+    def output_file(entry_id: str, index: int, which: str, subpath: str = "", need_original: bool = False) -> Path:
+        """A written image of the output manifest (which=original: the pre-deface copy, for a defaced entry; with
+        need_original, 404 when there is none instead of the written image, as /preview gives).
+        subpath: empty, or the file's own name, for a manifest file; a path inside a manifest directory."""
+        state = output_state()
         files = (state.get("manifest") or {}).get(entry_id)
-        if not files or index >= len(files):
+        if not files or not 0 <= index < len(files):
             raise HTTPException(404, "no such image")
-        rel = files[index]
-        root = srv.out
+        rel, root = files[index], srv.out
         defaced = (state.get("defaced") or {}).get(entry_id)
         if which == "original" and defaced and index < len(defaced):
             root, rel = srv.pre, defaced[index]
-        path = root / rel
-        base = root.resolve()
-        if path.is_symlink() or base not in path.resolve().parents or not path.is_file():
+        elif which == "original" and need_original:
+            raise HTTPException(404, "no original for this image")
+        if subpath and not (subpath == PurePosixPath(rel).name and (root / rel).is_file()):
+            rel = f"{rel}/{subpath}"  # inside a manifest directory: _file_inside refuses anything else
+        path = _file_inside(root, rel)
+        if path is None:
             raise HTTPException(404, "no such image")
-        return FileResponse(path, media_type="application/octet-stream")
+        return path
+
+    @app.get("/preview/{entry_id}")
+    def get_preview(entry_id: str, which: Literal["original", "defaced"] = "defaced",
+                    index: int = Query(default=0, ge=0)) -> FileResponse:
+        return FileResponse(output_file(entry_id, index, which), media_type="application/octet-stream")
+
+    @app.get("/qa/data/{entry_id}/{index}/{subpath:path}")
+    def get_qa_data(entry_id: str, index: str, subpath: str,
+                    which: Literal["original", "defaced"] = "defaced") -> FileResponse:
+        if not (index.isascii() and index.isdigit()):
+            raise HTTPException(404, "no such image")
+        return FileResponse(output_file(entry_id, int(index), which, subpath, need_original=True),
+                            media_type="application/octet-stream")
+
+    @app.post("/viewer/session")
+    def post_viewer_session() -> dict:
+        code = srv.new_viewer_code()
+        return {"code": code, "url": f"/viewer/open?code={code}"}
+
+    @app.get("/viewer/open")
+    def get_viewer_open(code: str = "") -> RedirectResponse:
+        session = srv.redeem_viewer_code(code)
+        if session is None:
+            raise HTTPException(401, "invalid or expired code: open the viewer again")
+        response = RedirectResponse("/viewer/", status_code=303)
+        response.set_cookie(srv.viewer_cookie, session, httponly=True, samesite="strict", path="/")
+        return response
+
+    def written() -> tuple[dict, list]:
+        """The output state and the plan entries it holds images for, in plan order."""
+        state = output_state()
+        manifest = state.get("manifest") or {}
+        with srv.plan_lock:
+            plan = srv.load_plan()
+        return state, [e for e in plan.entries if manifest.get(e.id)]
+
+    @app.get("/viewer/")
+    def get_viewer_index() -> HTMLResponse:
+        state, entries = written()
+        defaced = state.get("defaced") or {}
+        rows = [{"id": e.id, "index": i, "path": path, "nifti": path.endswith((".nii", ".nii.gz")),
+                 "defaced": i < len(defaced.get(e.id) or [])}
+                for e in entries for i, path in enumerate(state["manifest"][e.id])]
+        return HTMLResponse(index_page(rows))
+
+    @app.get("/viewer/entry/{entry_id}")
+    def get_viewer_entry(entry_id: str, request: Request, compare: bool = False, index: int = 0) -> RedirectResponse:
+        state, entries = written()
+        entry = next((e for e in entries if e.id == entry_id), None)
+        files = state["manifest"][entry_id] if entry else None
+        if not files or not 0 <= index < len(files) or not files[index].endswith((".nii", ".nii.gz")):
+            raise HTTPException(404, "no such image")
+        originals = (state.get("defaced") or {}).get(entry_id)
+        base = str(request.base_url).rstrip("/")  # the Host check allows only this server's own names
+        state_ = entry_state(asdict(entry), files, originals, base, compare=compare, index=index)
+        return RedirectResponse(state_url(state_), status_code=303)
+
+    @app.get("/viewer/ng/{path:path}")
+    def get_neuroglancer(path: str) -> FileResponse:
+        try:
+            base = neuroglancer_client_dir()
+        except RuntimeError as e:
+            raise HTTPException(404, str(e)) from None
+        file = (base / (path or "index.html")).resolve()
+        if base not in file.parents or not file.is_file():
+            raise HTTPException(404, "not found")
+        return FileResponse(file, media_type=MEDIA_TYPES.get(file.suffix, "application/octet-stream"))
 
     return app
