@@ -219,15 +219,18 @@ def _parse_ome(xml: str) -> Any | None:
 _XML_SKIP = re.compile(r"^([A-Za-z]+:\d+(:\d+)*|[-+]?\d+(\.\d+)?([eE][-+]?\d+)?)$")
 
 
-def _xml_terms(xml: str) -> set[str]:
-    """Fallback when OME-XML does not parse: every attribute value and text node."""
+def _xml_terms(xml: Any) -> set[str]:
+    """Every attribute value and text node of an XML document (a string or a parsed element)."""
     import xml.etree.ElementTree as ET
 
     terms: set[str] = set()
-    try:
-        root = ET.fromstring(xml)
-    except ET.ParseError:
-        return {xml}
+    if isinstance(xml, (str, bytes)):
+        try:
+            root = ET.fromstring(xml)
+        except ET.ParseError:
+            return collect_terms(xml)
+    else:
+        root = xml
     for el in root.iter():
         for v in [*el.attrib.values(), el.text or ""]:
             v = v.strip()
@@ -236,15 +239,95 @@ def _xml_terms(xml: str) -> set[str]:
     return terms
 
 
+def _is_ome_xml(text: str) -> bool:
+    head = text.lstrip()[:512]
+    return head.startswith("<OME") or (head.startswith("<?xml") and "<OME" in text[:4096])
+
+
+def _expand_text(text: str) -> set[str]:
+    """Terms from one free-text value: XML is split into its values, JSON into its strings,
+    and ``key = value`` / ``key: value`` lines (ImageJ Info, Aperio, MetaMorph) into values."""
+    text = text.strip("\x00").strip()
+    if not text:
+        return set()
+    if text.startswith("<"):
+        return _xml_terms(text)
+    if text[0] in "{[":
+        try:
+            return collect_terms(json.loads(text))
+        except ValueError:
+            pass
+    terms = {text}
+    for line in re.split(r"[\r\n|]+", text):
+        line = line.strip()
+        if not line:
+            continue
+        terms.add(line)
+        for sep in ("=", ":"):
+            if sep in line:
+                terms.add(line.split(sep, 1)[1].strip())
+                break
+    return {t for t in terms if len(t) >= 2 and any(c.isalnum() for c in t)}
+
+
+def _decode_text(value: bytes) -> str | None:
+    """Bytes that are text (UTF-8, no inner NULs); binary blobs such as ICC profiles are None."""
+    raw = value.rstrip(b"\x00")
+    if not raw or b"\x00" in raw:
+        return None
+    try:
+        text = raw.decode("utf-8")
+    except UnicodeDecodeError:
+        return None
+    printable = sum(c.isprintable() or c in "\r\n\t" for c in text)
+    return text if printable >= 0.95 * len(text) else None
+
+
+def deep_terms(obj: Any) -> set[str]:
+    """collect_terms, with each string expanded by _expand_text and XML elements walked."""
+    if hasattr(obj, "iter") and hasattr(obj, "attrib"):  # an ElementTree/lxml element
+        return _xml_terms(obj)
+    if isinstance(obj, bytes):
+        text = _decode_text(obj)
+        return _expand_text(text) if text else set()
+    if isinstance(obj, str):
+        return _expand_text(obj)
+    if isinstance(obj, dict):
+        out: set[str] = set()
+        for v in obj.values():
+            out |= deep_terms(v)
+        return out
+    if isinstance(obj, (list, tuple, set, frozenset)):
+        out = set()
+        for v in obj:
+            out |= deep_terms(v)
+        return out
+    out = set()
+    for t in collect_terms(obj):
+        out |= _expand_text(t)
+    return out
+
+
 # --- TIFF / OME-TIFF / SVS ---------------------------------------------------------------------
 
 _SKIP_WORD = re.compile(r"\b(label|macro|thumbnail)\b")
-# Tags that hold free text: ImageDescription, Make, Model, Software, DateTime, Artist,
-# HostComputer, DocumentName, PageName, Copyright.
-_TEXT_TAGS = (270, 271, 272, 305, 306, 315, 316, 269, 285, 33432)
+# Series kinds whose names come from the file's author (OME Image Name, tifffile 'Name'
+# metadata), not from tifffile's vendor parser: a name there is never a label/macro signal.
+_USER_NAMED_KINDS = frozenset({"ome", "shaped", "generic", "uniform", "imagej", "mmstack", "ndtiff"})
+# Pages whose tags are walked for terms, per series (plus each series' last page): enough for
+# per-page descriptions without reading every IFD of a huge stack.
+TERM_PAGES = 64
+# tifffile's parsed vendor metadata (TiffFile.<name>_metadata), walked for terms. OME is not
+# here: it goes through the allowlist.
+_TIFF_METADATA = ("imagej", "micromanager", "lsm", "fluoview", "metaseries", "stk", "shaped",
+                  "nih", "fei", "sem", "sis", "mdgel", "scanimage", "andor", "epics", "tvips",
+                  "pilatus", "streak", "flimage", "huron", "eer", "nuvu", "trestle", "gdal",
+                  "scn", "philips", "indica", "qpi", "bif", "avs")
 
 
 def _skip_kind(series: Any) -> str | None:
+    if series.kind in _USER_NAMED_KINDS:
+        return None
     name = (series.name or "").strip().lower()
     m = _SKIP_WORD.search(name)
     if not m:
@@ -264,30 +347,60 @@ def _tiff_datetime(text: str) -> datetime | None:
 
 
 def _page_terms(page: Any, ome: bool) -> tuple[set[str], datetime | None]:
+    """Every text value of every tag of one page header (no pixels are read)."""
     terms: set[str] = set()
     when = None
-    for code in _TEXT_TAGS:
-        tag = page.tags.get(code)
-        if tag is None or not isinstance(tag.value, (str, bytes)):
-            continue
-        value = tag.value.decode("utf-8", "replace") if isinstance(tag.value, bytes) else tag.value
-        value = value.strip("\x00").strip()
-        if not value:
-            continue
-        if code == 270:
-            if ome and value.startswith("<?xml"):
+    for tag in page.tags:
+        value = tag.value
+        if isinstance(value, bytes):
+            value = _decode_text(value)
+            if value is None:
+                continue
+        if isinstance(value, str):
+            value = value.strip("\x00").strip()
+            if not value:
+                continue
+            if tag.code == 270 and ome and _is_ome_xml(value):
                 continue  # OME-XML: handled by the allowlist
-            if value.startswith("Aperio"):
-                for part in value.split("|"):
-                    terms.add(part.strip())
-                    if "=" in part:
-                        terms.add(part.split("=", 1)[1].strip())
-        if code == 306:
-            when = _tiff_datetime(value)
-            if when:
-                terms |= date_terms(when)
-        terms.add(value)
-    return {t for t in terms if len(t) >= 2}, when
+            if tag.code == 306:
+                when = _tiff_datetime(value)
+                if when:
+                    terms |= date_terms(when)
+            terms |= _expand_text(value)
+        elif isinstance(value, (dict, list, tuple)):  # parsed tags: EXIF, Micro-Manager, ...
+            terms |= deep_terms(value)
+    return terms, when
+
+
+def _tiff_terms(tif: Any, series: list[Any]) -> tuple[set[str], datetime | None]:
+    """Terms from the tags of the first TERM_PAGES pages and the last page of each series, and
+    from tifffile's parsed vendor metadata."""
+    terms: set[str] = set()
+    when = None
+    indices: list[int] = []
+    for s in series:
+        pages = [p for p in s.pages if p is not None]
+        for p in pages[:TERM_PAGES] + pages[-1:]:
+            if p.index not in indices:
+                indices.append(p.index)
+    if 0 not in indices:
+        indices.insert(0, 0)
+    for i in indices:
+        try:
+            page = tif.pages.get(i, cache=False, aspage=True)
+        except Exception:  # noqa: BLE001 - a broken IFD must not stop the import
+            continue
+        t, w = _page_terms(page, tif.is_ome)
+        terms |= t
+        when = when or w
+    for name in _TIFF_METADATA:
+        try:
+            meta = getattr(tif, f"{name}_metadata", None)
+        except Exception:  # noqa: BLE001
+            continue
+        if meta:
+            terms |= deep_terms(meta)
+    return terms, when
 
 
 def _tiff_pixel_size(tif: Any, page: Any) -> dict[str, float]:
@@ -368,6 +481,8 @@ def _tiff_level(tif: Any, series: Any, i: int, amap: _AxisMap, path: Path | None
         else:
             mm = _ContiguousFile(tif.filehandle, lvl.dataoffset, dtype, shape)
         arr = _from_array(mm, plan_chunks(shape, itemsize, limit))
+    elif _chunk_bytes(native, itemsize) > 4 * limit:
+        raise UnsupportedFormat("compressed tiles larger than the block limit: re-save with smaller tiles")
     else:
         log.warning("TIFF chunks (%d bytes) exceed the block limit and are compressed",
                     _chunk_bytes(native, itemsize))
@@ -419,15 +534,7 @@ def _open_tiff(location: Any, family: str) -> _Source:
                 main, main_index = s, i
         if main is None:
             raise UnsupportedFormat("no image series besides slide label, macro or thumbnail")
-        terms: set[str] = set()
-        when = None
-        for s in series:
-            for page in s.pages[:1]:
-                if page is None:
-                    continue
-                t, w = _page_terms(page, tif.is_ome)
-                terms |= t
-                when = when or w
+        terms, when = _tiff_terms(tif, list(series))
         amap = _AxisMap(main.axes, tuple(main.shape))
         shape = amap.shape()
         fields: dict[str, Any] = {}
@@ -438,6 +545,8 @@ def _open_tiff(location: Any, family: str) -> _Source:
                 terms |= ome_terms
             else:
                 terms |= _xml_terms(tif.ome_metadata)
+        elif tif.pages.first.description and _is_ome_xml(tif.pages.first.description):
+            terms |= _xml_terms(tif.pages.first.description)  # OME-XML tifffile did not take
         page0 = main.pages[0]
         if not fields.get("pixel_size"):
             fields["pixel_size"] = _tiff_pixel_size(tif, page0)
@@ -579,6 +688,12 @@ def _open_bioio(location: str | Path, family: str) -> _Source:
                 size[axis] = float(v)
         fields["pixel_size"] = size
         fields["pixel_unit"] = "um"
+    try:
+        raw = img.metadata  # the vendor's own metadata (CZI/LIF XML, ND2 objects)
+    except Exception:  # noqa: BLE001
+        raw = None
+    if raw is not None:
+        terms |= deep_terms(raw)
     for name in getattr(img, "channel_names", None) or []:
         terms |= collect_terms(name)
     if fields.get("acquired"):
@@ -765,6 +880,7 @@ def _open_mat73(path: Path) -> _Source:
 
 # --- OME-Zarr (NGFF 0.4 / Zarr v2, NGFF 0.5 / Zarr v3) ------------------------------------------
 
+NGFF_VERSIONS_KNOWN = frozenset({"0.1", "0.2", "0.3", "0.4", "0.5"})
 _NGFF_UNIT: dict[str, PixelUnit] = {"micrometer": "um", "millimeter": "mm", "nanometer": "nm"}
 
 
@@ -805,6 +921,8 @@ def _open_ome_zarr(location: Any) -> _Source:
     import dask.array as da
     import zarr
 
+    if isinstance(location, str) and "://" not in location:
+        location = Path(location)  # a local path: the OME/METADATA.ome.xml check below applies
     store = str(location) if isinstance(location, Path) else location
     root = zarr.open_group(store, mode="r")
     group = root
@@ -818,13 +936,19 @@ def _open_ome_zarr(location: Any) -> _Source:
     if not multiscales:
         raise UnsupportedFormat("Zarr store has no OME-NGFF multiscales")
     ms = multiscales[0]
-    version = ome.get("version") or ms.get("version")
+    raw_version = ome.get("version") or ms.get("version")
+    version = str(raw_version) if raw_version is not None else None
+    terms_extra: set[str] = set()
+    if version not in NGFF_VERSIONS_KNOWN:  # an unknown value is free text: a term, not a fact
+        terms_extra = collect_terms(version) if version else set()
+        version = None
     zarr_format = group.metadata.zarr_format
     axes_meta = ms.get("axes") or ["t", "c", "z", "y", "x"][-len(group[ms["datasets"][0]["path"]].shape):]
     names = "".join((a["name"] if isinstance(a, dict) else a)[0] for a in axes_meta)
     units = [a.get("unit") if isinstance(a, dict) else None for a in axes_meta]
     arrays = [group[d["path"]] for d in ms["datasets"]]
     terms = _ngff_terms(dict(root.attrs)) | (_ngff_terms(attrs) if group is not root else set())
+    terms |= terms_extra
     for arr in arrays:
         terms |= collect_terms(dict(arr.attrs))
     a0 = arrays[0]
@@ -857,7 +981,7 @@ def _open_ome_zarr(location: Any) -> _Source:
     info = ImageInfo(
         family="ome-zarr", axes=amap.axes, shape=out_shape, dtype=str(a0.dtype),
         pixel_size=pixel_size, pixel_unit=unit, channels=channels, levels=len(arrays),
-        zarr_format=zarr_format, ngff_version=str(version) if version else None,
+        zarr_format=zarr_format, ngff_version=version,
         objective_magnification=fields.get("objective_magnification"),
         objective_na=fields.get("objective_na"), immersion=fields.get("immersion"),
         acquired=fields.get("acquired"),

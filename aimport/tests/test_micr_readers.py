@@ -73,7 +73,6 @@ def test_ome_tiff_info_allowlisted(tmp_path):
         assert info.levels == 1 and info.series_skipped == []
         # nothing identifying in the facts; every planted value among the dropped terms
         assert not tokens(repr(info)), tokens(repr(info))
-        assert OME_TIFF_PLANTED <= MICR_PLANTED
         assert OME_TIFF_PLANTED <= tokens("\n".join(src.terms))
         assert "2025:02:15 10:00:00" in src.terms and "AcqSoft 9 lab-workstation-7" in src.terms
         # pixels match what was written
@@ -232,6 +231,8 @@ def test_visor_numeric_fields_only(tmp_path):
 
 def test_bioio_family_through_ome(tmp_path, monkeypatch):
     """czi/nd2/lif go through bioio; its OME metadata is allowlisted like an OME-TIFF's."""
+    import xml.etree.ElementTree as ET
+
     import dask.array as da
     from micr_fixtures import _planted_ome_xml
     from ome_types import from_xml
@@ -245,6 +246,8 @@ def test_bioio_family_through_ome(tmp_path, monkeypatch):
         dtype = np.dtype("uint16")
         dask_data = da.zeros(shape, dtype="uint16", chunks=(1, 1, 1, 64, 64))
         ome_metadata = from_xml(_planted_ome_xml((2, 4, 64, 64)))
+        metadata = ET.fromstring("<ImageDocument><User><Name>czi-operator-xyz</Name></User>"
+                                 "<Info Host='czi-host-xyz'/></ImageDocument>")
         channel_names = ["Slide 42 Smith ch0", "Slide 42 Smith ch1"]
         resolution_levels = (0,)
 
@@ -255,6 +258,7 @@ def test_bioio_family_through_ome(tmp_path, monkeypatch):
         assert src.level(0).shape == (2, 4, 64, 64)
         assert not tokens(repr(src.info))
         assert {"jane doe", "slide 42 smith", "scope-sn-4711"} <= tokens("\n".join(src.terms))
+        assert {"czi-operator-xyz", "czi-host-xyz"} <= src.terms  # raw vendor metadata
 
 
 def test_unsupported_family_message(tmp_path):
@@ -297,3 +301,103 @@ def test_plan_chunks():
     c = plan_chunks((4, 3000, 3000), 2, MiB)
     assert math.prod(c) * 2 <= MiB and c[0] == 1
     assert plan_chunks((32, 24, 4), 4, 1024, order="F") == (32, 8, 1)
+
+
+# --- fix round 1: every dropped string is a term; NGFF version allowlist; local str stores ---
+
+def test_tiff_terms_every_tag_and_vendor_metadata(tmp_path):
+    """Per-page descriptions (second and last page), Micro-Manager JSON and XMP are all terms."""
+    xmp = (b'<x:xmpmeta xmlns:x="adobe:ns:meta/"><rdf:RDF xmlns:rdf="http://www.w3.org/1999/02/'
+           b'22-rdf-syntax-ns#" xmlns:dc="http://purl.org/dc/elements/1.1/"><rdf:Description>'
+           b'<dc:creator>Slide 42 Smith</dc:creator></rdf:Description></rdf:RDF></x:xmpmeta>')
+    mm = '{"Operator": "jdoe@example.org", "Computer": "lab-workstation-7"}'
+    path = tmp_path / "stack.tif"
+    n = readers.TERM_PAGES + 6
+    with tifffile.TiffWriter(str(path)) as tw:
+        for i in range(n):
+            desc = {1: "annotation secret", n - 1: "Operator = SCOPE-SN-4711"}.get(i, "plain")
+            extratags = [(700, "B", len(xmp), xmp, True), (51123, "s", 0, mm, True)] if i == 0 else []
+            tw.write(np.zeros((4, 4), np.uint8), description=desc, metadata=None,
+                     photometric="minisblack", extratags=extratags)
+    with open_image(path, "tiff") as src:
+        found = tokens("\n".join(src.terms))
+        assert {"annotation secret", "slide 42 smith", "jdoe@example.org", "lab-workstation-7",
+                "scope-sn-4711"} <= found, found
+        assert "SCOPE-SN-4711" in src.terms  # "key = value" lines give their value too
+        assert not tokens(repr(src.info))
+
+
+def test_tiff_terms_imagej_info(tmp_path):
+    path = tmp_path / "ij.tif"
+    tifffile.imwrite(str(path), np.zeros((3, 8, 8), np.uint16), imagej=True,
+                     metadata={"axes": "ZYX", "Info": "Experimenter: Jane Doe\nSample = H17"})
+    with open_image(path, "tiff") as src:
+        assert {"jane doe", "h17"} <= tokens("\n".join(src.terms))
+        assert {"Jane Doe", "H17"} <= src.terms
+
+
+def test_ome_xml_without_prolog_is_not_kept(tmp_path):
+    from micr_fixtures import _planted_ome_xml
+
+    xml = _planted_ome_xml((1, 1, 8, 8))
+    xml = xml[xml.index("<OME"):] if not xml.startswith("<OME") else xml
+    path = tmp_path / "noprolog.ome.tif"
+    tifffile.imwrite(str(path), np.zeros((8, 8), np.uint16), description=xml, metadata=None)
+    with open_image(path, "ome-tiff") as src:
+        assert {"jane doe", "slide 42 smith", "annotation secret"} <= tokens("\n".join(src.terms))
+        assert not tokens(repr(src.info))
+        assert not any(t.lstrip().startswith("<OME") for t in src.terms)  # values, not the document
+
+
+def test_series_name_is_not_a_skip_signal(tmp_path):
+    """A user's own series name (shaped/OME) never makes a series a label or macro."""
+    path = tmp_path / "named.tif"
+    tifffile.imwrite(str(path), np.zeros((8, 8), np.uint16), metadata={"Name": "label"})
+    with open_image(path, "tiff") as src:
+        assert src.info.series_skipped == [] and src.info.shape == (8, 8)
+
+
+def test_oversized_compressed_chunks_refused(tmp_path, monkeypatch):
+    path = tmp_path / "zlib.tif"
+    tifffile.imwrite(str(path), np.zeros((512, 512), np.uint16), compression="zlib",
+                     rowsperstrip=512, metadata=None)
+    monkeypatch.setattr(micr, "MAX_BLOCK_BYTES", 64 * 1024)  # a 512 KiB strip > 4 x 64 KiB
+    with open_image(path, "tiff") as src:
+        with pytest.raises(UnsupportedFormat) as exc:
+            src.level(0)
+    assert str(exc.value) == "compressed tiles larger than the block limit: re-save with smaller tiles"
+
+
+def _set_ngff_version(store: Path, version: str, value: str) -> None:
+    import json
+
+    if version == "0.5":
+        meta = json.loads((store / "zarr.json").read_text())
+        meta["attributes"]["ome"]["version"] = value
+        (store / "zarr.json").write_text(json.dumps(meta))
+    else:
+        attrs = json.loads((store / ".zattrs").read_text())
+        attrs["multiscales"][0]["version"] = value
+        (store / ".zattrs").write_text(json.dumps(attrs))
+
+
+@pytest.mark.parametrize("version", ["0.5", "0.4"])
+def test_ngff_version_allowlisted(tmp_path, version):
+    store = ome_zarr(tmp_path / "x.ome.zarr", version)
+    _set_ngff_version(store, version, "0.4-Jane Doe")
+    with open_image(store, "ome-zarr") as src:
+        assert src.info.ngff_version is None
+        assert "0.4-Jane Doe" in src.terms and not tokens(repr(src.info))
+
+
+def test_ome_zarr_str_location_reads_ome_xml(tmp_path):
+    from micr_fixtures import _planted_ome_xml
+
+    store = ome_zarr(tmp_path / "x.ome.zarr", "0.5")
+    (store / "OME").mkdir()
+    (store / "OME" / "METADATA.ome.xml").write_text(_planted_ome_xml((2, 8, 64, 64)))
+    with open_image(str(store), "ome-zarr") as src:
+        assert [c.name_code for c in src.info.channels] == ["ch488", "ch561"]
+        assert src.info.objective_magnification == 20.0
+        assert {"jane doe", "slide 42 smith", "scope-sn-4711"} <= tokens("\n".join(src.terms))
+        assert not tokens(repr(src.info))
