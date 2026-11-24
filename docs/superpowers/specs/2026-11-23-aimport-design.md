@@ -121,10 +121,12 @@ read-only and a separate work folder for intermediates and output.
    series to a BIDS datatype, suffix and entities. ezBIDS maps from dcm2niix output, so
    conversion into the work folder happens here. Writing intermediates to the work
    folder before approval is allowed; producing the final output or uploading is not.
-4. **Agent.** For series the heuristics leave unknown or low-confidence, run the
-   autobidsify classify/plan stages on the scrubbed view only — never raw headers,
-   pixels or original paths. Each mapping records its source (heuristic or agent), a
-   confidence and a one-line reason.
+4. **Agent.** Works like autobidsify's agent, on the scrubbed view only (never raw
+   headers, pixels or original paths): it reviews every series alongside ezBIDS's guess,
+   confirms or disputes it, fills in entities such as task labels, resolves what the
+   heuristics left unknown, and drafts the dataset name and README. Each mapping records
+   its source (heuristic, agent or person), a confidence and a one-line reason;
+   disagreements are kept as a note for the reviewer.
 5. **Plan.** One plan file: per series, the BIDS path, the brainlife datatype and tags
    (same mapping as `cli/bids-walker.js`), proposed subject/session IDs, whether it
    will be defaced, confidence and reason.
@@ -143,12 +145,14 @@ read-only and a separate work folder for intermediates and output.
 
 ### LLM
 
-- Default: a remote model (Claude or OpenAI) with the user's own API key, sent only
-  the scrubbed view. autobidsify supports OpenAI and Ollama today; Claude support is
-  added as a small provider, contributed upstream to autobidsify.
-- Setting: a local model through Ollama, for sites that allow nothing to leave.
-- Fallback: with no model configured, heuristics only; unknown series go to the
-  reviewer marked unknown. The importer never fails for lack of a model.
+- Backends: Claude, plus every provider autobidsify supports (OpenAI; Qwen via Ollama,
+  REST or DashScope), selected with one setting. Default: Claude with the user's own
+  key, sent only the scrubbed view.
+- A local model through Ollama for sites that allow nothing to leave.
+- With no model configured: heuristics only; unknown series go to the reviewer marked
+  unknown. The importer never fails for lack of a model.
+- Claude support is added inside aimport for now; contributing it upstream to
+  autobidsify is a follow-up.
 
 ### De-identification rules
 
