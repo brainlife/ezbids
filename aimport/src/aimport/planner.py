@@ -359,7 +359,7 @@ def _fmap_tags(entries: list[PlanEntry]) -> None:
         else:
             continue
         for e in group:
-            if e.suffix in _MAGNITUDES and e.brainlife_datatype is not None:
+            if e.suffix in _MAGNITUDES and e.brainlife_datatype is not None and not e.brainlife_by_person:
                 e.brainlife_tags = [tag]
 
 
@@ -372,7 +372,7 @@ def apply_plan_edits(plan: Plan, edits: list[dict], schema: Schema) -> None:
 
     For every changed entry: the status comes from the same nameable check as build_plan (an entry
     the writer cannot name becomes unknown and excluded; one that becomes nameable is included unless
-    the edit says otherwise), the brainlife datatype and tags are recomputed unless the edit sets them,
+    the edit says otherwise), the brainlife datatype and tags are recomputed unless the reviewer set them (brainlife_by_person),
     and the datatypes target excludes an entry with no brainlife datatype. Secondary captures stay
     excluded_by_default. Raises like Plan.apply_edits; a bad edit changes nothing.
     """
@@ -401,7 +401,7 @@ def _rederive(e: PlanEntry, schema: Schema, target: str, keys: set[str], was_ok:
             d["exclude"] = False
         _check_nameable(d, e.subject, e.session, schema)
     e.status, e.exclude, e.reason = d["status"], d["exclude"], d["reason"]
-    if not keys & {"brainlife_datatype", "brainlife_tags"}:
+    if not e.brainlife_by_person:
         e.brainlife_datatype, e.brainlife_tags = (to_brainlife(e.datatype, e.suffix, e.entities, {})
                                                   if e.status == "ok" else (None, []))
     if target == "datatypes" and e.brainlife_datatype is None and not e.exclude:

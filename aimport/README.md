@@ -116,7 +116,9 @@ All examples use `T="Authorization: Bearer $AIMPORT_TOKEN"` and `U=http://localh
    (for example `{"task": "rest", "run": "1"}`), `deface`, `exclude`, and the brainlife mapping
    (`brainlife_datatype`, `brainlife_tags`). Every other field is read-only and an edit to it is refused
    (422): `id`, `series_idx`, `subject_idx`, `session_idx`, `deface_opt_out` (set when a reviewer turns
-   defacing off for an anatomical image; without it the writer refuses to write that image undefaced), and
+   defacing off for an anatomical image; without it the writer refuses to write that image undefaced),
+   `brainlife_by_person` (set when a reviewer sets the brainlife mapping; later edits keep that mapping
+   until the entry's `datatype`, `suffix` or `entities` change), and
    the context the engine derives again after every edit: `source` (`heuristic`, `agent`, `person` or `none`), `confidence`, `reason`,
    `agent_note` (when the agent disagrees with the heuristic), `status` (`ok`, `unknown`, `unsupported`,
    `excluded_by_default`; secondary-capture and report series are excluded by default because identifiers
