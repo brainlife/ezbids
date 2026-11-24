@@ -4,7 +4,7 @@
             <div class="wrap hero-grid">
                 <div class="hero-copy">
                     <div class="eyebrow hero-eyebrow">ezBIDS · brainlife.io</div>
-                    <h1>Neuroscience data to BIDS, from instrument folders to shareable datasets.</h1>
+                    <h1>Neuroscience data to BIDS, from instruments to shared datasets.</h1>
                     <p class="lede">
                         Neurophysiology, neuroimaging and microscopy: ezBIDS maps raw data and its metadata to the Brain
                         Imaging Data Structure with guidance at every step, no coding and no BIDS expertise required.
