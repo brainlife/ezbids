@@ -94,3 +94,25 @@ def sparse_bigtiff(size: int, dest: Path) -> Path:
                             photometric="minisblack")
     del image  # never touched: no page is written
     return dest
+
+
+def cmc_tree(dest: Path) -> Path:
+    """Empty/sparse stand-ins for the CMC layouts (PS-OCT, OME-Zarr, VISoR, exaSPIM). No pixel data."""
+    dest = Path(dest)
+    files = [f"PS-OCT/Enface/Registration/{c}/Slice_051_1.nii.gz"
+             for c in ("Reflectivity", "Retardance", "Orientation", "Cross")]
+    files += [
+        "PS-OCT/250215/Slice_051_Tile_0001.dat",
+        "MN27_20250422_visor_488/visor_488_Pos0/visor_488_0001.tif",
+        "MN27_20250422_visor_488/acqinfo_metadata.json",
+        "MN27_20250422_visor_488/dbpost.json",
+        "MN27_20250422_visor_488/hh.log",
+    ]
+    for rel in files:
+        f = dest / rel
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.touch()
+    for store in ("Moe_Slice_051.ome.zarr", "exaSPIM.zarr/Pos0"):
+        (dest / store).mkdir(parents=True, exist_ok=True)
+        (dest / store / "zarr.json").write_text('{"zarr_format": 3, "node_type": "group"}')
+    return dest
