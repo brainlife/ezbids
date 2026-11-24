@@ -312,7 +312,7 @@ export default defineComponent({
 }
 .hero-art {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1.15fr);
+    grid-template-columns: minmax(0, 0.8fr) auto minmax(0, 1.35fr);
     gap: 12px;
     align-items: center;
 }
@@ -335,8 +335,8 @@ export default defineComponent({
 }
 .tree pre {
     margin: 0;
-    font-size: 0.7rem;
-    line-height: 1.55;
+    font-size: 0.66rem;
+    line-height: 1.6;
     color: var(--hero-ink);
     overflow-x: auto;
 }
@@ -461,6 +461,16 @@ export default defineComponent({
 .card p {
     font-size: 0.88rem;
     color: var(--muted);
+}
+/* between the one-column layout and wide screens the two trees stack, so the paths fit */
+@media (min-width: 993px) and (max-width: 1340px) {
+    .hero-art {
+        grid-template-columns: 1fr;
+    }
+    .tree-arrow {
+        transform: rotate(90deg);
+        justify-self: center;
+    }
 }
 @media (max-width: 992px) {
     .hero-grid {

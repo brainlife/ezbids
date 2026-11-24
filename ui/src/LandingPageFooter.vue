@@ -2,7 +2,10 @@
     <footer class="site-footer">
         <div class="wrap row">
             <div>
-                <div class="brand">ezBIDS</div>
+                <div class="fbrand">
+                    <img class="mark" :src="brainlifeMark" alt="brainlife.io" />
+                    <span class="brand">ezBIDS</span>
+                </div>
                 <p class="small">
                     Part of <a href="https://brainlife.io/about/" target="_blank">brainlife.io</a>. Free for
                     researchers.
@@ -23,7 +26,13 @@
 <script lang="ts">
 import { defineComponent } from 'vue';
 
-export default defineComponent({});
+import brainlifeMark from './assets/brainlife-mark.svg';
+
+export default defineComponent({
+    data() {
+        return { brainlifeMark };
+    },
+});
 </script>
 
 <style scoped>
@@ -40,6 +49,16 @@ export default defineComponent({});
     justify-content: space-between;
     gap: 24px;
     flex-wrap: wrap;
+}
+.fbrand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+.mark {
+    height: 26px;
+    width: auto;
 }
 .brand {
     font-weight: 600;
