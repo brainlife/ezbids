@@ -27,6 +27,7 @@ import logging
 import os
 import secrets
 import shutil
+import re
 import tempfile
 import threading
 import time
@@ -39,7 +40,7 @@ from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from pydantic import BaseModel, ConfigDict
 
 from .agent import client_from_env
@@ -66,12 +67,13 @@ from .modality import (
 )
 from .plan import NEVER_KEEP, OLD_PLAN, Plan
 from .planner import DATASET_NAME_MAX, README_MAX, apply_plan_edits, build_plan, run_terms
+from .micr import reference as micr_reference
 from .micr.reference import CHUNK_MAP_NAME, write_chunk_map  # in <work>/output/, next to bids/
 from .pseudonyms import KeyLockedError, PseudonymKey
 from .schema import load_schema
 from .scrub import REDACTED, redact
 from .validate import validate_bids
-from .viewer import VIEWER_CSP, entry_state, index_page, neuroglancer_client_dir, state_url
+from .viewer import VIEWER_CSP, entry_state, index_page, neuroglancer_client_dir, ngff_parts, oct_group, state_url
 from .writer import _Writer, write_bids
 
 log = logging.getLogger("aimport")
@@ -89,6 +91,12 @@ VIEWER_PREFIXES = ("/viewer/", "/qa/")  # the browser pages: they also accept th
 VIEWER_COOKIE = "aimport_viewer_"  # + a random suffix per server run: cookies ignore the port, so two engines on
 # the same host would otherwise replace each other's session
 VIEWER_CODE_TTL_S = 60
+# /qa/data for a referenced OME-Zarr chunk at a URL: the most bytes one proxied response may carry
+QA_MAX_RESPONSE_BYTES = 64 * 2**20
+# stored bytes read (through the chunk map) from a reference's coarsest level to compute a display window
+QA_WINDOW_MAX_BYTES = 32 * 2**20
+NO_SUCH_CHUNK = "no such chunk"
+_CONTENT_RANGE = re.compile(r"bytes (?:[0-9]+-[0-9]+/(?:[0-9]+|\*)|\*/[0-9]+)")
 # set explicitly: the Python mimetypes table varies by version and platform, and responses are nosniff
 MEDIA_TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css",
                ".wasm": "application/wasm", ".map": "application/json", ".json": "application/json",
@@ -721,6 +729,72 @@ class Server:
                                                {c for c, act in default.columns.items() if act == "shift_date"})
 
 
+def _proxy_chunk(url: str, range_header: str | None, head: bool = False) -> Response:
+    """A referenced chunk at url, streamed to the viewer: only Range goes upstream; only the status, Content-Range
+    and Content-Length come back (never Location, Server, X-Amz-* or the URL); at most QA_MAX_RESPONSE_BYTES.
+    head: a HEAD (Neuroglancer asks for a shard's size before reading its index from the end)."""
+    import httpx
+
+    from .micr.remote import RemoteRefused, open_stream
+
+    try:
+        upstream = open_stream(url, range_header, "HEAD" if head else "GET")
+    except RemoteRefused:
+        raise HTTPException(404, NO_SUCH_CHUNK) from None
+    except httpx.HTTPError as e:
+        log.warning("chunk source did not answer: %s", type(e).__name__)
+        raise HTTPException(502, "the chunk source did not answer") from None
+    status = upstream.status_code
+    streaming = False
+    try:
+        if status in (403, 404, 410):  # S3 answers 403 for a missing key when listing is not allowed
+            raise HTTPException(404, NO_SUCH_CHUNK)
+        if status not in (200, 206, 416):
+            log.warning("chunk source answered %s", status)
+            raise HTTPException(502, "the chunk source failed")
+        headers = {"Accept-Ranges": "bytes"}
+        content_range = upstream.headers.get("content-range", "")
+        if _CONTENT_RANGE.fullmatch(content_range):
+            headers["Content-Range"] = content_range
+        length = upstream.headers.get("content-length", "")
+        if length.isascii() and length.isdigit():
+            if int(length) > QA_MAX_RESPONSE_BYTES and not head:
+                raise HTTPException(502, "the chunk response is too large")
+            headers["Content-Length"] = length
+        if head:
+            return Response(status_code=status, headers=headers, media_type="application/octet-stream")
+        cap = QA_MAX_RESPONSE_BYTES
+
+        def body():
+            sent = 0
+            try:
+                for part in upstream.iter_raw():
+                    sent += len(part)
+                    if sent > cap:
+                        raise RuntimeError("the chunk response is too large")
+                    yield part
+            finally:
+                upstream.close()
+
+        streaming = True
+        return StreamingResponse(body(), status_code=status, headers=headers, media_type="application/octet-stream")
+    finally:
+        if not streaming:
+            upstream.close()
+
+
+def _default_window(window: Any, dtype: Any) -> bool:
+    """Whether an omero window is the placeholder reference.py writes when the source had none: the dtype's
+    range for integers, 0..1 otherwise (or no window at all)."""
+    import numpy as np
+
+    if not isinstance(window, dict) or not all(isinstance(window.get(k), (int, float)) for k in ("start", "end")):
+        return True
+    dt = np.dtype(dtype)
+    lo, hi = (float(np.iinfo(dt).min), float(np.iinfo(dt).max)) if dt.kind in "iu" else (0.0, 1.0)
+    return (float(window["start"]), float(window["end"])) == (lo, hi)
+
+
 def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allowed_origins: list[str],
                allowed_hosts: list[str] | None = None) -> FastAPI:
     """allowed_hosts: the Host header values served (host:port, e.g. "127.0.0.1:8765"), anything else gets 421
@@ -1005,13 +1079,42 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
                     index: int = Query(default=0, ge=0)) -> FileResponse:
         return FileResponse(output_file(entry_id, index, which), media_type="application/octet-stream")
 
-    @app.get("/qa/data/{entry_id}/{index}/{subpath:path}")
-    def get_qa_data(entry_id: str, index: str, subpath: str,
-                    which: Literal["original", "defaced"] = "defaced") -> FileResponse:
+    def chunk_map() -> dict | None:
+        return micr_reference.load_chunk_map(srv.chunk_map)
+
+    def reference_source(entry_id: str, index: int, subpath: str) -> Path | str:
+        """The source of a chunk of a referenced OME-Zarr image of the manifest (reference.resolve, only for an
+        array strictly inside that image's .ome.zarr folder); 404 'no such chunk' for anything else."""
+        state = output_state()
+        files = (state.get("manifest") or {}).get(entry_id) or []
+        rel = files[index] if 0 <= index < len(files) else ""
+        chunks = chunk_map() if rel.endswith(".ome.zarr") and state.get("chunk_map") else None
+        if not chunks or not subpath:
+            raise HTTPException(404, NO_SUCH_CHUNK)
+        try:
+            return micr_reference.resolve(chunks, f"{rel}/{subpath}", srv.input_dir, within=rel)
+        except ValueError:
+            raise HTTPException(404, NO_SUCH_CHUNK) from None
+
+    # HEAD too: Neuroglancer asks for a sharded chunk's size before reading the shard index at its end
+    @app.api_route("/qa/data/{entry_id}/{index}/{subpath:path}", methods=["GET", "HEAD"])
+    def get_qa_data(entry_id: str, index: str, subpath: str, request: Request,
+                    which: Literal["original", "defaced"] = "defaced") -> Any:
         if not (index.isascii() and index.isdigit()):
             raise HTTPException(404, "no such image")
-        return FileResponse(output_file(entry_id, int(index), which, subpath, need_original=True),
-                            media_type="application/octet-stream")
+        try:
+            return FileResponse(output_file(entry_id, int(index), which, subpath, need_original=True),
+                                media_type="application/octet-stream")
+        except HTTPException as e:
+            if e.status_code != 404 or which == "original" or not subpath:
+                raise
+        # not written locally: a chunk of a referenced OME-Zarr, read from its source through the chunk map
+        source = reference_source(entry_id, int(index), subpath)
+        if isinstance(source, Path):
+            if not source.is_file():
+                raise HTTPException(404, NO_SUCH_CHUNK)
+            return FileResponse(source, media_type="application/octet-stream")
+        return _proxy_chunk(source, request.headers.get("range"), head=request.method == "HEAD")
 
     @app.post("/viewer/session")
     def post_viewer_session() -> dict:
@@ -1040,20 +1143,86 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         state, entries = written()
         defaced = state.get("defaced") or {}
         rows = [{"id": e.id, "index": i, "path": path, "nifti": path.endswith((".nii", ".nii.gz")),
+                 "zarr": path.endswith(".ome.zarr"), "reference": e.write_mode == "reference",
                  "defaced": i < len(defaced.get(e.id) or [])}
                 for e in entries for i, path in enumerate(state["manifest"][e.id])]
         return HTMLResponse(index_page(rows))
+
+    window_cache: dict[tuple, dict] = {}
+
+    def zarr_attrs(state: dict, entry: Any, rel: str) -> dict:
+        """The written NGFF group attributes of an OME-Zarr image, for the viewer. A reference whose source had
+        no display window (reference.py wrote the dtype's range, or 0..1) gets the 0.5/99.5 percentiles of its
+        coarsest level, read through the chunk map within QA_WINDOW_MAX_BYTES; on any failure the written
+        window stays."""
+        import zarr
+
+        from .micr.convert import window_of
+
+        root = srv.out / rel
+        doc = _read_json(root / "zarr.json")
+        attrs = (doc or {}).get("attributes") if doc and "attributes" in doc else _read_json(root / ".zattrs")
+        if not isinstance(attrs, dict):
+            raise HTTPException(404, "no such image")
+        if entry.write_mode != "reference":
+            return attrs
+        key = (state.get("scan_id"), rel)
+        if key in window_cache:
+            return window_cache[key]
+        attrs = json.loads(json.dumps(attrs))
+        multiscale, omero = ngff_parts(attrs)
+        channels = omero.get("channels") or []
+        datasets = multiscale.get("datasets") or []
+        try:
+            dtype = zarr.open_array(str(root / str(datasets[0]["path"])), mode="r").dtype
+            if channels and all(_default_window(c.get("window"), dtype) for c in channels):
+                chunks = chunk_map() or {}
+                coarse = micr_reference.read_array(chunks, srv.out, f"{rel}/{datasets[-1]['path']}",
+                                                   srv.input_dir, QA_WINDOW_MAX_BYTES)
+                axes = [a.get("name") for a in multiscale.get("axes") or []]
+                for i, ch in enumerate(channels):
+                    values = coarse.take(i, axis=axes.index("c")) if "c" in axes else coarse
+                    ch["window"] = window_of(values, dtype)
+        except Exception:  # noqa: BLE001 - the written window is a fine fallback; nothing is reported
+            log.info("display window of a reference not computed")
+        window_cache[key] = attrs
+        return attrs
+
+    def level0_xy(rel: str, attrs: dict) -> list[int] | None:
+        """Level 0's x and y sizes, from its written array metadata."""
+        multiscale, _ = ngff_parts(attrs)
+        axes = [a.get("name") for a in multiscale.get("axes") or []]
+        try:
+            level = srv.out / rel / str(multiscale["datasets"][0]["path"])
+            doc = _read_json(level / "zarr.json") or _read_json(level / ".zarray") or {}
+            shape = doc["shape"]
+            return [int(shape[axes.index("x")]), int(shape[axes.index("y")])]
+        except (KeyError, IndexError, ValueError, TypeError):
+            return None
 
     @app.get("/viewer/entry/{entry_id}")
     def get_viewer_entry(entry_id: str, request: Request, compare: bool = False, index: int = 0) -> RedirectResponse:
         state, entries = written()
         entry = next((e for e in entries if e.id == entry_id), None)
         files = state["manifest"][entry_id] if entry else None
-        if not files or not 0 <= index < len(files) or not files[index].endswith((".nii", ".nii.gz")):
+        if not files or not 0 <= index < len(files) or not files[index].endswith((".nii", ".nii.gz", ".ome.zarr")):
             raise HTTPException(404, "no such image")
-        originals = (state.get("defaced") or {}).get(entry_id)
         base = str(request.base_url).rstrip("/")  # the Host check allows only this server's own names
-        state_ = entry_state(asdict(entry), files, originals, base, compare=compare, index=index)
+        if files[index].endswith(".ome.zarr"):
+            by_id = {e.id: e for e in entries}
+            group = oct_group(asdict(entry), [asdict(e) for e in entries])
+            images = []
+            for g in group:
+                i = index if g["id"] == entry_id else 0
+                rel = state["manifest"][g["id"]][i]
+                if rel.endswith(".ome.zarr"):
+                    attrs = zarr_attrs(state, by_id[g["id"]], rel)
+                    images.append({"id": g["id"], "index": i, "file": rel, "attrs": attrs,
+                                   "shape_xy": level0_xy(rel, attrs)})
+            state_ = entry_state(asdict(entry), files, None, base, index=index, zarr=images)
+        else:
+            originals = (state.get("defaced") or {}).get(entry_id)
+            state_ = entry_state(asdict(entry), files, originals, base, compare=compare, index=index)
         return RedirectResponse(state_url(state_), status_code=303)
 
     @app.get("/viewer/ng/{path:path}")

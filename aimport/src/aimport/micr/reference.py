@@ -478,12 +478,15 @@ def _array_of(chunks: Mapping[str, Any], out_rel: str) -> tuple[str, dict, str]:
     return best[0], dict(best[1]), out_rel[len(best[0]) + 1:]
 
 
-def resolve(chunks: Mapping[str, Any], out_rel: str, input_dir: Path) -> Path | str:
+def resolve(chunks: Mapping[str, Any], out_rel: str, input_dir: Path, within: str | None = None) -> Path | str:
     """The source of an output chunk path (relative to the BIDS folder): a Path inside
     ``input_dir`` or an https URL. ValueError when the path is not strictly inside a mapped array,
     the key is not a chunk key of that array, an input source leaves ``input_dir`` or goes through a
-    symlink, or a URL is refused by ``remote.normalize_url``."""
-    _prefix, meta, key = _array_of(chunks, out_rel)
+    symlink, or a URL is refused by ``remote.normalize_url``. within: a manifest ``.ome.zarr`` folder
+    the array must lie strictly inside (the QA viewer's rule)."""
+    prefix, meta, key = _array_of(chunks, out_rel)
+    if within is not None and not prefix.startswith(_join(*_segments(within)) + "/"):
+        raise ValueError("the path is not inside a referenced array of this image")
     if not key_ok(meta, key):
         raise ValueError("not a chunk key of the referenced array")
     source = meta.get("source")
@@ -508,3 +511,57 @@ def resolve(chunks: Mapping[str, Any], out_rel: str, input_dir: Path) -> Path | 
         return f"{url}/{key}"
     raise ValueError("the chunk map entry has no valid source")
 
+
+
+# --- reading a referenced array (the QA viewer's display window) ------------------------------------------
+
+def read_array(chunks: Mapping[str, Any], bids_root: Path, array_rel: str, input_dir: Path,
+               max_bytes: int) -> np.ndarray:
+    """A referenced array (a coarse pyramid level) read whole into memory through the chunk map: its rebuilt
+    metadata from ``bids_root`` and each chunk from its source (``resolve``; a missing object is the fill
+    value). ValueError when its decoded size or the stored bytes read would pass ``max_bytes``; remote reads
+    are counted and capped (remote.ByteCounter)."""
+    import tempfile
+
+    import zarr
+
+    from .remote import _MISSING, ByteCounter, _filesystem
+
+    arrays = chunks.get("arrays") if isinstance(chunks, Mapping) else None
+    meta = arrays.get(array_rel) if isinstance(arrays, Mapping) else None
+    if not isinstance(meta, Mapping):
+        raise ValueError("not a referenced array")
+    keys = list(chunk_keys(meta))
+    if int(meta.get("codec_bytes_hint") or 0) * len(keys) > max_bytes:
+        raise ValueError("the referenced array is too large to read whole")
+    name = "zarr.json" if meta.get("zarr_format") == 3 else ".zarray"
+    doc = Path(bids_root).joinpath(*_segments(array_rel), name).read_bytes()
+    fs = None
+    total = 0
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / name).write_bytes(doc)
+            for key in keys:
+                src = resolve(chunks, f"{array_rel}/{key}", input_dir)
+                if isinstance(src, Path):
+                    if not src.is_file():
+                        continue
+                    total += src.stat().st_size
+                    if total > max_bytes:
+                        raise ValueError("the referenced array is too large to read whole")
+                    data = src.read_bytes()
+                else:
+                    if fs is None:
+                        fs = _filesystem(ByteCounter(max_bytes))
+                    try:
+                        data = fs.cat_file(src)
+                    except _MISSING:
+                        continue
+                dest = root.joinpath(*key.split("/"))
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes(data)
+            return np.asarray(zarr.open_array(str(root), mode="r")[...])
+    finally:
+        if fs is not None:
+            fs.close()

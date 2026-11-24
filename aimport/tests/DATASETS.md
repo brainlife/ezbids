@@ -74,6 +74,17 @@ block limit patched to 4 MiB (after a 600 x 600 warm-up). All synthetic, generat
 scale of 8 where the size says 4; one with its chunks stripped (`strip_chunks`); and the same store
 served by the local Range server for the remote reference. All synthetic, generated at test time.
 
+**Task 10 inputs (`tests/test_viewer_routes.py`, `tests/test_viewer.py`, `tests/test_micr_readers.py`,
+`tests/test_micr_convert.py`).** The QA viewer's `/qa/data` tests add an `ome_zarr` 0.5 store at
+`Moe_Slice_051.ome.zarr` (in the input folder, or under `CMC/` on the local Range server, which also sends
+`X-Amz-*`, `ETag` and `Server` headers) as a reference entry of the executed MRI fixture run. `micr_run` scans and
+executes, through the server, the four `psoct_nifti` contrasts under `PS-OCT/Enface/Registration/<Contrast>/`, an
+`ome_zarr` 0.5 store `Moe_Slice_051.ome.zarr` (a reference, no omero block) and `planted_ome_tiff` in
+`H17_250215/`. The en-face tests use `psoct_nifti` with shapes 32 x 1 x 24, 1 x 32 x 24 and 64 x 1 x 48 (as the
+CMC en-face files are stored). All synthetic, generated at test time.
+`docs/qa-viewer-micr.png` shows `planted_ome_tiff` with shape 2 x 8 x 256 x 256 (seed 0), converted by a real
+engine run and opened in the built client in headless Chromium; no CMC pixel is committed.
+
 ### CMC public bucket `apex-connects` (current)
 
 Public S3 bucket `apex-connects` (region us-east-2), read anonymously over
@@ -89,6 +100,7 @@ changed or removed key shows up as a failing `network` test.
 | `test_cmc_psoct_zarr_reference` (`tests/test_micr_reference.py`, Task 9) | `CMC/Derivatives/Moe/PS-OCT/Zarr/Moe_Slice_051.ome.zarr` | the same PS-OCT store, referenced: its scales say 16 and 64 for levels 3 and 4, whose sizes are 1/8 and 1/16 of level 0 (the rebuilt metadata follows the sizes) | group and array metadata only (no chunk) | 1 MiB | 13,118 |
 | `test_cmc_exaspim_position` | `axonal_connectomics/deskewed/H17_PO10_S5_20250417/exaSPIM.zarr/Pos0` | exaSPIM position, Zarr v3 **sharded** (`sharding_indexed`, inner chunks 64^3, blosc), NGFF 0.4-style `multiscales` attributes (no `ome` key), axes `t,c,z,y,x`, 6 levels (level 0 1 x 1 x 45256 x 14192 x 2660 uint16), 0.65 x 0.748 x 0.748 um | metadata plus one 64^3 inner chunk of the coarsest level | 32 MiB | 23,595 |
 | `test_cmc_visor_tile_header` | `CMC/Raw/Moe/tract-tracing/MN27_FH_S100_250215_visor_488/visor_488_Pos0/visor_488_0_0.tif` (4,286,188,560 bytes) and `.../MN27_FH_S100_250215_visor_488/acqinfo_metadata.json` (4,127 bytes) | VISoR raw tile: classic (not Big) TIFF written by Micro-Manager (NDTiff v3 header, `MicroManagerMetadata` tag per page, no index map in the file), pages 1024 x 2048 uint16, uncompressed, one 4 MiB strip per page, ~1025 pages (`frames_per_file`) | first IFD, the first page's one strip, and the metadata JSON (only that small JSON; never `dbpost.json` or `hh.log`) | 8 MiB | 4,325,380 |
+| manual QA viewer render (Task 10; not a test, screenshots not committed) | `CMC/Derivatives/Moe/PS-OCT/Zarr/Moe_Slice_051.ome.zarr` and `.../Enface/Registration/Retardance/Slice_001_EnR_hdr.nii.gz` | the PS-OCT store referenced and viewed through `/qa/data` (only the chunks Neuroglancer asks for at the zoom shown, plus the whole coarsest level for the display window); the en-face file converted (it is read whole: 14 MB) to check the n x 1 x m squeeze | chunks in view, coarsest level, one en-face file | 32 MiB window read; 64 MiB per proxied response | not counted |
 | `test_cmc_enface_nifti_header` | `CMC/Derivatives/Moe/PS-OCT/Enface/Registration/Retardance/Slice_001_EnR_hdr.nii.gz` (14,011,625 bytes) | PS-OCT en-face retardance, gzipped NIfTI-1, float32, 11000 x 1 x 8740, units mm | header and the first voxel (gzip from the start) | 1 MiB | 262,146 |
 
 **Real VISoR `acqinfo_metadata.json` key names** (read from the JSON above; values shown only for

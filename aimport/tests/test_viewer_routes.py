@@ -466,3 +466,310 @@ def test_qa_data_original_needs_an_original(planned):
     assert planned.get(f"/qa/data/{other}/0/").status_code == 200
     # /preview keeps its behaviour: the written file stands in for the original
     assert planned.get(f"/preview/{other}", params={"which": "original"}).content == b"original-" + other.encode()
+
+
+# --- microscopy: OME-Zarr output and reference datasets read through the chunk map ---
+
+import time  # noqa: E402
+
+from micr_fixtures import PSOCT_CONTRASTS, ome_zarr, planted_ome_tiff, psoct_nifti  # noqa: E402
+
+from aimport.micr import readers  # noqa: E402
+from aimport.micr.reference import write_chunk_map, write_reference  # noqa: E402
+from conftest import MICR_PLANTED  # noqa: E402
+from http.server import BaseHTTPRequestHandler  # noqa: E402
+
+from test_micr_remote import local_servers  # noqa: E402,F401 - the local Range server fixture
+
+REF = "ref"
+REF_REL = "sub-01/micr/sub-01_sample-A_CONF.ome.zarr"
+STORE = "Moe_Slice_051.ome.zarr"
+
+
+def add_reference(planned, tmp_path, location=None, store=None):
+    """Give the executed MRI run a reference OME-Zarr entry (manifest + rebuilt metadata + chunk map).
+    location: the chunk map source of the store (default the input folder's copy of it)."""
+    work, inp = tmp_path / "work", tmp_path / "in"
+    store = store or ome_zarr(inp / STORE, "0.5")
+    dest = work / "output" / "bids" / REF_REL
+    with readers.open_image(store, "ome-zarr") as src:
+        arrays = write_reference(src, location or {"input": STORE}, dest, src.info)
+    write_chunk_map(work / "output" / "bids.chunks.json", {f"{REF_REL}/{k}": v for k, v in arrays.items()})
+    state_path = work / "output-state.json"
+    state = json.loads(state_path.read_text())
+    state["manifest"][REF] = [REF_REL]
+    state["chunk_map"] = "output/bids.chunks.json"
+    state_path.write_text(json.dumps(state))
+    return store
+
+
+CHUNK = "0/c/1/0/0/0"  # level 0, channel 1: one shard of the fixture store
+
+
+def test_qa_chunk_from_input(planned, tmp_path):
+    executed(planned)
+    store = add_reference(planned, tmp_path)
+    whole = (store / CHUNK).read_bytes()
+    browser = viewer_client(planned)
+    r = browser.get(f"/qa/data/{REF}/0/{CHUNK}")
+    assert r.status_code == 200 and r.content == whole
+    assert r.headers["cache-control"] == "no-store" and r.headers["x-content-type-options"] == "nosniff"
+    r = browser.get(f"/qa/data/{REF}/0/{CHUNK}", headers={"Range": "bytes=4-19"})
+    assert r.status_code == 206 and r.content == whole[4:20]
+    assert r.headers["content-range"] == f"bytes 4-19/{len(whole)}"
+    r = browser.get(f"/qa/data/{REF}/0/{CHUNK}", headers={"Range": "bytes=-16"})  # a shard index
+    assert r.status_code == 206 and r.content == whole[-16:]
+    r = browser.head(f"/qa/data/{REF}/0/{CHUNK}")  # Neuroglancer's size probe before a suffix read
+    assert r.status_code == 200 and r.headers["content-length"] == str(len(whole)) and not r.content
+    # the metadata is the rebuilt one under bids/, never the source's
+    written = (tmp_path / "work" / "output" / "bids" / REF_REL / "zarr.json").read_bytes()
+    assert browser.get(f"/qa/data/{REF}/0/zarr.json").content == written != (store / "zarr.json").read_bytes()
+    # a chunk key with no source object (the fill value) is a plain 404
+    (store / CHUNK).unlink()
+    r = browser.get(f"/qa/data/{REF}/0/{CHUNK}")
+    assert r.status_code == 404 and r.json()["detail"] == "no such chunk"
+
+
+def _amz_end_headers(self) -> None:
+    """The local Range server, with the headers S3 adds."""
+    self.send_header("X-Amz-Request-Id", "REQ123")
+    self.send_header("X-Amz-Id-2", "abc")
+    self.send_header("ETag", '"e"')
+    BaseHTTPRequestHandler.end_headers(self)
+
+
+def _served_reference(planned, tmp_path, local_servers, **attrs):  # noqa: F811
+    attrs.setdefault("end_headers", _amz_end_headers)
+    base, root, handler = local_servers("served", **attrs)
+    store = ome_zarr(root / "CMC" / STORE, "0.5")
+    add_reference(planned, tmp_path, {"url": f"{base}/CMC/{STORE}"}, store)
+    return base, store
+
+
+def _no_upstream(r, base):
+    for h in r.headers:
+        assert h.lower() not in ("location", "server", "etag") and not h.lower().startswith("x-amz"), h
+    assert base.encode() not in r.content and b"CMC" not in r.content and b"127.0.0.1" not in r.content
+    assert all(base not in v and "CMC" not in v for v in r.headers.values())
+
+
+def test_qa_chunk_from_url(planned, tmp_path, local_servers):  # noqa: F811
+    executed(planned)
+    base, store = _served_reference(planned, tmp_path, local_servers)
+    whole = (store / CHUNK).read_bytes()
+    browser = viewer_client(planned)
+    r = browser.get(f"/qa/data/{REF}/0/{CHUNK}")
+    assert r.status_code == 200 and r.content == whole
+    _no_upstream(r, base)
+    r = browser.get(f"/qa/data/{REF}/0/{CHUNK}", headers={"Range": "bytes=0-0"})  # Neuroglancer's size probe
+    assert r.status_code == 206 and r.content == whole[:1]
+    assert r.headers["content-range"] == f"bytes 0-0/{len(whole)}"
+    _no_upstream(r, base)
+    r = browser.get(f"/qa/data/{REF}/0/{CHUNK}", headers={"Range": "bytes=-16"})
+    assert r.status_code == 206 and r.content == whole[-16:]
+    r = browser.head(f"/qa/data/{REF}/0/{CHUNK}")
+    assert r.status_code == 200 and r.headers["content-length"] == str(len(whole)) and not r.content
+    _no_upstream(r, base)
+    (store / CHUNK).unlink()
+    r = browser.get(f"/qa/data/{REF}/0/{CHUNK}")
+    assert r.status_code == 404 and r.json()["detail"] == "no such chunk"
+    _no_upstream(r, base)
+
+
+def test_qa_chunk_redirects(planned, tmp_path, local_servers, monkeypatch):  # noqa: F811
+    executed(planned)
+    base, store = _served_reference(planned, tmp_path, local_servers)
+    browser = viewer_client(planned)
+    cm_path = tmp_path / "work" / "output" / "bids.chunks.json"
+    cm = json.loads(cm_path.read_text())
+    whole = (store / CHUNK).read_bytes()
+    # same-origin redirect: followed, and its Location never reaches the browser
+    cm["arrays"][f"{REF_REL}/0"]["source"] = {"url": f"{base}/redirect-same/CMC/{STORE}/0"}
+    cm_path.write_text(json.dumps(cm))
+    r = browser.get(f"/qa/data/{REF}/0/{CHUNK}")
+    assert r.status_code == 200 and r.content == whole
+    _no_upstream(r, base)
+    # a redirect to another host: refused
+    cm["arrays"][f"{REF_REL}/0"]["source"] = {"url": f"{base}/redirect-other/CMC/{STORE}/0"}
+    cm_path.write_text(json.dumps(cm))
+    r = browser.get(f"/qa/data/{REF}/0/{CHUNK}")
+    assert r.status_code == 404 and r.json()["detail"] == "no such chunk"
+    _no_upstream(r, base)
+
+
+def test_qa_size_cap(planned, tmp_path, local_servers, monkeypatch):  # noqa: F811
+    executed(planned)
+    base, store = _served_reference(planned, tmp_path, local_servers, ignore_range=True)
+    whole = (store / CHUNK).read_bytes()
+    assert len(whole) > 1000
+    monkeypatch.setattr(server, "QA_MAX_RESPONSE_BYTES", 1000)
+    browser = viewer_client(planned)
+    r = browser.get(f"/qa/data/{REF}/0/{CHUNK}", headers={"Range": "bytes=0-99"})  # ignored upstream
+    assert r.status_code == 502 and len(r.content) < 1000
+    _no_upstream(r, base)
+
+
+def test_qa_size_cap_default():
+    assert server.QA_MAX_RESPONSE_BYTES == 64 * 2**20
+
+
+@pytest.mark.parametrize("case", ["dotdot", "encoded", "absolute", "array-dir", "key-range", "not-a-key",
+                                  "outside-manifest", "group-as-array", "source-dotdot", "source-absolute", "source-symlink",
+                                  "file-url", "http-url", "original"])
+def test_qa_chunk_traversal_404(planned, tmp_path, case):
+    """Review Focus 3: every escape from a manifest .ome.zarr directory, its mapped arrays, the input folder
+    or the remote rules is a 404 that names nothing."""
+    executed(planned)
+    store = add_reference(planned, tmp_path)
+    work, inp = tmp_path / "work", tmp_path / "in"
+    (tmp_path / "secret").mkdir()
+    (tmp_path / "secret" / "c").mkdir()
+    cm_path = work / "output" / "bids.chunks.json"
+    cm = json.loads(cm_path.read_text())
+    level0 = cm["arrays"][f"{REF_REL}/0"]
+    path = f"/qa/data/{REF}/0/{CHUNK}"
+    params = {}
+    if case == "dotdot":
+        path = f"/qa/data/{REF}/0/{CHUNK}/../../x"  # (the client normalises a literal '..'; see "encoded")
+    elif case == "encoded":
+        path = f"/qa/data/{REF}/0/0/%2e%2e/0/{CHUNK[2:]}"
+    elif case == "absolute":
+        path = f"/qa/data/{REF}/0/%2F{tmp_path}/in/{STORE}/{CHUNK}"
+    elif case == "array-dir":
+        path = f"/qa/data/{REF}/0/0"
+    elif case == "key-range":
+        path = f"/qa/data/{REF}/0/0/c/9/0/0/0"
+    elif case == "not-a-key":
+        path = f"/qa/data/{REF}/0/0/c/1/0/0/0/x"
+    elif case == "outside-manifest":  # a mapped array that is not under this entry's .ome.zarr
+        cm["arrays"]["sub-01/micr/other.ome.zarr/0"] = level0
+        path = f"/qa/data/{REF}/0/%2e%2e/other.ome.zarr/{CHUNK}"
+    elif case == "group-as-array":  # an array mapped at the entry's folder itself, not strictly inside it
+        cm["arrays"][REF_REL] = dict(level0)
+        path = f"/qa/data/{REF}/0/{CHUNK[2:]}"
+    elif case == "source-dotdot":
+        leak = tmp_path / "secret" / "c" / "1" / "0" / "0" / "0"
+        leak.parent.mkdir(parents=True)
+        leak.write_text("secret")
+        level0["source"] = {"input": "../secret"}
+    elif case == "source-absolute":
+        level0["source"] = {"input": str(store / "0")}
+    elif case == "source-symlink":
+        (inp / "linked").symlink_to(store, target_is_directory=True)
+        level0["source"] = {"input": "linked/0"}
+    elif case == "file-url":
+        level0["source"] = {"url": f"file://{store}/0"}
+    elif case == "http-url":
+        level0["source"] = {"url": "http://example.org/CMC/x/0"}
+    elif case == "original":
+        params = {"which": "original"}
+    cm_path.write_text(json.dumps(cm))
+    r = planned.get(path, params=params)
+    assert r.status_code == 404, (case, r.status_code)
+    assert str(tmp_path) not in r.text and "secret" not in r.text and "example.org" not in r.text
+    if case in ("outside-manifest", "original", "dotdot", "encoded"):  # the chunk itself is served
+        assert planned.get(f"/qa/data/{REF}/0/{CHUNK}").status_code == 200
+
+
+# --- the micr QA index and states, through a real scan and execute ---
+
+def _wait(c, stages, timeout=90):
+    end = time.time() + timeout
+    while (s := c.get("/status").json())["stage"] not in stages and time.time() < end:
+        time.sleep(0.05)
+    return s
+
+
+@pytest.fixture
+def micr_run(tmp_path, monkeypatch):
+    """A micr-only run executed through the server: the four PS-OCT contrasts of one slice (NIfTI, converted),
+    a planted OME-TIFF in H17_250215/ (converted) and Moe_Slice_051.ome.zarr (a reference)."""
+    from aimport.validate import ValidationResult
+
+    inp = tmp_path / "in"
+    folders = ("Reflectivity", "Retardance", "Orientation", "Cross")
+    for contrast, folder in zip(PSOCT_CONTRASTS, folders):
+        psoct_nifti(inp / "PS-OCT/Enface/Registration" / folder / "Slice_051_1.nii.gz", contrast)
+    ome_zarr(inp / STORE, "0.5")
+    planted_ome_tiff(inp / "H17_250215" / "stack.ome.tif")
+    monkeypatch.setattr(server, "client_from_env", lambda: None)
+    monkeypatch.setattr(server, "run_ezbids", lambda *a, **k: pytest.fail("nothing is left for ezBIDS"))
+    monkeypatch.setattr(server, "validate_bids", lambda bids: ValidationResult(
+        ok=True, validator_version="2.4.1", bids_version="1.11.2"))
+    app = server.create_app(inp, tmp_path / "work", tmp_path / "keys", TOKEN, [], ["testserver"])
+    c = TestClient(app)
+    c.headers["Authorization"] = "Bearer " + TOKEN
+    try:
+        assert c.post("/scan", json={"project_id": "proj"}).status_code == 202
+        assert _wait(c, ("planned", "failed"))["stage"] == "planned"
+        edits = [{"id": e["id"], "suffix": "CONF"} for e in c.get("/plan").json()["entries"] if e["status"] == "unknown"]
+        if edits:
+            assert c.patch("/plan", json={"edits": edits}).status_code == 200
+        assert c.post("/approve", json={}).status_code == 200
+        assert c.post("/execute").status_code == 202
+        s = _wait(c, ("validated", "invalid", "failed"))
+        assert s["stage"] == "validated", s
+        yield c
+    finally:
+        app.state.server.close()
+
+
+def _entries(c):
+    return {e["id"]: e for e in c.get("/plan").json()["entries"]}
+
+
+def test_viewer_index_no_identifiers(micr_run):
+    browser = viewer_client(micr_run)
+    page = browser.get("/viewer/").text
+    entries = _entries(micr_run)
+    manifest = micr_run.get("/status").json()["manifest"]
+    assert manifest and all(p.endswith(".ome.zarr") for ps in manifest.values() for p in ps)
+    for eid, paths in manifest.items():
+        assert f'href="/viewer/entry/{eid}">Neuroglancer (OME-Zarr)</a>' in page
+        assert all(p in page for p in paths)
+    refs = [eid for eid in manifest if entries[eid]["write_mode"] == "reference"]
+    assert len(refs) == 1 and page.count("(read from source)") == 1
+    assert not {t for t in MICR_PLANTED if t in page.lower()}
+    assert "http://" not in page and "https://" not in page and "<script" not in page
+
+
+def test_viewer_oct_entry_state(micr_run):
+    browser = viewer_client(micr_run)
+    entries = _entries(micr_run)
+    octs = [e for e in entries.values() if e["suffix"] == "OCT"]
+    assert len(octs) == 4
+    r = browser.get(f"/viewer/entry/{octs[0]['id']}", follow_redirects=False)
+    assert r.status_code == 303
+    state = decoded_state(r.headers["location"])
+    assert len(state["layers"]) == 4
+    panels = [p for row in state["layout"]["children"] for p in row["children"]]
+    assert len(panels) == 4 and all(len(p["layers"]) == 1 for p in panels)
+    assert [layer["name"].split("_acq-")[1] for layer in state["layers"]] == [
+        f"{c}_OCT" for c in PSOCT_CONTRASTS]
+    assert list(state["dimensions"])[:2] == ["x", "y"]
+    base = "http://testserver"
+    for layer in state["layers"]:
+        assert layer["source"].startswith(base + "/qa/data/") and layer["source"].endswith("/|zarr3:")
+        url = layer["source"].removesuffix("|zarr3:").removeprefix(base)
+        doc = browser.get(url + "zarr.json")
+        assert doc.status_code == 200 and doc.json()["node_type"] == "group"
+    text = json.dumps(state).lower()
+    assert "amazonaws" not in text and TOKEN not in text and not {t for t in MICR_PLANTED if t in text}
+
+
+def test_viewer_reference_entry_state(micr_run):
+    browser = viewer_client(micr_run)
+    entries = _entries(micr_run)
+    ref = next(e for e in entries.values() if e["write_mode"] == "reference")
+    state = decoded_state(browser.get(f"/viewer/entry/{ref['id']}", follow_redirects=False).headers["location"])
+    assert len(state["layers"]) == 2 and all(layer["blend"] == "additive" for layer in state["layers"])
+    assert list(state["dimensions"]) == ["x", "y", "z"] and state["layout"] == "4panel"
+    # the fixture store has no omero block: the window is the coarsest level's 0.5/99.5 percentiles,
+    # not the uint16 range
+    for layer in state["layers"]:
+        lo, hi = layer["shaderControls"]["normalized"]["range"]
+        assert 0 <= lo < hi <= 4096 and (lo, hi) != (0.0, 65535.0)
+    # its chunks are served from the input, through the chunk map
+    url = state["layers"][0]["source"].removesuffix("|zarr3:").removeprefix("http://testserver")
+    store = micr_run.app.state.server.input_dir / STORE
+    assert browser.get(url + CHUNK).content == (store / CHUNK).read_bytes()

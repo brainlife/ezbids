@@ -408,18 +408,25 @@ def _windows(dest: Path, info: ImageInfo, level: int) -> list[dict[str, float]]:
         step = max(1, math.ceil((math.prod(rest) / WINDOW_SAMPLES) ** (1 / max(1, len(rest)))))
         for a in info.axes:
             index.append(c if a == "c" else slice(None, None, step))
-        sample = np.asarray(z[tuple(index)], dtype=np.float64).ravel()
-        sample = sample[np.isfinite(sample)]
-        if sample.size == 0:
-            out.append({"min": 0.0, "max": 1.0, "start": 0.0, "end": 1.0})
-            continue
-        lo, hi = (float(v) for v in np.percentile(sample, WINDOW_PERCENTILES))
-        if np.issubdtype(dtype, np.integer):
-            mn, mx = float(np.iinfo(dtype).min), float(np.iinfo(dtype).max)
-        else:
-            mn, mx = float(sample.min()), float(sample.max())
-        out.append({"min": mn, "max": mx, "start": lo, "end": hi if hi > lo else lo + 1.0})
+        out.append(window_of(np.asarray(z[tuple(index)]), dtype))
     return out
+
+
+def window_of(values: Any, dtype: Any) -> dict[str, float]:
+    """The display window of one channel's values: start/end are the WINDOW_PERCENTILES of the finite values;
+    min/max is the dtype's range (the data range for floats). Shared with the QA viewer, which uses it for a
+    reference whose source had no window."""
+    dtype = np.dtype(dtype)
+    sample = np.asarray(values, dtype=np.float64).ravel()
+    sample = sample[np.isfinite(sample)]
+    if sample.size == 0:
+        return {"min": 0.0, "max": 1.0, "start": 0.0, "end": 1.0}
+    lo, hi = (float(v) for v in np.percentile(sample, WINDOW_PERCENTILES))
+    if np.issubdtype(dtype, np.integer):
+        mn, mx = float(np.iinfo(dtype).min), float(np.iinfo(dtype).max)
+    else:
+        mn, mx = float(sample.min()), float(sample.max())
+    return {"min": mn, "max": mx, "start": lo, "end": hi if hi > lo else lo + 1.0}
 
 
 # --- tile groups --------------------------------------------------------------------------------

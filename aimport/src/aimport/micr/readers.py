@@ -749,12 +749,22 @@ def _open_nifti(location: Any) -> _Source:
     shape = tuple(int(s) for s in img.shape)
     if not 2 <= len(shape) <= 5:
         raise UnsupportedFormat(f"NIfTI with {len(shape)} dimensions")
-    amap = _AxisMap("xyztc"[: len(shape)], shape)
+    # A 2-D en-face image stored n x 1 x m (or 1 x n x m), as the CMC PS-OCT Enface NIfTIs are, is
+    # one xy plane: the singleton axis is squeezed and the third axis is y. Read as is, it would be
+    # m xz slabs of one row each.
+    enface = (len(shape) >= 3 and shape[2] > 1 and all(n == 1 for n in shape[3:])
+              and sorted((shape[0] == 1, shape[1] == 1)) == [False, True])
+    if enface:
+        src_axes = ("qxy" if shape[0] == 1 else "xqy") + "tc"[: len(shape) - 3]
+        amap = _AxisMap(src_axes, shape, squeeze="qtc")
+        spatial = {"x": 1 if shape[0] == 1 else 0, "y": 2}
+    else:
+        amap = _AxisMap("xyztc"[: len(shape)], shape)
+        spatial = {a: i for i, a in enumerate("xyz"[: min(3, len(shape))])}
     space_unit = hdr.get_xyzt_units()[0]
     unit, factor = _NIFTI_UNIT.get(space_unit, ("mm", 1.0))
     zooms = hdr.get_zooms()
-    pixel_size = {a: float(zooms[i]) * factor for i, a in enumerate("xyz"[: min(3, len(shape))])
-                  if zooms[i] > 0}
+    pixel_size = {a: float(zooms[i]) * factor for a, i in spatial.items() if zooms[i] > 0}
     terms: set[str] = set()
     for key in _NIFTI_TEXT:
         if key in hdr:

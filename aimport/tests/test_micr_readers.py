@@ -134,6 +134,28 @@ def test_nifti_blocks_bounded(tmp_path, monkeypatch):
         assert arr.compute().shape == (4, 24, 32)
 
 
+@pytest.mark.parametrize("shape", [(32, 1, 24), (1, 32, 24)])
+def test_nifti_enface_singleton_is_2d(tmp_path, monkeypatch, shape):
+    """A 2-D en-face NIfTI stored n x 1 x m (CMC PS-OCT Enface) is one xy plane, not m xz slabs: the
+    singleton axis is squeezed, the other two become x and y (with their pixel sizes), and the plane
+    is read in row blocks within the block limit."""
+    import nibabel as nib
+
+    zooms = (10.0, 20.0, 30.0)
+    path = psoct_nifti(tmp_path / "Slice_001_EnR_hdr.nii.gz", "retardance", shape=shape, zooms_um=zooms)
+    monkeypatch.setattr(micr, "MAX_BLOCK_BYTES", 32 * 4 * 4)  # four rows of 32 float32
+    with open_image(path, "nifti") as src:
+        info = src.info
+        kept = [i for i, n in enumerate(shape) if n != 1]
+        assert (info.axes, info.shape) == ("yx", (shape[kept[1]], shape[kept[0]]))
+        assert info.pixel_size == {"x": zooms[kept[0]], "y": zooms[kept[1]]}
+        arr = src.level(0)
+        assert _block_bytes(arr) <= 32 * 4 * 4
+        assert arr.chunks[1] == (arr.shape[1],)  # whole rows
+        expected = np.asarray(nib.load(str(path)).dataobj).squeeze().T
+        assert np.array_equal(arr.compute(), expected)
+
+
 def test_mat_v73_lazy(tmp_path, monkeypatch):
     path = psoct_mat(tmp_path / "retardance.mat", v73=True, operator="Jane Doe")
     assert path.stat().st_size < MiB  # sparse: the 64 MiB dataset is never written

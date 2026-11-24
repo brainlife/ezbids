@@ -95,6 +95,21 @@ def test_convert_ome_tiff(tmp_path, version):
     check_ome_zarr(out, sidecar(info, None), version, info.shape, info.dtype)
 
 
+def test_convert_enface_nifti_is_2d(tmp_path):
+    """An n x 1 x m en-face NIfTI converts to a 2-D yx image (not a stack of one-row xz slabs)."""
+    nii = psoct_nifti(tmp_path / "in" / "Slice_001_EnR_hdr.nii.gz", "retardance", shape=(64, 1, 48),
+                      zooms_um=(10.0, 10.0, 12.0))
+    out = tmp_path / "x.ome.zarr"
+    with readers.open_image(nii, "nifti") as src:
+        to_ome_zarr(src, out, "0.5")
+        info = src.info
+    ms = _multiscale(_group_attrs(out, "0.5"), "0.5")
+    assert "".join(a["name"] for a in ms["axes"]) == "yx"
+    assert zarr.open_group(str(out), mode="r")["0"].shape == (48, 64)
+    assert ms["datasets"][0]["coordinateTransformations"][0]["scale"] == [12.0, 10.0]
+    check_ome_zarr(out, sidecar(info, None), "0.5", info.shape, info.dtype)
+
+
 def src_pixels(tif: Path) -> np.ndarray:
     import tifffile
 
