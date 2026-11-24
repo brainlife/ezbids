@@ -23,8 +23,8 @@ def test_safe_labels_kept():
     safe = ["Stimulus/S  1", "BAD_ACQ_SKIP", "eyes closed", "Sleep stage N2", "12"]
     mapping, codes = events.code([safe], TERMS)
     assert codes == {}
-    assert [mapping[events.normalise(s)] for s in safe] == ["stimulus/s 1", "bad_acq_skip", "eyes closed",
-                                                             "sleep stage n2", "12"]
+    assert [mapping[events.normalise(s)] for s in safe] == safe  # written exactly as given
+    assert events.label("Stimulus/S  1", mapping) == "Stimulus/S  1"
     assert all(events.is_safe(s) for s in safe)
 
 
@@ -55,7 +55,7 @@ def test_separator_variants_of_terms_coded():
     mapping, codes = events.code([["BAD_JANE_DOE", "Jane_Doe", "jane.doe", "JaneDoe", "BAD_ACQ"]], terms)
     assert [mapping[k] for k in ("bad_jane_doe", "jane_doe", "jane.doe", "janedoe")] == ["E001", "E002", "E003",
                                                                                         "E004"]
-    assert mapping["bad_acq"] == "bad_acq"
+    assert mapping["bad_acq"] == "BAD_ACQ"
     renamed = channels.rename(["Jane-Doe-Fp1", "Jane_Doe", "Fp2"], ["eeg", "eeg", "eeg"], terms)
     assert renamed == {"Jane-Doe-Fp1": "eeg_001", "Jane_Doe": "eeg_002"}
 
@@ -70,7 +70,14 @@ def test_ascii_only_safe_patterns():
 def test_safe_label_independent_of_order():
     a, _ = events.code([["Rest"], ["rest"]], set())
     b, _ = events.code([["rest"], ["Rest"]], set())
-    assert a == b == {"rest": "rest"}
+    assert a == b == {"rest": "Rest"}  # least by (casefold, text): "Rest" < "rest"
+    c, _ = events.code([["Stimulus/S  1"], ["stimulus/s  1", "Stimulus/S 1"]], set())
+    d, _ = events.code([["Stimulus/S 1", "stimulus/s  1"], ["Stimulus/S  1"]], set())
+    assert c == d
+    # a key is kept only when every variant is safe: "eyes  closed" (two spaces) is not, in either order
+    e, ecodes = events.code([["eyes closed"], ["eyes  closed"]], set())
+    f, _ = events.code([["eyes  closed"], ["eyes closed"]], set())
+    assert e == f == {"eyes closed": "E001"} and ecodes == {"E001": "E001"}
 
 
 def test_term_variants_and_dates_coded():

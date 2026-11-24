@@ -80,26 +80,28 @@ def _keep(text: str, terms: set[str]) -> bool:
 
 
 def code(descriptions_by_recording: list[list[str]], terms: set[str]) -> tuple[dict[str, str], dict[str, str]]:
-    """Map every description to a safe label (kept, normalised) or a code ``E001``, ``E002``, ...
+    """Map every description to a safe label (kept as written) or a code ``E001``, ``E002``, ...
 
     Recordings are taken in the order given (sorted record order), descriptions in onset order; codes
     are numbered by first occurrence across the dataset. Matching is on ``normalise(text)``, so one
-    text gets one label everywhere. A safe label that holds a run term is coded too.
+    text gets one label everywhere. A key is kept only when every variant of it (texts that normalise
+    to it) is a safe label holding no run term; its label is then the stripped variant that is least
+    by (casefold, text), so the label never depends on recording order. Anything else is coded.
     Returns (normalised original -> label, code -> code); the first map is identifying (local only),
     the second seeds ``Plan.event_names``.
     """
-    mapping: dict[str, str] = {}
-    codes: dict[str, str] = {}
+    variants: dict[str, set[str]] = {}  # insertion order = first occurrence
     for descriptions in descriptions_by_recording:
         for text in descriptions:
-            key = normalise(text)
-            if key in mapping:
-                continue
-            if _keep(text, terms):
-                mapping[key] = key  # the normalised form: the label never depends on which recording came first
-            else:
-                c = f"{CODE_PREFIX}{len(codes) + 1:03d}"
-                mapping[key] = codes[c] = c
+            variants.setdefault(normalise(text), set()).add(str(text).strip())
+    mapping: dict[str, str] = {}
+    codes: dict[str, str] = {}
+    for key, texts in variants.items():
+        if all(_keep(t, terms) for t in texts):
+            mapping[key] = min(texts, key=lambda t: (t.casefold(), t))
+        else:
+            c = f"{CODE_PREFIX}{len(codes) + 1:03d}"
+            mapping[key] = codes[c] = c
     return mapping, codes
 
 
