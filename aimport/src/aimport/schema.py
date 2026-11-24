@@ -10,6 +10,7 @@ from bidsschematools.schema import load_schema as _bst_load_schema
 DEFAULT_SCHEMA = Path("/opt/bids-schema/schema.json")
 SPEC_SCHEMA_DIR = Path(__file__).resolve().parents[2] / "bids-specification" / "src" / "schema"
 PHASE1_DATATYPES = ("anat", "func", "dwi", "fmap", "perf", "pet")
+BIDS_VERSION = "1.11.2"
 
 _LABEL = re.compile(r"^[a-zA-Z0-9]+$")
 _INDEX = re.compile(r"^[0-9]+$")
@@ -93,6 +94,17 @@ class Schema:
         if m:
             return re.search(m[1], ext) is not None
         return None
+
+    def common_rules(self) -> dict[str, dict]:
+        """rules.files.common.core and .tables by name (dataset_description, README, participants, ...)."""
+        common = self._s.rules.files.common
+        return {name: dict(rule) for group in (common.core, common.tables) for name, rule in group.items()}
+
+    def is_datatype(self, name: str) -> bool:
+        return any(v.get("value") == name for v in self._s.objects.datatypes.values())
+
+    def is_suffix(self, suffix: str) -> bool:
+        return any(v.get("value") == suffix for v in self._s.objects.suffixes.values())
 
     def suffix_description(self, suffix: str) -> str:
         """Schema description of a suffix, whitespace-normalised ('' if undocumented)."""

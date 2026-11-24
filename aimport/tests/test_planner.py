@@ -429,3 +429,18 @@ def test_no_identifiers_in_plan(plan_planted):
 def test_planted_plan_has_entries_and_no_warning(plan_planted):
     assert plan_planted.warnings == []
     assert any(e.suffix == "T1w" and e.status == "ok" for e in plan_planted.entries)
+
+
+def test_run_terms_agree_with_build_plan(fixture_core, in_dir, key, schema, monkeypatch):
+    from aimport import planner
+
+    name_patient(fixture_core)
+    fixture_core.objects[0].acquisition_date = "2023-01-15"
+    seen = []
+    real = planner.run_terms
+    monkeypatch.setattr(planner, "run_terms", lambda *a, **k: seen.append(real(*a, **k)) or seen[-1])
+    build_plan(fixture_core, in_dir, key, set(), None, schema, "bids")
+    terms = real(fixture_core, in_dir)
+    assert seen == [terms]
+    assert {"smith", "john", "mrn0042"} <= {t.lower() for t in terms}
+    assert "20230115" in terms and "2023-01-15" in terms

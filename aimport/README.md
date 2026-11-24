@@ -21,6 +21,17 @@ docker run --rm --platform linux/amd64 -v $PWD/aimport:/src brainlife/aimport:de
 - BIDS validator: `@bids/validator` **2.4.1** (Deno 2.5.6), run through the `bids-validator-2` wrapper. That release bundles an older schema (it flags `BIDSVersion` 1.11.2 as unknown), so the wrapper defaults `--schema file:///opt/bids-schema/schema.json` unless `--schema`/`-s` is given. Works offline. Useful flags: `--format json` (`--json` is deprecated), `--schema <URL>`, `--ignoreNiftiHeaders`, `-o <file>`.
 - Test data: `tests/fixtures/fetch_dcm_qa.py` fetches `neurolabusc/dcm_qa` at a pinned commit and plants fake PHI.
 
+## Defacing
+
+`aimport.deface.deface` defaces the images of plan entries with `deface=True` (found through the manifest `write_bids` fills), moving the originals to a folder outside the BIDS folder and keeping affine and shape. Choose with `Plan.deface_method`:
+
+- `pydeface` (default): registers to a face template with FSL flirt. Most robust across contrasts and fields of view; minutes per image. Use it for the final upload.
+- `quickshear`: ROBEX brain mask, then quickshear. Needs no registration but ROBEX needs about a minute per image or less; a good choice when pydeface fails on an unusual field of view.
+
+The tool's output only decides which voxels are face: those are zeroed in the original's stored data and every other voxel stays byte-identical (no re-quantisation).
+
+Unlike ezBIDS, no `fslreorient2std` is applied. Docker tests: `quickshear` runs under `-m docker`; the pydeface test is `-m docker_slow`.
+
 ## Draft brainlife datatypes
 
 BIDS raw-data types that have no brainlife datatype get a draft in `src/aimport/data/datatype_drafts/` (warehouse `Datatypes` shape, named `neuro/<datatype>/<suffix lowercased>`), plus a `status: draft` row in `src/aimport/data/bids_brainlife_map.yaml`. Drafts are to be registered later through a PR to brainlife; check the registry for an existing datatype first. The engine ignores them for uploads (`to_brainlife` returns `(None, [])`; `draft_for` returns the draft name).

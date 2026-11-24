@@ -16,6 +16,7 @@ from pathlib import Path
 from typing import Literal
 
 from .agent import Guess, LLMClient, classify, draft_metadata
+from .ancillary import ancillary_warnings, find_ancillary, id_maps, plan_ancillary, read_dataset_description
 from .brainlife_map import to_brainlife
 from .ezbids_runner import CoreResult, CoreSeries, CoreSubject
 from .plan import Plan, PlanEntry
@@ -81,6 +82,14 @@ def _date_terms(core: CoreResult) -> set[str]:
             continue
         terms |= _date_forms(value)
     return terms
+
+
+def run_terms(core: CoreResult, input_dir: Path, stats: dict | None = None) -> set[str]:
+    """Every term to redact in this run: identifying values plus the scan dates in every form.
+
+    build_plan and the BIDS writer must use the same set; stats is passed to identifying_terms.
+    """
+    return identifying_terms(core, input_dir, stats) | _date_terms(core)
 
 
 def _agent_text(text: str, terms: set[str]) -> str:
@@ -270,7 +279,7 @@ def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_su
                client: LLMClient | None, schema: Schema, target: Literal["bids", "datatypes"],
                staged_dir: Path | None = None) -> Plan:
     stats: dict = {}
-    terms = identifying_terms(core, input_dir, stats) | _date_terms(core)
+    terms = run_terms(core, input_dir, stats)
     warnings = []
     if stats.get("dicom_files_read", 0) == 0:
         warnings.append(UNVERIFIED.format(why="no DICOM headers were read"))
@@ -343,4 +352,11 @@ def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_su
         plan.dataset_name = draft.name[:DATASET_NAME_MAX]
         plan.readme = draft.readme[:README_MAX]
         plan.metadata_source = "agent"
+    # supplied ancillary files (participants, phenotype, README, ...) and dataset_description fields
+    ids = id_maps(core, entries)
+    plan.ancillary = plan_ancillary(find_ancillary(input_dir, schema), input_dir, terms, ids, schema)
+    plan.warnings += ancillary_warnings(plan.ancillary, ids)
+    name, plan.dataset_description = read_dataset_description(input_dir, terms)
+    if name:  # the dataset's own name wins over the agent's draft
+        plan.dataset_name = name[:DATASET_NAME_MAX]
     return plan

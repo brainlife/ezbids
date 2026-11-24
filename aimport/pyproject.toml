@@ -33,4 +33,5 @@ testpaths = ["tests"]
 markers = [
     "docker: tests that need a running Docker daemon and network",
     "docker_offline: tests that need Docker but no network",
+    "docker_slow: Docker tests that take minutes per image (pydeface); run with -m docker_slow",
 ]
