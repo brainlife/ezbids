@@ -93,8 +93,10 @@ VIEWER_COOKIE = "aimport_viewer_"  # + a random suffix per server run: cookies i
 VIEWER_CODE_TTL_S = 60
 # /qa/data for a referenced OME-Zarr chunk at a URL: the most bytes one proxied response may carry
 QA_MAX_RESPONSE_BYTES = 64 * 2**20
-# stored bytes read (through the chunk map) from a reference's coarsest level to compute a display window
+# decoded (and stored) bytes of the pyramid level read through the chunk map for a reference's display window
 QA_WINDOW_MAX_BYTES = 32 * 2**20
+# the level a reference's display window is computed from: largest x/y size closest to this, within the cap
+QA_WINDOW_TARGET_SIDE = 1024
 NO_SUCH_CHUNK = "no such chunk"
 _CONTENT_RANGE = re.compile(r"bytes (?:[0-9]+-[0-9]+/(?:[0-9]+|\*)|\*/[0-9]+)")
 # set explicitly: the Python mimetypes table varies by version and platform, and responses are nosniff
@@ -1211,8 +1213,6 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         window stays."""
         import zarr
 
-        from .micr.convert import window_of
-
         root = srv.out / rel
         doc = _read_json(root / "zarr.json")
         attrs = (doc or {}).get("attributes") if doc and "attributes" in doc else _read_json(root / ".zattrs")
@@ -1235,18 +1235,56 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
             dtype = zarr.open_array(str(root / str(datasets[0]["path"])), mode="r").dtype
             had = source_windows(entry)
             if channels and all(_default_window(c.get("window"), dtype, had) for c in channels):
-                chunks = chunk_map() or {}
-                coarse = micr_reference.read_array(chunks, srv.out, f"{rel}/{datasets[-1]['path']}",
-                                                   srv.input_dir, QA_WINDOW_MAX_BYTES)
                 axes = [a.get("name") for a in multiscale.get("axes") or []]
-                for i, ch in enumerate(channels):
-                    values = coarse.take(i, axis=axes.index("c")) if "c" in axes else coarse
-                    ch["window"] = window_of(values, dtype)
+                windows = reference_windows(rel, [str(d["path"]) for d in datasets], axes, dtype, len(channels))
+                for ch, window in zip(channels, windows):
+                    if window is not None:  # else the written default stays
+                        ch["window"] = window
         except Exception:  # noqa: BLE001 - the written window is a fine fallback; nothing is reported
             log.info("display window of a reference not computed")
             return attrs  # not cached: the next view tries again
         window_cache[key] = attrs
         return attrs
+
+    def reference_windows(rel: str, paths: list[str], axes: list, dtype: Any, n: int) -> list[dict | None]:
+        """Per channel, the 0.5/99.5 percentiles of the finite values (NaN and ±inf ignored) of the pyramid level
+        whose largest x/y size is closest to QA_WINDOW_TARGET_SIDE among those whose decoded size fits
+        QA_WINDOW_MAX_BYTES (so a coarser one when a finer does not fit); a channel that is all NaN or constant
+        there is taken from the next finer level that fits, else None (the written default stays). Read errors
+        propagate (the caller does not cache them)."""
+        from .micr.convert import window_or_none
+
+        chunks = chunk_map() or {}
+        xy = [axes.index(a) for a in ("x", "y") if a in axes]
+        fits: list[tuple[int, int]] = []  # (level, largest x/y size) of the levels within the cap
+        for i, path in enumerate(paths):
+            meta = (chunks.get("arrays") or {}).get(f"{rel}/{path}")
+            level = srv.out / rel / path
+            doc = _read_json(level / "zarr.json") or _read_json(level / ".zarray")
+            if not isinstance(meta, dict) or not isinstance(doc, dict):
+                continue
+            try:
+                size = micr_reference._decoded_bytes(meta, doc, len(list(micr_reference.chunk_keys(meta))))
+            except (ValueError, KeyError, TypeError):
+                continue
+            if size <= QA_WINDOW_MAX_BYTES:
+                fits.append((i, max((int(meta["shape"][k]) for k in xy), default=0)))
+        if not fits:
+            return [None] * n
+        start = min(fits, key=lambda f: (abs(f[1] - QA_WINDOW_TARGET_SIDE), -f[0]))[0]
+        order = [i for i, _ in sorted(fits, reverse=True) if i <= start]  # the start level, then finer ones
+        read: dict[int, Any] = {}
+        out: list[dict | None] = [None] * n
+        for k in range(n):
+            for i in order:
+                if i not in read:
+                    read[i] = micr_reference.read_array(chunks, srv.out, f"{rel}/{paths[i]}", srv.input_dir,
+                                                        QA_WINDOW_MAX_BYTES)
+                values = read[i].take(k, axis=axes.index("c")) if "c" in axes else read[i]
+                out[k] = window_or_none(values, dtype)
+                if out[k] is not None:
+                    break
+        return out
 
     def source_windows(entry: Any) -> bool | None:
         """Whether a reference entry's source had an omero window per channel (its scan record), or None."""

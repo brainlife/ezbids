@@ -1014,3 +1014,55 @@ def test_real_omero_window_kept_by_the_viewer(tmp_path, monkeypatch):
         assert rec["info"]["reference_layout"]["source_windows"] is True
         ref = next(e for e in _entries(c).values() if e["write_mode"] == "reference")
         assert _ref_window(viewer_client(c), ref["id"]) == (0.0, 1.0)
+
+
+def test_reference_window_level_and_nan(tmp_path, monkeypatch):
+    """The window comes from the level whose largest x/y is closest to the target within the cap, NaN ignored;
+    a channel that is all NaN there comes from the next finer level that fits, else keeps the written default."""
+    import numpy as np
+    import zarr
+
+    from aimport.micr.convert import window_of
+
+    inp = tmp_path / "in"
+    store = ome_zarr(inp / STORE, "0.5", levels=4, dtype="float32")  # x/y 64, 32, 16, 8
+    level1 = zarr.open_array(str(store / "1"), mode="r+")
+    level1[1] = np.nan  # channel 1 is all NaN at level 1
+    level1[0, 0, 0, :4] = [np.inf, -np.inf, np.nan, np.nan]
+    monkeypatch.setattr(server, "QA_WINDOW_TARGET_SIDE", 30)  # level 1 (32) is the closest
+    real = server.micr_reference.read_array
+    reads = []
+
+    def spy(chunks, bids, array_rel, *a, **k):
+        reads.append(array_rel.rsplit("/", 1)[1])
+        return real(chunks, bids, array_rel, *a, **k)
+
+    monkeypatch.setattr(server.micr_reference, "read_array", spy)
+    with _executed_micr(inp, tmp_path, monkeypatch) as c:
+        browser = viewer_client(c)
+        ref = next(e for e in _entries(c).values() if e["write_mode"] == "reference")
+
+        def windows():
+            loc = browser.get(f"/viewer/entry/{ref['id']}", follow_redirects=False).headers["location"]
+            return [tuple(layer["shaderControls"]["normalized"]["range"]) for layer in decoded_state(loc)["layers"]]
+
+        w = windows()
+        want0 = window_of(zarr.open_array(str(store / "1"), mode="r")[0], "float32")
+        want1 = window_of(zarr.open_array(str(store / "0"), mode="r")[1], "float32")
+        assert reads == ["1", "0"]
+        assert w[0] == pytest.approx((want0["start"], want0["end"]))
+        assert w[1] == pytest.approx((want1["start"], want1["end"]))
+        # level 0 past the cap: channel 1 keeps the written default (0..1); level 1 is still used for channel 0
+        monkeypatch.setattr(server, "QA_WINDOW_MAX_BYTES", 100_000)
+        state = c.app.state.server.work / server.OUTPUT_STATE
+        later = state.stat().st_mtime_ns + 2_000_000_000
+        os.utime(state, ns=(later, later))
+        reads.clear()
+        w = windows()
+        assert reads == ["1"] and w[1] == (0.0, 1.0) and w[0] == pytest.approx((want0["start"], want0["end"]))
+        # the target past every level that fits: the closest that fits (a coarser one) is used
+        monkeypatch.setattr(server, "QA_WINDOW_TARGET_SIDE", 1024)
+        os.utime(state, ns=(later + 2_000_000_000,) * 2)
+        reads.clear()
+        windows()
+        assert reads[0] == "1"

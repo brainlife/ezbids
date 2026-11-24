@@ -344,12 +344,9 @@ def test_remote_donor_from_name_tail_psoct(url):
     "https://s3.us-east-2.amazonaws.com/apex-connects/CMC/Raw/Moe/tract-tracing/MN27_FH_S100_250215_visor_488/"
     "visor_488_Pos0/visor_488_0_0.tif",
 ])
-def test_remote_donor_from_first_folder(url):
-    """The first donor-like folder from the top wins: the tract-tracing acquisition MN27_... lies under
-    the donor folder Moe."""
-    assert micr_module.remote_donor(micr_module.remote_key(url)) == "Moe"
-    assert micr_module.remote_donor("CMC/Raw/tract-tracing/MN27_FH_S100_250215_visor_488/visor_488_Pos0/"
-                                    "visor_488_0_0.tif") == "MN27"
+def test_remote_donor_from_nearest_folder(url):
+    """The nearest donor-like folder wins: MN27_... (under Moe/)."""
+    assert micr_module.remote_donor(micr_module.remote_key(url)) == "MN27"
 
 
 _ENFACE_CODES = {"Reflectivity": "EnRef", "Retardance": "EnR"}  # the real CMC key names (DATASETS.md)
@@ -361,16 +358,22 @@ def ENFACE(contrast: str, n: int) -> str:  # noqa: N802
 
 
 def test_remote_donor_walks_every_folder():
-    """Five folders up from the file: the donor folder Moe is found (it was 3 at most) before the file
-    name's contrast codes (EnR, hdr); the top folder (the project) and the bucket never are."""
+    """Folders first, nearest to the file walking up, every folder up to (not including) the top one: the donor
+    folder Moe is found six levels up (it was 3 at most). The file name is used only when no folder is
+    donor-like, and its format/vendor fragments (hdr, EnR, EnRef ...) never are donors."""
     for contrast in ("Reflectivity", "Retardance"):
         assert micr_module.remote_donor(micr_module.remote_key(ENFACE(contrast, 1))) == "Moe"
-    assert micr_module.remote_donor("CMC/Registration/Slice_001_EnR_hdr.nii.gz") == "EnR"  # no folder: the name
+    for name in ("Slice_001_EnR_hdr.nii.gz", "Slice_001_EnRef_hdr.nii.gz", "Slice_004_EnCr_hdr.nii",
+                 "Slice_001_EnAO_hdr.nii.gz"):
+        assert micr_module.remote_donor(f"CMC/Registration/{name}") is None, name
+    assert micr_module.remote_donor("CMC/Registration/H17_Slice_001_EnR_hdr.nii.gz") == "H17"
     path_style = "https://s3.us-east-2.amazonaws.com/apex-connects/CMC/Derivatives/stitched/data/image.ome.zarr"
     assert micr_module.remote_key(path_style) == "CMC/Derivatives/stitched/data/image.ome.zarr"
     assert micr_module.remote_donor(micr_module.remote_key(path_style)) is None
-    assert micr_module.remote_donor("CMC/Raw/Moe/Registration/Enface/data/images/MN27_x/tile_0.tif") == "Moe"  # the first wins
+    assert micr_module.remote_donor("CMC/Raw/Moe/Registration/Enface/data/images/MN27_x/tile_0.tif") == "MN27"
+    assert micr_module.remote_donor("CMC/Raw/Moe/Registration/Enface/data/images/tile_0.tif") == "Moe"
     assert micr_module.remote_donor("Moe/image.tif") is None  # the top folder alone
+    assert micr_module.remote_donor("axonal_connectomics/deskewed/H17_PO10_S5_20250417/exaSPIM.zarr/Pos0") == "H17"
 
 
 def _remote_plan(tmp_path, key, schema, monkeypatch, urls):
@@ -412,10 +415,10 @@ def test_remote_records_never_take_bucket_or_project_as_donor(tmp_path, key, sch
     found = [micr_module.Found(u, f, u) for u, f in zip(urls, families)]
     records = micr_module.scan_records(tmp_path, claim, found, lambda msg: None)
     donors = [r["facts"]["donor"] for r in records]
-    assert sorted(d for d in donors if d) == ["Moe", "Moe"] and donors.count(None) == 1  # MN27_ is under Moe/
+    assert sorted(d for d in donors if d) == ["MN27", "Moe"] and donors.count(None) == 1
     mp = micr_module.plan_entries(records, key, set(), schema, "bids")
-    assert "micr:id=Moe" in set(key.subjects)
-    assert not [o for o in key.subjects if o.startswith("micr:id=") and o != "micr:id=Moe"]
+    assert {"micr:id=Moe", "micr:id=MN27"} <= set(key.subjects)
+    assert not [o for o in key.subjects if o.startswith("micr:id=") and o not in ("micr:id=Moe", "micr:id=MN27")]
     assert any(w.startswith("microscopy: no donor code was found for 1 ") for w in mp.warnings)
     text = json.dumps([asdict(e) for e in mp.entries] + mp.warnings)
     assert "apex" not in text and "amazonaws" not in text and "CMC" not in text

@@ -95,7 +95,10 @@ window of 0..1 per channel. `test_micr_input_executes_with_uint16_references` ex
 VISoR `acqinfo_metadata.json` saying `dtype: "uint16"`) through the server. The remote donor tests use the real
 CMC key names (listed anonymously, 2026-11-24) without reading them; `test_remote_without_donor_grouped_by_folder_and_slice`
 uses made-up `lab.s3.amazonaws.com` URLs, never fetched. `docs/qa-viewer-index-micr.png` is the restyled
-`/viewer/` index of a real engine run over synthetic input only (the `micr_run` inputs). All synthetic,
+`/viewer/` index of a real engine run over synthetic input only (the `micr_run` inputs); `docs/qa-viewer-micr.png`
+was re-shot from the same run after the channel-position fix (both channels now drawn).
+`test_reference_window_level_and_nan`: an `ome_zarr` float32 0.5 store with 4 levels, channel 1 of level 1 set to
+NaN and four ±inf/NaN values planted in channel 0. All synthetic,
 generated at test time.
 
 ### CMC public bucket `apex-connects` (current)

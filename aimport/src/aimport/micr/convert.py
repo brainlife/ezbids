@@ -432,6 +432,16 @@ def window_of(values: Any, dtype: Any) -> dict[str, float]:
     return {"min": mn, "max": mx, "start": lo, "end": hi if hi > lo else lo + 1.0}
 
 
+def window_or_none(values: Any, dtype: Any) -> dict[str, float] | None:
+    """window_of when the values hold at least two different finite numbers (NaN and ±inf ignored); None for
+    an all-NaN or constant channel (the caller tries another level, or keeps its default)."""
+    sample = np.asarray(values, dtype=np.float64).ravel()
+    sample = sample[np.isfinite(sample)]
+    if sample.size == 0 or sample.min() == sample.max():
+        return None
+    return window_of(sample, dtype)
+
+
 # --- tile groups --------------------------------------------------------------------------------
 
 

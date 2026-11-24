@@ -110,7 +110,7 @@ def test_zarr_layer_channels_additive(version, codec):
     for i, layer in enumerate(layers):
         assert layer["type"] == "image" and layer["source"] == url + codec
         assert layer["blend"] == "additive"
-        assert layer["localDimensions"] == {"c'": [1, ""]} and layer["localPosition"] == [i + 0.5]
+        assert layer["localDimensions"] == {"c'": [1, ""]} and layer["localPosition"] == [i]  # integer: Neuroglancer rounds
     assert layers[0]["shaderControls"]["normalized"]["range"] == [100.0, 900.0]
     assert layers[1]["shaderControls"]["normalized"]["range"] == [50.0, 400.0]
     assert layers[0]["shaderControls"]["color"] == "#00ff00"  # 520 nm emission: the omero colour
@@ -199,7 +199,7 @@ def test_multichannel_oct_store_split_into_panels():
     assert len(state["layers"]) == 2 and all("blend" not in layer for layer in state["layers"])
     assert all("emitGrayscale" in layer["shader"] for layer in state["layers"])
     assert [p["layers"] for p in state["layout"]["children"]] == [[layer["name"]] for layer in state["layers"]]
-    assert [layer["localPosition"] for layer in state["layers"]] == [[0.5], [1.5]]
+    assert [layer["localPosition"] for layer in state["layers"]] == [[0], [1]]
 
 
 def test_view_fits_the_plane():

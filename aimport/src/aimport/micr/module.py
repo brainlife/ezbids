@@ -231,22 +231,40 @@ def remote_key(url: str) -> str:
     return path
 
 
+# File-name fragments that are never a donor: format and vendor words (a header suffix, an extension word) and
+# the PS-OCT en-face contrast abbreviations En<X> (EnR, EnRef, EnCr, EnAO ...).
+_NAME_NOT_DONOR = frozenset({"hdr", "img", "nii", "gz", "tif", "tiff", "zarr", "ome", "dat", "mat", "raw", "bin",
+                             "h5", "hdf5", "json", "txt", "log", "png", "jpg", "jpeg", "bmp", "avi", "lsm",
+                             "oib", "oif", "ims", "czi", "nd2", "lif", "svs", "vsi", "ndpi", "scn", "mrxs"})
+_EN_CONTRAST = re.compile(r"En[A-Z][A-Za-z]{0,3}")
+
+
+def _name_donor(name: str) -> str | None:
+    """The donor of a file or store name (names.facts), its format/vendor fragments removed first."""
+    stem = names._EXT.sub("", name)
+    keep = [t for t in names._tokens(stem)
+            if t.lower() not in _NAME_NOT_DONOR and not _EN_CONTRAST.fullmatch(t)]
+    return names.facts("_".join(keep)).donor if keep else None
+
+
 def remote_donor(path: str) -> str | None:
-    """The donor of a remote source (``path``: its object key, ``remote_key``): the first donor-like
-    segment walking down every folder from the top (``CMC/Derivatives/Moe/PS-OCT/...`` gives Moe), else
-    the file or store name; names.facts applied to each segment alone. The top folder under the
-    bucket is a project (``CMC/...``), never a donor. Folders come first because file names carry
-    contrast codes that look like donors (``Slice_001_EnR_hdr``: EnR, hdr)."""
+    """The donor of a remote source (``path``: its object key, ``remote_key``): the nearest donor-like folder,
+    walking up from the file (``CMC/Raw/Moe/tract-tracing/MN27_.../Pos0/x.tif`` gives MN27,
+    ``CMC/Derivatives/Moe/PS-OCT/Enface/Registration/Retardance/x.nii.gz`` gives Moe); the file or store name
+    only when no folder is donor-like, and never its format/vendor fragments (``hdr``, ``EnR``). The top folder
+    under the bucket is a project (``CMC/...``), never a donor. names.facts is applied to each segment alone."""
     parts = [p for p in path.split("/") if p]
     if not parts:
         return None
-    for seg in [*parts[1:-1], parts[-1]]:
+    for seg in reversed(parts[1:-1]):
         if seg.startswith("sub-") and len(seg) > 4:
             return seg[4:]
         donor = names.facts(seg).donor
         if donor:
             return donor
-    return None
+    if parts[-1].startswith("sub-") and len(parts[-1]) > 4:
+        return parts[-1][4:].split("_")[0]
+    return _name_donor(parts[-1])
 
 
 def _remote_group(rec: dict) -> str:

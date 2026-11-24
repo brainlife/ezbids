@@ -128,7 +128,9 @@ def zarr_layer(name: str, url: str, info: dict, version: str, blend: bool = True
             layer["blend"] = "additive"
         if has_c:
             layer["localDimensions"] = {"c'": [1, ""]}
-            layer["localPosition"] = [i + 0.5]
+            # an integer: Neuroglancer rounds a channel position, so i + 0.5 would show channel i + 1 (checked in
+            # Chromium on the 4-channel CMC PS-OCT store: i + 0.5 drew the next contrast, the last one blank)
+            layer["localPosition"] = [i]
         if controls:
             layer["shaderControls"] = controls
         layers.append(layer)
