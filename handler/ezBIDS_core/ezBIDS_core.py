@@ -754,8 +754,14 @@ def find_cog_atlas_tasks(url):
         "test" removed, to make it easier to search the SeriesDescription
         fields for a matching task name.
     """
-    url_contents = urlopen(url)
-    data = json.load(url_contents)
+    if os.environ.get("EZBIDS_OFFLINE"):
+        return []
+    try:
+        url_contents = urlopen(url, timeout=30)
+        data = json.load(url_contents)
+    except Exception as e:  # no network or Cognitive Atlas down: task-name guessing just gets fewer candidates
+        print(f"Could not fetch Cognitive Atlas tasks ({e}); continuing without them")
+        return []
     # Remove non-alphanumeric terms and "task", "test" substrings
     tasks = [re.sub("[^A-Za-z0-9]+", "", re.split(" task| test", x["name"])[0]).lower() for x in data]
     # Remove empty task name terms and ones under 2 characters (b/c hard to detect in SeriesDescription)
@@ -2405,6 +2411,13 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
                             unique_dic["message"] = "Acquisition was determined to be a non-BIDS sequence, " \
                                 "according to dcm2niix's BidsGuess heuristic, and will not be converted. " \
                                 "Please modify if incorrect."
+                        unique_dic["type"] = "exclude"
+                    elif suffix not in lookup_dic.get(datatype, {}):
+                        # e.g. dcm2niix guesses dwi/_FA (a derivative BIDS does not define) for a series
+                        # whose description merely contains "_fa"; later lookups would raise KeyError
+                        unique_dic["message"] = f"dcm2niix's BidsGuess ({datatype}/{suffix}) is not a valid " \
+                            "BIDS datatype/suffix pair, so the acquisition will not be converted. " \
+                            "Please modify if incorrect."
                         unique_dic["type"] = "exclude"
                     else:
                         unique_dic["datatype"] = datatype

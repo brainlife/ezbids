@@ -13,8 +13,9 @@ RUN pip3 install numpy==1.23.0 nibabel==4.0.0 pandas matplotlib pyyaml==5.4.1 py
     pip3 install quickshear mne mne-bids
 
 # Install pypet2bids
+# pinned: PET2BIDS moved to uv (no more installpoetry target); this is the last commit before 2024-08-28
 RUN git clone https://github.com/openneuropet/PET2BIDS && \
-    cd PET2BIDS && make installpoetry buildpackage installpackage
+    cd PET2BIDS && git checkout 1c22d17 && make installpoetry buildpackage installpackage
 
 RUN apt-get install -y build-essential pkg-config cmake git pigz rename zstd libopenjp2-7 libgdcm-tools wget libopenblas-dev && \
     apt-get clean -y && apt-get autoclean -y && apt-get autoremove -y
