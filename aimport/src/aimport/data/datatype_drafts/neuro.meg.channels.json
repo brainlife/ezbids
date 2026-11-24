@@ -1,0 +1,38 @@
+{
+    "bids": {
+        "derivatives": "meg",
+        "maps": [
+            {
+                "dest": "channels.json",
+                "src": "channels.json"
+            },
+            {
+                "dest": "channels.tsv",
+                "json": "channels.json",
+                "src": "channels.tsv"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Channel information.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS channels.json",
+            "ext": ".json",
+            "filename": "channels.json",
+            "id": "json",
+            "required": false
+        },
+        {
+            "desc": "BIDS channels.tsv",
+            "ext": ".tsv",
+            "filename": "channels.tsv",
+            "id": "tsv",
+            "required": true
+        }
+    ],
+    "name": "neuro/meg/channels",
+    "readme": "# neuro/meg/channels\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `meg`, suffix `channels`.\n\nSource: BIDS specification v1.11.2, raw data, `meg/*_channels`.\n\nRelated BIDS files in `meg/` (separate datatypes, not part of this one): `coordsystem`, `electrodes`, `events`, `headshape`, `markers`, `meg`, `photo`, `physio`, `physioevents`, `stim`.\n\n"
+}

@@ -21,6 +21,13 @@ def test_roundtrip(tmp_path):
     assert Plan.load(tmp_path / "plan.json") == p
 
 
+def test_roundtrip_keeps_warnings(tmp_path):
+    p = Plan(target="bids", entries=[entry()], warnings=["de-identification could not be verified"])
+    p.save(tmp_path / "plan.json")
+    assert Plan.load(tmp_path / "plan.json").warnings == ["de-identification could not be verified"]
+    assert Plan(target="bids", entries=[]).warnings == []
+
+
 def test_edit_marks_person_and_unapproves():
     p = Plan(target="bids", entries=[entry(id="e1", suffix="T1w")], approved=True)
     p.apply_edits([{"id": "e1", "suffix": "T2w"}])

@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "pet",
+        "maps": [
+            {
+                "dest": "pet.nii.gz",
+                "json": "pet.json",
+                "src": "pet.nii.gz"
+            },
+            {
+                "dest": "pet.nii",
+                "src": "pet.nii"
+            },
+            {
+                "dest": "pet.ome.zarr",
+                "json": "pet.json",
+                "src": "pet.ome.zarr"
+            },
+            {
+                "dest": "pet.json",
+                "src": "pet.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "PET imaging data SHOULD be stored in 4D (or 3D, if only one volume was acquired) NIfTI files with the `_pet` suffix. Volumes MUST be stored in chronological order (the order they were acquired in). Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS pet.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "pet.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS pet.nii",
+            "ext": ".nii",
+            "filename": "pet.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS pet.ome.zarr/",
+            "dirname": "pet.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS pet.json",
+            "ext": ".json",
+            "filename": "pet.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/pet/pet",
+    "readme": "# neuro/pet/pet\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `pet`, suffix `pet`.\n\nSource: BIDS specification v1.11.2, raw data, `pet/*_pet`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `pet/` (separate datatypes, not part of this one): `blood`, `events`, `physio`, `physioevents`, `stim`.\n\n"
+}

@@ -1,0 +1,48 @@
+{
+    "bids": {
+        "derivatives": "perf",
+        "maps": [
+            {
+                "dest": "asllabeling.jpg",
+                "src": "asllabeling.jpg"
+            },
+            {
+                "dest": "asllabeling.png",
+                "src": "asllabeling.png"
+            },
+            {
+                "dest": "asllabeling.tif",
+                "src": "asllabeling.tif"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "A deidentified screenshot of the planning of the labeling slab/plane with respect to the imaging slab or slices. This screenshot is based on DICOM macro C.8.13.5.14. Exactly one of: .jpg; .png; .tif must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS asllabeling.jpg",
+            "ext": ".jpg",
+            "filename": "asllabeling.jpg",
+            "id": "jpg",
+            "required": false
+        },
+        {
+            "desc": "BIDS asllabeling.png",
+            "ext": ".png",
+            "filename": "asllabeling.png",
+            "id": "png",
+            "required": false
+        },
+        {
+            "desc": "BIDS asllabeling.tif",
+            "ext": ".tif",
+            "filename": "asllabeling.tif",
+            "id": "tif",
+            "required": false
+        }
+    ],
+    "name": "neuro/perf/asllabeling",
+    "readme": "# neuro/perf/asllabeling\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `perf`, suffix `asllabeling`.\n\nSource: BIDS specification v1.11.2, raw data, `perf/*_asllabeling`.\n\nExactly one of: .jpg; .png; .tif must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `perf/` (separate datatypes, not part of this one): `asl`, `aslcontext`, `m0scan`, `noRF`, `physio`, `physioevents`, `stim`.\n\n"
+}

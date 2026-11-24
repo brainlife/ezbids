@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "fmap",
+        "maps": [
+            {
+                "dest": "TB1RFM.nii.gz",
+                "json": "TB1RFM.json",
+                "src": "TB1RFM.nii.gz"
+            },
+            {
+                "dest": "TB1RFM.nii",
+                "src": "TB1RFM.nii"
+            },
+            {
+                "dest": "TB1RFM.ome.zarr",
+                "json": "TB1RFM.json",
+                "src": "TB1RFM.ome.zarr"
+            },
+            {
+                "dest": "TB1RFM.json",
+                "src": "TB1RFM.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "The result of a Siemens `rf_map` product sequence. This sequence produces two images. The first image appears like an anatomical image and the second output is a scaled flip angle map. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS TB1RFM.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "TB1RFM.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS TB1RFM.nii",
+            "ext": ".nii",
+            "filename": "TB1RFM.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS TB1RFM.ome.zarr/",
+            "dirname": "TB1RFM.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS TB1RFM.json",
+            "ext": ".json",
+            "filename": "TB1RFM.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/fmap/tb1rfm",
+    "readme": "# neuro/fmap/tb1rfm\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `fmap`, suffix `TB1RFM`.\n\nSource: BIDS specification v1.11.2, raw data, `fmap/*_TB1RFM`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `fmap/` (separate datatypes, not part of this one): `RB1COR`, `RB1map`, `TB1AFI`, `TB1DAM`, `TB1EPI`, `TB1SRGE`, `TB1TFL`, `TB1map`, `epi`, `fieldmap`, `m0scan`, `magnitude`, `magnitude1`, `magnitude2`, `phase1`, `phase2`, `phasediff`.\n\n"
+}

@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "fmap",
+        "maps": [
+            {
+                "dest": "TB1SRGE.nii.gz",
+                "json": "TB1SRGE.json",
+                "src": "TB1SRGE.nii.gz"
+            },
+            {
+                "dest": "TB1SRGE.nii",
+                "src": "TB1SRGE.nii"
+            },
+            {
+                "dest": "TB1SRGE.ome.zarr",
+                "json": "TB1SRGE.json",
+                "src": "TB1SRGE.ome.zarr"
+            },
+            {
+                "dest": "TB1SRGE.json",
+                "src": "TB1SRGE.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Saturation-prepared with 2 rapid gradient echoes (SA2RAGE) uses a ratio of two saturation recovery images with different time delays, and a simulated look-up table to estimate B1+ ([Eggenschwiler et al. 2011](https://doi.org/10.1002/mrm.23145)). This sequence can also be used in conjunction with MP2RAGE T1 mapping to iteratively improve B1+ and T1 map estimation ([Marques & Gruetter 2013](https://doi.org/10.1371/journal.pone.0069294)). Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS TB1SRGE.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "TB1SRGE.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS TB1SRGE.nii",
+            "ext": ".nii",
+            "filename": "TB1SRGE.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS TB1SRGE.ome.zarr/",
+            "dirname": "TB1SRGE.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS TB1SRGE.json",
+            "ext": ".json",
+            "filename": "TB1SRGE.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/fmap/tb1srge",
+    "readme": "# neuro/fmap/tb1srge\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `fmap`, suffix `TB1SRGE`.\n\nSource: BIDS specification v1.11.2, raw data, `fmap/*_TB1SRGE`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `fmap/` (separate datatypes, not part of this one): `RB1COR`, `RB1map`, `TB1AFI`, `TB1DAM`, `TB1EPI`, `TB1RFM`, `TB1TFL`, `TB1map`, `epi`, `fieldmap`, `m0scan`, `magnitude`, `magnitude1`, `magnitude2`, `phase1`, `phase2`, `phasediff`.\n\n"
+}

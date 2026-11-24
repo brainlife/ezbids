@@ -33,6 +33,79 @@ class Schema:
         for child in node.values():
             yield from self._walk(child, datatype, suffix)
 
+    def raw_pairs(self) -> dict[tuple[str, str], list[str]]:
+        """Every raw-data (datatype, suffix) with its extensions (schema order, deduplicated)."""
+        pairs: dict[tuple[str, str], list[str]] = {}
+        for group in self._leaves(self._s.rules.files.raw):
+            for datatype in group.get("datatypes", []):
+                for suffix in group["suffixes"]:
+                    exts = pairs.setdefault((datatype, suffix), [])
+                    exts.extend(e for e in group.get("extensions", []) if e not in exts)
+        return pairs
+
+    def required_sidecar_fields(self, datatype: str, suffix: str, extension: str) -> list[str]:
+        """Sidecar fields the schema always requires for this pair's data file.
+
+        Walks rules.sidecars. An entry counts only when every selector is one of the forms
+        decidable from (datatype, suffix, extension) alone: ``datatype == "x"``,
+        ``suffix ==/!= "x"``, ``modality == "x"``, ``intersects([datatype|suffix|modality]
+        or datatype|suffix, [...])``, their negations, and ``match(extension, re)``. An entry
+        with any other selector (entities, sidecar values, dataset properties) is
+        conditional and ignored, so only unconditional requirements are returned.
+        Fields are those whose ``level`` is ``required`` (``level_addendum`` makes it
+        conditional, but those carry ``level: recommended``/``optional``, so are excluded).
+        """
+        modalities = [m for m, v in self._s.rules.modalities.items() if datatype in v.datatypes]
+        values = {"datatype": [datatype], "suffix": [suffix], "modality": modalities}
+        ext = extension.rstrip("/")
+        found: list[str] = []
+        for entry in self._leaves_sidecars(self._s.rules.sidecars):
+            verdicts = [self._selector(x, values, ext) for x in entry.get("selectors", [])]
+            if not verdicts or not all(v is True for v in verdicts):
+                continue
+            for field, spec in entry.get("fields", {}).items():
+                level = spec if isinstance(spec, str) else spec.get("level")
+                if level == "required" and field not in found:
+                    found.append(field)
+        return found
+
+    def _leaves_sidecars(self, node):
+        if "selectors" in node or "fields" in node:
+            yield node
+            return
+        for child in node.values():
+            yield from self._leaves_sidecars(child)
+
+    @staticmethod
+    def _selector(sel: str, values: dict, ext: str):
+        """True/False for a decidable selector, None when it is conditional."""
+        sel = sel.strip()
+        m = re.fullmatch(r'(datatype|suffix|modality) (==|!=) ["\'](.*?)["\']', sel)
+        if m:
+            hit = m[3] in values[m[1]]
+            return hit if m[2] == "==" else not hit
+        m = re.fullmatch(r'(!?)intersects\(\[?(datatype|suffix|modality)\]?, \[(.*)\]\)', sel)
+        if m:
+            wanted = re.findall(r'["\']([^"\']*)["\']', m[3])
+            hit = bool(set(wanted) & set(values[m[2]]))
+            return not hit if m[1] else hit
+        m = re.fullmatch(r'match\(extension, ["\'](.*)["\']\)', sel)
+        if m:
+            return re.search(m[1], ext) is not None
+        return None
+
+    def suffix_description(self, suffix: str) -> str:
+        """Schema description of a suffix, whitespace-normalised ('' if undocumented)."""
+        obj = self._s.objects.suffixes.get(suffix)
+        return " ".join(str(obj.get("description", "")).split()) if obj else ""
+
+    def _leaves(self, node):
+        if "suffixes" in node:
+            yield node
+            return
+        for child in node.values():
+            yield from self._leaves(child)
+
     def is_valid(self, datatype: str, suffix: str) -> bool:
         return any(True for _ in self._groups(datatype, suffix))
 

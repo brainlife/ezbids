@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "func",
+        "maps": [
+            {
+                "dest": "phase.nii.gz",
+                "json": "phase.json",
+                "src": "phase.nii.gz"
+            },
+            {
+                "dest": "phase.nii",
+                "src": "phase.nii"
+            },
+            {
+                "dest": "phase.ome.zarr",
+                "json": "phase.json",
+                "src": "phase.ome.zarr"
+            },
+            {
+                "dest": "phase.json",
+                "src": "phase.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "[DEPRECATED](SPEC_ROOT/common-principles.md#definitions). Phase information associated with magnitude information stored in BOLD contrast. This suffix should be replaced by the [`part-phase`](SPEC_ROOT/appendices/entities.md#part) in conjunction with the `bold` suffix. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS phase.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "phase.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS phase.nii",
+            "ext": ".nii",
+            "filename": "phase.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS phase.ome.zarr/",
+            "dirname": "phase.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS phase.json",
+            "ext": ".json",
+            "filename": "phase.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/func/phase",
+    "readme": "# neuro/func/phase\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `func`, suffix `phase`.\n\nSource: BIDS specification v1.11.2, raw data, `func/*_phase`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `func/` (separate datatypes, not part of this one): `bold`, `cbv`, `events`, `noRF`, `physio`, `physioevents`, `sbref`, `stim`.\n\n"
+}

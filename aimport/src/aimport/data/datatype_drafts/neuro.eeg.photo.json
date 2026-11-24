@@ -1,0 +1,48 @@
+{
+    "bids": {
+        "derivatives": "eeg",
+        "maps": [
+            {
+                "dest": "photo.jpg",
+                "src": "photo.jpg"
+            },
+            {
+                "dest": "photo.png",
+                "src": "photo.png"
+            },
+            {
+                "dest": "photo.tif",
+                "src": "photo.tif"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Photos of the anatomical landmarks, head localization coils or tissue sample. Exactly one of: .jpg; .png; .tif must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS photo.jpg",
+            "ext": ".jpg",
+            "filename": "photo.jpg",
+            "id": "jpg",
+            "required": false
+        },
+        {
+            "desc": "BIDS photo.png",
+            "ext": ".png",
+            "filename": "photo.png",
+            "id": "png",
+            "required": false
+        },
+        {
+            "desc": "BIDS photo.tif",
+            "ext": ".tif",
+            "filename": "photo.tif",
+            "id": "tif",
+            "required": false
+        }
+    ],
+    "name": "neuro/eeg/photo",
+    "readme": "# neuro/eeg/photo\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `eeg`, suffix `photo`.\n\nSource: BIDS specification v1.11.2, raw data, `eeg/*_photo`.\n\nExactly one of: .jpg; .png; .tif must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `eeg/` (separate datatypes, not part of this one): `channels`, `coordsystem`, `eeg`, `electrodes`, `events`, `physio`, `physioevents`, `stim`.\n\n"
+}

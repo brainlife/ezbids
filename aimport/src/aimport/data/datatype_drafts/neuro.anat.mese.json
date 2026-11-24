@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "anat",
+        "maps": [
+            {
+                "dest": "MESE.nii.gz",
+                "json": "MESE.json",
+                "src": "MESE.nii.gz"
+            },
+            {
+                "dest": "MESE.nii",
+                "src": "MESE.nii"
+            },
+            {
+                "dest": "MESE.ome.zarr",
+                "json": "MESE.json",
+                "src": "MESE.ome.zarr"
+            },
+            {
+                "dest": "MESE.json",
+                "src": "MESE.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "The MESE method involves multiple spin echo images acquired at different echo times and is primarily used for T2 mapping. Please note that this suffix is not intended for the logical grouping of images acquired using an Echo Planar Imaging (EPI) readout. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS MESE.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "MESE.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS MESE.nii",
+            "ext": ".nii",
+            "filename": "MESE.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS MESE.ome.zarr/",
+            "dirname": "MESE.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS MESE.json",
+            "ext": ".json",
+            "filename": "MESE.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/anat/mese",
+    "readme": "# neuro/anat/mese\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `anat`, suffix `MESE`.\n\nSource: BIDS specification v1.11.2, raw data, `anat/*_MESE`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `anat/` (separate datatypes, not part of this one): `Chimap`, `FLAIR`, `FLASH`, `IRT1`, `M0map`, `MEGRE`, `MP2RAGE`, `MPM`, `MTR`, `MTRmap`, `MTS`, `MTVmap`, `MTsat`, `MWFmap`, `PD`, `PDT2`, `PDmap`, `PDw`, `R1map`, `R2map`, `R2starmap`, `S0map`, `T1map`, `T1rho`, `T1w`, `T2map`, `T2star`, `T2starmap`, `T2starw`, `T2w`, `UNIT1`, `VFA`, `angio`, `defacemask`, `inplaneT1`, `inplaneT2`, `physio`, `physioevents`, `stim`.\n\n"
+}

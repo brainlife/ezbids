@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "anat",
+        "maps": [
+            {
+                "dest": "MTRmap.nii.gz",
+                "json": "MTRmap.json",
+                "src": "MTRmap.nii.gz"
+            },
+            {
+                "dest": "MTRmap.nii",
+                "src": "MTRmap.nii"
+            },
+            {
+                "dest": "MTRmap.ome.zarr",
+                "json": "MTRmap.json",
+                "src": "MTRmap.ome.zarr"
+            },
+            {
+                "dest": "MTRmap.json",
+                "src": "MTRmap.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "In arbitrary units (arbitrary). MTR maps are REQUIRED to use this suffix regardless of the method used to generate them. MTRmap intensity values are RECOMMENDED to be represented in percentage in the range of 0-100%. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS MTRmap.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "MTRmap.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS MTRmap.nii",
+            "ext": ".nii",
+            "filename": "MTRmap.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS MTRmap.ome.zarr/",
+            "dirname": "MTRmap.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS MTRmap.json",
+            "ext": ".json",
+            "filename": "MTRmap.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/anat/mtrmap",
+    "readme": "# neuro/anat/mtrmap\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `anat`, suffix `MTRmap`.\n\nSource: BIDS specification v1.11.2, raw data, `anat/*_MTRmap`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `anat/` (separate datatypes, not part of this one): `Chimap`, `FLAIR`, `FLASH`, `IRT1`, `M0map`, `MEGRE`, `MESE`, `MP2RAGE`, `MPM`, `MTR`, `MTS`, `MTVmap`, `MTsat`, `MWFmap`, `PD`, `PDT2`, `PDmap`, `PDw`, `R1map`, `R2map`, `R2starmap`, `S0map`, `T1map`, `T1rho`, `T1w`, `T2map`, `T2star`, `T2starmap`, `T2starw`, `T2w`, `UNIT1`, `VFA`, `angio`, `defacemask`, `inplaneT1`, `inplaneT2`, `physio`, `physioevents`, `stim`.\n\n"
+}

@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "anat",
+        "maps": [
+            {
+                "dest": "IRT1.nii.gz",
+                "json": "IRT1.json",
+                "src": "IRT1.nii.gz"
+            },
+            {
+                "dest": "IRT1.nii",
+                "src": "IRT1.nii"
+            },
+            {
+                "dest": "IRT1.ome.zarr",
+                "json": "IRT1.json",
+                "src": "IRT1.ome.zarr"
+            },
+            {
+                "dest": "IRT1.json",
+                "src": "IRT1.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "The IRT1 method involves multiple inversion recovery spin-echo images acquired at different inversion times ([Barral et al. 2010](https://doi.org/10.1002/mrm.22497)). Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS IRT1.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "IRT1.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS IRT1.nii",
+            "ext": ".nii",
+            "filename": "IRT1.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS IRT1.ome.zarr/",
+            "dirname": "IRT1.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS IRT1.json",
+            "ext": ".json",
+            "filename": "IRT1.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/anat/irt1",
+    "readme": "# neuro/anat/irt1\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `anat`, suffix `IRT1`.\n\nSource: BIDS specification v1.11.2, raw data, `anat/*_IRT1`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `anat/` (separate datatypes, not part of this one): `Chimap`, `FLAIR`, `FLASH`, `M0map`, `MEGRE`, `MESE`, `MP2RAGE`, `MPM`, `MTR`, `MTRmap`, `MTS`, `MTVmap`, `MTsat`, `MWFmap`, `PD`, `PDT2`, `PDmap`, `PDw`, `R1map`, `R2map`, `R2starmap`, `S0map`, `T1map`, `T1rho`, `T1w`, `T2map`, `T2star`, `T2starmap`, `T2starw`, `T2w`, `UNIT1`, `VFA`, `angio`, `defacemask`, `inplaneT1`, `inplaneT2`, `physio`, `physioevents`, `stim`.\n\n"
+}

@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "dwi",
+        "maps": [
+            {
+                "dest": "FA.nii.gz",
+                "json": "FA.json",
+                "src": "FA.nii.gz"
+            },
+            {
+                "dest": "FA.nii",
+                "src": "FA.nii"
+            },
+            {
+                "dest": "FA.ome.zarr",
+                "json": "FA.json",
+                "src": "FA.ome.zarr"
+            },
+            {
+                "dest": "FA.json",
+                "src": "FA.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Scanner-generated derivative parametric map reflecting the anisotropy of the diffusion tensor Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS FA.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "FA.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS FA.nii",
+            "ext": ".nii",
+            "filename": "FA.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS FA.ome.zarr/",
+            "dirname": "FA.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS FA.json",
+            "ext": ".json",
+            "filename": "FA.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/dwi/fa",
+    "readme": "# neuro/dwi/fa\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `dwi`, suffix `FA`.\n\nSource: BIDS specification v1.11.2, raw data, `dwi/*_FA`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `dwi/` (separate datatypes, not part of this one): `ADC`, `S0map`, `colFA`, `dwi`, `expADC`, `physio`, `physioevents`, `sbref`, `stim`, `trace`.\n\n"
+}

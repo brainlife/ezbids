@@ -42,6 +42,7 @@ class Plan:
     dataset_name: str = "aimport dataset"
     readme: str = ""
     metadata_source: Literal["agent", "person", "none"] = "none"
+    warnings: list[str] = field(default_factory=list)  # shown to the reviewer
 
     def save(self, path: Path) -> None:
         Path(path).write_text(json.dumps(asdict(self), indent=2))

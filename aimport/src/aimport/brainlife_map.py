@@ -10,7 +10,7 @@ from pathlib import Path
 import yaml
 
 _FILE = "bids_brainlife_map.yaml"
-_STATUSES = {"active", "planned"}
+_STATUSES = {"active", "planned", "draft"}
 
 # (bids datatype, suffix) -> (brainlife datatype, fixed tags or None for tags_from: task)
 Table = dict[tuple[str, str], tuple[str, list[str] | None]]
@@ -36,12 +36,13 @@ def _validate_row(i: int, row: object) -> None:
         raise ValueError(f"{where}: brainlife.tags must be a list of strings")
     if "suffix" in bids and not isinstance(bids["suffix"], str):
         raise ValueError(f"{where}: bids.suffix must be a string")
+    if row["status"] == "draft" and not (bids.get("suffix") and row.get("ref")):
+        raise ValueError(f"{where}: draft row needs bids.suffix and ref")
     if "tags_from" in bl and bl["tags_from"] != "task":
         raise ValueError(f"{where}: tags_from must be 'task'")
 
 
-def load_table(path: Path | None = None) -> Table:
-    """Load and validate the mapping file; return the active (datatype, suffix) rows."""
+def _load_doc(path: Path | None) -> dict:
     if path is None:
         text = resources.files("aimport.data").joinpath(_FILE).read_text()
     else:
@@ -49,9 +50,32 @@ def load_table(path: Path | None = None) -> Table:
     doc = yaml.safe_load(text)
     if not isinstance(doc, dict) or type(doc.get("version")) is not int or doc["version"] != 1:
         raise ValueError("mapping file: version must be 1")
-    table: Table = {}
     for i, row in enumerate(doc.get("mappings") or []):
         _validate_row(i, row)
+    return doc
+
+
+def load_rows(path: Path | None = None) -> list[dict]:
+    """Every validated row of the mapping file, whatever its status."""
+    return list(_load_doc(path).get("mappings") or [])
+
+
+def row_covers(row: dict, datatype: str, suffix: str) -> bool:
+    """Whether a row accounts for the BIDS pair (datatype, suffix).
+
+    Matching rule: same BIDS datatype, and either the row names the same suffix (any
+    extension: eeg/meg rows are keyed by datatype+extension+suffix) or it names no suffix
+    (e.g. the micr row, keyed by extension only, covers every micr suffix).
+    """
+    bids = row["bids"]
+    return bids["datatype"] == datatype and bids.get("suffix") in (None, suffix)
+
+
+def load_table(path: Path | None = None) -> Table:
+    """Load and validate the mapping file; return the active (datatype, suffix) rows."""
+    doc = _load_doc(path)
+    table: Table = {}
+    for i, row in enumerate(doc.get("mappings") or []):
         if row["status"] != "active" or "extension" in row["bids"]:
             continue
         bids, bl = row["bids"], row["brainlife"]
@@ -65,6 +89,16 @@ def load_table(path: Path | None = None) -> Table:
 
 
 _TABLE = load_table()
+_DRAFTS = {
+    (r["bids"]["datatype"], r["bids"]["suffix"]): r["brainlife"]["datatype"]
+    for r in load_rows()
+    if r["status"] == "draft"
+}
+
+
+def draft_for(datatype: str, suffix: str) -> str | None:
+    """Name of the draft (not yet registered) brainlife datatype for a BIDS pair, if any."""
+    return _DRAFTS.get((datatype, suffix))
 
 
 def to_brainlife(

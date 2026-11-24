@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "fmap",
+        "maps": [
+            {
+                "dest": "TB1map.nii.gz",
+                "json": "TB1map.json",
+                "src": "TB1map.nii.gz"
+            },
+            {
+                "dest": "TB1map.nii",
+                "src": "TB1map.nii"
+            },
+            {
+                "dest": "TB1map.ome.zarr",
+                "json": "TB1map.json",
+                "src": "TB1map.ome.zarr"
+            },
+            {
+                "dest": "TB1map.json",
+                "src": "TB1map.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "In arbitrary units (arbitrary). Radio frequency (RF) transmit (B1+) field maps are REQUIRED to use this suffix regardless of the method used to generate them. TB1map intensity values are RECOMMENDED to be represented as percent multiplicative factors such that FlipAngle<sub>effective</sub> = B1+<sub>intensity</sub>\\*FlipAngle<sub>nominal</sub> . Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS TB1map.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "TB1map.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS TB1map.nii",
+            "ext": ".nii",
+            "filename": "TB1map.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS TB1map.ome.zarr/",
+            "dirname": "TB1map.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS TB1map.json",
+            "ext": ".json",
+            "filename": "TB1map.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/fmap/tb1map",
+    "readme": "# neuro/fmap/tb1map\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `fmap`, suffix `TB1map`.\n\nSource: BIDS specification v1.11.2, raw data, `fmap/*_TB1map`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `fmap/` (separate datatypes, not part of this one): `RB1COR`, `RB1map`, `TB1AFI`, `TB1DAM`, `TB1EPI`, `TB1RFM`, `TB1SRGE`, `TB1TFL`, `epi`, `fieldmap`, `m0scan`, `magnitude`, `magnitude1`, `magnitude2`, `phase1`, `phase2`, `phasediff`.\n\n"
+}

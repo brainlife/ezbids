@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "dwi",
+        "maps": [
+            {
+                "dest": "trace.nii.gz",
+                "json": "trace.json",
+                "src": "trace.nii.gz"
+            },
+            {
+                "dest": "trace.nii",
+                "src": "trace.nii"
+            },
+            {
+                "dest": "trace.ome.zarr",
+                "json": "trace.json",
+                "src": "trace.ome.zarr"
+            },
+            {
+                "dest": "trace.json",
+                "src": "trace.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Trace-weighted image, as the mean intensity of diffusion-weighted images Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS trace.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "trace.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS trace.nii",
+            "ext": ".nii",
+            "filename": "trace.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS trace.ome.zarr/",
+            "dirname": "trace.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS trace.json",
+            "ext": ".json",
+            "filename": "trace.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/dwi/trace",
+    "readme": "# neuro/dwi/trace\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `dwi`, suffix `trace`.\n\nSource: BIDS specification v1.11.2, raw data, `dwi/*_trace`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `dwi/` (separate datatypes, not part of this one): `ADC`, `FA`, `S0map`, `colFA`, `dwi`, `expADC`, `physio`, `physioevents`, `sbref`, `stim`.\n\n"
+}

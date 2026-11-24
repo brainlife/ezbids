@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "perf",
+        "maps": [
+            {
+                "dest": "asl.nii.gz",
+                "json": "asl.json",
+                "src": "asl.nii.gz"
+            },
+            {
+                "dest": "asl.nii",
+                "src": "asl.nii"
+            },
+            {
+                "dest": "asl.ome.zarr",
+                "json": "asl.json",
+                "src": "asl.ome.zarr"
+            },
+            {
+                "dest": "asl.json",
+                "src": "asl.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "The complete ASL time series stored as a 4D NIfTI file in the original acquisition order, with possible volume types including: control, label, m0scan, deltam, cbf. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS asl.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "asl.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS asl.nii",
+            "ext": ".nii",
+            "filename": "asl.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS asl.ome.zarr/",
+            "dirname": "asl.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS asl.json",
+            "ext": ".json",
+            "filename": "asl.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/perf/asl",
+    "readme": "# neuro/perf/asl\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `perf`, suffix `asl`.\n\nSource: BIDS specification v1.11.2, raw data, `perf/*_asl`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `perf/` (separate datatypes, not part of this one): `aslcontext`, `asllabeling`, `m0scan`, `noRF`, `physio`, `physioevents`, `stim`.\n\n"
+}
