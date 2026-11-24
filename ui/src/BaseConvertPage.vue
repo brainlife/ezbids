@@ -1,15 +1,9 @@
 <template>
     <div>
         <aside>
-            <div class="brand">
-                <a href="https://brainlife.io" target="_blank" aria-label="brainlife.io">
-                    <img :src="brainlifeMark" class="mark" alt="" />
-                </a>
-                <div>
-                    <div class="name">ezBIDS</div>
-                    <div class="by">by brainlife.io</div>
-                </div>
-            </div>
+            <a class="brand" href="#" aria-label="ezBIDS home" @click.prevent="$router.push('/')">
+                <BrandLockup />
+            </a>
 
             <nav class="steps">
                 <template v-for="g in navGroups" :key="g.title || g.items[0].page">
@@ -28,12 +22,12 @@
             <div class="aside-foot">
                 <div class="menu-footer">
                     <el-tooltip content="Open github">
-                        <a href="https://github.com/brainlife/ezbids" target="github">
+                        <a href="https://github.com/brainlife/ezbids">
                             <font-awesome-icon class="menu-footer-icon" :icon="['fab', 'github']" />
                         </a>
                     </el-tooltip>
                     <el-tooltip content="Open documentation">
-                        <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank">
+                        <a href="https://brainlife.io/docs/using_ezBIDS/">
                             <font-awesome-icon class="menu-footer-icon" :icon="['fa', 'book']" />
                         </a>
                     </el-tooltip>
@@ -103,7 +97,7 @@ import 'element-plus/es/components/notification/style/css';
 import { setSectionIDs, funcQA, fmapQA, dwiQA, petQA, setRun, setVolumeThreshold, setIntendedFor } from './libUnsafe';
 
 import niivue from './components/niivue.vue';
-import brainlifeMark from './assets/brainlife-mark-light.svg';
+import BrandLockup from './components/brand/BrandLockup.vue';
 
 export default defineComponent({
     components: {
@@ -117,6 +111,7 @@ export default defineComponent({
         Participant,
         Finalize,
         Feedback,
+        BrandLockup,
         ManageUsersDialog: ManageUsersDialog,
 
         niivue,
@@ -137,8 +132,6 @@ export default defineComponent({
                 'finalize',
                 'feedback',
             ],
-
-            brainlifeMark,
 
             // sidebar steps, in page order
             navGroups: [
@@ -206,7 +199,9 @@ export default defineComponent({
                 case 'upload':
                     return 'warning';
                 default:
-                    return 'info';
+                    // outlined, like brainlife-lite's secondary actions (Element 1.2 paints typed buttons
+                    // with an inline background, so a CSS override of the info type doesn't take)
+                    return 'default';
             }
         },
 
@@ -393,26 +388,9 @@ aside {
 }
 
 .brand {
-    display: flex;
-    align-items: center;
-    gap: 10px;
+    display: block;
     padding: 18px 16px 14px;
-
-    .mark {
-        height: 42px;
-        width: auto;
-        display: block;
-    }
-    .name {
-        font-size: 1.25rem;
-        font-weight: 600;
-        letter-spacing: -0.01em;
-        line-height: 1.1;
-    }
-    .by {
-        font-size: 0.72rem;
-        color: var(--ink-2);
-    }
+    text-decoration: none;
 }
 
 .steps {
@@ -433,7 +411,7 @@ aside {
         gap: 10px;
         padding: 8px 10px;
         margin: 2px 0;
-        border-radius: 10px;
+        border-radius: var(--panel-radius);
         font-weight: 300;
         color: var(--ink);
     }

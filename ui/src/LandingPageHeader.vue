@@ -1,19 +1,15 @@
 <template>
-    <header class="site-header">
-        <div class="wrap bar">
-            <div class="brand-row">
-                <a href="https://brainlife.io/about/" target="_blank" aria-label="brainlife.io">
-                    <img class="mark" :src="brainlifeMark" alt="" />
-                </a>
-                <a class="brand" href="#" @click.prevent="$router.push('/')">
-                    ezBIDS <span class="by mono">by brainlife.io</span>
-                </a>
-            </div>
-            <nav class="nav">
-                <a class="mono" href="https://brainlife.io/docs/using_ezBIDS/" target="_blank">Docs</a>
-                <a class="mono" href="https://brainlife.io/team/" target="_blank">Team</a>
-                <button class="btn p" @click="redirectToBrainlifeAuth">
-                    {{ !hasAuth || hasJWT ? 'Get started' : 'Log in / register' }}
+    <header class="site-band">
+        <div class="wrap site">
+            <a class="brand" href="#" aria-label="ezBIDS home" @click.prevent="$router.push('/')">
+                <BrandLockup tone="dark" />
+            </a>
+            <nav class="nav" aria-label="Primary">
+                <a href="https://brainlife.io/docs/using_ezBIDS/">Docs</a>
+                <a href="https://brainlife.io/docs/using_aimport/">aimport</a>
+                <a href="https://brainlife.io/team/">Team</a>
+                <button class="btn" @click="redirectToBrainlifeAuth">
+                    {{ !hasAuth || hasJWT ? 'Get started' : 'Sign in' }}
                 </button>
             </nav>
         </div>
@@ -24,12 +20,10 @@
 import { defineComponent } from 'vue';
 import { mapState } from 'vuex';
 import { hasJWT, hasAuth } from './lib';
-import brainlifeMark from './assets/brainlife-mark.svg';
+import BrandLockup from './components/brand/BrandLockup.vue';
 
 export default defineComponent({
-    data() {
-        return { brainlifeMark };
-    },
+    components: { BrandLockup },
     computed: {
         ...mapState(['config']),
         hasAuth() {
@@ -40,9 +34,6 @@ export default defineComponent({
         },
     },
     methods: {
-        openBrainLifeTeamPage() {
-            window.open('https://brainlife.io/team/', '_blank');
-        },
         redirectToBrainlifeAuth() {
             if (!hasAuth() || hasJWT()) {
                 this.$router.push('/convert');
@@ -64,59 +55,55 @@ export default defineComponent({
 </script>
 
 <style scoped>
-.site-header {
+/* landing-next SiteHeader: a translucent band over the hero, logo left, links right */
+.site-band {
     position: sticky;
     top: 0;
     z-index: 10;
     background: var(--hero);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
     border-bottom: 1px solid var(--hero-line);
 }
-.bar {
+.site {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    height: 60px;
-}
-.brand-row {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-}
-.mark {
-    height: 34px;
-    width: auto;
-    display: block;
+    gap: 16px;
+    padding-block: 12px;
 }
 .brand {
-    color: var(--hero-ink) !important;
-    font-weight: 600;
-    font-size: 1.1rem;
     text-decoration: none !important;
-}
-.by {
-    font-size: 0.66rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--hero-muted);
-    margin-left: 8px;
 }
 .nav {
     display: flex;
     align-items: center;
-    gap: 18px;
+    gap: 22px;
+    font-size: 0.95rem;
+    font-weight: 500;
 }
 .nav a {
-    color: var(--hero-muted);
-    font-size: 0.78rem;
+    color: var(--hero-ink);
+    opacity: 0.92;
+    line-height: 1;
 }
-.nav .btn.p {
-    background: var(--hero-accent);
+.nav a:hover {
+    opacity: 1;
+    color: var(--hero-accent);
+    text-decoration: none;
+}
+.nav .btn {
+    color: var(--hero-ink);
+    border-color: rgba(238, 243, 246, 0.35);
+    padding: 8px 14px;
+    margin-left: 6px;
+    line-height: 1;
+}
+.nav .btn:hover {
     border-color: var(--hero-accent);
-    color: var(--hero-accent-ink);
-    padding: 7px 14px;
+    color: var(--hero-accent);
 }
-@media (max-width: 600px) {
-    .by,
+@media (max-width: 760px) {
     .nav a {
         display: none;
     }

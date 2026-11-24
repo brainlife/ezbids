@@ -81,7 +81,7 @@
                         Levitas, D., Hayashi, S., Vinci-Booher, S., Heinsfeld, A., Bhatia, D., Lee, N., ... & Pestilli,
                         F. (2024). ezBIDS: Guided standardization of neuroimaging data interoperable with major data
                         archives and platforms. Scientific data, 11(1), 179.
-                        <a href="https://doi.org/10.1038/s41597-024-02959-0" target="_blank"
+                        <a href="https://doi.org/10.1038/s41597-024-02959-0"
                             >https://doi.org/10.1038/s41597-024-02959-0</a
                         >
                     </p>
@@ -139,6 +139,7 @@ import axios from './axios.instance';
 
 import { ElNotification } from 'element-plus';
 import { hasAuth } from './lib';
+import { openExternal } from './externalPage';
 
 export default defineComponent({
     components: {
@@ -258,10 +259,13 @@ export default defineComponent({
 
         sendBrainlife(pipeline?: 'DWI') {
             const pipelineString = pipeline ? `&pipeline=${pipeline}` : '';
-            window.open(
-                `https://brainlife.io/projects#ezbids=${this.session._id}${pipelineString}`,
-                `_brainlife.${this.session._id}`
-            );
+            // brainlife.io sends no X-Frame-Options / frame-ancestors and, in production, is the same origin
+            // as ezBIDS (brainlife.io/ezbids), so its projects page (which reads #ezbids=<session id>)
+            // runs in the dialog with the user's brainlife.io sign-in
+            openExternal(`https://brainlife.io/projects#ezbids=${this.session._id}${pipelineString}`, {
+                title: 'Send to brainlife.io',
+                note: 'Pick or create a project to import this dataset into. Close the dialog when the import has started.',
+            });
         },
 
         async sendOpenneuro() {
@@ -272,8 +276,12 @@ export default defineComponent({
                 const url = `${this.config.apihost}/download/${this.session._id}/bids/${this.ezbids.datasetDescription.Name}?token=${shortLivedJWT}`;
 
                 const fullurl = new URL(url, document.baseURI).href;
-                window.open('https://openneuro.org/import?url=' + encodeURI(fullurl));
-
+                // openneuro.org allows framing, but its Google / ORCID sign-in pages do not (X-Frame-Options
+                // DENY / SAMEORIGIN), so the dialog offers a new tab for signing in
+                openExternal('https://openneuro.org/import?url=' + encodeURI(fullurl), {
+                    title: 'Send to OpenNeuro',
+                    note: 'If OpenNeuro asks you to sign in, use "Open in a new tab": Google and ORCID sign-in pages cannot be shown inside another site.',
+                });
             } catch (e) {
                 console.error(e);
                 ElNotification({
@@ -293,8 +301,8 @@ export default defineComponent({
 
 <style lang="scss" scoped>
 .download {
-    border-radius: 10px;
-    background-color: #eee;
+    border-radius: var(--panel-radius);
+    background-color: var(--app-bg);
     padding: 20px;
     font-size: 85%;
 }

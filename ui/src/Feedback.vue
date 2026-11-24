@@ -11,12 +11,12 @@
         <h2>Feedbacks / Comments</h2>
         <p>
             ezBIDS is a brand new web service! Your feedback is extremely valuable to us. Please send us an email at
-            <a href="mailto:pestilli@utexas.edu" target="mail">pestilli@utexas.edu</a> describing your experience with
-            any feedbacks / comments / suggestions.
+            <a href="mailto:pestilli@utexas.edu">pestilli@utexas.edu</a> describing your experience with any feedbacks /
+            comments / suggestions.
         </p>
         <p>
             If you have experienced any issues while using ezBIDS, please submit an
-            <a href="https://github.com/brainlife/ezbids/issues" target="github">Github Issues</a>
+            <a href="https://github.com/brainlife/ezbids/issues">Github Issues</a>
         </p>
         <br />
 
@@ -52,42 +52,42 @@
             <div class="avatar">
                 <img src="./assets/images/DanLevitas.png" width="200" />
                 <br />
-                <b><a href="mailto:dlevitas@iu.edu" target="mail">Dan Levitas</a></b
+                <b><a href="mailto:dlevitas@iu.edu">Dan Levitas</a></b
                 ><br />
                 Software Engineer
             </div>
             <div class="avatar">
                 <img src="./assets/images/franco.jpg" width="200" />
                 <br />
-                <b><a href="mailto:pestilli@utexas.edu" target="mail">Franco Pestilli</a></b
+                <b><a href="mailto:pestilli@utexas.edu">Franco Pestilli</a></b
                 ><br />
                 Associate Professor
             </div>
             <div class="avatar">
                 <img src="./assets/images/soichi.jpg" width="200" />
                 <br />
-                <b><a href="mailto:hayashis@iu.edu" target="mail">Soichi Hayashi</a></b
+                <b><a href="mailto:hayashis@iu.edu">Soichi Hayashi</a></b
                 ><br />
                 Technical Lead
             </div>
             <div class="avatar">
                 <img src="./assets/images/Anibal.png" width="200" />
                 <br />
-                <b><a href="mailto:anibalsolon@utexas.edu" target="mail">Anibal S. Heinsfeld</a></b
+                <b><a href="mailto:anibalsolon@utexas.edu">Anibal S. Heinsfeld</a></b
                 ><br />
                 Software Engineer
             </div>
             <div class="avatar">
                 <img src="./assets/images/DheerajBhatia.png" width="200" />
                 <br />
-                <b><a href="mailto:dheeraj.bhatia@austin.utexas.edu" target="mail">Dheeraj Bhatia</a></b
+                <b><a href="mailto:dheeraj.bhatia@austin.utexas.edu">Dheeraj Bhatia</a></b
                 ><br />
                 Software Engineer
             </div>
             <div class="avatar">
                 <img src="./assets/images/NickLee.jpeg" width="200" />
                 <br />
-                <b><a href="mailto:niconal902@gmail.com" target="mail">Nick Lee</a></b
+                <b><a href="mailto:niconal902@gmail.com">Nick Lee</a></b
                 ><br />
                 Software Engineer
             </div>

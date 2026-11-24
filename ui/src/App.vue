@@ -1,13 +1,25 @@
 <template>
     <div>
         <RouterView />
+        <ExternalPageDialog />
     </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import ExternalPageDialog from './components/dialogs/ExternalPageDialog.vue';
+import { interceptExternalLinks } from './externalPage';
 
-export default defineComponent({});
+/* Nothing opens a new window: links to other sites open in ExternalPageDialog over the app. */
+export default defineComponent({
+    components: { ExternalPageDialog },
+    mounted() {
+        document.addEventListener('click', interceptExternalLinks);
+    },
+    unmounted() {
+        document.removeEventListener('click', interceptExternalLinks);
+    },
+});
 </script>
 
 <style lang="scss">

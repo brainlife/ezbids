@@ -1,13 +1,15 @@
-/* The converter's look, matched to brainlife-lite (src/themeMui.ts): DM Sans, primary #3d6a92,
-   text #2D3748 / #718096, grey[100] background, white panels with 18px corners. Element Plus reads
-   these variables, so its buttons, inputs, tables and dialogs follow. */
+/* The converter's look, matched to brainlife-lite (src/themeMui.ts) and the app colors in
+   landing-next/public/brand/README.md: DM Sans, primary #3d6a92, status colors success #5fa86b,
+   info #3b9fd0, error #d0494f, warning #c9a94f, text #2D3748 / #718096, grey[100] background,
+   white panels with 6px corners (MUI Paper) and 4px controls (MUI shape). Element Plus reads
+   these variables, so its buttons, inputs, tables, tags, alerts and dialogs follow. */
 /* html:root outranks the :root blocks Element Plus loads per component, after this file */
 html:root {
     --aside-w: 210px;
     --app-bg: #f5f5f5;
     --nav-bg: #fafafa;
     --panel-bg: #ffffff;
-    --panel-radius: 18px;
+    --panel-radius: 6px;
     --line: #e2e8f0;
     --ink: #2d3748;
     --ink-2: #718096;
@@ -30,8 +32,81 @@ html:root {
     --el-border-color-base: #d7dde5;
     --el-border-color-light: #e2e8f0;
     --el-border-color-lighter: #edf1f5;
-    --el-border-radius-base: 8px;
-    --el-border-radius-small: 6px;
+    --el-border-radius-base: 4px;
+    --el-border-radius-small: 4px;
+
+    /* status colors (brainlife-lite statusColors); -light / -lighter are the tonal 16% / 8% tints */
+    --el-color-success: #5fa86b;
+    --el-color-success-light: #e5f0e7;
+    --el-color-success-lighter: #f2f8f3;
+    --el-color-info: #3b9fd0;
+    --el-color-info-light: #e0eff8;
+    --el-color-info-lighter: #f0f7fc;
+    --el-color-warning: #c9a94f;
+    --el-color-warning-light: #f7f2e4;
+    --el-color-warning-lighter: #fbf8f1;
+    --el-color-danger: #d0494f;
+    --el-color-danger-light: #f8e1e2;
+    --el-color-danger-lighter: #fcf0f0;
+    --el-color-error: #d0494f;
+    --el-color-error-light: #f8e1e2;
+    --el-color-error-lighter: #fcf0f0;
+}
+
+/* dialogs are panels too */
+.el-dialog {
+    border-radius: var(--panel-radius);
+    overflow: hidden;
+}
+
+/* Element Plus 1.2 hard-codes tag and alert tints, so the tonal look (16% tint, colored text) is set
+   per type. "info" tags are neutral labels here (series index, counts), like brainlife-lite's default
+   grey chips; the blue info color is kept for alerts and notifications. */
+html .el-tag {
+    --el-tag-bg-color: var(--el-color-primary-light-9);
+    --el-tag-border-color: transparent;
+    --el-tag-text-color: var(--el-color-primary);
+    --el-tag-hover-color: var(--el-color-primary);
+}
+.el-tag.el-tag--success {
+    --el-tag-bg-color: var(--el-color-success-light);
+    --el-tag-border-color: transparent;
+    --el-tag-text-color: #3f7a4b;
+}
+.el-tag.el-tag--warning {
+    --el-tag-bg-color: var(--el-color-warning-light);
+    --el-tag-border-color: transparent;
+    --el-tag-text-color: #8c7330;
+}
+.el-tag.el-tag--danger,
+.el-tag.el-tag--error {
+    --el-tag-bg-color: var(--el-color-danger-light);
+    --el-tag-border-color: transparent;
+    --el-tag-text-color: #a8333a;
+}
+.el-tag.el-tag--info {
+    --el-tag-bg-color: #edf2f7;
+    --el-tag-border-color: transparent;
+    --el-tag-text-color: #4a5568;
+    background-color: var(--el-tag-bg-color);
+}
+.el-tag.el-tag--plain,
+.el-tag.el-tag--plain.el-tag--info {
+    --el-tag-bg-color: #fff;
+    --el-tag-border-color: var(--line);
+    --el-tag-text-color: var(--ink-2);
+}
+.el-alert--success {
+    --el-alert-bg-color: var(--el-color-success-light);
+}
+.el-alert--info {
+    --el-alert-bg-color: var(--el-color-info-light);
+}
+.el-alert--warning {
+    --el-alert-bg-color: var(--el-color-warning-light);
+}
+.el-alert--error {
+    --el-alert-bg-color: var(--el-color-error-light);
 }
 
 /* the fixed work areas (series, objects, events, deface) sit on the grey background as panels */
@@ -45,14 +120,4 @@ html:root {
 .page-panel a:not(.el-button),
 .work-panel a:not(.el-button) {
     color: var(--el-color-primary);
-}
-
-/* the step bar's Back button: outlined, like brainlife-lite's secondary actions */
-.page-action .el-button--info {
-    --el-button-bg-color: #fff;
-    --el-button-border-color: var(--el-border-color-base);
-    --el-button-text-color: var(--ink);
-    --el-button-hover-bg-color: var(--el-color-primary-light-9);
-    --el-button-hover-border-color: var(--el-color-primary-light-7);
-    --el-button-hover-text-color: var(--el-color-primary);
 }
