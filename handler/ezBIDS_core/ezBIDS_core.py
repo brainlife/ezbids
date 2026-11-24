@@ -754,8 +754,14 @@ def find_cog_atlas_tasks(url):
         "test" removed, to make it easier to search the SeriesDescription
         fields for a matching task name.
     """
-    url_contents = urlopen(url)
-    data = json.load(url_contents)
+    if os.environ.get("EZBIDS_OFFLINE"):
+        return []
+    try:
+        url_contents = urlopen(url, timeout=30)
+        data = json.load(url_contents)
+    except Exception as e:  # no network or Cognitive Atlas down: task-name guessing just gets fewer candidates
+        print(f"Could not fetch Cognitive Atlas tasks ({e}); continuing without them")
+        return []
     # Remove non-alphanumeric terms and "task", "test" substrings
     tasks = [re.sub("[^A-Za-z0-9]+", "", re.split(" task| test", x["name"])[0]).lower() for x in data]
     # Remove empty task name terms and ones under 2 characters (b/c hard to detect in SeriesDescription)
