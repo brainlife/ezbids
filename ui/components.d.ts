@@ -6,6 +6,7 @@ declare module 'vue' {
   export interface GlobalComponents {
     AnalysisErrors: typeof import('./src/components/analysisErrors.vue')['default']
     AsyncImageLink: typeof import('./src/components/AsyncImageLink.vue')['default']
+    BrandLockup: typeof import('./src/components/brand/BrandLockup.vue')['default']
     Columnselecter: typeof import('./src/components/columnselecter.vue')['default']
     Datatype: typeof import('./src/components/datatype.vue')['default']
     ElAlert: typeof import('element-plus/es')['ElAlert']
@@ -37,6 +38,7 @@ declare module 'vue' {
     ElTableColumn: typeof import('element-plus/es')['ElTableColumn']
     ElTag: typeof import('element-plus/es')['ElTag']
     ElTooltip: typeof import('element-plus/es')['ElTooltip']
+    ExternalPageDialog: typeof import('./src/components/dialogs/ExternalPageDialog.vue')['default']
     Loading: typeof import('element-plus/es')['ElLoadingDirective']
     ManageUsersDialog: typeof import('./src/components/dialogs/ManageUsersDialog.vue')['default']
     ModalityForm: typeof import('./src/components/modalityForm.vue')['default']

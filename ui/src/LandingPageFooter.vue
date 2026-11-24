@@ -1,81 +1,50 @@
 <template>
     <footer class="site-footer">
         <div class="wrap row">
-            <div>
-                <div class="fbrand">
-                    <img class="mark" :src="brainlifeMark" alt="brainlife.io" />
-                    <span class="brand">ezBIDS</span>
-                </div>
-                <p class="small">
-                    Part of <a href="https://brainlife.io/about/" target="_blank">brainlife.io</a>. Free for
-                    researchers.
-                </p>
-            </div>
-            <nav class="links mono">
-                <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank">Docs</a>
-                <a href="https://brainlife.io/docs/using_aimport/" target="_blank">aimport</a>
-                <a href="https://github.com/brainlife/ezbids" target="_blank">GitHub</a>
-                <a href="https://bids-specification.readthedocs.io/en/v1.11.2/" target="_blank">BIDS v1.11.2</a>
-                <a href="https://brainlife.io/team/" target="_blank">Team</a>
-            </nav>
+            <span class="fbrand">
+                <BrandLockup size="sm" tone="auto" />
+                <span class="left">Part of brainlife.io · Pestilli Lab, The University of Texas at Austin</span>
+            </span>
+            <span class="links">
+                <a href="https://brainlife.io/docs/using_ezBIDS/">Docs</a> ·
+                <a href="https://brainlife.io/docs/using_aimport/">aimport</a> ·
+                <a href="https://github.com/brainlife/ezbids">GitHub</a> ·
+                <a href="https://bids-specification.readthedocs.io/en/v1.11.2/">BIDS v1.11.2</a> ·
+                <a href="https://brainlife.io/team/">Team</a>
+            </span>
         </div>
-        <div class="wrap small mono legal">© Pestillilab. All rights reserved.</div>
     </footer>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-
-import brainlifeMark from './assets/brainlife-mark.svg';
+import BrandLockup from './components/brand/BrandLockup.vue';
 
 export default defineComponent({
-    data() {
-        return { brainlifeMark };
-    },
+    components: { BrandLockup },
 });
 </script>
 
 <style scoped>
+/* landing-next SiteFooter: light, a hairline above, mark and credit left, links right */
 .site-footer {
-    background: var(--hero);
-    color: var(--hero-ink);
-    padding: 40px 0 28px;
-}
-.site-footer a {
-    color: var(--hero-ink);
+    border-top: 1px solid var(--rule);
+    padding-block: 36px;
+    font-size: 0.88rem;
+    color: var(--muted);
+    background: var(--bg);
 }
 .row {
     display: flex;
     justify-content: space-between;
-    gap: 24px;
+    align-items: center;
+    gap: 16px;
     flex-wrap: wrap;
 }
 .fbrand {
     display: flex;
     align-items: center;
-    gap: 10px;
-    margin-bottom: 6px;
-}
-.mark {
-    height: 26px;
-    width: auto;
-}
-.brand {
-    font-weight: 600;
-    font-size: 1.1rem;
-}
-.small {
-    font-size: 0.82rem;
-    color: var(--hero-muted);
-}
-.links {
-    display: flex;
-    gap: 18px;
+    gap: 16px;
     flex-wrap: wrap;
-    font-size: 0.78rem;
-}
-.legal {
-    margin-top: 24px;
-    font-size: 0.7rem;
 }
 </style>

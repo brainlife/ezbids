@@ -32,7 +32,6 @@
                 <div>
                     <a
                         href="https://bids-specification.readthedocs.io/en/stable/03-modality-agnostic-files.html#participants-file"
-                        target="_blank"
                         >See here for suggestions</a
                     >
                 </div>

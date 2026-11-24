@@ -1,5 +1,5 @@
 <template>
-    <el-container direction="vertical" class="container">
+    <el-container direction="vertical" class="container lv3">
         <LandingPageHeader />
         <el-main style="color: white">
             <el-row style="height: 100%">
@@ -24,6 +24,7 @@
 import { defineComponent } from 'vue';
 import LandingPageFooter from './LandingPageFooter.vue';
 import LandingPageHeader from './LandingPageHeader.vue';
+import './landing/landing.css';
 
 export default defineComponent({
     components: {
