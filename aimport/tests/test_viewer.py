@@ -68,3 +68,15 @@ def test_state_url():
     assert url.startswith("/viewer/ng/#!")
     assert json.loads(unquote(url.removeprefix("/viewer/ng/#!"))) == state
     assert "token" not in url.lower()
+
+
+def test_index_picks_the_image():
+    files = ["sub-01/anat/sub-01_run-1_T1w.nii.gz", "sub-01/anat/sub-01_run-2_T1w.nii.gz"]
+    state = entry_state(T1W, files, list(files), BASE, index=1)
+    defaced, original = state["layers"]
+    assert defaced["name"] == "sub-01_run-2_T1w" and original["name"] == "sub-01_run-2_T1w (original)"
+    assert defaced["source"] == BASE + "/qa/data/s0-sub0-ses0/1/sub-01_run-2_T1w.nii.gz|gzip:|nifti:"
+    assert original["source"].startswith(BASE + "/qa/data/s0-sub0-ses0/1/")
+    # an image beyond the originals list was not defaced: no original layer
+    assert len(entry_state(T1W, files, files[:1], BASE, index=1)["layers"]) == 1
+    check(state)

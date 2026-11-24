@@ -63,17 +63,17 @@ def nifti_layer(name: str, url: str, kind: str) -> dict:
 
 
 def entry_state(entry: dict, files: list[str], originals: list[str] | None, base: str,
-                compare: bool = False) -> dict:
-    """The Neuroglancer state for a written plan entry: its (first) image from the output, and for a defaced
-    entry the pre-deface original as a second layer, hidden until switched on. compare (defaced entries): the
+                compare: bool = False, index: int = 0) -> dict:
+    """The Neuroglancer state for image `index` of a written plan entry (files: the entry's manifest), and when
+    that image was defaced, its pre-deface original as a second layer, hidden until switched on. compare: the
     two side by side instead, each in its own panel."""
-    rel = files[0]
+    rel = files[index]
     file = rel.rsplit("/", 1)[-1]
     name = file.removesuffix(".gz").removesuffix(".nii")
-    url = f"{base}/qa/data/{quote(entry['id'], safe='')}/0/{quote(file)}"
+    url = f"{base}/qa/data/{quote(entry['id'], safe='')}/{index}/{quote(file)}"
     kind = kind_for(entry)
     layers = [nifti_layer(name, url, kind)]
-    if originals:
+    if originals and index < len(originals):
         original = nifti_layer(f"{name} (original)", url + "?which=original", kind)
         if compare:
             return {"layout": {"type": "row", "children": [
@@ -90,16 +90,16 @@ def state_url(state: dict) -> str:
 
 
 def index_page(rows: list[dict]) -> str:
-    """The QA index: one row per written entry, {"id", "paths", "nifti", "defaced"}. BIDS paths only."""
+    """The QA index: one row per written image, {"id", "index", "path", "nifti", "defaced"}. BIDS paths only."""
     def row(r: dict) -> str:
-        eid = quote(r["id"], safe="")
+        href = f"/viewer/entry/{quote(r['id'], safe='')}" + (f"?index={r['index']}" if r["index"] else "")
         links = []
         if r["nifti"]:
-            links.append(f'<a href="/viewer/entry/{eid}">Neuroglancer</a>')
+            links.append(f'<a href="{href}">Neuroglancer</a>')
             if r["defaced"]:
-                links.append(f'<a href="/viewer/entry/{eid}?compare=1">defaced vs original</a>')
-        paths = "<br>".join(f"<code>{html.escape(p)}</code>" for p in r["paths"])
-        return f"<tr><td>{paths}</td><td>{' · '.join(links)}</td></tr>"
+                sep = "&amp;" if r["index"] else "?"
+                links.append(f'<a href="{href}{sep}compare=1">defaced vs original</a>')
+        return f"<tr><td><code>{html.escape(r['path'])}</code></td><td>{' · '.join(links)}</td></tr>"
 
     body = ("".join(row(r) for r in rows) if rows
             else '<tr><td colspan="2">No images were written.</td></tr>')

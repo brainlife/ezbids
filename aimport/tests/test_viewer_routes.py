@@ -355,8 +355,8 @@ def test_viewer_index(planned):
         assert f"/viewer/entry/{eid}\"" not in page
     defaced = t1w(planned)
     assert f'href="/viewer/entry/{defaced}?compare=1">defaced vs original' in page
-    assert page.count("defaced vs original</a>") == len(json.loads(
-        (planned.app.state.server.work / "output-state.json").read_text())["defaced"])
+    defaced_files = json.loads((planned.app.state.server.work / "output-state.json").read_text())["defaced"]
+    assert page.count("defaced vs original</a>") == sum(len(v) for v in defaced_files.values())
     assert not (PLANTED | NATIVE) & tokens(page)
     assert "http://" not in page and "https://" not in page and "<script" not in page  # no external assets
 
@@ -375,7 +375,8 @@ def test_viewer_entry_redirect(planned):
     assert state["layers"][1]["visible"] is False and "visible" not in state["layers"][0]
     for layer in state["layers"]:
         assert layer["source"].startswith(base + "/qa/data/")
-        assert layer["source"].endswith(".nii.gz|gzip:|nifti:") or layer["source"].endswith("|gzip:|nifti:")
+    assert state["layers"][0]["source"].endswith(".nii.gz|gzip:|nifti:")
+    assert state["layers"][1]["source"].endswith(".nii.gz?which=original|gzip:|nifti:")
     text = json.dumps(state)
     assert "appspot" not in text and TOKEN not in text
     assert text.count("http") == text.count(base)
@@ -404,3 +405,64 @@ def test_viewer_pages_need_auth(planned, make_client):
     anon = make_client(auth=False)
     assert anon.get("/viewer/").status_code == 401
     assert anon.get(f"/viewer/entry/{t1w(planned)}", follow_redirects=False).status_code == 401
+
+
+def add_second_image(planned, eid, tmp_path, defaced=True):
+    """Give entry eid a second written image (as a multi-echo or two-run entry has), defaced or not."""
+    work = tmp_path / "work"
+    state = json.loads((work / "output-state.json").read_text())
+    first = state["manifest"][eid][0]
+    second = first.replace(".nii.gz", "_2.nii.gz")
+    (work / "output" / "bids" / second).write_bytes(b"defaced2-" + eid.encode())
+    state["manifest"][eid].append(second)
+    if defaced:
+        (work / "pre-deface" / second).write_bytes(b"original2-" + eid.encode())
+        state["defaced"][eid].append(second)
+    (work / "output-state.json").write_text(json.dumps(state))
+    return second
+
+
+def test_viewer_entry_second_image(planned, tmp_path):
+    eid = t1w(planned)
+    executed(planned)
+    second = add_second_image(planned, eid, tmp_path)
+    browser = viewer_client(planned)
+    page = browser.get("/viewer/").text
+    assert second in page
+    assert f'href="/viewer/entry/{eid}?index=1">Neuroglancer' in page
+    assert f'href="/viewer/entry/{eid}?index=1&amp;compare=1">defaced vs original' in page
+    r = browser.get(f"/viewer/entry/{eid}", params={"index": 1}, follow_redirects=False)
+    assert r.status_code == 303
+    state = decoded_state(r.headers["location"])
+    name = second.rsplit("/", 1)[1].removesuffix(".nii.gz")
+    assert [layer["name"] for layer in state["layers"]] == [name, name + " (original)"]
+    base = "http://testserver"
+    for layer, want in zip(state["layers"], (b"defaced2-", b"original2-")):
+        assert layer["source"].startswith(f"{base}/qa/data/{eid}/1/")
+        assert browser.get(layer["source"].split("|", 1)[0].removeprefix(base)).content == want + eid.encode()
+    for bad in (2, 99, -1):
+        assert browser.get(f"/viewer/entry/{eid}", params={"index": bad}, follow_redirects=False).status_code == 404
+
+
+def test_viewer_entry_second_image_not_defaced(planned, tmp_path):
+    eid = t1w(planned)
+    executed(planned)
+    add_second_image(planned, eid, tmp_path, defaced=False)
+    page = planned.get("/viewer/").text
+    assert f'href="/viewer/entry/{eid}?index=1">Neuroglancer' in page
+    assert f"?index=1&amp;compare=1" not in page
+    state = decoded_state(planned.get(f"/viewer/entry/{eid}", params={"index": 1},
+                                      follow_redirects=False).headers["location"])
+    assert len(state["layers"]) == 1
+
+
+def test_qa_data_original_needs_an_original(planned):
+    executed(planned)
+    manifest = planned.get("/status").json()["manifest"]
+    defaced = json.loads((planned.app.state.server.work / "output-state.json").read_text())["defaced"]
+    other = next(eid for eid in manifest if eid not in defaced)
+    r = planned.get(f"/qa/data/{other}/0/", params={"which": "original"})
+    assert r.status_code == 404 and r.json()["detail"] == "no original for this image"
+    assert planned.get(f"/qa/data/{other}/0/").status_code == 200
+    # /preview keeps its behaviour: the written file stands in for the original
+    assert planned.get(f"/preview/{other}", params={"which": "original"}).content == b"original-" + other.encode()

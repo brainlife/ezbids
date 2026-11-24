@@ -859,8 +859,9 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
             raise HTTPException(404, "nothing to preview: execute the plan first")
         return state
 
-    def output_file(entry_id: str, index: int, which: str, subpath: str = "") -> Path:
-        """A written image of the output manifest (which=original: the pre-deface copy, for a defaced entry).
+    def output_file(entry_id: str, index: int, which: str, subpath: str = "", need_original: bool = False) -> Path:
+        """A written image of the output manifest (which=original: the pre-deface copy, for a defaced entry; with
+        need_original, 404 when there is none instead of the written image, as /preview gives).
         subpath: empty, or the file's own name, for a manifest file; a path inside a manifest directory."""
         state = output_state()
         files = (state.get("manifest") or {}).get(entry_id)
@@ -870,6 +871,8 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         defaced = (state.get("defaced") or {}).get(entry_id)
         if which == "original" and defaced and index < len(defaced):
             root, rel = srv.pre, defaced[index]
+        elif which == "original" and need_original:
+            raise HTTPException(404, "no original for this image")
         if subpath and not (subpath == PurePosixPath(rel).name and (root / rel).is_file()):
             rel = f"{rel}/{subpath}"  # inside a manifest directory: _file_inside refuses anything else
         path = _file_inside(root, rel)
@@ -887,7 +890,8 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
                     which: Literal["original", "defaced"] = "defaced") -> FileResponse:
         if not (index.isascii() and index.isdigit()):
             raise HTTPException(404, "no such image")
-        return FileResponse(output_file(entry_id, int(index), which, subpath), media_type="application/octet-stream")
+        return FileResponse(output_file(entry_id, int(index), which, subpath, need_original=True),
+                            media_type="application/octet-stream")
 
     @app.post("/viewer/session")
     def post_viewer_session() -> dict:
@@ -914,22 +918,23 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
     @app.get("/viewer/")
     def get_viewer_index() -> HTMLResponse:
         state, entries = written()
-        rows = [{"id": e.id, "paths": state["manifest"][e.id],
-                 "nifti": state["manifest"][e.id][0].endswith((".nii", ".nii.gz")),
-                 "defaced": bool((state.get("defaced") or {}).get(e.id))} for e in entries]
+        defaced = state.get("defaced") or {}
+        rows = [{"id": e.id, "index": i, "path": path, "nifti": path.endswith((".nii", ".nii.gz")),
+                 "defaced": i < len(defaced.get(e.id) or [])}
+                for e in entries for i, path in enumerate(state["manifest"][e.id])]
         return HTMLResponse(index_page(rows))
 
     @app.get("/viewer/entry/{entry_id}")
-    def get_viewer_entry(entry_id: str, request: Request, compare: bool = False) -> RedirectResponse:
+    def get_viewer_entry(entry_id: str, request: Request, compare: bool = False, index: int = 0) -> RedirectResponse:
         state, entries = written()
         entry = next((e for e in entries if e.id == entry_id), None)
         files = state["manifest"][entry_id] if entry else None
-        if not files or not files[0].endswith((".nii", ".nii.gz")):
+        if not files or not 0 <= index < len(files) or not files[index].endswith((".nii", ".nii.gz")):
             raise HTTPException(404, "no such image")
         originals = (state.get("defaced") or {}).get(entry_id)
         base = str(request.base_url).rstrip("/")  # the Host check allows only this server's own names
-        return RedirectResponse(state_url(entry_state(asdict(entry), files, originals, base, compare=compare)),
-                                status_code=303)
+        state_ = entry_state(asdict(entry), files, originals, base, compare=compare, index=index)
+        return RedirectResponse(state_url(state_), status_code=303)
 
     @app.get("/viewer/ng/{path:path}")
     def get_neuroglancer(path: str) -> FileResponse:
