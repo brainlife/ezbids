@@ -683,3 +683,18 @@ validators on your host and uploads the result. Run `bl aimport <folder> --proje
 The brainlife-lite `/aimport` page (plan review with image previews) is still upcoming.
 **Uploading to brainlife.io happens in those front ends, not in this engine**: the engine only produces the
 validated, de-identified output folder.
+
+## Credits
+
+aimport is developed by the Pestilli Lab at The University of Texas at Austin (brainlife.io). When you publish
+data imported with aimport, cite the ezBIDS paper, BIDS and the BIDS extension for your data type, and the tools
+your import used: the full list, with licences and citations, is in the ezBIDS README,
+["Built on and how to cite"](../README.md#built-on-and-how-to-cite) (machine-readable: [`CITATION.cff`](../CITATION.cff)).
+
+Beyond ezBIDS's own tools (dcm2niix, pydicom, NiBabel, pydeface with FSL, quickshear with ROBEX), aimport builds on:
+
+- **BIDS:** the `@bids/validator` (Deno) and bidsschematools.
+- **Microscopy:** BioIO with its CZI, ND2 and LIF readers, tifffile, ome-types, zarr-python, ngff-zarr (OME-Zarr), Dask, fsspec, SciPy and h5py.
+- **Electrophysiology and NIRS:** MNE-Python, MNE-BIDS, edfio, pybv, PyNWB, Matplotlib and defusedxml.
+- **AI (optional):** the Anthropic API (Claude), and AutoBIDSify (NeuroJSON, MIT) to route the agent to OpenAI or Qwen models.
+- **QA viewer:** Neuroglancer (images) and uPlot (recordings).

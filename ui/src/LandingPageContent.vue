@@ -18,7 +18,10 @@
                     </div>
                     <p class="cite">
                         Levitas et al., <i>Scientific Data</i> 11, 179 (2024) ·
-                        <a href="https://www.nature.com/articles/s41597-024-02959-0">read the paper</a>
+                        <a href="https://www.nature.com/articles/s41597-024-02959-0">read the paper</a> ·
+                        <a href="https://github.com/brainlife/ezbids#built-on-and-how-to-cite"
+                            >built on open-source tools, see credits</a
+                        >
                     </p>
                 </div>
                 <div
