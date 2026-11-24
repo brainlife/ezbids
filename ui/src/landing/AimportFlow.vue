@@ -32,7 +32,7 @@ export default defineComponent({
             steps: [
                 {
                     t: 'Scan',
-                    d: 'DICOM or NIfTI folders, converted with dcm2niix and mapped by the ezBIDS heuristics.',
+                    d: 'MRI as DICOM or NIfTI (dcm2niix and the ezBIDS heuristics), microscopy images and EEG, MEG, iEEG, NIRS or EMG recordings.',
                 },
                 {
                     t: 'Agent review',
@@ -48,7 +48,7 @@ export default defineComponent({
                 },
                 {
                     t: 'Validate',
-                    d: 'BIDS validator (v1.11.2) and the brainlife datatype validators, run on your machine.',
+                    d: 'BIDS validator (v1.11.2) and the brainlife datatype validators, run on your machine; image and trace viewers to check the result.',
                 },
             ],
         };

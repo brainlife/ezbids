@@ -660,7 +660,7 @@ def generate_dataset_description(DATA_DIR, bids_compliant):
         {
             "Name": "ezBIDS",
             "Version": "1.0.0",
-            "Description": "ezBIDS is a web-based tool for converting neuroimaging datasets to BIDS, requiring"
+            "Description": "ezBIDS is a web-based tool for converting neuroscience datasets to BIDS, requiring"
                            " neither coding nor knowledge of the BIDS specification",
             "CodeURL": "https://brainlife.io/ezbids/",
             "Container": {
