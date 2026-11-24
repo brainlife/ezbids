@@ -27,7 +27,8 @@ import uuid
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict
 from pathlib import Path
-from typing import Any, Literal
+from typing import Any, Literal, Sequence
+from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -44,7 +45,9 @@ from .ancillary import (
     write_ancillary,
 )
 from .deface import deface
-from .ezbids_runner import CoreResult, parse_core, run_ezbids, stage_input
+from . import modality
+from .ezbids_runner import CoreResult, has_files, parse_core, run_ezbids, stage_input
+from .modality import CLAIM_FILE, EMPTY_CORE, Claim, claim_terms, claimed_roots, module_dir, normalize_root
 from .plan import NEVER_KEEP, OLD_PLAN, Plan
 from .planner import DATASET_NAME_MAX, README_MAX, apply_plan_edits, build_plan, run_terms
 from .pseudonyms import KeyLockedError, PseudonymKey
@@ -128,6 +131,22 @@ class ScanBody(BaseModel):
     existing_subjects: list[str] = []
     existing_sessions: dict[str, list[str]] = {}  # subject id -> session labels already in the project
     target: Literal["bids", "datatypes"] = "bids"
+    # remote sources (https:// or s3://) for the modality modules; local-only: never written to scan.json
+    remote: list[str] = []
+
+
+REMOTE_SCHEMES = ("https", "s3")
+
+
+def _check_remote(urls: list[str]) -> None:
+    """422 unless every remote source is an https:// or s3:// URL (the URL itself is never echoed)."""
+    for url in urls:
+        try:
+            parts = urlsplit(url.strip())
+        except ValueError:
+            parts = None
+        if parts is None or parts.scheme.lower() not in REMOTE_SCHEMES or not parts.netloc:
+            raise HTTPException(422, "remote sources must be https:// or s3:// URLs")
 
 
 class PatchBody(BaseModel):
@@ -202,8 +221,28 @@ class Server:
                 core = self.get_core()
                 if core is None:
                     return None
-                self.terms = run_terms(core, self.input_dir)
+                terms = run_terms(core, self.input_dir, exclude=self.claimed_roots())
+                for m in modality.modules():
+                    terms |= m.terms(module_dir(self.work, m))
+                self.terms = terms
             return self.terms
+
+    # --- modality modules ---
+
+    def claims(self) -> dict[str, Claim]:
+        """Each registered module's claim, as saved by the scan (local-only: never served)."""
+        out = {}
+        for m in modality.modules():
+            path = module_dir(self.work, m) / CLAIM_FILE
+            out[m.name] = Claim.load(path) if path.exists() else Claim()
+        return out
+
+    def claimed_roots(self) -> list[str]:
+        return claimed_roots(self.claims().values())
+
+    def clear_modules(self) -> None:
+        for m in modality.modules():
+            _clear(module_dir(self.work, m))
 
     def clean(self, text: str) -> str:
         """text with the run's terms redacted; text that cannot be checked is withheld."""
@@ -350,32 +389,55 @@ class Server:
         self.thread.start()
 
     def reset_output(self) -> None:
-        """A new scan is a new plan: output this server produced earlier is discarded."""
+        """A new scan is a new plan: output this server produced earlier, and the modules' scan state
+        (``<work>/<name>/``), are discarded."""
+        self.clear_modules()
         if _read_json(self.work / OUTPUT_STATE) is not None:
             _clear(self.out)
             _clear(self.pre)
             _clear(self.failed_out)
             (self.work / OUTPUT_STATE).unlink(missing_ok=True)
 
-    def scan(self, info: dict, key: PseudonymKey) -> None:
+    def scan(self, info: dict, key: PseudonymKey, remote: Sequence[str] = ()) -> None:
+        """remote: the scan's remote sources, passed to the modules' claims (kept out of scan.json)."""
         try:
             self.reset_output()
             _clear(self.staged)
+            mods = modality.modules()
+            claims: dict[str, Claim] = {}
+            for m in mods:
+                claim = m.claim(self.input_dir, list(remote))
+                claim.roots = [normalize_root(r) for r in claim.roots]
+                claim.save(module_dir(self.work, m) / CLAIM_FILE)
+                claims[m.name] = claim
+            roots = claimed_roots(claims.values())
             self.set_status("scanning", "staging the input")
-            staged = stage_input(self.input_dir, self.work)
-            self.set_status("scanning", "running ezBIDS")
-            # ezBIDS's output stays on this computer, in the work folder: it holds original paths and names,
-            # so a failure names the file instead of quoting it
-            with open(self.ezbids_log, "w", encoding="utf-8") as log_file:
-                run_ezbids(staged, log=lambda line: print(line, file=log_file, flush=True))
+            # claimed input is never staged (a module reads it in place); phase-1 calls stay unchanged
+            staged = (stage_input(self.input_dir, self.work, exclude=roots) if roots
+                      else stage_input(self.input_dir, self.work))
+            if any(c.roots or c.remote for c in claims.values()) and not has_files(staged):
+                _write_json(staged / "ezBIDS_core.json", EMPTY_CORE)  # nothing left for ezBIDS
+            else:
+                self.set_status("scanning", "running ezBIDS")
+                # ezBIDS's output stays on this computer, in the work folder: it holds original paths and
+                # names, so a failure names the file instead of quoting it
+                with open(self.ezbids_log, "w", encoding="utf-8") as log_file:
+                    run_ezbids(staged, log=lambda line: print(line, file=log_file, flush=True))
             core = parse_core(staged / "ezBIDS_core.json")
-            terms = run_terms(core, self.input_dir)
+            hidden = claim_terms(claims.values())
+            for m in mods:
+                self.set_status("scanning", f"reading the {m.name} input")
+                m.scan(self.input_dir, claims[m.name], module_dir(self.work, m),
+                       lambda msg: self.set_status("scanning", redact(str(msg), hidden)))
+            terms = run_terms(core, self.input_dir, exclude=roots)
+            for m in mods:
+                terms |= m.terms(module_dir(self.work, m))
             with self.lock:
                 self.core, self.terms = core, terms
             self.set_status("scanning", "building the plan")
             plan = build_plan(core, self.input_dir, key, set(info["existing_subjects"]), client_from_env(),
                               self.get_schema(), info["target"], staged_dir=staged,
-                              existing_sessions=info.get("existing_sessions") or {})
+                              existing_sessions=info.get("existing_sessions") or {}, exclude=roots)
             plan.scan_id = info["scan_id"]
             self.save_subject_ids({e.subject_idx: e.subject for e in plan.entries})
             key.save()
@@ -409,8 +471,10 @@ class Server:
             manifest: dict[str, list[str]] = {}
             refused: list[str] = []
             ids = self.record_subject_ids(plan, key)  # before writing, so edited subjects keep their offsets
+            roots = self.claimed_roots()
             write_bids(plan, core, self.input_dir, terms, key, self.get_schema(), self.out,
-                       staged_dir=self.staged, manifest=manifest, refused=refused)
+                       staged_dir=self.staged, manifest=manifest, refused=refused,
+                       **({"exclude": roots} if roots else {}))
             key.save()  # the edited subject IDs, and the date offsets the writer creates in memory
             self.save_subject_ids(ids)
             self.set_status("executing", "defacing the anatomical images")
@@ -496,9 +560,10 @@ class Server:
         root.mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=root) as tmp:
             tmp_path = Path(tmp)
+            roots = self.claimed_roots()
             # the written image names, so companions (events, physio) find their image
             writer = _Writer(plan, core, self.input_dir, terms, scratch_key, schema, tmp_path / "unused",
-                             self.staged)
+                             self.staged, exclude=roots)
             try:
                 items = writer.items()
                 written = {os.path.normpath(str(it.nifti)): it.rel for it in items}
@@ -506,7 +571,8 @@ class Server:
             except Exception:
                 ids = id_maps(core, plan.entries)
             all_ids = id_maps(core, plan.entries)
-            defaults = plan_ancillary(find_ancillary(self.input_dir, schema), self.input_dir, terms, all_ids, schema)
+            defaults = plan_ancillary(find_ancillary(self.input_dir, schema, roots), self.input_dir, terms,
+                                      all_ids, schema)
             default = next((d for d in defaults if d.source == entry.source), None)
             if default is None or default.locked:
                 return
@@ -601,6 +667,7 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         with srv.lock:
             if srv.busy():
                 raise conflict(f"busy: {srv.status['stage']}")
+            _check_remote(body.remote)
             srv.release_key()  # a re-scan replaces the plan; the old key lock would block the new load
             try:
                 key = PseudonymKey.load(keys_dir, body.project_id)
@@ -617,7 +684,8 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
             with srv.lock:
                 srv.core = srv.terms = None
             srv.set_status("scanning", "starting")
-            srv.start(lambda: srv.scan(info, key))
+            remote = list(body.remote)
+            srv.start(lambda: srv.scan(info, key, remote))
         return {"stage": "scanning"}
 
     @app.get("/status")

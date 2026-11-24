@@ -20,12 +20,14 @@ import re
 import shutil
 from datetime import date, datetime, timedelta
 from pathlib import Path
+from typing import Sequence
 
 import nibabel as nib
 import numpy as np
 
 from .ancillary import Generated, id_maps, path_terms, write_ancillary
 from .ezbids_runner import CoreObject, CoreResult
+from .modality import ClaimedPaths
 from .plan import Plan, PlanEntry
 from .planner import is_placeholder
 from .pseudonyms import PseudonymKey
@@ -151,8 +153,10 @@ class _Item:
 class _Writer:
     def __init__(self, plan: Plan, core: CoreResult, input_dir: Path, terms: set[str], key: PseudonymKey,
                  schema: Schema, out_dir: Path, staged_dir: Path,
-                 manifest: dict[str, list[str]] | None = None, refused: list[str] | None = None):
+                 manifest: dict[str, list[str]] | None = None, refused: list[str] | None = None,
+                 exclude: Sequence[str] = ()):
         self.refused = refused
+        self.claimed = ClaimedPaths(input_dir, exclude)  # claimed roots: never walked for DICOMs
         self.plan, self.core, self.terms, self.key, self.schema = plan, core, terms, key, schema
         self.input_dir = Path(input_dir).resolve()
         self.staged_dir = Path(staged_dir)
@@ -346,23 +350,28 @@ class _Writer:
         for it in items:
             for rel in (it.nifti, *it.obj.paths):
                 d = _normal(self.input_dir / rel).parent
-                if _inside(d, self.input_dir) and d not in dirs and d.is_dir():
+                if (_inside(d, self.input_dir) and d not in dirs and d.is_dir()
+                        and not self.claimed.covers(d)):
                     dirs.append(d)
         for d in dirs:
-            yield from self.read_dir(d)
+            yield from self.read_dir(d, self.claimed)
         ids = {str(i.get("PatientID", "")).strip() for sidx in {it.obj.subject_idx for it in items}
                for s in self.core.subjects if s.subject_idx == sidx for i in s.patient_info
                if not is_placeholder("PatientID", i.get("PatientID"))}
         if ids:
-            for dirpath, _dirs, _files in os.walk(self.input_dir):
-                for ds in self.read_dir(Path(dirpath)):
+            for dirpath, subdirs, _files in os.walk(self.input_dir):
+                self.claimed.prune(Path(dirpath), subdirs)
+                for ds in self.read_dir(Path(dirpath), self.claimed):
                     if str(ds.get("PatientID", "")).strip() in ids:
                         yield ds
                         break
 
     @staticmethod
-    def read_dir(directory: Path):
-        for name in sorted(os.listdir(directory))[:MAX_FILES_PER_DIR]:
+    def read_dir(directory: Path, claimed: ClaimedPaths | None = None):
+        names = sorted(os.listdir(directory))
+        if claimed:
+            names = [n for n in names if not claimed.covers(directory / n)]
+        for name in names[:MAX_FILES_PER_DIR]:
             if (directory / name).is_file():
                 ds = _read_dicom(directory / name)
                 if ds is not None:
@@ -371,8 +380,11 @@ class _Writer:
 
 def write_bids(plan: Plan, core: CoreResult, input_dir: Path, terms: set[str], key: PseudonymKey,
                schema: Schema, out_dir: Path, *, staged_dir: Path,
-               manifest: dict[str, list[str]] | None = None, refused: list[str] | None = None) -> list[Path]:
+               manifest: dict[str, list[str]] | None = None, refused: list[str] | None = None,
+               exclude: Sequence[str] = ()) -> list[Path]:
     """Write the approved plan as a BIDS dataset in out_dir; returns every file written.
+
+    exclude: claimed roots (input-relative), never walked for DICOM headers.
 
     When manifest is given it is filled with entry id -> the NIfTI paths written for that entry
     (posix, relative to out_dir), so later steps (defacing) find exactly those files. When refused is
@@ -392,7 +404,7 @@ def write_bids(plan: Plan, core: CoreResult, input_dir: Path, terms: set[str], k
     existed = out.exists()
     out.mkdir(parents=True, exist_ok=True)
     try:
-        return _Writer(plan, core, input_dir, terms, key, schema, out, staged_dir, manifest, refused).run()
+        return _Writer(plan, core, input_dir, terms, key, schema, out, staged_dir, manifest, refused, exclude).run()
     except BaseException:
         if manifest is not None:
             manifest.clear()

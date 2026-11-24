@@ -1,9 +1,10 @@
-"""Synthetic microscopy fixtures (no real data): minimal OME-Zarr stores, NGFF 0.5 or 0.4."""
+"""Synthetic microscopy fixtures (no real data): minimal OME-Zarr stores (NGFF 0.5 or 0.4), sparse BigTIFF."""
 from __future__ import annotations
 
 from pathlib import Path
 
 import numpy as np
+import tifffile
 import zarr
 
 AXES = [
@@ -75,3 +76,21 @@ def strip_chunks(store: Path) -> Path:
         elif p.is_dir() and not any(p.iterdir()):
             p.rmdir()
     return Path(store)
+
+
+SPARSE_ROW = 32768  # uint16 samples per row of sparse_bigtiff (64 KiB)
+
+
+def sparse_bigtiff(size: int, dest: Path) -> Path:
+    """A valid single-plane uint16 BigTIFF of about size bytes at dest, written sparse.
+
+    tifffile.memmap writes the header and extends the file without writing the pixels, so the
+    file's apparent size is ~size while the disk holds only a few KiB (check with ``du``).
+    """
+    dest = Path(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    rows = max(1, size // (SPARSE_ROW * 2))
+    image = tifffile.memmap(str(dest), shape=(rows, SPARSE_ROW), dtype=np.uint16, bigtiff=True,
+                            photometric="minisblack")
+    del image  # never touched: no page is written
+    return dest

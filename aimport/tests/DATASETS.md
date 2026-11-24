@@ -11,6 +11,7 @@ or dropped, and say why.
 | [neurolabusc/dcm_qa_xa30](https://github.com/neurolabusc/dcm_qa_xa30) | `371ab3071aa9270d23b99fca5f83fe0c35932182` | **current** | `tests/fixtures/fetch_dcm_qa.py`, the committed `tests/fixtures/ezbids_core_siemens.json`, all `docker` tests, the `bl aimport` manual run (cli `test/aimport-manual.js`) |
 | [neurolabusc/dcm_qa](https://github.com/neurolabusc/dcm_qa) | `8215e3e` | dropped 2026-11-24 | first version of the fixture (Tasks 2–3) |
 | Synthetic OME-Zarr (`tests/fixtures/micr_fixtures.py` `ome_zarr`, written for this repo; no real pixels) | generated at test time, seed 0 | **current** | `tests/test_micr_validator.py` (microscopy Task 1: validator ruling) |
+| Synthetic sparse BigTIFF (`tests/fixtures/micr_fixtures.py` `sparse_bigtiff`, written for this repo; no pixels) | generated at test time | **current** | `tests/test_modality.py` (microscopy Task 2: claimed input is never staged or copied) |
 
 ### Synthetic OME-Zarr (current)
 
@@ -18,6 +19,13 @@ or dropped, and say why.
 pixel size 1.0 × 0.5 × 0.5 µm (z, y, x), random values from seed 0. NGFF `"0.5"` is Zarr v3 with one
 shard per channel; `"0.4"` is Zarr v2. `strip_chunks` deletes every chunk and shard file, leaving only
 Zarr metadata: what a reference dataset looks like locally.
+
+### Synthetic sparse BigTIFF (current)
+
+`sparse_bigtiff(size, dest)` writes a valid single-plane uint16 BigTIFF (rows of 32768 samples) whose
+apparent size is `size` bytes (4 GiB in the tests) through `tifffile.memmap`, without writing any pixel:
+the file is sparse and takes a few KiB on disk. Task 2 places it, together with planted folder names
+(`H17_250215`) and a DICOM, under a claimed folder to show claimed input is never staged, walked or copied.
 
 ### dcm_qa_xa30 (current)
 

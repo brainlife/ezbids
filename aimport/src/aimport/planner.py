@@ -13,7 +13,7 @@ import uuid
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Literal
+from typing import Literal, Sequence
 
 from .agent import Guess, LLMClient, classify, draft_metadata
 from .ancillary import bids_root, ancillary_warnings, find_ancillary, id_maps, plan_ancillary, read_dataset_description
@@ -123,12 +123,13 @@ def _date_terms(core: CoreResult) -> set[str]:
     return terms
 
 
-def run_terms(core: CoreResult, input_dir: Path, stats: dict | None = None) -> set[str]:
+def run_terms(core: CoreResult, input_dir: Path, stats: dict | None = None, exclude: Sequence[str] = ()) -> set[str]:
     """Every term to redact in this run: identifying values plus the scan dates in every form.
 
-    build_plan and the BIDS writer must use the same set; stats is passed to identifying_terms.
+    build_plan and the BIDS writer must use the same set; stats and exclude (claimed roots, never
+    walked) are passed to identifying_terms.
     """
-    return identifying_terms(core, input_dir, stats) | _date_terms(core)
+    return identifying_terms(core, input_dir, stats, exclude) | _date_terms(core)
 
 
 def _agent_text(text: str, terms: set[str]) -> str:
@@ -426,11 +427,13 @@ def _seed_readme(plan: Plan, supplied: list[Path], input_dir: Path, terms: set[s
 
 def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_subjects: set[str],
                client: LLMClient | None, schema: Schema, target: Literal["bids", "datatypes"],
-               staged_dir: Path | None = None, existing_sessions: dict[str, list[str]] | None = None) -> Plan:
+               staged_dir: Path | None = None, existing_sessions: dict[str, list[str]] | None = None,
+               exclude: Sequence[str] = ()) -> Plan:
     """The reviewable plan. existing_subjects and existing_sessions (subject id -> session labels) are what
-    the brainlife project already holds, so new subject IDs and session labels do not collide with them."""
+    the brainlife project already holds, so new subject IDs and session labels do not collide with them.
+    exclude: claimed roots (input-relative), never walked for DICOM headers or planned as ancillary."""
     stats: dict = {}
-    terms = run_terms(core, input_dir, stats)
+    terms = run_terms(core, input_dir, stats, exclude)
     warnings = []
     if stats.get("dicom_files_read", 0) == 0:
         warnings.append(UNVERIFIED.format(why="no DICOM headers were read"))
@@ -446,7 +449,7 @@ def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_su
     guesses = {g.series_idx: g for g in classify(view, heuristic, client, schema)}
     draft = draft_metadata(view, client, terms)
 
-    supplied = find_ancillary(input_dir, schema)
+    supplied = find_ancillary(input_dir, schema, exclude)
     has_aslcontext = any(p.name.endswith("_aslcontext.tsv") for p in supplied)  # anywhere in the input
     sub_ids, n_absent, n_shared = _assign_subjects(core, key, existing_subjects, terms)
     if n_shared:

@@ -33,8 +33,10 @@ import re
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
+from typing import Sequence
 
 from .ezbids_runner import CoreResult
+from .modality import ClaimedPaths
 from .plan import (
     DATE_COLUMN,
     DESCRIPTION_FIELDS,
@@ -253,7 +255,7 @@ def _root_names(schema: Schema) -> dict[str, str]:
     return names
 
 
-def find_ancillary(input_dir: Path, schema: Schema) -> list[Path]:
+def find_ancillary(input_dir: Path, schema: Schema, exclude: Sequence[str] = ()) -> list[Path]:
     """Ancillary files and folders under the BIDS root of input_dir (paths start with that root).
 
     The root: rules.files.common.core/tables (files, and code/ docs/ stimuli/ logs/ sourcedata/
@@ -261,7 +263,8 @@ def find_ancillary(input_dir: Path, schema: Schema) -> list[Path]:
     and scans tables and inherited sidecars; sub-*/ses-*/: scans and inherited sidecars;
     sub-*/[ses-*/]<datatype>/: per-run companions (events, physio, ...; not the images' own
     sidecars). Hidden files and *aimport-key* are skipped. Links that match are returned (and
-    planned as not uploadable); links are never followed into.
+    planned as not uploadable); links are never followed into. Nothing under a claimed root (exclude,
+    input-relative), and no folder or link leading to one, is returned.
     """
     root = bids_root(input_dir)
     if not root.is_dir():
@@ -284,6 +287,9 @@ def find_ancillary(input_dir: Path, schema: Schema) -> list[Path]:
         elif child.is_file() and child.name not in FOLDERS and (child.name in names
                                                                 or _root_inherited(child.name, schema)):
             found.append(child)
+    if exclude:
+        claimed = ClaimedPaths(input_dir, exclude)
+        found = [p for p in found if not claimed.reaches(p)]
     return found
 
 
