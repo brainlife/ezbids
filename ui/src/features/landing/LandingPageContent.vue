@@ -24,12 +24,7 @@
                 </el-row>
                 <el-row>
                     <el-col :xs="24" :md="12">
-                        <el-button
-                            type="primary"
-                            style="color: white !important; font-weight: bold"
-                            class="hero-banner-button"
-                            @click="onClickGetStarted"
-                        >
+                        <el-button type="primary" class="hero-banner-button" @click="onClickGetStarted">
                             GET STARTED
                         </el-button>
                     </el-col>
@@ -173,7 +168,7 @@ export default defineComponent({
         height: 50px;
         font-size: 1rem;
         width: 100%;
-        color: #3782e5 !important;
+        color: var(--el-color-primary) !important;
     }
 
     .card-icon {
@@ -268,7 +263,7 @@ export default defineComponent({
 }
 
 .link {
-    color: #3782e5;
+    color: var(--el-color-primary);
     text-decoration: none;
     display: inline;
 
@@ -284,11 +279,21 @@ export default defineComponent({
 
 .hero-banner-container {
     align-items: center;
+    background: var(--panel-bg);
+}
+.hero-banner-title {
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--ink);
+}
+.hero-banner-description {
+    color: var(--ink-2);
 }
 
 .cards-container {
     height: 240px;
-    background-color: #20ab5c;
+    background-color: var(--app-bg);
+    border-top: 1px solid var(--line);
     align-items: center;
 }
 
@@ -313,7 +318,7 @@ export default defineComponent({
     width: 40px;
     height: 40px;
     font-size: 2rem;
-    color: #20ab5c;
+    color: var(--el-color-primary);
     display: flex;
     align-items: center;
     justify-content: center;

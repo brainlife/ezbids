@@ -5,7 +5,11 @@
                 <el-col :xs="0" :md="1" />
                 <el-col :xs="24" :md="22">
                     <el-menu class="menu" :ellipsis="false" mode="horizontal">
-                        <el-menu-item index="0" class="menu-item">ezBIDS</el-menu-item>
+                        <el-menu-item index="0" class="menu-item brand-item">
+                            <img src="@/assets/brainlife-mark-light.svg" class="brand-mark" alt="brainlife.io" />
+                            <span class="brand-name">ezBIDS</span>
+                            <span class="brand-by">by brainlife.io</span>
+                        </el-menu-item>
                         <div style="flex-grow: 1"></div>
                         <el-menu-item index="1" class="menu-item" @click="openBrainLifeTeamPage">
                             <el-icon>
@@ -14,12 +18,9 @@
                             TEAM
                         </el-menu-item>
                         <el-menu-item index="2" class="menu-item">
-                            <el-button
-                                type="text"
-                                style="font-size: var(--el-font-size-extra-large); font-family: unset; color: #3482e9"
-                                @click="redirectToBrainlifeAuth"
-                                >{{ !hasAuth || hasJWT ? 'GET STARTED' : 'LOG IN / REGISTER' }}</el-button
-                            >
+                            <el-button type="primary" class="header-cta" @click="redirectToBrainlifeAuth">{{
+                                !hasAuth || hasJWT ? 'GET STARTED' : 'LOG IN / REGISTER'
+                            }}</el-button>
                         </el-menu-item>
                     </el-menu>
                 </el-col>
@@ -76,19 +77,57 @@ export default defineComponent({
     }
 }
 
+/* brainlife-lite's light top bar: the brainlife.io mark top-left, quiet links, one primary action */
 .header {
-    background-color: white;
-    height: 62px;
+    background-color: var(--nav-bg);
+    border-bottom: 1px solid var(--line);
+    height: 64px;
     padding: 0;
 }
 
 .menu {
     margin: 0 auto;
+    background: transparent;
     border-bottom: 1px solid transparent !important;
 }
 
 .menu-item {
-    font-size: var(--el-font-size-extra-large);
-    color: #3482e9;
+    font-size: 0.95rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
+    color: var(--ink-2);
+}
+
+.menu-item.is-active,
+.menu-item:hover {
+    color: var(--el-color-primary) !important;
+    background: transparent !important;
+    border-bottom-color: transparent !important;
+}
+
+.brand-item {
+    gap: 10px;
+    color: var(--ink) !important;
+}
+
+.brand-mark {
+    height: 38px;
+    width: auto;
+}
+
+.brand-name {
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+.brand-by {
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--ink-2);
+}
+
+.header-cta {
+    font-family: inherit;
 }
 </style>
