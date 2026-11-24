@@ -32,12 +32,12 @@
                         :y="i * ROW + (ROW - BAR) / 2"
                         :width="Math.max(x(r.hi) - x(r.lo), 6)"
                         :height="BAR"
-                        rx="4"
+                        rx="5"
                     />
                 </g>
                 <g class="axis">
                     <line :x1="LABEL_W" :x2="W - PAD_R" :y1="plotH" :y2="plotH" />
-                    <text v-for="t in ticks" :key="t.v" :x="x(t.v)" :y="plotH + 18" text-anchor="middle">
+                    <text v-for="t in ticks" :key="t.v" :x="x(t.v)" :y="plotH + 22" text-anchor="middle">
                         {{ t.label }}
                     </text>
                 </g>
@@ -84,14 +84,14 @@ export default defineComponent({
         ticks: { type: Array as PropType<{ v: number; label: string }[]>, required: true },
     },
     data() {
-        return { hover: null as number | null, W: 960, ROW: 26, BAR: 10, LABEL_W: 150, PAD_R: 16 };
+        return { hover: null as number | null, W: 960, ROW: 40, BAR: 16, LABEL_W: 170, PAD_R: 40 };
     },
     computed: {
         plotH(): number {
             return this.ranges.length * this.ROW;
         },
         height(): number {
-            return this.plotH + 28;
+            return this.plotH + 34;
         },
         domain(): [number, number] {
             const vs = this.ticks.map((t) => Math.log10(t.v));
@@ -146,12 +146,12 @@ svg {
 .axis text,
 .row-label {
     font-family: var(--mono);
-    font-size: 11px;
+    font-size: 12.5px;
     fill: var(--muted);
 }
 .row-label {
     font-family: var(--font);
-    font-size: 12.5px;
+    font-size: 14.5px;
     fill: var(--ink);
 }
 .hit {
