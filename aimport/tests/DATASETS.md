@@ -21,7 +21,7 @@ series; the committed fixture is 137 KB):
 | Series folder | ezBIDS guess | Note |
 |---|---|---|
 | `5_anat-T1w_acq-tfl`, `6_anat-T1w_acq-tfl` | `anat/T1w` | one series, two runs |
-| `7_func-bold_task-fa_run-1` | `exclude` | dcm2niix guesses `dwi/_FA` because of "task-fa"; stock ezBIDS crashes on it, so the core patch excludes it. A real BOLD series that the planner must reclassify as `func/bold` |
+| `7_func-bold_task-fa_run-1` | `func/bold` | dcm2niix guesses `dwi/_FA` because of "task-fa"; ezBIDS core ignores that guess for a non-derived image and finds `func/bold` from "bold" in the description (it excluded the series before, and the committed fixture still records `exclude`) |
 | `8_gre_field_mapping` | `fmap/magnitude1` | |
 | `9_gre_field_mapping` | `fmap/phasediff` | |
 | `10_DWI_dir80_PA`, `17_DWI_dir80_AP` | `dwi/dwi` | 21 volumes each, with bvec/bval |
