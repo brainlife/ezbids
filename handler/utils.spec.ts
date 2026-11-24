@@ -62,17 +62,24 @@ describe('python (bundled runtime on the desktop, system python3 in the web imag
 });
 
 describe('pet2bidsEnv (pypet2bids uses our pinned dcm2niix)', () => {
-    it('gives pypet2bids a HOME whose .pet2bidsconfig names our binary', () => {
+    it('gives each run its own HOME, our dcm2niix first on PATH and in DCM2NIIX_PATH', () => {
         const base = fs.mkdtempSync(path.join(os.tmpdir(), 'ezbids-p2b-'));
-        const env = pet2bidsEnv('/opt/ezbids-bin/dcm2niix/dcm2niix-linux-amd64', base);
-        expect(env.HOME).toBe(env.USERPROFILE);
-        expect(env.DCM2NIIX_PATH).toBe('/opt/ezbids-bin/dcm2niix/dcm2niix-linux-amd64');
-        expect(fs.readFileSync(path.join(env.HOME as string, '.pet2bidsconfig'), 'utf8')).toBe(
-            'DCM2NIIX_PATH=/opt/ezbids-bin/dcm2niix/dcm2niix-linux-amd64\n'
-        );
+        const ours = path.join(base, 'dcm2niix-linux-amd64');
+        fs.writeFileSync(ours, '#!/bin/sh\n', { mode: 0o755 });
+        const a = pet2bidsEnv(ours, base);
+        const b = pet2bidsEnv(ours, base);
+        expect(a.env.HOME).not.toBe(b.env.HOME); // parallel runs never share a config
+        expect(a.env.HOME).toBe(a.env.USERPROFILE);
+        expect(fs.existsSync(path.join(a.env.HOME as string, '.pet2bidsconfig'))).toBe(false);
+        expect(a.env.DCM2NIIX_PATH).toBe(ours);
+        const first = (a.env.PATH as string).split(path.delimiter)[0];
+        if (process.platform !== 'win32') expect(fs.readlinkSync(path.join(first, 'dcm2niix'))).toBe(ours);
+        a.cleanup();
+        expect(fs.existsSync(a.env.HOME as string)).toBe(false);
+        b.cleanup();
         fs.rmSync(base, { recursive: true, force: true });
     });
     it('changes nothing without a dcm2niix', () => {
-        expect(pet2bidsEnv(undefined)).toEqual({});
+        expect(pet2bidsEnv(undefined).env).toEqual({});
     });
 });

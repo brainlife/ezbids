@@ -65,16 +65,30 @@ export function log(msg: string): void {
 
 /**
  * Environment that makes pypet2bids use our dcm2niix (the pinned one in handler/dcm2niix.env) on every platform.
- * pypet2bids reads ~/.pet2bidsconfig first (on Windows the only lookup besides its own bundled copy), then
- * `dcm2niix` on PATH, so a user's own config or dcm2niix would win. Its HOME (USERPROFILE on Windows) is a
- * folder of ours whose .pet2bidsconfig names our binary.
+ * pypet2bids looks in ~/.pet2bidsconfig first, then (posix) for `dcm2niix` on PATH, then DCM2NIIX_PATH from the
+ * environment (Windows: config, then DCM2NIIX_PATH). So a user's own config or dcm2niix could win: each run gets
+ * a fresh HOME (USERPROFILE) of its own with no config (pypet2bids writes its DEFAULT_METADATA_JSON there; runs
+ * are parallel, so they must not share one), PATH starts with a folder whose `dcm2niix` is ours, and
+ * DCM2NIIX_PATH is ours. Call cleanup() when the run is over.
  */
-export function pet2bidsEnv(dcm2niix: string | undefined, baseDir: string = os.tmpdir()): NodeJS.ProcessEnv {
-    if (!dcm2niix) return {};
-    const home = path.join(baseDir, 'ezbids-pet2bids-home');
-    fs.mkdirSync(home, { recursive: true });
-    fs.writeFileSync(path.join(home, '.pet2bidsconfig'), `DCM2NIIX_PATH=${dcm2niix}\n`);
-    return { HOME: home, USERPROFILE: home, DCM2NIIX_PATH: dcm2niix };
+export function pet2bidsEnv(
+    dcm2niix: string | undefined,
+    baseDir: string = os.tmpdir()
+): { env: NodeJS.ProcessEnv; cleanup: () => void } {
+    if (!dcm2niix) return { env: {}, cleanup: () => undefined };
+    const home = fs.mkdtempSync(path.join(baseDir, 'ezbids-pet2bids-'));
+    const bin = path.join(home, 'bin');
+    fs.mkdirSync(bin);
+    if (process.platform !== 'win32') fs.symlinkSync(dcm2niix, path.join(bin, 'dcm2niix'));
+    return {
+        env: {
+            HOME: home,
+            USERPROFILE: home,
+            DCM2NIIX_PATH: dcm2niix,
+            PATH: `${bin}${path.delimiter}${process.env.PATH ?? ''}`,
+        },
+        cleanup: () => fs.rmSync(home, { recursive: true, force: true }),
+    };
 }
 
 export async function runPython(
@@ -85,24 +99,30 @@ export async function runPython(
     const pythonExe = getPythonExecutablePath();
     const pythonDcm2niixPath = getPythonDcm2niixPath();
     const { pet2bids, ...execOpts } = opts;
+    const p2b = pet2bids ? pet2bidsEnv(pythonDcm2niixPath) : { env: {}, cleanup: () => undefined };
     const withTimeout = opts.timeout !== undefined && opts.timeout !== null;
-    const result = await execa(pythonExe, argv, {
-        ...execOpts,
-        ...(withTimeout ? { timeout: opts.timeout, stdio: 'pipe' as const } : { stdio: 'inherit' as const }),
-        env: {
-            ...process.env,
-            ...(hasBundledPython()
-                ? {
-                      PYTHONPATH: getBundledPythonSitePackages(),
-                      PYTHONHOME: path.resolve(path.join(pythonRoot, 'python')),
-                  }
-                : {}),
-            ...(pythonDcm2niixPath ? { DCM2NIIX_PATH: pythonDcm2niixPath } : {}),
-            ...(pet2bids ? pet2bidsEnv(pythonDcm2niixPath) : {}),
-        },
-    });
+    let result;
+    try {
+        result = await execa(pythonExe, argv, {
+            ...execOpts,
+            ...(withTimeout ? { timeout: opts.timeout, stdio: 'pipe' as const } : { stdio: 'inherit' as const }),
+            env: {
+                ...process.env,
+                ...(hasBundledPython()
+                    ? {
+                          PYTHONPATH: getBundledPythonSitePackages(),
+                          PYTHONHOME: path.resolve(path.join(pythonRoot, 'python')),
+                      }
+                    : {}),
+                ...(pythonDcm2niixPath ? { DCM2NIIX_PATH: pythonDcm2niixPath } : {}),
+                ...p2b.env,
+            },
+        });
+    } finally {
+        p2b.cleanup();
+    }
     const status = result.exitCode ?? -1;
-    const stderr = withTimeout ? result?.stderr?.toString() ?? '' : '';
+    const stderr = withTimeout ? (result?.stderr?.toString() ?? '') : '';
     return { status, stderr };
 }
 

@@ -22,7 +22,12 @@
                     >
                         <el-option v-for="m in methods" :key="m" :value="m" :label="methodLabels[m] || m" />
                     </el-select>
-                    <el-tag v-else-if="ezbids.defacingMethod || selectedMethod" size="mini" type="info" effect="plain" class="deface-method-tag"
+                    <el-tag
+                        v-else-if="ezbids.defacingMethod || selectedMethod"
+                        size="mini"
+                        type="info"
+                        effect="plain"
+                        class="deface-method-tag"
                         >Method: {{ ezbids.defacingMethod || selectedMethod }}</el-tag
                     >
                     <p class="deface-actions__hint">
@@ -256,7 +261,7 @@ export default defineComponent({
             // keep a method chosen earlier in this session if the handler still offers it
             this.selectedMethod = this.methods.includes(this.ezbids.defacingMethod)
                 ? this.ezbids.defacingMethod
-                : this.methods[0] ?? '';
+                : (this.methods[0] ?? '');
         },
 
         async runDeface() {

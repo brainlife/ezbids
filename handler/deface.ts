@@ -131,7 +131,11 @@ export async function runAllineateDefacing(vol: string, resolvedHandler: string,
  * master's deface.sh, per image: fslreorient2std in place, then
  * quickshear: ROBEX brain mask + quickshear (60 s limit); pydeface: FSL face-mask registration.
  */
-export async function runFslDefacing(method: 'quickshear' | 'pydeface', vol: string, resolvedHandler: string): Promise<void> {
+export async function runFslDefacing(
+    method: 'quickshear' | 'pydeface',
+    vol: string,
+    resolvedHandler: string
+): Promise<void> {
     const opts = { stdio: 'inherit' as const, cwd: path.dirname(vol) };
     await execa('fslreorient2std', [vol, vol], opts);
     const defaced = `${vol}.defaced.nii.gz`;
