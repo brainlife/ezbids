@@ -215,7 +215,7 @@ export default defineComponent({
 
 <style lang="scss">
 .muted {
-    color: gray;
+    color: var(--ink-3);
 }
 
 .autocomplete-loader {
@@ -234,6 +234,6 @@ export default defineComponent({
     justify-content: center;
     width: 100%;
     margin-bottom: 10px;
-    font-family: Merriweather Sans;
+    font-family: inherit;
 }
 </style>

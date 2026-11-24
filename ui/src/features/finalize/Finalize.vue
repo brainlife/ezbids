@@ -72,7 +72,7 @@
                     <el-button @click="sendOpenneuro">Send to <b>OpenNeuro</b></el-button>
                 </p>
 
-                <p style="background-color: #0001; padding: 20px; padding-top: 10px">
+                <p style="background-color: var(--panel-muted); border-radius: 8px; padding: 20px; padding-top: 10px">
                     If you have re-named the original DICOM patient names for your BIDS subject/session names, you can
                     download the mapping file.
                     <el-button type="text" @click="downloadSubjectMapping">Download Subject Mapping (.json)</el-button>
@@ -84,7 +84,7 @@
                 </p>
 
                 <h3>Citation</h3>
-                <div style="background-color: #0001; padding: 20px; padding-top: 10px">
+                <div style="background-color: var(--panel-muted); border-radius: 8px; padding: 20px; padding-top: 10px">
                     <p class="citation">
                         Levitas, D., Hayashi, S., Vinci-Booher, S., Heinsfeld, A., Bhatia, D., Lee, N., ... & Pestilli,
                         F. (2024). ezBIDS: Guided standardization of neuroimaging data interoperable with major data
@@ -307,7 +307,7 @@ export default defineComponent({
     border-radius: 10px;
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
     background: var(--el-fill-color-blank, #fff);
-    box-shadow: 0 1px 2px rgb(0 0 0 / 4%);
+    box-shadow: none;
 }
 
 .finalize-intro__title {
@@ -373,7 +373,7 @@ export default defineComponent({
 
 .mappings p {
     cursor: pointer;
-    color: #409eff;
+    color: var(--el-color-primary);
 }
 .mappings p:hover {
     text-decoration: underline;
@@ -387,7 +387,7 @@ p.btn {
     padding: 5px 10px;
 }
 p.btn:hover {
-    background-color: rgb(103, 194, 58);
+    background-color: var(--el-color-success);
     color: white;
     cursor: pointer;
 }

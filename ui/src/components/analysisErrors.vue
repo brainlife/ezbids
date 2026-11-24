@@ -79,7 +79,7 @@ export default defineComponent({
     background-color: #fee;
 }
 pre {
-    background-color: #333;
+    background-color: var(--code-bg);
     color: white;
     margin-left: -10px;
     margin-right: -10px;

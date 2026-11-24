@@ -16,8 +16,10 @@ export default defineComponent({});
 <style scoped>
 .footer {
     padding: 0;
-    background-color: #3782e5;
-    color: white;
+    background-color: var(--nav-bg);
+    border-top: 1px solid var(--line);
+    color: var(--ink-2);
+    font-size: 0.85rem;
     height: 10vh;
 }
 

@@ -38,7 +38,7 @@ export default defineComponent({
 }
 
 .not-found-message {
-    background-color: #20ab5c;
+    background-color: var(--el-color-primary);
     padding: 2rem;
     border-radius: 4px;
     font-size: var(--el-font-size-extra-large);

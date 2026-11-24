@@ -11,7 +11,7 @@ export default defineComponent({});
 </script>
 
 <style lang="scss">
-@import url('https://fonts.googleapis.com/css2?family=Merriweather+Sans:wght@400;700&family=Merriweather:wght@400;700');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300..700&display=swap');
 
 html,
 body,
@@ -22,8 +22,15 @@ body,
 
 body {
     margin: 0;
-    font-family: 'Merriweather Sans', Georgia, sans-serif;
+    font-family:
+        'DM Sans',
+        -apple-system,
+        BlinkMacSystemFont,
+        'Segoe UI',
+        sans-serif;
     font-size: 14px;
-    color: #333;
+    color: #2d3748;
+    background: #f5f5f5;
+    -webkit-font-smoothing: antialiased;
 }
 </style>

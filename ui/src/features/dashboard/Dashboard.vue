@@ -3,7 +3,10 @@
         <header class="dashboard-header">
             <div class="brainlife-lite dashboard-logo-bar" style="padding-right: 10px">
                 <div class="dashboard-logo-inner">
-                    <h1 class="dashboard-logo-title"><span class="dashboard-logo-ez">ez</span>BIDS</h1>
+                    <a href="https://brainlife.io" target="_blank" rel="noopener noreferrer" aria-label="brainlife.io">
+                        <img src="@/assets/brainlife-mark-light.svg" class="dashboard-logo-mark" alt="brainlife.io" />
+                    </a>
+                    <h1 class="dashboard-logo-title">ezBIDS <span class="dashboard-logo-by">by brainlife.io</span></h1>
                 </div>
             </div>
             <div class="dashboard-header-main">
@@ -79,18 +82,20 @@ export default defineComponent({
 <style scoped lang="scss">
 .dashboard-root {
     min-height: 100vh;
-    background: linear-gradient(160deg, #f7fafc 0%, #edf2f7 45%, #e2e8f0 100%);
-    color: #1a202c;
+    background: var(--app-bg);
+    color: var(--ink);
 }
 
+/* light top bar like brainlife-lite's navigation, with the brainlife.io mark top-left */
 .dashboard-header {
     display: flex;
     align-items: stretch;
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+    background: var(--nav-bg);
+    border-bottom: 1px solid var(--line);
 }
 
 .brainlife-lite {
-    background-color: #2d3748;
+    background-color: transparent;
 }
 
 .aside-width {
@@ -102,32 +107,46 @@ export default defineComponent({
 .dashboard-logo-bar {
     display: flex;
     align-items: center;
-    padding-left: 2rem;
+    padding-left: 1.5rem;
 }
 
 .dashboard-logo-inner {
     display: flex;
     align-items: center;
+    gap: 10px;
     width: 100%;
     height: 100%;
+
+    a {
+        display: flex;
+    }
+}
+
+.dashboard-logo-mark {
+    height: 38px;
+    width: auto;
+    display: block;
 }
 
 .dashboard-logo-title {
-    color: white;
+    color: var(--ink);
     margin: 0;
-    font-size: 1.75rem;
-    font-weight: 700;
-    letter-spacing: -0.02em;
+    font-size: 1.3rem;
+    font-weight: 600;
+    letter-spacing: -0.01em;
 }
 
-.dashboard-logo-ez {
-    letter-spacing: -3px;
-    opacity: 0.6;
+.dashboard-logo-by {
+    margin-left: 4px;
+    font-size: 0.75rem;
+    font-weight: 400;
+    letter-spacing: 0;
+    color: var(--ink-2);
 }
 
 .dashboard-header-main {
     flex: 1;
-    background: #2d3748;
+    background: transparent;
 }
 
 .dashboard-app-header {
@@ -137,6 +156,7 @@ export default defineComponent({
     height: 64px;
     max-height: 64px;
     box-sizing: border-box;
+    padding-left: 12px;
 }
 
 .menu-footer {
