@@ -1,0 +1,166 @@
+/* brainlife.io "Landing v3" design tokens (landing-next features/LandingV3/landing-v3.css),
+   scoped to .lv3 so the converter app keeps its own Element Plus styles */
+.lv3 {
+    --bg: #f7f8f6;
+    --bg-2: #ffffff;
+    --ink: #1d2230;
+    --muted: #5a6273;
+    --line: #c9cfd6;
+    --rule: rgba(29, 34, 48, 0.12);
+    --hero: #07131c;
+    --hero-ink: #eef3f6;
+    --hero-muted: #a9bac6;
+    --hero-line: rgba(238, 243, 246, 0.16);
+    --band: #eff2ee;
+    --accent: #b84f18;
+    --accent-ink: #fff;
+    --link: #b84f18;
+    --hero-accent: #3b9fd0;
+    --hero-accent-ink: #0b1a24;
+    /* chart categories, validated for CVD separation and contrast (light / dark) */
+    --c-now: #1b6fa3;
+    --c-next: #c9601f;
+    --c-next-fill: rgba(201, 96, 31, 0.16);
+    --font: 'Geist', system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono: 'Geist Mono', ui-monospace, Menlo, monospace;
+
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--font);
+    font-size: 17px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    min-height: 100%;
+}
+@media (prefers-color-scheme: dark) {
+    .lv3 {
+        --bg: #07131c;
+        --bg-2: #0b1f2d;
+        --ink: #eef3f6;
+        --muted: #a9bac6;
+        --line: rgba(238, 243, 246, 0.18);
+        --rule: rgba(238, 243, 246, 0.12);
+        --band: #0a1a25;
+        --accent: #3b9fd0;
+        --accent-ink: #0b1a24;
+        --link: #3b9fd0;
+        --c-now: #3b9fd0;
+        --c-next: #d9692c;
+        --c-next-fill: rgba(217, 105, 44, 0.2);
+        color-scheme: dark;
+    }
+}
+.lv3 *,
+.lv3 *::before,
+.lv3 *::after {
+    box-sizing: border-box;
+}
+.lv3 a {
+    color: var(--link);
+    text-decoration: none;
+}
+.lv3 a:hover {
+    text-decoration: underline;
+}
+.lv3 h1,
+.lv3 h2,
+.lv3 h3 {
+    margin: 0;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
+}
+.lv3 p {
+    margin: 0;
+}
+.lv3 .wrap {
+    max-width: 1360px;
+    margin: 0 auto;
+    padding-left: max(16px, min(4vw, 40px));
+    padding-right: max(16px, min(4vw, 40px));
+}
+.lv3 .mono {
+    font-family: var(--mono);
+}
+.lv3 .eyebrow {
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 500;
+}
+.lv3 .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.93rem;
+    border: 1px solid var(--line);
+    color: var(--ink);
+    background: transparent;
+    font-family: inherit;
+    cursor: pointer;
+    text-decoration: none;
+}
+.lv3 .btn.p {
+    background: var(--accent);
+    color: var(--accent-ink);
+    border-color: var(--accent);
+}
+.lv3 .btn:focus-visible {
+    outline: 2px solid var(--hero-accent);
+    outline-offset: 2px;
+}
+.lv3 section {
+    padding: clamp(48px, 7vw, 96px) 0;
+}
+.lv3 section.band {
+    background: var(--band);
+}
+.lv3 .sec-head {
+    max-width: 760px;
+    margin-bottom: 32px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.lv3 .sec-head h2 {
+    font-size: clamp(1.5rem, 2vw + 0.8rem, 2.1rem);
+}
+.lv3 .sec-head p {
+    color: var(--muted);
+}
+.lv3 .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    font-size: 0.82rem;
+    color: var(--muted);
+    margin-bottom: 16px;
+}
+.lv3 .legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+}
+.lv3 .sw {
+    width: 22px;
+    height: 10px;
+    border-radius: 4px;
+    border: 2px solid;
+    display: inline-block;
+}
+.lv3 .sw.now {
+    background: var(--c-now);
+    border-color: var(--c-now);
+}
+.lv3 .sw.next {
+    background: var(--c-next-fill);
+    border-color: var(--c-next);
+    border-style: dashed;
+}

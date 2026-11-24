@@ -1,32 +1,18 @@
 <template>
-    <el-affix>
-        <el-header class="header">
-            <el-row style="align-items: center">
-                <el-col :xs="0" :md="1" />
-                <el-col :xs="24" :md="22">
-                    <el-menu class="menu" :ellipsis="false" mode="horizontal">
-                        <el-menu-item index="0" class="menu-item">ezBIDS</el-menu-item>
-                        <div style="flex-grow: 1"></div>
-                        <el-menu-item index="1" class="menu-item" @click="openBrainLifeTeamPage">
-                            <el-icon>
-                                <font-awesome-icon :icon="['fas', 'arrow-up-right-from-square']" />
-                            </el-icon>
-                            TEAM
-                        </el-menu-item>
-                        <el-menu-item index="2" class="menu-item">
-                            <el-button
-                                type="text"
-                                style="font-size: var(--el-font-size-extra-large); font-family: unset; color: #3482e9"
-                                @click="redirectToBrainlifeAuth"
-                                >{{ !hasAuth || hasJWT ? 'GET STARTED' : 'LOG IN / REGISTER' }}</el-button
-                            >
-                        </el-menu-item>
-                    </el-menu>
-                </el-col>
-                <el-col :xs="0" :md="1" />
-            </el-row>
-        </el-header>
-    </el-affix>
+    <header class="site-header">
+        <div class="wrap bar">
+            <a class="brand" href="#" @click.prevent="$router.push('/')">
+                ezBIDS <span class="by mono">by brainlife.io</span>
+            </a>
+            <nav class="nav">
+                <a class="mono" href="https://brainlife.io/docs/using_ezBIDS/" target="_blank">Docs</a>
+                <a class="mono" href="https://brainlife.io/team/" target="_blank">Team</a>
+                <button class="btn p" @click="redirectToBrainlifeAuth">
+                    {{ !hasAuth || hasJWT ? 'Get started' : 'Log in / register' }}
+                </button>
+            </nav>
+        </div>
+    </header>
 </template>
 
 <script lang="ts">
@@ -69,26 +55,51 @@ export default defineComponent({
 </script>
 
 <style scoped>
-/* for screens smaller than 992px */
-@media screen and (max-width: 992px) {
-    .menu-item {
-        font-size: var(--el-font-size-small) !important;
+.site-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--hero);
+    border-bottom: 1px solid var(--hero-line);
+}
+.bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+}
+.brand {
+    color: var(--hero-ink) !important;
+    font-weight: 600;
+    font-size: 1.1rem;
+    text-decoration: none !important;
+}
+.by {
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--hero-muted);
+    margin-left: 8px;
+}
+.nav {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+}
+.nav a {
+    color: var(--hero-muted);
+    font-size: 0.78rem;
+}
+.nav .btn.p {
+    background: var(--hero-accent);
+    border-color: var(--hero-accent);
+    color: var(--hero-accent-ink);
+    padding: 7px 14px;
+}
+@media (max-width: 600px) {
+    .by,
+    .nav a {
+        display: none;
     }
-}
-
-.header {
-    background-color: white;
-    height: 62px;
-    padding: 0;
-}
-
-.menu {
-    margin: 0 auto;
-    border-bottom: 1px solid transparent !important;
-}
-
-.menu-item {
-    font-size: var(--el-font-size-extra-large);
-    color: #3482e9;
 }
 </style>
