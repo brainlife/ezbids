@@ -86,7 +86,7 @@
             </el-table-column>
         </el-table>
 
-        <pre>{{ ezbids.subjects }}</pre>
+        <pre v-if="config.debug">{{ ezbids.subjects }}</pre>
     </div>
 </template>
 
