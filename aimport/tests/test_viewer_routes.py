@@ -1,6 +1,7 @@
 """The QA viewer routes: the served Neuroglancer client, the browser session and the checked output data."""
 import json
 import os
+from pathlib import Path
 from urllib.parse import unquote, urlsplit
 
 import pytest
@@ -361,6 +362,27 @@ def test_viewer_index(planned):
     assert "http://" not in page and "https://" not in page and "<script" not in page  # no external assets
 
 
+def test_viewer_index_brainlife_look(planned):
+    """The index has the brainlife-lite look (DM Sans fallback stack, primary #3d6a92, 6px radius, a white panel
+    on #f5f5f5) and the brainlife.io logo top-left, served by the engine: no external font or asset (CSP 'self')."""
+    executed(planned)
+    browser = viewer_client(planned)
+    page = browser.get("/viewer/").text
+    assert '<img class="mark" src="/viewer/brainlife-mark.svg" alt="brainlife.io"' in page
+    header = page[page.index("<header"):page.index("</header>")]
+    assert "brainlife.io" in header and "aimport QA viewer" in header
+    for token in ('"DM Sans"', "#3d6a92", "border-radius: 6px", "background: #f5f5f5", "background: #fff"):
+        assert token in page, token
+    assert "@import" not in page and "@font-face" not in page and "url(" not in page
+    assert "http://" not in page and "https://" not in page and "<script" not in page
+    r = browser.get("/viewer/brainlife-mark.svg")
+    assert r.status_code == 200 and r.headers["content-type"] == "image/svg+xml"
+    assert r.headers["content-security-policy"] == "default-src 'none'; style-src 'unsafe-inline'"
+    assert r.headers["x-content-type-options"] == "nosniff" and b"<script" not in r.content
+    assert r.content.lstrip().startswith(b"<svg")
+    assert TestClient(planned.app).get("/viewer/brainlife-mark.svg").status_code == 401  # the session, as for pages
+
+
 def test_viewer_entry_redirect(planned):
     eid = t1w(planned)
     executed(planned)
@@ -470,6 +492,7 @@ def test_qa_data_original_needs_an_original(planned):
 
 # --- microscopy: OME-Zarr output and reference datasets read through the chunk map ---
 
+import contextlib  # noqa: E402
 import time  # noqa: E402
 
 from micr_fixtures import PSOCT_CONTRASTS, ome_zarr, planted_ome_tiff, psoct_nifti  # noqa: E402
@@ -613,6 +636,23 @@ def test_qa_size_cap_default():
     assert server.QA_MAX_RESPONSE_BYTES == 64 * 2**20
 
 
+def test_qa_head_reports_full_length_get_capped(planned, tmp_path, local_servers, monkeypatch):  # noqa: F811
+    """HEAD reports the object's full Content-Length whatever its size; a GET past the cap is 502 (the README
+    says so)."""
+    executed(planned)
+    base, store = _served_reference(planned, tmp_path, local_servers)
+    whole = (store / CHUNK).read_bytes()
+    monkeypatch.setattr(server, "QA_MAX_RESPONSE_BYTES", 100)
+    browser = viewer_client(planned)
+    r = browser.head(f"/qa/data/{REF}/0/{CHUNK}")
+    assert r.status_code == 200 and int(r.headers["content-length"]) == len(whole) > 100
+    assert browser.get(f"/qa/data/{REF}/0/{CHUNK}").status_code == 502
+    r = browser.get(f"/qa/data/{REF}/0/{CHUNK}", headers={"Range": "bytes=0-99"})  # a range under the cap
+    assert r.status_code == 206 and r.content == whole[:100]
+    readme = (Path(__file__).resolve().parents[1] / "README.md").read_text()
+    assert "reports the object's full `Content-Length`" in readme and "at most 64 MiB per GET" in readme
+
+
 @pytest.mark.parametrize("case", ["dotdot", "encoded", "absolute", "array-dir", "key-range", "not-a-key",
                                   "outside-manifest", "group-as-array", "source-dotdot", "source-absolute", "source-symlink",
                                   "file-url", "http-url", "original"])
@@ -671,6 +711,124 @@ def test_qa_chunk_traversal_404(planned, tmp_path, case):
         assert planned.get(f"/qa/data/{REF}/0/{CHUNK}").status_code == 200
 
 
+# --- Task 10b: proxy hardening ---
+
+class _FakeUpstream:
+    """An upstream chunk response of 64 parts of 1 KiB that records how much was read and whether it was closed."""
+
+    status_code = 200
+    headers = {"content-length": str(64 * 1024)}
+
+    def __init__(self):
+        self.read, self.closed = 0, False
+
+    def iter_raw(self):
+        for _ in range(64):
+            if self.closed:
+                return
+            self.read += 1
+            yield b"x" * 1024
+
+    def close(self):
+        self.closed = True
+
+
+def _asgi_get(app, path, cookie, spec_version):
+    """GET path through the raw ASGI app, the client leaving after the first body part: with ASGI 2.4 the
+    next send fails (OSError), before 2.4 the server reports http.disconnect."""
+    import asyncio
+
+    async def run():
+        left = asyncio.Event()
+        sent = []
+
+        async def receive():
+            if not sent:
+                sent.append("request")
+                return {"type": "http.request", "body": b"", "more_body": False}
+            await left.wait()
+            return {"type": "http.disconnect"}
+
+        async def send(message):
+            if message["type"] == "http.response.body" and message.get("body"):
+                if left.is_set() and spec_version == "2.4":
+                    raise OSError("client went away")
+                left.set()
+
+        scope = {"type": "http", "asgi": {"version": "3.0", "spec_version": spec_version}, "http_version": "1.1",
+                 "method": "GET", "scheme": "http", "path": path, "raw_path": path.encode(), "query_string": b"",
+                 "root_path": "", "headers": [(b"host", b"testserver"), (b"cookie", cookie.encode())],
+                 "client": ("127.0.0.1", 50000), "server": ("testserver", 80)}
+        try:
+            await asyncio.wait_for(app(scope, receive, send), 10)
+        except OSError:
+            pass
+        except Exception as e:  # noqa: BLE001 - starlette's ClientDisconnect
+            if type(e).__name__ != "ClientDisconnect":
+                raise
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("spec_version", ["2.4", "2.3"])
+def test_qa_proxy_closes_upstream_on_disconnect(planned, tmp_path, local_servers, monkeypatch, spec_version):  # noqa: F811
+    """A viewer that cancels a chunk mid-stream: the upstream response is closed at once (it would otherwise
+    hold a pooled connection until garbage collection) and the rest of the body is never read."""
+    from aimport.micr import remote
+
+    executed(planned)
+    _served_reference(planned, tmp_path, local_servers)
+    browser = viewer_client(planned)
+    fakes = []
+
+    def fake_open(url, range_header, method, client):
+        fakes.append(_FakeUpstream())
+        return fakes[-1]
+
+    monkeypatch.setattr(remote, "open_stream", fake_open)
+    name = cookie_name(planned)
+    _asgi_get(planned.app, f"/qa/data/{REF}/0/{CHUNK}", f"{name}={browser.cookies.get(name)}", spec_version)
+    (up,) = fakes
+    assert up.closed and up.read < 64, up.read
+
+
+@pytest.mark.parametrize("value", ["bytes=0-1,4-5", "bytes=0-1, -4", "items=0-1", "bytes=a-b", "bytes=5"])
+def test_qa_unsupported_range_is_416(planned, tmp_path, local_servers, value):  # noqa: F811
+    """A multi-range or another unit is answered 416 here: never an un-ranged GET of the whole object upstream."""
+    executed(planned)
+    _served_reference(planned, tmp_path, local_servers)
+    browser = viewer_client(planned)
+    srv = planned.app.state.server
+    sends = []
+
+    class Spy:
+        def build_request(self, *a, **k):
+            sends.append((a, k))
+            raise AssertionError("nothing may go upstream")
+
+        def close(self):
+            pass
+
+    srv._stream_client = Spy()
+    r = browser.get(f"/qa/data/{REF}/0/{CHUNK}", headers={"Range": value})
+    assert r.status_code == 416 and not r.content and sends == []
+
+
+def test_qa_stream_client_per_app_and_closed(tmp_path, monkeypatch):
+    """Each app has its own pooled client, made on first use and closed when the app stops (lifespan)."""
+    apps = [server.create_app(tmp_path / "in", tmp_path / f"work{i}", tmp_path / f"keys{i}", TOKEN, [],
+                              ["testserver"]) for i in (1, 2)]
+    (tmp_path / "in").mkdir(exist_ok=True)
+    a, b = (app.state.server for app in apps)
+    assert a._stream_client is None
+    ca, cb = a.stream_client(), b.stream_client()
+    assert ca is a.stream_client() and ca is not cb and not ca.is_closed
+    with TestClient(apps[0]):
+        pass  # startup and shutdown: the lifespan closes the client
+    assert ca.is_closed and a._stream_client is None and not cb.is_closed
+    b.close()
+    assert cb.is_closed
+
+
 # --- the micr QA index and states, through a real scan and execute ---
 
 def _wait(c, stages, timeout=90):
@@ -684,14 +842,21 @@ def _wait(c, stages, timeout=90):
 def micr_run(tmp_path, monkeypatch):
     """A micr-only run executed through the server: the four PS-OCT contrasts of one slice (NIfTI, converted),
     a planted OME-TIFF in H17_250215/ (converted) and Moe_Slice_051.ome.zarr (a reference)."""
-    from aimport.validate import ValidationResult
-
     inp = tmp_path / "in"
     folders = ("Reflectivity", "Retardance", "Orientation", "Cross")
     for contrast, folder in zip(PSOCT_CONTRASTS, folders):
         psoct_nifti(inp / "PS-OCT/Enface/Registration" / folder / "Slice_051_1.nii.gz", contrast)
     ome_zarr(inp / STORE, "0.5")
     planted_ome_tiff(inp / "H17_250215" / "stack.ome.tif")
+    with _executed_micr(inp, tmp_path, monkeypatch) as c:
+        yield c
+
+
+@contextlib.contextmanager
+def _executed_micr(inp, tmp_path, monkeypatch):
+    """inp scanned, planned (unknown suffixes set to CONF), approved and executed through the server."""
+    from aimport.validate import ValidationResult
+
     monkeypatch.setattr(server, "client_from_env", lambda: None)
     monkeypatch.setattr(server, "run_ezbids", lambda *a, **k: pytest.fail("nothing is left for ezBIDS"))
     monkeypatch.setattr(server, "validate_bids", lambda bids: ValidationResult(
@@ -773,3 +938,79 @@ def test_viewer_reference_entry_state(micr_run):
     url = state["layers"][0]["source"].removesuffix("|zarr3:").removeprefix("http://testserver")
     store = micr_run.app.state.server.input_dir / STORE
     assert browser.get(url + CHUNK).content == (store / CHUNK).read_bytes()
+
+
+def test_micr_input_executes_with_uint16_references(tmp_path, monkeypatch):
+    """A VISoR acqinfo_metadata.json says dtype "uint16": a data-type name is vocabulary, never a
+    term, so the uint16 reference stores of the same run are not refused by the term scan."""
+    from test_micr_plan import micr_input
+
+    with _executed_micr(micr_input(tmp_path / "in"), tmp_path, monkeypatch) as c:
+        entries = _entries(c)
+        refs = [e for e in entries.values() if e["write_mode"] == "reference" and not e["exclude"]]
+        assert len(refs) == 2
+        manifest = c.get("/status").json()["manifest"]
+        assert all(e["id"] in manifest for e in refs)
+
+
+def _ref_window(browser, ref_id):
+    state = decoded_state(browser.get(f"/viewer/entry/{ref_id}", follow_redirects=False).headers["location"])
+    return tuple(state["layers"][0]["shaderControls"]["normalized"]["range"])
+
+
+def test_window_cache_skips_failures_and_follows_execute(micr_run, monkeypatch):
+    """A failed window read is not cached (the next view tries again); a cached window belongs to one
+    execute (the output state's generation)."""
+    browser = viewer_client(micr_run)
+    ref = next(e for e in _entries(micr_run).values() if e["write_mode"] == "reference")
+    real = server.micr_reference.read_array
+    calls = []
+
+    def flaky(*a, **k):
+        calls.append(1)
+        if len(calls) == 1:
+            raise ValueError("the source did not answer")
+        return real(*a, **k)
+
+    monkeypatch.setattr(server.micr_reference, "read_array", flaky)
+    assert _ref_window(browser, ref["id"]) == (0.0, 65535.0) and len(calls) == 1  # the written placeholder
+    good = _ref_window(browser, ref["id"])
+    assert good != (0.0, 65535.0) and len(calls) == 2  # tried again
+    assert _ref_window(browser, ref["id"]) == good and len(calls) == 2  # cached
+    state = micr_run.app.state.server.work / server.OUTPUT_STATE
+    later = state.stat().st_mtime_ns + 2_000_000_000
+    os.utime(state, ns=(later, later))  # another execute
+    assert _ref_window(browser, ref["id"]) == good and len(calls) == 3
+
+
+def test_default_window_rule():
+    """0..1 (or the dtype's range) is a placeholder only when the source had no omero window; a real one is kept."""
+    w01 = {"min": 0.0, "max": 1.0, "start": 0.0, "end": 1.0}
+    assert server._default_window(w01, "float32", source_windows=True) is False
+    assert server._default_window(w01, "float32", source_windows=False) is True
+    assert server._default_window(w01, "float32") is True  # not recorded: judged by the values
+    full = {"min": 0, "max": 65535, "start": 0, "end": 65535}
+    assert server._default_window(full, "uint16", source_windows=True) is False
+    assert server._default_window(full, "uint16", source_windows=False) is True
+    assert server._default_window({"start": 3, "end": 9}, "uint16") is False
+    assert server._default_window(None, "uint16", source_windows=True) is True
+
+
+def test_real_omero_window_kept_by_the_viewer(tmp_path, monkeypatch):
+    """A float32 reference whose source omero window is 0..1: recorded at scan as the source's, and the
+    viewer keeps it (no percentile read)."""
+    from aimport.micr.module import RECORDS_FILE
+
+    inp = tmp_path / "in"
+    store = ome_zarr(inp / STORE, "0.5", dtype="float32")
+    doc = json.loads((store / "zarr.json").read_text())
+    doc["attributes"]["ome"]["omero"] = {"channels": [
+        {"window": {"min": 0.0, "max": 1.0, "start": 0.0, "end": 1.0}, "color": "FFFFFF"} for _ in range(2)]}
+    (store / "zarr.json").write_text(json.dumps(doc))
+    monkeypatch.setattr(server.micr_reference, "read_array",
+                        lambda *a, **k: pytest.fail("a real window is kept, never recomputed"))
+    with _executed_micr(inp, tmp_path, monkeypatch) as c:
+        (rec,) = json.loads((tmp_path / "work" / "micr" / RECORDS_FILE).read_text())
+        assert rec["info"]["reference_layout"]["source_windows"] is True
+        ref = next(e for e in _entries(c).values() if e["write_mode"] == "reference")
+        assert _ref_window(viewer_client(c), ref["id"]) == (0.0, 1.0)

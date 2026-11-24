@@ -30,6 +30,7 @@ from .metadata import (
     collect_terms,
     convert_length,
     date_terms,
+    length_factor,
     ome_allowlist,
 )
 
@@ -967,12 +968,18 @@ def _open_ome_zarr(location: Any) -> _Source:
     scale = _ngff_scale(ms, ms["datasets"][0], a0.ndim)
     lower = names.lower()
     x_unit = units[lower.index("x")] if "x" in lower else None
-    unit: PixelUnit = _NGFF_UNIT.get(str(x_unit), "um")
+    # an axis without a (length) unit leaves the unit unknown: the reviewer sets it in the plan, it is
+    # never assumed to be um (the CMC PS-OCT store has no units at all)
+    unit: PixelUnit | None = (_NGFF_UNIT.get(str(x_unit), "um") if length_factor(x_unit) is not None
+                              else None)
     pixel_size: dict[str, float] = {}
     for axis in "xyz":
         if axis in lower:
             i = lower.index(axis)
-            value = convert_length(scale[i], units[i], unit) if units[i] else scale[i]
+            if unit is None or not units[i]:
+                value = scale[i]
+            else:
+                value = convert_length(scale[i], units[i], unit)
             if value:
                 pixel_size[axis] = value
     out_shape = amap.shape()

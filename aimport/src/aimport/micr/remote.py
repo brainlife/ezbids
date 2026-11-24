@@ -16,7 +16,6 @@ import itertools
 import json
 import logging
 import re
-import threading
 import weakref
 from typing import Any
 from urllib.parse import urlsplit
@@ -147,39 +146,42 @@ STREAM_TIMEOUT_S = 30.0
 _RANGE = re.compile(r"bytes=(?:[0-9]{1,19}-[0-9]{0,19}|-[0-9]{1,19})")
 
 
-_STREAM_CLIENT: Any = None
-_STREAM_LOCK = threading.Lock()
+class RangeUnsupported(ValueError):
+    """A Range header that is not one ``bytes=`` range (a multi-range or another unit): never forwarded,
+    and never turned into an un-ranged GET (the proxy answers 416)."""
 
 
-def _stream_client() -> Any:
-    """One pooled httpx client for the proxy (a TLS handshake per chunk would make the viewer crawl)."""
-    global _STREAM_CLIENT
+def range_ok(range_header: str | None) -> bool:
+    """Whether a Range header can be forwarded upstream: absent, or a single ``bytes=`` range."""
+    return not range_header or _RANGE.fullmatch(range_header.strip()) is not None
+
+
+def new_stream_client() -> Any:
+    """A pooled httpx client for the QA viewer's chunk proxy (a TLS handshake per chunk would make the
+    viewer crawl). The server owns one per app and closes it when the app stops."""
     import httpx
 
-    with _STREAM_LOCK:
-        if _STREAM_CLIENT is None:
-            _STREAM_CLIENT = httpx.Client(
-                follow_redirects=False, trust_env=False, timeout=STREAM_TIMEOUT_S,
-                limits=httpx.Limits(max_connections=32, max_keepalive_connections=16))
-        return _STREAM_CLIENT
+    return httpx.Client(follow_redirects=False, trust_env=False, timeout=STREAM_TIMEOUT_S,
+                        limits=httpx.Limits(max_connections=32, max_keepalive_connections=16))
 
 
-def open_stream(url: str, range_header: str | None = None, method: str = "GET") -> Any:
-    """A streamed anonymous GET (or HEAD) of one object for the QA viewer's chunk proxy: the httpx response,
-    not yet read (the caller reads it with ``iter_raw`` and closes it). Only ``Range`` is forwarded (a single
-    ``bytes=`` range; anything else is dropped), with ``Accept-Encoding: identity`` so the body is the stored
-    bytes. Redirects are followed by the remote rule (``redirect_allowed``, at most MAX_REDIRECTS); another is
-    ``RemoteRefused``. url is a ``reference.resolve`` result (already normalised). httpx errors propagate."""
+def open_stream(url: str, range_header: str | None, method: str, client: Any) -> Any:
+    """A streamed anonymous GET (or HEAD) of one object for the QA viewer's chunk proxy, on ``client``
+    (new_stream_client): the httpx response, not yet read (the caller reads it with ``iter_raw`` and closes
+    it). Only ``Range`` is forwarded, and only a single ``bytes=`` range (anything else is RangeUnsupported),
+    with ``Accept-Encoding: identity`` so the body is the stored bytes. Redirects are followed by the remote
+    rule (``redirect_allowed``, at most MAX_REDIRECTS); another is ``RemoteRefused``. url is a
+    ``reference.resolve`` result (already normalised). httpx errors propagate."""
     from urllib.parse import urljoin
 
     if method not in ("GET", "HEAD"):
         raise ValueError("GET or HEAD only")
+    if not range_ok(range_header):
+        raise RangeUnsupported("only a single bytes= range is forwarded")
     headers = {"Accept-Encoding": "identity"}
-    if range_header and _RANGE.fullmatch(range_header.strip()):
+    if range_header:
         headers["Range"] = range_header.strip()
     import httpx
-
-    client = _stream_client()
 
     def send(target: str) -> Any:
         try:

@@ -124,9 +124,17 @@ def test_convert_pyramid_levels(tmp_path):
     last = levels[-1]
     assert max(3000 // last["y"], 2000 // last["x"]) <= convert.PYRAMID_MAX_SIDE
     assert all(f.get("z", 1) == 1 for f in levels[:3])  # z (4 um) is coarser than the plane until 4 um
-    # a 2D stripe: one level per halving down to 512
+    # a 2D plane: one level per halving down to 256
     flat = ImageInfo(family="tiff", axes="yx", shape=(6000, 6000), dtype="uint16", pixel_size={"x": 1.0, "y": 1.0})
-    assert [f.get("x", 1) for f in convert.pyramid_levels(flat)] == [1, 2, 4, 8, 16]
+    assert [f.get("x", 1) for f in convert.pyramid_levels(flat)] == [1, 2, 4, 8, 16, 32]
+    assert convert.PYRAMID_MAX_SIDE == 256
+    for side, n in ((1024, 3), (512, 2), (256, 1), (257, 2)):  # a 1024² image gets 3 levels
+        sq = ImageInfo(family="tiff", axes="yx", shape=(side, side), dtype="uint16", pixel_size={"x": 1.0, "y": 1.0})
+        assert len(convert.pyramid_levels(sq)) == n, side
+    # the in-plane axes decide: a deep stack of small planes is not downsampled for its z
+    deep = ImageInfo(family="tiff", axes="zyx", shape=(4000, 200, 200), dtype="uint16",
+                     pixel_size={"x": 1.0, "y": 1.0, "z": 1.0})
+    assert convert.pyramid_levels(deep) == [{}]
     with pytest.raises(PixelSizeUnknown):  # never an invented pixel size
         convert.pyramid_levels(ImageInfo(family="tiff", axes="yx", shape=(6000, 6000), dtype="uint16"))
 
@@ -177,8 +185,8 @@ def test_convert_bounded_memory(tmp_path, monkeypatch):
     assert peak < 12 * MiB, peak
     assert zarr.open_array(str(tmp_path / "big.ome.zarr" / "0"), mode="r").shape == (6000, 6000)
     # progress per level and per block, numbers only
-    assert any(m.startswith("converting: level 1 of 5, block 1 of ") for m in seen)
-    assert any(m.startswith("converting: level 5 of 5") for m in seen)
+    assert any(m.startswith("converting: level 1 of 6, block 1 of ") for m in seen)
+    assert any(m.startswith("converting: level 6 of 6") for m in seen)
 
 
 def test_convert_bounded_memory_3d(tmp_path, monkeypatch):

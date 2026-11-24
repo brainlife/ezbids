@@ -190,10 +190,15 @@ def _read(input_dir: Path, g: _Group) -> tuple[dict | None, set[str], str | None
             info = info_dict(src.info)
             layout = getattr(src, "zarr_layout", None)
             if layout is not None:  # what layout_refusal decides on at planning (and again at execute)
-                from .reference import dataset_dirs, layout_facts, symlinked
+                from .metadata import channel_count
+                from .reference import dataset_dirs, has_source_windows, layout_facts, symlinked
 
                 link = False if g.remote else symlinked(input_dir, g.group, dataset_dirs(layout))
                 info["reference_layout"] = layout_facts(layout, src.info.zarr_format, link)
+                # whether the written omero windows will be the source's (the QA viewer keeps them) or
+                # placeholders (it computes a window from the coarsest level)
+                info["reference_layout"]["source_windows"] = has_source_windows(layout.windows,
+                                                                                channel_count(src.info))
             return info, set(src.terms), None
         finally:
             src.close()
@@ -214,23 +219,44 @@ def _where(rec: dict) -> str:
     return rec["rel"]
 
 
-REMOTE_DONOR_FOLDERS = 3  # a remote donor comes from the file or store name, or this many nearest folders
+_PATH_STYLE_S3 = re.compile(r"s3(?:[.-][a-z0-9-]+)?\.amazonaws\.com", re.I)
+
+
+def remote_key(url: str) -> str:
+    """The object key of a remote source (its URL path without the bucket of a path-style S3 URL)."""
+    parts = urlsplit(url)
+    path = parts.path.lstrip("/")
+    if _PATH_STYLE_S3.fullmatch(parts.hostname or ""):
+        path = path.split("/", 1)[1] if "/" in path else ""
+    return path
 
 
 def remote_donor(path: str) -> str | None:
-    """The donor of a remote source: from its file or store name, else one of its nearest folders
-    (nearest first), by the names.facts rule applied to each segment alone. Never from the bucket or
-    the leading segments of the URL (``CMC/...`` is a project, not a donor)."""
+    """The donor of a remote source (``path``: its object key, ``remote_key``): the first donor-like
+    segment walking down every folder from the top (``CMC/Derivatives/Moe/PS-OCT/...`` gives Moe), else
+    the file or store name; names.facts applied to each segment alone. The top folder under the
+    bucket is a project (``CMC/...``), never a donor. Folders come first because file names carry
+    contrast codes that look like donors (``Slice_001_EnR_hdr``: EnR, hdr)."""
     parts = [p for p in path.split("/") if p]
     if not parts:
         return None
-    for seg in [parts[-1], *reversed(parts[-1 - REMOTE_DONOR_FOLDERS:-1])]:
+    for seg in [*parts[1:-1], parts[-1]]:
         if seg.startswith("sub-") and len(seg) > 4:
             return seg[4:]
         donor = names.facts(seg).donor
         if donor:
             return donor
     return None
+
+
+def _remote_group(rec: dict) -> str:
+    """The run-local subject of a remote record without a donor: records under the same parent folder
+    (contrast folders such as Reflectivity/ and Retardance/ skipped) with the same slice share one."""
+    parts = urlsplit(rec["url"])
+    folders = [p for p in remote_key(rec["url"]).split("/") if p][:-1]
+    while folders and names.facts(folders[-1]).contrast:
+        folders.pop()
+    return f"url:{parts.hostname}/{'/'.join(folders)}|slice={rec['facts'].get('slice')}"
 
 
 def _url_terms(url: str) -> set[str]:
@@ -271,7 +297,7 @@ def scan_records(input_dir: Path, claim: Claim, found: list[Found] | None,
         facts = names.facts(g.members[0] if g.family == "raw-psoct" else where)
         terms |= names.path_terms([where, *g.members])
         if g.remote:
-            facts.donor = remote_donor(where)
+            facts.donor = remote_donor(remote_key(g.group))
             terms |= _url_terms(g.group)
             if facts.donor:
                 terms.add(facts.donor)
@@ -422,7 +448,8 @@ def describe(rec: dict, write_mode: str) -> str:
         parts.append("×".join(dims))
     x = (info.get("pixel_size") or {}).get("x")
     if x:
-        parts.append(f"{x:g} {_UNIT_TEXT.get(info.get('pixel_unit'), 'µm')}")
+        unit = info.get("pixel_unit")
+        parts.append(f"{x:g} {_UNIT_TEXT.get(unit, 'µm')}" if unit else f"{x:g} (unit unknown)")
     if n > 1:
         parts.append(f"{n} tiles")
     tail = "reference (no copy)" if write_mode == "reference" else "converted to OME-Zarr"
@@ -479,7 +506,7 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
         if donor:
             originals.append("micr:id=" + donor)
         else:
-            top = ("url:" + rec["url"]) if "url" in rec else where.split("/")[0]
+            top = _remote_group(rec) if "url" in rec else where.split("/")[0]
             originals.append(no_donor.setdefault(top, f"run:{run}:micr{len(no_donor)}"))
     order = list(dict.fromkeys(originals))
     subject_idx = {o: MICR_INDEX_BASE + i for i, o in enumerate(order)}

@@ -34,7 +34,7 @@ __all__ = ["NgffCheckError", "check_ome_zarr", "pyramid_levels", "stack_sources"
 CHUNKS_PER_SHARD = 4  # per spatial axis (NGFF 0.5 only; 0.4 / Zarr v2 has no sharding)
 DEFAULT_CHUNK_3D = 128
 DEFAULT_CHUNK_2D = 1024
-PYRAMID_MAX_SIDE = 512  # the coarsest level's largest spatial axis
+PYRAMID_MAX_SIDE = 256  # the coarsest level's largest in-plane (y, x) axis
 PYRAMID_MAX_LEVELS = 8
 WINDOW_SAMPLES = 2**20  # values per channel read from the coarsest level for the display window
 WINDOW_PERCENTILES = (0.5, 99.5)
@@ -122,15 +122,18 @@ def level0_slab(info: ImageInfo, grid: tuple[int, ...], budget: int,
 
 def pyramid_levels(info: ImageInfo) -> list[dict[str, int]]:
     """Absolute downsampling factors per level, level 0 included (``{}``), down to the level whose
-    largest spatial axis is at most 512, with at most 8 levels. y and x halve every level; z halves
-    only while its pixels are not coarser than the in-plane ones (anisotropic stacks keep their z)."""
+    largest in-plane (y, x) axis is at most 256 (a 1024² plane gets 3 levels), with at most 8 levels.
+    y and x halve every level; z halves only while its pixels are not coarser than the in-plane ones
+    (anisotropic stacks keep their z)."""
     size = pixel_sizes(info)
     shape = {a: int(n) for a, n in zip(info.axes, info.shape) if a in SPATIAL}
     if not shape:
         return [{}]
+    plane_axes = [a for a in shape if a != "z"] or list(shape)
     factors = {a: 1 for a in shape}
     levels: list[dict[str, int]] = [{}]
-    while len(levels) < PYRAMID_MAX_LEVELS and max(shape[a] // factors[a] for a in shape) > PYRAMID_MAX_SIDE:
+    while len(levels) < PYRAMID_MAX_LEVELS and \
+            max(shape[a] // factors[a] for a in plane_axes) > PYRAMID_MAX_SIDE:
         plane = max(size[a] * factors[a] for a in shape if a != "z")
         nxt = dict(factors)
         for a in shape:

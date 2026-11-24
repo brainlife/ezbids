@@ -13,7 +13,7 @@ import zarr
 from aimport import server
 from aimport.micr import readers, reference
 from aimport.micr.convert import NgffCheckError, check_ome_zarr
-from aimport.micr.metadata import sidecar, with_plan_pixel_size
+from aimport.micr.metadata import PixelSizeUnknown, sidecar, with_plan_pixel_size
 from aimport.micr.reference import chunk_keys, key_ok, resolve, write_reference
 from aimport.pseudonyms import PseudonymKey
 from conftest import MICR_PLANTED
@@ -368,12 +368,19 @@ def test_cmc_psoct_zarr_reference(tmp_path):
     alone: under 1 MiB fetched, nothing but metadata written, the self-check passes."""
     from aimport.micr import remote
 
+    from types import SimpleNamespace
+
     url = "s3://apex-connects/CMC/Derivatives/Moe/PS-OCT/Zarr/Moe_Slice_051.ome.zarr"
     src, counter = remote.open_remote(url, "ome-zarr", max_bytes=2**20)
     try:
+        # its axes have no units: never assumed; the reviewer's unit (here um) is what is written
+        assert src.info.pixel_unit is None and src.info.pixel_size == {"x": 1.0, "y": 1.0}
+        info = with_plan_pixel_size(src.info, SimpleNamespace(pixel_size=[10.0, 10.0], pixel_size_units="um"))
         dest = tmp_path / "x.ome.zarr"
-        arrays = write_reference(src, {"url": url}, dest, src.info)
-        check_ome_zarr(dest, sidecar(src.info, None), "0.5", src.info.shape, src.info.dtype, reference=True)
+        arrays = write_reference(src, {"url": url}, dest, info)
+        # its faults (translation on c, levels 3 and 4 declaring 16 and 64 for arrays halved 3 and 4
+        # times, no units) are corrected in the rebuilt metadata
+        assert_cmc_faults_corrected(dest, info, 10.0, [(1, 1), (2, 2), (4, 4), (8, 8), (16, 16), (512, 512)])
     finally:
         src.close()
     assert counter.total < 2**20, counter
@@ -511,6 +518,95 @@ def test_term_scan_passes_clean_metadata(tmp_path):
     with readers.open_image(store, "ome-zarr") as src:
         terms = set(src.terms) | {"Moe", "Slice_051", "ch488", "00FF00", "12"}
         write_reference(src, {"input": "Moe_Slice_051.ome.zarr"}, tmp_path / "x.ome.zarr", src.info, terms=terms)
+
+
+def test_format_vocabulary_is_never_a_term(tmp_path):
+    """Data-type, unit, axis, NGFF and codec words are vocabulary: never collected as terms, and never
+    matched by the term scan (a VISoR acqinfo dtype "uint16" refused every uint16 store)."""
+    from aimport.micr.metadata import collect_terms, format_vocab
+
+    meta = {"settings": {"dtype": "uint16", "unit": "micrometer", "axis": "space", "codec": "zstd",
+                         "operator": "Jane Doe"}, "kind": "Float32", "u": "µm"}
+    assert collect_terms(meta) == {"Jane Doe"}
+    assert all(format_vocab(w) for w in ("uint16", "UInt16", "float32", "micrometer", "µm", "channel",
+                                         "sharding_indexed", "bytes", "scale", "translation"))
+    assert not any(format_vocab(w) for w in ("Moe", "H17", "Jane Doe", "uint16x", "250215"))
+    store = ome_zarr(tmp_path / "in" / "s.ome.zarr", "0.5")
+    with readers.open_image(store, "ome-zarr") as src:
+        assert src.info.dtype == "uint16"
+        write_reference(src, {"input": "s.ome.zarr"}, tmp_path / "x.ome.zarr", src.info,
+                        terms={"uint16", "UINT16", "micrometer", "zstd", "space", "regular", "little"})
+        with pytest.raises(reference.ReferenceRefused):  # a real term is still refused
+            write_reference(src, {"input": "s.ome.zarr"}, tmp_path / "y.ome.zarr", src.info,
+                            terms={"uint16", "regul"})
+
+
+def _attrs_multiscale(dest: Path) -> dict:
+    return json.loads((dest / "zarr.json").read_text())["attributes"]["ome"]["multiscales"][0]
+
+
+def assert_cmc_faults_corrected(dest: Path, info, pixel: float, factors) -> None:
+    """The rebuilt metadata of a CMC-like store: spatial axes carry the plan's unit, no translation on
+    the channel axis, and each level's scale is the plan's pixel size times the factor its array holds."""
+    ms = _attrs_multiscale(dest)
+    assert ms["axes"] == [{"name": "c", "type": "channel"},
+                          {"name": "y", "type": "space", "unit": "micrometer"},
+                          {"name": "x", "type": "space", "unit": "micrometer"}]
+    assert len(ms["datasets"]) == len(factors)
+    for ds, (fy, fx) in zip(ms["datasets"], factors):
+        by_type = {t["type"]: t for t in ds["coordinateTransformations"]}
+        assert by_type["scale"]["scale"] == pytest.approx([1.0, pixel * fy, pixel * fx])
+        if "translation" in by_type:
+            assert by_type["translation"]["translation"][0] == 0.0
+    check_ome_zarr(dest, sidecar(info, None), "0.5", info.shape, info.dtype, reference=True)
+
+
+def test_cmc_metadata_faults_corrected(tmp_path, key, schema):
+    """The CMC PS-OCT faults (no units, a translation on c, coarse scales that disagree with the array
+    sizes) are planned as unit unknown and corrected in the rebuilt reference metadata."""
+    from micr_fixtures import CMC_PSOCT_FACTORS, cmc_psoct_zarr
+
+    from aimport.planner import PIXEL_UNIT_REASON, apply_plan_edits
+    from aimport.plan import Plan
+
+    store = cmc_psoct_zarr(tmp_path / "in" / "PS-OCT" / "Zarr" / "Moe_Slice_051.ome.zarr")
+    (e,) = _scan_plan(tmp_path / "in", tmp_path / "work", key, schema)
+    assert e.write_mode == "reference" and (e.status, e.exclude) == ("unknown", True)
+    assert e.reason == PIXEL_UNIT_REASON and e.pixel_size == [1.0, 1.0] and e.pixel_size_units is None
+    assert "unit unknown" in e.description and "µm" not in e.description
+    plan = Plan(target="bids", entries=[e])
+    apply_plan_edits(plan, [{"id": e.id, "pixel_size_units": "um"}], schema)  # the pixel size edit path
+    assert (e.status, e.exclude, e.pixel_size) == ("ok", False, [1.0, 1.0])
+    apply_plan_edits(plan, [{"id": e.id, "pixel_size_units": None}], schema)
+    assert (e.status, e.reason) == ("unknown", PIXEL_UNIT_REASON)
+    apply_plan_edits(plan, [{"id": e.id, "pixel_size_units": "um", "pixel_size": [10.0, 10.0]}], schema)
+    assert (e.status, e.exclude) == ("ok", False)
+    with readers.open_image(store, "ome-zarr") as src:
+        assert src.info.pixel_unit is None
+        with pytest.raises(PixelSizeUnknown, match="unit unknown"):  # never assumed to be um
+            write_reference(src, {"input": "PS-OCT/Zarr/Moe_Slice_051.ome.zarr"}, tmp_path / "no.ome.zarr", src.info)
+        info = with_plan_pixel_size(src.info, e)
+        write_reference(src, {"input": "PS-OCT/Zarr/Moe_Slice_051.ome.zarr"}, tmp_path / "x.ome.zarr", info)
+    assert_cmc_faults_corrected(tmp_path / "x.ome.zarr", info, 10.0, CMC_PSOCT_FACTORS)
+
+
+@pytest.mark.parametrize("version", ["0.5", "0.4"])
+def test_read_array_caps_decoded_size_without_hint(tmp_path, version):
+    """read_array: without codec_bytes_hint the decoded size is the shape times the item size, and the cap holds."""
+    store, dest, info, arrays = _reference(tmp_path, version)
+    bids = tmp_path / "out"
+    chunks = reference.chunk_map({f"x.ome.zarr/{k}": v for k, v in arrays.items()})
+    level1 = chunks["arrays"]["x.ome.zarr/1"]
+    size = int(np.prod(level1["shape"])) * 2  # uint16
+    for meta in (level1, {k: v for k, v in level1.items() if k != "codec_bytes_hint"}):
+        chunks["arrays"]["x.ome.zarr/1"] = meta
+        with pytest.raises(ValueError, match="too large"):
+            reference.read_array(chunks, bids, "x.ome.zarr/1", tmp_path / "in", size - 1)
+        got = reference.read_array(chunks, bids, "x.ome.zarr/1", tmp_path / "in", 64 * 2**20)
+        np.testing.assert_array_equal(got, zarr.open_array(str(store / "1"), mode="r")[...])
+    assert reference._decoded_bytes({"shape": [10, 10]}, {"zarr_format": 3, "data_type": "float32"}, 1) == 400
+    with pytest.raises(ValueError, match="data type"):
+        reference._decoded_bytes({"shape": [10]}, {"zarr_format": 3, "data_type": "vlen-utf8"}, 1)
 
 
 def test_factor_prefers_the_size_ratio():

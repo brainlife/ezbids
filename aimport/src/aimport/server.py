@@ -238,6 +238,8 @@ class Server:
         self.schema = None
         self.thread: threading.Thread | None = None
         self.status: dict = {"stage": "idle", "message": ""}
+        self._stream_client: Any = None  # the QA chunk proxy's pooled httpx client: this app's own, closed with it
+        self._stream_lock = threading.Lock()
         self.viewer_codes: dict[str, float] = {}  # one-time code -> expiry (_now())
         self.viewer_sessions: set[str] = set()  # session cookies, for this server run
         self.viewer_cookie = VIEWER_COOKIE + secrets.token_hex(4)  # the session cookie's name, for this run
@@ -461,6 +463,19 @@ class Server:
 
     def close(self) -> None:
         self.release_key()
+        with self._stream_lock:
+            client, self._stream_client = self._stream_client, None
+        if client is not None:
+            client.close()
+
+    def stream_client(self) -> Any:
+        """This app's pooled httpx client for the QA chunk proxy (remote.new_stream_client), made on first use."""
+        from .micr.remote import new_stream_client
+
+        with self._stream_lock:
+            if self._stream_client is None:
+                self._stream_client = new_stream_client()
+            return self._stream_client
 
     # --- plan ---
 
@@ -729,16 +744,38 @@ class Server:
                                                {c for c, act in default.columns.items() if act == "shift_date"})
 
 
-def _proxy_chunk(url: str, range_header: str | None, head: bool = False) -> Response:
+class _UpstreamStream(StreamingResponse):
+    """A proxied chunk body that always closes its upstream response when the response ends, also when the
+    viewer disconnects mid-stream (a cancelled chunk must not hold a pooled connection): the body generator
+    is closed in a finally, whichever way streaming stopped (a send error, a cancelled task group)."""
+
+    def __init__(self, content: Any, upstream: Any, **kwargs: Any) -> None:
+        super().__init__(content, **kwargs)
+        self.upstream = upstream
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            await self.body_iterator.aclose()
+            self.upstream.close()  # also when the body never started (the client left before the first part)
+
+
+def _proxy_chunk(url: str, range_header: str | None, client: Any, head: bool = False) -> Response:
     """A referenced chunk at url, streamed to the viewer: only Range goes upstream; only the status, Content-Range
     and Content-Length come back (never Location, Server, X-Amz-* or the URL); at most QA_MAX_RESPONSE_BYTES.
-    head: a HEAD (Neuroglancer asks for a shard's size before reading its index from the end)."""
+    A Range that is not a single bytes= range gets 416 here (never an un-ranged upstream GET).
+    head: a HEAD (Neuroglancer asks for a shard's size before reading its index from the end).
+    client: the server's pooled httpx client."""
     import httpx
+    from starlette.concurrency import run_in_threadpool
 
-    from .micr.remote import RemoteRefused, open_stream
+    from .micr.remote import RangeUnsupported, RemoteRefused, open_stream
 
     try:
-        upstream = open_stream(url, range_header, "HEAD" if head else "GET")
+        upstream = open_stream(url, range_header, "HEAD" if head else "GET", client)
+    except RangeUnsupported:
+        return Response(status_code=416, headers={"Accept-Ranges": "bytes"})
     except RemoteRefused:
         raise HTTPException(404, NO_SUCH_CHUNK) from None
     except httpx.HTTPError as e:
@@ -765,10 +802,11 @@ def _proxy_chunk(url: str, range_header: str | None, head: bool = False) -> Resp
             return Response(status_code=status, headers=headers, media_type="application/octet-stream")
         cap = QA_MAX_RESPONSE_BYTES
 
-        def body():
+        async def body():
+            parts = upstream.iter_raw()
             sent = 0
             try:
-                for part in upstream.iter_raw():
+                while (part := await run_in_threadpool(next, parts, None)) is not None:
                     sent += len(part)
                     if sent > cap:
                         raise RuntimeError("the chunk response is too large")
@@ -777,18 +815,25 @@ def _proxy_chunk(url: str, range_header: str | None, head: bool = False) -> Resp
                 upstream.close()
 
         streaming = True
-        return StreamingResponse(body(), status_code=status, headers=headers, media_type="application/octet-stream")
+        return _UpstreamStream(body(), upstream, status_code=status, headers=headers,
+                               media_type="application/octet-stream")
     finally:
         if not streaming:
             upstream.close()
 
 
-def _default_window(window: Any, dtype: Any) -> bool:
+def _default_window(window: Any, dtype: Any, source_windows: bool | None = None) -> bool:
     """Whether an omero window is the placeholder reference.py writes when the source had none: the dtype's
-    range for integers, 0..1 otherwise (or no window at all)."""
+    range for integers, 0..1 otherwise (or no window at all). source_windows: whether the source had an omero
+    window per channel (scan records, reference.has_source_windows); then its windows, 0..1 included, are
+    real and kept. None (not recorded): judged by the values alone."""
     import numpy as np
 
     if not isinstance(window, dict) or not all(isinstance(window.get(k), (int, float)) for k in ("start", "end")):
+        return True
+    if source_windows is True:
+        return False
+    if source_windows is False:
         return True
     dt = np.dtype(dtype)
     lo, hi = (float(np.iinfo(dt).min), float(np.iinfo(dt).max)) if dt.kind in "iu" else (0.0, 1.0)
@@ -1114,7 +1159,7 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
             if not source.is_file():
                 raise HTTPException(404, NO_SUCH_CHUNK)
             return FileResponse(source, media_type="application/octet-stream")
-        return _proxy_chunk(source, request.headers.get("range"), head=request.method == "HEAD")
+        return _proxy_chunk(source, request.headers.get("range"), srv.stream_client(), head=request.method == "HEAD")
 
     @app.post("/viewer/session")
     def post_viewer_session() -> dict:
@@ -1148,6 +1193,15 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
                 for e in entries for i, path in enumerate(state["manifest"][e.id])]
         return HTMLResponse(index_page(rows))
 
+    @app.get("/viewer/brainlife-mark.svg")
+    def get_viewer_logo() -> Response:
+        """The brainlife.io logo of the index page (the engine's own copy: no request to another host)."""
+        from importlib import resources
+
+        svg = resources.files("aimport.data").joinpath("brainlife-mark.svg").read_bytes()
+        return Response(svg, media_type="image/svg+xml",
+                        headers={"Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'"})
+
     window_cache: dict[tuple, dict] = {}
 
     def zarr_attrs(state: dict, entry: Any, rel: str) -> dict:
@@ -1166,7 +1220,11 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
             raise HTTPException(404, "no such image")
         if entry.write_mode != "reference":
             return attrs
-        key = (state.get("scan_id"), rel)
+        try:  # each execute rewrites the output state: a window of an earlier execute is never reused
+            generation = (work_dir / OUTPUT_STATE).stat().st_mtime_ns
+        except OSError:
+            generation = None
+        key = (state.get("scan_id"), generation, rel)
         if key in window_cache:
             return window_cache[key]
         attrs = json.loads(json.dumps(attrs))
@@ -1175,7 +1233,8 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         datasets = multiscale.get("datasets") or []
         try:
             dtype = zarr.open_array(str(root / str(datasets[0]["path"])), mode="r").dtype
-            if channels and all(_default_window(c.get("window"), dtype) for c in channels):
+            had = source_windows(entry)
+            if channels and all(_default_window(c.get("window"), dtype, had) for c in channels):
                 chunks = chunk_map() or {}
                 coarse = micr_reference.read_array(chunks, srv.out, f"{rel}/{datasets[-1]['path']}",
                                                    srv.input_dir, QA_WINDOW_MAX_BYTES)
@@ -1185,8 +1244,21 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
                     ch["window"] = window_of(values, dtype)
         except Exception:  # noqa: BLE001 - the written window is a fine fallback; nothing is reported
             log.info("display window of a reference not computed")
+            return attrs  # not cached: the next view tries again
         window_cache[key] = attrs
         return attrs
+
+    def source_windows(entry: Any) -> bool | None:
+        """Whether a reference entry's source had an omero window per channel (its scan record), or None."""
+        from .micr.module import MICR_INDEX_BASE, MicrModule, load_records
+
+        try:
+            records = load_records(module_dir(srv.work, MicrModule()))
+            rec = records[entry.series_idx - MICR_INDEX_BASE] if entry.series_idx >= MICR_INDEX_BASE else None
+            value = ((rec or {}).get("info") or {}).get("reference_layout", {}).get("source_windows")
+        except (OSError, ValueError, IndexError, TypeError, AttributeError):
+            return None
+        return value if isinstance(value, bool) else None
 
     def level0_xy(rel: str, attrs: dict) -> list[int] | None:
         """Level 0's x and y sizes, from its written array metadata."""

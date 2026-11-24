@@ -463,3 +463,18 @@ def test_cmc_enface_nifti_header():
     assert info.dtype == "float32" and info.pixel_unit == "mm" and 11000 in info.shape
     print(f"enface bytes={counter.total}")
     assert counter.total < limit
+
+
+def test_httpx_is_a_declared_runtime_dependency():
+    """open_stream (the QA chunk proxy) uses httpx: it is a direct runtime dependency, locked at the
+    version anthropic already needed (no new package)."""
+    import tomllib
+
+    root = Path(__file__).resolve().parents[1]
+    deps = tomllib.loads((root / "pyproject.toml").read_text())["project"]["dependencies"]
+    assert any(d.split(">")[0].split("=")[0].strip() == "httpx" for d in deps)
+    lock = tomllib.loads((root / "uv.lock").read_text())
+    (me,) = [p for p in lock["package"] if p["name"] == "aimport"]
+    assert {"name": "httpx"} in me["dependencies"]
+    (httpx_pkg,) = [p for p in lock["package"] if p["name"] == "httpx"]
+    assert httpx_pkg["version"] == "0.28.1"

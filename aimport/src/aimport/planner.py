@@ -34,6 +34,7 @@ AGENT_MIN = 0.5  # agent answers below this are not used
 CHECK_EXT = ".nii.gz"  # every phase-1 image is written as NIfTI (CHECK_EXTS: other datatypes)
 MICR_DATATYPE_REASON = "microscopy input: datatype must be micr"
 PIXEL_SIZE_REASON = "pixel size unknown: set it in the plan"
+PIXEL_UNIT_REASON = "pixel size unit unknown: set it in the plan"
 MRI_DATATYPE_REASON = "MRI input: datatype cannot be micr"
 HIDDEN_ANCILLARY = ("{n} supplementary folder(s) of the input hold microscopy data, so they are not uploaded "
                     "as supplementary files")
@@ -368,12 +369,14 @@ def _check_nameable(d: dict, subject: str, session: str | None, schema: Schema, 
 
 def check_pixel_size(d: dict, e: PlanEntry) -> None:
     """Rule: an "ok" microscopy entry has a pixel size for every spatial axis, and units; otherwise it
-    becomes unknown (never an invented size)."""
+    becomes unknown (never an invented size, never an assumed unit)."""
     if d["status"] != "ok" or e.modality != "micr":
         return
     n = len(e.spatial_axes) or None
-    if e.pixel_size is None or e.pixel_size_units is None or (n is not None and len(e.pixel_size) != n):
+    if e.pixel_size is None or (n is not None and len(e.pixel_size) != n):
         d.update(status="unknown", exclude=True, reason=PIXEL_SIZE_REASON)
+    elif e.pixel_size_units is None:
+        d.update(status="unknown", exclude=True, reason=PIXEL_UNIT_REASON)
 
 
 def _fmap_tags(entries: list[PlanEntry]) -> None:

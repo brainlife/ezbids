@@ -28,14 +28,13 @@ import itertools
 import json
 import math
 import re
-import unicodedata
 from pathlib import Path
 from typing import Any, Iterator, Mapping
 from urllib.parse import unquote, urlsplit
 
 import numpy as np
 
-from .metadata import ImageInfo, channel_count, ngff_attrs
+from .metadata import FORMAT_VOCAB, ImageInfo, channel_count, ngff_attrs, squash
 
 CHUNK_MAP_VERSION = 1
 CHUNK_MAP_NAME = "bids.chunks.json"  # in <work>/output/, next to bids/
@@ -229,8 +228,7 @@ TERM_REFUSED = "OME-Zarr metadata not referenceable: it holds identifying text"
 
 
 def _squash(text: str) -> str:
-    folded = unicodedata.normalize("NFKD", text).casefold()
-    return "".join(ch for ch in folded if ch.isalnum())
+    return squash(text)
 
 
 def _strings(obj: Any) -> Iterator[str]:
@@ -249,7 +247,8 @@ def check_terms(dest: Path, terms: Any) -> None:
     """Refuse (ReferenceRefused, a generic message) when a string in a metadata document under
     ``dest`` (keys, codec and filter configurations, string fill values ...) holds a run term,
     compared case-insensitively with separators squashed (casefold, alphanumerics only).
-    Generated omero labels (``ch<n>``) and colours are exempt. Terms shorter than 3 characters,
+    Generated omero labels (``ch<n>``) and colours are exempt, and so are terms that are format
+    vocabulary (metadata.FORMAT_VOCAB: ``uint16``, ``micrometer``, ``zstd`` ...). Terms shorter than 3 characters,
     and numbers shorter than ancillary.PATH_NUMERIC_MIN digits, are not checked (they would match
     generated vocabulary)."""
     from ..ancillary import PATH_NUMERIC_MIN
@@ -257,6 +256,8 @@ def check_terms(dest: Path, terms: Any) -> None:
     wanted = set()
     for t in terms or ():
         sq = _squash(str(t))
+        if sq in FORMAT_VOCAB:  # data-type, unit, axis, NGFF and codec words are never terms
+            continue
         if len(sq) >= 3 and not (sq.isdigit() and len(sq) < PATH_NUMERIC_MIN):
             wanted.add(sq)
     if not wanted:
@@ -329,11 +330,18 @@ def source_factors(info: ImageInfo, layout: Any) -> list[dict[str, int]]:
     return out
 
 
+def has_source_windows(source: list, n: int) -> bool:
+    """Whether a source's omero block gives a display window for each of its n channels (then the written
+    windows are the source's; otherwise they are placeholders, see _windows). Recorded at scan in the
+    reference layout facts (``source_windows``), for the QA viewer."""
+    return len(source) == n and all(source)
+
+
 def _windows(info: ImageInfo, source: list) -> list[dict[str, float]]:
     """The source's display windows (numbers only) when there is one per channel; else the dtype's
-    range (no chunk is read for a reference)."""
+    range, 0..1 for floats (a placeholder: no chunk is read for a reference)."""
     n = channel_count(info)
-    if len(source) == n and all(source):
+    if has_source_windows(source, n):
         return list(source)
     dt = np.dtype(info.dtype)
     lo, hi = (float(np.iinfo(dt).min), float(np.iinfo(dt).max)) if dt.kind in "iu" else (0.0, 1.0)
@@ -515,6 +523,21 @@ def resolve(chunks: Mapping[str, Any], out_rel: str, input_dir: Path, within: st
 
 # --- reading a referenced array (the QA viewer's display window) ------------------------------------------
 
+def _decoded_bytes(meta: Mapping[str, Any], doc: Mapping[str, Any], n_keys: int) -> int:
+    """An upper bound of an array's decoded size: its shape times its data type's item size (from the
+    rebuilt metadata document), and every stored object at codec_bytes_hint when the map has one.
+    ValueError when the data type is not a plain numeric one."""
+    dtype = doc.get("data_type") if doc.get("zarr_format") == 3 else doc.get("dtype")
+    try:
+        itemsize = int(np.dtype(str(dtype)).itemsize)
+    except (TypeError, ValueError):
+        raise ValueError("the referenced array has no known data type") from None
+    if itemsize <= 0:
+        raise ValueError("the referenced array has no known data type")
+    whole = math.prod(int(n) for n in meta["shape"]) * itemsize
+    return max(whole, int(meta.get("codec_bytes_hint") or 0) * n_keys)
+
+
 def read_array(chunks: Mapping[str, Any], bids_root: Path, array_rel: str, input_dir: Path,
                max_bytes: int) -> np.ndarray:
     """A referenced array (a coarse pyramid level) read whole into memory through the chunk map: its rebuilt
@@ -532,10 +555,10 @@ def read_array(chunks: Mapping[str, Any], bids_root: Path, array_rel: str, input
     if not isinstance(meta, Mapping):
         raise ValueError("not a referenced array")
     keys = list(chunk_keys(meta))
-    if int(meta.get("codec_bytes_hint") or 0) * len(keys) > max_bytes:
-        raise ValueError("the referenced array is too large to read whole")
     name = "zarr.json" if meta.get("zarr_format") == 3 else ".zarray"
     doc = Path(bids_root).joinpath(*_segments(array_rel), name).read_bytes()
+    if _decoded_bytes(meta, json.loads(doc), len(keys)) > max_bytes:
+        raise ValueError("the referenced array is too large to read whole")
     fs = None
     total = 0
     try:

@@ -245,18 +245,40 @@ def index_page(rows: list[dict]) -> str:
 
     body = ("".join(row(r) for r in rows) if rows
             else '<tr><td colspan="2">No images were written.</td></tr>')
+    # brainlife-lite look; no font is fetched (DM Sans when installed, else the system stack) and the logo
+    # is the engine's own /viewer/brainlife-mark.svg: the page's CSP stays 'self'
     return f"""<!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>aimport QA viewer</title>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>aimport QA viewer</title>
 <style>
-body {{ font: 14px/1.5 system-ui, sans-serif; margin: 2rem; color: #1b1f24; }}
-table {{ border-collapse: collapse; }}
-td, th {{ padding: .35rem .8rem; border-bottom: 1px solid #d8dee4; text-align: left; vertical-align: top; }}
-code {{ font-size: 13px; }}
+:root {{ --primary: #3d6a92; --ink: #1d2230; --muted: #5b6573; --line: #e3e6ea; }}
+* {{ box-sizing: border-box; }}
+body {{ margin: 0; background: #f5f5f5; color: var(--ink);
+  font: 14px/1.5 "DM Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }}
+header {{ display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 24px; background: #fff;
+  border-bottom: 1px solid var(--line); }}
+header .mark {{ height: 32px; width: auto; }}
+header .brand {{ font-weight: 600; font-size: 15px; color: var(--ink); }}
+header .sep {{ width: 1px; height: 22px; background: var(--line); }}
+header .app {{ font-weight: 600; font-size: 15px; color: var(--primary); }}
+main {{ max-width: 1100px; margin: 24px auto; padding: 0 16px; }}
+.panel {{ background: #fff; border: 1px solid var(--line); border-radius: 6px; padding: 20px 24px; }}
+h1 {{ margin: 0 0 4px; font-size: 20px; font-weight: 600; }}
+p.lead {{ margin: 0 0 16px; color: var(--muted); }}
+table {{ width: 100%; border-collapse: collapse; }}
+th {{ font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }}
+td, th {{ padding: 8px 10px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }}
+tbody tr:hover {{ background: #f8fafc; }}
+code {{ font: 13px/1.4 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; word-break: break-all; }}
+a {{ color: var(--primary); text-decoration: none; font-weight: 500; }}
+a:hover {{ text-decoration: underline; }}
 </style></head>
-<body><h1>aimport QA viewer</h1>
-<p>The de-identified output, before upload. Defaced images open with the original as a hidden layer.
+<body><header><img class="mark" src="/viewer/brainlife-mark.svg" alt="brainlife.io">
+<span class="brand">brainlife.io</span><span class="sep"></span><span class="app">aimport QA viewer</span></header>
+<main><div class="panel"><h1>Output to check before upload</h1>
+<p class="lead">The de-identified output, before upload. Defaced images open with the original as a hidden layer.
 Microscopy images open as OME-Zarr; a reference dataset is read from its source, never copied.</p>
 <table><thead><tr><th>BIDS path</th><th>View</th></tr></thead><tbody>
 {body}
-</tbody></table></body></html>
+</tbody></table></div></main></body></html>
 """

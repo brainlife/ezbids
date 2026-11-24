@@ -334,9 +334,8 @@ def test_claimed_paths_lookup_is_per_ancestor(tmp_path):
     "https://s3.amazonaws.com/apex-connects/CMC/Derivatives/Moe/PS-OCT/Zarr/Moe_Slice_051.ome.zarr",
 ])
 def test_remote_donor_from_name_tail_psoct(url):
-    from urllib.parse import urlsplit
-
-    assert micr_module.remote_donor(urlsplit(url).path) == "Moe"
+    assert micr_module.remote_key(url) == "CMC/Derivatives/Moe/PS-OCT/Zarr/Moe_Slice_051.ome.zarr"
+    assert micr_module.remote_donor(micr_module.remote_key(url)) == "Moe"
 
 
 @pytest.mark.parametrize("url", [
@@ -345,10 +344,61 @@ def test_remote_donor_from_name_tail_psoct(url):
     "https://s3.us-east-2.amazonaws.com/apex-connects/CMC/Raw/Moe/tract-tracing/MN27_FH_S100_250215_visor_488/"
     "visor_488_Pos0/visor_488_0_0.tif",
 ])
-def test_remote_donor_from_nearest_folder(url):
-    from urllib.parse import urlsplit
+def test_remote_donor_from_first_folder(url):
+    """The first donor-like folder from the top wins: the tract-tracing acquisition MN27_... lies under
+    the donor folder Moe."""
+    assert micr_module.remote_donor(micr_module.remote_key(url)) == "Moe"
+    assert micr_module.remote_donor("CMC/Raw/tract-tracing/MN27_FH_S100_250215_visor_488/visor_488_Pos0/"
+                                    "visor_488_0_0.tif") == "MN27"
 
-    assert micr_module.remote_donor(urlsplit(url).path) == "MN27"
+
+_ENFACE_CODES = {"Reflectivity": "EnRef", "Retardance": "EnR"}  # the real CMC key names (DATASETS.md)
+
+
+def ENFACE(contrast: str, n: int) -> str:  # noqa: N802
+    return ("https://apex-connects.s3.amazonaws.com/CMC/Derivatives/Moe/PS-OCT/Enface/Registration/"
+            f"{contrast}/Slice_{n:03d}_{_ENFACE_CODES[contrast]}_hdr.nii.gz")
+
+
+def test_remote_donor_walks_every_folder():
+    """Five folders up from the file: the donor folder Moe is found (it was 3 at most) before the file
+    name's contrast codes (EnR, hdr); the top folder (the project) and the bucket never are."""
+    for contrast in ("Reflectivity", "Retardance"):
+        assert micr_module.remote_donor(micr_module.remote_key(ENFACE(contrast, 1))) == "Moe"
+    assert micr_module.remote_donor("CMC/Registration/Slice_001_EnR_hdr.nii.gz") == "EnR"  # no folder: the name
+    path_style = "https://s3.us-east-2.amazonaws.com/apex-connects/CMC/Derivatives/stitched/data/image.ome.zarr"
+    assert micr_module.remote_key(path_style) == "CMC/Derivatives/stitched/data/image.ome.zarr"
+    assert micr_module.remote_donor(micr_module.remote_key(path_style)) is None
+    assert micr_module.remote_donor("CMC/Raw/Moe/Registration/Enface/data/images/MN27_x/tile_0.tif") == "Moe"  # the first wins
+    assert micr_module.remote_donor("Moe/image.tif") is None  # the top folder alone
+
+
+def _remote_plan(tmp_path, key, schema, monkeypatch, urls):
+    monkeypatch.setattr(micr_module, "_read", lambda input_dir, g: (None, set(), micr_module.UNREADABLE_REASON))
+    claim = modality.Claim(roots=[], remote=urls)
+    found = [micr_module.Found(u, "nifti", u) for u in urls]
+    records = micr_module.scan_records(tmp_path, claim, found, lambda msg: None)
+    return records, micr_module.plan_entries(records, key, set(), schema, "bids")
+
+
+def test_remote_contrasts_of_one_slice_share_a_subject(tmp_path, key, schema, monkeypatch):
+    """CMC Moe slice001 reflectivity and retardance (and slice 51's store) are one subject, not 06 and 07."""
+    urls = [ENFACE("Reflectivity", 1), ENFACE("Retardance", 1),
+            "https://apex-connects.s3.amazonaws.com/CMC/Derivatives/Moe/PS-OCT/Zarr/Moe_Slice_051.ome.zarr"]
+    records, mp = _remote_plan(tmp_path, key, schema, monkeypatch, urls)
+    assert [r["facts"]["donor"] for r in records] == ["Moe"] * 3
+    assert len({e.subject for e in mp.entries}) == 1 and len(mp.entries) == 3
+
+
+def test_remote_without_donor_grouped_by_folder_and_slice(tmp_path, key, schema, monkeypatch):
+    base = "https://lab.s3.amazonaws.com/proj/ps/oct/{}/Slice_{:03d}.nii.gz"
+    urls = [base.format("Reflectivity", 1), base.format("Retardance", 1), base.format("Retardance", 2),
+            "https://lab.s3.amazonaws.com/proj/other/Slice_001.nii.gz"]
+    records, mp = _remote_plan(tmp_path, key, schema, monkeypatch, urls)
+    assert all(r["facts"]["donor"] is None for r in records)
+    by_url = {records[e.series_idx - micr_module.MICR_INDEX_BASE]["url"]: e.subject for e in mp.entries}
+    subjects = [by_url[u] for u in urls]
+    assert subjects[0] == subjects[1] and len(set(subjects)) == 3, subjects
 
 
 def test_remote_records_never_take_bucket_or_project_as_donor(tmp_path, key, schema, monkeypatch):
@@ -362,10 +412,10 @@ def test_remote_records_never_take_bucket_or_project_as_donor(tmp_path, key, sch
     found = [micr_module.Found(u, f, u) for u, f in zip(urls, families)]
     records = micr_module.scan_records(tmp_path, claim, found, lambda msg: None)
     donors = [r["facts"]["donor"] for r in records]
-    assert sorted(d for d in donors if d) == ["MN27", "Moe"] and donors.count(None) == 1
+    assert sorted(d for d in donors if d) == ["Moe", "Moe"] and donors.count(None) == 1  # MN27_ is under Moe/
     mp = micr_module.plan_entries(records, key, set(), schema, "bids")
-    assert {"micr:id=Moe", "micr:id=MN27"} <= set(key.subjects)
-    assert not [o for o in key.subjects if o.startswith("micr:id=") and o not in ("micr:id=Moe", "micr:id=MN27")]
+    assert "micr:id=Moe" in set(key.subjects)
+    assert not [o for o in key.subjects if o.startswith("micr:id=") and o != "micr:id=Moe"]
     assert any(w.startswith("microscopy: no donor code was found for 1 ") for w in mp.warnings)
     text = json.dumps([asdict(e) for e in mp.entries] + mp.warnings)
     assert "apex" not in text and "amazonaws" not in text and "CMC" not in text
@@ -418,3 +468,30 @@ def test_remote_visor_reads_first_page_only(local_servers, monkeypatch):  # noqa
     assert info.shape == (4, 512, 512) and info.channels[0].name_code == "ch488"
     assert tile.stat().st_size > 32 * 2**20
     assert counters and counters[0].total < 2**20  # the first IFD only, never the page chain
+
+
+@pytest.mark.network
+def test_cmc_enface_contrasts_one_subject(tmp_path, key, schema, monkeypatch):
+    """The real CMC Moe slice001 reflectivity and retardance en-face NIfTIs (headers only) plan as one subject
+    (they were 06 and 07: the file names' EnRef/hdr and EnR looked like donors)."""
+    from aimport.micr import remote
+
+    counters = []
+    real_open = remote.open_remote
+
+    def counted(*a, **k):
+        src, counter = real_open(*a, **k)
+        counters.append(counter)
+        return src, counter
+
+    monkeypatch.setattr(remote, "open_remote", counted)
+    urls = [ENFACE("Reflectivity", 1), ENFACE("Retardance", 1)]
+    claim = modality.Claim(roots=[], remote=urls)
+    found = [micr_module.Found(u, "nifti", u) for u in urls]
+    records = micr_module.scan_records(tmp_path, claim, found, lambda msg: None)
+    assert [r["facts"]["donor"] for r in records] == ["Moe", "Moe"]
+    assert all(r["info"] is not None for r in records)
+    mp = micr_module.plan_entries(records, key, set(), schema, "bids")
+    assert len(mp.entries) == 2 and len({e.subject for e in mp.entries}) == 1
+    assert {e.entities["sample"] for e in mp.entries} == {"slice001"}
+    assert len(counters) == 2 and sum(c.total for c in counters) < 32 * 2**20

@@ -42,15 +42,18 @@ def ome_zarr(
     shape: tuple[int, int, int, int] = (2, 8, 64, 64),
     pixel_size_um: tuple[float, float, float] = (1.0, 0.5, 0.5),
     levels: int = 2,
+    dtype: str = "uint16",
 ) -> Path:
     """Write a c,z,y,x OME-Zarr pyramid (y, x halved per level; 2 levels by default) at dest
-    (NGFF "0.5": Zarr v3 sharded; "0.4": Zarr v2)."""
+    (NGFF "0.5": Zarr v3 sharded; "0.4": Zarr v2). dtype float32: values in 0..1."""
     if version not in ("0.5", "0.4"):
         raise ValueError(f"version must be '0.5' or '0.4', got {version!r}")
     dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(0)
     data = rng.integers(0, 4096, size=shape, dtype=np.uint16)
+    if dtype != "uint16":
+        data = (data / 4096).astype(dtype)
     ms = _multiscales(version, pixel_size_um, levels)
     if version == "0.5":
         root = zarr.open_group(str(dest), mode="w", zarr_format=3)
@@ -77,6 +80,41 @@ def strip_chunks(store: Path) -> Path:
         elif p.is_dir() and not any(p.iterdir()):
             p.rmdir()
     return Path(store)
+
+
+# The CMC PS-OCT store's layout and metadata faults (Moe_Slice_051.ome.zarr, DATASETS.md), at a tenth of
+# its size: c,y,x float32 at scale<k>/image, chunks (4, 256, 256), zstd; axes without units; a
+# translation of 1.0 on the channel axis; levels 3, 4 and 5 declare 16, 64 and 256 (CMC: 512, which
+# a tenth-size level 0 would still agree with) but hold 8, 16 and 425 (y) / 550 (x). Metadata only: no chunk is written (a reference reads none).
+CMC_PSOCT_SHAPES = [(4, 850, 1100), (4, 425, 550), (4, 212, 275), (4, 106, 137), (4, 53, 68), (4, 2, 2)]
+CMC_PSOCT_DECLARED = [1, 2, 4, 16, 64, 256]
+CMC_PSOCT_FACTORS = [(1, 1), (2, 2), (4, 4), (8, 8), (16, 16), (425, 550)]  # (y, x) the arrays hold
+
+
+def cmc_psoct_zarr(dest: Path) -> Path:
+    from zarr.codecs import BytesCodec, ZstdCodec
+
+    dest = Path(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    root = zarr.open_group(str(dest), mode="w", zarr_format=3)
+    datasets = []
+    for k, (shape, f) in enumerate(zip(CMC_PSOCT_SHAPES, CMC_PSOCT_DECLARED)):
+        g = root.require_group(f"scale{k}")
+        g.create_array("image", shape=shape, dtype="float32", chunks=tuple(min(n, c) for n, c in
+                                                                           zip(shape, (4, 256, 256))),
+                       compressors=ZstdCodec(), serializer=BytesCodec(), fill_value=0)
+        datasets.append({"path": f"scale{k}/image", "coordinateTransformations": [
+            {"scale": [1.0, f, f], "type": "scale"},
+            {"translation": [1.0, (f - 1) / 2, (f - 1) / 2], "type": "translation"}]})
+    root.attrs["ome"] = {"version": "0.5", "multiscales": [{
+        "axes": [{"name": "c", "type": "channel"}, {"name": "y", "type": "space"}, {"name": "x", "type": "space"}],
+        "datasets": datasets, "name": "image", "@type": "ngff:Image"}]}
+    import warnings
+
+    with warnings.catch_warnings():  # "consolidated metadata is not part of Zarr v3": CMC has it
+        warnings.simplefilter("ignore")
+        zarr.consolidate_metadata(str(dest))
+    return dest
 
 
 SPARSE_ROW = 32768  # uint16 samples per row of sparse_bigtiff (64 KiB)

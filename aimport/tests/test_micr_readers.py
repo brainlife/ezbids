@@ -423,3 +423,25 @@ def test_ome_zarr_str_location_reads_ome_xml(tmp_path):
         assert src.info.objective_magnification == 20.0
         assert {"jane doe", "slide 42 smith", "scope-sn-4711"} <= tokens("\n".join(src.terms))
         assert not tokens(repr(src.info))
+
+
+@pytest.mark.parametrize("unit,expected", [(None, None), ("pixel", None), ("millimeter", "mm"),
+                                           ("micrometer", "um"), ("meter", "um")])
+def test_ngff_axes_without_units_leave_the_unit_unknown(tmp_path, unit, expected):
+    """An NGFF x axis without a length unit gives pixel_unit None (never assumed um); the scale is kept
+    as the pixel size for the reviewer to confirm."""
+    import json
+
+    store = ome_zarr(tmp_path / "s.ome.zarr", "0.5")
+    doc = json.loads((store / "zarr.json").read_text())
+    for ax in doc["attributes"]["ome"]["multiscales"][0]["axes"]:
+        ax.pop("unit", None)
+        if unit and ax["type"] == "space":
+            ax["unit"] = unit
+    (store / "zarr.json").write_text(json.dumps(doc))
+    with open_image(store, "ome-zarr") as src:
+        assert src.info.pixel_unit == expected
+        if expected is None:
+            assert src.info.pixel_size == {"x": 0.5, "y": 0.5, "z": 1.0}
+        elif unit == "meter":
+            assert src.info.pixel_size["x"] == pytest.approx(0.5e6)

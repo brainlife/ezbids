@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import math
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from enum import Enum
@@ -40,7 +41,7 @@ class ImageInfo:
     shape: tuple[int, ...]
     dtype: str
     pixel_size: dict[str, float] = field(default_factory=dict)  # keys among x, y, z
-    pixel_unit: PixelUnit = "um"
+    pixel_unit: PixelUnit | None = "um"  # None: the source has no unit (set in the plan, never assumed)
     channels: list[ChannelInfo] = field(default_factory=list)
     objective_magnification: float | None = None
     objective_na: float | None = None
@@ -90,8 +91,64 @@ def date_terms(value: date | datetime) -> set[str]:
     return terms
 
 
+# Format vocabulary: data-type names, length and time unit names, axis names and types, and the
+# words of NGFF, Zarr and codec metadata. Like the BIDS-name vocabulary, these never identify anyone,
+# so they are never terms: a source that says dtype "uint16" must not make every uint16 store's
+# rebuilt metadata look identifying. Compared casefolded with separators squashed (format_vocab).
+_DTYPES = {f"{k}{n}" for k in ("int", "uint") for n in (8, 16, 32, 64)} | {
+    "float16", "float32", "float64", "float128", "complex64", "complex128", "complex256", "bool", "byte",
+    "ubyte", "short", "ushort", "int", "uint", "long", "ulong", "float", "double", "single", "half",
+    "u1", "u2", "u4", "u8", "i1", "i2", "i4", "i8", "f2", "f4", "f8", "c8", "c16", "uint8clamped",
+    "bfloat16", "rgb", "rgba", "bit", "boolean", "string", "str", "bytes", "unsigned", "signed", "integer",
+}
+_PREFIXES = ("", "yotta", "zetta", "exa", "peta", "tera", "giga", "mega", "kilo", "hecto", "deca", "deci",
+             "centi", "milli", "micro", "nano", "pico", "femto", "atto", "zepto", "yocto")
+_UNITS = ({p + "meter" for p in _PREFIXES} | {p + "metre" for p in _PREFIXES} | {p + "second" for p in _PREFIXES}
+          | {"angstrom", "foot", "inch", "mile", "yard", "parsec", "micron", "microns", "minute", "hour", "day",
+             "um", "µm", "mm", "nm", "cm", "pm", "km", "ms", "us", "µs", "ns", "sec", "min", "pixel", "pixels",
+             "px", "hz", "khz", "mhz", "degree", "degrees", "radian", "radians", "unit", "units"})
+_FORMAT_WORDS = {
+    # axes
+    "space", "time", "channel", "channels", "axis", "axes", "x", "y", "z", "c", "t",
+    # NGFF / OME-Zarr
+    "ome", "ngff", "multiscales", "multiscale", "datasets", "dataset", "coordinatetransformations",
+    "scale", "translation", "identity", "omero", "rdefs", "window", "start", "end", "min", "max",
+    "color", "active", "inverted", "coefficient", "family", "linear", "label", "labels", "image",
+    "images", "model", "greyscale", "grayscale", "defaultt", "defaultz", "version", "name", "path",
+    "type", "metadata", "method", "mean", "gaussian", "nearest", "local_mean", "localmean", "downscale",
+    "bioformats2raw", "layout", "plate", "well", "wells", "fields", "field", "ngffimage",
+    # Zarr v2 / v3 metadata
+    "zarr", "zarray", "zattrs", "zgroup", "zarrjson", "array", "group", "nodetype", "node_type",
+    "zarrformat", "shape", "datatype", "data_type", "dtype", "chunks", "chunk", "chunkgrid", "regular",
+    "rectilinear", "chunkshape", "chunkkeyencoding", "default", "v2", "v3", "separator", "fillvalue",
+    "codecs", "codec", "configuration", "dimensionnames", "dimensionseparator", "storagetransformers",
+    "attributes", "compressor", "filters", "order", "nan", "infinity", "inf", "consolidated",
+    "consolidatedmetadata", "kind", "inline", "id", "level", "levels",
+    # codecs and their settings
+    "bytes", "endian", "little", "big", "zstd", "blosc", "gzip", "zlib", "lz4", "lz4hc", "lzma", "bz2",
+    "crc32c", "crc32", "adler32", "fletcher32", "shardingindexed", "sharding_indexed", "sharding",
+    "transpose", "vlenutf8", "vlenbytes", "shuffle", "noshuffle", "bitshuffle", "cname", "clevel",
+    "typesize", "blocksize", "checksum", "indexcodecs", "indexlocation", "numcodecs", "delta", "quantize",
+    "fixedscaleoffset", "packbits", "categorize", "astype", "zfpy", "jpeg", "png", "jpeg2k", "imagecodecs",
+}
+
+
+def squash(text: str) -> str:
+    """text casefolded (NFKD) with everything but letters and digits removed."""
+    folded = unicodedata.normalize("NFKD", str(text)).casefold()
+    return "".join(ch for ch in folded if ch.isalnum())
+
+
+FORMAT_VOCAB = frozenset(squash(w) for w in _DTYPES | _UNITS | _FORMAT_WORDS)
+
+
+def format_vocab(text: str) -> bool:
+    """Whether text is format vocabulary (FORMAT_VOCAB), never an identifying term."""
+    return squash(text) in FORMAT_VOCAB
+
+
 def _keep_term(text: str) -> bool:
-    return len(text) >= 2 and any(ch.isalnum() for ch in text)
+    return len(text) >= 2 and any(ch.isalnum() for ch in text) and not format_vocab(text)
 
 
 def collect_terms(obj: Any, terms: set[str] | None = None, _seen: set[int] | None = None) -> set[str]:
@@ -200,13 +257,19 @@ RETARDANCE_KINDS = frozenset({"retardance", "birefringence"})
 _PALETTE = ("00FF00", "FF00FF", "00FFFF", "FF0000", "0000FF", "FFFF00")
 
 
+PIXEL_UNIT_UNKNOWN = "pixel size unit unknown: set it in the plan"
+
+
 class PixelSizeUnknown(ValueError):
     """A spatial axis has no pixel size: it is never invented (the reviewer sets it in the plan)."""
 
 
 def pixel_sizes(info: ImageInfo) -> dict[str, float]:
     """The pixel size of every spatial axis of info (in ``info.pixel_unit``). The NGFF scale and the
-    sidecar PixelSize both come from here. Raises PixelSizeUnknown when an axis has none."""
+    sidecar PixelSize both come from here. Raises PixelSizeUnknown when an axis has none, or the
+    unit is unknown."""
+    if info.pixel_unit not in _UNIT_M:
+        raise PixelSizeUnknown(PIXEL_UNIT_UNKNOWN)
     out = {}
     for axis in SPATIAL:
         if axis in info.axes:
