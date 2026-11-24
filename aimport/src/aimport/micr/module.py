@@ -308,6 +308,9 @@ def _suffix(rec: dict, hints: set[str]) -> tuple[str | None, str]:
     return None, NO_SUFFIX_REASON
 
 
+OME_IMMERSION = frozenset({"Oil", "Water", "WaterDipping", "Air", "Multi", "Glycerol", "Other"})
+
+
 def micr_view(records: list[dict]) -> list["ScrubbedSeries"]:
     """The agent's view of each readable record: image facts and generic layout words only.
 
@@ -335,7 +338,7 @@ def micr_view(records: list[dict]) -> list["ScrubbedSeries"]:
             "EmissionWavelengths": [c["emission_nm"] for c in channels if c.get("emission_nm") is not None],
             "ObjectiveMagnification": info.get("objective_magnification"),
             "ObjectiveNA": info.get("objective_na"),
-            "Immersion": info.get("immersion"),
+            "Immersion": info.get("immersion") if info.get("immersion") in OME_IMMERSION else None,
             "FormatFamily": rec["family"],
             "Levels": info.get("levels", 1),
             "DataType": info.get("dtype"),
@@ -348,7 +351,7 @@ def micr_view(records: list[dict]) -> list["ScrubbedSeries"]:
 def _apply_agent(mp: ModulePlan, records: list[dict], client: "LLMClient | None", schema: "Schema",
                  terms: set[str]) -> None:
     """Ask the agent about the readable entries and apply the planner's agreement rules."""
-    from ..agent import MICR_CLASSIFY_SYSTEM, classify
+    from ..agent import MICR_CLASSIFY_SYSTEM, MICR_GENERATED, classify
     from ..planner import AGENT_MIN, AGREE_MIN, DISAGREE_CONFIDENCE, _agent_text, _guess_text, _usable
 
     if client is None:
@@ -358,7 +361,7 @@ def _apply_agent(mp: ModulePlan, records: list[dict], client: "LLMClient | None"
     by_idx = {e.series_idx: e for e in mp.entries}
     heuristic = {s.series_idx: ("micr", by_idx[s.series_idx].suffix, {}) for s in view
                  if s.series_idx in by_idx and by_idx[s.series_idx].suffix}
-    for g in classify(view, heuristic, client, schema, MICR_CLASSIFY_SYSTEM, ("micr",)):
+    for g in classify(view, heuristic, client, schema, MICR_CLASSIFY_SYSTEM, ("micr",), MICR_GENERATED):
         e = by_idx.get(g.series_idx)
         if e is None or g.datatype is None or e.status not in ("ok", "unknown"):
             continue

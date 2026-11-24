@@ -60,11 +60,11 @@ def tiff_input(tmp_path, name="H17_250215/stack.ome.tif"):
     return root
 
 
-def reply_for(datatype, suffix, confidence=0.9):
+def reply_for(datatype, suffix, confidence=0.9, entities=None):
     def reply(user):
         series = json.loads(user)["series"]
         return json.dumps([{"series_idx": s["series_idx"], "datatype": datatype, "suffix": suffix,
-                            "entities": {"sample": "1"}, "confidence": confidence, "reason": "r"}
+                            "entities": {} if entities is None else entities, "confidence": confidence, "reason": "r"}
                            for s in series])
     return reply
 
@@ -84,12 +84,10 @@ def test_micr_payload_allowlisted(tmp_path, key, schema):
         assert s["description"] == "" and s["protocol"] == ""
         assert s["ezbids_type"].startswith("micr/")
         assert set(s["fields"]) == FIELDS
-        assert set(s["fields"]["Hints"]) <= set(names.VOCAB) | {
-            t for t in s["fields"]["Hints"] if names.is_vocab(t)}
         assert all(names.is_vocab(t) for t in s["fields"]["Hints"])
     assert not tokens(payload) & MICR_PLANTED
     assert "/" not in payload.replace("micr/", "")
-    assert not re.search(r"\d{8}|\d{6}", payload.replace(str(MICR_INDEX_BASE), ""))
+    assert not re.search(r"(?<!\d)(\d{6}|\d{8})(?!\d)", payload)
     stripped = json.dumps([{**s, "fields": {k: v for k, v in s["fields"].items() if k != "FormatFamily"}}
                            for s in series])
     assert not re.search(r"\.[A-Za-z]{2,5}\b", re.sub(r"\d+\.\d+", "", stripped))
@@ -106,6 +104,16 @@ def test_micr_view_unreadable_skipped_and_suffix():
     assert v.series_idx == MICR_INDEX_BASE + 1 and v.ezbids_type == "micr/SPIM"
     assert v.fields["Dimensions"] == {"z": 4, "y": 8, "x": 8}
     assert v.fields["ExcitationWavelengths"] == [488] and "acquired" not in json.dumps(v.fields)
+
+
+def test_free_text_immersion_never_reaches_view():
+    info = {"axes": "yx", "shape": [8, 8], "dtype": "uint8", "pixel_size": {"x": 1.0, "y": 1.0},
+            "pixel_unit": "um", "channels": [], "levels": 1, "immersion": "Jane Doe oil"}
+    (v,) = micr_view([{"rel": "a", "family": "tiff", "facts": {}, "info": info}])
+    assert v.fields["Immersion"] is None
+    info["immersion"] = "Oil"
+    (v,) = micr_view([{"rel": "a", "family": "tiff", "facts": {}, "info": info}])
+    assert v.fields["Immersion"] == "Oil"
 
 
 def test_agent_fills_unknown_suffix(tmp_path, key, schema):

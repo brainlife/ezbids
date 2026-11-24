@@ -45,7 +45,8 @@ Reply with ONLY a JSON array, no prose, one object per series:
 
 MICR_SUFFIXES = ("TEM", "SEM", "uCT", "BF", "DF", "PC", "DIC", "FLUO", "CONF", "PLI", "CARS", "2PE", "MPE",
                  "SR", "NLO", "OCT", "SPIM", "XPCT")
-MICR_ENTITIES = ("sample", "acquisition", "stain", "chunk", "run")
+MICR_ENTITIES = ("acquisition", "stain")
+MICR_GENERATED = frozenset({"sample", "chunk", "run"})
 
 MICR_CLASSIFY_SYSTEM = f"""You classify microscopy images for a BIDS (Brain Imaging Data Structure) dataset.
 
@@ -60,14 +61,13 @@ each guess from those facts.
 Answer every series with datatype micr and a suffix, and fill the entities that apply. Rules:
 - datatype is always micr.
 - suffix must be one of: {", ".join(MICR_SUFFIXES)}.
-- entities may only be: {", ".join(MICR_ENTITIES)}.
+- entities may only be: {", ".join(MICR_ENTITIES)}. Do not answer sample, chunk or run: aimport assigns them.
 - Entity values are short alphanumeric labels only (letters and digits, no spaces or symbols).
-- Give every entity BIDS requires for the suffix (sample is required).
 - If you cannot tell the technique, answer datatype null and suffix null with low confidence.
 - confidence is a number from 0 to 1.
 
 Reply with ONLY a JSON array, no prose, one object per series:
-[{{"series_idx": 0, "datatype": "micr", "suffix": "CONF", "entities": {{"sample": "1"}},
+[{{"series_idx": 0, "datatype": "micr", "suffix": "CONF", "entities": {{}},
 "confidence": 0.9, "reason": "one short sentence"}}]"""
 
 METADATA_SYSTEM = """You write dataset-level metadata for a BIDS dataset from a list of its acquisitions.
@@ -197,7 +197,8 @@ def _entity_value(v: Any) -> str | None:
 
 
 def _checked(answer: dict, schema: Schema,
-             datatypes: tuple[str, ...] = PHASE1_DATATYPES) -> tuple[str, str, dict[str, str]] | None:
+             datatypes: tuple[str, ...] = PHASE1_DATATYPES,
+             generated: frozenset[str] = frozenset()) -> tuple[str, str, dict[str, str]] | None:
     datatype, suffix, raw = answer.get("datatype"), answer.get("suffix"), answer.get("entities") or {}
     if datatype not in datatypes or not isinstance(suffix, str) or not isinstance(raw, dict):
         return None
@@ -211,7 +212,7 @@ def _checked(answer: dict, schema: Schema,
         entities[_ENTITY_ALIAS.get(str(k), str(k))] = value
     if not set(entities) <= set(schema.allowed_entities(datatype, suffix)):
         return None
-    if not set(schema.required_entities(datatype, suffix)) <= set(entities):
+    if not set(schema.required_entities(datatype, suffix)) - generated <= set(entities):
         return None
     return datatype, suffix, entities
 
@@ -225,7 +226,8 @@ def _confidence(v: Any) -> float:
 
 def classify(series: list[ScrubbedSeries], heuristic: dict[int, tuple[str, str, dict]],
              client: LLMClient | None, schema: Schema, system: str = CLASSIFY_SYSTEM,
-             datatypes: tuple[str, ...] = PHASE1_DATATYPES) -> list[Guess]:
+             datatypes: tuple[str, ...] = PHASE1_DATATYPES,
+             generated: frozenset[str] = frozenset()) -> list[Guess]:
     def all_with(reason: str) -> list[Guess]:
         return [Guess(s.series_idx, None, None, {}, 0.0, reason) for s in series]
 
@@ -252,7 +254,7 @@ def classify(series: list[ScrubbedSeries], heuristic: dict[int, tuple[str, str, 
             out.append(Guess(s.series_idx, None, None, {}, _confidence(a.get("confidence")),
                              reason if isinstance(reason, str) else "agent could not tell"))
             continue
-        ok = _checked(a, schema, datatypes)
+        ok = _checked(a, schema, datatypes, generated)
         if ok is None:
             out.append(Guess(s.series_idx, None, None, {}, 0.0, "agent answer not valid BIDS"))
         else:
