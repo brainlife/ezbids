@@ -13,7 +13,7 @@ import uuid
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Literal, Sequence
+from typing import TYPE_CHECKING, Callable, Literal, Sequence
 
 from .agent import Guess, LLMClient, classify, draft_metadata
 from .ancillary import bids_root, ancillary_warnings, find_ancillary, id_maps, plan_ancillary, read_dataset_description
@@ -21,14 +21,23 @@ from .brainlife_map import to_brainlife
 from .ezbids_runner import CoreResult, CoreSeries, CoreSubject
 from .plan import Plan, PlanEntry
 from .pseudonyms import PseudonymKey
-from .schema import PHASE1_DATATYPES, Schema
+from .schema import CHECK_EXTS, EPHYS_DATATYPES, SUPPORTED_DATATYPES, Schema
 from .scrub import _date_forms, identifying_terms, is_secondary_capture, redact, scrubbed_view
+
+if TYPE_CHECKING:
+    from .modality import ModulePlan
 
 AGENT_TEXT_MAX = 300
 AGREE_MIN = 0.8  # confidence when ezBIDS's guess stands (or the agent agrees with less)
 DISAGREE_CONFIDENCE = 0.5  # ezBIDS's guess kept but the agent disputes it
 AGENT_MIN = 0.5  # agent answers below this are not used
-CHECK_EXT = ".nii.gz"  # every phase-1 image is written as NIfTI
+CHECK_EXT = ".nii.gz"  # every phase-1 image is written as NIfTI (CHECK_EXTS: electrophysiology formats)
+EPHYS_DATATYPE_REASON = "electrophysiology input: datatype must be one of eeg, meg, ieeg, nirs, emg"
+MRI_EPHYS_REASON = "MRI input: datatype cannot be eeg, meg, ieeg, nirs or emg"
+TASK_REASON = "set the task label"
+# the extension each electrophysiology output format is mapped to brainlife by (bids-walker keys on eeg.eeg)
+EPHYS_BRAINLIFE_EXTS = {"BrainVision": ".eeg", "EDF": ".edf", "BDF": ".bdf", "FIF": ".fif", "SNIRF": ".snirf",
+                        "NWB": ".nwb"}
 _LABEL = re.compile(r"^[a-zA-Z0-9]+$")
 _PATH_ENTITIES = {"subject", "session"}
 UNVERIFIED = ("de-identification could not be verified: {why}; check descriptions and the README "
@@ -329,15 +338,35 @@ def _decide(series: CoreSeries, guess: Guess | None, schema: Schema, terms: set[
                 exclude=True, reason=reason, agent_note=_agent_text(_guess_text(guess), terms) if has_answer else "")
 
 
-def _check_nameable(d: dict, subject: str, session: str | None, schema: Schema) -> None:
-    """Rule: an "ok" entry must be one the writer can name; otherwise it becomes unknown."""
+def _modality_reason(modality: str, datatype: str | None) -> str | None:
+    """Why an entry's datatype does not fit its input's modality (ephys input <-> ephys datatypes)."""
+    if modality == "ephys" and datatype not in EPHYS_DATATYPES:
+        return EPHYS_DATATYPE_REASON
+    if modality != "ephys" and datatype in EPHYS_DATATYPES:
+        return MRI_EPHYS_REASON
+    return None
+
+
+def _check_nameable(d: dict, subject: str, session: str | None, schema: Schema, modality: str = "mri",
+                    ephys_format: str = "") -> None:
+    """Rule: an "ok" entry must be one the writer can name; otherwise it becomes unknown. An
+    electrophysiology entry must keep an electrophysiology datatype (and an MRI entry must not take one),
+    and needs a task label."""
     if d["status"] != "ok":
         return
-    if d["datatype"] not in PHASE1_DATATYPES:
+    why = _modality_reason(modality, d["datatype"])
+    if why is not None:
+        d.update(status="unknown", exclude=True, reason=why)
+        return
+    if d["datatype"] not in SUPPORTED_DATATYPES:
         d.update(status="unsupported", exclude=True)
         return
+    if d["datatype"] in EPHYS_DATATYPES and d["entities"].get("task") in (None, "", "unknown"):
+        d.update(status="unknown", exclude=True, reason=TASK_REASON)
+        return
     try:
-        schema.filename(subject, session, d["datatype"], d["suffix"], d["entities"], CHECK_EXT)
+        schema.filename(subject, session, d["datatype"], d["suffix"], d["entities"],
+                        CHECK_EXTS.get(ephys_format, CHECK_EXT))
     except ValueError as exc:
         d.update(status="unknown", exclude=True,
                  reason=f"{d['reason']}; cannot name {d['datatype']}/{d['suffix']}: {exc}")
@@ -375,8 +404,11 @@ def apply_plan_edits(plan: Plan, edits: list[dict], schema: Schema) -> None:
     the writer cannot name becomes unknown and excluded; one that becomes nameable is included unless
     the edit says otherwise), the brainlife datatype and tags are recomputed unless the reviewer set them (brainlife_by_person),
     and the datatypes target excludes an entry with no brainlife datatype. Secondary captures stay
-    excluded_by_default. Raises like Plan.apply_edits; a bad edit changes nothing.
+    excluded_by_default. Raises like Plan.apply_edits; a bad edit changes nothing. ephys_format must be
+    an output format of the entry's (new) datatype, and keep_headshape and ephys_format apply to
+    electrophysiology entries only.
     """
+    _check_ephys_edits(plan, edits)
     was_ok = {e.id: e.status == "ok" for e in plan.entries}
     keys: dict[str, set[str]] = defaultdict(set)
     for edit in edits:
@@ -387,24 +419,82 @@ def apply_plan_edits(plan: Plan, edits: list[dict], schema: Schema) -> None:
     _fmap_tags(plan.entries)
 
 
+def _output_formats(datatype: str | None) -> tuple[str, ...]:
+    from .ephys import OUTPUT_FORMATS
+
+    return OUTPUT_FORMATS.get(datatype or "", ())
+
+
+def _nwb_source(e: PlanEntry) -> bool:
+    """An entry read from NWB input (its generated description names the source format first)."""
+    return e.description.startswith("NWB ")
+
+
+def _check_ephys_edits(plan: Plan, edits: list[dict]) -> None:
+    """Electrophysiology edit rules: ephys_format is one of the output formats of the entry's datatype
+    after the edit (NWB only for NWB input, never None), only for a writable ephys entry; keep_headshape
+    only for ephys entries; deface is never turned on for one."""
+    by_id = {e.id: e for e in plan.entries}
+    for edit in edits:
+        if not isinstance(edit, dict):
+            continue
+        e = by_id.get(edit.get("id"))
+        if e is None:
+            continue  # Plan.apply_edits raises KeyError
+        ephys = e.modality == "ephys"
+        if ephys and edit.get("deface") is True:
+            raise ValueError("electrophysiology recordings are never defaced")
+        if "keep_headshape" in edit and not ephys and edit["keep_headshape"] is not False:
+            raise ValueError("keep_headshape applies to electrophysiology entries only")
+        if "ephys_format" not in edit:
+            continue
+        fmt = edit["ephys_format"]
+        if not ephys:
+            if fmt is None:
+                continue
+            raise ValueError("ephys_format applies to electrophysiology entries only")
+        if not e.ephys_format:
+            raise ValueError("this recording cannot be written, so it has no output format")
+        datatype = edit.get("datatype", e.datatype)
+        allowed = [f for f in _output_formats(datatype) if f != "NWB" or _nwb_source(e)]
+        if fmt not in allowed:
+            raise ValueError(f"ephys_format for {datatype} must be one of {allowed}")
+
+
+def _ephys_format(e: PlanEntry) -> None:
+    """A writable ephys entry whose datatype changed keeps its format only when the new datatype allows
+    it; else it takes the new datatype's default."""
+    allowed = [f for f in _output_formats(e.datatype) if f != "NWB" or _nwb_source(e)]
+    if e.ephys_format not in allowed:
+        e.ephys_format = allowed[0] if allowed else e.ephys_format
+
+
 def _rederive(e: PlanEntry, schema: Schema, target: str, keys: set[str], was_ok: bool) -> None:
     if e.status == "excluded_by_default":  # may hold burned-in identifiers: never written
         return
+    if e.modality == "ephys" and not e.ephys_format:  # unreadable or unsupported input: never written
+        return
     if not keys and not was_ok:  # renamed with its subject only: still not writable, reason unchanged
         return
+    if e.modality == "ephys":
+        _ephys_format(e)
     reason = EDITED if keys & _NAMING or not was_ok else e.reason
     d = dict(datatype=e.datatype, suffix=e.suffix, entities=e.entities, status="ok", exclude=e.exclude,
              reason=reason)
-    if not (e.datatype and e.suffix and schema.is_valid(e.datatype, e.suffix)):
+    why = _modality_reason(e.modality, e.datatype)
+    if why is not None:
+        d.update(status="unknown", exclude=True, reason=why)
+    elif not (e.datatype and e.suffix and schema.is_valid(e.datatype, e.suffix)):
         d.update(status="unknown", exclude=True, reason=f"{reason}; {e.datatype}/{e.suffix} is not BIDS")
     else:
         if not was_ok and "exclude" not in keys:
             d["exclude"] = False
-        _check_nameable(d, e.subject, e.session, schema)
+        _check_nameable(d, e.subject, e.session, schema, e.modality, e.ephys_format)
     e.status, e.exclude, e.reason = d["status"], d["exclude"], d["reason"]
     if not e.brainlife_by_person:
-        e.brainlife_datatype, e.brainlife_tags = (to_brainlife(e.datatype, e.suffix, e.entities, {})
-                                                  if e.status == "ok" else (None, []))
+        e.brainlife_datatype, e.brainlife_tags = (
+            to_brainlife(e.datatype, e.suffix, e.entities, {}, EPHYS_BRAINLIFE_EXTS.get(e.ephys_format))
+            if e.status == "ok" else (None, []))
     if target == "datatypes" and e.brainlife_datatype is None and not e.exclude:
         e.exclude, e.reason = True, f"{e.reason}; no brainlife datatype"
 
@@ -428,15 +518,23 @@ def _seed_readme(plan: Plan, supplied: list[Path], input_dir: Path, terms: set[s
 def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_subjects: set[str],
                client: LLMClient | None, schema: Schema, target: Literal["bids", "datatypes"],
                staged_dir: Path | None = None, existing_sessions: dict[str, list[str]] | None = None,
-               exclude: Sequence[str] = ()) -> Plan:
+               exclude: Sequence[str] = (), modules: Sequence["ModulePlan"] = (),
+               extra_terms: frozenset[str] = frozenset(),
+               planners: Sequence[Callable[[], "ModulePlan"]] = ()) -> Plan:
     """The reviewable plan. existing_subjects and existing_sessions (subject id -> session labels) are what
     the brainlife project already holds, so new subject IDs and session labels do not collide with them.
-    exclude: claimed roots (input-relative), never walked for DICOM headers or planned as ancillary."""
+    exclude: claimed roots (input-relative), never walked for DICOM headers or planned as ancillary.
+    modules: the modality modules' plans (entries, warnings, views, subject labels, images, event names),
+    appended; planners: module planners, called once the MRI subjects hold their IDs in the key, so the MRI
+    subject IDs and session labels are those of an MRI-only plan; extra_terms: the modules' identifying
+    terms, redacted like the run's own (not used for the MRI subject and session labels, for the same reason)."""
     stats: dict = {}
-    terms = run_terms(core, input_dir, stats, exclude)
+    mri_terms = run_terms(core, input_dir, stats, exclude)
+    terms = mri_terms | set(extra_terms)
     warnings = []
     if stats.get("dicom_files_read", 0) == 0:
-        warnings.append(UNVERIFIED.format(why="no DICOM headers were read"))
+        if core.series or not (modules or planners):  # a module-only scan has no DICOM headers to read
+            warnings.append(UNVERIFIED.format(why="no DICOM headers were read"))
     elif stats.get("term_count", 0) == 0:
         warnings.append(UNVERIFIED.format(why="no identifying values were found"))
 
@@ -447,19 +545,20 @@ def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_su
         if ht is not None:
             heuristic[s.series_idx] = (ht[0], ht[1], _clean_entities(s.entities, terms))
     guesses = {g.series_idx: g for g in classify(view, heuristic, client, schema)}
-    draft = draft_metadata(view, client, terms)
 
     supplied = find_ancillary(input_dir, schema, exclude)
     has_aslcontext = any(p.name.endswith("_aslcontext.tsv") for p in supplied)  # anywhere in the input
-    sub_ids, n_absent, n_shared = _assign_subjects(core, key, existing_subjects, terms)
+    sub_ids, n_absent, n_shared = _assign_subjects(core, key, existing_subjects, mri_terms)
     if n_shared:
         warnings.append(SHARED_IDENTITY.format(n=n_shared))
     if n_absent:
         warnings.append(NO_IDENTITY.format(n=n_absent))
     by_idx = {s.subject_idx: s for s in core.subjects}
     ses_labels = {idx: _session_labels(by_idx.get(idx, CoreSubject(idx, "", [], [])), sid, core, key,
-                                       (existing_sessions or {}).get(sid, []), terms)
+                                       (existing_sessions or {}).get(sid, []), mri_terms)
                   for idx, sid in sub_ids.items()}
+    modules = list(modules) + [plan_module() for plan_module in planners]  # after the MRI subjects
+    draft = draft_metadata(view + [v for mp in modules for v in mp.view], client, terms)
 
     series_by_idx = {s.series_idx: s for s in core.series}
     triples = sorted({(o.series_idx, o.subject_idx, o.session_idx) for o in core.objects})
@@ -504,13 +603,23 @@ def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_su
     key.save()
     _fmap_tags(entries)
 
-    plan = Plan(target=target, entries=entries, warnings=warnings)
+    event_names: dict[str, str] = {}
+    for mp in modules:
+        entries += mp.entries
+        warnings += mp.warnings
+        event_names.update(mp.event_names)
+    plan = Plan(target=target, entries=entries, warnings=warnings, event_names=event_names)
     if draft is not None:
         plan.dataset_name = draft.name[:DATASET_NAME_MAX]
         plan.readme = draft.readme[:README_MAX]
         plan.metadata_source = "agent"
     # supplied ancillary files (participants, phenotype, README, ...) and dataset_description fields
     ids = id_maps(core, entries)
+    for mp in modules:
+        for idx, label in mp.labels.items():
+            if label not in ids.labels.values():  # a label mapping two ways is left out (see id_maps)
+                ids.labels[idx] = label
+        ids.images.update(mp.images)
     plan.ancillary = plan_ancillary(supplied, input_dir, terms, ids, schema)
     _seed_readme(plan, supplied, input_dir, terms)
     plan.warnings += ancillary_warnings(plan.ancillary, ids)

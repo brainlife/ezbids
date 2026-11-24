@@ -53,6 +53,7 @@ class ModulePlan:
     view: list["ScrubbedSeries"] = field(default_factory=list)
     labels: dict[int, str] = field(default_factory=dict)
     images: dict[str, str | None] = field(default_factory=dict)
+    event_names: dict[str, str] = field(default_factory=dict)  # seeds Plan.event_names (codes only)
 
 
 @dataclass
@@ -88,8 +89,10 @@ class Module(Protocol):
 
 
 def modules() -> tuple[Module, ...]:
-    """The registered modality modules (none yet: the microscopy module is registered later)."""
-    return ()
+    """The registered modality modules: electrophysiology (``ephys``; microscopy is registered before it)."""
+    from .ephys.module import EphysModule
+
+    return (EphysModule(),)
 
 
 # --- claimed paths -------------------------------------------------------------

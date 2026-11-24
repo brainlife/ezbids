@@ -56,7 +56,7 @@ class FakeModule:
         return set()
 
     def plan(self, *args, **kwargs):
-        raise AssertionError("not used before Task 6")
+        return modality.ModulePlan()
 
     def write(self, *args, **kwargs):
         raise AssertionError("not used before Task 6")
@@ -149,8 +149,8 @@ def test_module_dir_names():
             module_dir(Path("/w"), M())
 
 
-def test_modules_empty_until_registered():
-    assert modality.modules() == ()
+def test_ephys_module_registered():
+    assert [m.name for m in modality.modules()] == ["ephys"]
 
 
 # --- staging ------------------------------------------------------------------

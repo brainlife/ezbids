@@ -459,15 +459,21 @@ class Server:
                 self.set_status("scanning", f"reading the {m.name} input")
                 m.scan(self.input_dir, claims[m.name], module_dir(self.work, m),
                        lambda msg: self.set_status("scanning", redact(str(msg), hidden)))
-            terms = run_terms(core, self.input_dir, exclude=roots)
+            module_terms: set[str] = set()
             for m in mods:
-                terms |= m.terms(module_dir(self.work, m))
+                module_terms |= m.terms(module_dir(self.work, m))
+            terms = run_terms(core, self.input_dir, exclude=roots) | module_terms
             with self.lock:
                 self.core, self.terms = core, terms
             self.set_status("scanning", "building the plan")
-            plan = build_plan(core, self.input_dir, key, set(info["existing_subjects"]), client_from_env(),
-                              self.get_schema(), info["target"], staged_dir=staged,
-                              existing_sessions=info.get("existing_sessions") or {}, exclude=roots)
+            client, schema = client_from_env(), self.get_schema()
+            existing = set(info["existing_subjects"])
+            # module planners run inside build_plan, after the MRI subjects took their IDs
+            planners = [lambda m=m: m.plan(module_dir(self.work, m), key, existing, client, schema, info["target"])
+                        for m in mods]
+            plan = build_plan(core, self.input_dir, key, existing, client, schema, info["target"],
+                              staged_dir=staged, existing_sessions=info.get("existing_sessions") or {},
+                              exclude=roots, extra_terms=frozenset(module_terms), planners=planners)
             plan.scan_id = info["scan_id"]
             self.save_subject_ids({e.subject_idx: e.subject for e in plan.entries})
             key.save()

@@ -1,0 +1,396 @@
+"""Task 6: electrophysiology scan records and plan entries (ephys/module.py), the planner hook, mapping rows."""
+from __future__ import annotations
+
+import copy
+import json
+from dataclasses import asdict
+from datetime import datetime, timezone
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+from aimport import modality
+from aimport.brainlife_map import draft_for, load_rows, to_brainlife
+from aimport.ephys import module as ephys_module
+from aimport.ephys.module import EPHYS_INDEX_BASE, HEADSHAPE_WARNING, PROGRESS, EphysModule
+from aimport.ezbids_runner import CoreResult, parse_core
+from aimport.planner import EPHYS_DATATYPE_REASON, MRI_EPHYS_REASON, TASK_REASON, apply_plan_edits, build_plan
+from aimport.plan import Plan
+from aimport.pseudonyms import PseudonymKey
+from conftest import ephys_tokens
+from fixtures.ephys_fixtures import (MEAS_DATE, SFREQ, planted_brainvision, planted_edf, planted_fif,
+                                     planted_snirf)
+
+FIXTURES = Path(__file__).parent / "fixtures"
+
+
+@pytest.fixture
+def key(tmp_path):
+    k = PseudonymKey.load(tmp_path / "keys", "proj")
+    yield k
+    k.close()
+
+
+def scan(inp: Path, work: Path, progress=None) -> tuple[EphysModule, modality.Claim]:
+    m = EphysModule()
+    claim = m.claim(inp, [])
+    m.scan(inp, claim, work / "ephys", progress or (lambda msg: None))
+    return m, claim
+
+
+def make_plan(inp, work, key, schema, core=None, target="bids") -> Plan:
+    m, claim = scan(inp, work)
+    return build_plan(core or CoreResult(), inp, key, set(), None, schema, target, exclude=claim.roots,
+                      extra_terms=frozenset(m.terms(work / "ephys")),
+                      planners=[lambda: m.plan(work / "ephys", key, set(), None, schema, target)])
+
+
+def ephys(plan: Plan):
+    return [e for e in plan.entries if e.modality == "ephys"]
+
+
+def edf(path: Path, labels, his_id="P1234567", when=MEAS_DATE, n=256):
+    """A small EDF+ with the given signal labels, patient code and start time."""
+    import edfio
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    rng = np.random.default_rng(0)
+    signals = [edfio.EdfSignal(rng.standard_normal(n) * 20, sampling_frequency=SFREQ, label=lab,
+                               physical_dimension="uV", physical_range=(-500.0, 500.0)) for lab in labels]
+    edfio.Edf(signals, patient=edfio.Patient(code=his_id),
+              recording=edfio.Recording(startdate=when.date()), starttime=when.time().replace(tzinfo=None)
+              ).write(path)
+    return path
+
+
+def meg_fif(path: Path, when: datetime | None, his_id: str | None = "M7654321"):
+    import mne
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    info = mne.create_info([f"MEG {i:03d}" for i in range(1, 5)], SFREQ, "mag")
+    raw = mne.io.RawArray(np.zeros((4, 256)), info, verbose=False)
+    if his_id:
+        with raw.info._unlock():
+            raw.info["subject_info"] = {"his_id": his_id}
+    raw.set_meas_date(when)
+    raw.save(path, overwrite=True, verbose=False)
+    return path
+
+
+# --- datatypes ---------------------------------------------------------------------------------
+
+
+def test_datatypes(tmp_path, key, schema):
+    inp = tmp_path / "in"
+    edf(inp / "a" / "grid_rest.edf", ["SEEG LA1", "SEEG LA2", "ECOG G1", "EEG Fp1"], his_id="P1")
+    edf(inp / "b" / "arm_rest.edf", ["EMG L1", "EMG L2", "EMG L3", "EEG Cz"], his_id="P2")
+    planted_fif(inp / "c")
+    planted_snirf(inp / "d")
+    planted_brainvision(inp / "e")
+    plan = make_plan(inp, tmp_path / "work", key, schema)
+    datatypes = sorted(e.datatype for e in ephys(plan))
+    assert datatypes == ["eeg", "emg", "ieeg", "meg", "nirs"]
+    seeg = next(e for e in ephys(plan) if e.datatype == "ieeg")
+    assert "seeg 2" in seeg.description and seeg.ephys_format == "BrainVision"
+    assert next(e for e in ephys(plan) if e.datatype == "emg").ephys_format == "EDF"
+    assert next(e for e in ephys(plan) if e.datatype == "meg").ephys_format == "FIF"
+    assert next(e for e in ephys(plan) if e.datatype == "nirs").ephys_format == "SNIRF"
+    for e in ephys(plan):
+        assert e.status == "ok" and not e.exclude and e.deface is False, (e.datatype, e.reason)
+        assert e.series_idx >= EPHYS_INDEX_BASE and e.subject_idx >= EPHYS_INDEX_BASE
+        assert e.entities["task"] == "rest"
+
+
+def test_bids_folder_wins_and_emg_from_bdf_keeps_bdf():
+    assert ephys_module.datatype_of({"rel": "sub-01/ieeg/sub-01_task-x_ieeg.edf", "family": "edf",
+                                     "info": {"ch_types": {"eeg": 10}}})[0] == "ieeg"
+    assert ephys_module.datatype_of({"rel": "x.ds", "family": "ctf", "info": None})[0] == "meg"
+    assert ephys_module.datatype_of({"rel": "x.nwb", "family": "nwb", "info": None})[0] == "ieeg"
+    assert ephys_module._default_format("emg", "bdf") == "BDF"
+    assert ephys_module._default_format("emg", "edf") == "EDF"
+    assert ephys_module._default_format("ieeg", "nwb") == "BrainVision"
+
+
+# --- scan records ------------------------------------------------------------------------------
+
+
+def test_records_local_with_progress(tmp_path):
+    inp = tmp_path / "in"
+    planted_edf(inp)
+    planted_brainvision(inp)
+    seen: list[str] = []
+    scan(inp, tmp_path / "work", seen.append)
+    work = tmp_path / "work" / "ephys"
+    records = json.loads((work / "records.json").read_text())
+    assert seen == [PROGRESS.format(k=k, n=2) for k in (1, 2)]
+    for msg in seen:
+        assert not ephys_tokens(msg)
+    assert all(set(r) >= {"rel", "family", "companions", "headshape", "info", "terms", "event_labels"}
+               for r in records)
+    rec = next(r for r in records if r["family"] == "edf")
+    assert rec["info"]["meas_date"].startswith("2025-02-15")  # local records only
+    assert rec["info"]["his_id"] == "MRN0042"
+    assert set(rec["event_labels"]) == {"E001", "1", "eyes closed"}
+    assert all(a[2] in rec["event_labels"] for a in rec["info"]["annotations"])
+    terms = set(json.loads((work / "terms.json").read_text()))
+    assert "MRN0042" in terms and terms == EphysModule().terms(work)
+    ev = json.loads((work / "events.json").read_text())
+    assert ev["codes"]["E001"] == "smith john said hello" and ev["labels"]["eyes closed"] == "eyes closed"
+    chans = json.loads((work / "channels.json").read_text())
+    assert chans[rec["rel"]] == {"eeg_002": "Smith-Fp1"}  # new -> old
+
+
+def test_unreadable_recording_is_unsupported_with_generic_reason(tmp_path, key, schema):
+    inp = tmp_path / "in"
+    (inp / "Smith_John_meg" / "Smith_rest.ds").mkdir(parents=True)  # a CTF folder with no header
+    (inp / "Smith_John_meg" / "Smith_rest.ds" / "Smith_rest.res4").write_bytes(b"\0" * 64)
+    plan = make_plan(inp, tmp_path / "work", key, schema)
+    (e,) = ephys(plan)
+    assert e.status == "unsupported" and e.exclude and e.ephys_format == ""
+    assert e.datatype == "meg"
+    assert e.reason == ephys_module.UNREADABLE_REASON
+    assert "smith" not in json.dumps(asdict(plan)).lower()
+
+
+def test_meta_redacted():
+    meta = {"task": "Smith", "acq": "hd", "EEGReference": "Smith ref", "PowerLineFrequency": 60}
+    out = ephys_module._clean_meta(meta, {"Smith"})
+    assert out == {"acq": "hd", "EEGReference": "[x] ref", "PowerLineFrequency": 60}
+
+
+def test_remote_ignored(tmp_path):
+    planted_edf(tmp_path)
+    claim = EphysModule().claim(tmp_path, ["https://example.org/x.edf"])
+    assert claim.remote == [] and claim.roots
+
+
+# --- subjects, sessions, tasks, runs -----------------------------------------------------------
+
+
+def test_subject_pseudonymised(tmp_path, key, schema):
+    inp = tmp_path / "in"
+    planted_edf(inp)
+    plan = make_plan(inp, tmp_path / "work", key, schema)
+    (e,) = ephys(plan)
+    assert key.subjects["ephys:id=MRN0042"] == e.subject
+    again = make_plan(inp, tmp_path / "work2", key, schema)
+    assert ephys(again)[0].subject == e.subject
+    text = json.dumps(asdict(plan))
+    assert not ephys_tokens(text)
+    assert plan.event_names == {"E001": "E001"}
+    assert e.event_counts == {"E001": 1, "1": 1, "eyes closed": 1}
+    assert e.description == "EDF → BrainVision, 3 ch (eeg 3), 256 Hz, 10 s, 3 event codes"
+
+
+def test_task_unknown_needs_review(tmp_path, key, schema):
+    inp = tmp_path / "in"
+    edf(inp / "data" / "recording1.edf", ["EEG Fp1", "EEG Fp2"])
+    plan = make_plan(inp, tmp_path / "work", key, schema)
+    (e,) = ephys(plan)
+    assert e.entities["task"] == "unknown" and e.status == "unknown" and e.exclude
+    assert e.reason == TASK_REASON
+    apply_plan_edits(plan, [{"id": e.id, "entities": {"task": "rest"}}], schema)
+    assert e.status == "ok" and not e.exclude
+    assert e.brainlife_datatype == "neuro/eeg/brainvision" and e.brainlife_tags == ["rest"]
+
+
+def test_emptyroom_paired_and_no_date_session(tmp_path, key, schema):
+    inp = tmp_path / "in"
+    day = MEAS_DATE
+    meg_fif(inp / "meg" / "subj_rest_raw.fif", day.replace(hour=10))
+    meg_fif(inp / "meg" / "subj_rest2_raw.fif", day.replace(hour=15))
+    meg_fif(inp / "meg" / "emptyroom_am_raw.fif", day.replace(hour=9), his_id=None)
+    meg_fif(inp / "meg" / "emptyroom_pm_raw.fif", day.replace(hour=16), his_id=None)
+    meg_fif(inp / "other" / "emptyroom_raw.fif", datetime(2025, 3, 1, 10, tzinfo=timezone.utc), his_id=None)
+    plan = make_plan(inp, tmp_path / "work", key, schema)
+    rooms = [e for e in ephys(plan) if e.subject == "emptyroom"]
+    meg = [e for e in ephys(plan) if e.subject != "emptyroom"]
+    assert len(rooms) == 3 and len(meg) == 2
+    for e in rooms:
+        assert e.entities["task"] == "noise" and e.session is None and e.datatype == "meg"
+        assert e.status == "ok"
+    assert len({e.subject_idx for e in rooms}) == 1
+    by_id = {e.id: e for e in rooms}
+    # the 10:00 run pairs with the 09:00 empty room, the 15:00 run with the 16:00 one
+    am, pm = sorted(meg, key=lambda e: e.entities.get("run", ""))
+    assert am.empty_room in by_id and pm.empty_room in by_id and am.empty_room != pm.empty_room
+    assert "ses-2025" not in json.dumps(asdict(plan)) and "20250" not in json.dumps(asdict(plan))
+    for e in meg:
+        assert e.session is None  # one recording day
+
+
+def test_sessions_by_day(tmp_path, key, schema):
+    inp = tmp_path / "in"
+    edf(inp / "x" / "a_rest.edf", ["EEG Fp1"], when=datetime(2025, 2, 16, 9, tzinfo=timezone.utc))
+    edf(inp / "x" / "b_rest.edf", ["EEG Fp1"], when=datetime(2025, 2, 15, 9, tzinfo=timezone.utc))
+    plan = make_plan(inp, tmp_path / "work", key, schema)
+    assert sorted(e.session for e in ephys(plan)) == ["01", "02"]
+    first = next(e for e in ephys(plan) if e.series_idx == EPHYS_INDEX_BASE + 1)  # b_rest: the earlier day
+    assert first.session == "01" and "run" not in first.entities
+
+
+def test_runs_by_date(tmp_path, key, schema):
+    inp = tmp_path / "in"
+    # alphabetical order is the reverse of the recording order
+    edf(inp / "x" / "a_rest.edf", ["EEG Fp1"], when=MEAS_DATE.replace(hour=14))
+    edf(inp / "x" / "b_rest.edf", ["EEG Fp1"], when=MEAS_DATE.replace(hour=9))
+    edf(inp / "x" / "c_oddball.edf", ["EEG Fp1"], when=MEAS_DATE.replace(hour=11))
+    plan = make_plan(inp, tmp_path / "work", key, schema)
+    a, b, c = sorted(ephys(plan), key=lambda e: e.series_idx)
+    assert (a.entities["run"], b.entities["run"]) == ("2", "1")
+    assert c.entities == {"task": "oddball"}
+    assert a.session is None and len({a.subject, b.subject, c.subject}) == 1
+
+
+# --- edits -------------------------------------------------------------------------------------
+
+
+def test_format_edit(tmp_path, key, schema):
+    inp = tmp_path / "in"
+    planted_brainvision(inp)
+    edf(inp / "ieeg" / "grid_rest.edf", ["SEEG LA1", "SEEG LA2"], his_id="P9")
+    plan = make_plan(inp, tmp_path / "work", key, schema)
+    eeg = next(e for e in ephys(plan) if e.datatype == "eeg")
+    ieeg = next(e for e in ephys(plan) if e.datatype == "ieeg")
+    apply_plan_edits(plan, [{"id": eeg.id, "ephys_format": "EDF"}], schema)
+    assert eeg.ephys_format == "EDF" and eeg.status == "ok"
+    assert eeg.brainlife_datatype == "neuro/eeg/edf"
+    with pytest.raises(ValueError):
+        apply_plan_edits(plan, [{"id": eeg.id, "ephys_format": "FIF"}], schema)
+    with pytest.raises(ValueError):
+        apply_plan_edits(plan, [{"id": ieeg.id, "ephys_format": "NWB"}], schema)
+    with pytest.raises(ValueError):
+        apply_plan_edits(plan, [{"id": eeg.id, "ephys_format": None}], schema)
+    with pytest.raises(ValueError):
+        apply_plan_edits(plan, [{"id": eeg.id, "deface": True}], schema)
+    assert eeg.ephys_format == "EDF"
+    # a datatype edit keeps the format when the new datatype allows it, else takes its default
+    apply_plan_edits(plan, [{"id": eeg.id, "datatype": "ieeg", "suffix": "ieeg"}], schema)
+    assert eeg.ephys_format == "EDF" and eeg.status == "ok" and eeg.brainlife_datatype is None
+    apply_plan_edits(plan, [{"id": eeg.id, "datatype": "meg", "suffix": "meg"}], schema)
+    assert eeg.ephys_format == "FIF"
+    # an ephys entry cannot become MRI
+    apply_plan_edits(plan, [{"id": ieeg.id, "datatype": "anat", "suffix": "T1w"}], schema)
+    assert ieeg.status == "unknown" and ieeg.exclude and ieeg.reason == EPHYS_DATATYPE_REASON
+    apply_plan_edits(plan, [{"id": eeg.id, "keep_headshape": True}], schema)
+    assert eeg.keep_headshape is True
+
+
+def test_plan_round_trips(tmp_path, key, schema):
+    inp = tmp_path / "in"
+    planted_edf(inp)
+    plan = make_plan(inp, tmp_path / "work", key, schema)
+    plan.save(tmp_path / "plan.json")
+    loaded = Plan.load(tmp_path / "plan.json")
+    assert loaded.entries[0].modality == "ephys" and loaded.entries[0].event_counts == ephys(plan)[0].event_counts
+    old = json.loads((tmp_path / "plan.json").read_text())
+    for e in old["entries"]:  # a plan written before phase 3
+        for k in ("modality", "ephys_format", "keep_headshape", "event_counts", "empty_room"):
+            e.pop(k)
+    (tmp_path / "old.json").write_text(json.dumps(old))
+    e = Plan.load(tmp_path / "old.json").entries[0]
+    assert e.modality == "mri" and e.ephys_format == "" and e.event_counts == {} and e.empty_room is None
+
+
+# --- mapping -----------------------------------------------------------------------------------
+
+
+def test_brainlife_ext_mapping():
+    assert to_brainlife("eeg", "eeg", {"task": "rest"}, {}, ".eeg") == ("neuro/eeg/brainvision", ["rest"])
+    assert to_brainlife("eeg", "eeg", {"task": "Rest"}, {}, ".edf") == ("neuro/eeg/edf", ["rest"])
+    assert to_brainlife("eeg", "eeg", {"task": "rest"}, {}, ".bdf") == ("neuro/eeg/bdf", ["rest"])
+    assert to_brainlife("meg", "meg", {"task": "rest"}, {}, ".fif") == ("neuro/meg/fif", ["rest"])
+    assert to_brainlife("ieeg", "ieeg", {"task": "rest"}, {}, ".eeg") == (None, [])
+    assert draft_for("ieeg", "ieeg") == "neuro/ieeg/ieeg"
+    assert to_brainlife("anat", "T1w", {}, {}, ".nii.gz") == ("neuro/anat/t1w", [])  # falls back to the pair
+    rows = {(r["bids"]["datatype"], r["bids"].get("extension")): r for r in load_rows()}
+    for k in (("eeg", ".bdf"), ("eeg", ".edf"), ("eeg", ".eeg"), ("eeg", ".set"), ("meg", ".ds"), ("meg", ".fif")):
+        assert rows[k]["status"] == "active" and "aimport writes" in rows[k]["note"]
+    for r in load_rows():
+        if r["bids"]["datatype"] in ("ieeg", "nirs", "emg"):
+            assert r["status"] == "draft"
+
+
+def test_mri_entry_cannot_become_ephys(tmp_path, key, schema):
+    core = parse_core(FIXTURES / "ezbids_core_siemens.json")
+    plan = build_plan(core, tmp_path, key, set(), None, schema, "bids")
+    e = plan.entries[0]
+    apply_plan_edits(plan, [{"id": e.id, "datatype": "eeg", "suffix": "eeg", "entities": {"task": "rest"}}], schema)
+    assert e.status == "unknown" and e.reason == MRI_EPHYS_REASON
+    with pytest.raises(ValueError):
+        apply_plan_edits(plan, [{"id": e.id, "ephys_format": "EDF"}], schema)
+
+
+# --- ancillary ---------------------------------------------------------------------------------
+
+
+def test_inherited_ephys_sidecar_dropped(tmp_path, key, schema):
+    inp = tmp_path / "in"
+    eeg_dir = inp / "sub-01" / "eeg"
+    edf(eeg_dir / "sub-01_task-rest_eeg.edf", ["EEG Fp1", "EEG Fp2"])
+    (inp / "dataset_description.json").write_text(json.dumps({"Name": "x", "BIDSVersion": "1.11.2"}))
+    (inp / "task-rest_eeg.json").write_text(json.dumps({"PowerLineFrequency": 50}))
+    (inp / "task-rest_coordsystem.json").write_text(json.dumps({"EEGCoordinateSystem": "CapTrak"}))
+    (inp / "task-rest_events.json").write_text(json.dumps({"trial_type": {"Description": "x"}}))
+    (inp / "sub-01" / "sub-01_task-rest_eeg.json").write_text(json.dumps({"PowerLineFrequency": 50}))
+    plan = make_plan(inp, tmp_path / "work", key, schema)
+    (e,) = ephys(plan)
+    assert e.datatype == "eeg" and e.entities == {"task": "rest"} and e.status == "ok"
+    by_path = {a.path: a for a in plan.ancillary}
+    sub = f"sub-{e.subject}"
+    for path in ("task-rest_eeg.json", "task-rest_coordsystem.json", f"{sub}/{sub}_task-rest_eeg.json"):
+        a = by_path[path]
+        assert a.action == "drop" and a.locked and a.reason == "electrophysiology sidecars are generated by aimport"
+    assert by_path["task-rest_events.json"].action == "keep" and not by_path["task-rest_events.json"].locked
+    assert not any("/eeg/" in a.path for a in plan.ancillary)  # the claimed datatype folder
+
+
+# --- MRI and ephys together --------------------------------------------------------------------
+
+
+def test_indices_do_not_collide(tmp_path, key, schema):
+    from aimport.ephys.module import EPHYS_INDEX_BASE as base
+
+    inp = tmp_path / "in"
+    planted_edf(inp / "eeg")
+    planted_fif(inp / "meg")
+    core = parse_core(FIXTURES / "ezbids_core_siemens.json")
+    plan = make_plan(inp, tmp_path / "work", key, schema, core=copy.deepcopy(core))
+    mri = [e for e in plan.entries if e.modality == "mri"]
+    eph = ephys(plan)
+    assert mri and eph
+    assert not {e.subject_idx for e in mri} & {e.subject_idx for e in eph}
+    assert not {e.series_idx for e in mri} & {e.series_idx for e in eph}
+    assert len({e.id for e in plan.entries}) == len(plan.entries)
+    # microscopy (phase 2) numbers from 1_000_000: the ranges stay apart
+    assert base >= 2_000_000 and max(e.series_idx for e in mri) < 1_000_000
+    # MRI subject IDs and sessions are those of an MRI-only plan (ephys is planned after them)
+    with PseudonymKey.load(tmp_path / "keys-mri-only", "proj") as other:
+        mri_only = build_plan(copy.deepcopy(core), tmp_path / "empty", other, set(), None, schema, "bids")
+    assert [(e.id, e.subject, e.session) for e in mri] == [(e.id, e.subject, e.session) for e in mri_only.entries]
+    assert not {e.subject for e in mri} & {e.subject for e in eph}
+
+
+def test_headshape_warning(tmp_path, key, schema):
+    inp = tmp_path / "in"
+    planted_fif(inp)
+    plan = make_plan(inp, tmp_path / "work", key, schema)
+    assert HEADSHAPE_WARNING in plan.warnings
+    inp2 = tmp_path / "in2"
+    planted_edf(inp2)
+    assert HEADSHAPE_WARNING not in make_plan(inp2, tmp_path / "work2", key, schema).warnings
+
+
+def test_load_size(tmp_path, key, schema, monkeypatch):
+    inp = tmp_path / "in"
+    planted_edf(inp)
+    monkeypatch.setattr(ephys_module.readers, "WARN_LOAD_BYTES", 1000)
+    plan = make_plan(inp, tmp_path / "work", key, schema)
+    (e,) = ephys(plan)
+    assert e.status == "ok"
+    assert any(w.startswith(f"converting sub-{e.subject}_task-rest_eeg.vhdr loads about") for w in plan.warnings)
+    monkeypatch.setenv("AIMPORT_EPHYS_MAX_LOAD_BYTES", "2000")
+    plan = make_plan(inp, tmp_path / "work3", key, schema)
+    (e,) = ephys(plan)
+    assert e.status == "unsupported" and e.exclude and e.reason.startswith("converting sub-")

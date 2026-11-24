@@ -13,7 +13,7 @@ LOCKED_FIELDS = {"id", "series_idx", "subject_idx", "session_idx"}
 # brainlife_by_person and the indices) is derived: planner.apply_plan_edits re-derives it after every edit.
 EDITABLE_FIELDS = {"subject": "label", "session": "label?", "datatype": "str?", "suffix": "str?",
                    "entities": "dict", "deface": "bool", "exclude": "bool", "brainlife_datatype": "str?",
-                   "brainlife_tags": "list"}
+                   "brainlife_tags": "list", "ephys_format": "str?", "keep_headshape": "bool"}
 _LABEL = re.compile(r"^[a-zA-Z0-9]+$")
 
 # --- ancillary and metadata files (Task 10b) ---
@@ -64,6 +64,13 @@ class PlanEntry:
     # True once the reviewer set brainlife_datatype or brainlife_tags; later edits keep that mapping
     # until the entry's datatype, suffix or entities change
     brainlife_by_person: bool = False
+    # the input's modality: "mri" entries come from ezBIDS, "ephys" entries from the electrophysiology module
+    modality: Literal["mri", "micr", "ephys"] = "mri"
+    # ephys: the output format, one of ephys.OUTPUT_FORMATS[datatype]; "" = not writable (unsupported input)
+    ephys_format: str = ""
+    keep_headshape: bool = False  # ephys (meg, eeg): keep the head-shape digitization points
+    event_counts: dict[str, int] = field(default_factory=dict)  # ephys: event label (after coding) -> count
+    empty_room: str | None = None  # ephys meg: the id of the paired sub-emptyroom entry
 
 
 @dataclass
@@ -152,6 +159,8 @@ class Plan:
         for edit in edits:
             entry = by_id[edit["id"]]
             for k, v in edit.items():
+                if k == "ephys_format" and v is None:
+                    v = ""
                 if k not in ("id", "subject", "deface"):
                     setattr(entry, k, v)
             if "deface" in edit:

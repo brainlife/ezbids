@@ -10,6 +10,12 @@ from bidsschematools.schema import load_schema as _bst_load_schema
 DEFAULT_SCHEMA = Path("/opt/bids-schema/schema.json")
 SPEC_SCHEMA_DIR = Path(__file__).resolve().parents[2] / "bids-specification" / "src" / "schema"
 PHASE1_DATATYPES = ("anat", "func", "dwi", "fmap", "perf", "pet")
+EPHYS_DATATYPES = ("eeg", "meg", "ieeg", "nirs", "emg")
+SUPPORTED_DATATYPES = PHASE1_DATATYPES + EPHYS_DATATYPES
+# the extension a file is written with (checked when naming), by electrophysiology output format
+# (PlanEntry.ephys_format); default NIfTI
+CHECK_EXTS = {"BrainVision": ".vhdr", "EDF": ".edf", "BDF": ".bdf", "FIF": ".fif", "SNIRF": ".snirf", "NWB": ".nwb"}
+DEFAULT_CHECK_EXT = ".nii.gz"
 BIDS_VERSION = "1.11.2"
 
 _LABEL = re.compile(r"^[a-zA-Z0-9]+$")
