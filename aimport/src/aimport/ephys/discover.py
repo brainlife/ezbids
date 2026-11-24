@@ -20,7 +20,7 @@ from ..micr import names
 from ..modality import Claim
 
 FAMILIES = ("edf", "bdf", "gdf", "brainvision", "eeglab", "cnt", "egi", "nihon", "persyst", "mef3", "fif", "ctf",
-            "bti", "kit", "nirx", "hitachi", "snirf", "nwb", "blackrock", "unsupported")
+            "bti", "kit", "nirx", "hitachi", "snirf", "nwb", "blackrock", "unsupported", "headshape")
 EPHYS_VOCAB = ("eeg", "meg", "ieeg", "nirs", "fnirs", "emg", "rest", "resting", "task", "run", "noise", "emptyroom",
                "erm", "sleep", "oddball", "mmn", "motor", "tapping", "auditory", "visual", "faces", "nback",
                "eyes", "open", "closed")
@@ -42,6 +42,13 @@ REASON_MEF3 = "MEF3: export to EDF first"
 REASON_HZ = "CTF head-localisation run"
 REASON_BV = "BrainVision data file outside its folder"
 REASON_PERSYST = "Persyst data file outside its folder"
+# head-shape files (.pos, .hsp, .elp) beside, or in a folder named for, an EEG/MEG recording are claimed with it and
+# listed in the plan (never written as files of their own, never left for ezBIDS); one with no recording is listed too
+HEADSHAPE_EXT = (".pos", ".hsp", ".elp")
+REASON_HS_OFF = "head-shape file: not kept (keep_headshape is off)"
+REASON_HS_ORPHAN = "head-shape file without a recording"
+EEG_MEG_FAMILIES = frozenset({"edf", "bdf", "gdf", "brainvision", "eeglab", "cnt", "egi", "nihon", "persyst", "mef3",
+                              "fif", "ctf", "bti", "kit"})
 EMPTY_TOKENS = frozenset({"emptyroom", "erm", "noise"})
 EGI_VERSIONS = (2, 3, 4, 5, 6, 7)
 EEGREF_RE = re.compile(r"^[A-Za-z0-9 _/+-]{1,32}$")
@@ -58,6 +65,7 @@ class Recording:
     empty_room: bool = False
     excluded: str | None = None
     meta: dict = field(default_factory=dict)  # from a BIDS input: task/run/acq and safe numeric fields
+    headshape_of: str | None = None  # family "headshape": the rel of the recording it belongs to (None: orphan)
 
 
 def _head(path: str | os.PathLike, n: int) -> bytes:
@@ -154,9 +162,10 @@ class _Scan:
     def __init__(self) -> None:
         self.recordings: list[Recording] = []
         self.roots: list[str] = []
+        self.headshape_taken: set[str] = set()  # head-shape files already linked (in a folder named for a recording)
 
     def add(self, rec: Recording, extra_roots: list[str] | None = None, claim_roots: bool = True) -> None:
-        rec.empty_room = is_empty_room(rec.rel)
+        rec.empty_room = is_empty_room(rec.rel) and rec.family != "headshape"
         self.recordings.append(rec)
         if claim_roots:
             for r in [rec.rel, *rec.companions, *rec.headshape, *(extra_roots or [])]:
@@ -361,6 +370,51 @@ def _ctf_headshape(files: dict[str, os.DirEntry], rel_dir: str) -> list[str]:
     return [_join(rel_dir, e.name) for k, e in sorted(files.items()) if k.endswith(".pos")]
 
 
+def _stem_key(name: str) -> str:
+    """A recording's or head-shape file's name without its extension and a trailing ``_raw``/``-raw``."""
+    low = name.lower()
+    low = low[:-3] if low.endswith(".gz") else low
+    stem = low.rpartition(".")[0] or low
+    return re.sub(r"[_-]raw$", "", stem)
+
+
+def _headshape_files(files: dict[str, os.DirEntry], subdirs: list[os.DirEntry], rel_dir: str, scan: _Scan,
+                     here: list[Recording]) -> None:
+    """List each .pos/.hsp/.elp of this folder (and of a sub-folder named for a recording here) as a head-shape
+    record linked to an EEG/MEG recording of this folder: the one with the same stem, else one already holding it,
+    else the first. Without one it is an orphan. A recording's own companions (KIT .elp) are not listed."""
+    recs = sorted((r for r in here if r.family in EEG_MEG_FAMILIES and not r.excluded), key=lambda r: r.rel)
+    companions = {c for r in here for c in r.companions}
+    by_stem: dict[str, Recording] = {}
+    for r in sorted(recs, key=lambda r: (r.family not in ("fif", "ctf", "kit", "bti"), r.rel)):
+        by_stem.setdefault(_stem_key(Path(r.rel).name), r)  # head shape is MEG's first: an MEG recording wins
+    found: list[tuple[str, Recording | None]] = []
+    for low, e in sorted(files.items()):
+        rel = _join(rel_dir, e.name)
+        if not low.endswith(HEADSHAPE_EXT) or rel in companions or rel in scan.headshape_taken:
+            continue
+        target = next((r for r in recs if rel in r.headshape), None) or by_stem.get(_stem_key(low)) or \
+            (recs[0] if recs else None)
+        found.append((rel, target))
+    for d in subdirs:
+        target = by_stem.get(d.name.lower())
+        if target is None:
+            continue
+        try:
+            with os.scandir(d.path) as it:
+                inner = sorted((x for x in it if x.is_file(follow_symlinks=False) and not x.is_symlink()
+                                and x.name.lower().endswith(HEADSHAPE_EXT)), key=lambda x: x.name)
+        except OSError:
+            continue
+        for x in inner:
+            rel = _join(_join(rel_dir, d.name), x.name)
+            scan.headshape_taken.add(rel)
+            found.append((rel, target))
+    for rel, target in found:
+        scan.add(Recording(rel, "headshape", excluded=REASON_HS_OFF if target else REASON_HS_ORPHAN,
+                           headshape_of=target.rel if target else None))
+
+
 def _walk(directory: str, rel_dir: str, scan: _Scan) -> None:
     try:
         with os.scandir(directory) as it:
@@ -382,6 +436,7 @@ def _walk(directory: str, rel_dir: str, scan: _Scan) -> None:
         scan.add(run)
         return
 
+    first = len(scan.recordings)
     _file_recordings(files, rel_dir, scan)
     # CTF head shapes sit beside the .ds folders
     ctf_here = []
@@ -397,6 +452,7 @@ def _walk(directory: str, rel_dir: str, scan: _Scan) -> None:
         for r in shape:
             if r not in scan.roots:
                 scan.roots.append(r)
+    _headshape_files(files, subdirs, rel_dir, scan, scan.recordings[first:])
     for e in subdirs:
         if _folder_recording(e, "") is not None:
             continue
@@ -406,7 +462,7 @@ def _walk(directory: str, rel_dir: str, scan: _Scan) -> None:
             _walk(e.path, rel, inner)
             if inner.recordings:
                 for rec in inner.recordings:
-                    rec.meta = _bids_meta(Path(e.path), Path(rec.rel).name) if rec.family not in ("ctf", "bti", "nirx", "egi", "mef3") else {}
+                    rec.meta = _bids_meta(Path(e.path), Path(rec.rel).name) if rec.family not in ("ctf", "bti", "nirx", "egi", "mef3", "headshape") else {}
                     scan.add(rec, claim_roots=False)
                 scan.roots.append(rel)
             continue

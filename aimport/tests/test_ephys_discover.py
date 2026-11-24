@@ -205,7 +205,8 @@ def test_unsupported_artinis(tmp_path):
 def test_mri_untouched(found):
     _, c, _, _ = found
     assert not [r for r in c.roots if r.startswith(f"{fx.SUBJECT_DIR}/mri")]
-    assert f"{fx.SUBJECT_DIR}/pos/s.pos" not in c.roots
+    # an orphan head-shape file is claimed (never left for ezBIDS) and listed unsupported
+    assert f"{fx.SUBJECT_DIR}/pos/s.pos" in c.roots
 
 
 def test_edf_version_checked(tmp_path):
@@ -257,3 +258,48 @@ def test_sidecar_read_capped(tmp_path):
     _w(d / "sub-01_task-a_eeg.json", '{"PowerLineFrequency": 50, "pad": "' + "x" * (2 << 20) + '"}')
     _, recs = discover.claim(tmp_path, [])
     assert recs[0].meta == {"task": "a"}
+
+
+
+# --- head-shape files (coordinator ruling after Task 12) ------------------------------------------------------------
+
+
+def _hs(recs):
+    return {r.rel: r for r in recs if r.family == "headshape"}
+
+
+def test_headshape_beside_any_recording(tmp_path):
+    """.pos/.hsp/.elp beside any EEG/MEG recording (FIF and EDF included) or in a folder named for one are claimed
+    and listed, linked to the recording (same stem first); an orphan is listed as such. KIT's own .elp/.mrk stay
+    companions."""
+    _w(tmp_path / "a" / "s_raw.fif", b"x")
+    _w(tmp_path / "a" / "s.pos", b"1\n")
+    _w(tmp_path / "a" / "s.hsp", b"x")
+    _w(tmp_path / "a" / "s.elp", b"x")
+    _w(tmp_path / "b" / "rest.edf", b"0       ")
+    _w(tmp_path / "b" / "rest" / "head.pos", b"1\n")  # a folder named for the recording
+    _w(tmp_path / "c" / "lone.hsp", b"x")
+    _w(tmp_path / "d" / "x.sqd", b"x")
+    _w(tmp_path / "d" / "x.elp", b"x")
+    _w(tmp_path / "d" / "x.hsp", b"x")
+    _w(tmp_path / "e" / "n.snirf", b"x")
+    _w(tmp_path / "e" / "n.pos", b"1\n")  # beside fNIRS only: no EEG/MEG recording
+    c, recs = discover.claim(tmp_path, [])
+    hs = _hs(recs)
+    assert set(hs) == {"a/s.pos", "a/s.hsp", "a/s.elp", "b/rest/head.pos", "c/lone.hsp", "d/x.hsp", "e/n.pos"}
+    for rel in hs:
+        assert rel in c.roots
+    assert {rel: r.headshape_of for rel, r in hs.items()} == {
+        "a/s.pos": "a/s_raw.fif", "a/s.hsp": "a/s_raw.fif", "a/s.elp": "a/s_raw.fif",
+        "b/rest/head.pos": "b/rest.edf", "c/lone.hsp": None, "d/x.hsp": "d/x.sqd", "e/n.pos": None}
+    assert hs["c/lone.hsp"].excluded == "head-shape file without a recording"
+    assert hs["a/s.pos"].excluded == "head-shape file: not kept (keep_headshape is off)"
+    kit = next(r for r in recs if r.rel == "d/x.sqd")
+    assert kit.headshape == ["d/x.hsp"] and "d/x.elp" in kit.companions and "d/x.elp" not in hs
+
+
+def test_headshape_prefers_meg_recording_of_same_stem(tmp_path):
+    for n in ("r.edf", "r_raw.fif", "r.pos"):
+        _w(tmp_path / n, b"0       " if n.endswith(".edf") else b"x")
+    _, recs = discover.claim(tmp_path, [])
+    assert _hs(recs)["r.pos"].headshape_of == "r_raw.fif"

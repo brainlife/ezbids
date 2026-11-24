@@ -441,6 +441,10 @@ def apply_plan_edits(plan: Plan, edits: list[dict], schema: Schema) -> None:
     for e in plan.apply_edits(edits):
         _rederive(e, schema, plan.target, keys[e.id], was_ok[e.id])
     _fmap_tags(plan.entries)
+    if any(e.headshape_of for e in plan.entries):
+        from .ephys.module import headshape_reasons
+
+        headshape_reasons(plan.entries)  # listed head-shape files follow their recording's keep_headshape
 
 
 def _check_sample_types(plan: Plan, edits: list[dict], schema: Schema) -> None:

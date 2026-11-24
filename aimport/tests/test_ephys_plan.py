@@ -615,3 +615,45 @@ def test_planners_with_and_without_the_mri_subjects():
 
     assert _call_planner(lambda: "plain", {"01": {}}) == "plain"  # phase 2 planners take no argument
     assert _call_planner(lambda subjects: sorted(subjects), {"01": {}}) == ["01"]
+
+
+# --- head-shape files (coordinator ruling after Task 12) ------------------------------------------------------------
+
+
+def test_headshape_files_listed_and_follow_keep(tmp_path, key, schema):
+    """A .pos beside the planted FIF is a plan entry of the FIF's subject, never written; its reason follows the
+    recording's keep_headshape (a FIF cannot take a separate head-shape file). An orphan is listed as such."""
+    from fixtures.ephys_fixtures import planted_ctf_pos
+
+    inp = tmp_path / "in"
+    planted_fif(inp)
+    planted_ctf_pos(inp)  # Smith_John_rest.pos beside Smith_John_rest_raw.fif
+    (inp / "other").mkdir()
+    (inp / "other" / "lone.hsp").write_text("% x\n")
+    plan = make_plan(inp, tmp_path / "work", key, schema)
+    meg = next(e for e in ephys(plan) if e.datatype == "meg")
+    hs = {e.reason: e for e in ephys(plan) if e.headshape_of is not None or "head-shape" in e.reason}
+    pos = hs["head-shape file: not kept (keep_headshape is off)"]
+    assert (pos.headshape_of, pos.subject, pos.session, pos.status, pos.exclude, pos.ephys_format) == \
+        (meg.id, meg.subject, meg.session, "unsupported", True, "")
+    orphan = hs["head-shape file without a recording"]
+    assert orphan.headshape_of is None and orphan.exclude
+    assert len({e.subject for e in ephys(plan)} - {orphan.subject}) == 1, "the .pos adds no subject"
+    apply_plan_edits(plan, [{"id": meg.id, "keep_headshape": True}], schema)
+    assert pos.reason == ("head-shape file: cannot be attached to a FIF recording, not kept "
+                          "(the recording's own head-shape points are kept)")
+    assert pos.exclude and pos.status == "unsupported"
+    apply_plan_edits(plan, [{"id": meg.id, "keep_headshape": False}], schema)
+    assert pos.reason == "head-shape file: not kept (keep_headshape is off)"
+    assert not ephys_tokens(json.dumps(asdict(pos)))
+
+
+def test_kit_headshape_read_when_kept(tmp_path, key, schema):
+    """KIT reads its .hsp into the recording's digitization: the listed file says so when keep_headshape is on."""
+    rec = {"rel": "k/x.sqd", "family": "kit", "headshape": ["k/x.hsp"]}
+    assert ephys_module.headshape_on_reason(rec, "k/x.hsp") == \
+        "head-shape file: read into its recording's digitization (keep_headshape is on)"
+    assert ephys_module.headshape_on_reason({"rel": "c/r.ds", "family": "ctf"}, "c/r.pos").startswith(
+        "head-shape file: cannot be attached to a CTF recording")
+    assert ephys_module.headshape_on_reason(rec, "k/x.pos").startswith(
+        "head-shape file: cannot be attached to a KIT recording")

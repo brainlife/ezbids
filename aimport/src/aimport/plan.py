@@ -81,6 +81,10 @@ class PlanEntry:
     keep_headshape: bool = False  # ephys (meg, eeg): keep the head-shape digitization points
     event_counts: dict[str, int] = field(default_factory=dict)  # ephys: event label (after coding) -> count
     empty_room: str | None = None  # ephys meg: the id of the paired sub-emptyroom entry
+    # ephys head-shape file (.pos/.hsp/.elp), listed but never written on its own: the id of its recording's entry
+    # (None: no recording beside it) and the reason shown while that recording's keep_headshape is on
+    headshape_of: str | None = None
+    headshape_on_reason: str = ""
     # ephys from NWB: electrode group (generated name, group_001) -> channel type (seeg / ecog / dbs), guessed
     # from the group's name and description; the reviewer may change the values (not the groups)
     channel_types: dict[str, str] = field(default_factory=dict)

@@ -50,6 +50,12 @@ EPHYS_INDEX_BASE = 2_000_000
 PROGRESS = "reading recording headers ({k} of {n})"
 UNREADABLE_REASON = "could not be read as an electrophysiology recording"
 HEADSHAPE_WARNING = "head-shape points found and dropped by default (keep_headshape to keep)"
+HS_READ = "head-shape file: read into its recording's digitization (keep_headshape is on)"
+HS_NOT_ATTACHED = ("head-shape file: cannot be attached to a {fmt} recording, not kept "
+                   "(the recording's own head-shape points are kept)")
+FAMILY_NAMES = {"edf": "EDF", "bdf": "BDF", "gdf": "GDF", "brainvision": "BrainVision", "eeglab": "EEGLAB",
+                "cnt": "Neuroscan", "egi": "EGI", "nihon": "Nihon Kohden", "persyst": "Persyst", "mef3": "MEF3",
+                "fif": "FIF", "ctf": "CTF", "bti": "BTi", "kit": "KIT"}
 LOAD_WARNING = "converting {name} loads about {n:.1f} GB into memory"
 NO_IDENTITY = ("electrophysiology: subject identity could not be established for {n} subject(s): they get new "
                "subject IDs for this import only, not linked to earlier imports")
@@ -192,6 +198,7 @@ def scan_records(input_dir: Path, recordings: list[Recording], work: Path,
         info, terms, error, ch_names, ch_types, ann = _read(rec, input_dir)
         records.append({"rel": rec.rel, "family": rec.family, "companions": list(rec.companions),
                         "headshape": list(rec.headshape), "empty_room": rec.empty_room, "meta": dict(rec.meta),
+                        "headshape_of": rec.headshape_of,
                         "info": info, "error": error, "terms": sorted(terms), "event_labels": []})
         channel_lists.append((ch_names, ch_types))
         annotations.append(sorted(ann, key=lambda a: a[0]))
@@ -247,6 +254,8 @@ def _bids_datatype(rel: str) -> str | None:
 def datatype_of(rec: dict) -> tuple[str | None, str]:
     """(datatype, why) by the heuristic: a BIDS datatype folder wins; then the system family (MEG, NIRS,
     NWB); then the channel types (iEEG or EMG when at least half of the data channels, else EEG)."""
+    if rec["family"] == "headshape":  # a head-shape file has no datatype of its own
+        return None, ""
     bids = _bids_datatype(rec["rel"])
     if bids:
         return bids, "BIDS datatype folder"
@@ -461,9 +470,13 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
     proposed: dict[str, str | None] = {}
     sub_labels: dict[str, set[str]] = defaultdict(set)
     local = f"run:{run}:"
+    by_rel = {rec["rel"]: i for i, rec in enumerate(records)}
+    # a head-shape file linked to a recording takes that recording's subject and session (filled in below)
+    hs_link = {i: by_rel[rec["headshape_of"]] for i, rec in enumerate(records)
+               if rec["family"] == "headshape" and rec.get("headshape_of") in by_rel}
     for i, rec in enumerate(records):
         label = labels[i]
-        if empty[i]:
+        if empty[i] or i in hs_link:
             originals.append(None)
             continue
         if label in mri_subjects:
@@ -482,6 +495,8 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
         proposed.setdefault(original, usable)
         if label:
             sub_labels[original].add(label)
+    for i, j in hs_link.items():
+        originals[i] = originals[j]
     order = list(dict.fromkeys(o for o in originals if o is not None))
     subject_idx: dict[str, int] = {}
     subject_ids: dict[str, str] = {}
@@ -511,6 +526,8 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
     taken: dict[str, set[str]] = defaultdict(set)
     for i, rec in enumerate(records):
         o = originals[i]
+        if i in hs_link:
+            continue
         raw = _input_label(rec["rel"], "ses")
         mri = mri_subjects.get(o[len(MRI_PREFIX):]) if o and o.startswith(MRI_PREFIX) else None
         if mri is not None:
@@ -532,7 +549,7 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
     numbers: dict[tuple[str, date | None], str] = {}
     for i, rec in enumerate(records):
         o = originals[i]
-        if sessions[i] is not None or i in fixed or o is None or len(days[o]) < 2:
+        if sessions[i] is not None or i in fixed or o is None or len(days[o]) < 2 or i in hs_link:
             continue
         when = _meas_date(rec)
         day = when.date() if when is not None else None
@@ -548,10 +565,15 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
         sessions[i] = numbers[(o, day)]
     session_idx: list[int] = []
     seen: dict[Any, dict[str | None, int]] = defaultdict(dict)
+    for i, j in hs_link.items():
+        sessions[i] = sessions[j]
     for i in range(len(records)):
         o = originals[i]
         if i in fixed:
             session_idx.append(fixed[i])
+            continue
+        if i in hs_link:
+            session_idx.append(-1)  # the recording's, below
             continue
         per = seen[o if o is not None else EMPTY_ROOM_SUBJECT]
         # beside an MRI subject's sessions, ephys sessions are numbered apart from them
@@ -643,11 +665,36 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
         if i in agent and d["status"] == "ok":
             entries[-1].confidence = agent[i]["confidence"]
             entries[-1].agent_note = agent[i]["note"]
+    for i, j in hs_link.items():
+        e, target = entries[i], entries[j]
+        e.session_idx = target.session_idx
+        e.id = f"e{i}-sub{e.subject_idx}-ses{e.session_idx}"
+        e.headshape_of = target.id
+        e.headshape_on_reason = headshape_on_reason(records[j], records[i]["rel"])
     _pair_empty_room(entries, records, empty)
     if headshape:
         mp.warnings.append(HEADSHAPE_WARNING)
     mp.entries = entries
     return mp
+
+
+def headshape_on_reason(target: dict, rel: str) -> str:
+    """What a head-shape file becomes when its recording keeps head shape: KIT reads its .hsp (the first one)
+    into the digitization; no other recording type takes a separate head-shape file."""
+    if target.get("family") == "kit" and rel in (target.get("headshape") or [])[:1]:
+        return HS_READ
+    return HS_NOT_ATTACHED.format(fmt=FAMILY_NAMES.get(target.get("family"), "electrophysiology"))
+
+
+def headshape_reasons(entries: list[PlanEntry]) -> None:
+    """Set each listed head-shape file's reason from its recording's keep_headshape (after plan edits)."""
+    by_id = {e.id: e for e in entries}
+    for e in entries:
+        target = by_id.get(e.headshape_of) if e.headshape_of else None
+        if target is None:
+            continue
+        e.reason = e.headshape_on_reason if target.keep_headshape else discover.REASON_HS_OFF
+        e.exclude, e.status = True, "unsupported"
 
 
 def _bids_name(schema: "Schema", subject: str, session: str | None, datatype: str, entities: dict, fmt: str) -> str:
@@ -771,7 +818,8 @@ def _source_files(rec: dict, input_dir: Path) -> list[Path]:
 
 def _recording(rec: dict) -> Recording:
     return Recording(rel=rec["rel"], family=rec["family"], companions=list(rec.get("companions") or []),
-                     headshape=list(rec.get("headshape") or []), empty_room=bool(rec.get("empty_room")))
+                     headshape=list(rec.get("headshape") or []), empty_room=bool(rec.get("empty_room")),
+                     headshape_of=rec.get("headshape_of"))
 
 
 def _snirf_units(rec: dict, input_dir: Path) -> dict[str, str] | None:

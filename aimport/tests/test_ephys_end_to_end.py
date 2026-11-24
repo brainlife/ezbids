@@ -171,17 +171,22 @@ def _start(tmp: Path, make_input, monkeypatch) -> Run:
     return run
 
 
+HS_OFF = "head-shape file: not kept (keep_headshape is off)"
+HS_FIF = ("head-shape file: cannot be attached to a FIF recording, not kept "
+          "(the recording's own head-shape points are kept)")
+
+
+def mixed_input(inp: Path) -> None:
+    fetch_dcm_qa(inp, plant=True, cache=DCM_QA_CACHE)
+    ephys_input(inp)
+
+
 @pytest.fixture(scope="module")
 def mixed(tmp_path_factory):
     """The mixed import: planted DICOMs and every planted recording; E001 named ``greeting``; quickshear."""
     tmp = tmp_path_factory.mktemp("mixed")
-
-    def make_input(inp: Path) -> None:
-        fetch_dcm_qa(inp, plant=True, cache=DCM_QA_CACHE)
-        ephys_input(inp)
-
     with pytest.MonkeyPatch.context() as mp:
-        run = _start(tmp, make_input, mp)
+        run = _start(tmp, mixed_input, mp)
         try:
             run.scanned = scan(run.api)
             name_tasks(run.api)
@@ -196,23 +201,18 @@ def mixed(tmp_path_factory):
 
 @pytest.fixture(scope="module")
 def headshape_kept(tmp_path_factory):
-    """An ephys-only import of the planted FIF (200 head-shape points in its dig), with ``keep_headshape``.
-
-    The planted ``.pos``/``.hsp`` are not here: they are claimed only beside a CTF or KIT recording, so alone with a
-    FIF they would be left for ezBIDS, which fails a scan that holds no imaging files."""
+    """The same mixed input (the planted FIF with the planted ``.pos`` and ``.hsp`` beside it), with
+    ``keep_headshape`` on the planted MEG recording."""
     tmp = tmp_path_factory.mktemp("headshape")
-
-    def make_input(inp: Path) -> None:
-        fx.planted_fif(inp)
-
     with pytest.MonkeyPatch.context() as mp:
-        run = _start(tmp, make_input, mp)
+        run = _start(tmp, mixed_input, mp)
         try:
             plan = scan(run.api)
             name_tasks(run.api)
-            edits = [{"id": e["id"], "keep_headshape": True} for e in ephys_entries(plan) if e["datatype"] == "meg"]
-            assert edits and run.api.call("PATCH", "/plan", json={"edits": edits}).status_code == 200
-            run.status = execute(run.api)
+            edits = [{"id": e["id"], "keep_headshape": True} for e in ephys_entries(plan)
+                     if e["datatype"] == "meg" and e["subject"] != "emptyroom"]
+            assert len(edits) == 1 and run.api.call("PATCH", "/plan", json={"edits": edits}).status_code == 200
+            run.status = execute(run.api, deface_method="quickshear")
             run.look()
         finally:
             run.close()
@@ -338,10 +338,22 @@ def test_ephys_e2e_headshape_opt_in(mixed, headshape_kept):
     assert {mne.io.constants.FIFF.FIFFV_POINT_CARDINAL, mne.io.constants.FIFF.FIFFV_POINT_HPI} <= _dig_kinds(kept)
     for body in headshape_kept.api.bodies:
         assert not found(body), found(body)
+    # both scans succeeded with the planted .pos and .hsp beside the FIF: each is listed with the FIF's subject,
+    # never written, and never left for ezBIDS
+    for run, reason in ((mixed, HS_OFF), (headshape_kept, HS_FIF)):
+        meg = next(e for e in ephys_entries(run.plan) if e["datatype"] == "meg" and e["subject"] != "emptyroom")
+        listed = [e for e in ephys_entries(run.plan) if e.get("headshape_of")]
+        assert len(listed) == 2, listed
+        for e in listed:
+            assert (e["headshape_of"], e["subject"], e["reason"], e["exclude"]) == (meg["id"], meg["subject"],
+                                                                                   reason, True)
+            assert e["id"] not in (run.status.get("manifest") or {})
+        staged = [p.name for p in (run.work / "ezbids").rglob("*") if p.suffix.lower() in (".pos", ".hsp")]
+        assert not staged, staged
 
 
 def test_ephys_e2e_unsupported_reported(mixed):
-    stub = [e for e in ephys_entries(mixed.plan) if e["status"] == "unsupported"]
+    stub = [e for e in ephys_entries(mixed.plan) if e["status"] == "unsupported" and not e.get("headshape_of")]
     assert len(stub) == 1, stub
     e = stub[0]
     assert e["exclude"] is True and e["reason"] == "export to SNIRF first" and not e["ephys_format"]
@@ -355,10 +367,10 @@ def test_ephys_e2e_no_source_copy(mixed, headshape_kept):
     for run in (mixed, headshape_kept):
         assert sha_tree(run.inp) == run.before, "the input is unchanged"
         assert not (run.work / "ephys" / "scratch").exists(), "scratch is deleted after each write"
-    # the ephys-only import: the work folder minus the output and the QA snapshots holds no recording
-    assert tree_bytes(headshape_kept.work, ("output/bids", "ephys/qa")) < 2 * MIB
-    # the mixed import: the same, besides the MRI path's own folders (ezBIDS's staging, the pre-deface originals)
-    assert tree_bytes(mixed.work, ("output/bids", "ephys/qa", "ezbids", "pre-deface")) < 2 * MIB
+    # the work folder minus the output, the QA snapshots and the MRI path's own folders (ezBIDS's staging, the
+    # pre-deface originals) holds no recording
+    for run in (mixed, headshape_kept):
+        assert tree_bytes(run.work, ("output/bids", "ephys/qa", "ezbids", "pre-deface")) < 2 * MIB
 
 
 def test_ephys_e2e_datatypes_target(tmp_path, monkeypatch):
