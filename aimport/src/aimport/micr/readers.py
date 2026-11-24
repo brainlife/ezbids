@@ -43,6 +43,7 @@ log = logging.getLogger(__name__)
 
 BIOFORMATS_MESSAGE = "needs Bio-Formats (not included): export to OME-TIFF or OME-Zarr first"
 PNG_MESSAGE = "PNG and JPEG images are not read: export to OME-TIFF or OME-Zarr first"
+PHOTO_MESSAGE = "photographs are not imported"
 MAT_V5_MESSAGE = "MATLAB v5 file too large to read lazily: save as v7.3"
 MAT_V5_MAX_BYTES = 2 * 2**30
 ENTRY_POINT_GROUP = "aimport.micr_readers"
@@ -1101,6 +1102,13 @@ def _open_png(location: Any) -> ImageSource:
 
 
 _BUILTIN["png"] = _open_png
+
+
+def _open_photo(location: Any) -> ImageSource:
+    raise UnsupportedFormat(PHOTO_MESSAGE)
+
+
+_BUILTIN["photo"] = _open_photo
 _ADAPTERS: dict[str, Opener] = {}
 _entry_points_loaded = False
 

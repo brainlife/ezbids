@@ -184,6 +184,22 @@ def bids_name(rel: str) -> tuple[dict[str, str], str] | None:
     return entities, m.group(2)
 
 
+def bids_entities(rel: str) -> dict[str, str] | None:
+    """The entities of a BIDS micr file name, an image or a photograph (``sub-01_sample-A_photo.jpg``), or None."""
+    parts = _parts(rel)
+    m = _BIDS_NAME.match(_EXT.sub("", parts[-1])) if parts else None
+    if not m or m.group(2) not in _BIDS_SUFFIX_WORDS:
+        return None
+    return dict(pair.split("-", 1) for pair in m.group(1).rstrip("_").split("_"))
+
+
+def bids_photo(rel: str) -> bool:
+    """A BIDS micr photograph (``sub-01_sample-A_photo.jpg``)."""
+    parts = _parts(rel)
+    m = _BIDS_NAME.match(_EXT.sub("", parts[-1])) if parts else None
+    return bool(m) and m.group(2) == "photo" and parts[-1].lower().endswith((".jpg", ".jpeg", ".png", ".tif", ".tiff"))
+
+
 def _bids_words(stem: str) -> set[str]:
     """The vocabulary of a BIDS-entity name (``sub-01_sample-A_CONF``): its entity keys (before ``-``)
     and its suffix when that is a micr suffix. Any other name (``SEM_250215``) has none."""

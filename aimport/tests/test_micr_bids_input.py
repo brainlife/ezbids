@@ -219,17 +219,94 @@ def _wait(c, stages, timeout=60):
     return s
 
 
-def test_bids_png_image_reported(tmp_path, key, schema):
-    """A BIDS micr image aimport does not read (PNG, as in bids-examples micr_SEM) is a reported, excluded entry,
-    not silently left out; a photo is not an image entry."""
-    from aimport.micr.readers import PNG_MESSAGE
+def test_bids_png_image_and_photo_reported(tmp_path, key, schema):
+    """A BIDS micr image aimport does not read (PNG, as in bids-examples micr_SEM) and a photograph are reported,
+    excluded entries, never silently left out; a PNG that is not a BIDS micr file is not claimed."""
+    from aimport.micr.readers import PHOTO_MESSAGE, PNG_MESSAGE
 
     inp = tmp_path / "in"
     micr_dir = inp / "sub-01" / "ses-01" / "micr"
     micr_dir.mkdir(parents=True)
     (micr_dir / "sub-01_ses-01_sample-A_SEM.png").write_bytes(b"\x89PNG\r\n\x1a\n")
     (micr_dir / "sub-01_ses-01_sample-A_photo.jpg").write_bytes(b"\xff\xd8")
-    (inp / "notes.png").write_bytes(b"\x89PNG\r\n\x1a\n")  # not a BIDS micr image: not claimed
+    (micr_dir / "sub-01_ses-01_sample-A_photo.tif").write_bytes(b"\n")
+    (inp / "notes.png").write_bytes(b"\x89PNG\r\n\x1a\n")
+    entries = _plan(inp, tmp_path, key, schema)
+    by_reason = sorted((e.reason, e.status, e.exclude, e.description) for e in entries)
+    assert by_reason == [(PNG_MESSAGE, "unsupported", True, "PNG; not readable"),
+                         (PHOTO_MESSAGE, "unsupported", True, "photograph; not readable"),
+                         (PHOTO_MESSAGE, "unsupported", True, "photograph; not readable")]
+    assert next(e for e in entries if e.reason == PNG_MESSAGE).suffix == "SEM"
+
+
+# --- input labels: kept only when safe (controller ruling) ---------------------------------------------
+
+
+def _bids_store(inp: Path, name: str) -> None:
+    ome_zarr(inp / "sub-01" / name.split("_")[1] / "micr" / name if "_ses-" in name else
+             inp / "sub-01" / "micr" / name, "0.4")
+
+
+@pytest.mark.parametrize("label", ["brain", "A", "12", "A12b", "Left", "hippocampus"])
+def test_safe_sample_label_kept(tmp_path, key, schema, label):
+    inp = tmp_path / "in"
+    _bids_store(inp, f"sub-01_sample-{label}_SPIM.ome.zarr")
     (e,) = _plan(inp, tmp_path, key, schema)
-    assert (e.status, e.exclude, e.reason, e.suffix) == ("unsupported", True, PNG_MESSAGE, "SEM")
-    assert e.description == "PNG; not readable"
+    assert e.entities["sample"] == label and "renumbered" not in e.reason
+
+
+@pytest.mark.parametrize("label", ["JohnDoe", "ABC123", "slide42x7", "20250215"])
+def test_unsafe_sample_label_renumbered(tmp_path, key, schema, label):
+    """Not a safe shape: renumbered even when the label appears nowhere else, and the plan says so."""
+    inp = tmp_path / "in"
+    _bids_store(inp, f"sub-01_sample-{label}_SPIM.ome.zarr")
+    (e,) = _plan(inp, tmp_path, key, schema)
+    assert e.entities["sample"] == "1" and e.reason.endswith("; label renumbered: not a safe label")
+
+
+def test_safe_label_that_is_a_term_elsewhere_renumbered(tmp_path, key, schema):
+    """A safe-looking label that is also a donor elsewhere (a folder H17/) is renumbered."""
+    inp = tmp_path / "in"
+    ome_zarr(inp / "H17" / "sub-01_sample-H17_SPIM.ome.zarr", "0.4")
+    (e,) = _plan(inp, tmp_path, key, schema)
+    assert e.entities["sample"] != "H17" and "renumbered" in e.reason
+
+
+def test_session_label_kept(tmp_path, key, schema):
+    inp = tmp_path / "in"
+    _bids_store(inp, "sub-01_ses-01_sample-A_SPIM.ome.zarr")
+    _bids_store(inp, "sub-01_ses-JaneDoe_sample-A_SPIM.ome.zarr")
+    entries = sorted(_plan(inp, tmp_path, key, schema), key=lambda e: e.session)
+    assert [e.session for e in entries] == ["01", "2"]
+    assert "renumbered" not in entries[0].reason and "renumbered" in entries[1].reason
+
+
+def test_input_chunk_index_kept(tmp_path, key, schema):
+    """micr_SPIM's chunk-01..04 stay 01..04 (same padding), not renumbered from 0."""
+    inp = tmp_path / "in"
+    for k in ("01", "02", "03"):
+        planted_ome_tiff(inp / "sub-01" / "micr" / f"sub-01_sample-A_chunk-{k}_SPIM.ome.tif")
+    entries = _plan(inp, tmp_path, key, schema)
+    assert sorted(e.entities["chunk"] for e in entries) == ["01", "02", "03"]
+
+
+def test_execute_refused_when_nothing_to_write(tmp_path, monkeypatch):
+    """An approved plan that writes no image: execute is refused (400) and the stage stays planned."""
+    inp = tmp_path / "in"
+    micr_dir = inp / "sub-01" / "micr"
+    micr_dir.mkdir(parents=True)
+    (micr_dir / "sub-01_sample-A_SEM.png").write_bytes(b"\n")
+    monkeypatch.setattr(server, "client_from_env", lambda: None)
+    app = server.create_app(inp, tmp_path / "work", tmp_path / "keys", TOKEN, [], ["testserver"])
+    try:
+        c = TestClient(app)
+        c.headers["Authorization"] = "Bearer " + TOKEN
+        assert c.post("/scan", json={"project_id": "proj"}).status_code == 202
+        assert _wait(c, ("planned", "failed"))["stage"] == "planned"
+        assert c.post("/approve", json={}).status_code == 200
+        r = c.post("/execute")
+        assert r.status_code == 400 and r.json()["detail"] == server.NOTHING_TO_WRITE
+        assert c.get("/status").json()["stage"] == "planned"
+        assert not (tmp_path / "work" / "output").exists()
+    finally:
+        app.state.server.close()

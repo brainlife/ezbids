@@ -60,7 +60,7 @@ PSOCT_HINTS = frozenset({"ps-oct", "psoct", "oct", "enface", "reflectivity", "re
 SPIM_HINTS = frozenset({"visor", "exaspim", "spim", "lightsheet", "light-sheet"})
 FORMAT_NAMES = {"ome-zarr": "OME-Zarr", "ome-tiff": "OME-TIFF", "tiff": "TIFF", "visor": "VISoR TIFF",
                 "svs": "SVS", "czi": "CZI", "nd2": "ND2", "lif": "LIF", "nifti": "NIfTI", "mat": "MATLAB",
-                "raw-psoct": "raw PS-OCT", "unsupported": "microscopy file", "png": "PNG"}
+                "raw-psoct": "raw PS-OCT", "unsupported": "microscopy file", "png": "PNG", "photo": "photograph"}
 _UNIT_TEXT = {"um": "µm", "mm": "mm", "nm": "nm"}
 _POS_DIR = re.compile(r"(?i)(^|[_\-.])pos\d+$")
 
@@ -529,56 +529,71 @@ def _input_label(where: str, prefix: str) -> str | None:
     return None
 
 
+# an input label (sample-, ses-, chunk-) is kept only when it is one of these shapes and no term of anything else
+SAFE_LABEL = re.compile(r"^(\d+|[A-Za-z]?\d{1,4}[A-Za-z]?|[A-Za-z])$")
+SAFE_LABEL_WORDS = frozenset({"brain", "cortex", "hippocampus", "cerebellum", "spinal", "cord", "tissue", "slice",
+                              "section", "block", "left", "right", "lh", "rh"})
+LABEL_PREFIXES = ("sample", "ses", "chunk")
+RENUMBERED_NOTE = "label renumbered: not a safe label"
+
+
 def _terms_but_bids_labels(records: list[dict], wheres: list[str]) -> set[str]:
     """Every record's terms except the entity labels of the input's own BIDS names (sub-01_sample-brain_XPCT),
-    which are terms only because a path word is one. Donors stay; a label that is a term from anywhere else
-    (metadata, another path word, a donor or a date) is in the result."""
+    which are terms only because a path word is one. Donors stay, except a plain-number donor that is the BIDS
+    name's own sub- label (sub-01); a label that is a term from anywhere else is in the result."""
     labels: set[str] = set()
     for rec, where in zip(records, wheres):
-        bids = names.bids_name(where) if "url" not in rec else None
+        bids = names.bids_entities(where) if "rel" in rec else None
         if bids:
-            labels |= {v.lower() for k, v in bids[0].items() if k != "sub"}
+            labels |= {v.lower() for v in bids.values()}
     out: set[str] = set()
     for rec, where in zip(records, wheres):
         terms = set(rec.get("terms") or [])
-        if "url" not in rec:
-            own = names.path_terms([where, *(rec.get("members") or [])])
+        bids = names.bids_entities(where) if "rel" in rec else None
+        if bids:  # only the BIDS file name's own words: a folder holding the same word keeps it a term
+            name, parent = PurePosixPath(where).name, str(PurePosixPath(where).parent)
+            own = names.path_terms([name]) - names.path_terms([parent])
             terms -= {t for t in own if t.lower() in labels}
-        if rec["facts"].get("donor"):
-            terms.add(rec["facts"]["donor"])
+        donor = rec["facts"].get("donor")
+        if donor and not (bids and donor == bids.get("sub") and donor.isdigit()):
+            terms.add(donor)
+        elif donor:
+            terms.discard(donor)
         out |= terms
     return out
 
 
-def kept_bids_labels(records: list[dict]) -> set[str]:
-    """The sample labels of the input's own BIDS names (sample-brain) that are kept (lowercase): each is a term
-    only because a path word is one, and in no other term (metadata, another path word, a donor, a date)."""
+def safe_label(label: str | None, others: set[str]) -> bool:
+    """An input label kept as is: a number, a letter, a short code (A12, 3b) or a tissue word, that is not a date
+    and not a term of anything else (``_terms_but_bids_labels``)."""
+    from ..planner import _usable
+
+    if not label or not (SAFE_LABEL.match(label) or label.lower() in SAFE_LABEL_WORDS):
+        return False
+    return _usable(label, others) and label.lower() not in {t.lower() for t in others if isinstance(t, str)}
+
+
+def kept_input_labels(records: list[dict]) -> set[str]:
+    """The input's sample-/ses-/chunk- labels that are kept (lowercase): they name the output, so they are not
+    terms of the run."""
     wheres = [_where(r) for r in records]
     others = _terms_but_bids_labels(records, wheres)
     out: set[str] = set()
     for rec, where in zip(records, wheres):
-        bids = names.bids_name(where) if "rel" in rec else None
-        label = bids[0].get("sample") if bids else None
-        if label and _own_bids_label(label, others):
-            out.add(label.lower())
+        for prefix in LABEL_PREFIXES:
+            label = _input_label(where, prefix)
+            if safe_label(label, others) and (prefix != "chunk" or label.isdigit()):
+                out.add(label.lower())
     return out
 
 
 def record_terms(records: list[dict]) -> set[str]:
-    """Every record's terms, without the kept labels of the input's own BIDS names (they name the output)."""
-    kept = kept_bids_labels(records)
+    """Every record's terms, without the kept input labels (they name the output)."""
+    kept = kept_input_labels(records)
     terms: set[str] = set()
     for rec in records:
         terms |= {t for t in rec.get("terms") or [] if t.lower() not in kept}
     return terms
-
-
-def _own_bids_label(label: str, terms: set[str]) -> bool:
-    """A label of the input's own BIDS name kept: usable against every other term, and in none of them."""
-    from ..planner import _usable
-
-    low = label.lower()
-    return _usable(label, terms) and not any(low in t.lower() for t in terms if isinstance(t, str))
 
 
 def _stain(rec: dict) -> str | None:
@@ -628,10 +643,14 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
     if no_donor:
         mp.warnings.append(NO_DONOR.format(n=len(no_donor)))
 
+    # input labels (sample-, ses-, chunk-) are kept only when safe (safe_label); else renumbered, with a note
+    others = _terms_but_bids_labels(records, wheres)
+    renumbered: set[int] = set()
+
     # sessions: only when the input has ses- folders
     session_of: list[tuple[str | None, int]] = []
     ses_seen: dict[int, dict[str, tuple[str, int]]] = defaultdict(dict)
-    for o, where in zip(originals, wheres):
+    for i, (o, where) in enumerate(zip(originals, wheres)):
         raw = _input_label(where, "ses")
         if raw is None:
             session_of.append((None, 0))
@@ -639,9 +658,9 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
         seen = ses_seen[subject_idx[o]]
         if raw not in seen:
             n = len(seen)
-            # a plain short number (ses-01) is kept even when it is also a term (the donor sub-01 is one)
-            keep = _usable(raw, terms) or (raw.isdigit() and len(raw) < 6 and _usable(raw, terms - {raw}))
-            seen[raw] = (raw if keep else str(n + 1), n)
+            seen[raw] = (raw if safe_label(raw, others) else str(n + 1), n)
+        if seen[raw][0] != raw:
+            renumbered.add(i)
         session_of.append(seen[raw])
 
     # samples: slice<NNN>, else the input's sample- label, else 1, 2, ... per subject
@@ -655,7 +674,9 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
             samples.append(f"slice{int(rec['facts']['slice']):03d}")
         else:
             label = _input_label(where, "sample")
-            samples.append(label if label and _usable(label, terms) else "")
+            samples.append(label if safe_label(label, others) else "")
+            if label and not samples[-1]:
+                renumbered.add(i)
             if not samples[-1]:
                 pending.append((i, sidx, _sample_key(where)))
         if samples[-1]:
@@ -669,6 +690,15 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
             taken[sidx].add(str(n))
         samples[i] = numbered[(sidx, skey)]
 
+    # chunks: the input's own chunk index (chunk-01 stays 01) when safe; else numbered by _chunks
+    chunks: list[str | None] = []
+    for i, where in enumerate(wheres):
+        label = _input_label(where, "chunk")
+        keep = label if label and label.isdigit() and safe_label(label, others) else None
+        if label and keep is None:
+            renumbered.add(i)
+        chunks.append(keep)
+
     entries: list[PlanEntry] = []
     convert_bytes = 0
     for i, (rec, o, where) in enumerate(zip(records, originals, wheres)):
@@ -679,6 +709,8 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
         entities = {"sample": samples[i]}
         if rec["facts"].get("contrast"):
             entities["acquisition"] = rec["facts"]["contrast"]
+        if chunks[i] is not None:
+            entities["chunk"] = chunks[i]
         stain = _stain(rec)
         if stain:
             entities["stain"] = stain
@@ -698,6 +730,8 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
             write_mode = "reference" if rec["family"] == "ome-zarr" else "convert"
             d = (dict(status="ok", exclude=False, reason=f"microscopy heuristic: {why}") if suffix
                  else dict(status="unknown", exclude=True, reason=why))
+        if i in renumbered:
+            d["reason"] = f"{d['reason']}; {RENUMBERED_NOTE}"
         n_files = max(1, len(rec.get("members") or []))
         output = int(_level0_bytes(info) * n_files * CONVERT_OVERHEAD) if write_mode == "convert" else 0
         spatial, sizes, units = pixel_size_of(info)

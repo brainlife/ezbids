@@ -751,9 +751,10 @@ def test_file_name_label_that_is_a_term_refused(tmp_path, key, schema):
     mp = plan_entries(records, key, set(), schema, "bids")
     (e,) = mp.entries
     assert e.entities["sample"] != "JDoe12" and "jdoe12" not in json.dumps(asdict(e)).lower()
-    # and without the term the BIDS name's own label is used
+    # and without the term it is still renumbered: not a safe label (controller ruling, Task 11)
     records[0]["terms"] = [t for t in records[0]["terms"] if t.lower() != "jdoe12"]
-    assert plan_entries(records, key, set(), schema, "bids").entries[0].entities["sample"] == "JDoe12"
+    e = plan_entries(records, key, set(), schema, "bids").entries[0]
+    assert e.entities["sample"] == "1" and e.reason.endswith("label renumbered: not a safe label")
 
 
 # --- display windows ignore the background (Task 11, carried from Task 10b) ---------------------

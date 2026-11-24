@@ -282,15 +282,13 @@ def _labels(root: Path, entity: str) -> set[str]:
 
 
 # bids-examples ships placeholder images (1 or 0 bytes) except micr_SPIM's small OME-TIFFs and the Zarr metadata.
-# micr_SEM holds no image aimport writes: its SEM images are PNG placeholders (PNG is reported, never read) and
-# its photo a 1-byte TIFF, so the output has no subject and the validator refuses its tables.
-SEM_NOTHING_WRITTEN = pytest.mark.xfail(strict=True, reason="micr_SEM: every image is a PNG or 1-byte placeholder; "
-                                        "nothing is written")
+# micr_SEM holds no image aimport writes (its SEM images are PNG placeholders, PNG is reported and never read, and its
+# photos are not imported): execute is refused (test_bids_example_micr_sem_nothing_to_write).
+WRITABLE_EXAMPLES = [n for n in MICR_EXAMPLES if n != "micr_SEM"]
 
 
 @pytest.mark.docker
-@pytest.mark.parametrize("name", [pytest.param(n, marks=SEM_NOTHING_WRITTEN) if n == "micr_SEM" else n
-                                  for n in MICR_EXAMPLES])
+@pytest.mark.parametrize("name", WRITABLE_EXAMPLES)
 def test_bids_examples_micr(name, tmp_path, monkeypatch):
     inp = fetch_bids_example(name, tmp_path / "in", cache=BIDS_EXAMPLES_CACHE)
     monkeypatch.setattr(server, "client_from_env", lambda: None)
@@ -324,6 +322,33 @@ def test_bids_examples_micr(name, tmp_path, monkeypatch):
     assert got == want, (got, want)
     if images:
         assert {f"sample-{e['entities']['sample']}" for e in written} <= {r[0] for r in got}
+    # the input's chunk indices are kept as written (micr_SPIM: chunk-01..04)
+    assert _labels(out, "chunk") <= _labels(inp, "chunk")
+    if name == "micr_SPIM":
+        assert _labels(out, "chunk") == {"chunk-01", "chunk-02", "chunk-03", "chunk-04"}
+
+
+@pytest.mark.docker
+def test_bids_example_micr_sem_nothing_to_write(tmp_path, monkeypatch):
+    """micr_SEM: every image is reported (PNG not read, photographs not imported) and execute is refused."""
+    inp = fetch_bids_example("micr_SEM", tmp_path / "in", cache=BIDS_EXAMPLES_CACHE)
+    monkeypatch.setattr(server, "client_from_env", lambda: None)
+    app = create_app(inp, tmp_path / "work", tmp_path / "keys", TOKEN, [], [HOST])
+    api = Api(app)
+    try:
+        assert api.call("POST", "/scan", json={"project_id": "proj"}).status_code == 202
+        assert api.wait()["stage"] == "planned"
+        plan = api.call("GET", "/plan").json()
+        assert plan["entries"] and all(e["status"] == "unsupported" and e["exclude"] for e in plan["entries"])
+        reasons = {e["reason"].split(";")[0] for e in plan["entries"]}
+        assert reasons == {"PNG and JPEG images are not read: export to OME-TIFF or OME-Zarr first",
+                           "photographs are not imported"}, reasons
+        assert api.call("POST", "/approve", json={}).status_code == 200
+        r = api.call("POST", "/execute")
+        assert r.status_code == 400 and r.json()["detail"] == server.NOTHING_TO_WRITE
+        assert api.call("GET", "/status").json()["stage"] == "planned"
+    finally:
+        app.state.server.close()
 
 
 # --- network: a remote CMC subset planned through the API (keys pinned in DATASETS.md) ---------------

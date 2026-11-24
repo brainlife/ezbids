@@ -84,6 +84,7 @@ DONE = ("validated", "invalid")  # executed: the output matches the plan (invali
 MAX_ISSUES = 200  # validator issues listed in the status (the counts are always complete)
 MAX_EVENTS = 500
 OUTPUT_STATE = "output-state.json"
+NOTHING_TO_WRITE = "nothing to write: every entry is excluded or unsupported"
 # preprocess.sh's error when the staged input has no MRI, PET or MEG file (only tables and text)
 EZBIDS_NO_IMAGING = "Could not find any MRI, PET, or MEG imaging files"
 # subject_idx -> the subject ID the key records for that subject's original (pseudonyms only: the originals
@@ -1080,6 +1081,8 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
                 raise conflict("no scan yet: POST /scan first")
             if plan.scan_id != info.get("scan_id"):
                 raise conflict("the plan was not built by the last scan: scan again")
+            if not any(e.datatype and e.status == "ok" and not e.exclude for e in plan.entries):
+                raise HTTPException(400, NOTHING_TO_WRITE)
             state = _read_json(work_dir / OUTPUT_STATE)
             if (_nonempty(srv.out) or _nonempty(srv.pre)) and not (state and state.get("scan_id") == info["scan_id"]):
                 raise conflict("the output folder is not empty and was not produced by this server for this plan")

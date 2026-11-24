@@ -13,7 +13,7 @@ from ..modality import Claim
 log = logging.getLogger(__name__)
 
 FAMILIES = ("ome-zarr", "ome-tiff", "tiff", "svs", "czi", "nd2", "lif", "nifti", "mat", "raw-psoct",
-            "unsupported", "visor-meta", "png")
+            "unsupported", "visor-meta", "png", "photo")
 UNSUPPORTED_EXT = (".vsi", ".oib", ".oif", ".ims", ".lsm", ".scn", ".mrxs")
 VISOR_META = frozenset({"acqinfo_metadata.json", "dbpost.json", "hh.log"})
 HINTS = frozenset({"ps-oct", "psoct", "oct", "enface", "reflectivity", "retardance", "orientation",
@@ -73,6 +73,10 @@ def _family(name: str, path: Path, rel: str) -> str | None:
     low = name.lower()
     if name in VISOR_META:
         return "visor-meta"
+    from .names import bids_photo
+
+    if bids_photo(rel):
+        return "photo"  # a BIDS micr photograph: reported, never read
     if low.endswith((".ome.tif", ".ome.tiff", ".ome.btf")):
         return "ome-tiff"
     if low.endswith((".tif", ".tiff")):
