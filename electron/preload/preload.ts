@@ -13,7 +13,12 @@ contextBridge.exposeInMainWorld('aimport', {
         ipcRenderer.invoke('aimport:start', inputDir),
     api: (method: 'GET' | 'POST' | 'PATCH', path: string, body?: unknown): Promise<{ status: number; data: any }> =>
         ipcRenderer.invoke('aimport:api', method, path, body),
-    openViewer: (): Promise<{ ok: boolean; error?: string }> => ipcRenderer.invoke('aimport:open-viewer'),
+    // the QA viewer is drawn by the main process over this box of the page (a modal inside the main window)
+    openViewer: (bounds: { x: number; y: number; width: number; height: number }): Promise<{ ok: boolean; error?: string }> =>
+        ipcRenderer.invoke('aimport:open-viewer', bounds),
+    setViewerBounds: (bounds: { x: number; y: number; width: number; height: number }): Promise<void> =>
+        ipcRenderer.invoke('aimport:viewer-bounds', bounds),
+    closeViewer: (): Promise<void> => ipcRenderer.invoke('aimport:close-viewer'),
     showOutput: (): Promise<{ ok: boolean }> => ipcRenderer.invoke('aimport:show-output'),
     stop: (): Promise<void> => ipcRenderer.invoke('aimport:stop'),
 });

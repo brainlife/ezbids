@@ -241,12 +241,29 @@
                 </section>
             </template>
         </main>
+
+        <!-- QA viewer: a modal in this window; the main process draws the engine's viewer over the box below -->
+        <el-dialog
+            v-model="viewerOpen"
+            title="QA viewer: the de-identified output (the original of a defaced image is a hidden layer)"
+            width="94%"
+            top="3vh"
+            custom-class="aimport-viewer-dialog"
+            :close-on-click-modal="false"
+            destroy-on-close
+            @opened="viewerOpened"
+            @close="viewerClosed"
+        >
+            <div ref="viewerBox" class="aimport-viewer-box">
+                <span v-if="viewerError" class="aimport-viewer-error">{{ viewerError }}</span>
+            </div>
+        </el-dialog>
     </div>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { engine, EngineError, Plan, PlanEntry, Stage, Status } from './aimportClient';
+import { Box, engine, EngineError, Plan, PlanEntry, Stage, Status } from './aimportClient';
 
 const POLL_MS = 1500;
 
@@ -265,6 +282,8 @@ export default defineComponent({
             error: '',
             timer: 0 as number,
             entityText: {} as Record<string, string>,
+            viewerOpen: false,
+            viewerError: '',
         };
     },
 
@@ -303,6 +322,8 @@ export default defineComponent({
 
     beforeUnmount() {
         window.clearTimeout(this.timer);
+        window.removeEventListener('resize', this.syncViewerBox);
+        if (this.viewerOpen) void engine.closeViewer();
     },
 
     methods: {
@@ -422,9 +443,34 @@ export default defineComponent({
             this.status = { ...this.status, stage: 'planned' };
         },
 
-        async openViewer() {
-            const res = await engine.openViewer();
-            if (!res.ok) this.fail(res.error || 'could not open the QA viewer');
+        openViewer() {
+            this.viewerError = '';
+            this.viewerOpen = true;
+        },
+
+        viewerRect(): Box | null {
+            const el = this.$refs.viewerBox as HTMLElement | undefined;
+            if (!el) return null;
+            const r = el.getBoundingClientRect();
+            return { x: r.left, y: r.top, width: r.width, height: r.height };
+        },
+
+        async viewerOpened() {
+            const box = this.viewerRect();
+            if (!box) return;
+            const res = await engine.openViewer(box);
+            if (!res.ok) this.viewerError = res.error || 'could not open the QA viewer';
+            window.addEventListener('resize', this.syncViewerBox);
+        },
+
+        syncViewerBox() {
+            const box = this.viewerRect();
+            if (box) void engine.setViewerBounds(box);
+        },
+
+        viewerClosed() {
+            window.removeEventListener('resize', this.syncViewerBox);
+            void engine.closeViewer();
         },
 
         async showOutput() {
@@ -611,6 +657,20 @@ export default defineComponent({
     color: var(--ink-3);
     font-size: 0.8rem;
     margin: 0;
+}
+.aimport-viewer-box {
+    height: 80vh;
+    background: #000;
+    border-radius: var(--el-border-radius-base);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.aimport-viewer-error {
+    color: #fff;
+}
+:global(.aimport-viewer-dialog .el-dialog__body) {
+    padding: 0 16px 16px;
 }
 :deep(.aimport-row-excluded) {
     opacity: 0.55;

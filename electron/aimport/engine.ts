@@ -7,7 +7,7 @@
  * is fixed at start) and tree-killed with the other children.
  */
 /* eslint-disable no-console */
-import { BrowserWindow, dialog, IpcMain, shell } from 'electron';
+import { BrowserWindow, dialog, IpcMain, shell, WebContentsView } from 'electron';
 import { spawn, ChildProcess } from 'child_process';
 import crypto from 'crypto';
 import fs from 'fs';
@@ -59,6 +59,7 @@ const pythonPath = (ctx: AimportContext): string =>
         : path.join(runtimeDir(ctx), 'python', 'bin', 'python3');
 
 export function stopAimport(): Promise<void> {
+    closeViewer();
     const current = engine;
     engine = null;
     if (!current?.proc.pid) return Promise.resolve();
@@ -173,23 +174,59 @@ async function startAimport(ctx: AimportContext, inputDir: string): Promise<Engi
     return started;
 }
 
-function openViewer(url: string): void {
+// The QA viewer is a modal inside the main window: a WebContentsView laid over the AI import page's dialog body
+// (the renderer reports that box). Sandboxed guest, no preload, no node; it stays on the engine's loopback origin.
+interface Bounds {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
+let viewer: { view: WebContentsView; host: BrowserWindow } | null = null;
+
+const toBounds = (b: Bounds): Bounds => ({
+    x: Math.max(0, Math.round(Number(b?.x) || 0)),
+    y: Math.max(0, Math.round(Number(b?.y) || 0)),
+    width: Math.max(1, Math.round(Number(b?.width) || 1)),
+    height: Math.max(1, Math.round(Number(b?.height) || 1)),
+});
+
+function closeViewer(): void {
+    const current = viewer;
+    viewer = null;
+    if (!current) return;
+    if (!current.host.isDestroyed()) current.host.contentView.removeChildView(current.view);
+    if (!current.view.webContents.isDestroyed()) current.view.webContents.close();
+}
+
+function openViewer(host: BrowserWindow, url: string, bounds: Bounds): void {
     if (!engine || !/^\/viewer\/open\?code=[0-9a-f]{32}$/.test(url)) throw new Error('bad viewer url');
+    closeViewer();
     const origin = `http://127.0.0.1:${engine.port}`;
-    const win = new BrowserWindow({
-        width: 1200,
-        height: 800,
-        title: 'AI import: QA viewer',
+    const inOrigin = (target: string): boolean => target.startsWith(`${origin}/`);
+    const view = new WebContentsView({
         webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true },
     });
-    // the viewer stays on the engine's own origin
-    win.webContents.setWindowOpenHandler(({ url: target }) =>
-        target.startsWith(`${origin}/viewer/`) ? { action: 'allow' } : { action: 'deny' }
-    );
-    win.webContents.on('will-navigate', (event, target) => {
-        if (!target.startsWith(`${origin}/`)) event.preventDefault();
+    const wc = view.webContents;
+    // no new windows: an engine-origin link opens in the modal itself, anything else is refused
+    wc.setWindowOpenHandler(({ url: target }) => {
+        if (inOrigin(target)) void wc.loadURL(target);
+        return { action: 'deny' };
     });
-    void win.loadURL(origin + url);
+    wc.on('will-navigate', (event, target) => {
+        if (!inOrigin(target)) event.preventDefault();
+    });
+    wc.on('will-redirect', (event, target) => {
+        if (!inOrigin(target)) event.preventDefault();
+    });
+    host.contentView.addChildView(view);
+    view.setBounds(toBounds(bounds));
+    viewer = { view, host };
+    host.once('closed', () => {
+        if (viewer?.view === view) viewer = null;
+    });
+    void wc.loadURL(origin + url);
 }
 
 export function registerAimportIpc(ipcMain: IpcMain, ctx: AimportContext): void {
@@ -214,12 +251,18 @@ export function registerAimportIpc(ipcMain: IpcMain, ctx: AimportContext): void 
             return { status: 503, data: { detail: String(err) } };
         }
     });
-    ipcMain.handle('aimport:open-viewer', async () => {
+    ipcMain.handle('aimport:open-viewer', async (event, bounds: Bounds) => {
+        const host = BrowserWindow.fromWebContents(event.sender);
+        if (!host) return { ok: false, error: 'no window' };
         const res = await call('POST', '/viewer/session');
         if (res.status !== 200) return { ok: false, error: JSON.stringify(res.data) };
-        openViewer((res.data as { url: string }).url);
+        openViewer(host, (res.data as { url: string }).url, bounds);
         return { ok: true };
     });
+    ipcMain.handle('aimport:viewer-bounds', (event, bounds: Bounds) => {
+        if (viewer && viewer.host.webContents === event.sender) viewer.view.setBounds(toBounds(bounds));
+    });
+    ipcMain.handle('aimport:close-viewer', () => closeViewer());
     ipcMain.handle('aimport:show-output', async () => {
         const res = await call('GET', '/status');
         const dir = (res.data as { output_dir?: string })?.output_dir;

@@ -14,8 +14,9 @@ Goal: the local, privacy-preserving AI importer (`aimport/`, from master) runs i
 both in userData. Tree-killed on quit with the API and handler. No telemetry; no model key is set, so nothing leaves the machine.
 
 **UI ↔ engine**: the token stays in the main process. The renderer calls `window.aimport.api(method, path, body)` (IPC
-proxy) for `/scan`, `/status`, `/plan`, `/approve`, `/execute`; the QA viewer opens in its own window through the
-one-time code (`/viewer/session`), never shown to the renderer. No engine logic in TypeScript.
+proxy) for `/scan`, `/status`, `/plan`, `/approve`, `/execute`. The QA viewer is a modal in the main window: a sandboxed
+`WebContentsView` laid over the dialog body, opened with the one-time code (`/viewer/session`, never shown to the renderer),
+held to the engine's loopback origin (no new windows). No engine logic in TypeScript.
 
 **What the shim changes** (to upstream as env settings in `aimport/`): ezBIDS runs as `preprocess.cjs` instead of
 `preprocess.sh`; staging copies the input (APFS clones on mac, no extra disk) instead of `cp -rs`, since nothing mounts it

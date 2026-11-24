@@ -54,11 +54,20 @@ export interface Plan {
     ancillary: { id: string; action: string; reason: string; flags: string[] }[];
 }
 
+export interface Box {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+}
+
 interface AimportBridge {
     pickFolder(): Promise<string | null>;
     start(inputDir: string): Promise<{ ok: boolean; inputDir?: string; error?: string }>;
     api(method: 'GET' | 'POST' | 'PATCH', path: string, body?: unknown): Promise<{ status: number; data: any }>;
-    openViewer(): Promise<{ ok: boolean; error?: string }>;
+    openViewer(bounds: Box): Promise<{ ok: boolean; error?: string }>;
+    setViewerBounds(bounds: Box): Promise<void>;
+    closeViewer(): Promise<void>;
     showOutput(): Promise<{ ok: boolean }>;
     stop(): Promise<void>;
 }
@@ -98,6 +107,8 @@ export const engine = {
     edit: (body: Record<string, unknown>) => call<Plan>('PATCH', '/plan', body),
     approve: (defaceMethod: string) => call<Plan>('POST', '/approve', { deface_method: defaceMethod }),
     execute: () => call('POST', '/execute'),
-    openViewer: () => bridge().openViewer(),
+    openViewer: (box: Box) => bridge().openViewer(box),
+    setViewerBounds: (box: Box) => bridge().setViewerBounds(box),
+    closeViewer: () => bridge().closeViewer(),
     showOutput: () => bridge().showOutput(),
 };
