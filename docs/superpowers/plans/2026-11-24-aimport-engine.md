@@ -67,10 +67,10 @@ Unit tests run on the host venv (`cd aimport && uv run pytest -m "not docker"`).
 
 **Interfaces:**
 - Produces:
-  - `@dataclass PlanEntry: id: str; series_idx: int; subject: str; session: str | None; datatype: str | None; suffix: str | None; entities: dict[str, str]; brainlife_datatype: str | None; brainlife_tags: list[str]; source: Literal["heuristic","agent","person","none"]; confidence: float; reason: str; deface: bool; exclude: bool; status: Literal["ok","unknown","unsupported","excluded_by_default"]; description: str` (description = redacted SeriesDescription)
+  - `@dataclass PlanEntry: id: str; series_idx: int; subject_idx: int; session_idx: int; subject: str; session: str | None; datatype: str | None; suffix: str | None; entities: dict[str, str]; brainlife_datatype: str | None; brainlife_tags: list[str]; source: Literal["heuristic","agent","person","none"]; confidence: float; reason: str; deface: bool; exclude: bool; status: Literal["ok","unknown","unsupported","excluded_by_default"]; description: str` (description = redacted SeriesDescription)
   - `@dataclass Plan: version: int = 1; target: Literal["bids","datatypes"]; entries: list[PlanEntry]; approved: bool = False; deface_method: Literal["pydeface","quickshear"] = "pydeface"; dataset_name: str = "aimport dataset"; readme: str = ""; metadata_source: Literal["agent","person","none"] = "none"`
   - `PlanEntry` also has `agent_note: str = ""` (set when the agent disagrees with the heuristic).
-  - `Plan.save(path: Path) -> None`, `Plan.load(path: Path) -> Plan`, `Plan.apply_edits(edits: list[dict]) -> None` (each edit has `id` plus any PlanEntry fields except `id`/`series_idx`; sets `source="person"`, `approved=False`)
+  - `Plan.save(path: Path) -> None`, `Plan.load(path: Path) -> Plan`, `Plan.apply_edits(edits: list[dict]) -> None` (each edit has `id` plus any PlanEntry fields except `id`/`series_idx`/`subject_idx`/`session_idx`; sets `source="person"`, `approved=False`)
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -100,7 +100,7 @@ def test_edit_cannot_change_series_idx():
 (`entry(**kw)` is a test helper filling defaults.)
 
 - [ ] **Step 2: Run** `cd aimport && uv run pytest tests/test_plan.py -v` — expect import errors.
-- [ ] **Step 3: Implement** `plan.py`; `pyproject.toml` declares all Tech Stack Python deps and the `docker` pytest marker.
+- [ ] **Step 3: Implement** `plan.py`; `pyproject.toml` declares all Tech Stack Python deps and the `docker` and `docker_offline` pytest markers.
 - [ ] **Step 4: Run** the same command — expect 4 passed.
 - [ ] **Step 5: Commit** `git add aimport && git commit -m "aimport: package skeleton and plan model"`
 
@@ -114,6 +114,7 @@ def test_edit_cannot_change_series_idx():
 
 **Interfaces:**
 - Produces:
+  - Host is Apple Silicon (Colima with Rosetta): build and run every image with `--platform linux/amd64`.
   - Image `brainlife/aimport:dev`, built by `docker build -t ezbids-handler:local handler/ && docker build -t brainlife/aimport:dev -f aimport/Dockerfile .` from the repo root. `FROM ezbids-handler:local`; ezBIDS repo at `/app` with its `bids-specification` submodule checked out at `3537e9ed`; `aimport` installed in `/opt/aimport-venv` (Python 3.11 via uv); `/opt/bids-schema/schema.json` exported from the v1.11.2 submodule with `bst export`; Deno BIDS validator on `PATH` as `bids-validator-2` (pin the release whose schema matches v1.11.2; record the version in README).
   - `fetch_dcm_qa(dest: Path, plant: bool = True) -> Path`: downloads `neurolabusc/dcm_qa` at a pinned commit (record it in the file), and with `plant=True` rewrites every file's `PatientName="Smith^John"`, `PatientID="MRN0042"`, `PatientBirthDate="19700101"`, `InstitutionName="Hospital X"`, prefixes `SeriesDescription` with `"Smith_John "`, and moves series under `dest/Smith_John_19700101/`. Returns the root.
 
@@ -164,7 +165,7 @@ def test_run_on_planted_dicoms_with_junk(tmp_path):
     src = fetch_dcm_qa(tmp_path / "in")
     (src / "notes.pdf").write_bytes(b"%PDF-1.4")
     (src / ".DS_Store").write_bytes(b"\0")
-    shutil.make_archive(src / "extra", "zip", next(src.rglob("*.dcm")).parent)
+    shutil.make_archive(src / "extra", "zip", first_dicom(src).parent)  # first file pydicom can read
     core = run_ezbids(stage_input(src, tmp_path / "work"))
     assert parse_core(core).series
     assert not any(p.name.endswith(".nii.gz") for p in src.rglob("*"))  # input untouched
@@ -220,12 +221,12 @@ def test_filename_rejects_bad_label(schema):
 ### Task 5: De-identification
 
 **Files:**
-- Create: `aimport/src/aimport/scrub.py`, `aimport/tests/test_scrub.py`
+- Create: `aimport/src/aimport/scrub.py`, `aimport/tests/test_scrub.py`, `aimport/tests/conftest.py` (shared `PLANTED` set and `tokens(text) -> set[str]` lowercase word/phrase matcher used by Tasks 5, 9, 10, 13, 14)
 
 **Interfaces:**
 - Consumes: `CoreResult`, `CoreSeries`, `CoreObject` (Task 3).
 - Produces:
-  - `identifying_terms(core: CoreResult, input_dir: Path) -> set[str]`: every `PatientName` (also split on `^`, space, `_`), `PatientID`, `PatientBirthDate` (as `YYYYMMDD` and `YYYY-MM-DD`), `OtherPatientIDs`, `InstitutionName`, `OperatorsName`, `ReferringPhysicianName` found in `subjects[].PatientInfo` and in a pydicom header read (`stop_before_pixels=True`) of one file per series; terms shorter than 3 characters are dropped.
+  - `identifying_terms(core: CoreResult, input_dir: Path) -> set[str]`: every `PatientName` (also split on `^`, space, `_`), `PatientID`, `PatientBirthDate` (as `YYYYMMDD` and `YYYY-MM-DD`), `OtherPatientIDs`, `InstitutionName`, `OperatorsName`, `ReferringPhysicianName` found in `subjects[].PatientInfo` and in a pydicom header read (`stop_before_pixels=True`) of the first readable DICOM in every directory under `input_dir`; terms shorter than 3 characters are dropped.
   - `redact(text: str, terms: set[str]) -> str`: case-insensitive replace of each term with `"[x]"`, longest first.
   - `@dataclass ScrubbedSeries: series_idx: int; description: str; protocol: str; ezbids_type: str; fields: dict[str, Any]`, where `fields` holds only `SCRUB_ALLOWLIST`: `Modality, Manufacturer, ManufacturersModelName, MagneticFieldStrength, ImageType, ScanningSequence, SequenceVariant, SequenceName, PulseSequenceName, EchoTime, RepetitionTime, InversionTime, FlipAngle, PhaseEncodingDirection, SliceThickness, NumberOfVolumes (from the NIfTI shape), Dimensions, VoxelSize, Units, TracerName, ImageComments_present (bool only)`.
   - `scrubbed_view(core: CoreResult, terms: set[str]) -> list[ScrubbedSeries]`
@@ -327,7 +328,7 @@ def test_key_file_private(tmp_path):
   - `AutobidsifyClient(model: str)` calling `autobidsify.llm._call_llm(model, system, user, step=step)`; this gives every autobidsify backend — OpenAI (`gpt*`/`o1*`/`o3*`, `OPENAI_API_KEY`) and Qwen (`qwen*`, via Ollama `OLLAMA_BASE_URL`, REST, or DashScope `DASHSCOPE_API_KEY`) — with autobidsify's own routing (pinned at 0.9.9.1 because `_call_llm` is private).
   - `client_from_env() -> LLMClient | None`: `AIMPORT_MODEL` env (default `claude-opus-5-5`); `claude*` → `ClaudeClient`, anything autobidsify routes → `AutobidsifyClient`; returns `None` when that backend's key/endpoint is absent.
   - `@dataclass Guess: series_idx: int; datatype: str | None; suffix: str | None; entities: dict[str, str]; confidence: float; reason: str`
-  - `classify(series: list[ScrubbedSeries], heuristic: dict[int, tuple[str, str, dict]], client: LLMClient | None, schema: Schema) -> list[Guess]`: one request (`step="classify"`) with **all** series as JSON, each with ezBIDS's guess (from `heuristic`) attached so the agent can confirm or dispute it and fill entities such as `task`, `acq`, `dir`, `run`. Asks for a JSON array of `{series_idx, datatype, suffix, entities, confidence, reason}` limited to `PHASE1_DATATYPES`. Drops answers with `not schema.is_valid(...)` or entities outside `allowed_entities` (→ `datatype=None`, reason `"agent answer not valid BIDS"`). `client is None` or any client exception → every series gets `Guess(datatype=None, confidence=0, reason="no model configured")` / `"model error: <type>"`.
+  - `classify(series: list[ScrubbedSeries], heuristic: dict[int, tuple[str, str, dict]], client: LLMClient | None, schema: Schema) -> list[Guess]`: one request (`step="classify"`) whose user message is exactly the JSON object `{"series": [...]}` with **all** series, each with ezBIDS's guess (from `heuristic`) attached so the agent can confirm or dispute it and fill entities such as `task`, `acq`, `dir`, `run`. Asks for a JSON array of `{series_idx, datatype, suffix, entities, confidence, reason}` limited to `PHASE1_DATATYPES`. Drops answers with `not schema.is_valid(...)` or entities outside `allowed_entities` (→ `datatype=None`, reason `"agent answer not valid BIDS"`). `client is None` or any client exception → every series gets `Guess(datatype=None, confidence=0, reason="no model configured")` / `"model error: <type>"`.
   - `@dataclass DatasetDraft: name: str; readme: str`
   - `draft_metadata(series: list[ScrubbedSeries], client: LLMClient | None) -> DatasetDraft | None`: one request (`step="metadata"`) for a dataset name and a README describing the acquisitions (modalities, sequences, counts); `None` without a client or on error. The reply is passed through `redact` with the run's terms before use.
 
@@ -336,8 +337,8 @@ def test_key_file_private(tmp_path):
 ```python
 class Recorder:
     name = "recorder"
-    def __init__(self, reply): self.reply, self.calls = reply, []
-    def complete(self, system, user, step): self.calls.append(system + user); return self.reply
+    def __init__(self, reply): self.reply, self.calls, self.users = reply, [], []
+    def complete(self, system, user, step): self.calls.append(system + user); self.users.append(user); return self.reply
 
 def test_payload_contains_only_scrubbed(schema):
     rec = Recorder('[{"series_idx":0,"datatype":"anat","suffix":"T1w","entities":{},"confidence":0.9,"reason":"MPRAGE"}]')
@@ -347,7 +348,7 @@ def test_payload_contains_only_scrubbed(schema):
 def test_every_series_sent_with_heuristic(schema):
     rec = Recorder("[]")
     classify([ss(0), ss(1)], {0: ("anat", "T1w", {})}, rec, schema)
-    sent = json.loads(rec.calls[0][rec.calls[0].index("["):])
+    sent = json.loads(rec.users[0])["series"]
     assert {s["series_idx"] for s in sent} == {0, 1}
     assert sent[0]["ezbids_guess"]["suffix"] == "T1w"
 
@@ -399,6 +400,7 @@ def test_backend_routing(monkeypatch, model, cls):
 
 ```python
 def test_heuristic_entries(plan): assert any(e.suffix == "T1w" and e.source == "heuristic" for e in plan.entries)
+@pytest.mark.docker
 def test_no_identifiers_in_plan(plan_planted): assert not PLANTED & tokens(json.dumps(asdict(plan_planted)))
 def test_subject_ids_avoid_existing(fixture_core, key, schema):
     p = build_plan(fixture_core, IN, key, {"01"}, None, schema, "bids")
@@ -421,7 +423,7 @@ def test_datatypes_target_excludes_unmapped(...): ...  # a pet entry is excluded
 
 **Interfaces:**
 - Consumes: `Plan` (approved), `CoreResult`, `Schema`, `scrub_sidecar`, `identifying_terms`, `PseudonymKey`.
-- Produces: `write_bids(plan: Plan, core: CoreResult, terms: set[str], key: PseudonymKey, schema: Schema, out_dir: Path) -> list[Path]`. Raises `PermissionError` unless `plan.approved`. For each non-excluded entry and each matching `CoreObject`: copy NIfTI (and `.bval`/`.bvec`) to `schema.filename(...)`, write `scrub_sidecar(sidecar)`; add `run-<n>` when two objects would get the same name; write `dataset_description.json` (`Name: plan.dataset_name`, `BIDSVersion: "1.11.2"`, `GeneratedBy: [{"Name": "brainlife.io/aimport"}]`), `README.md` from `plan.readme` (when non-empty), `participants.tsv` (`participant_id`, `age`, `sex` from DICOM `PatientAge`/`PatientSex`, `n/a` when absent), `sub-*/[ses-*/]sub-*_scans.tsv` with `acq_time` = acquisition datetime shifted by `key.date_offset_days`, and `IntendedFor` on fmap sidecars as BIDS URIs (`bids::sub-01/func/...`) for func/dwi in the same session. `PatientAge`/`PatientSex` are read here, not carried in `ScrubbedSeries`.
+- Produces: `write_bids(plan: Plan, core: CoreResult, input_dir: Path, terms: set[str], key: PseudonymKey, schema: Schema, out_dir: Path) -> list[Path]`. Raises `PermissionError` unless `plan.approved`. For each non-excluded entry and each matching `CoreObject`: copy NIfTI (and `.bval`/`.bvec`) to `schema.filename(...)`, write `scrub_sidecar(sidecar)`; add `run-<n>` when two objects would get the same name; write `dataset_description.json` (`Name: plan.dataset_name`, `BIDSVersion: "1.11.2"`, `GeneratedBy: [{"Name": "brainlife.io/aimport"}]`), `README.md` from `plan.readme` (when non-empty), `participants.tsv` (`participant_id`, `age`, `sex` from DICOM `PatientAge`/`PatientSex`, `n/a` when absent), `sub-*/[ses-*/]sub-*_scans.tsv` with `acq_time` = acquisition datetime shifted by `key.date_offset_days`, and `IntendedFor` on fmap sidecars as BIDS URIs (`bids::sub-01/func/...`) for func/dwi in the same session. `PatientAge`/`PatientSex` are read here with pydicom from DICOMs under `input_dir` whose `PatientID` matches the subject's `PatientInfo`, not carried in `ScrubbedSeries`.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -446,7 +448,7 @@ def test_key_never_in_output(...): assert not list(out.rglob("*aimport-key*"))
 - Create: `aimport/src/aimport/deface.py`, `aimport/tests/test_deface.py`
 
 **Interfaces:**
-- Produces: `deface(bids_dir: Path, plan: Plan, method: Literal["pydeface","quickshear"]) -> dict[str, Path]`: for each entry with `deface=True`, moves the original to `work_dir/pre-deface/<same relative path>` (outside `bids_dir`), writes the defaced image in place, and returns `{entry_id: original_copy_path}` for before/after previews. Commands follow `handler/deface.sh` (`pydeface --force <in> --outfile <out>`; quickshear with `fslreorient2std` + mask as there). Timeout 600 s per image → raises `DefaceError(entry_id)`.
+- Produces: `deface(bids_dir: Path, plan: Plan, method: Literal["pydeface","quickshear"], pre_deface_dir: Path) -> dict[str, Path]`: for each entry with `deface=True`, moves the original to `pre_deface_dir/<same relative path>` (must be outside `bids_dir`; the server passes `work_dir/pre-deface`), writes the defaced image in place, and returns `{entry_id: original_copy_path}` for before/after previews. Commands follow `handler/deface.sh` (`pydeface --force <in> --outfile <out>`; quickshear with `fslreorient2std` + mask as there). Timeout 600 s per image → raises `DefaceError(entry_id)`.
 
 - [ ] **Step 1: Write the failing docker test**: on the T1w from the fixture run, after `deface`, the output differs from the original, has the same shape and affine, and the original is not under `bids_dir`.
 - [ ] **Step 2–4:** run (FAIL) → implement → run (PASS).
@@ -485,7 +487,7 @@ def test_key_never_in_output(...): assert not list(out.rglob("*aimport-key*"))
 | `GET /status` | `{stage: "idle"\|"scanning"\|"planned"\|"executing"\|"validated"\|"failed", message, output_dir?, validation?}` |
 | `GET /events` | Server-Sent Events of `{stage, message}` lines |
 | `GET /plan` | the `Plan` as JSON |
-| `PATCH /plan` | `{edits: [...], dataset_name?, readme?}` → `Plan.apply_edits`; dataset fields set `metadata_source="person"`; 422 on bad ids |
+| `PATCH /plan` | `{edits: [...], dataset_name?, readme?}` → `Plan.apply_edits`; dataset fields are set directly, set `metadata_source="person"` and `approved=False`; 422 on bad ids |
 | `POST /approve` | `{deface_method}` → `approved=True` |
 | `POST /execute` | 409 unless approved; runs Tasks 10, 11, 12; final `output_dir` is `work_dir/output/bids` |
 | `GET /preview/{entry_id}?which=original\|defaced` | NIfTI bytes |
