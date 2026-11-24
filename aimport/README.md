@@ -129,10 +129,19 @@ All examples use `T="Authorization: Bearer $AIMPORT_TOKEN"` and `U=http://localh
    Acknowledgements), `deface_method`, `warnings`.
 
 4. **Edit.** `PATCH /plan` takes any of `edits`, `ancillary_edits`, `dataset_description`, `dataset_name`
-   and `readme`. Edits are applied all or nothing; a bad one answers 422 and changes nothing. A `subject`
+   `readme` and `event_names`. Edits are applied all or nothing; a bad one answers 422 and changes nothing. A `subject`
    edit renames that subject in every entry; an ID the key holds for another person, or one in
    `existing_subjects`, is refused, and the new ID is recorded in the pseudonym key when the plan is
    executed (so a later import of that person gets it).
+
+   `event_names` names the codes of EEG/MEG/iEEG/NIRS/EMG events (`{"E001": "eyes closed"}`). An event
+   text is kept only when it is a safe label (a number, `Stimulus/S  1`, `BAD_*`, `Sleep stage N2`, a
+   word such as `rest` or `target`, ...) holding no identifying term; any other text becomes `E001`,
+   `E002`, ... and the original stays in `work/ephys/events.json`, never in the plan, the API or the
+   output. A name is 1 to 40 letters, digits, spaces or `_ . / + -`; an unknown code, a bad name or a
+   name holding an identifying term answers 400. The written `trial_type` is the name. Channel names
+   that hold an identifying term (or are not plain, or longer than 32 characters) are renamed
+   `<type>_<NNN>`, for example `eeg_002`; 10-20 and sensor names stay.
 
    ```
    curl -s -X PATCH $U/plan -H "$T" -H 'Content-Type: application/json' \

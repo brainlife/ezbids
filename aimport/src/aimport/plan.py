@@ -33,6 +33,8 @@ REDACTED_MARK = "[x]"  # scrub.REDACTED: a column header that held an identifyin
 NOT_UPLOADABLE = "not uploadable: "
 DATE_COLUMN = "date column "
 OLD_PLAN = "plan format from an older aimport; re-scan the input"
+# a reviewer's display name for an event code (ephys events, Task 5)
+EVENT_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _./+-]{0,39}$")
 
 
 @dataclass
@@ -98,6 +100,8 @@ class Plan:
     ancillary: list[AncillaryEntry] = field(default_factory=list)
     dataset_description: dict = field(default_factory=dict)  # DESCRIPTION_FIELDS only are written
     scan_id: str = ""  # the scan that built this plan (scan.json); only that scan's plan can be executed
+    # ephys event code -> display name (default the code); the written trial_type. Never holds original text.
+    event_names: dict[str, str] = field(default_factory=dict)
 
     def save(self, path: Path) -> None:
         Path(path).write_text(json.dumps(asdict(self), indent=2))
@@ -201,6 +205,22 @@ class Plan:
                 self.dataset_description.pop(k, None)
             else:
                 self.dataset_description[k] = v
+        self.approved = False
+
+    def set_event_names(self, edits: dict[str, str]) -> None:
+        """Rename event codes; each key must be an existing code and each value match EVENT_NAME_RE.
+
+        Raises ValueError (naming no value) for anything invalid; a bad edit changes nothing. Unapproves.
+        """
+        if not isinstance(edits, dict):
+            raise ValueError("event_names must be an object")
+        for k, v in edits.items():
+            if k not in self.event_names:
+                raise ValueError("unknown event code")
+            if not isinstance(v, str) or not EVENT_NAME_RE.fullmatch(v):
+                raise ValueError("an event name is 1 to 40 letters, digits, spaces or _ . / + -, "
+                                 "starting with a letter or digit")
+        self.event_names.update(edits)
         self.approved = False
 
 

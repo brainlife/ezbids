@@ -165,6 +165,7 @@ class PatchBody(BaseModel):
     dataset_description: dict | None = None
     dataset_name: str | None = None
     readme: str | None = None
+    event_names: dict[str, str] | None = None
 
 
 class ApproveBody(BaseModel):
@@ -789,6 +790,15 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
             description = srv.clean_obj(body.dataset_description) if body.dataset_description is not None else None
             dataset_name = srv.clean_obj(body.dataset_name) if body.dataset_name is not None else None
             readme = srv.clean_obj(body.readme) if body.readme is not None else None
+            if body.event_names is not None:
+                # stored redacted like all reviewer text; a name the redaction changes is refused, and no error echoes it
+                event_names = srv.clean_obj(body.event_names)
+                if event_names != body.event_names:
+                    raise HTTPException(400, "event name contains an identifying term")
+                try:
+                    plan.set_event_names(event_names)
+                except ValueError as e:
+                    raise HTTPException(400, str(e)) from None
             try:
                 if body.edits:
                     apply_plan_edits(plan, body.edits, srv.get_schema())
