@@ -984,7 +984,7 @@ def _open_ome_zarr(location: Any) -> _Source:
         zarr_format=zarr_format, ngff_version=version,
         objective_magnification=fields.get("objective_magnification"),
         objective_na=fields.get("objective_na"), immersion=fields.get("immersion"),
-        acquired=fields.get("acquired"),
+        acquisition_mode=fields.get("acquisition_mode"), acquired=fields.get("acquired"),
     )
 
     def level(i: int) -> Any:

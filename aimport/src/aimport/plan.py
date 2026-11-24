@@ -13,7 +13,7 @@ LOCKED_FIELDS = {"id", "series_idx", "subject_idx", "session_idx"}
 # brainlife_by_person and the indices) is derived: planner.apply_plan_edits re-derives it after every edit.
 EDITABLE_FIELDS = {"subject": "label", "session": "label?", "datatype": "str?", "suffix": "str?",
                    "entities": "dict", "deface": "bool", "exclude": "bool", "brainlife_datatype": "str?",
-                   "brainlife_tags": "list"}
+                   "brainlife_tags": "list", "sample_type": "str?"}
 _LABEL = re.compile(r"^[a-zA-Z0-9]+$")
 
 # --- ancillary and metadata files (Task 10b) ---
@@ -62,6 +62,12 @@ class PlanEntry:
     # True once the reviewer set brainlife_datatype or brainlife_tags; later edits keep that mapping
     # until the entry's datatype, suffix or entities change
     brainlife_by_person: bool = False
+    # phase 2: the input's modality. Microscopy ("micr") entries come from a modality module, not ezBIDS
+    modality: Literal["mri", "micr"] = "mri"
+    sample_type: str | None = None  # micr: a value of the BIDS sample_type enum (planner checks it)
+    # micr: "convert" (to OME-Zarr), "reference" (an OME-Zarr kept as is, no copy); "" = not writable
+    write_mode: Literal["", "convert", "reference"] = ""
+    output_bytes: int = 0  # micr: about how many bytes conversion writes to the work folder
 
 
 @dataclass

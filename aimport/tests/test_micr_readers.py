@@ -85,7 +85,7 @@ def test_info_has_only_allowlisted_fields():
     assert set(ImageInfo.__dataclass_fields__) == {
         "family", "axes", "shape", "dtype", "pixel_size", "pixel_unit", "channels",
         "objective_magnification", "objective_na", "immersion", "levels", "zarr_format",
-        "ngff_version", "acquired", "series_skipped"}
+        "ngff_version", "acquisition_mode", "acquired", "series_skipped"}
     assert set(ChannelInfo.__dataclass_fields__) == {"excitation_nm", "emission_nm", "name_code"}
 
 

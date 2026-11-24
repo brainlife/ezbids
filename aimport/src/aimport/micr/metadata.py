@@ -47,6 +47,7 @@ class ImageInfo:
     levels: int = 1
     zarr_format: Literal[2, 3] | None = None
     ngff_version: str | None = None
+    acquisition_mode: str | None = None  # OME Channel AcquisitionMode enum value only
     acquired: date | None = field(default=None, repr=False)  # local only: records, never the view
     series_skipped: list[str] = field(default_factory=list)
 
@@ -173,6 +174,7 @@ def ome_allowlist(ome: Any, image: int = 0) -> tuple[dict[str, Any], set[str]]:
         ex = wavelength_nm(ch.excitation_wavelength, ch.excitation_wavelength_unit)
         em = wavelength_nm(ch.emission_wavelength, ch.emission_wavelength_unit)
         channels.append(ChannelInfo(ex, em, channel_code(ex, i)))
+    modes = [ch.acquisition_mode.value for ch in px.channels or [] if isinstance(ch.acquisition_mode, Enum)]
     obj = _objective(ome, img)
     immersion = obj.immersion.value if obj is not None and isinstance(obj.immersion, Enum) else None
     fields: dict[str, Any] = {
@@ -183,6 +185,7 @@ def ome_allowlist(ome: Any, image: int = 0) -> tuple[dict[str, Any], set[str]]:
         if obj is not None and obj.nominal_magnification is not None else None,
         "objective_na": float(obj.lens_na) if obj is not None and obj.lens_na is not None else None,
         "immersion": immersion,
+        "acquisition_mode": modes[0] if modes else None,
         "acquired": img.acquisition_date.date() if img.acquisition_date else None,
     }
     return fields, terms

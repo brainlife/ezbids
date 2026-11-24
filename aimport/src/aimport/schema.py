@@ -10,6 +10,10 @@ from bidsschematools.schema import load_schema as _bst_load_schema
 DEFAULT_SCHEMA = Path("/opt/bids-schema/schema.json")
 SPEC_SCHEMA_DIR = Path(__file__).resolve().parents[2] / "bids-specification" / "src" / "schema"
 PHASE1_DATATYPES = ("anat", "func", "dwi", "fmap", "perf", "pet")
+SUPPORTED_DATATYPES = PHASE1_DATATYPES + ("micr",)
+# the extension each datatype's images are written with (checked when naming); default NIfTI
+CHECK_EXTS = {"micr": ".ome.zarr/"}
+DEFAULT_CHECK_EXT = ".nii.gz"
 BIDS_VERSION = "1.11.2"
 
 _LABEL = re.compile(r"^[a-zA-Z0-9]+$")
@@ -99,6 +103,11 @@ class Schema:
         """rules.files.common.core and .tables by name (dataset_description, README, participants, ...)."""
         common = self._s.rules.files.common
         return {name: dict(rule) for group in (common.core, common.tables) for name, rule in group.items()}
+
+    def sample_types(self) -> list[str]:
+        """The values the samples.tsv sample_type column may take (schema enum)."""
+        col = self._s.objects.columns.get("sample_type")
+        return [str(v) for v in (col.get("enum") or [])] if col else []
 
     def is_datatype(self, name: str) -> bool:
         return any(v.get("value") == name for v in self._s.objects.datatypes.values())

@@ -12,7 +12,7 @@ or dropped, and say why.
 | [neurolabusc/dcm_qa](https://github.com/neurolabusc/dcm_qa) | `8215e3e` | dropped 2026-11-24 | first version of the fixture (Tasks 2–3) |
 | Synthetic OME-Zarr (`tests/fixtures/micr_fixtures.py` `ome_zarr`, written for this repo; no real pixels) | generated at test time, seed 0 | **current** | `tests/test_micr_validator.py` (microscopy Task 1: validator ruling) |
 | Synthetic sparse BigTIFF (`tests/fixtures/micr_fixtures.py` `sparse_bigtiff`, written for this repo; no pixels) | generated at test time | **current** | `tests/test_modality.py` (microscopy Task 2: claimed input is never staged or copied), `tests/test_micr_readers.py` (Task 4: bounded open) |
-| Synthetic microscopy reader fixtures (`tests/fixtures/micr_fixtures.py` `planted_ome_tiff`, `planted_svs`, `psoct_nifti`, `psoct_mat`, `striped_tiff`, `visor_tile`; written for this repo, planted identifiers only) | generated at test time, seed 0 | **current** | `tests/test_micr_readers.py` (microscopy Task 4: readers, allowlisted metadata, bounded memory) |
+| Synthetic microscopy reader fixtures (`tests/fixtures/micr_fixtures.py` `planted_ome_tiff`, `planted_svs`, `psoct_nifti`, `psoct_mat`, `striped_tiff`, `visor_tile`; written for this repo, planted identifiers only) | generated at test time, seed 0 | **current** | `tests/test_micr_readers.py` (microscopy Task 4: readers, allowlisted metadata, bounded memory), `tests/test_micr_plan.py` (Task 6: plan entries, composite input below) |
 | CMC public bucket `apex-connects` (us-east-2; four objects, keys below). No licence stated: read only, network-marked tests, nothing committed or downloaded whole | keys pinned by listing, 2026-11-24 | **current** | `tests/test_micr_remote.py` `network` tests (microscopy Task 5: remote reads by range request) |
 
 ### Synthetic OME-Zarr (current)
@@ -49,6 +49,14 @@ reader (`readers.visor_facts`) matches key names by pattern: pixel/voxel size, s
 (x, y); z step, slice thickness/spacing, or `x_step` (z); wavelength, laser, excitation or channel
 between 350 and 900 (excitation nm, numeric or text such as `488nm`). The real CMC key names are
 recorded under "CMC public bucket" below; `test_visor_real_key_names` uses them with synthetic values.
+
+**Task 6 composite input (`tests/test_micr_plan.py` `micr_input`).** `cmc_tree` (the CMC layouts,
+empty stand-ins) with readable files written over it: the four `psoct_nifti` contrasts of slice 51,
+`ome_zarr` stores at `Moe_Slice_051.ome.zarr` (0.5) and `exaSPIM.zarr/Pos0` (0.4), two VISoR positions
+(`visor_488_Pos0/1`, 4 x 32 x 32 uint16 zeros) with an `acqinfo_metadata.json` using the real CMC key
+names and synthetic values (0.96 um, `x_step_um` 2.5, `488nm`, `frames_per_file` 4), and
+`planted_ome_tiff` in `H17_250215/`. The raw `.dat` tile stays empty. Planted: the folder names
+(`H17`, `250215`, `MN27`, `20250422`, `Moe`) and the OME-TIFF's own identifiers, all in `MICR_PLANTED`.
 
 ### CMC public bucket `apex-connects` (current)
 

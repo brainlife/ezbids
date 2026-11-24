@@ -91,11 +91,84 @@ mappings:
     ref: bids-walker.js:604
 
   # --- micr (phase 2) -----------------------------------------------------
-  - bids: {datatype: micr, extension: .ome.zarr}
-    brainlife: {datatype: neuro/ome-zarr, tags: []}
+  # every micr image is written as OME-Zarr; the BIDS suffix (technique) is the brainlife tag
+  - bids: {datatype: micr, suffix: TEM}
+    brainlife: {datatype: neuro/ome-zarr, tags: [TEM]}
+    status: active
+    ref: brainlife-lite (ProjectDataS3, Zarr viewers)
+  - bids: {datatype: micr, suffix: SEM}
+    brainlife: {datatype: neuro/ome-zarr, tags: [SEM]}
+    status: active
+    ref: brainlife-lite (ProjectDataS3, Zarr viewers)
+  - bids: {datatype: micr, suffix: uCT}
+    brainlife: {datatype: neuro/ome-zarr, tags: [uCT]}
+    status: active
+    ref: brainlife-lite (ProjectDataS3, Zarr viewers)
+  - bids: {datatype: micr, suffix: BF}
+    brainlife: {datatype: neuro/ome-zarr, tags: [BF]}
+    status: active
+    ref: brainlife-lite (ProjectDataS3, Zarr viewers)
+  - bids: {datatype: micr, suffix: DF}
+    brainlife: {datatype: neuro/ome-zarr, tags: [DF]}
+    status: active
+    ref: brainlife-lite (ProjectDataS3, Zarr viewers)
+  - bids: {datatype: micr, suffix: PC}
+    brainlife: {datatype: neuro/ome-zarr, tags: [PC]}
+    status: active
+    ref: brainlife-lite (ProjectDataS3, Zarr viewers)
+  - bids: {datatype: micr, suffix: DIC}
+    brainlife: {datatype: neuro/ome-zarr, tags: [DIC]}
+    status: active
+    ref: brainlife-lite (ProjectDataS3, Zarr viewers)
+  - bids: {datatype: micr, suffix: FLUO}
+    brainlife: {datatype: neuro/ome-zarr, tags: [FLUO]}
+    status: active
+    ref: brainlife-lite (ProjectDataS3, Zarr viewers)
+  - bids: {datatype: micr, suffix: CONF}
+    brainlife: {datatype: neuro/ome-zarr, tags: [CONF]}
+    status: active
+    ref: brainlife-lite (ProjectDataS3, Zarr viewers)
+  - bids: {datatype: micr, suffix: PLI}
+    brainlife: {datatype: neuro/ome-zarr, tags: [PLI]}
+    status: active
+    ref: brainlife-lite (ProjectDataS3, Zarr viewers)
+  - bids: {datatype: micr, suffix: CARS}
+    brainlife: {datatype: neuro/ome-zarr, tags: [CARS]}
+    status: active
+    ref: brainlife-lite (ProjectDataS3, Zarr viewers)
+  - bids: {datatype: micr, suffix: 2PE}
+    brainlife: {datatype: neuro/ome-zarr, tags: [2PE]}
+    status: active
+    ref: brainlife-lite (ProjectDataS3, Zarr viewers)
+  - bids: {datatype: micr, suffix: MPE}
+    brainlife: {datatype: neuro/ome-zarr, tags: [MPE]}
+    status: active
+    ref: brainlife-lite (ProjectDataS3, Zarr viewers)
+  - bids: {datatype: micr, suffix: SR}
+    brainlife: {datatype: neuro/ome-zarr, tags: [SR]}
+    status: active
+    ref: brainlife-lite (ProjectDataS3, Zarr viewers)
+  - bids: {datatype: micr, suffix: NLO}
+    brainlife: {datatype: neuro/ome-zarr, tags: [NLO]}
+    status: active
+    ref: brainlife-lite (ProjectDataS3, Zarr viewers)
+  - bids: {datatype: micr, suffix: OCT}
+    brainlife: {datatype: neuro/ome-zarr, tags: [OCT]}
+    status: active
+    ref: brainlife-lite (ProjectDataS3, Zarr viewers)
+  - bids: {datatype: micr, suffix: SPIM}
+    brainlife: {datatype: neuro/ome-zarr, tags: [SPIM]}
+    status: active
+    ref: brainlife-lite (ProjectDataS3, Zarr viewers)
+  - bids: {datatype: micr, suffix: XPCT}
+    brainlife: {datatype: neuro/ome-zarr, tags: [XPCT]}
+    status: active
+    ref: brainlife-lite (ProjectDataS3, Zarr viewers)
+  - bids: {datatype: micr, suffix: photo}
+    brainlife: {datatype: neuro/ome-zarr, tags: [photo]}
     status: planned
     ref: brainlife-lite (ProjectDataS3, Zarr viewers)
-    note: covers OME-Zarr microscopy including PS-OCT (BIDS suffix OCT); per-suffix tags to be decided in phase 2
+    note: photographs of a sample (.jpg, .png, .tif), not microscopy images; not imported yet, so no draft
 
   # --- eeg (phase 3): brainlife datatype chosen by file format ------------
   - bids: {datatype: eeg, suffix: eeg, extension: .bdf}
