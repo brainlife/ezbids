@@ -1,0 +1,38 @@
+{
+    "bids": {
+        "derivatives": "emg",
+        "maps": [
+            {
+                "dest": "electrodes.json",
+                "src": "electrodes.json"
+            },
+            {
+                "dest": "electrodes.tsv",
+                "json": "electrodes.json",
+                "src": "electrodes.tsv"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "File that gives the location of (i)EEG or EMG electrodes.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS electrodes.json",
+            "ext": ".json",
+            "filename": "electrodes.json",
+            "id": "json",
+            "required": false
+        },
+        {
+            "desc": "BIDS electrodes.tsv",
+            "ext": ".tsv",
+            "filename": "electrodes.tsv",
+            "id": "tsv",
+            "required": true
+        }
+    ],
+    "name": "neuro/emg/electrodes",
+    "readme": "# neuro/emg/electrodes\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `emg`, suffix `electrodes`.\n\nSource: BIDS specification v1.11.2, raw data, `emg/*_electrodes`.\n\nRelated BIDS files in `emg/` (separate datatypes, not part of this one): `channels`, `coordsystem`, `emg`, `events`, `photo`, `physio`, `physioevents`, `stim`.\n\n"
+}

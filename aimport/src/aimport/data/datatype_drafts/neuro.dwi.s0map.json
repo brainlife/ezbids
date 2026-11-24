@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "dwi",
+        "maps": [
+            {
+                "dest": "S0map.nii.gz",
+                "json": "S0map.json",
+                "src": "S0map.nii.gz"
+            },
+            {
+                "dest": "S0map.nii",
+                "src": "S0map.nii"
+            },
+            {
+                "dest": "S0map.ome.zarr",
+                "json": "S0map.json",
+                "src": "S0map.ome.zarr"
+            },
+            {
+                "dest": "S0map.json",
+                "src": "S0map.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "In arbitrary units (arbitrary). This represents a model-based estimate of signal intensity in the absence of the contrast under investigation. For a multi-echo sequence (for example, multi-echo spin echo T2 relaxometry or multi-echo fMRI), S0 maps index the baseline signal at a hypothetical echo time of zero (that is, in the absence of any T2 or T2-star decay). In other words: the exponential of the intercept for a linear decay model across log-transformed echos. For more information, please see, for example, [the tedana documentation](https://tedana.readthedocs.io/en/latest/\\ approach.html#monoexponential-decay-model-fit). S0 maps are RECOMMENDED to use this suffix if derived from an ME-FMRI dataset. For a diffusion-weighted sequence, S0 maps represent the model-based estimate of the signal intensity in the absence of any diffusion weighting; in other words, the image intensity at *b*=0 as estimated by a diffusion model fit. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS S0map.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "S0map.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS S0map.nii",
+            "ext": ".nii",
+            "filename": "S0map.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS S0map.ome.zarr/",
+            "dirname": "S0map.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS S0map.json",
+            "ext": ".json",
+            "filename": "S0map.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/dwi/s0map",
+    "readme": "# neuro/dwi/s0map\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `dwi`, suffix `S0map`.\n\nSource: BIDS specification v1.11.2, raw data, `dwi/*_S0map`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `dwi/` (separate datatypes, not part of this one): `ADC`, `FA`, `colFA`, `dwi`, `expADC`, `physio`, `physioevents`, `sbref`, `stim`, `trace`.\n\n"
+}

@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "fmap",
+        "maps": [
+            {
+                "dest": "TB1EPI.nii.gz",
+                "json": "TB1EPI.json",
+                "src": "TB1EPI.nii.gz"
+            },
+            {
+                "dest": "TB1EPI.nii",
+                "src": "TB1EPI.nii"
+            },
+            {
+                "dest": "TB1EPI.ome.zarr",
+                "json": "TB1EPI.json",
+                "src": "TB1EPI.ome.zarr"
+            },
+            {
+                "dest": "TB1EPI.json",
+                "src": "TB1EPI.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "This B1<sup>+</sup> mapping method ([Jiru and Klose 2006](https://doi.org/10.1002/mrm.21083)) is based on two EPI readouts to acquire spin echo (SE) and stimulated echo (STE) images at multiple flip angles in one sequence, used in the calculation of deviations from the nominal flip angle. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS TB1EPI.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "TB1EPI.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS TB1EPI.nii",
+            "ext": ".nii",
+            "filename": "TB1EPI.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS TB1EPI.ome.zarr/",
+            "dirname": "TB1EPI.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS TB1EPI.json",
+            "ext": ".json",
+            "filename": "TB1EPI.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/fmap/tb1epi",
+    "readme": "# neuro/fmap/tb1epi\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `fmap`, suffix `TB1EPI`.\n\nSource: BIDS specification v1.11.2, raw data, `fmap/*_TB1EPI`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `fmap/` (separate datatypes, not part of this one): `RB1COR`, `RB1map`, `TB1AFI`, `TB1DAM`, `TB1RFM`, `TB1SRGE`, `TB1TFL`, `TB1map`, `epi`, `fieldmap`, `m0scan`, `magnitude`, `magnitude1`, `magnitude2`, `phase1`, `phase2`, `phasediff`.\n\n"
+}

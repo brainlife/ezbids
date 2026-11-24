@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "anat",
+        "maps": [
+            {
+                "dest": "MTS.nii.gz",
+                "json": "MTS.json",
+                "src": "MTS.nii.gz"
+            },
+            {
+                "dest": "MTS.nii",
+                "src": "MTS.nii"
+            },
+            {
+                "dest": "MTS.ome.zarr",
+                "json": "MTS.json",
+                "src": "MTS.ome.zarr"
+            },
+            {
+                "dest": "MTS.json",
+                "src": "MTS.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "This method is to calculate a semi-quantitative magnetization transfer saturation index map. The MTS method involves three sets of anatomical images that differ in terms of application of a magnetization transfer RF pulse (MTon or MToff) and flip angle ([Helms et al. 2008](https://doi.org/10.1002/mrm.21732)). Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS MTS.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "MTS.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS MTS.nii",
+            "ext": ".nii",
+            "filename": "MTS.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS MTS.ome.zarr/",
+            "dirname": "MTS.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS MTS.json",
+            "ext": ".json",
+            "filename": "MTS.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/anat/mts",
+    "readme": "# neuro/anat/mts\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `anat`, suffix `MTS`.\n\nSource: BIDS specification v1.11.2, raw data, `anat/*_MTS`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `anat/` (separate datatypes, not part of this one): `Chimap`, `FLAIR`, `FLASH`, `IRT1`, `M0map`, `MEGRE`, `MESE`, `MP2RAGE`, `MPM`, `MTR`, `MTRmap`, `MTVmap`, `MTsat`, `MWFmap`, `PD`, `PDT2`, `PDmap`, `PDw`, `R1map`, `R2map`, `R2starmap`, `S0map`, `T1map`, `T1rho`, `T1w`, `T2map`, `T2star`, `T2starmap`, `T2starw`, `T2w`, `UNIT1`, `VFA`, `angio`, `defacemask`, `inplaneT1`, `inplaneT2`, `physio`, `physioevents`, `stim`.\n\n"
+}

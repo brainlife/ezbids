@@ -1,0 +1,8 @@
+{
+  "MeasurementToolMetadata": {"Description": "MoCA given at Hospital X", "TermURL": "https://example.org/moca"},
+  "moca_total": {"Description": "total score"},
+  "assessment_date": {"Description": "date of the assessment"},
+  "rater": {"Description": "rater, e.g. Smith"},
+  "examiner_initials": {"Description": "initials, e.g. JS for John Smith"},
+  "comments": {"Description": "free text"}
+}

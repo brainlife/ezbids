@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "anat",
+        "maps": [
+            {
+                "dest": "T2starw.nii.gz",
+                "json": "T2starw.json",
+                "src": "T2starw.nii.gz"
+            },
+            {
+                "dest": "T2starw.nii",
+                "src": "T2starw.nii"
+            },
+            {
+                "dest": "T2starw.ome.zarr",
+                "json": "T2starw.json",
+                "src": "T2starw.ome.zarr"
+            },
+            {
+                "dest": "T2starw.json",
+                "src": "T2starw.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "In arbitrary units (arbitrary). The contrast of these images is mainly determined by spatial variations in the (observed) transverse relaxation time of the imaged specimen. In spin-echo sequences, this effect is negated as the excitation is followed by an inversion pulse. The contrast of gradient-echo images natively depends on T2-star effects. However, for T2-star variation to dominate the image contrast, gradient-echo acquisitions are carried out at long repetition and echo times, and at small flip angles. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS T2starw.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "T2starw.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS T2starw.nii",
+            "ext": ".nii",
+            "filename": "T2starw.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS T2starw.ome.zarr/",
+            "dirname": "T2starw.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS T2starw.json",
+            "ext": ".json",
+            "filename": "T2starw.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/anat/t2starw",
+    "readme": "# neuro/anat/t2starw\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `anat`, suffix `T2starw`.\n\nSource: BIDS specification v1.11.2, raw data, `anat/*_T2starw`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `anat/` (separate datatypes, not part of this one): `Chimap`, `FLAIR`, `FLASH`, `IRT1`, `M0map`, `MEGRE`, `MESE`, `MP2RAGE`, `MPM`, `MTR`, `MTRmap`, `MTS`, `MTVmap`, `MTsat`, `MWFmap`, `PD`, `PDT2`, `PDmap`, `PDw`, `R1map`, `R2map`, `R2starmap`, `S0map`, `T1map`, `T1rho`, `T1w`, `T2map`, `T2star`, `T2starmap`, `T2w`, `UNIT1`, `VFA`, `angio`, `defacemask`, `inplaneT1`, `inplaneT2`, `physio`, `physioevents`, `stim`.\n\n"
+}

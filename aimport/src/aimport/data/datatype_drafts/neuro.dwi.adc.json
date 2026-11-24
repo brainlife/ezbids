@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "dwi",
+        "maps": [
+            {
+                "dest": "ADC.nii.gz",
+                "json": "ADC.json",
+                "src": "ADC.nii.gz"
+            },
+            {
+                "dest": "ADC.nii",
+                "src": "ADC.nii"
+            },
+            {
+                "dest": "ADC.ome.zarr",
+                "json": "ADC.json",
+                "src": "ADC.ome.zarr"
+            },
+            {
+                "dest": "ADC.json",
+                "src": "ADC.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Apparent diffusion coefficient (ADC) map Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS ADC.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "ADC.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS ADC.nii",
+            "ext": ".nii",
+            "filename": "ADC.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS ADC.ome.zarr/",
+            "dirname": "ADC.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS ADC.json",
+            "ext": ".json",
+            "filename": "ADC.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/dwi/adc",
+    "readme": "# neuro/dwi/adc\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `dwi`, suffix `ADC`.\n\nSource: BIDS specification v1.11.2, raw data, `dwi/*_ADC`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `dwi/` (separate datatypes, not part of this one): `FA`, `S0map`, `colFA`, `dwi`, `expADC`, `physio`, `physioevents`, `sbref`, `stim`, `trace`.\n\n"
+}

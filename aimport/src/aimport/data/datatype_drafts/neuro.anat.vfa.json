@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "anat",
+        "maps": [
+            {
+                "dest": "VFA.nii.gz",
+                "json": "VFA.json",
+                "src": "VFA.nii.gz"
+            },
+            {
+                "dest": "VFA.nii",
+                "src": "VFA.nii"
+            },
+            {
+                "dest": "VFA.ome.zarr",
+                "json": "VFA.json",
+                "src": "VFA.ome.zarr"
+            },
+            {
+                "dest": "VFA.json",
+                "src": "VFA.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "The VFA method involves at least two spoiled gradient echo (SPGR) of steady-state free precession (SSFP) images acquired at different flip angles. Depending on the provided metadata fields and the sequence type, data may be eligible for DESPOT1, DESPOT2 and their variants ([Deoni et al. 2005](https://doi.org/10.1002/mrm.20314)). Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS VFA.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "VFA.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS VFA.nii",
+            "ext": ".nii",
+            "filename": "VFA.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS VFA.ome.zarr/",
+            "dirname": "VFA.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS VFA.json",
+            "ext": ".json",
+            "filename": "VFA.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/anat/vfa",
+    "readme": "# neuro/anat/vfa\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `anat`, suffix `VFA`.\n\nSource: BIDS specification v1.11.2, raw data, `anat/*_VFA`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `anat/` (separate datatypes, not part of this one): `Chimap`, `FLAIR`, `FLASH`, `IRT1`, `M0map`, `MEGRE`, `MESE`, `MP2RAGE`, `MPM`, `MTR`, `MTRmap`, `MTS`, `MTVmap`, `MTsat`, `MWFmap`, `PD`, `PDT2`, `PDmap`, `PDw`, `R1map`, `R2map`, `R2starmap`, `S0map`, `T1map`, `T1rho`, `T1w`, `T2map`, `T2star`, `T2starmap`, `T2starw`, `T2w`, `UNIT1`, `angio`, `defacemask`, `inplaneT1`, `inplaneT2`, `physio`, `physioevents`, `stim`.\n\n"
+}

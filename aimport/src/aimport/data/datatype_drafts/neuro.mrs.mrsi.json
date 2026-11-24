@@ -1,0 +1,49 @@
+{
+    "bids": {
+        "derivatives": "mrs",
+        "maps": [
+            {
+                "dest": "mrsi.nii.gz",
+                "json": "mrsi.json",
+                "src": "mrsi.nii.gz"
+            },
+            {
+                "dest": "mrsi.nii",
+                "src": "mrsi.nii"
+            },
+            {
+                "dest": "mrsi.json",
+                "src": "mrsi.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "MRS acquisitions where additional imaging gradients are used to detect the MR signal from 1, 2, or 3 spatial dimensions.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS mrsi.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "mrsi.nii.gz",
+            "id": "nii_gz",
+            "required": true
+        },
+        {
+            "desc": "BIDS mrsi.nii",
+            "ext": ".nii",
+            "filename": "mrsi.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS mrsi.json",
+            "ext": ".json",
+            "filename": "mrsi.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/mrs/mrsi",
+    "readme": "# neuro/mrs/mrsi\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `mrs`, suffix `mrsi`.\n\nSource: BIDS specification v1.11.2, raw data, `mrs/*_mrsi`.\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `mrs/` (separate datatypes, not part of this one): `events`, `mrsref`, `svs`, `unloc`.\n\n"
+}

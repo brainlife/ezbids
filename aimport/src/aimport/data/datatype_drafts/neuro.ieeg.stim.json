@@ -1,0 +1,38 @@
+{
+    "bids": {
+        "derivatives": "ieeg",
+        "maps": [
+            {
+                "dest": "stim.tsv.gz",
+                "json": "stim.json",
+                "src": "stim.tsv.gz"
+            },
+            {
+                "dest": "stim.json",
+                "src": "stim.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Continuous measures, such as parameters of a film or audio stimulus.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS stim.tsv.gz",
+            "ext": ".tsv.gz",
+            "filename": "stim.tsv.gz",
+            "id": "tsv_gz",
+            "required": true
+        },
+        {
+            "desc": "BIDS stim.json",
+            "ext": ".json",
+            "filename": "stim.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/ieeg/stim",
+    "readme": "# neuro/ieeg/stim\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `ieeg`, suffix `stim`.\n\nSource: BIDS specification v1.11.2, raw data, `ieeg/*_stim`.\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `ieeg/` (separate datatypes, not part of this one): `channels`, `coordsystem`, `electrodes`, `events`, `ieeg`, `photo`, `physio`, `physioevents`.\n\n"
+}

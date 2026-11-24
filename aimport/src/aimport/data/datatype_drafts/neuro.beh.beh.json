@@ -1,0 +1,38 @@
+{
+    "bids": {
+        "derivatives": "beh",
+        "maps": [
+            {
+                "dest": "beh.tsv",
+                "json": "beh.json",
+                "src": "beh.tsv"
+            },
+            {
+                "dest": "beh.json",
+                "src": "beh.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Behavioral recordings from tasks. These files are similar to events files, but do not include the `\"onset\"` and `\"duration\"` columns that are mandatory for events files.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS beh.tsv",
+            "ext": ".tsv",
+            "filename": "beh.tsv",
+            "id": "tsv",
+            "required": true
+        },
+        {
+            "desc": "BIDS beh.json",
+            "ext": ".json",
+            "filename": "beh.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/beh/beh",
+    "readme": "# neuro/beh/beh\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `beh`, suffix `beh`.\n\nSource: BIDS specification v1.11.2, raw data, `beh/*_beh`.\n\nRelated BIDS files in `beh/` (separate datatypes, not part of this one): `events`, `physio`, `physioevents`, `stim`.\n\n"
+}

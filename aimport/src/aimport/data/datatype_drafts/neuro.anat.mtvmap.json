@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "anat",
+        "maps": [
+            {
+                "dest": "MTVmap.nii.gz",
+                "json": "MTVmap.json",
+                "src": "MTVmap.nii.gz"
+            },
+            {
+                "dest": "MTVmap.nii",
+                "src": "MTVmap.nii"
+            },
+            {
+                "dest": "MTVmap.ome.zarr",
+                "json": "MTVmap.json",
+                "src": "MTVmap.ome.zarr"
+            },
+            {
+                "dest": "MTVmap.json",
+                "src": "MTVmap.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "In arbitrary units (arbitrary). MTV maps are REQUIRED to use this suffix regardless of the method used to generate them. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS MTVmap.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "MTVmap.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS MTVmap.nii",
+            "ext": ".nii",
+            "filename": "MTVmap.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS MTVmap.ome.zarr/",
+            "dirname": "MTVmap.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS MTVmap.json",
+            "ext": ".json",
+            "filename": "MTVmap.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/anat/mtvmap",
+    "readme": "# neuro/anat/mtvmap\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `anat`, suffix `MTVmap`.\n\nSource: BIDS specification v1.11.2, raw data, `anat/*_MTVmap`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `anat/` (separate datatypes, not part of this one): `Chimap`, `FLAIR`, `FLASH`, `IRT1`, `M0map`, `MEGRE`, `MESE`, `MP2RAGE`, `MPM`, `MTR`, `MTRmap`, `MTS`, `MTsat`, `MWFmap`, `PD`, `PDT2`, `PDmap`, `PDw`, `R1map`, `R2map`, `R2starmap`, `S0map`, `T1map`, `T1rho`, `T1w`, `T2map`, `T2star`, `T2starmap`, `T2starw`, `T2w`, `UNIT1`, `VFA`, `angio`, `defacemask`, `inplaneT1`, `inplaneT2`, `physio`, `physioevents`, `stim`.\n\n"
+}

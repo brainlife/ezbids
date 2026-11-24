@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "perf",
+        "maps": [
+            {
+                "dest": "noRF.nii.gz",
+                "json": "noRF.json",
+                "src": "noRF.nii.gz"
+            },
+            {
+                "dest": "noRF.nii",
+                "src": "noRF.nii"
+            },
+            {
+                "dest": "noRF.ome.zarr",
+                "json": "noRF.json",
+                "src": "noRF.ome.zarr"
+            },
+            {
+                "dest": "noRF.json",
+                "src": "noRF.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "An MR noise scan often acquired alongside another MR scan. These noise scans are acquired by disabling the radio frequency excitation, while maintaining all other parameters from the associated scan. These can be acquired using some other sequence with RF excitation removed or as part of sequences that turns off RF at the beginning or end of a run. For example a `bold` scan where a few volumes are acquired with RF off. There is no consistent DICOM denotation for these scans. If multiple sequences with different suffixes but otherwise the same entities have `noRF` sequences, they SHOULD be disambiguated using the modality entity (for example, `mod-bold_noRF.nii.gz` and `mod-cbv_noRF.nii`). `noRF` are typically used to estimate properties of the scanner and sequence that are independent from the object being imaged. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS noRF.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "noRF.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS noRF.nii",
+            "ext": ".nii",
+            "filename": "noRF.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS noRF.ome.zarr/",
+            "dirname": "noRF.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS noRF.json",
+            "ext": ".json",
+            "filename": "noRF.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/perf/norf",
+    "readme": "# neuro/perf/norf\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `perf`, suffix `noRF`.\n\nSource: BIDS specification v1.11.2, raw data, `perf/*_noRF`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `perf/` (separate datatypes, not part of this one): `asl`, `aslcontext`, `asllabeling`, `m0scan`, `physio`, `physioevents`, `stim`.\n\n"
+}

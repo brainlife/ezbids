@@ -1,0 +1,38 @@
+{
+    "bids": {
+        "derivatives": "anat",
+        "maps": [
+            {
+                "dest": "physioevents.tsv.gz",
+                "json": "physioevents.json",
+                "src": "physioevents.tsv.gz"
+            },
+            {
+                "dest": "physioevents.json",
+                "src": "physioevents.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Event timing information corresponding to physiological recordings and other asynchronous data such as messages.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS physioevents.tsv.gz",
+            "ext": ".tsv.gz",
+            "filename": "physioevents.tsv.gz",
+            "id": "tsv_gz",
+            "required": true
+        },
+        {
+            "desc": "BIDS physioevents.json",
+            "ext": ".json",
+            "filename": "physioevents.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/anat/physioevents",
+    "readme": "# neuro/anat/physioevents\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `anat`, suffix `physioevents`.\n\nSource: BIDS specification v1.11.2, raw data, `anat/*_physioevents`.\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `anat/` (separate datatypes, not part of this one): `Chimap`, `FLAIR`, `FLASH`, `IRT1`, `M0map`, `MEGRE`, `MESE`, `MP2RAGE`, `MPM`, `MTR`, `MTRmap`, `MTS`, `MTVmap`, `MTsat`, `MWFmap`, `PD`, `PDT2`, `PDmap`, `PDw`, `R1map`, `R2map`, `R2starmap`, `S0map`, `T1map`, `T1rho`, `T1w`, `T2map`, `T2star`, `T2starmap`, `T2starw`, `T2w`, `UNIT1`, `VFA`, `angio`, `defacemask`, `inplaneT1`, `inplaneT2`, `physio`, `stim`.\n\n"
+}
