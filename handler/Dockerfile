@@ -33,7 +33,13 @@ RUN mkdir -p /usr/local/fsl && \
     git clone https://github.com/dlevitas/FSL_binaries /usr/local/fsl && \
     rm -rf /usr/local/fsl/README.md && \
     mkdir -p /usr/local/fsl/data/standard && \
-    mv /usr/local/fsl/bin/MNI152_T1_2mm_brain.nii.gz /usr/local/fsl/data/standard
+    mv /usr/local/fsl/bin/MNI152_T1_2mm_brain.nii.gz /usr/local/fsl/data/standard && \
+    ln -sf /usr/bin/python3 /usr/local/fsl/bin/fslpython
+# The fslpython in FSL_binaries is a bare conda-forge python 3.8 binary without its own stdlib, so it
+# falls back to Debian's /usr/lib/python3.8, which has no math extension module (Debian builds it in).
+# tmpnam (#!/usr/bin/env fslpython) then fails and fslreorient2std writes its temporary matrix to
+# ./_nii.mat in the shared working directory, where parallel deface jobs can overwrite or delete each other's.
+# tmpnam only needs the standard library, so fslpython is the system python3 (also 3.8).
 
 ENV FSLDIR=/usr/local/fsl
 ENV PATH=$PATH:$FSLDIR/bin
