@@ -77,14 +77,19 @@ async function runDcm2niix(itemPath: string): Promise<{ status: number; stderr: 
         }
     );
     const status = result.exitCode ?? -1;
-    const stderr = result.stderr ?? '';
+    const stdout = typeof result.stdout === 'string' ? result.stdout : '';
+    const stderr = typeof result.stderr === 'string' ? result.stderr : '';
+    if (stdout) log(stdout);
 
+    // As in preprocess.sh: a non-zero exit does not fail the session. dcm2niix returns 2 for a folder with
+    // no convertible images (e.g. a Phoenix report or a derived map it skips); its messages go to
+    // dcm2niix_output and the "Error" blocks to dcm2niix_error, which the UI shows.
     if (status !== 0) {
-        throw { error: new Error(`dcm2niix exited with code ${status}`), exitCode: status };
+        log(`dcm2niix exited with code ${status} for ${itemPath}`);
     }
 
     fs.appendFileSync(path.join(resolvedRoot, 'dcm2niix.done'), itemPath + '\n');
-    return { status, stderr };
+    return { status, stderr: status !== 0 ? `${stderr}\n${stdout}` : stderr };
 }
 
 /** Run dcm2niix4pet for one path; appends to pet2bids.done on success. Uses shipped Python interpreter. */

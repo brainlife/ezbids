@@ -86,8 +86,8 @@ export default defineComponent({
         if (this.resizeRaf) cancelAnimationFrame(this.resizeRaf);
         this.resizeObserver?.disconnect();
         this.resizeObserver = null;
-        // #160: release the per-component instance's volumes (and their WebGL buffers) on close
-        if (this.nv) this.nv.closeAllVolumes();
+        // #160: release the per-component instance (its volumes and WebGL context) on unmount
+        this.releaseNiivue();
         this.nv = null;
     },
 
@@ -137,8 +137,27 @@ export default defineComponent({
             });
         },
 
+        /** Drop loaded volumes. NiiVue 0.21 has no closeAllVolumes (master #160 called it), so remove them one by one. */
+        clearVolumes() {
+            const nv = this.nv;
+            if (!nv || !Array.isArray(nv.volumes)) return;
+            for (const v of [...nv.volumes]) {
+                try {
+                    nv.removeVolume(v);
+                } catch (e) {
+                    // a volume that never finished loading has no GPU texture yet
+                }
+            }
+        },
+
+        releaseNiivue() {
+            this.clearVolumes();
+            const gl = this.nv?.gl as WebGL2RenderingContext | undefined;
+            gl?.getExtension('WEBGL_lose_context')?.loseContext();
+        },
+
         close() {
-            if (this.nv) this.nv.closeAllVolumes();
+            this.clearVolumes();
             this.open = false;
             this.$emit('close');
         },
