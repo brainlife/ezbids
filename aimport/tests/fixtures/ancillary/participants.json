@@ -1,0 +1,12 @@
+{
+  "participant_id": {"Description": "ID assigned at Hospital X"},
+  "age": {"Description": "age in years at the first visit", "Units": "year"},
+  "name": {"Description": "full name, e.g. John Smith"},
+  "dob": {"Description": "birth date, e.g. 19700101"},
+  "visit_date": {"Description": "first visit"},
+  "site": {"Description": "site: Hospital X or Main campus"},
+  "handedness": {"Description": "handedness", "Levels": {"R": "right", "L": "left"}},
+  "notes": {"Description": "notes by Dr Smith"},
+  "email": {"Description": "contact email"},
+  "hospital_id": {"Description": "MRN at Hospital X"}
+}

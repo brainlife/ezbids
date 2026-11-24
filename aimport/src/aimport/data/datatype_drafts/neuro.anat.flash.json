@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "anat",
+        "maps": [
+            {
+                "dest": "FLASH.nii.gz",
+                "json": "FLASH.json",
+                "src": "FLASH.nii.gz"
+            },
+            {
+                "dest": "FLASH.nii",
+                "src": "FLASH.nii"
+            },
+            {
+                "dest": "FLASH.ome.zarr",
+                "json": "FLASH.json",
+                "src": "FLASH.ome.zarr"
+            },
+            {
+                "dest": "FLASH.json",
+                "src": "FLASH.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "FLASH (Fast-Low-Angle-Shot) is a vendor-specific implementation for spoiled gradient echo acquisition. It is commonly used for rapid anatomical imaging and also for many different qMRI applications. When used for a single file, it does not convey any information about the image contrast. When used in a file collection, it may result in conflicts across filenames of different applications. **Change:** Removed from suffixes. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS FLASH.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "FLASH.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS FLASH.nii",
+            "ext": ".nii",
+            "filename": "FLASH.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS FLASH.ome.zarr/",
+            "dirname": "FLASH.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS FLASH.json",
+            "ext": ".json",
+            "filename": "FLASH.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/anat/flash",
+    "readme": "# neuro/anat/flash\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `anat`, suffix `FLASH`.\n\nSource: BIDS specification v1.11.2, raw data, `anat/*_FLASH`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `anat/` (separate datatypes, not part of this one): `Chimap`, `FLAIR`, `IRT1`, `M0map`, `MEGRE`, `MESE`, `MP2RAGE`, `MPM`, `MTR`, `MTRmap`, `MTS`, `MTVmap`, `MTsat`, `MWFmap`, `PD`, `PDT2`, `PDmap`, `PDw`, `R1map`, `R2map`, `R2starmap`, `S0map`, `T1map`, `T1rho`, `T1w`, `T2map`, `T2star`, `T2starmap`, `T2starw`, `T2w`, `UNIT1`, `VFA`, `angio`, `defacemask`, `inplaneT1`, `inplaneT2`, `physio`, `physioevents`, `stim`.\n\n"
+}

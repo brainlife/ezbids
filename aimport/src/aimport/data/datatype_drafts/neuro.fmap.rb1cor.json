@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "fmap",
+        "maps": [
+            {
+                "dest": "RB1COR.nii.gz",
+                "json": "RB1COR.json",
+                "src": "RB1COR.nii.gz"
+            },
+            {
+                "dest": "RB1COR.nii",
+                "src": "RB1COR.nii"
+            },
+            {
+                "dest": "RB1COR.ome.zarr",
+                "json": "RB1COR.json",
+                "src": "RB1COR.ome.zarr"
+            },
+            {
+                "dest": "RB1COR.json",
+                "src": "RB1COR.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Low resolution images acquired by the body coil (in the gantry of the scanner) and the head coil using identical acquisition parameters to generate a combined sensitivity map as described in [Papp et al. (2016)](https://doi.org/10.1002/mrm.26058). Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS RB1COR.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "RB1COR.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS RB1COR.nii",
+            "ext": ".nii",
+            "filename": "RB1COR.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS RB1COR.ome.zarr/",
+            "dirname": "RB1COR.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS RB1COR.json",
+            "ext": ".json",
+            "filename": "RB1COR.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/fmap/rb1cor",
+    "readme": "# neuro/fmap/rb1cor\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `fmap`, suffix `RB1COR`.\n\nSource: BIDS specification v1.11.2, raw data, `fmap/*_RB1COR`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `fmap/` (separate datatypes, not part of this one): `RB1map`, `TB1AFI`, `TB1DAM`, `TB1EPI`, `TB1RFM`, `TB1SRGE`, `TB1TFL`, `TB1map`, `epi`, `fieldmap`, `m0scan`, `magnitude`, `magnitude1`, `magnitude2`, `phase1`, `phase2`, `phasediff`.\n\n"
+}

@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "anat",
+        "maps": [
+            {
+                "dest": "MTR.nii.gz",
+                "json": "MTR.json",
+                "src": "MTR.nii.gz"
+            },
+            {
+                "dest": "MTR.nii",
+                "src": "MTR.nii"
+            },
+            {
+                "dest": "MTR.ome.zarr",
+                "json": "MTR.json",
+                "src": "MTR.ome.zarr"
+            },
+            {
+                "dest": "MTR.json",
+                "src": "MTR.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "This method is to calculate a semi-quantitative magnetization transfer ratio map. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS MTR.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "MTR.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS MTR.nii",
+            "ext": ".nii",
+            "filename": "MTR.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS MTR.ome.zarr/",
+            "dirname": "MTR.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS MTR.json",
+            "ext": ".json",
+            "filename": "MTR.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/anat/mtr",
+    "readme": "# neuro/anat/mtr\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `anat`, suffix `MTR`.\n\nSource: BIDS specification v1.11.2, raw data, `anat/*_MTR`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `anat/` (separate datatypes, not part of this one): `Chimap`, `FLAIR`, `FLASH`, `IRT1`, `M0map`, `MEGRE`, `MESE`, `MP2RAGE`, `MPM`, `MTRmap`, `MTS`, `MTVmap`, `MTsat`, `MWFmap`, `PD`, `PDT2`, `PDmap`, `PDw`, `R1map`, `R2map`, `R2starmap`, `S0map`, `T1map`, `T1rho`, `T1w`, `T2map`, `T2star`, `T2starmap`, `T2starw`, `T2w`, `UNIT1`, `VFA`, `angio`, `defacemask`, `inplaneT1`, `inplaneT2`, `physio`, `physioevents`, `stim`.\n\n"
+}

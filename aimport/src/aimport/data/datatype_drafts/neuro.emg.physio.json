@@ -1,0 +1,38 @@
+{
+    "bids": {
+        "derivatives": "emg",
+        "maps": [
+            {
+                "dest": "physio.tsv.gz",
+                "json": "physio.json",
+                "src": "physio.tsv.gz"
+            },
+            {
+                "dest": "physio.json",
+                "src": "physio.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Physiological recordings such as cardiac and respiratory signals.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS physio.tsv.gz",
+            "ext": ".tsv.gz",
+            "filename": "physio.tsv.gz",
+            "id": "tsv_gz",
+            "required": true
+        },
+        {
+            "desc": "BIDS physio.json",
+            "ext": ".json",
+            "filename": "physio.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/emg/physio",
+    "readme": "# neuro/emg/physio\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `emg`, suffix `physio`.\n\nSource: BIDS specification v1.11.2, raw data, `emg/*_physio`.\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `emg/` (separate datatypes, not part of this one): `channels`, `coordsystem`, `electrodes`, `emg`, `events`, `photo`, `physioevents`, `stim`.\n\n"
+}

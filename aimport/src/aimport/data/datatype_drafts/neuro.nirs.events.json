@@ -1,0 +1,38 @@
+{
+    "bids": {
+        "derivatives": "nirs",
+        "maps": [
+            {
+                "dest": "events.tsv",
+                "json": "events.json",
+                "src": "events.tsv"
+            },
+            {
+                "dest": "events.json",
+                "src": "events.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Event timing information from a behavioral task.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS events.tsv",
+            "ext": ".tsv",
+            "filename": "events.tsv",
+            "id": "tsv",
+            "required": true
+        },
+        {
+            "desc": "BIDS events.json",
+            "ext": ".json",
+            "filename": "events.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/nirs/events",
+    "readme": "# neuro/nirs/events\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `nirs`, suffix `events`.\n\nSource: BIDS specification v1.11.2, raw data, `nirs/*_events`.\n\nRelated BIDS files in `nirs/` (separate datatypes, not part of this one): `channels`, `coordsystem`, `nirs`, `optodes`, `photo`, `physio`, `physioevents`, `stim`.\n\n"
+}

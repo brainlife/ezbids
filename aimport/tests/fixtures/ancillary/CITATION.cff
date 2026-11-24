@@ -1,0 +1,6 @@
+cff-version: 1.2.0
+message: "Cite as below"
+title: "Memory study at Hospital X"
+authors:
+  - family-names: Smith
+    given-names: John

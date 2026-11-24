@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "anat",
+        "maps": [
+            {
+                "dest": "PDw.nii.gz",
+                "json": "PDw.json",
+                "src": "PDw.nii.gz"
+            },
+            {
+                "dest": "PDw.nii",
+                "src": "PDw.nii"
+            },
+            {
+                "dest": "PDw.ome.zarr",
+                "json": "PDw.json",
+                "src": "PDw.ome.zarr"
+            },
+            {
+                "dest": "PDw.json",
+                "src": "PDw.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "In arbitrary units (arbitrary). The contrast of these images is mainly determined by spatial variations in the spin density (1H) of the imaged specimen. This contrast is achieved at short echo times and long repetition times; for gradient echo, this weighting is also possible with a short TR (TR<<T1) and a small flip angle. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS PDw.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "PDw.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS PDw.nii",
+            "ext": ".nii",
+            "filename": "PDw.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS PDw.ome.zarr/",
+            "dirname": "PDw.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS PDw.json",
+            "ext": ".json",
+            "filename": "PDw.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/anat/pdw",
+    "readme": "# neuro/anat/pdw\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `anat`, suffix `PDw`.\n\nSource: BIDS specification v1.11.2, raw data, `anat/*_PDw`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `anat/` (separate datatypes, not part of this one): `Chimap`, `FLAIR`, `FLASH`, `IRT1`, `M0map`, `MEGRE`, `MESE`, `MP2RAGE`, `MPM`, `MTR`, `MTRmap`, `MTS`, `MTVmap`, `MTsat`, `MWFmap`, `PD`, `PDT2`, `PDmap`, `R1map`, `R2map`, `R2starmap`, `S0map`, `T1map`, `T1rho`, `T1w`, `T2map`, `T2star`, `T2starmap`, `T2starw`, `T2w`, `UNIT1`, `VFA`, `angio`, `defacemask`, `inplaneT1`, `inplaneT2`, `physio`, `physioevents`, `stim`.\n\n"
+}

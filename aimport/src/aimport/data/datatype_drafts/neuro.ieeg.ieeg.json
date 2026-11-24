@@ -1,0 +1,119 @@
+{
+    "bids": {
+        "derivatives": "ieeg",
+        "maps": [
+            {
+                "dest": "ieeg.mefd",
+                "json": "ieeg.json",
+                "src": "ieeg.mefd"
+            },
+            {
+                "dest": "ieeg.json",
+                "src": "ieeg.json"
+            },
+            {
+                "dest": "ieeg.edf",
+                "json": "ieeg.json",
+                "src": "ieeg.edf"
+            },
+            {
+                "dest": "ieeg.vhdr",
+                "json": "ieeg.json",
+                "src": "ieeg.vhdr"
+            },
+            {
+                "dest": "ieeg.eeg",
+                "src": "ieeg.eeg"
+            },
+            {
+                "dest": "ieeg.vmrk",
+                "src": "ieeg.vmrk"
+            },
+            {
+                "dest": "ieeg.set",
+                "json": "ieeg.json",
+                "src": "ieeg.set"
+            },
+            {
+                "dest": "ieeg.fdt",
+                "src": "ieeg.fdt"
+            },
+            {
+                "dest": "ieeg.nwb",
+                "json": "ieeg.json",
+                "src": "ieeg.nwb"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Intracranial electroencephalography recording data. Exactly one of: .mefd; .edf; .vhdr + .eeg + .vmrk; .set + .fdt; .nwb must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS ieeg.mefd/",
+            "dirname": "ieeg.mefd",
+            "ext": ".mefd",
+            "id": "mefd",
+            "required": false
+        },
+        {
+            "desc": "BIDS ieeg.json",
+            "ext": ".json",
+            "filename": "ieeg.json",
+            "id": "json",
+            "required": true
+        },
+        {
+            "desc": "BIDS ieeg.edf",
+            "ext": ".edf",
+            "filename": "ieeg.edf",
+            "id": "edf",
+            "required": false
+        },
+        {
+            "desc": "BIDS ieeg.vhdr",
+            "ext": ".vhdr",
+            "filename": "ieeg.vhdr",
+            "id": "vhdr",
+            "required": false
+        },
+        {
+            "desc": "BIDS ieeg.eeg",
+            "ext": ".eeg",
+            "filename": "ieeg.eeg",
+            "id": "eeg",
+            "required": false
+        },
+        {
+            "desc": "BIDS ieeg.vmrk",
+            "ext": ".vmrk",
+            "filename": "ieeg.vmrk",
+            "id": "vmrk",
+            "required": false
+        },
+        {
+            "desc": "BIDS ieeg.set",
+            "ext": ".set",
+            "filename": "ieeg.set",
+            "id": "set",
+            "required": false
+        },
+        {
+            "desc": "BIDS ieeg.fdt",
+            "ext": ".fdt",
+            "filename": "ieeg.fdt",
+            "id": "fdt",
+            "required": false
+        },
+        {
+            "desc": "BIDS ieeg.nwb",
+            "ext": ".nwb",
+            "filename": "ieeg.nwb",
+            "id": "nwb",
+            "required": false
+        }
+    ],
+    "name": "neuro/ieeg/ieeg",
+    "readme": "# neuro/ieeg/ieeg\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `ieeg`, suffix `ieeg`.\n\nSource: BIDS specification v1.11.2, raw data, `ieeg/*_ieeg`.\n\nExactly one of: .mefd; .edf; .vhdr + .eeg + .vmrk; .set + .fdt; .nwb must be present (alternative data formats, none is marked required).\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `ieeg/` (separate datatypes, not part of this one): `channels`, `coordsystem`, `electrodes`, `events`, `photo`, `physio`, `physioevents`, `stim`.\n\n"
+}

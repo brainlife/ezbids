@@ -1,0 +1,15 @@
+# Used instead of the repo-root .dockerignore for aimport/Dockerfile
+**/.git
+**/node_modules
+**/.venv
+**/__pycache__
+workdir
+test
+aimport/tests
+aimport/bids-specification/.git
+ui/*
+!ui/src
+ui/src/*
+!ui/src/assets
+ui/src/assets/*
+!ui/src/assets/schema

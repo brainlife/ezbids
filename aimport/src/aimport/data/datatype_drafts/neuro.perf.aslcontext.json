@@ -1,0 +1,26 @@
+{
+    "bids": {
+        "derivatives": "perf",
+        "maps": [
+            {
+                "dest": "aslcontext.tsv",
+                "src": "aslcontext.tsv"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "A TSV file defining the image types for volumes in an associated ASL file.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS aslcontext.tsv",
+            "ext": ".tsv",
+            "filename": "aslcontext.tsv",
+            "id": "tsv",
+            "required": true
+        }
+    ],
+    "name": "neuro/perf/aslcontext",
+    "readme": "# neuro/perf/aslcontext\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `perf`, suffix `aslcontext`.\n\nSource: BIDS specification v1.11.2, raw data, `perf/*_aslcontext`.\n\nRelated BIDS files in `perf/` (separate datatypes, not part of this one): `asl`, `asllabeling`, `m0scan`, `noRF`, `physio`, `physioevents`, `stim`.\n\n"
+}

@@ -1,0 +1,38 @@
+{
+    "bids": {
+        "derivatives": "motion",
+        "maps": [
+            {
+                "dest": "motion.tsv",
+                "json": "motion.json",
+                "src": "motion.tsv"
+            },
+            {
+                "dest": "motion.json",
+                "src": "motion.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Data recorded from a tracking system store.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS motion.tsv",
+            "ext": ".tsv",
+            "filename": "motion.tsv",
+            "id": "tsv",
+            "required": true
+        },
+        {
+            "desc": "BIDS motion.json",
+            "ext": ".json",
+            "filename": "motion.json",
+            "id": "json",
+            "required": true
+        }
+    ],
+    "name": "neuro/motion/motion",
+    "readme": "# neuro/motion/motion\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `motion`, suffix `motion`.\n\nSource: BIDS specification v1.11.2, raw data, `motion/*_motion`.\n\nThe JSON sidecar is required (the schema requires metadata fields in it).\n\nRelated BIDS files in `motion/` (separate datatypes, not part of this one): `channels`, `events`, `physio`, `physioevents`, `stim`.\n\n"
+}

@@ -20,6 +20,7 @@
 - Workspace rules (`~/git/brainlife/CLAUDE.md`): work on branch `agentic-importer`, never commit to master, never deploy or push images, tests first, 4-space indent, docs updated in the same PR.
 - New dependencies needing Franco's OK at plan review: anthropic, fastapi, uvicorn, bidsschematools, uv, Deno + BIDS validator (autobidsify and the ezBIDS toolchain are approved in the spec).
 - Anyone writing the Claude client loads the `claude-api` skill first.
+- The BIDS → brainlife mapping is data, not code: `aimport/src/aimport/data/bids_brainlife_map.yaml` is the single source `brainlife_map.py` reads. Any change to the mapping, and every later phase that adds a modality, updates that file in the same commit.
 - Every dataset used for testing or validation — imaging data, fixtures, schemas, validators — is recorded in `aimport/tests/DATASETS.md` (source, pinned commit/version, contents, planted values, which tests use it, why added or dropped). A task that adds, replaces or drops one updates that file in the same commit.
 
 ## Review Focus
@@ -316,6 +317,29 @@ def test_key_file_private(tmp_path):
 
 ---
 
+### Task 7c: Draft brainlife datatypes for unmapped BIDS types
+
+**Files:**
+- Create: `aimport/tools/draft_datatypes.py`, `aimport/src/aimport/data/datatype_drafts/*.json` (generated, committed), `aimport/tests/test_datatype_drafts.py`
+- Modify: `aimport/src/aimport/data/bids_brainlife_map.yaml` (add `status: draft` rows), `aimport/src/aimport/brainlife_map.py` (accept `draft` status), `aimport/README.md`
+
+**Interfaces:**
+- Consumes: `load_schema`/`Schema` (Task 4), `load_table` (Task 7b).
+- Produces:
+  - `python aimport/tools/draft_datatypes.py [--schema PATH] [--out DIR]`: for every raw-data (datatype, suffix) in the v1.11.2 schema with no `active` or `planned` row in the mapping YAML, writes `<out>/neuro.<datatype>.<suffix lowercased>.json` and prints the YAML rows to add. Deterministic output (sorted keys, stable order) so regenerating produces no diff.
+  - Draft JSON follows the warehouse `Datatypes` model: `name` (`neuro/<datatype>/<suffix lowercased>`), `desc` (from the schema suffix description), `readme` (markdown: BIDS source, schema version, "DRAFT — check the brainlife registry for an existing datatype before registering"), `files` (one entry per BIDS extension for that suffix: `id` = extension without dots, e.g. `nii_gz`, `json`, `tsv`; `filename` = `<suffix><ext>`, or `dirname` for directory extensions such as `.ome.zarr/` and `.ds/`; `required` true for the primary data file, false for sidecars), `datatype_tags: []`, `bids: {derivatives: <datatype>, maps: [{src, dest, json?}]}` identity-mapping each file, plus `"draft": true` and `"bids_version": "1.11.2"`.
+  - YAML rows: `bids: {datatype, suffix}`, `brainlife: {datatype: <draft name>, tags: []}`, `status: draft`, `ref: datatype_drafts/<file>.json`.
+  - `to_brainlife` returns `(None, [])` for draft rows (not uploadable yet); new `draft_for(datatype, suffix) -> str | None` returns the draft name so the plan can show it.
+- Tests: every draft file validates (required keys, name pattern, at least one required file, bids maps cover every file); generator is idempotent (run twice into tmp, identical bytes); every raw-data (datatype, suffix) in the schema is covered by exactly one of active/planned/draft rows; `to_brainlife` ignores drafts; `draft_for("perf","asl") == "neuro/perf/asl"`.
+
+- [ ] **Step 1: Write the failing tests** (above).
+- [ ] **Step 2: Run** `cd aimport && uv run pytest tests/test_datatype_drafts.py -v` — expect FAIL.
+- [ ] **Step 3: Implement** the generator and the `draft` status; run it; commit the generated drafts and YAML rows.
+- [ ] **Step 4: Run** host tests — expect PASS.
+- [ ] **Step 5: Commit** `git commit -m "aimport: draft brainlife datatypes for BIDS types without one"`
+
+---
+
 ### Task 8: The agent
 
 **Files:**
@@ -443,6 +467,30 @@ def test_key_never_in_output(...): assert not list(out.rglob("*aimport-key*"))
 
 ---
 
+### Task 10b: Ancillary and metadata files
+
+**Files:**
+- Create: `aimport/src/aimport/ancillary.py`, `aimport/tests/test_ancillary.py`, `aimport/tests/fixtures/ancillary/` (synthetic participants.tsv/json, phenotype/*.tsv/json, sessions.tsv, scans.tsv, README, CHANGES, LICENSE, CITATION.cff, dataset_description.json, a top-level task-*_bold.json, code/, sourcedata/, with planted identifiers)
+- Modify: `aimport/src/aimport/plan.py` (ancillary entries + edits), `aimport/src/aimport/planner.py` (detect), `aimport/src/aimport/writer.py` (write), `aimport/tests/DATASETS.md`
+
+**Interfaces:**
+- Consumes: Plan/PlanEntry (1), Schema (4), redact/scrub_sidecar/_date_forms (5), PseudonymKey (6), build_plan/run_terms (9), write_bids (10).
+- Produces:
+  - `@dataclass AncillaryEntry: id: str; path: str` (BIDS-relative, posix) `; kind: Literal["core","table","table_json","phenotype","phenotype_json","inherited_sidecar","events","folder"]; action: Literal["keep","drop","edit"]; columns: dict[str, Literal["keep","drop","shift_date"]] (tables only); content: dict | str | None` (edited JSON/text; None = use the de-identified input) `; flags: list[str]; reason: str`
+  - `Plan.ancillary: list[AncillaryEntry] = []`, `Plan.dataset_description: dict = {}` (editable Authors, License, Funding, EthicsApprovals, ReferencesAndLinks, DatasetDOI, HowToAcknowledge, Acknowledgements; Name stays in `dataset_name`); `Plan.apply_ancillary_edits(edits: list[dict]) -> None` (unapproves, like apply_edits; rejects unknown ids and paths).
+  - `find_ancillary(input_dir: Path, schema: Schema) -> list[Path]`: files/folders under input_dir matching `rules.files.common.core`/`tables` and top-level sidecars/events (any directory depth where BIDS allows them: dataset root, `sub-*/`, `sub-*/ses-*/` for sessions/scans).
+  - `plan_ancillary(paths, input_dir, terms, subject_map: dict[str, str], schema) -> list[AncillaryEntry]`: defaults — core files keep (redacted); tables keep with identifying columns (header matches `IDENTIFYING_COLUMNS` regex: name, birth, dob, mrn, ssn, address, street, zip, postal, email, phone, initials, notes, comment) set to drop and flagged; columns whose values are mostly dates → `shift_date`; `sourcedata/` → drop with reason, not editable to keep; `code/docs/stimuli/` → drop by default (reviewer may set keep); `derivatives/` → drop ("phase 1").
+  - `write_ancillary(plan, input_dir, out_dir, terms, subject_map, key) -> list[Path]`, called by write_bids after imaging files: rewrites participant_id/session_id via the pseudonym maps, drops rows for subjects not in the plan, applies column actions, shifts dates, redacts every cell and JSON value, merges generated age/sex with supplied columns (supplied values win), writes edited `content` verbatim after redaction; `dataset_description.json` = generated fields + `plan.dataset_description` (redacted).
+- Tests (planted identifiers in every fixture file): participant_id remapped and unknown rows dropped; identifying columns dropped by default and kept only if edited to keep (then still redacted); date column shifted with the subject's offset; phenotype tsv/json written and redacted; edited participants.json and README written; sourcedata never written even if edited to keep (raises); inherited top-level sidecar written and redacted; no PLANTED/NATIVE term in any written ancillary file; validator-facing: participants.tsv first column participant_id with `sub-` prefix.
+
+- [ ] **Step 1: Write the failing tests** (above).
+- [ ] **Step 2: Run** `cd aimport && uv run pytest tests/test_ancillary.py -v` — expect FAIL.
+- [ ] **Step 3: Implement** `ancillary.py`, the plan fields, planner detection and writer call.
+- [ ] **Step 4: Run** host tests (and the docker writer test) — expect PASS.
+- [ ] **Step 5: Commit** `git commit -m "aimport: ancillary and metadata files (participants, phenotype, core, tables, inherited sidecars)"`
+
+---
+
 ### Task 11: Defacing
 
 **Files:**
@@ -488,7 +536,7 @@ def test_key_never_in_output(...): assert not list(out.rglob("*aimport-key*"))
 | `GET /status` | `{stage: "idle"\|"scanning"\|"planned"\|"executing"\|"validated"\|"failed", message, output_dir?, validation?}` |
 | `GET /events` | Server-Sent Events of `{stage, message}` lines |
 | `GET /plan` | the `Plan` as JSON |
-| `PATCH /plan` | `{edits: [...], dataset_name?, readme?}` → `Plan.apply_edits`; dataset fields are set directly, set `metadata_source="person"` and `approved=False`; 422 on bad ids |
+| `PATCH /plan` | `{edits: [...], ancillary_edits?: [...], dataset_description?: {...}, dataset_name?, readme?}` → `Plan.apply_edits`; dataset fields are set directly, set `metadata_source="person"` and `approved=False`; 422 on bad ids |
 | `POST /approve` | `{deface_method}` → `approved=True` |
 | `POST /execute` | 409 unless approved; runs Tasks 10, 11, 12; final `output_dir` is `work_dir/output/bids` |
 | `GET /preview/{entry_id}?which=original\|defaced` | NIfTI bytes |

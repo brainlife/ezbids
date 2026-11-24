@@ -1,0 +1,61 @@
+{
+    "bids": {
+        "derivatives": "fmap",
+        "maps": [
+            {
+                "dest": "m0scan.nii.gz",
+                "json": "m0scan.json",
+                "src": "m0scan.nii.gz"
+            },
+            {
+                "dest": "m0scan.nii",
+                "src": "m0scan.nii"
+            },
+            {
+                "dest": "m0scan.ome.zarr",
+                "json": "m0scan.json",
+                "src": "m0scan.ome.zarr"
+            },
+            {
+                "dest": "m0scan.json",
+                "src": "m0scan.json"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "The M0 image is a calibration image, used to estimate the equilibrium magnetization of blood. Exactly one of: .nii.gz or .nii; .ome.zarr must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS m0scan.nii.gz",
+            "ext": ".nii.gz",
+            "filename": "m0scan.nii.gz",
+            "id": "nii_gz",
+            "required": false
+        },
+        {
+            "desc": "BIDS m0scan.nii",
+            "ext": ".nii",
+            "filename": "m0scan.nii",
+            "id": "nii",
+            "required": false
+        },
+        {
+            "desc": "BIDS m0scan.ome.zarr/",
+            "dirname": "m0scan.ome.zarr",
+            "ext": ".ome.zarr",
+            "id": "ome_zarr",
+            "required": false
+        },
+        {
+            "desc": "BIDS m0scan.json",
+            "ext": ".json",
+            "filename": "m0scan.json",
+            "id": "json",
+            "required": false
+        }
+    ],
+    "name": "neuro/fmap/m0scan",
+    "readme": "# neuro/fmap/m0scan\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `fmap`, suffix `m0scan`.\n\nSource: BIDS specification v1.11.2, raw data, `fmap/*_m0scan`.\n\nExactly one of: .nii.gz or .nii; .ome.zarr must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `fmap/` (separate datatypes, not part of this one): `RB1COR`, `RB1map`, `TB1AFI`, `TB1DAM`, `TB1EPI`, `TB1RFM`, `TB1SRGE`, `TB1TFL`, `TB1map`, `epi`, `fieldmap`, `magnitude`, `magnitude1`, `magnitude2`, `phase1`, `phase2`, `phasediff`.\n\n"
+}

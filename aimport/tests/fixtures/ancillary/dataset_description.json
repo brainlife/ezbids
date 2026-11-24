@@ -1,0 +1,11 @@
+{
+  "Name": "Memory study at Hospital X",
+  "BIDSVersion": "1.8.0",
+  "DatasetType": "raw",
+  "Authors": ["John Smith", "A. Researcher"],
+  "License": "CC0",
+  "Funding": ["Grant MRN0042"],
+  "EthicsApprovals": ["Hospital X IRB 19700101"],
+  "Acknowledgements": "Thanks to Smith for the scans",
+  "PatientName": "Smith^John"
+}

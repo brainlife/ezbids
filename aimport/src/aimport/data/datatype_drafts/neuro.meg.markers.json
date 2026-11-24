@@ -1,0 +1,37 @@
+{
+    "bids": {
+        "derivatives": "meg",
+        "maps": [
+            {
+                "dest": "markers.sqd",
+                "src": "markers.sqd"
+            },
+            {
+                "dest": "markers.mrk",
+                "src": "markers.mrk"
+            }
+        ]
+    },
+    "bids_version": "1.11.2",
+    "datatype_tags": [],
+    "desc": "Another manufacturer-specific detail pertains to the KIT/Yokogawa/Ricoh system, which saves the MEG sensor coil positions in a separate file with two possible filename extensions (`.sqd`, `.mrk`). For these files, the `markers` suffix MUST be used. For example: `sub-01_task-nback_markers.sqd` Exactly one of: .sqd; .mrk must be present.",
+    "draft": true,
+    "files": [
+        {
+            "desc": "BIDS markers.sqd",
+            "ext": ".sqd",
+            "filename": "markers.sqd",
+            "id": "sqd",
+            "required": false
+        },
+        {
+            "desc": "BIDS markers.mrk",
+            "ext": ".mrk",
+            "filename": "markers.mrk",
+            "id": "mrk",
+            "required": false
+        }
+    ],
+    "name": "neuro/meg/markers",
+    "readme": "# neuro/meg/markers\n\nDRAFT — generated from BIDS v1.11.2 by aimport/tools/draft_datatypes.py; check the brainlife registry for an existing datatype before registering.\n\nUses BIDS as the datatype: files are named as in BIDS, BIDS datatype `meg`, suffix `markers`.\n\nSource: BIDS specification v1.11.2, raw data, `meg/*_markers`.\n\nExactly one of: .sqd; .mrk must be present (alternative data formats, none is marked required).\n\nRelated BIDS files in `meg/` (separate datatypes, not part of this one): `channels`, `coordsystem`, `electrodes`, `events`, `headshape`, `meg`, `photo`, `physio`, `physioevents`, `stim`.\n\n"
+}
