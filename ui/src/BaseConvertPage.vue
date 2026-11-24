@@ -1,16 +1,18 @@
 <template>
     <div style="display: flex">
         <div
-            style="display: flex; flex-direction: column; box-sizing: border-box; height: 100vh; padding: 1rem 2rem"
+            style="display: flex; flex-direction: column; box-sizing: border-box; height: 100vh; padding: 1rem 1.25rem"
             class="brainlife-lite aside-width"
         >
-            <div class="brainlife-lite" style="flex: 0 0 auto">
-                <div style="display: flex; align-items: center; width: 100%; height: 100%">
-                    <h1 style="color: white; margin: 0; margin-right: 10px">
-                        <span style="letter-spacing: -3px; opacity: 0.6; margin: 0">ez</span>BIDS
-                    </h1>
-                    <DisplayMode />
+            <div class="brand" style="flex: 0 0 auto">
+                <a href="https://brainlife.io" target="_blank" rel="noopener noreferrer" aria-label="brainlife.io">
+                    <img src="./assets/brainlife-mark-light.svg" class="mark" alt="brainlife.io" />
+                </a>
+                <div class="brand-text">
+                    <div class="name">ezBIDS</div>
+                    <div class="by">by brainlife.io</div>
                 </div>
+                <DisplayMode class="brand-mode" />
             </div>
             <div class="aside-back-dashboard" style="flex: 0 0 auto">
                 <router-link :to="{ name: 'dashboard' }">
@@ -422,42 +424,109 @@ export default defineComponent({
 </script>
 
 <style scoped lang="scss">
+/* sidebar: brainlife-lite's light navigation (palette.nav) with the brainlife.io mark top-left */
 .brainlife-lite {
-    background-color: #2d3748;
+    background-color: var(--nav-bg);
+    border-right: 1px solid var(--line);
+    color: var(--ink);
+}
+
+.brand {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 2px 0 4px;
+
+    .mark {
+        height: 40px;
+        width: auto;
+        display: block;
+    }
+    .brand-text {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+    .name {
+        font-size: 1.25rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        line-height: 1.1;
+        color: var(--ink);
+    }
+    .by {
+        font-size: 0.72rem;
+        color: var(--ink-2);
+    }
+    .brand-mode {
+        flex: 0 0 100%;
+    }
+}
+
+:deep(.el-steps--vertical) {
+    padding-top: 4px;
 }
 
 :deep(.el-step__title) {
-    color: #9ca3af;
-    font-size: small;
+    color: var(--ink-2);
+    font-size: 0.85rem;
+    font-weight: 400;
+    line-height: 1.6;
 
     padding-bottom: 0px !important; // this extra padding is causing a scrollbar to appear
 }
 
 :deep(.el-step__title.is-process) {
-    color: #fff;
+    color: var(--el-color-primary);
+    font-weight: 600;
+}
+
+:deep(.el-step__title.is-finish) {
+    color: var(--ink);
 }
 
 :deep(.el-step__description) {
-    color: #9ca3af;
-    font-size: x-small;
+    color: var(--ink-3);
+    font-size: 0.72rem;
 }
 
 :deep(.el-step__description.is-process) {
-    color: #fff;
+    color: var(--el-color-primary);
 }
 
-:deep(.el-step__head.is-process) {
-    .el-step__icon {
-        color: black;
-        border-color: white;
-        background-color: white;
-    }
+:deep(.el-step__description.is-finish) {
+    color: var(--ink-3);
+}
+
+:deep(.el-step__line) {
+    background-color: var(--line);
+}
+
+:deep(.el-step__head.is-finish .el-step__line-inner) {
+    border-color: var(--el-color-primary-light-5);
 }
 
 :deep(.el-step__icon.is-text) {
-    background-color: #9ca3af;
-    color: black;
-    border-color: #9ca3af;
+    width: 22px;
+    height: 22px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    border-width: 1px;
+    background-color: #fff;
+    color: var(--ink-2);
+    border-color: var(--el-border-color-base);
+}
+
+:deep(.el-step__head.is-finish .el-step__icon.is-text) {
+    background-color: var(--el-color-primary-light-8);
+    border-color: var(--el-color-primary-light-5);
+    color: var(--el-color-primary);
+}
+
+:deep(.el-step__head.is-process .el-step__icon.is-text) {
+    background-color: var(--el-color-primary);
+    border-color: var(--el-color-primary);
+    color: #fff;
 }
 
 .aside-back-dashboard {
@@ -475,22 +544,22 @@ export default defineComponent({
 .aside-back-dashboard-btn {
     width: 100%;
     justify-content: center;
-    color: #e2e8f0 !important;
-    border-color: #718096 !important;
-    background: transparent !important;
+    color: var(--ink);
+    border-color: var(--el-border-color-base);
+    background: #fff;
 
     &:hover,
     &:focus {
-        color: #fff !important;
-        border-color: #cbd5e0 !important;
-        background: rgba(255, 255, 255, 0.08) !important;
+        color: var(--el-color-primary);
+        border-color: var(--el-color-primary-light-7);
+        background: var(--el-color-primary-light-9);
     }
 }
 
 .aside-width {
-    width: 260px;
-    min-width: 260px;
-    max-width: 260px;
+    width: var(--aside-w);
+    min-width: var(--aside-w);
+    max-width: var(--aside-w);
 }
 
 .aside-external-links {
@@ -498,19 +567,30 @@ export default defineComponent({
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    justify-content: flex-start;
+    gap: 12px;
     margin-top: 1.25rem;
     padding-top: 1rem;
-    border-top: 1px solid #4a5568;
+    border-top: 1px solid var(--line);
 }
 
 .aside-external-btn {
-    background-color: whitesmoke !important;
-    border-color: black !important;
+    background-color: #fff;
+    border-color: var(--el-border-color-base);
+    color: var(--ink-2);
 
     svg {
-        color: black !important;
+        color: var(--ink-2);
+    }
+
+    &:hover,
+    &:focus {
+        background-color: var(--el-color-primary-light-9);
+        border-color: var(--el-color-primary-light-7);
+
+        svg {
+            color: var(--el-color-primary);
+        }
     }
 }
 
@@ -521,29 +601,32 @@ export default defineComponent({
     max-height: 100vh;
     min-height: 0;
     box-sizing: border-box;
-    padding: 1rem;
+    padding: 16px 16px 0;
     overflow: hidden;
+    background: var(--app-bg);
 }
 
+/* each step sits in one white panel on the grey page, like brainlife-lite's page sections */
 .base-convert-scroll {
     flex: 1 1 auto;
     min-height: 0;
     overflow-y: auto;
+    background: var(--panel-bg);
+    border: 1px solid var(--line);
+    border-radius: var(--panel-radius);
 }
 
 .base-convert-content {
-    padding: 1rem;
+    padding: 1rem 1.25rem;
 }
 
 .page-action {
     display: flex;
     flex-shrink: 0;
     justify-content: space-between;
-    padding: 1rem;
-    padding-bottom: 0;
-    background-color: white;
-    border-top: 1px solid var(--el-border-color-lighter, #ebeef5);
-    color: #333;
+    padding: 12px 0 14px;
+    background-color: var(--app-bg);
+    color: var(--ink);
 }
 
 .base-convert-session-error {
@@ -551,7 +634,7 @@ export default defineComponent({
 }
 
 .base-convert-error-no-id {
-    color: #909399;
+    color: var(--ink-3);
     margin-top: 1rem;
 }
 </style>
