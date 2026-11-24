@@ -15,14 +15,15 @@ or dropped, and say why.
 
 Public Siemens XA30 DICOMs from the dcm2niix test suite, about 44 MB (95 `.dcm`
 files in 23 series folders, plus one non-DICOM file, `In/XA_validation.pdf`,
-covered by `NON_DICOM_SUFFIXES`). ezBIDS first guess on the unplanted data (19
-series; the committed fixture is 137 KB):
+covered by `NON_DICOM_SUFFIXES`). ezBIDS first guess on the unplanted data (20
+series; the committed fixture is 137 KB and was made before the two core fixes noted
+below, so it has 19 series, series 7 `exclude` and both magnitudes in one `magnitude1` series):
 
 | Series folder | ezBIDS guess | Note |
 |---|---|---|
 | `5_anat-T1w_acq-tfl`, `6_anat-T1w_acq-tfl` | `anat/T1w` | one series, two runs |
-| `7_func-bold_task-fa_run-1` | `exclude` | dcm2niix guesses `dwi/_FA` because of "task-fa"; stock ezBIDS crashes on it, so the core patch excludes it. A real BOLD series that the planner must reclassify as `func/bold` |
-| `8_gre_field_mapping` | `fmap/magnitude1` | |
+| `7_func-bold_task-fa_run-1` | `func/bold` | dcm2niix guesses `dwi/_FA` because of "task-fa"; ezBIDS core ignores that guess for a non-derived image and finds `func/bold` from "bold" in the description (it excluded the series before, and the committed fixture still records `exclude`) |
+| `8_gre_field_mapping` | `fmap/magnitude1` (`_e1`), `fmap/magnitude2` (`_e2`) | two series: ezBIDS core groups series by EchoTime in 0.1 ms (TE 10 and 12.46 ms); before, both echoes were one `magnitude1` series written as `run-1`/`run-2` |
 | `9_gre_field_mapping` | `fmap/phasediff` | |
 | `10_DWI_dir80_PA`, `17_DWI_dir80_AP` | `dwi/dwi` | 21 volumes each, with bvec/bval |
 | `11`-`16_DWI_dir80_PA`, `19`-`24_DWI_dir80_AP` | `exclude` | Siemens derived maps (ADC, TRACEW, FA, tensor/B0); two FA maps have an improper data array. `15` and `23` produce no NIfTI at all |
