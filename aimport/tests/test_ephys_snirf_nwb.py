@@ -18,6 +18,7 @@ pynwb = pytest.importorskip("pynwb")
 
 from aimport import modality  # noqa: E402
 from aimport.ephys import events, gate, headers, nwb, snirf  # noqa: E402
+from aimport.ephys import write as ephys_write  # noqa: E402
 from aimport.ezbids_runner import CoreResult  # noqa: E402
 from aimport.pseudonyms import PseudonymKey  # noqa: E402
 from aimport.writer import write_bids  # noqa: E402
@@ -224,7 +225,7 @@ def test_nwb_planted_cleared(tmp_path, key, schema):
         assert labels and all(lab.startswith(CODE) for lab in labels)
         assert set(got.trials.colnames) == {"start_time", "stop_time", "label"}
         with h5py.File(src, "r") as f:
-            np.testing.assert_array_equal(got.acquisition["ieeg"].data[:], f["acquisition/ieeg/data"][()])
+            np.testing.assert_array_equal(got.acquisition["ElectricalSeries"].data[:], f["acquisition/ieeg/data"][()])
     with h5py.File(out / rel, "r") as f:
         for g in ("processing", "analysis", "stimulus/presentation", "stimulus/templates"):
             assert len(f[g]) == 0, g
@@ -313,7 +314,7 @@ def test_nwb_bounded(tmp_path):
         tracemalloc.stop()
     assert peak < 96 * 2**20, peak / 2**20
     with h5py.File(src, "r") as a, h5py.File(dest, "r") as b:
-        x, y = a["acquisition/ieeg/data"], b["acquisition/ieeg/data"]
+        x, y = a["acquisition/ieeg/data"], b["acquisition/ElectricalSeries/data"]
         assert x.shape == y.shape == (n_times, n_ch)
         for start in range(0, n_times, 2**18):
             np.testing.assert_array_equal(x[start:start + 2**18], y[start:start + 2**18])
@@ -420,3 +421,119 @@ def test_nirs_and_nwb_validate(tmp_path, key, schema):
     assert any(e.ephys_format == "NWB" for e in ephys(plan))
     result = validate_bids(out)
     assert result.ok, json.dumps(result.errors, indent=1)[:4000]
+
+
+# --- fix round 1 ------------------------------------------------------------------------------------------
+
+
+def test_acq_entity_planned_and_written(tmp_path, key, schema):
+    """The acq entity is stored under the schema's name (acquisition), so an acq-hd input is nameable and written."""
+    from test_ephys_write import edf
+
+    edf(tmp_path / "in" / "sub-01" / "eeg" / "sub-01_task-rest_acq-hd_eeg.edf", ["EEG Fp1", "EEG Cz"], his_id="P5555555")
+    plan, out, manifest = plan_and_write(tmp_path / "in", tmp_path, key, schema)
+    e, rel = _one(manifest, plan, "_eeg.vhdr")
+    assert e.status == "ok" and not e.exclude and e.entities == {"task": "rest", "acquisition": "hd"}
+    assert rel.endswith("_task-rest_acq-hd_eeg.vhdr")
+
+
+def test_file_words_only_in_paths():
+    """File-name words and extensions are skipped in paths only: in a header field they stay terms."""
+    t = headers._Terms()
+    t.name("Dat")
+    t.text("Mat")
+    t.paths(["nirx_15_3_recording/Khan_config.txt", "nirx_15_3_recording/Khan.dat"])
+    got = t.result()
+    assert {"Dat", "Mat", "Khan"} <= got
+    assert not {"recording", "config", "txt", "dat"} & {g.lower() for g in got if g not in ("Dat",)}
+
+
+def _khan_nwb(path: Path) -> Path:
+    """An NWB file whose location, group, series and interval-table names carry a name."""
+    from pynwb import NWBHDF5IO, NWBFile
+    from pynwb.ecephys import ElectricalSeries
+    from pynwb.epoch import TimeIntervals
+
+    f = NWBFile(session_description="x", identifier="x", session_start_time=fx.MEAS_DATE)
+    dev = f.create_device(name="amp")
+    depth = f.create_electrode_group(name="DrKhan_shaft", description="depth", location="placed by DrKhan",
+                                     device=dev)
+    grid = f.create_electrode_group(name="grid", description="grid", location="left temporal", device=dev)
+    for i in range(4):
+        f.add_electrode(group=depth if i < 2 else grid, location="placed by DrKhan" if i < 2 else "left temporal")
+    f.add_acquisition(ElectricalSeries(name="Khan_ieeg", data=np.zeros((512, 4), dtype="float32"),
+                                       electrodes=f.create_electrode_table_region(list(range(4)), "all"),
+                                       rate=256.0))
+    notes = TimeIntervals(name="Khan_notes", description="x")
+    notes.add_interval(start_time=1.0, stop_time=2.0)
+    f.add_time_intervals(notes)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with NWBHDF5IO(str(path), "w") as io:
+        io.write(f)
+    return path
+
+
+def test_nwb_names_and_locations_never_written(tmp_path, key, schema):
+    src = _khan_nwb(tmp_path / "in" / fx.SUBJECT_DIR / "grid_rest.nwb")
+    terms = nwb.harvest(src)
+    assert {"placed by DrKhan", "DrKhan_shaft", "Khan_ieeg", "Khan_notes"} <= terms
+    assert "left temporal" not in terms and nwb.safe_location("left temporal") == "left temporal"
+    plan, out, manifest = plan_and_write(tmp_path / "in", tmp_path, key, schema)
+    e, rel = _one(manifest, plan, "_ieeg.nwb")
+    assert "khan" not in " ".join(_h5_strings(out / rel)).lower()
+    for p in out.rglob("*"):
+        if p.is_file():
+            assert b"khan" not in p.read_bytes().lower(), p
+    with pynwb.NWBHDF5IO(str(out / rel), "r") as io:
+        got = io.read()
+        assert list(got.electrodes["location"][:]) == ["n/a", "n/a", "left temporal", "left temporal"]
+        assert sorted(got.electrode_groups) == ["group_001", "group_002"]
+        assert list(got.acquisition) == ["ElectricalSeries"]
+        assert "intervals_001" in got.intervals
+
+
+def test_nwb_channel_types_in_plan_and_editable(tmp_path, key, schema):
+    from aimport.planner import apply_plan_edits
+
+    _khan_nwb(tmp_path / "in" / fx.SUBJECT_DIR / "grid_rest.nwb")
+    fx.planted_brainvision(tmp_path / "in" / "bv")
+    seen = {}
+
+    def edit(plan) -> None:
+        e = next(x for x in ephys(plan) if x.ephys_format == "NWB")
+        seen["guess"] = dict(e.channel_types)
+        bv = next(x for x in ephys(plan) if x.ephys_format == "BrainVision")
+        assert bv.channel_types == {}
+        with pytest.raises(ValueError, match="channel_types"):
+            apply_plan_edits(plan, [{"id": e.id, "channel_types": {"group_001": "eeg", "group_002": "ecog"}}], schema)
+        with pytest.raises(ValueError, match="channel_types"):
+            apply_plan_edits(plan, [{"id": e.id, "channel_types": {"group_009": "seeg"}}], schema)
+        with pytest.raises(ValueError, match="channel_types"):
+            apply_plan_edits(plan, [{"id": bv.id, "channel_types": {"group_001": "seeg"}}], schema)
+        apply_plan_edits(plan, [{"id": e.id, "channel_types": {"group_001": "dbs", "group_002": "ecog"}}], schema)
+
+    plan, out, manifest = plan_and_write(tmp_path / "in", tmp_path, key, schema, edit=edit)
+    assert seen["guess"] == {"group_001": "seeg", "group_002": "ecog"}
+    e, rel = _one(manifest, plan, "_ieeg.nwb")
+    types = [r["type"] for r in read_tsv(out / rel.replace("_ieeg.nwb", "_channels.tsv"))]
+    assert types == ["DBS", "DBS", "ECOG", "ECOG"]
+    car = json.loads((out / rel.replace("_ieeg.nwb", "_ieeg.json")).read_text())
+    assert (car["ECOGChannelCount"], car["SEEGChannelCount"]) == (2, 0)
+
+
+def test_resave_split_without_private_split_size(tmp_path, monkeypatch):
+    """_resave_split falls back to MNE's 2GB default when MNE-BIDS drops its private split size."""
+    import mne_bids.write as mbw
+
+    scratch = tmp_path / "scratch"
+    scratch.mkdir()
+    info = mne.create_info([f"MEG {i:03d}" for i in range(1, 21)], 1000.0, "mag")
+    raw = mne.io.RawArray(np.random.default_rng(0).standard_normal((20, 60000)) * 1e-13, info, verbose=False)
+    raw.save(scratch / "sub-emptyroom_ses-19241231_task-noise_meg.fif", split_size="3MB", split_naming="bids",
+             verbose=False)
+    parts = sorted(scratch.glob("*_split-*_meg.fif"))
+    assert len(parts) > 1
+    monkeypatch.delattr(mbw, "_FIFF_SPLIT_SIZE")
+    new = ephys_write._resave_split(parts, "sub-emptyroom_task-noise_split-01_meg.fif", scratch)
+    assert [p.name for p in new] == ["sub-emptyroom_task-noise_meg.fif"]  # one part at 2GB
+    assert mne.io.read_raw_fif(new[0], preload=False, verbose="error").n_times == 60000

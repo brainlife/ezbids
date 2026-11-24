@@ -329,12 +329,22 @@ entry's `ephys_format` (never a copy of the source file):
   stim names are event names; optodes are `S<n>`/`D<n>`. MNE-BIDS then writes the sidecars, `optodes.tsv` and
   `coordsystem.json` from that file. `acq_time` in `scans.tsv` is the original date shifted, as for EEG.
 - **NWB iEEG** is written as NWB by default (BrainVision or EDF on request): a new file with the
-  `ElectricalSeries` samples streamed from the input (16 MiB at a time), the electrodes table (locations and
-  group names redacted, labels renamed by the channel rule), interval tables reduced to a coded `label`
-  column, `session_description` `n/a`, a new identifier, dates `1900-01-01T00:00:00+00:00`, and a subject with
-  only the BIDS label, species and sex. No processing, analysis, stimulus or cached schema is written.
-  `_ieeg.json`, `_channels.tsv`, `_electrodes.tsv` (positions converted from micrometres to mm),
-  `_coordsystem.json` and `_events.tsv` are generated.
+  `ElectricalSeries` samples streamed from the input (16 MiB at a time), the electrodes table (a location is
+  kept only when it is made of anatomical words, else `n/a`; labels renamed by the channel rule), generated
+  names for electrode groups (`group_001`), series (`ElectricalSeries`) and non-standard interval tables,
+  interval tables reduced to a coded `label` column, `session_description` `n/a`, a new identifier, dates
+  `1900-01-01T00:00:00+00:00`, and a subject with only the BIDS label, species and sex. No processing,
+  analysis or stimulus content is written. `_ieeg.json`, `_channels.tsv`, `_electrodes.tsv` (positions converted
+  from micrometres to mm), `_coordsystem.json` and `_events.tsv` are generated.
+- **NWB channel types**: NWB stores no per-channel type, so each electrode group's type (sEEG, ECoG or DBS) is
+  guessed from its name and description. The plan entry shows it as `channel_types` (`group_001: ecog`), and
+  the reviewer can change it like any other field; it sets the channel types in the NWB-derived
+  `channels.tsv` and in a BrainVision or EDF output.
+- **NWB without a cached schema**: the NWB file does not embed the NWB schema (`/specifications`). The cached
+  schema holds library text such as author names, which the final check cannot tell apart from personal
+  names. pynwb and MNE read the file with their own installed schema. nwbinspector, and DANDI uploads, flag a
+  missing cached schema; to publish on DANDI, open the file with pynwb and write it again with the schema
+  cached.
 
 ### Known limitations
 

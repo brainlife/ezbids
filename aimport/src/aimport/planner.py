@@ -481,10 +481,14 @@ def _nwb_source(e: PlanEntry) -> bool:
     return e.description.startswith("NWB ")
 
 
+NWB_CHANNEL_TYPES = ("seeg", "ecog", "dbs")  # ephys.nwb.CHANNEL_TYPES
+
+
 def _check_ephys_edits(plan: Plan, edits: list[dict]) -> None:
     """Electrophysiology edit rules: ephys_format is one of the output formats of the entry's datatype
     after the edit (NWB only for NWB input, never None), only for a writable ephys entry; keep_headshape
-    only for ephys entries; deface is never turned on for one."""
+    only for ephys entries; channel_types (NWB input) keeps its groups and takes seeg, ecog or dbs; deface is never
+    turned on for one."""
     by_id = {e.id: e for e in plan.entries}
     for edit in edits:
         if not isinstance(edit, dict):
@@ -500,6 +504,14 @@ def _check_ephys_edits(plan: Plan, edits: list[dict]) -> None:
             raise ValueError("electrophysiology recordings are never defaced")
         if "keep_headshape" in edit and not ephys and edit["keep_headshape"] is not False:
             raise ValueError("keep_headshape applies to electrophysiology entries only")
+        if "channel_types" in edit:
+            types = edit["channel_types"]
+            if not ephys or not e.channel_types:
+                if types:
+                    raise ValueError("channel_types applies to electrophysiology entries read from NWB only")
+            elif set(types) != set(e.channel_types) or any(v not in NWB_CHANNEL_TYPES for v in types.values()):
+                raise ValueError(f"channel_types keeps the groups {sorted(e.channel_types)} and gives each one of "
+                                 f"{list(NWB_CHANNEL_TYPES)}")
         if "ephys_format" not in edit:
             continue
         fmt = edit["ephys_format"]

@@ -46,6 +46,7 @@ EMG_PLACEMENT = "Other"
 EMG_PLACEMENT_TEXT = "not recorded in the source recording"
 CLEAN_SNIRF = "clean.snirf"
 RESPLIT = "resplit"
+FIF_SPLIT_SIZE = "2GB"  # MNE's default split size
 _SPLIT = re.compile(r"_split-\d+_")
 
 
@@ -110,7 +111,7 @@ def _bids_path(entry: "PlanEntry", datatype: str, root: Path):
 
     ents = entry.entities or {}
     return mne_bids.BIDSPath(subject=entry.subject, session=entry.session, task=ents.get("task"),
-                             acquisition=ents.get("acq") or ents.get("acquisition"), run=ents.get("run"),
+                             acquisition=ents.get("acquisition"), run=ents.get("run"),
                              datatype=datatype, root=root)
 
 
@@ -176,7 +177,7 @@ def write_nirs(entry: "PlanEntry", raw, scratch: Path, dest: Callable[[str], Pat
 
 def write_nwb(entry: "PlanEntry", src: Path, scratch: Path, dest: Callable[[str], Path], schema: "Schema",
               terms: set[str], *, labels: dict[str, str], renames: dict[str, str],
-              meta: dict | None = None) -> list[str]:
+              meta: dict | None = None, group_types: dict[str, str] | None = None) -> list[str]:
     """Write one NWB iEEG recording as a new NWB file (``nwb.write``) with generated BIDS sidecars
     (``ieeg_sidecars``); returns the output rel paths (the ``.nwb`` first). ``labels``: normalised original
     interval text -> the label written."""
@@ -189,7 +190,7 @@ def write_nwb(entry: "PlanEntry", src: Path, scratch: Path, dest: Callable[[str]
     out_dir = scratch / _session_dir(bp) / "ieeg"
     out_dir.mkdir(parents=True, exist_ok=True)
     data = out_dir / bp.basename
-    info = nwb.write(src, data, entry.subject, labels, renames, terms=terms)
+    info = nwb.write(src, data, entry.subject, labels, renames, terms=terms, group_types=group_types)
     info["meta"] = meta or {}
     files: list[Path] = [data]
     for name, content in ieeg_sidecars(info, entry, schema, stem=bp.basename[: -len("_ieeg.nwb")],
@@ -246,8 +247,7 @@ def ieeg_sidecars(info: dict, entry: "PlanEntry", schema: "Schema", *, stem: str
         "RecordingDuration": round(info["n_times"] / info["sfreq"], 6) if info["sfreq"] else na,
         "RecordingType": "continuous",
         "ECOGChannelCount": counts.get("ecog", 0),
-        "SEEGChannelCount": counts.get("seeg", 0),
-        "DBSChannelCount": counts.get("dbs", 0),
+        "SEEGChannelCount": counts.get("seeg", 0),  # BIDS 1.11.2 has no DBS count key
     }
     unit = NWB_UNITS.get(str(info.get("unit", "")).lower(), "V")
     out: dict[str, Any] = {
@@ -287,7 +287,9 @@ def _resave_split(parts: list[Path], out_name: str, scratch: Path) -> list[Path]
     tmp.mkdir(parents=True)
     raw = mne.io.read_raw_fif(parts[0], preload=False, allow_maxshield=True, verbose="error")
     target = tmp / _SPLIT.sub("_", out_name)
-    raw.save(target, fmt=raw.orig_format, split_size=mbw._FIFF_SPLIT_SIZE, split_naming="bids", overwrite=True,
+    # the split size MNE-BIDS used (a private name: MNE's own default when it is gone)
+    split_size = getattr(mbw, "_FIFF_SPLIT_SIZE", FIF_SPLIT_SIZE)
+    raw.save(target, fmt=raw.orig_format, split_size=split_size, split_naming="bids", overwrite=True,
              verbose="error")
     del raw
     return sorted(tmp.iterdir())

@@ -14,7 +14,7 @@ LOCKED_FIELDS = {"id", "series_idx", "subject_idx", "session_idx"}
 # brainlife_by_person and the indices) is derived: planner.apply_plan_edits re-derives it after every edit.
 EDITABLE_FIELDS = {"subject": "label", "session": "label?", "datatype": "str?", "suffix": "str?",
                    "entities": "dict", "deface": "bool", "exclude": "bool", "brainlife_datatype": "str?",
-                   "brainlife_tags": "list", "ephys_format": "str?", "keep_headshape": "bool",
+                   "brainlife_tags": "list", "ephys_format": "str?", "keep_headshape": "bool", "channel_types": "dict",
                    "sample_type": "str?", "pixel_size": "sizes?", "pixel_size_units": "unit?"}
 PIXEL_SIZE_UNITS = ("mm", "um", "nm")
 _LABEL = re.compile(r"^[a-zA-Z0-9]+$")
@@ -81,6 +81,9 @@ class PlanEntry:
     keep_headshape: bool = False  # ephys (meg, eeg): keep the head-shape digitization points
     event_counts: dict[str, int] = field(default_factory=dict)  # ephys: event label (after coding) -> count
     empty_room: str | None = None  # ephys meg: the id of the paired sub-emptyroom entry
+    # ephys from NWB: electrode group (generated name, group_001) -> channel type (seeg / ecog / dbs), guessed
+    # from the group's name and description; the reviewer may change the values (not the groups)
+    channel_types: dict[str, str] = field(default_factory=dict)
     # micr: the pixel size (x, y[, z]) in pixel_size_units, from the source or the reviewer; None when
     # the source does not give every spatial axis (the entry is then unknown until the reviewer sets it)
     pixel_size: list[float] | None = None

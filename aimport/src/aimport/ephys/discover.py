@@ -23,11 +23,12 @@ FAMILIES = ("edf", "bdf", "gdf", "brainvision", "eeglab", "cnt", "egi", "nihon",
             "bti", "kit", "nirx", "hitachi", "snirf", "nwb", "blackrock", "unsupported")
 EPHYS_VOCAB = ("eeg", "meg", "ieeg", "nirs", "fnirs", "emg", "rest", "resting", "task", "run", "noise", "emptyroom",
                "erm", "sleep", "oddball", "mmn", "motor", "tapping", "auditory", "visual", "faces", "nback",
-               "eyes", "open", "closed",
-               # file extensions, so they are not read as names
-               "edf", "bdf", "gdf", "vhdr", "vmrk", "fdt", "fif", "snirf", "nwb", "sqd", "con", "cnt", "lay",
-               "hdr", "wl1", "wl2", "evt", "tri", "ds", "mff", "mefd", "nev", "ns1", "ns2", "ns3", "ns4",
-               "ns5", "ns6", "set", "pos", "hsp", "mrk", "elp")
+               "eyes", "open", "closed")
+# file extensions, so they are not read as names in paths
+EPHYS_EXTENSIONS = ("edf", "bdf", "gdf", "vhdr", "vmrk", "fdt", "fif", "snirf", "nwb", "sqd", "con", "cnt", "lay",
+                    "hdr", "wl1", "wl2", "evt", "tri", "ds", "mff", "mefd", "nev", "ns1", "ns2", "ns3", "ns4",
+                    "ns5", "ns6", "set", "pos", "hsp", "mrk", "elp")
+EPHYS_VOCAB = EPHYS_VOCAB + EPHYS_EXTENSIONS
 VOCAB = names.VOCAB + EPHYS_VOCAB
 
 DATATYPES = ("eeg", "meg", "ieeg", "nirs", "emg")

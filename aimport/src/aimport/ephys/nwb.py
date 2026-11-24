@@ -8,8 +8,10 @@ samples (and timestamps) from the source, chunk by chunk (``CHUNK_BYTES`` per re
 - ``session_description="n/a"``, a new ``identifier`` (uuid4), ``session_start_time``,
   ``timestamps_reference_time`` and ``file_create_date`` all ``1900-01-01T00:00:00+00:00``;
 - ``subject`` reduced to ``subject_id`` (the BIDS label), ``species`` and ``sex``;
-- electrodes ``location`` and ``group_name`` through ``scrub.redact``, electrode ``label`` values through the
-  channel rule (``renames``); one device ``amplifier``; group descriptions ``n/a``;
+- electrode ``location`` kept only when it is made of anatomical words (``ANATOMY_WORDS``), else ``n/a``;
+  electrode groups, series and non-standard interval tables get generated names (``group_001``,
+  ``ElectricalSeries``, ``intervals_001``); electrode ``label`` values through the channel rule
+  (``renames``); one device ``amplifier``; group descriptions ``n/a``;
 - every ``TimeIntervals`` table rebuilt with ``start_time``, ``stop_time`` and a coded ``label`` column only;
 - nothing under ``/processing``, ``/analysis``, ``/stimulus``; no cached ``/specifications`` (readers use
   their own core and hdmf-common schema), and ``_prune`` drops any namespace other than those two.
@@ -44,8 +46,19 @@ SEX = {"M": 1, "F": 2}
 TYPE_WORDS = (("dbs", "dbs"), ("depth", "seeg"), ("seeg", "seeg"), ("shaft", "seeg"), ("grid", "ecog"),
               ("strip", "ecog"), ("ecog", "ecog"))
 DEFAULT_TYPE = "seeg"
+CHANNEL_TYPES = ("seeg", "ecog", "dbs")
+STANDARD_TABLES = ("trials", "epochs", "invalid_times")
+# words an electrode location may hold to be written (anything else is n/a): brain regions and sides
+ANATOMY_WORDS = frozenset("""
+cortex cortical subcortical gray grey white matter frontal temporal parietal occipital insula insular cingulate
+anterior posterior superior inferior middle medial lateral mesial left right l r lh rh hemisphere lobe gyrus
+sulcus pole hippocampus hippocampal amygdala parahippocampal entorhinal fusiform lingual cuneus precuneus
+precentral postcentral central orbitofrontal orbital prefrontal premotor motor sensory sensorimotor
+supplementary area thalamus thalamic caudate putamen pallidus globus nucleus subthalamic accumbens striatum
+basal ganglia cerebellum cerebellar brainstem pons midbrain ventricle opercular operculum rectus angular
+supramarginal calcarine heschl transverse dorsal ventral rostral caudal anteromedial unknown and of
+""".split())
 PYNWB_DEFAULTS = frozenset({"no description", "no comments"})
-_SAFE_NAME = re.compile(r"^[A-Za-z0-9_]{1,32}$")
 
 
 def _text(value) -> str:
@@ -117,14 +130,40 @@ def channel_names(f) -> list[str]:
     return [f"ch{i + 1:03d}" for i in range(n)]
 
 
-def channel_types(f) -> list[str]:
-    """seeg / ecog / dbs per electrode, from its group's name and description (default seeg)."""
+def group_names(f) -> dict[str, str]:
+    """Original electrode group name -> the generated one (``group_001``, ... in order of first use)."""
+    out: dict[str, str] = {}
+    for g in _electrodes(f).get("group_name", []):
+        out.setdefault(g, f"group_{len(out) + 1:03d}")
+    return out
+
+
+def group_types(f) -> dict[str, str]:
+    """Generated group name -> the guessed channel type (seeg / ecog / dbs, from the group's name and
+    description; default seeg). The plan shows it (``PlanEntry.channel_types``) and the reviewer may edit it."""
     cols = _electrodes(f)
-    out = []
+    names = group_names(f)
+    out: dict[str, str] = {}
     for name, desc in zip(cols.get("group_name", []), cols.get("group_description", [])):
         low = f"{name} {desc}".lower()
-        out.append(next((t for word, t in TYPE_WORDS if word in low), DEFAULT_TYPE))
+        out.setdefault(names[name], next((t for word, t in TYPE_WORDS if word in low), DEFAULT_TYPE))
     return out
+
+
+def channel_types(f, types: dict[str, str] | None = None) -> list[str]:
+    """seeg / ecog / dbs per electrode: ``types`` (generated group name -> type, the plan's) over the guess."""
+    cols = _electrodes(f)
+    names = group_names(f)
+    guessed = group_types(f)
+    chosen = {**guessed, **{k: v for k, v in (types or {}).items() if v in CHANNEL_TYPES}}
+    return [chosen[names[g]] for g in cols.get("group_name", [])]
+
+
+def safe_location(text: str) -> str:
+    """The location when every word of it is an anatomical word, else ``n/a``."""
+    words = re.split(r"[^a-z]+", str(text).lower())
+    words = [w for w in words if w]
+    return str(text).strip() if words and all(w in ANATOMY_WORDS for w in words) else NA
 
 
 def _region(series) -> list[int]:
@@ -234,15 +273,16 @@ def subject_id(path: Path) -> str | None:
         return _text(ds[()]).strip() or None if ds is not None else None
 
 
-def recording_channels(path: Path) -> tuple[list[str], list[str]]:
-    """(names, types) of the first ElectricalSeries' channels, in data column order."""
+def recording_channels(path: Path, types: dict[str, str] | None = None) -> tuple[list[str], list[str]]:
+    """(names, types) of the first ElectricalSeries' channels, in data column order (``types``: the plan's
+    generated group name -> type)."""
     import h5py
 
     with h5py.File(path, "r") as f:
         series = _series(f)
         if not series:
             return [], []
-        names, types = channel_names(f), channel_types(f)
+        names, types = channel_names(f), channel_types(f, types)
         region = _region(series[0])
     return ([names[i] if i < len(names) else f"ch{i + 1:03d}" for i in region],
             [types[i] if i < len(types) else DEFAULT_TYPE for i in region])
@@ -295,6 +335,22 @@ def collect(t, path: Path) -> None:
             for name in ephys:
                 if _ntype(ephys[name]) == "ElectrodeGroup":
                     t.text(_text(ephys[name].attrs.get("description", "")))
+                    location = _text(ephys[name].attrs.get("location", ""))
+                    if safe_location(location) == NA:
+                        t.text(location)
+        cols = _electrodes(f)
+        for location in set(cols.get("location", [])):
+            if safe_location(location) == NA:
+                t.text(location)
+        for name in set(cols.get("group_name", [])):
+            t.label(name)  # group names are never written (generated names): harvested for redaction elsewhere
+        acq = f.get("acquisition")
+        for name in (acq or {}):
+            t.label(name)
+        group = f.get("intervals")
+        for name in (group or {}):
+            if name not in STANDARD_TABLES:
+                t.label(name)
         devices = f.get("general/devices")
         if devices is not None:
             for name in devices:
@@ -346,17 +402,22 @@ def _iterator(ds, chunk_bytes: int):
     return _Rows(ds)
 
 
-def _safe_name(name: str, terms: set[str], fallback: str) -> str:
-    return name if _SAFE_NAME.fullmatch(name) and redact(name, terms) == name else fallback
+def _location(text: str, terms: set[str]) -> str:
+    """An anatomical location (``safe_location``) that also holds no run term, else ``n/a``."""
+    loc = safe_location(text)
+    return loc if loc == NA or redact(loc, terms) == loc else NA
 
 
 def write(src: Path, dest: Path, subject_label: str, labels: dict[str, str], renames: dict[str, str], *,
-          terms: set[str] | None = None, chunk_bytes: int = CHUNK_BYTES) -> dict:
+          terms: set[str] | None = None, chunk_bytes: int = CHUNK_BYTES,
+          group_types: dict[str, str] | None = None) -> dict:
     """Write a de-identified NWB file at ``dest``; returns what the BIDS sidecars need (``ieeg_sidecars``).
 
     ``labels``: normalised original row text -> the label written (``events.label``); ``renames``: original
-    electrode label -> new name (channels.json inverted).
+    electrode label -> new name (channels.json inverted). ``group_types``: the plan's generated group name ->
+    channel type (seeg / ecog / dbs), over the guess.
     """
+    group_types_ = group_types
     import h5py
     from pynwb import NWBHDF5IO, NWBFile
     from pynwb.ecephys import ElectricalSeries
@@ -371,7 +432,8 @@ def write(src: Path, dest: Path, subject_label: str, labels: dict[str, str], ren
             raise ValueError("no ElectricalSeries in the NWB file")
         cols = _electrodes(f)
         names = [renames.get(n, n) for n in channel_names(f)]
-        types = channel_types(f)
+        types = channel_types(f, group_types_)
+        generated = group_names(f)
         rows = intervals(f)
         subj = f.get("general/subject")
         species = _text(subj["species"][()]).strip() if subj is not None and "species" in subj else None
@@ -387,15 +449,14 @@ def write(src: Path, dest: Path, subject_label: str, labels: dict[str, str], ren
         groups: dict[str, Any] = {}
         for g, loc in zip(cols["group_name"], cols.get("location", [NA] * n)):
             if g not in groups:
-                new = _safe_name(g, terms, f"group_{len(groups) + 1:03d}")
-                groups[g] = nwb.create_electrode_group(name=new, description=NA, location=redact(loc, terms),
-                                                       device=device)
+                groups[g] = nwb.create_electrode_group(name=generated[g], description=NA,
+                                                       location=_location(loc, terms), device=device)
         nwb.add_electrode_column(name="label", description="electrode label")
         coords = {k: cols.get(k) for k in ("x", "y", "z", "imp")}
         for i in range(n):
             kw = {k: (v[i] if v else None) for k, v in coords.items() if v}
             nwb.add_electrode(group=groups[cols["group_name"][i]],
-                              location=redact(cols.get("location", [NA] * n)[i], terms) or NA,
+                              location=_location(cols.get("location", [NA] * n)[i], terms),
                               label=names[i], **kw)
 
         written_series = []
@@ -403,7 +464,7 @@ def write(src: Path, dest: Path, subject_label: str, labels: dict[str, str], ren
             region = _region(s)
             data_attrs = s["data"].attrs
             kw: dict[str, Any] = dict(
-                name=_safe_name(s.name.rsplit("/", 1)[-1], terms, f"ElectricalSeries{k}"),
+                name="ElectricalSeries" if k == 1 else f"ElectricalSeries{k}",
                 data=_iterator(s["data"], chunk_bytes),
                 electrodes=nwb.create_electrode_table_region(region, "the recorded electrodes"),
                 conversion=float(data_attrs.get("conversion", 1.0)),
@@ -423,8 +484,7 @@ def write(src: Path, dest: Path, subject_label: str, labels: dict[str, str], ren
         for table, start, stop, text in rows:
             tables.setdefault(table, []).append((start, stop, events.label(text, labels)))
         for k, (table, items) in enumerate(tables.items(), 1):
-            name = table if table in ("trials", "epochs", "invalid_times") else \
-                _safe_name(table, terms, f"intervals_{k:03d}")
+            name = table if table in STANDARD_TABLES else f"intervals_{k:03d}"
             ti = TimeIntervals(name=name, description=NA)
             ti.add_column(name="label", description="event label (coded)")
             for start, stop, lab in items:
@@ -468,7 +528,7 @@ def _prune(path: Path) -> None:
                     del spec[ns]
 
 
-def to_raw(path: Path):
+def to_raw(path: Path, group_types: dict[str, str] | None = None):
     """The first ElectricalSeries as an ``mne.io.RawArray`` (loaded: the plan's load limit applies), for NWB
     input written as BrainVision or EDF. Channel names are the electrode labels, types from the groups,
     annotations the interval rows (raw text: ``deid.clean`` codes them), no measurement date."""
@@ -480,7 +540,7 @@ def to_raw(path: Path):
         if not series:
             raise ValueError("no ElectricalSeries in the NWB file")
         s = series[0]
-        names, types = recording_channels(path)
+        names, types = recording_channels(path, group_types)
         sfreq = _sfreq(s)
         attrs = s["data"].attrs
         data = np.asarray(s["data"][()], dtype=float)
@@ -496,3 +556,11 @@ def to_raw(path: Path):
         raw.set_annotations(mne.Annotations([r[1] for r in rows], [r[2] - r[1] for r in rows],
                                             [r[3] for r in rows]), verbose="error")
     return raw
+
+
+def guessed_types(path: Path) -> dict[str, str]:
+    """``group_types`` of an NWB file on disk (generated group name -> guessed channel type)."""
+    import h5py
+
+    with h5py.File(path, "r") as f:
+        return group_types(f)

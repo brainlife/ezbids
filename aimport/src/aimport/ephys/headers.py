@@ -18,7 +18,7 @@ from typing import Any, Iterable
 
 from ..micr import names
 from ..scrub import MIN_TERM_LEN, _date_forms
-from .discover import VOCAB, Recording
+from .discover import EPHYS_EXTENSIONS, VOCAB, Recording
 from .events import is_safe
 
 _ACQ_TEXT_KEY = re.compile(r"^_(run_|seq_|operator|subject|patient|comment|descr|site|institut|user|study|procedure)",
@@ -38,10 +38,18 @@ SYSTEM_WORDS = ("ctf", "kit", "bti", "4d", "egi", "nirx", "neuromag", "megin", "
                 "kohden", "nihonkohden", "hitachi", "blackrock", "snirf", "nwb", "natus", "micromed", "mef",
                 "mff", "geodesic", "yokogawa", "ricoh", "artinis", "shimadzu", "mne", "matlab", "fieldtrip")
 # generic file-name words of vendor folders (NIRx "nirx_15_3_recording", "<name>_config.txt") and companion
-# extensions: as terms they would redact sidecar keys such as RecordingDuration
+# extensions: as path terms they would redact sidecar keys such as RecordingDuration. Paths only (HARVEST_VOCAB):
+# in a header or metadata field the same word ("Dat", "Mat") may be a name and stays a term
 FILE_WORDS = ("recording", "recordings", "config", "probeinfo", "avg", "inf", "tpl", "txt", "dat", "evt", "hdr",
-              "wl1", "wl2", "set", "mat", "csv", "json", "tsv")
-_VOCAB = _VOCAB | frozenset(SYSTEM_WORDS) | frozenset(FILE_WORDS)
+              "wl1", "wl2", "set", "mat", "csv", "json", "tsv",
+              # BIDS entity keys of an input already in BIDS (sub-01_task-rest_acq-hd_eeg.edf)
+              "acq", "ce", "rec", "dir", "echo", "flip", "inv", "mt", "part", "space", "split", "desc", "trc", "stain",
+              "chunk", "mod", "hemi", "res", "den", "tracksys", "nuc", "voi")
+# file extensions and file-name words: skipped in paths (HARVEST_VOCAB) but not in header or metadata text, where
+# the same word ("Dat", "Mat", "Set") may be a name
+PATH_ONLY_WORDS = frozenset(FILE_WORDS) | frozenset(EPHYS_EXTENSIONS) | frozenset({
+    "ome", "zarr", "tif", "tiff", "btf", "nii", "gz", "dat", "mat", "json", "log", "svs", "czi", "nd2", "lif", "vsi"})
+_VOCAB = (_VOCAB - PATH_ONLY_WORDS) | frozenset(SYSTEM_WORDS)
 HARVEST_VOCAB = tuple(VOCAB) + SYSTEM_WORDS + FILE_WORDS
 _MARKER_CODE = re.compile(r"^[SR]\s*\d{1,4}$")
 _TIME = re.compile(r"^\d{1,2}:\d{2}(:\d{2})?([.,]\d+)?$")

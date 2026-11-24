@@ -131,11 +131,13 @@ def _read(rec: Recording, input_dir: Path) -> tuple[dict | None, set[str], str |
             terms = headers.harvest(rec, input_dir, None)
             ch_names, ch_types = nwb.recording_channels(input_dir / rec.rel)
             his = nwb.subject_id(input_dir / rec.rel)
+            group_types = nwb.guessed_types(input_dir / rec.rel)
         except Exception as exc:  # noqa: BLE001 - one unreadable recording must not stop the scan
             log.warning("NWB recording could not be read: %s", type(exc).__name__)
             return None, _path_terms(rec), UNREADABLE_REASON, [], [], []
         view = info.view()
-        view.update(meas_date=_iso(info.meas_date), birthday=_iso(info.birthday), **({"his_id": his} if his else {}))
+        view.update(meas_date=_iso(info.meas_date), birthday=_iso(info.birthday), group_types=group_types,
+                    **({"his_id": his} if his else {}))
         return view, terms, None, ch_names, ch_types, list(info.annotations)
     try:
         raw = readers.open_raw(rec, input_dir)
@@ -335,14 +337,14 @@ def _apply_agent(mp: ModulePlan, records: list[dict], kinds: list[tuple[str | No
             continue
         i = g.series_idx - EPHYS_INDEX_BASE
         hints = set(next(s for s in view if s.series_idx == g.series_idx).fields["Hints"])
-        task, acq = g.entities.get("task"), g.entities.get("acq")
+        task, acq = g.entities.get("task"), g.entities.get("acquisition")
         if g.datatype == kinds[i][0]:
             out[i] = {"confidence": max(AGREE_MIN, g.confidence), "note": ""}
             if entities[i].get("task") == UNKNOWN_TASK and task and task == task.lower() and task in hints \
                     and _usable(task, terms):
                 entities[i]["task"] = task
-            if acq and "acq" not in entities[i] and _usable(acq, terms):
-                entities[i]["acq"] = acq
+            if acq and "acquisition" not in entities[i] and _usable(acq, terms):
+                entities[i]["acquisition"] = acq
         elif g.confidence >= AGENT_MIN:
             out[i] = {"confidence": DISAGREE_CONFIDENCE, "note": _agent_text(_guess_text(g), terms)}
     return out
@@ -569,7 +571,7 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
             ents = {"task": task}
         acq = meta.get("acq") or _entity(rec["rel"], "acq")
         if acq and _usable(acq, terms):
-            ents["acq"] = acq
+            ents["acquisition"] = acq  # the schema's entity name, as MRI and micr entries use
         entities.append(ents)
 
     formats = [_default_format(dt, rec["family"]) if rec.get("info") is not None and not rec.get("error") else ""
@@ -582,7 +584,7 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
     groups: dict[tuple, list[int]] = defaultdict(list)
     for i in range(len(records)):
         if formats[i]:
-            groups[(originals[i], sessions[i], entities[i]["task"], entities[i].get("acq"), kinds[i][0])].append(i)
+            groups[(originals[i], sessions[i], entities[i]["task"], entities[i].get("acquisition"), kinds[i][0])].append(i)
     for idxs in groups.values():
         given = [(records[i].get("meta") or {}).get("run") or _entity(records[i]["rel"], "run") for i in idxs]
         if all(r and _usable(r, terms) for r in given) and len(set(given)) == len(given):
@@ -636,6 +638,7 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
             reason=d["reason"], deface=False, exclude=d["exclude"], status=d["status"],
             description=describe(rec, fmt), modality="ephys", ephys_format=fmt,
             event_counts=dict(Counter(rec.get("event_labels") or [])),
+            channel_types=dict(info.get("group_types") or {}) if d["status"] == "ok" else {},
         ))
         if i in agent and d["status"] == "ok":
             entries[-1].confidence = agent[i]["confidence"]
@@ -789,7 +792,7 @@ def _open_clean(e: PlanEntry, rec: dict, input_dir: Path, renames: dict[str, str
     if rec["family"] == "nwb":
         from . import nwb
 
-        raw = nwb.to_raw(input_dir / rec["rel"])
+        raw = nwb.to_raw(input_dir / rec["rel"], e.channel_types)
     else:
         raw = readers.open_raw(_recording(rec), input_dir, headshape=e.keep_headshape)
     if rec["family"] in ("edf", "bdf"):  # MNE reads every EDF channel as eeg: the planned types by label prefix
@@ -884,7 +887,7 @@ def write_entries(plan: "Plan", work: Path, input_dir: Path, terms: set[str], ke
             if e.ephys_format == "NWB":
                 written_labels = {k2: event_names.get(v, v) for k2, v in label_map.items()}
                 rels = write_nwb(e, input_dir / rec["rel"], scratch, guarded, schema, terms, labels=written_labels,
-                                 renames=renames, meta=meta)
+                                 renames=renames, meta=meta, group_types=e.channel_types)
             else:
                 raw = _open_clean(e, rec, input_dir, renames, label_map, event_names)
                 if e.datatype == "nirs":

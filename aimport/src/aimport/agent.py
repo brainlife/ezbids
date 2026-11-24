@@ -70,7 +70,7 @@ Reply with ONLY a JSON array, no prose, one object per series:
 [{{"series_idx": 0, "datatype": "micr", "suffix": "CONF", "entities": {{}},
 "confidence": 0.9, "reason": "one short sentence"}}]"""
 
-EPHYS_ENTITIES = ("task", "acq", "run")
+EPHYS_ENTITIES = ("task", "acquisition", "run")
 EPHYS_GENERATED = frozenset({"run"})
 
 EPHYS_CLASSIFY_SYSTEM = f"""You classify electrophysiology and optical recordings for a BIDS (Brain Imaging Data Structure) dataset.
