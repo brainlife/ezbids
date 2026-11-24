@@ -304,7 +304,7 @@ class _CountingHTTPFileSystem(HTTPFileSystem):
     ``close()`` or when the filesystem is collected. A pickled copy in this process (dask copies the
     zarr store when it builds a graph) is the same filesystem, so it shares the session."""
 
-    cachable = False  # fsspec's instance cache would hand a new caller another caller's counter
+    cacheable = False  # fsspec's instance cache would hand a new caller another caller's counter
 
     def __init__(self, counter: ByteCounter, asynchronous: bool = False):
         super().__init__(block_size=BLOCK_SIZE, client_kwargs={"trust_env": False},
