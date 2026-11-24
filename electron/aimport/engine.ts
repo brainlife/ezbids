@@ -140,8 +140,10 @@ async function startAimport(ctx: AimportContext, inputDir: string): Promise<Engi
     };
     delete env.AIMPORT_IN_CONTAINER;
 
+    // -I: ignore the user's PYTHON* settings and site dir; -B: never write .pyc into the (signed) app bundle
     const args = [
         '-I',
+        '-B',
         shim,
         'serve',
         '--input',

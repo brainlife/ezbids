@@ -95,6 +95,9 @@ for d in idlelib tkinter turtledemo ensurepip lib2to3; do
     rm -rf "$OUT/python/lib/python3.11/$d" "$OUT/python/Lib/$d"
 done
 
+# no bytecode is shipped (it would add ~115 MB); the app runs Python with -B,
+# so nothing is ever written into the (signed) bundle
+
 cat > "$OUT/VERSIONS.txt" <<EOF
 python ${PYTHON_VERSION} (uv ${UV_VERSION}), deps from aimport/uv.lock
 @bids/validator ${BIDS_VALIDATOR_VERSION} (deno ${DENO_VERSION} compile)
