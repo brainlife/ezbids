@@ -72,7 +72,14 @@
                     <el-button @click="sendOpenneuro">Send to <b>OpenNeuro</b></el-button>
                 </p>
 
-                <p style="background-color: var(--panel-muted); border-radius: 8px; padding: 20px; padding-top: 10px">
+                <p
+                    style="
+                        background-color: var(--panel-muted);
+                        border-radius: var(--panel-radius);
+                        padding: 20px;
+                        padding-top: 10px;
+                    "
+                >
                     If you have re-named the original DICOM patient names for your BIDS subject/session names, you can
                     download the mapping file.
                     <el-button type="text" @click="downloadSubjectMapping">Download Subject Mapping (.json)</el-button>
@@ -84,12 +91,19 @@
                 </p>
 
                 <h3>Citation</h3>
-                <div style="background-color: var(--panel-muted); border-radius: 8px; padding: 20px; padding-top: 10px">
+                <div
+                    style="
+                        background-color: var(--panel-muted);
+                        border-radius: var(--panel-radius);
+                        padding: 20px;
+                        padding-top: 10px;
+                    "
+                >
                     <p class="citation">
                         Levitas, D., Hayashi, S., Vinci-Booher, S., Heinsfeld, A., Bhatia, D., Lee, N., ... & Pestilli,
                         F. (2024). ezBIDS: Guided standardization of neuroimaging data interoperable with major data
                         archives and platforms. Scientific data, 11(1), 179.
-                        <a href="https://doi.org/10.1038/s41597-024-02959-0" target="_blank"
+                        <a href="https://doi.org/10.1038/s41597-024-02959-0"
                             >https://doi.org/10.1038/s41597-024-02959-0</a
                         >
                     </p>
@@ -143,6 +157,7 @@ import axios from '@/axios.instance';
 
 import { ElNotification } from 'element-plus';
 import { authRequired } from '@/lib';
+import { openExternal } from '@/externalPage';
 
 export default defineComponent({
     components: {
@@ -262,10 +277,11 @@ export default defineComponent({
 
         sendBrainlife(pipeline?: 'DWI') {
             const pipelineString = pipeline ? `&pipeline=${pipeline}` : '';
-            window.open(
-                `https://brainlife.io/projects#ezbids=${this.session._id}${pipelineString}`,
-                `_brainlife.${this.session._id}`
-            );
+            // shown in-app (a <webview> on the desktop, an iframe on the web; brainlife.io allows framing)
+            openExternal(`https://brainlife.io/projects#ezbids=${this.session._id}${pipelineString}`, {
+                title: 'Send to brainlife.io',
+                note: 'Pick or create a project to import this dataset into. Close the dialog when the import has started.',
+            });
         },
 
         async sendOpenneuro() {
@@ -276,7 +292,10 @@ export default defineComponent({
                 const url = `${this.config.apihost}/download/${this.session._id}/bids/${this.ezbids.datasetDescription.Name}?token=${shortLivedJWT}`;
 
                 const fullurl = new URL(url, document.baseURI).href;
-                window.open('https://openneuro.org/import?url=' + encodeURI(fullurl));
+                openExternal('https://openneuro.org/import?url=' + encodeURI(fullurl), {
+                    title: 'Send to OpenNeuro',
+                    note: 'Sign in to OpenNeuro in this window if it asks, then start the import.',
+                });
             } catch (e) {
                 console.error(e);
                 ElNotification({
@@ -304,7 +323,7 @@ export default defineComponent({
 .finalize-intro {
     margin-bottom: 1.25rem;
     padding: 1.35rem 1.5rem 1.5rem;
-    border-radius: 10px;
+    border-radius: var(--panel-radius);
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
     background: var(--el-fill-color-blank, #fff);
     box-shadow: none;
@@ -327,7 +346,7 @@ export default defineComponent({
 
 .finalize-card {
     padding: 1.1rem 1.25rem;
-    border-radius: 12px;
+    border-radius: var(--panel-radius);
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
     background: var(--el-bg-color, #fff);
     margin-bottom: 1rem;
@@ -346,7 +365,7 @@ export default defineComponent({
     padding: 0 28px;
     font-size: 15px;
     font-weight: 600;
-    border-radius: 8px;
+    border-radius: var(--panel-radius);
 }
 
 .status-title {
@@ -354,7 +373,7 @@ export default defineComponent({
 }
 
 .download {
-    border-radius: 10px;
+    border-radius: var(--panel-radius);
     background-color: #f5f7fa;
     font-size: 85%;
 }

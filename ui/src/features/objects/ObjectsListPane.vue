@@ -269,7 +269,7 @@ export default defineComponent({
 
 .subject-block {
     border: 1px solid var(--el-border-color-lighter, #ebeef5);
-    border-radius: 8px;
+    border-radius: var(--panel-radius);
     background: var(--el-fill-color-blank, #fff);
     overflow: hidden;
 }

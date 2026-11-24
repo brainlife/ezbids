@@ -1,32 +1,50 @@
 <template>
-    <el-footer class="footer">
-        <el-row style="height: 100%">
-            <el-col :span="1"></el-col>
-            <el-col :span="23" class="disclaimer"> © Pestillilab. All rights reserved. </el-col>
-        </el-row>
-    </el-footer>
+    <footer class="site-footer">
+        <div class="wrap row">
+            <span class="fbrand">
+                <BrandLockup size="sm" tone="auto" />
+                <span class="left">Part of brainlife.io · Pestilli Lab, The University of Texas at Austin</span>
+            </span>
+            <span class="links">
+                <a href="https://brainlife.io/docs/using_ezBIDS/">Docs</a> ·
+                <a href="https://brainlife.io/docs/using_aimport/">aimport</a> ·
+                <a href="https://github.com/brainlife/ezbids">GitHub</a> ·
+                <a href="https://bids-specification.readthedocs.io/en/v1.11.2/">BIDS v1.11.2</a> ·
+                <a href="https://brainlife.io/team/">Team</a>
+            </span>
+        </div>
+    </footer>
 </template>
 
 <script lang="ts">
 import { defineComponent } from 'vue';
+import BrandLockup from '@/components/brand/BrandLockup.vue';
 
-export default defineComponent({});
+export default defineComponent({
+    components: { BrandLockup },
+});
 </script>
 
 <style scoped>
-.footer {
-    padding: 0;
-    background-color: var(--nav-bg);
-    border-top: 1px solid var(--line);
-    color: var(--ink-2);
-    font-size: 0.85rem;
-    height: 10vh;
+/* landing-next SiteFooter: light, a hairline above, mark and credit left, links right */
+.site-footer {
+    border-top: 1px solid var(--rule);
+    padding-block: 36px;
+    font-size: 0.88rem;
+    color: var(--muted);
+    background: var(--bg);
 }
-
-.disclaimer {
-    width: 100%;
-    height: 100%;
+.row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+.fbrand {
     display: flex;
     align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
 }
 </style>

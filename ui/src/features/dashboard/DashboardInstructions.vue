@@ -5,19 +5,11 @@
             <h3 class="instructions-panel__subheading">Not sure what to do?</h3>
             <p class="instructions-panel__muted">
                 If you are new to ezBIDS, you can learn more by watching our
-                <a
-                    class="instructions-panel__link"
-                    href="https://brainlife.io/docs/tutorial/ezBIDS/"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                <a class="instructions-panel__link" href="https://brainlife.io/docs/tutorial/ezBIDS/"
                     ><strong>ezBIDS tutorial</strong></a
                 >
                 and taking a look at our
-                <a
-                    class="instructions-panel__link"
-                    href="https://brainlife.io/docs/using_ezBIDS/"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                <a class="instructions-panel__link" href="https://brainlife.io/docs/using_ezBIDS/"
                     ><strong>user documentation</strong></a
                 >.
             </p>
@@ -102,7 +94,7 @@ export default defineComponent({
     width: 100%;
     max-width: 100%;
     margin-top: 0.5rem;
-    border-radius: 8px;
+    border-radius: var(--panel-radius);
     overflow: hidden;
     aspect-ratio: 16 / 9;
     background: #000;

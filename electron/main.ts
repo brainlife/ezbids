@@ -10,6 +10,7 @@ import fs from 'fs';
 import net from 'net';
 import { spawn, ChildProcess } from 'child_process';
 import treeKill from 'tree-kill';
+import { enableInAppBrowsing } from './inAppBrowsing';
 
 const ENVIRONMENT = app.isPackaged ? 'production' : 'development';
 const USER_DATA_PATH = app.getPath('userData');
@@ -137,8 +138,10 @@ const startFrontend = (env: Record<string, string>): Promise<void> => {
         webPreferences: {
             preload: preloadPath,
             contextIsolation: true,
+            webviewTag: true, // other sites open in an in-app dialog, see inAppBrowsing.ts
         },
     });
+    enableInAppBrowsing(win);
 
     if (ENVIRONMENT === 'development') {
         win.webContents.openDevTools();

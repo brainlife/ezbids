@@ -58,6 +58,8 @@ declare module 'vue' {
 declare global {
     interface Window {
         electronAPI?: { getApiUrl: () => Promise<string> };
+        // desktop app: URLs the main process routed to the in-app dialog (electron/inAppBrowsing.ts)
+        ezbidsInApp?: { onOpen: (cb: (url: string) => void) => void };
         env: {
             API_HOST: string;
             IS_ELECTRON: string;
