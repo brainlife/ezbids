@@ -1,7 +1,7 @@
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { getDatasetName, tree } from './bids.utils';
+import { getDatasetName, telemetryUrl, tree } from './bids.utils';
 
 function withTempDir(prefix: string, run: (root: string) => void): void {
     const root = fs.mkdtempSync(path.join(os.tmpdir(), `ezbids-${prefix}-`));
@@ -129,5 +129,24 @@ describe('bids.utils', () => {
                 errSpy.mockRestore();
             }
         });
+    });
+});
+
+describe('telemetryUrl (master #182: telemetry off by default)', () => {
+    it('is off when EZBIDS_TELEMETRY_URL is unset or blank', () => {
+        expect(telemetryUrl({})).toBeUndefined();
+        expect(telemetryUrl({ EZBIDS_TELEMETRY_URL: '  ' })).toBeUndefined();
+    });
+
+    it('is on only when EZBIDS_TELEMETRY_URL is set', () => {
+        expect(telemetryUrl({ EZBIDS_TELEMETRY_URL: 'http://t.example/telemetry/' })).toBe(
+            'http://t.example/telemetry/'
+        );
+    });
+
+    it('is always off in the desktop app', () => {
+        expect(
+            telemetryUrl({ IS_ELECTRON: 'true', EZBIDS_TELEMETRY_URL: 'http://t.example/telemetry/' })
+        ).toBeUndefined();
     });
 });

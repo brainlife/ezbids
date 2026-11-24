@@ -58,3 +58,14 @@ export function getDatasetName(rootPath: string): string {
     }
     return name;
 }
+
+/**
+ * Telemetry is off by default. Setting EZBIDS_TELEMETRY_URL turns it on (never in the desktop app):
+ * the files are then created and POSTed best effort (10 s per attempt, two quick retries); a failure
+ * is only logged and never fails the step. (Port of master #182.)
+ */
+export function telemetryUrl(env: NodeJS.ProcessEnv = process.env): string | undefined {
+    if (env.IS_ELECTRON === 'true') return undefined;
+    const url = (env.EZBIDS_TELEMETRY_URL ?? '').trim();
+    return url || undefined;
+}

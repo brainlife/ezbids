@@ -170,6 +170,43 @@ export default defineComponent({
                 { title: 'Feedback', description: '', key: 'feedback' },
             ],
 
+            // sidebar steps, in page order
+            navGroups: [
+                {
+                    title: '',
+                    items: [
+                        { page: 'upload', label: 'Upload imaging data' },
+                        { page: 'description', label: 'Dataset description' },
+                    ],
+                },
+                {
+                    title: 'Dataset mappings',
+                    items: [
+                        { page: 'subject', label: 'Subjects / sessions' },
+                        { page: 'seriespage', label: 'Series mapping' },
+                        { page: 'event', label: 'Events' },
+                    ],
+                },
+                { title: '', items: [{ page: 'object', label: 'Dataset review' }] },
+                {
+                    title: 'Optional',
+                    items: [
+                        { page: 'deface', label: 'Deface' },
+                        { page: 'participant', label: 'Participants info' },
+                    ],
+                },
+                {
+                    title: '',
+                    items: [
+                        { page: 'finalize', label: 'Access BIDS data' },
+                        { page: 'feedback', label: 'Feedback' },
+                    ],
+                },
+            ],
+
+            // pages that lay out their own fixed work area; the rest sit in a white panel
+            fixedPages: ['seriespage', 'event', 'object', 'deface'],
+
             //item to open in niivue
             //niivueItem: undefined as IObjectItem|undefined,
             niivuePath: undefined as string | undefined,
@@ -215,7 +252,9 @@ export default defineComponent({
                 case 'upload':
                     return 'warning';
                 default:
-                    return 'info';
+                    // outlined, like brainlife-lite's secondary actions (Element 1.2 paints typed buttons
+                    // with an inline background, so a CSS override of the info type doesn't take)
+                    return 'default';
             }
         },
 
@@ -304,6 +343,10 @@ export default defineComponent({
     },
 
     methods: {
+        pageIndex(page: string): number {
+            return this.pages.indexOf(page);
+        },
+
         next() {
             this.mapObjects();
             this.$store.commit('organizeObjects');

@@ -1,3 +1,4 @@
+import './runtimeEnv'; // first: sets window.env when no runtime-env.js / preload provided it
 import { createApp } from 'vue';
 import VueGtag from 'vue-gtag-next';
 import App from './App.vue';
@@ -77,11 +78,14 @@ async function init() {
     const app = createApp(App);
     app.use(router);
     app.use(store);
-    app.use(VueGtag, {
-        property: {
-            id: 'G-J5H19RMNCT',
-        },
-    });
+    // Google Analytics only on the web site: the desktop app sends no telemetry (PI decision)
+    if (window.env?.IS_ELECTRON !== 'true') {
+        app.use(VueGtag, {
+            property: {
+                id: 'G-J5H19RMNCT',
+            },
+        });
+    }
 
     app.component('font-awesome-icon', FontAwesomeIcon);
     app.mount('#app');

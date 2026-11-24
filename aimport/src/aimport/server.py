@@ -27,6 +27,7 @@ import logging
 import os
 import secrets
 import shutil
+import re
 import tempfile
 import threading
 import time
@@ -34,11 +35,12 @@ import uuid
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict
 from pathlib import Path, PurePosixPath
-from typing import Any, Literal
+from typing import Any, Literal, Sequence
+from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from pydantic import BaseModel, ConfigDict
 
 from .agent import client_from_env
@@ -51,14 +53,27 @@ from .ancillary import (
     write_ancillary,
 )
 from .deface import deface
-from .ezbids_runner import CoreResult, parse_core, run_ezbids, stage_input
+from . import modality
+from .ezbids_runner import CoreResult, EzbidsError, has_files, parse_core, run_ezbids, stage_input
+from .modality import (
+    CLAIM_FILE,
+    EMPTY_CORE,
+    Claim,
+    claim_terms,
+    claimed_roots,
+    module_dir,
+    normalize_root,
+    redact_paths,
+)
 from .plan import NEVER_KEEP, OLD_PLAN, Plan
 from .planner import DATASET_NAME_MAX, README_MAX, apply_plan_edits, build_plan, run_terms
+from .micr import reference as micr_reference
+from .micr.reference import CHUNK_MAP_NAME, write_chunk_map  # in <work>/output/, next to bids/
 from .pseudonyms import KeyLockedError, PseudonymKey
 from .schema import load_schema
-from .scrub import redact
+from .scrub import REDACTED, redact
 from .validate import validate_bids
-from .viewer import VIEWER_CSP, entry_state, index_page, neuroglancer_client_dir, state_url
+from .viewer import VIEWER_CSP, entry_state, index_page, neuroglancer_client_dir, ngff_parts, oct_group, state_url
 from .writer import _Writer, write_bids
 
 log = logging.getLogger("aimport")
@@ -69,6 +84,9 @@ DONE = ("validated", "invalid")  # executed: the output matches the plan (invali
 MAX_ISSUES = 200  # validator issues listed in the status (the counts are always complete)
 MAX_EVENTS = 500
 OUTPUT_STATE = "output-state.json"
+NOTHING_TO_WRITE = "nothing to write: every entry is excluded or unsupported"
+# preprocess.sh's error when the staged input has no MRI, PET or MEG file (only tables and text)
+EZBIDS_NO_IMAGING = "Could not find any MRI, PET, or MEG imaging files"
 # subject_idx -> the subject ID the key records for that subject's original (pseudonyms only: the originals
 # stay in the key), so an edited subject ID can be recorded in the key for the right person on execute
 SUBJECT_IDS = "subject-ids.json"
@@ -76,6 +94,14 @@ VIEWER_PREFIXES = ("/viewer/", "/qa/")  # the browser pages: they also accept th
 VIEWER_COOKIE = "aimport_viewer_"  # + a random suffix per server run: cookies ignore the port, so two engines on
 # the same host would otherwise replace each other's session
 VIEWER_CODE_TTL_S = 60
+# /qa/data for a referenced OME-Zarr chunk at a URL: the most bytes one proxied response may carry
+QA_MAX_RESPONSE_BYTES = 64 * 2**20
+# decoded (and stored) bytes of the pyramid level read through the chunk map for a reference's display window
+QA_WINDOW_MAX_BYTES = 32 * 2**20
+# the level a reference's display window is computed from: largest x/y size closest to this, within the cap
+QA_WINDOW_TARGET_SIDE = 1024
+NO_SUCH_CHUNK = "no such chunk"
+_CONTENT_RANGE = re.compile(r"bytes (?:[0-9]+-[0-9]+/(?:[0-9]+|\*)|\*/[0-9]+)")
 # set explicitly: the Python mimetypes table varies by version and platform, and responses are nosniff
 MEDIA_TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css",
                ".wasm": "application/wasm", ".map": "application/json", ".json": "application/json",
@@ -164,6 +190,22 @@ class ScanBody(BaseModel):
     existing_subjects: list[str] = []
     existing_sessions: dict[str, list[str]] = {}  # subject id -> session labels already in the project
     target: Literal["bids", "datatypes"] = "bids"
+    # remote sources (https:// or s3://) for the modality modules; local-only: never written to scan.json
+    remote: list[str] = []
+
+
+REMOTE_SCHEMES = ("https", "s3")
+
+
+def _check_remote(urls: list[str]) -> None:
+    """422 unless every remote source is an https:// or s3:// URL (the URL itself is never echoed)."""
+    for url in urls:
+        try:
+            parts = urlsplit(url.strip())
+        except ValueError:
+            parts = None
+        if parts is None or parts.scheme.lower() not in REMOTE_SCHEMES or not parts.netloc:
+            raise HTTPException(422, "remote sources must be https:// or s3:// URLs")
 
 
 class PatchBody(BaseModel):
@@ -186,6 +228,8 @@ class Server:
         self.staged = work_dir / "ezbids"
         self.out = work_dir / "output" / "bids"
         self.failed_out = work_dir / "output" / "bids.failed"  # what a failed execute left: never uploaded
+        # where the chunks of referenced OME-Zarr arrays are (input paths, URLs): local only, never uploaded
+        self.chunk_map = work_dir / "output" / CHUNK_MAP_NAME
         self.ezbids_log = work_dir / "ezbids.log"  # ezBIDS's own output (identifying; local only)
         self.pre = work_dir / "pre-deface"
         self.lock = threading.RLock()  # stage, events, key
@@ -195,9 +239,12 @@ class Server:
         self.key: PseudonymKey | None = None
         self.core: CoreResult | None = None
         self.terms: set[str] | None = None
+        self.scan_claims: list[Claim] = []  # the running scan's claims, before (or without) claim.json
         self.schema = None
         self.thread: threading.Thread | None = None
         self.status: dict = {"stage": "idle", "message": ""}
+        self._stream_client: Any = None  # the QA chunk proxy's pooled httpx client: this app's own, closed with it
+        self._stream_lock = threading.Lock()
         self.viewer_codes: dict[str, float] = {}  # one-time code -> expiry (_now())
         self.viewer_sessions: set[str] = set()  # session cookies, for this server run
         self.viewer_cookie = VIEWER_COOKIE + secrets.token_hex(4)  # the session cookie's name, for this run
@@ -268,8 +315,43 @@ class Server:
                 core = self.get_core()
                 if core is None:
                     return None
-                self.terms = run_terms(core, self.input_dir)
+                terms = run_terms(core, self.input_dir, exclude=self.claimed_roots())
+                for m in modality.modules():
+                    terms |= m.terms(module_dir(self.work, m))
+                self.terms = terms
             return self.terms
+
+    # --- modality modules ---
+
+    def claims(self) -> dict[str, Claim]:
+        """Each registered module's claim, as saved by the scan (local-only: never served)."""
+        out = {}
+        for m in modality.modules():
+            path = module_dir(self.work, m) / CLAIM_FILE
+            out[m.name] = Claim.load(path) if path.exists() else Claim()
+        return out
+
+    def claimed_roots(self) -> list[str]:
+        return claimed_roots(self.claims().values())
+
+    def hidden(self) -> tuple[set[str], set[str]]:
+        """(path prefixes, terms) never shown: the input folder, the claimed roots and remote URLs (whole
+        paths, tails included), and the claimed roots' path components."""
+        try:
+            claims = list(self.claims().values())
+        except Exception:
+            claims = []
+        claims += self.scan_claims
+        inp = Path(self.input_dir)
+        prefixes = {str(inp), os.path.abspath(inp), str(inp.resolve())}
+        for c in claims:
+            prefixes.update(c.roots)
+            prefixes.update(c.remote)
+        return prefixes, claim_terms(claims)
+
+    def clear_modules(self) -> None:
+        for m in modality.modules():
+            _clear(module_dir(self.work, m))
 
     def clean(self, text: str) -> str:
         """text with the run's terms redacted; text that cannot be checked is withheld."""
@@ -279,7 +361,8 @@ class Server:
             terms = None
         if terms is None:
             return "(details withheld: the identifying terms of this run are not known yet)"
-        return redact(text, terms)
+        prefixes, hidden = self.hidden()
+        return redact(redact_paths(text, prefixes, REDACTED), terms | hidden)
 
     def clean_obj(self, value: Any) -> Any:
         """value (strings anywhere inside) with the run's terms redacted; reviewer text is stored this way."""
@@ -385,6 +468,19 @@ class Server:
 
     def close(self) -> None:
         self.release_key()
+        with self._stream_lock:
+            client, self._stream_client = self._stream_client, None
+        if client is not None:
+            client.close()
+
+    def stream_client(self) -> Any:
+        """This app's pooled httpx client for the QA chunk proxy (remote.new_stream_client), made on first use."""
+        from .micr.remote import new_stream_client
+
+        with self._stream_lock:
+            if self._stream_client is None:
+                self._stream_client = new_stream_client()
+            return self._stream_client
 
     # --- plan ---
 
@@ -416,32 +512,72 @@ class Server:
         self.thread.start()
 
     def reset_output(self) -> None:
-        """A new scan is a new plan: output this server produced earlier is discarded."""
+        """A new scan is a new plan: output this server produced earlier, and the modules' scan state
+        (``<work>/<name>/``), are discarded."""
+        self.clear_modules()
         if _read_json(self.work / OUTPUT_STATE) is not None:
             _clear(self.out)
             _clear(self.pre)
             _clear(self.failed_out)
             (self.work / OUTPUT_STATE).unlink(missing_ok=True)
+        self.chunk_map.unlink(missing_ok=True)
 
-    def scan(self, info: dict, key: PseudonymKey) -> None:
+    def scan(self, info: dict, key: PseudonymKey, remote: Sequence[str] = ()) -> None:
+        """remote: the scan's remote sources, passed to the modules' claims (kept out of scan.json)."""
         try:
-            self.reset_output()
+            # staged first: while claim.json is gone, get_terms finds no ezBIDS output and never walks
             _clear(self.staged)
+            self.reset_output()
+            mods = modality.modules()
+            claims: dict[str, Claim] = {}
+            self.scan_claims = []
+            for m in mods:
+                claim = m.claim(self.input_dir, list(remote))
+                self.scan_claims.append(claim)
+                claim.roots = [normalize_root(r) for r in claim.roots]
+                claim.save(module_dir(self.work, m) / CLAIM_FILE)
+                claims[m.name] = claim
+            roots = claimed_roots(claims.values())
             self.set_status("scanning", "staging the input")
-            staged = stage_input(self.input_dir, self.work)
-            self.set_status("scanning", "running ezBIDS")
-            # ezBIDS's output stays on this computer, in the work folder: it holds original paths and names,
-            # so a failure names the file instead of quoting it
-            with open(self.ezbids_log, "w", encoding="utf-8") as log_file:
-                run_ezbids(staged, log=lambda line: print(line, file=log_file, flush=True))
+            # claimed input is never staged (a module reads it in place); phase-1 calls stay unchanged
+            staged = (stage_input(self.input_dir, self.work, exclude=roots) if roots
+                      else stage_input(self.input_dir, self.work))
+            claimed = any(c.roots or c.remote for c in claims.values())
+            if claimed and not has_files(staged):
+                _write_json(staged / "ezBIDS_core.json", EMPTY_CORE)  # nothing left for ezBIDS
+            else:
+                self.set_status("scanning", "running ezBIDS")
+                # ezBIDS's output stays on this computer, in the work folder: it holds original paths and
+                # names, so a failure names the file instead of quoting it
+                try:
+                    with open(self.ezbids_log, "w", encoding="utf-8") as log_file:
+                        run_ezbids(staged, log=lambda line: print(line, file=log_file, flush=True))
+                except EzbidsError:
+                    # only tables and text are left beside the claimed images (a BIDS micr dataset): no MRI
+                    if not (claimed and EZBIDS_NO_IMAGING in self.ezbids_log.read_text(errors="replace")):
+                        raise
+                    _write_json(staged / "ezBIDS_core.json", EMPTY_CORE)
             core = parse_core(staged / "ezBIDS_core.json")
-            terms = run_terms(core, self.input_dir)
+            hidden = claim_terms(claims.values())
+            for m in mods:
+                self.set_status("scanning", f"reading the {m.name} input")
+                m.scan(self.input_dir, claims[m.name], module_dir(self.work, m),
+                       lambda msg: self.set_status("scanning", redact(str(msg), hidden)))
+            module_terms: set[str] = set()
+            for m in mods:
+                module_terms |= m.terms(module_dir(self.work, m))
+            terms = run_terms(core, self.input_dir, exclude=roots) | module_terms
             with self.lock:
                 self.core, self.terms = core, terms
             self.set_status("scanning", "building the plan")
-            plan = build_plan(core, self.input_dir, key, set(info["existing_subjects"]), client_from_env(),
-                              self.get_schema(), info["target"], staged_dir=staged,
-                              existing_sessions=info.get("existing_sessions") or {})
+            client, schema = client_from_env(), self.get_schema()
+            existing = set(info["existing_subjects"])
+            # module planners run inside build_plan, after the MRI subjects took their IDs
+            planners = [lambda m=m: m.plan(module_dir(self.work, m), key, existing, client, schema, info["target"])
+                        for m in mods]
+            plan = build_plan(core, self.input_dir, key, existing, client, schema, info["target"],
+                              staged_dir=staged, existing_sessions=info.get("existing_sessions") or {},
+                              exclude=roots, extra_terms=frozenset(module_terms), planners=planners)
             plan.scan_id = info["scan_id"]
             self.save_subject_ids({e.subject_idx: e.subject for e in plan.entries})
             key.save()
@@ -470,13 +606,25 @@ class Server:
                 if _nonempty(p):
                     _clear(p)
             (self.work / OUTPUT_STATE).unlink(missing_ok=True)
+            self.chunk_map.unlink(missing_ok=True)
             _write_json(self.work / OUTPUT_STATE, {"scan_id": scan_id, "complete": False})
             self.set_status("executing", "writing the BIDS dataset")
             manifest: dict[str, list[str]] = {}
             refused: list[str] = []
             ids = self.record_subject_ids(plan, key)  # before writing, so edited subjects keep their offsets
+            roots = self.claimed_roots()
+            mods = modality.modules() if any(e.modality != "mri" for e in plan.entries) else ()
+            extra: dict[str, Any] = {"exclude": roots} if roots else {}
+            chunks: dict[str, Any] = {}
+            if mods:  # phase-1 calls stay unchanged
+                extra.update(modules=mods, work_dir=self.work, chunk_map=chunks,
+                             progress=lambda msg: self.set_status("executing", self.clean(str(msg))))
             write_bids(plan, core, self.input_dir, terms, key, self.get_schema(), self.out,
-                       staged_dir=self.staged, manifest=manifest, refused=refused)
+                       staged_dir=self.staged, manifest=manifest, refused=refused, **extra)
+            done: dict[str, Any] = {}
+            if chunks.get("arrays"):
+                write_chunk_map(self.chunk_map, chunks["arrays"])
+                done["chunk_map"] = self.chunk_map.relative_to(self.work).as_posix()
             key.save()  # the edited subject IDs, and the date offsets the writer creates in memory
             self.save_subject_ids(ids)
             self.set_status("executing", "defacing the anatomical images")
@@ -486,7 +634,7 @@ class Server:
             for eid, paths in moved.items():
                 defaced[eid] = [Path(p).resolve().relative_to(pre_root).as_posix() for p in paths]
             _write_json(self.work / OUTPUT_STATE,
-                        {"scan_id": scan_id, "complete": True, "manifest": manifest, "defaced": defaced})
+                        {"scan_id": scan_id, "complete": True, "manifest": manifest, "defaced": defaced, **done})
             self.set_status("executing", "validating the BIDS dataset")
             result = validate_bids(self.out)
             pterms = path_terms(terms)
@@ -508,6 +656,7 @@ class Server:
     def set_aside(self, scan_id: str) -> str:
         """After a failed execute: <work>/output/bids (possibly complete but not defaced or validated) is
         renamed to bids.failed, replacing an earlier one, so nothing uploadable is left; pre-deface is kept."""
+        self.chunk_map.unlink(missing_ok=True)  # nothing of a failed execute is uploadable
         try:
             if not self.out.exists():
                 return ""
@@ -562,9 +711,10 @@ class Server:
         root.mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(dir=root) as tmp:
             tmp_path = Path(tmp)
+            roots = self.claimed_roots()
             # the written image names, so companions (events, physio) find their image
             writer = _Writer(plan, core, self.input_dir, terms, scratch_key, schema, tmp_path / "unused",
-                             self.staged)
+                             self.staged, exclude=roots)
             try:
                 items = writer.items()
                 written = {os.path.normpath(str(it.nifti)): it.rel for it in items}
@@ -572,7 +722,8 @@ class Server:
             except Exception:
                 ids = id_maps(core, plan.entries)
             all_ids = id_maps(core, plan.entries)
-            defaults = plan_ancillary(find_ancillary(self.input_dir, schema), self.input_dir, terms, all_ids, schema)
+            defaults = plan_ancillary(find_ancillary(self.input_dir, schema, roots), self.input_dir, terms,
+                                      all_ids, schema)
             default = next((d for d in defaults if d.source == entry.source), None)
             if default is None or default.locked:
                 return
@@ -603,6 +754,102 @@ class Server:
             if mask and isinstance(out["content"], str):
                 out["content"] = _mask_columns(out["content"],
                                                {c for c, act in default.columns.items() if act == "shift_date"})
+
+
+class _UpstreamStream(StreamingResponse):
+    """A proxied chunk body that always closes its upstream response when the response ends, also when the
+    viewer disconnects mid-stream (a cancelled chunk must not hold a pooled connection): the body generator
+    is closed in a finally, whichever way streaming stopped (a send error, a cancelled task group)."""
+
+    def __init__(self, content: Any, upstream: Any, **kwargs: Any) -> None:
+        super().__init__(content, **kwargs)
+        self.upstream = upstream
+
+    async def __call__(self, scope: Any, receive: Any, send: Any) -> None:
+        try:
+            await super().__call__(scope, receive, send)
+        finally:
+            await self.body_iterator.aclose()
+            self.upstream.close()  # also when the body never started (the client left before the first part)
+
+
+def _proxy_chunk(url: str, range_header: str | None, client: Any, head: bool = False) -> Response:
+    """A referenced chunk at url, streamed to the viewer: only Range goes upstream; only the status, Content-Range
+    and Content-Length come back (never Location, Server, X-Amz-* or the URL); at most QA_MAX_RESPONSE_BYTES.
+    A Range that is not a single bytes= range gets 416 here (never an un-ranged upstream GET).
+    head: a HEAD (Neuroglancer asks for a shard's size before reading its index from the end).
+    client: the server's pooled httpx client."""
+    import httpx
+    from starlette.concurrency import run_in_threadpool
+
+    from .micr.remote import RangeUnsupported, RemoteRefused, open_stream
+
+    try:
+        upstream = open_stream(url, range_header, "HEAD" if head else "GET", client)
+    except RangeUnsupported:
+        return Response(status_code=416, headers={"Accept-Ranges": "bytes"})
+    except RemoteRefused:
+        raise HTTPException(404, NO_SUCH_CHUNK) from None
+    except httpx.HTTPError as e:
+        log.warning("chunk source did not answer: %s", type(e).__name__)
+        raise HTTPException(502, "the chunk source did not answer") from None
+    status = upstream.status_code
+    streaming = False
+    try:
+        if status in (403, 404, 410):  # S3 answers 403 for a missing key when listing is not allowed
+            raise HTTPException(404, NO_SUCH_CHUNK)
+        if status not in (200, 206, 416):
+            log.warning("chunk source answered %s", status)
+            raise HTTPException(502, "the chunk source failed")
+        headers = {"Accept-Ranges": "bytes"}
+        content_range = upstream.headers.get("content-range", "")
+        if _CONTENT_RANGE.fullmatch(content_range):
+            headers["Content-Range"] = content_range
+        length = upstream.headers.get("content-length", "")
+        if length.isascii() and length.isdigit():
+            if int(length) > QA_MAX_RESPONSE_BYTES and not head:
+                raise HTTPException(502, "the chunk response is too large")
+            headers["Content-Length"] = length
+        if head:
+            return Response(status_code=status, headers=headers, media_type="application/octet-stream")
+        cap = QA_MAX_RESPONSE_BYTES
+
+        async def body():
+            parts = upstream.iter_raw()
+            sent = 0
+            try:
+                while (part := await run_in_threadpool(next, parts, None)) is not None:
+                    sent += len(part)
+                    if sent > cap:
+                        raise RuntimeError("the chunk response is too large")
+                    yield part
+            finally:
+                upstream.close()
+
+        streaming = True
+        return _UpstreamStream(body(), upstream, status_code=status, headers=headers,
+                               media_type="application/octet-stream")
+    finally:
+        if not streaming:
+            upstream.close()
+
+
+def _default_window(window: Any, dtype: Any, source_windows: bool | None = None) -> bool:
+    """Whether an omero window is the placeholder reference.py writes when the source had none: the dtype's
+    range for integers, 0..1 otherwise (or no window at all). source_windows: whether the source had an omero
+    window per channel (scan records, reference.has_source_windows); then its windows, 0..1 included, are
+    real and kept. None (not recorded): judged by the values alone."""
+    import numpy as np
+
+    if not isinstance(window, dict) or not all(isinstance(window.get(k), (int, float)) for k in ("start", "end")):
+        return True
+    if source_windows is True:
+        return False
+    if source_windows is False:
+        return True
+    dt = np.dtype(dtype)
+    lo, hi = (float(np.iinfo(dt).min), float(np.iinfo(dt).max)) if dt.kind in "iu" else (0.0, 1.0)
+    return (float(window["start"]), float(window["end"])) == (lo, hi)
 
 
 def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allowed_origins: list[str],
@@ -684,6 +931,7 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         with srv.lock:
             if srv.busy():
                 raise conflict(f"busy: {srv.status['stage']}")
+            _check_remote(body.remote)
             srv.release_key()  # a re-scan replaces the plan; the old key lock would block the new load
             try:
                 key = PseudonymKey.load(keys_dir, body.project_id)
@@ -700,7 +948,8 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
             with srv.lock:
                 srv.core = srv.terms = None
             srv.set_status("scanning", "starting")
-            srv.start(lambda: srv.scan(info, key))
+            remote = list(body.remote)
+            srv.start(lambda: srv.scan(info, key, remote))
         return {"stage": "scanning"}
 
     @app.get("/status")
@@ -715,6 +964,8 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
             state = _read_json(work_dir / OUTPUT_STATE)
             if state and state.get("complete"):
                 status["manifest"] = state.get("manifest") or {}
+                if state.get("chunk_map"):
+                    status["chunk_map"] = state["chunk_map"]  # work-relative; never its content
         return status
 
     @app.get("/events")
@@ -830,6 +1081,8 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
                 raise conflict("no scan yet: POST /scan first")
             if plan.scan_id != info.get("scan_id"):
                 raise conflict("the plan was not built by the last scan: scan again")
+            if not any(e.datatype and e.status == "ok" and not e.exclude for e in plan.entries):
+                raise HTTPException(400, NOTHING_TO_WRITE)
             state = _read_json(work_dir / OUTPUT_STATE)
             if (_nonempty(srv.out) or _nonempty(srv.pre)) and not (state and state.get("scan_id") == info["scan_id"]):
                 raise conflict("the output folder is not empty and was not produced by this server for this plan")
@@ -885,13 +1138,42 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
                     index: int = Query(default=0, ge=0)) -> FileResponse:
         return FileResponse(output_file(entry_id, index, which), media_type="application/octet-stream")
 
-    @app.get("/qa/data/{entry_id}/{index}/{subpath:path}")
-    def get_qa_data(entry_id: str, index: str, subpath: str,
-                    which: Literal["original", "defaced"] = "defaced") -> FileResponse:
+    def chunk_map() -> dict | None:
+        return micr_reference.load_chunk_map(srv.chunk_map)
+
+    def reference_source(entry_id: str, index: int, subpath: str) -> Path | str:
+        """The source of a chunk of a referenced OME-Zarr image of the manifest (reference.resolve, only for an
+        array strictly inside that image's .ome.zarr folder); 404 'no such chunk' for anything else."""
+        state = output_state()
+        files = (state.get("manifest") or {}).get(entry_id) or []
+        rel = files[index] if 0 <= index < len(files) else ""
+        chunks = chunk_map() if rel.endswith(".ome.zarr") and state.get("chunk_map") else None
+        if not chunks or not subpath:
+            raise HTTPException(404, NO_SUCH_CHUNK)
+        try:
+            return micr_reference.resolve(chunks, f"{rel}/{subpath}", srv.input_dir, within=rel)
+        except ValueError:
+            raise HTTPException(404, NO_SUCH_CHUNK) from None
+
+    # HEAD too: Neuroglancer asks for a sharded chunk's size before reading the shard index at its end
+    @app.api_route("/qa/data/{entry_id}/{index}/{subpath:path}", methods=["GET", "HEAD"])
+    def get_qa_data(entry_id: str, index: str, subpath: str, request: Request,
+                    which: Literal["original", "defaced"] = "defaced") -> Any:
         if not (index.isascii() and index.isdigit()):
             raise HTTPException(404, "no such image")
-        return FileResponse(output_file(entry_id, int(index), which, subpath, need_original=True),
-                            media_type="application/octet-stream")
+        try:
+            return FileResponse(output_file(entry_id, int(index), which, subpath, need_original=True),
+                                media_type="application/octet-stream")
+        except HTTPException as e:
+            if e.status_code != 404 or which == "original" or not subpath:
+                raise
+        # not written locally: a chunk of a referenced OME-Zarr, read from its source through the chunk map
+        source = reference_source(entry_id, int(index), subpath)
+        if isinstance(source, Path):
+            if not source.is_file():
+                raise HTTPException(404, NO_SUCH_CHUNK)
+            return FileResponse(source, media_type="application/octet-stream")
+        return _proxy_chunk(source, request.headers.get("range"), srv.stream_client(), head=request.method == "HEAD")
 
     @app.post("/viewer/session")
     def post_viewer_session() -> dict:
@@ -920,20 +1202,152 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         state, entries = written()
         defaced = state.get("defaced") or {}
         rows = [{"id": e.id, "index": i, "path": path, "nifti": path.endswith((".nii", ".nii.gz")),
+                 "zarr": path.endswith(".ome.zarr"), "reference": e.write_mode == "reference",
                  "defaced": i < len(defaced.get(e.id) or [])}
                 for e in entries for i, path in enumerate(state["manifest"][e.id])]
         return HTMLResponse(index_page(rows))
+
+    @app.get("/viewer/brainlife-mark.svg")
+    def get_viewer_logo() -> Response:
+        """The brainlife.io logo of the index page (the engine's own copy: no request to another host)."""
+        from importlib import resources
+
+        svg = resources.files("aimport.data").joinpath("brainlife-mark.svg").read_bytes()
+        return Response(svg, media_type="image/svg+xml",
+                        headers={"Content-Security-Policy": "default-src 'none'; style-src 'unsafe-inline'"})
+
+    window_cache: dict[tuple, dict] = {}
+
+    def zarr_attrs(state: dict, entry: Any, rel: str) -> dict:
+        """The written NGFF group attributes of an OME-Zarr image, for the viewer. A reference whose source had
+        no display window (reference.py wrote the dtype's range, or 0..1) gets the 0.5/99.5 percentiles of its
+        coarsest level, read through the chunk map within QA_WINDOW_MAX_BYTES; on any failure the written
+        window stays."""
+        import zarr
+
+        root = srv.out / rel
+        doc = _read_json(root / "zarr.json")
+        attrs = (doc or {}).get("attributes") if doc and "attributes" in doc else _read_json(root / ".zattrs")
+        if not isinstance(attrs, dict):
+            raise HTTPException(404, "no such image")
+        if entry.write_mode != "reference":
+            return attrs
+        try:  # each execute rewrites the output state: a window of an earlier execute is never reused
+            generation = (work_dir / OUTPUT_STATE).stat().st_mtime_ns
+        except OSError:
+            generation = None
+        key = (state.get("scan_id"), generation, rel)
+        if key in window_cache:
+            return window_cache[key]
+        attrs = json.loads(json.dumps(attrs))
+        multiscale, omero = ngff_parts(attrs)
+        channels = omero.get("channels") or []
+        datasets = multiscale.get("datasets") or []
+        try:
+            dtype = zarr.open_array(str(root / str(datasets[0]["path"])), mode="r").dtype
+            had = source_windows(entry)
+            if channels and all(_default_window(c.get("window"), dtype, had) for c in channels):
+                axes = [a.get("name") for a in multiscale.get("axes") or []]
+                windows = reference_windows(rel, [str(d["path"]) for d in datasets], axes, dtype, len(channels))
+                for ch, window in zip(channels, windows):
+                    if window is not None:  # else the written default stays
+                        ch["window"] = window
+        except Exception:  # noqa: BLE001 - the written window is a fine fallback; nothing is reported
+            log.info("display window of a reference not computed")
+            return attrs  # not cached: the next view tries again
+        window_cache[key] = attrs
+        return attrs
+
+    def reference_windows(rel: str, paths: list[str], axes: list, dtype: Any, n: int) -> list[dict | None]:
+        """Per channel, the 0.5/99.5 percentiles of the finite values (NaN, ±inf and the background - the fill
+        value, and 0 when it covers at least a fifth of the sample - ignored) of the pyramid level
+        whose largest x/y size is closest to QA_WINDOW_TARGET_SIDE among those whose decoded size fits
+        QA_WINDOW_MAX_BYTES (so a coarser one when a finer does not fit); a channel that is all NaN or constant
+        there is taken from the next finer level that fits, else None (the written default stays). Read errors
+        propagate (the caller does not cache them)."""
+        from .micr.convert import window_or_none
+
+        chunks = chunk_map() or {}
+        xy = [axes.index(a) for a in ("x", "y") if a in axes]
+        fits: list[tuple[int, int]] = []  # (level, largest x/y size) of the levels within the cap
+        fills: dict[int, Any] = {}  # each level's fill_value: background, never part of the window
+        for i, path in enumerate(paths):
+            meta = (chunks.get("arrays") or {}).get(f"{rel}/{path}")
+            level = srv.out / rel / path
+            doc = _read_json(level / "zarr.json") or _read_json(level / ".zarray")
+            if not isinstance(meta, dict) or not isinstance(doc, dict):
+                continue
+            try:
+                size = micr_reference._decoded_bytes(meta, doc, len(list(micr_reference.chunk_keys(meta))))
+            except (ValueError, KeyError, TypeError):
+                continue
+            fills[i] = doc.get("fill_value")
+            if size <= QA_WINDOW_MAX_BYTES:
+                fits.append((i, max((int(meta["shape"][k]) for k in xy), default=0)))
+        if not fits:
+            return [None] * n
+        start = min(fits, key=lambda f: (abs(f[1] - QA_WINDOW_TARGET_SIDE), -f[0]))[0]
+        order = [i for i, _ in sorted(fits, reverse=True) if i <= start]  # the start level, then finer ones
+        read: dict[int, Any] = {}
+        out: list[dict | None] = [None] * n
+        for k in range(n):
+            for i in order:
+                if i not in read:
+                    read[i] = micr_reference.read_array(chunks, srv.out, f"{rel}/{paths[i]}", srv.input_dir,
+                                                        QA_WINDOW_MAX_BYTES)
+                values = read[i].take(k, axis=axes.index("c")) if "c" in axes else read[i]
+                out[k] = window_or_none(values, dtype, fills.get(i))
+                if out[k] is not None:
+                    break
+        return out
+
+    def source_windows(entry: Any) -> bool | None:
+        """Whether a reference entry's source had an omero window per channel (its scan record), or None."""
+        from .micr.module import MICR_INDEX_BASE, MicrModule, load_records
+
+        try:
+            records = load_records(module_dir(srv.work, MicrModule()))
+            rec = records[entry.series_idx - MICR_INDEX_BASE] if entry.series_idx >= MICR_INDEX_BASE else None
+            value = ((rec or {}).get("info") or {}).get("reference_layout", {}).get("source_windows")
+        except (OSError, ValueError, IndexError, TypeError, AttributeError):
+            return None
+        return value if isinstance(value, bool) else None
+
+    def level0_xy(rel: str, attrs: dict) -> list[int] | None:
+        """Level 0's x and y sizes, from its written array metadata."""
+        multiscale, _ = ngff_parts(attrs)
+        axes = [a.get("name") for a in multiscale.get("axes") or []]
+        try:
+            level = srv.out / rel / str(multiscale["datasets"][0]["path"])
+            doc = _read_json(level / "zarr.json") or _read_json(level / ".zarray") or {}
+            shape = doc["shape"]
+            return [int(shape[axes.index("x")]), int(shape[axes.index("y")])]
+        except (KeyError, IndexError, ValueError, TypeError):
+            return None
 
     @app.get("/viewer/entry/{entry_id}")
     def get_viewer_entry(entry_id: str, request: Request, compare: bool = False, index: int = 0) -> RedirectResponse:
         state, entries = written()
         entry = next((e for e in entries if e.id == entry_id), None)
         files = state["manifest"][entry_id] if entry else None
-        if not files or not 0 <= index < len(files) or not files[index].endswith((".nii", ".nii.gz")):
+        if not files or not 0 <= index < len(files) or not files[index].endswith((".nii", ".nii.gz", ".ome.zarr")):
             raise HTTPException(404, "no such image")
-        originals = (state.get("defaced") or {}).get(entry_id)
         base = str(request.base_url).rstrip("/")  # the Host check allows only this server's own names
-        state_ = entry_state(asdict(entry), files, originals, base, compare=compare, index=index)
+        if files[index].endswith(".ome.zarr"):
+            by_id = {e.id: e for e in entries}
+            group = oct_group(asdict(entry), [asdict(e) for e in entries])
+            images = []
+            for g in group:
+                i = index if g["id"] == entry_id else 0
+                rel = state["manifest"][g["id"]][i]
+                if rel.endswith(".ome.zarr"):
+                    attrs = zarr_attrs(state, by_id[g["id"]], rel)
+                    images.append({"id": g["id"], "index": i, "file": rel, "attrs": attrs,
+                                   "shape_xy": level0_xy(rel, attrs)})
+            state_ = entry_state(asdict(entry), files, None, base, index=index, zarr=images)
+        else:
+            originals = (state.get("defaced") or {}).get(entry_id)
+            state_ = entry_state(asdict(entry), files, originals, base, compare=compare, index=index)
         return RedirectResponse(state_url(state_), status_code=303)
 
     @app.get("/viewer/ng/{path:path}")

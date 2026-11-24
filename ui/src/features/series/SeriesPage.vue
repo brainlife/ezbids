@@ -366,9 +366,9 @@
                 </div>
             </main>
         </div>
-        <el-collapse>
+        <el-collapse v-if="config.debug">
             <el-collapse-item title="Debug">
-                <pre v-if="config.debug" class="debug-pre">{{ ezbids.series }}</pre>
+                <pre class="debug-pre">{{ ezbids.series }}</pre>
             </el-collapse-item>
         </el-collapse>
     </div>

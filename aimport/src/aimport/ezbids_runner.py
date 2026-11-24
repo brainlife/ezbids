@@ -8,7 +8,9 @@ import subprocess
 import threading
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Sequence
+
+from .modality import ClaimedPaths
 
 DEFAULT_HANDLER_DIR = Path("/app/handler")
 
@@ -17,19 +19,50 @@ class EzbidsError(RuntimeError):
     """preprocess.sh failed; the message is the tail of its output."""
 
 
-def stage_input(input_dir: Path, work_dir: Path) -> Path:
-    """Symlink-tree input_dir into work_dir/ezbids so dcm2niix never writes to the input."""
+def stage_input(input_dir: Path, work_dir: Path, exclude: Sequence[str] = ()) -> Path:
+    """Symlink-tree input_dir into work_dir/ezbids so dcm2niix never writes to the input.
+
+    Like ``cp -rs``: folders are created, every other entry (files and symlinks, a symlinked folder
+    included) becomes an absolute symlink to its input path. The walk never follows links and never
+    descends into a claimed root (``exclude``: input-relative POSIX paths); nothing under a claimed
+    root, and no link that resolves into one, is staged.
+    """
+    src = Path(input_dir).resolve()
+    if not src.is_dir():
+        raise EzbidsError(f"could not stage {input_dir}: not a folder")
     staged = Path(work_dir) / "ezbids"
     staged.mkdir(parents=True, exist_ok=True)
-    # GNU cp -s needs an absolute source; "/." copies the contents, not the directory itself
-    proc = subprocess.run(
-        ["cp", "-rs", f"{Path(input_dir).resolve()}/.", str(staged)],
-        capture_output=True,
-        text=True,
-    )
-    if proc.returncode != 0:
-        raise EzbidsError(f"could not stage {input_dir}: {proc.stderr.strip()}")
+    claimed = ClaimedPaths(src, exclude)
+    try:
+        for dirpath, dirs, files in os.walk(src, followlinks=False, onerror=_raise):
+            here = Path(dirpath)
+            out = staged / here.relative_to(src)
+            out.mkdir(exist_ok=True)
+            links = [d for d in dirs if (here / d).is_symlink()]
+            dirs[:] = sorted(d for d in dirs if d not in links and not claimed.covers(here / d))
+            for name in sorted(files + links):
+                path = here / name
+                if claimed.reaches(path) if name in links else claimed.covers(path):
+                    continue
+                target = out / name
+                if target.is_symlink() or target.exists():
+                    target.unlink()
+                os.symlink(path, target)
+    except OSError as e:
+        raise EzbidsError(f"could not stage {input_dir}: {e}") from None
     return staged
+
+
+def _raise(e: OSError) -> None:
+    raise e
+
+
+def has_files(staged: Path) -> bool:
+    """True when the staged tree holds anything but folders (what ezBIDS could read)."""
+    for _dirpath, dirs, files in os.walk(staged, followlinks=False):
+        if files or any((Path(_dirpath) / d).is_symlink() for d in dirs):
+            return True
+    return False
 
 
 def _kill_group(proc: subprocess.Popen) -> None:

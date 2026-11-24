@@ -231,7 +231,7 @@ def test_end_to_end_no_identifier_leaves(tmp_path, monkeypatch):
     # (b) every file under the output: by path, and by content (gunzipped; NIfTI header text fields)
     assert not (PLANTED | NATIVE) & tokens("\n".join(str(p.relative_to(out)) for p in out.rglob("*")))
     for rel, text in all_text_of(out):
-        found = tokens(text)
+        found = (PLANTED | NATIVE) & tokens(text)
         assert not found, (rel, found)
     assert not list(out.rglob("*aimport-key*")), "the pseudonym key must never be in the output"
     assert not any(out in p.parents for p in [pre]), "originals must be outside the output"

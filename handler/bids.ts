@@ -1,14 +1,14 @@
 #!/usr/bin/env node
 /**
  * TypeScript port of bids.sh: run MEG conversion, convert to BIDS, run validator,
- * copy template, create telemetry files, and optionally POST telemetry to server.
+ * copy template; telemetry only when EZBIDS_TELEMETRY_URL is set (off by default).
  *
  * Usage: node bids.js <root> [handlerDir]
  */
 import * as fs from 'fs';
 import * as path from 'path';
-import { getDatasetName, tree } from './bids.utils';
-import { log, runBidsValidator, runNodeScript, runPython } from './utils';
+import { getDatasetName, telemetryUrl, tree } from './bids.utils';
+import { log, resolveHandlerScript, runBidsValidator, runNodeScript, runPython } from './utils';
 
 const rootArg = process.argv[2];
 const handlerDirArg = process.argv[3];
@@ -21,22 +21,25 @@ if (!rootArg) {
 const root = path.resolve(rootArg);
 const handlerDir = path.resolve(handlerDirArg || path.join(__dirname));
 
-const TELEMETRY_URL = 'http://52.87.154.236/telemetry/';
-
-async function postTelemetryFile(filePath: string): Promise<void> {
+// Telemetry: see telemetryUrl() in bids.utils.ts (off by default, never in the desktop app).
+async function postTelemetryFile(url: string, filePath: string): Promise<void> {
     if (!fs.existsSync(filePath)) return;
     const body = fs.readFileSync(filePath, 'utf8');
-    try {
-        const res = await fetch(TELEMETRY_URL, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body,
-        });
-        if (!res.ok) {
-            log(`telemetry POST failed for ${path.basename(filePath)}: ${res.status}`);
+    const name = path.basename(filePath);
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            const res = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body,
+                signal: AbortSignal.timeout(10_000),
+            });
+            if (res.ok) return;
+            log(`telemetry POST failed for ${name}: ${res.status}`);
+            return;
+        } catch (err) {
+            if (attempt === 2) log(`telemetry not sent (${name}): server unreachable (${err})`);
         }
-    } catch (err) {
-        log(`telemetry POST error for ${path.basename(filePath)}: ${err}`);
     }
 }
 
@@ -67,7 +70,7 @@ async function main(): Promise<void> {
 
     // Convert output to BIDS
     log('converting output to bids');
-    const convertPath = process.env.EZBIDS_CONVERT_PATH ?? path.join(handlerDir, 'convert.js');
+    const convertPath = resolveHandlerScript('convert', handlerDir);
     try {
         await runNodeScript([convertPath, root], {
             cwd: handlerDir,
@@ -96,9 +99,8 @@ async function main(): Promise<void> {
     log('Copying finalized.json file to ezBIDS_template.json');
     fs.copyFileSync(path.join(root, 'finalized.json'), path.join(root, 'ezBIDS_template.json'));
 
-    // Telemetry (to hard-coded pet2bids server) - skip when running in Electron as we are doing local processing
-    if (process.env.IS_ELECTRON !== 'true') {
-        // Create telemetry-specific files
+    const url = telemetryUrl();
+    if (url) {
         log('Creating ezBIDS telemetry files');
         if (fs.existsSync(telemetryPy)) {
             await runPython([telemetryPy, root], {
@@ -107,9 +109,9 @@ async function main(): Promise<void> {
                 reject: false,
             });
         }
-        await postTelemetryFile(validatorJson);
-        await postTelemetryFile(path.join(root, 'ezBIDS_core_telemetry.json'));
-        await postTelemetryFile(path.join(root, 'ezBIDS_finalized_telemetry.json'));
+        await postTelemetryFile(url, validatorJson);
+        await postTelemetryFile(url, path.join(root, 'ezBIDS_core_telemetry.json'));
+        await postTelemetryFile(url, path.join(root, 'ezBIDS_finalized_telemetry.json'));
     }
 }
 

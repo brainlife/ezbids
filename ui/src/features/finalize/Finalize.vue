@@ -157,7 +157,7 @@ import axios from '@/axios.instance';
 
 import { ElNotification } from 'element-plus';
 import { authRequired } from '@/lib';
-import { openExternal } from '@/externalPage';
+import { isElectron, openExternal } from '@/externalPage';
 
 export default defineComponent({
     components: {
@@ -277,7 +277,9 @@ export default defineComponent({
 
         sendBrainlife(pipeline?: 'DWI') {
             const pipelineString = pipeline ? `&pipeline=${pipeline}` : '';
-            // shown in-app (a <webview> on the desktop, an iframe on the web; brainlife.io allows framing)
+            // shown in-app (a <webview> on the desktop, an iframe on the web): brainlife.io sends no X-Frame-Options /
+            // frame-ancestors and, in production, is the same origin as ezBIDS (brainlife.io/ezbids), so its projects
+            // page (which reads #ezbids=<session id>) runs in the dialog with the user's brainlife.io sign-in
             openExternal(`https://brainlife.io/projects#ezbids=${this.session._id}${pipelineString}`, {
                 title: 'Send to brainlife.io',
                 note: 'Pick or create a project to import this dataset into. Close the dialog when the import has started.',
@@ -292,9 +294,13 @@ export default defineComponent({
                 const url = `${this.config.apihost}/download/${this.session._id}/bids/${this.ezbids.datasetDescription.Name}?token=${shortLivedJWT}`;
 
                 const fullurl = new URL(url, document.baseURI).href;
+                // web: openneuro.org allows framing, but its Google / ORCID sign-in pages do not (X-Frame-Options
+                // DENY / SAMEORIGIN), so the dialog offers a new tab for signing in; the desktop <webview> can sign in
                 openExternal('https://openneuro.org/import?url=' + encodeURI(fullurl), {
                     title: 'Send to OpenNeuro',
-                    note: 'Sign in to OpenNeuro in this window if it asks, then start the import.',
+                    note: isElectron()
+                        ? 'Sign in to OpenNeuro in this window if it asks, then start the import.'
+                        : 'If OpenNeuro asks you to sign in, use "Open in a new tab": Google and ORCID sign-in pages cannot be shown inside another site.',
                 });
             } catch (e) {
                 console.error(e);

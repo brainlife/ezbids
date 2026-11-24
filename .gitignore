@@ -64,3 +64,6 @@ electron/ezbids.key
 electron/ezbids.pub
 # aimport desktop runtime (fetch-aimport.sh)
 electron/aimport/runtime
+
+__pycache__/
+*.pyc

@@ -1,4 +1,4 @@
 [codespell]
 skip = .git,*.pdf,*.svg,*.json,*.eps,*.min.js,*.yaml,bids-specification
-# ALS
-ignore-words-list = als
+# ALS; OT = DICOM "Other" modality; TE = echo time; cachable = fsspec class attribute; anc = ancillary
+ignore-words-list = als,ot,te,cachable,anc

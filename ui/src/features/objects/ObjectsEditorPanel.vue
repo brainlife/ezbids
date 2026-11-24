@@ -298,9 +298,9 @@
             </div>
         </el-form>
 
-        <el-collapse>
+        <el-collapse v-if="config.debug">
             <el-collapse-item title="Debug">
-                <pre v-if="config.debug" class="debug-pre">{{ object }}</pre>
+                <pre class="debug-pre">{{ object }}</pre>
             </el-collapse-item>
         </el-collapse>
     </div>

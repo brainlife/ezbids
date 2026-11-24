@@ -5,6 +5,7 @@ import path = require('path');
 import config = require('../api/config');
 import models = require('../api/models');
 import { sessionStore, ezbidsStore } from '../api/store';
+import { nodeArgsForScript, resolveHandlerScript } from './utils';
 
 console.log('---------------------------------------');
 console.log(' starting ezbids-handler');
@@ -25,22 +26,7 @@ function handle(
                 let cancelHandled = false;
                 const workdir = path.join(config.workdir, String(session._id));
                 const handlerDir = process.env.EZBIDS_HANDLER_DIR ?? './handler';
-                const spawnArgs = [script, workdir, handlerDir];
-
-                if (process.env.ENVIRONMENT === 'development') {
-                    // run typescript files directly with ts-node-dev
-                    const tsNodeDevBin = require.resolve('ts-node-dev/lib/bin.js');
-                    spawnArgs.unshift(
-                        tsNodeDevBin,
-                        '--transpile-only',
-                        '--debounce',
-                        '2000',
-                        '--watch',
-                        process.env.EZBIDS_HANDLER_DIR ?? '',
-                        '-P',
-                        path.join(handlerDir, 'tsconfig.json')
-                    );
-                }
+                const spawnArgs = nodeArgsForScript([script, workdir, handlerDir]);
 
                 const p = spawn(process.execPath, spawnArgs, { cwd: handlerDir, detached: true });
                 // const p = spawn(script, [workdir, handlerDir], { cwd: handlerDir, detached: true });
@@ -136,7 +122,7 @@ function handle(
 async function handleUploaded(session) {
     const workdir = path.join(config.workdir, session._id);
     const handlerDir = process.env.EZBIDS_HANDLER_DIR ?? './handler';
-    const preprocessScript = process.env.EZBIDS_PREPROCESS_PATH ?? path.join(handlerDir, 'preprocess.js');
+    const preprocessScript = resolveHandlerScript('preprocess', handlerDir);
 
     session.pre_begin_date = new Date();
     session.pre_end_date = undefined;
@@ -192,7 +178,7 @@ async function handleUploaded(session) {
 async function handleFinalized(session) {
     console.log('handling finalized request!-----------------------');
     const handlerDir = process.env.EZBIDS_HANDLER_DIR ?? './handler';
-    const bidsScript = process.env.EZBIDS_BIDS_PATH ?? path.join(handlerDir, 'bids.js');
+    const bidsScript = resolveHandlerScript('bids', handlerDir);
 
     session.finalize_begin_date = new Date();
     session.finalize_end_date = undefined;
@@ -217,7 +203,7 @@ async function handleFinalized(session) {
 async function handleDeface(session) {
     console.log('handling deface request!-----------------------');
     const handlerDir = process.env.EZBIDS_HANDLER_DIR ?? './handler';
-    const defacePath = process.env.EZBIDS_DEFACE_PATH ?? path.join(handlerDir, 'deface.js');
+    const defacePath = resolveHandlerScript('deface', handlerDir);
 
     session.deface_begin_date = new Date();
     session.deface_end_date = undefined;

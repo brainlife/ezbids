@@ -13,7 +13,7 @@ import uuid
 from collections import Counter, defaultdict
 from datetime import date, datetime, timedelta
 from pathlib import Path
-from typing import Literal
+from typing import TYPE_CHECKING, Callable, Literal, Sequence
 
 from .agent import Guess, LLMClient, classify, draft_metadata
 from .ancillary import bids_root, ancillary_warnings, find_ancillary, id_maps, plan_ancillary, read_dataset_description
@@ -21,14 +21,23 @@ from .brainlife_map import to_brainlife
 from .ezbids_runner import CoreResult, CoreSeries, CoreSubject
 from .plan import Plan, PlanEntry
 from .pseudonyms import PseudonymKey
-from .schema import PHASE1_DATATYPES, Schema
+from .schema import CHECK_EXTS, SUPPORTED_DATATYPES, Schema
 from .scrub import _date_forms, identifying_terms, is_secondary_capture, redact, scrubbed_view
+
+if TYPE_CHECKING:
+    from .modality import ModulePlan
 
 AGENT_TEXT_MAX = 300
 AGREE_MIN = 0.8  # confidence when ezBIDS's guess stands (or the agent agrees with less)
 DISAGREE_CONFIDENCE = 0.5  # ezBIDS's guess kept but the agent disputes it
 AGENT_MIN = 0.5  # agent answers below this are not used
-CHECK_EXT = ".nii.gz"  # every phase-1 image is written as NIfTI
+CHECK_EXT = ".nii.gz"  # every phase-1 image is written as NIfTI (CHECK_EXTS: other datatypes)
+MICR_DATATYPE_REASON = "microscopy input: datatype must be micr"
+PIXEL_SIZE_REASON = "pixel size unknown: set it in the plan"
+PIXEL_UNIT_REASON = "pixel size unit unknown: set it in the plan"
+MRI_DATATYPE_REASON = "MRI input: datatype cannot be micr"
+HIDDEN_ANCILLARY = ("{n} supplementary folder(s) of the input hold microscopy data, so they are not uploaded "
+                    "as supplementary files")
 _LABEL = re.compile(r"^[a-zA-Z0-9]+$")
 _PATH_ENTITIES = {"subject", "session"}
 UNVERIFIED = ("de-identification could not be verified: {why}; check descriptions and the README "
@@ -123,12 +132,13 @@ def _date_terms(core: CoreResult) -> set[str]:
     return terms
 
 
-def run_terms(core: CoreResult, input_dir: Path, stats: dict | None = None) -> set[str]:
+def run_terms(core: CoreResult, input_dir: Path, stats: dict | None = None, exclude: Sequence[str] = ()) -> set[str]:
     """Every term to redact in this run: identifying values plus the scan dates in every form.
 
-    build_plan and the BIDS writer must use the same set; stats is passed to identifying_terms.
+    build_plan and the BIDS writer must use the same set; stats and exclude (claimed roots, never
+    walked) are passed to identifying_terms.
     """
-    return identifying_terms(core, input_dir, stats) | _date_terms(core)
+    return identifying_terms(core, input_dir, stats, exclude) | _date_terms(core)
 
 
 def _agent_text(text: str, terms: set[str]) -> str:
@@ -328,18 +338,45 @@ def _decide(series: CoreSeries, guess: Guess | None, schema: Schema, terms: set[
                 exclude=True, reason=reason, agent_note=_agent_text(_guess_text(guess), terms) if has_answer else "")
 
 
-def _check_nameable(d: dict, subject: str, session: str | None, schema: Schema) -> None:
-    """Rule: an "ok" entry must be one the writer can name; otherwise it becomes unknown."""
+def _modality_reason(modality: str, datatype: str | None) -> str | None:
+    """Why an entry's datatype does not fit its input's modality (micr input <-> micr datatype)."""
+    if modality == "micr" and datatype != "micr":
+        return MICR_DATATYPE_REASON
+    if modality != "micr" and datatype == "micr":
+        return MRI_DATATYPE_REASON
+    return None
+
+
+def _check_nameable(d: dict, subject: str, session: str | None, schema: Schema, modality: str = "mri") -> None:
+    """Rule: an "ok" entry must be one the writer can name; otherwise it becomes unknown. A microscopy
+    entry must stay micr and an MRI entry must not become micr."""
     if d["status"] != "ok":
         return
-    if d["datatype"] not in PHASE1_DATATYPES:
+    why = _modality_reason(modality, d["datatype"])
+    if why is not None:
+        d.update(status="unknown", exclude=True, reason=why)
+        return
+    if d["datatype"] not in SUPPORTED_DATATYPES:
         d.update(status="unsupported", exclude=True)
         return
     try:
-        schema.filename(subject, session, d["datatype"], d["suffix"], d["entities"], CHECK_EXT)
+        schema.filename(subject, session, d["datatype"], d["suffix"], d["entities"],
+                        CHECK_EXTS.get(d["datatype"], CHECK_EXT))
     except ValueError as exc:
         d.update(status="unknown", exclude=True,
                  reason=f"{d['reason']}; cannot name {d['datatype']}/{d['suffix']}: {exc}")
+
+
+def check_pixel_size(d: dict, e: PlanEntry) -> None:
+    """Rule: an "ok" microscopy entry has a pixel size for every spatial axis, and units; otherwise it
+    becomes unknown (never an invented size, never an assumed unit)."""
+    if d["status"] != "ok" or e.modality != "micr":
+        return
+    n = len(e.spatial_axes) or None
+    if e.pixel_size is None or (n is not None and len(e.pixel_size) != n):
+        d.update(status="unknown", exclude=True, reason=PIXEL_SIZE_REASON)
+    elif e.pixel_size_units is None:
+        d.update(status="unknown", exclude=True, reason=PIXEL_UNIT_REASON)
 
 
 def _fmap_tags(entries: list[PlanEntry]) -> None:
@@ -374,8 +411,11 @@ def apply_plan_edits(plan: Plan, edits: list[dict], schema: Schema) -> None:
     the writer cannot name becomes unknown and excluded; one that becomes nameable is included unless
     the edit says otherwise), the brainlife datatype and tags are recomputed unless the reviewer set them (brainlife_by_person),
     and the datatypes target excludes an entry with no brainlife datatype. Secondary captures stay
-    excluded_by_default. Raises like Plan.apply_edits; a bad edit changes nothing.
+    excluded_by_default. Raises like Plan.apply_edits; a bad edit changes nothing. sample_type must be a
+    value of the schema's sample_type enum, and pixel_size/pixel_size_units are set on microscopy
+    entries only; a microscopy entry without a pixel size for each spatial axis stays unknown.
     """
+    _check_sample_types(plan, edits, schema)
     was_ok = {e.id: e.status == "ok" for e in plan.entries}
     keys: dict[str, set[str]] = defaultdict(set)
     for edit in edits:
@@ -386,20 +426,53 @@ def apply_plan_edits(plan: Plan, edits: list[dict], schema: Schema) -> None:
     _fmap_tags(plan.entries)
 
 
+def _check_sample_types(plan: Plan, edits: list[dict], schema: Schema) -> None:
+    """Microscopy-only edit rules: sample_type is a value of the schema enum (never None) and only
+    for micr entries; deface is never turned on for a micr entry."""
+    by_id = {e.id: e for e in plan.entries}
+    allowed = None
+    for edit in edits:
+        if not isinstance(edit, dict):
+            continue
+        e = by_id.get(edit.get("id"))
+        if e is None:
+            continue  # Plan.apply_edits raises KeyError
+        if e.modality == "micr" and edit.get("deface") is True:
+            raise ValueError("microscopy images are never defaced")
+        for k in ("pixel_size", "pixel_size_units"):
+            if e.modality != "micr" and edit.get(k) is not None:
+                raise ValueError(f"{k} applies to microscopy entries only")
+        if "sample_type" not in edit:
+            continue
+        if e.modality != "micr":
+            if edit["sample_type"] is None:
+                continue
+            raise ValueError("sample_type applies to microscopy entries only")
+        allowed = schema.sample_types() if allowed is None else allowed
+        if edit["sample_type"] not in allowed:
+            raise ValueError(f"sample_type must be one of {allowed}")
+
+
 def _rederive(e: PlanEntry, schema: Schema, target: str, keys: set[str], was_ok: bool) -> None:
     if e.status == "excluded_by_default":  # may hold burned-in identifiers: never written
+        return
+    if e.modality == "micr" and not e.write_mode:  # unreadable or unsupported input: never written
         return
     if not keys and not was_ok:  # renamed with its subject only: still not writable, reason unchanged
         return
     reason = EDITED if keys & _NAMING or not was_ok else e.reason
     d = dict(datatype=e.datatype, suffix=e.suffix, entities=e.entities, status="ok", exclude=e.exclude,
              reason=reason)
-    if not (e.datatype and e.suffix and schema.is_valid(e.datatype, e.suffix)):
+    why = _modality_reason(e.modality, e.datatype)
+    if why is not None:
+        d.update(status="unknown", exclude=True, reason=why)
+    elif not (e.datatype and e.suffix and schema.is_valid(e.datatype, e.suffix)):
         d.update(status="unknown", exclude=True, reason=f"{reason}; {e.datatype}/{e.suffix} is not BIDS")
     else:
         if not was_ok and "exclude" not in keys:
             d["exclude"] = False
-        _check_nameable(d, e.subject, e.session, schema)
+        _check_nameable(d, e.subject, e.session, schema, e.modality)
+    check_pixel_size(d, e)
     e.status, e.exclude, e.reason = d["status"], d["exclude"], d["reason"]
     if not e.brainlife_by_person:
         e.brainlife_datatype, e.brainlife_tags = (to_brainlife(e.datatype, e.suffix, e.entities, {})
@@ -426,14 +499,24 @@ def _seed_readme(plan: Plan, supplied: list[Path], input_dir: Path, terms: set[s
 
 def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_subjects: set[str],
                client: LLMClient | None, schema: Schema, target: Literal["bids", "datatypes"],
-               staged_dir: Path | None = None, existing_sessions: dict[str, list[str]] | None = None) -> Plan:
+               staged_dir: Path | None = None, existing_sessions: dict[str, list[str]] | None = None,
+               exclude: Sequence[str] = (), modules: Sequence["ModulePlan"] = (),
+               extra_terms: frozenset[str] = frozenset(),
+               planners: Sequence[Callable[[], "ModulePlan"]] = ()) -> Plan:
     """The reviewable plan. existing_subjects and existing_sessions (subject id -> session labels) are what
-    the brainlife project already holds, so new subject IDs and session labels do not collide with them."""
+    the brainlife project already holds, so new subject IDs and session labels do not collide with them.
+    exclude: claimed roots (input-relative), never walked for DICOM headers or planned as ancillary.
+    modules: the modality modules' plans (entries, warnings, views, subject labels, images), appended;
+    planners: module planners, called once the MRI subjects hold their IDs in the key, so the MRI subject
+    IDs and session labels are those of an MRI-only plan; extra_terms: the modules' identifying terms,
+    redacted like the run's own (not used for the MRI subject and session labels, for the same reason)."""
     stats: dict = {}
-    terms = run_terms(core, input_dir, stats)
+    mri_terms = run_terms(core, input_dir, stats, exclude)
+    terms = mri_terms | set(extra_terms)
     warnings = []
     if stats.get("dicom_files_read", 0) == 0:
-        warnings.append(UNVERIFIED.format(why="no DICOM headers were read"))
+        if core.series or not (modules or planners):  # a microscopy-only scan has no DICOM headers to read
+            warnings.append(UNVERIFIED.format(why="no DICOM headers were read"))
     elif stats.get("term_count", 0) == 0:
         warnings.append(UNVERIFIED.format(why="no identifying values were found"))
 
@@ -444,19 +527,23 @@ def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_su
         if ht is not None:
             heuristic[s.series_idx] = (ht[0], ht[1], _clean_entities(s.entities, terms))
     guesses = {g.series_idx: g for g in classify(view, heuristic, client, schema)}
-    draft = draft_metadata(view, client, terms)
 
-    supplied = find_ancillary(input_dir, schema)
+    hidden: list[Path] = []
+    supplied = find_ancillary(input_dir, schema, exclude, hidden=hidden)
+    if hidden:
+        warnings.append(HIDDEN_ANCILLARY.format(n=len(hidden)))
     has_aslcontext = any(p.name.endswith("_aslcontext.tsv") for p in supplied)  # anywhere in the input
-    sub_ids, n_absent, n_shared = _assign_subjects(core, key, existing_subjects, terms)
+    sub_ids, n_absent, n_shared = _assign_subjects(core, key, existing_subjects, mri_terms)
     if n_shared:
         warnings.append(SHARED_IDENTITY.format(n=n_shared))
     if n_absent:
         warnings.append(NO_IDENTITY.format(n=n_absent))
     by_idx = {s.subject_idx: s for s in core.subjects}
     ses_labels = {idx: _session_labels(by_idx.get(idx, CoreSubject(idx, "", [], [])), sid, core, key,
-                                       (existing_sessions or {}).get(sid, []), terms)
+                                       (existing_sessions or {}).get(sid, []), mri_terms)
                   for idx, sid in sub_ids.items()}
+    modules = list(modules) + [plan_module() for plan_module in planners]  # after the MRI subjects
+    draft = draft_metadata(view + [v for mp in modules for v in mp.view], client, terms)
 
     series_by_idx = {s.series_idx: s for s in core.series}
     triples = sorted({(o.series_idx, o.subject_idx, o.session_idx) for o in core.objects})
@@ -501,6 +588,9 @@ def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_su
     key.save()
     _fmap_tags(entries)
 
+    for mp in modules:
+        entries += mp.entries
+        warnings += mp.warnings
     plan = Plan(target=target, entries=entries, warnings=warnings)
     if draft is not None:
         plan.dataset_name = draft.name[:DATASET_NAME_MAX]
@@ -508,6 +598,11 @@ def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_su
         plan.metadata_source = "agent"
     # supplied ancillary files (participants, phenotype, README, ...) and dataset_description fields
     ids = id_maps(core, entries)
+    for mp in modules:
+        for idx, label in mp.labels.items():
+            if label not in ids.labels.values():  # a label mapping two ways is left out (see id_maps)
+                ids.labels[idx] = label
+        ids.images.update(mp.images)
     plan.ancillary = plan_ancillary(supplied, input_dir, terms, ids, schema)
     _seed_readme(plan, supplied, input_dir, terms)
     plan.warnings += ancillary_warnings(plan.ancillary, ids)

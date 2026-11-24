@@ -10,8 +10,17 @@ export function getBinPath(tool: string): string {
     }
     return tool;
 }
-/** python3 inside the bundled runtime, or a PATH fallback when EZBIDS_BIN_DIR is unset. */
+/**
+ * The desktop app ships a python runtime at $EZBIDS_BIN_DIR/python-runtime; the web handler image
+ * (handler/Dockerfile) has no such folder and uses its own python3 (EZBIDS_PYTHON overrides it).
+ */
+export function hasBundledPython(): boolean {
+    return !!process.env.EZBIDS_BIN_DIR && fs.existsSync(getBinPath('python-runtime'));
+}
+
+/** python3 inside the bundled runtime, or the system python3 when there is no bundled runtime. */
 export function getPythonExecutablePath(): string {
+    if (!hasBundledPython()) return process.env.EZBIDS_PYTHON ?? 'python3';
     const pythonRoot = getBinPath('python-runtime');
     const pyBin =
         process.env.EZBIDS_PLATFORM === 'windows'
@@ -65,8 +74,12 @@ export async function runPython(argv: string[], opts: Options): Promise<{ status
         ...(withTimeout ? { timeout: opts.timeout, stdio: 'pipe' as const } : { stdio: 'inherit' as const }),
         env: {
             ...process.env,
-            PYTHONPATH: getBundledPythonSitePackages(),
-            PYTHONHOME: path.resolve(path.join(pythonRoot, 'python')),
+            ...(hasBundledPython()
+                ? {
+                      PYTHONPATH: getBundledPythonSitePackages(),
+                      PYTHONHOME: path.resolve(path.join(pythonRoot, 'python')),
+                  }
+                : {}),
             ...(pythonDcm2niixPath ? { DCM2NIIX_PATH: pythonDcm2niixPath } : {}),
         },
     });
@@ -96,21 +109,32 @@ export async function runBidsValidator(
     return { hasErr };
 }
 
-export async function runNodeScript(args: string[], opts?: Options): Promise<{ status: number; stderr: string }> {
+/**
+ * Node arguments to run a handler script: a .ts script (the web handler runs from source, and so does
+ * the desktop app in development) goes through ts-node-dev; a bundled .js/.cjs script runs as is.
+ */
+export function nodeArgsForScript(args: string[], env: NodeJS.ProcessEnv = process.env): string[] {
     const scriptArgs = [...args];
-    if (process.env.ENVIRONMENT === 'development') {
+    const isTs = /\.ts$/.test(scriptArgs[0] ?? '');
+    if (env.ENVIRONMENT === 'development' || isTs) {
+        const handlerDir = env.EZBIDS_HANDLER_DIR ?? __dirname;
         const tsNodeDevBin = require.resolve('ts-node-dev/lib/bin.js');
-        scriptArgs.unshift(
-            tsNodeDevBin,
-            '--transpile-only',
-            '--debounce',
-            '2000',
-            '--watch',
-            process.env.EZBIDS_HANDLER_DIR ?? '',
-            '-P',
-            path.join(process.env.EZBIDS_HANDLER_DIR ?? '', 'tsconfig.json')
-        );
+        const watch = env.ENVIRONMENT === 'development' ? ['--debounce', '2000', '--watch', handlerDir] : [];
+        scriptArgs.unshift(tsNodeDevBin, '--transpile-only', ...watch, '-P', path.join(handlerDir, 'tsconfig.json'));
     }
+    return scriptArgs;
+}
+
+/** A handler script by name: $EZBIDS_<NAME>_PATH, else <handlerDir>/<name>.js when built, else <name>.ts. */
+export function resolveHandlerScript(name: string, handlerDir: string, env: NodeJS.ProcessEnv = process.env): string {
+    const override = env[`EZBIDS_${name.toUpperCase()}_PATH`];
+    if (override) return override;
+    const js = path.join(handlerDir, `${name}.js`);
+    return fs.existsSync(js) ? js : path.join(handlerDir, `${name}.ts`);
+}
+
+export async function runNodeScript(args: string[], opts?: Options): Promise<{ status: number; stderr: string }> {
+    const scriptArgs = nodeArgsForScript(args);
 
     const result = await execa(process.execPath, scriptArgs, {
         stdio: 'inherit',

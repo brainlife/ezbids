@@ -2,7 +2,11 @@
     "extends": "../tsconfig.base.json",
     "compilerOptions": {
         "module": "CommonJS",
-        "moduleResolution": "Node10"
+        "moduleResolution": "Node10",
+        // the web API is compiled by tsc-watch in Docker (api/dev.sh) and only starts when tsc succeeds;
+        // the API code predates strict mode (master's api/tsconfig.json had only alwaysStrict)
+        "strict": false,
+        "alwaysStrict": true
     },
     "include": ["**/*.ts"],
     "exclude": ["**/*.js"]

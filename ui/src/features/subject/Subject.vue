@@ -9,7 +9,7 @@
             </p>
         </header>
 
-        <div class="subject-layout">
+        <div class="subject-layout" :class="{ 'subject-layout--single': !config.debug }">
             <section class="subject-card subject-card--table">
                 <div class="subject-card__toolbar">
                     <el-dropdown size="small" @command="resetSubjects">
@@ -110,7 +110,8 @@
                 </div>
             </section>
 
-            <aside class="subject-card json-panel">
+            <!-- raw subject JSON shows PatientName/PatientID/PatientBirthDate: only with VITE_DEBUG=true (master #184) -->
+            <aside v-if="config.debug" class="subject-card json-panel">
                 <h3 class="json-panel__title">Subject mapping JSON</h3>
                 <pre class="status">{{ ezbids.subjects }}</pre>
             </aside>
@@ -251,6 +252,9 @@ export default defineComponent({
 @media (min-width: 1500px) {
     .subject-layout {
         grid-template-columns: minmax(0, 3fr) minmax(360px, 2fr);
+    }
+    .subject-layout--single {
+        grid-template-columns: 1fr;
     }
 }
 

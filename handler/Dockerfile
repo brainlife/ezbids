@@ -9,6 +9,9 @@ RUN apt update && \
 
 RUN apt install -y parallel python3 python3-pip tree curl unzip git jq libgl-dev bc
 
+# python packages: the same list the desktop python runtime uses (handler/requirements.txt);
+# pypet2bids comes from PyPI at a pinned release (master pinned a PET2BIDS commit for the same reason:
+# the git repo moved to uv and lost its installpoetry target)
 COPY requirements.txt /tmp/requirements.txt
 RUN pip3 install -r /tmp/requirements.txt
 
@@ -27,7 +30,13 @@ RUN mkdir -p /usr/local/fsl && \
     git clone https://github.com/dlevitas/FSL_binaries /usr/local/fsl && \
     rm -rf /usr/local/fsl/README.md && \
     mkdir -p /usr/local/fsl/data/standard && \
-    mv /usr/local/fsl/bin/MNI152_T1_2mm_brain.nii.gz /usr/local/fsl/data/standard
+    mv /usr/local/fsl/bin/MNI152_T1_2mm_brain.nii.gz /usr/local/fsl/data/standard && \
+    ln -sf /usr/bin/python3 /usr/local/fsl/bin/fslpython
+# The fslpython in FSL_binaries is a bare conda-forge python 3.8 binary without its own stdlib, so it
+# falls back to Debian's /usr/lib/python3.8, which has no math extension module (Debian builds it in).
+# tmpnam (#!/usr/bin/env fslpython) then fails and fslreorient2std writes its temporary matrix to
+# ./_nii.mat in the shared working directory, where parallel deface jobs can overwrite or delete each other's.
+# tmpnam only needs the standard library, so fslpython is the system python3 (also 3.8).
 
 ENV FSLDIR=/usr/local/fsl
 ENV PATH=$PATH:$FSLDIR/bin
@@ -63,9 +72,14 @@ RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesourc
 RUN apt-get update \
     && apt-get install nodejs -y
 
-RUN cd /tmp && curl -fLO https://github.com/rordenlab/dcm2niix/releases/latest/download/dcm2niix_lnx.zip \
+# dcm2niix pinned to an exact release (its BidsGuess and sidecars change between releases);
+# to update, change both ARGs: the sha256 is the release asset digest shown on GitHub
+ARG DCM2NIIX_VERSION=v1.0.20261029
+ARG DCM2NIIX_ZIP_SHA256=decc03fe9c08e696700876bd0e28fbc1dda5be11979905dfa5a5e01063cdf758
+RUN cd /tmp && curl -fL -o dcm2niix_lnx.zip https://github.com/rordenlab/dcm2niix/releases/download/${DCM2NIIX_VERSION}/dcm2niix_lnx.zip \
+    && echo "${DCM2NIIX_ZIP_SHA256}  /tmp/dcm2niix_lnx.zip" | sha256sum -c - \
     && unzip /tmp/dcm2niix_lnx.zip \
-    && mv dcm2niix /usr/local/bin
+    && mv dcm2niix /usr/local/bin && rm /tmp/dcm2niix_lnx.zip
 
 # Don't need, unless there's a reason for having the development branch ahead of scheduled release
 # RUN git clone --branch development https://github.com/rordenlab/dcm2niix.git \
@@ -88,6 +102,32 @@ ENV PATH $NVM_DIR/v$NODE_VERSION/bin:$PATH
 RUN npm install -g npm@9.5.1
 RUN npm install -g bids-validator@1.14.8
 RUN git clone https://github.com/bids-standard/bids-validator
+
+# The TypeScript handler (handler/*.ts) looks for its tools in the desktop bundle layout:
+# $EZBIDS_BIN_DIR/<tool>/<tool>-<platform>-<arch>. Without $EZBIDS_BIN_DIR/python-runtime it uses this image's python3.
+ENV EZBIDS_BIN_DIR=/opt/ezbids-bin EZBIDS_PLATFORM=linux EZBIDS_ARCH=amd64
+ENV EZBIDS_TEMPLATE_DIR=/app/handler/templates
+ENV BIDS_VALIDATOR_PATH=/usr/lib/node_modules/bids-validator/bin/bids-validator
+RUN mkdir -p $EZBIDS_BIN_DIR/dcm2niix $EZBIDS_BIN_DIR/7z $EZBIDS_BIN_DIR/allineate && \
+    ln -s /usr/local/bin/dcm2niix $EZBIDS_BIN_DIR/dcm2niix/dcm2niix-linux-amd64
+
+# 7-Zip (expand step): the same release asset the desktop app ships (brainlife/ezbids-binaries)
+ARG EZBIDS_BINARIES_TAG=v0.0.5
+ARG SEVENZ_SHA256=57b73a4bf122b8d7e69c4c04a478f258b03f1515feebe1e70f190432710b3a3b
+RUN curl -fsSL -o $EZBIDS_BIN_DIR/7z/7z-linux-amd64 \
+        https://github.com/brainlife/ezbids-binaries/releases/download/${EZBIDS_BINARIES_TAG}/7z-linux-amd64 && \
+    echo "${SEVENZ_SHA256}  $EZBIDS_BIN_DIR/7z/7z-linux-amd64" | sha256sum -c - && \
+    chmod +x $EZBIDS_BIN_DIR/7z/7z-linux-amd64
+
+# allineate (deface step): the release binary needs glibc 2.34 (this image has 2.31), so it is compiled here
+# from the commit brainlife/ezbids-binaries pins (scripts/build/allineate.sh, same flags)
+ARG ALLINEATE_REF=dd250449d46752f84761657fbaf0fb26c8aaf20e
+RUN apt-get update && apt-get install -y zlib1g-dev && \
+    cd /tmp && curl -fsSL -o allineate.tgz https://github.com/neurolabusc/allineate/archive/${ALLINEATE_REF}.tar.gz && \
+    tar -xzf allineate.tgz && cd allineate-${ALLINEATE_REF} && \
+    gcc -O3 -ffast-math -DHAVE_ZLIB main.c allineate.c nifti_io.c powell_newuoa.c -lz -lm \
+        -o $EZBIDS_BIN_DIR/allineate/allineate-linux-amd64 && \
+    cd /tmp && rm -rf allineate.tgz allineate-${ALLINEATE_REF} && apt-get clean -y
 
 # install source code from local
 WORKDIR /app/handler

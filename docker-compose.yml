@@ -51,10 +51,12 @@ services:
                 condition: service_healthy
         environment:
             MONGO_CONNECTION_STRING: mongodb://mongodb:27017/ezbids
-            IS_ELECTRON: 'true'
-
+            # the TypeScript handler (handler/*.ts) runs with ts-node; tool locations come from the image (handler/Dockerfile)
+            EZBIDS_HANDLER_DIR: /app/handler
+            EZBIDS_TELEMETRY_URL: ${EZBIDS_TELEMETRY_URL:-} # telemetry is off unless this is set
         tty: true #turn on color for bids-validator output
-        command: pm2 start handler.js --attach --watch --ignore-watch "ui **/node_modules"
+        working_dir: /app/handler
+        command: node ../node_modules/ts-node-dev/lib/bin.js --respawn --transpile-only -P tsconfig.json handler.ts
 
     ui:
         container_name: brainlife_ezbids-ui
@@ -66,6 +68,9 @@ services:
             - ./ui/src:/app/ui/src #don't copy node_modules which might be compiled for mac (vite won't work)
         environment:
             VITE_APIHOST: http://localhost:8082
+            API_HOST: http://localhost:8082 # written into public/runtime-env.js by ui/docker-entrypoint.sh
+            BRAINLIFE_AUTHENTICATION: ${BRAINLIFE_AUTHENTICATION:-false}
+            VITE_DEBUG: ${VITE_DEBUG:-false} # true shows raw JSON debug panels (they include PatientName/PatientID)
         healthcheck:
             test: ['CMD', 'curl', '-f', 'http://localhost:3000']
         ports:
