@@ -28,7 +28,7 @@ DURATION_S = 10
 N_SAMPLES = int(SFREQ * DURATION_S)
 MEAS_DATE = datetime(2025, 2, 15, 10, 0, 0, tzinfo=timezone.utc)
 
-CACHE = Path(os.environ.get("AIMPORT_EPHYS_CACHE", "/tmp/aimport-ephys-cache"))
+CACHE = Path(os.environ.get("AIMPORT_EPHYS_CACHE", str(Path.home() / ".cache" / "aimport-ephys")))
 BIDS_EXAMPLES_CACHE = Path(os.environ.get("AIMPORT_BIDS_EXAMPLES_CACHE", "/tmp/aimport-bids-examples-cache"))
 
 MNE_TESTING_COMMIT = "20cc221d737a37a6ee3a9c007e91bd69541fefe9"

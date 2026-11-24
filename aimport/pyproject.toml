@@ -57,5 +57,5 @@ markers = [
     "docker_offline: tests that need Docker but no network",
     "docker_slow: Docker tests that take minutes per image (pydeface); run with -m docker_slow",
     "network: reads remote data over https (range reads, under 32 MiB per test)",
-    "ephys_data: downloads small pinned ephys test files the first time and caches them in AIMPORT_EPHYS_CACHE (default /tmp/aimport-ephys-cache)",
+    "ephys_data: downloads small pinned ephys test files the first time and caches them in AIMPORT_EPHYS_CACHE (default ~/.cache/aimport-ephys)",
 ]

@@ -65,7 +65,7 @@ defacing tests need. Its `In/` folder also contains a stray `.nii` file.
 ### mne-testing-data files (current)
 
 Downloaded file by file from `raw.githubusercontent.com` into `AIMPORT_EPHYS_CACHE` (default
-`/tmp/aimport-ephys-cache`; the host copy lives in `~/.cache/aimport-ephys`) under
+`~/.cache/aimport-ephys`, which Colima mounts since it mounts only `$HOME`) under
 `mne-testing-data-<commit>/<path>`; each file is checked against the SHA-256 below, and the total
 (46,300,216 bytes, about 46 MB) stays under 80 MB (`MAX_TOTAL_BYTES`). Nothing is committed. Chosen as the
 smallest file per format family; the planned `Hitachi/*.csv` does not exist at this commit, so Hitachi is not
@@ -282,7 +282,7 @@ with `PLANTED` or `NATIVE` ignores.
 - Host unit tests: `cd aimport && uv run pytest -m "not docker and not docker_offline"` (includes the
   `ephys_data` tests, which fetch the pinned mne-testing-data files once into `AIMPORT_EPHYS_CACHE`)
 - In the image: `docker run --rm --platform linux/amd64 -v $PWD/aimport:/src brainlife/aimport:dev pytest -m docker /src/tests`
-  (ephys: add `-v ~/.cache/aimport-bids-examples:/tmp/aimport-bids-examples-cache -v ~/.cache/aimport-ephys:/tmp/aimport-ephys-cache`
+  (ephys: add `-v ~/.cache/aimport-bids-examples:/tmp/aimport-bids-examples-cache -v ~/.cache/aimport-ephys:/tmp/aimport-ephys-cache -e AIMPORT_EPHYS_CACHE=/tmp/aimport-ephys-cache`
   so the bids-examples clone and the mne-testing-data files are reused)
 - Offline: the same with `--network none -m docker_offline`, plus a cache mount holding the xa30 tarball, because
   the fetch cannot download: `-v <cache dir>:/tmp/aimport-dcm-qa-cache` (the tarball is

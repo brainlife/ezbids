@@ -52,8 +52,9 @@ def _alpha(token: str) -> str:
     return re.sub(r"\d+$", "", token).lower()
 
 
-def is_vocab(token: str) -> bool:
-    return token.lower() in _VOCAB or _alpha(token) in _VOCAB
+def is_vocab(token: str, vocab: Iterable[str] | None = None) -> bool:
+    words = _VOCAB if vocab is None else frozenset(vocab)
+    return token.lower() in words or _alpha(token) in words
 
 
 def _date(token: str) -> date | None:
@@ -74,7 +75,7 @@ def _parts(rel: str) -> list[str]:
     return [p for p in rel.replace("\\", "/").split("/") if p and p != "."]
 
 
-def facts(rel: str) -> NameFacts:
+def facts(rel: str, vocab: Iterable[str] | None = None) -> NameFacts:
     parts = _parts(rel)
     out = NameFacts()
     sub = next((p[4:] for p in parts if p.startswith("sub-") and len(p) > 4), None)
@@ -89,7 +90,7 @@ def facts(rel: str) -> NameFacts:
                 if d not in out.dates:
                     out.dates.append(d)
                 continue
-            if out.donor is None and not t.isdigit() and not is_vocab(t) and _DONOR.fullmatch(t) \
+            if out.donor is None and not t.isdigit() and not is_vocab(t, vocab) and _DONOR.fullmatch(t) \
                     and not t.startswith("sub-"):
                 out.donor = t
             low = t.lower()
@@ -119,19 +120,19 @@ def facts(rel: str) -> NameFacts:
     return out
 
 
-def path_terms(rels: Iterable[str]) -> set[str]:
+def path_terms(rels: Iterable[str], vocab: Iterable[str] | None = None) -> set[str]:
     """Identifying terms from paths, for redaction: tokens, donors and every form of each date."""
     terms: set[str] = set()
     for rel in rels:
         for part in _parts(rel):
             for t in _tokens(_EXT.sub("", part)):
-                if len(t) < 3 or is_vocab(t) or (t.isdigit() and len(t) < 6):
+                if len(t) < 3 or is_vocab(t, vocab) or (t.isdigit() and len(t) < 6):
                     continue
                 terms.add(t)
                 d = _date(t)
                 if d is not None:
                     terms |= _date_forms(d.strftime("%Y%m%d"))
-        f = facts(rel)
+        f = facts(rel, vocab)
         if f.donor:
             terms.add(f.donor)
         for d in f.dates:
