@@ -37,7 +37,7 @@ def test_nifti_without_hint_left_to_ezbids(tmp_path):
 
 
 def test_zarr_root_not_walked(tmp_path, monkeypatch):
-    store = tmp_path / "big.zarr"
+    store = tmp_path / "foo"
     (store / "0" / "c").mkdir(parents=True)
     (store / "zarr.json").write_text("{}")
     for i in range(10_000):
@@ -46,7 +46,7 @@ def test_zarr_root_not_walked(tmp_path, monkeypatch):
     real = os.scandir
     monkeypatch.setattr(os, "scandir", lambda *a, **k: (calls.append(a), real(*a, **k))[1])
     claim, found = discover.claim(tmp_path, [])
-    assert [f.rel for f in found] == ["big.zarr"] and claim.roots == ["big.zarr"]
+    assert [f.rel for f in found] == ["foo"] and claim.roots == ["foo"]
     assert len(calls) < 50
 
 
@@ -82,3 +82,37 @@ def test_visor_meta_claimed_not_entries(tmp_path):
     for n in ("acqinfo_metadata.json", "dbpost.json", "hh.log"):
         assert f"MN27_20250422_visor_488/{n}" in claim.roots
         assert all(not f.rel.endswith(n) for f in found)
+
+
+def test_vocabulary_exact_except_structural():
+    for w in ("HH3", "PS12", "NM5", "MAT2", "DAT1", "RAW7", "SCAN4"):
+        assert not names.is_vocab(w)
+        assert w in names.path_terms([f"{w}_x.tif"])
+        assert names.facts(f"{w}_x.tif").donor == w
+    for w in ("Slice051", "Pos3", "ch1", "Tile7"):
+        assert names.is_vocab(w)
+
+
+def test_separator_dates():
+    for p in ("a/2025-04-22/x.tif", "a/2025_04_22/x.tif"):
+        assert date(2025, 4, 22) in names.facts(p).dates
+        t = names.path_terms([p])
+        assert "2025-04-22" in t and "20250422" in t
+    assert names.facts("22.04.2025_x.tif").dates == [date(2025, 4, 22)]
+    assert names.facts("2025-13-45/x.tif").dates == []
+
+
+def test_nifti_claim_is_narrow(tmp_path):
+    for rel in ("Oct_2024/sub-01/anat/T1.nii.gz", "cross_sectional/study/x/y/T1.nii.gz",
+                "PS-OCT/Enface/Retardance/Slice_051_1.nii.gz"):
+        (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / rel).touch()
+    claim, _ = discover.claim(tmp_path, [])
+    assert claim.roots == ["PS-OCT/Enface/Retardance/Slice_051_1.nii.gz"]
+
+
+def test_trailing_six_digit_tile_and_donor_scope():
+    f = names.facts("MN27_20250422_visor_488/visor_488_Pos3/visor_488_000123.tif")
+    assert f.tile == 123 and f.dates == [date(2025, 4, 22)]
+    assert names.facts("Zed1/Mid2/test_x.tif").donor == "Zed1"
+    assert names.facts("run/Mid2/final_scan_12.tif").donor is None

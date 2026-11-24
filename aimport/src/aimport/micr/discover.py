@@ -26,15 +26,20 @@ class Found:
     group: str
 
 
-def _hint_tokens(rel: str) -> set[str]:
-    low = rel.lower()
-    toks = {t for p in low.split("/") for t in _TOKEN.split(p) if t}
-    toks |= {p for p in low.split("/")}
-    return toks
+def _tokens(text: str) -> set[str]:
+    low = text.lower()
+    return {t for t in _TOKEN.split(low) if t} | {low}
 
 
 def has_hint(rel: str) -> bool:
-    return bool(_hint_tokens(rel) & HINTS) or "micr" in rel.lower().split("/")
+    """A hint token in the file name or one of its two nearest folders, or a BIDS micr/ folder."""
+    parts = rel.split("/")
+    if "micr" in (p.lower() for p in parts[:-1]):
+        return True
+    near = set()
+    for p in parts[-3:]:
+        near |= _tokens(p)
+    return bool(near & HINTS)
 
 
 def _nifti_microns(path: Path) -> bool:
@@ -103,31 +108,16 @@ def claim(input_dir: Path, remote: list[str] | None = None) -> tuple[Claim, list
                 continue
             rel = f"{rel_dir}/{e.name}" if rel_dir else e.name
             if e.is_dir(follow_symlinks=False):
-                zarr_name = e.name.lower().endswith(".zarr")
-                if zarr_name or rel_dir.lower().endswith(".zarr") and re.fullmatch(r"Pos\d+", e.name):
-                    add_root_dir(Path(e.path), rel, e.name)
+                if any(os.path.exists(os.path.join(e.path, m)) for m in ZARR_MARKERS):
+                    add_root(rel, "ome-zarr")  # a store: never walked inside
+                elif rel_dir.lower().endswith(".zarr") and re.fullmatch(r"Pos\d+", e.name):
+                    add_root(rel, "ome-zarr")  # exaSPIM.zarr/Pos*
                 else:
                     walk(Path(e.path), rel)
             elif e.is_file(follow_symlinks=False):
                 fam = _family(e.name, Path(e.path), rel)
                 if fam:
-                    add_root(rel, fam, rel_dir or "." if fam == "tiff" else None)
-
-    def add_root_dir(path: Path, rel: str, name: str) -> None:
-        try:
-            with os.scandir(path) as it:
-                children = sorted(it, key=lambda e: e.name)
-        except OSError:
-            return
-        if any(c.name in ZARR_MARKERS for c in children):
-            add_root(rel, "ome-zarr")
-            return
-        pos = [c for c in children if c.is_dir(follow_symlinks=False) and re.fullmatch(r"Pos\d+", c.name)]
-        if pos:  # exaSPIM.zarr/Pos*: each position is its own store
-            for c in pos:
-                add_root(f"{rel}/{c.name}", "ome-zarr")
-        else:
-            add_root(rel, "ome-zarr")
+                    add_root(rel, fam, (rel_dir or ".") if fam == "tiff" else None)
 
     walk(input_dir, "")
     return Claim(roots=roots, remote=list(remote or [])), found

@@ -15,18 +15,23 @@ from ..scrub import _date_forms
 
 Contrast = Literal["reflectivity", "retardance", "opticaxis", "cross"]
 
-VOCAB: tuple[str, ...] = (
-    "slice", "tile", "pos", "visor", "spim", "exaspim", "ps", "oct", "psoct", "enface", "registration",
-    "reflectivity", "retardance", "orientation", "opticaxis", "cross", "micr", "channel", "ch", "laser",
-    "nm", "raw", "ome", "zarr", "tif", "tiff", "btf", "nii", "gz", "dat", "mat", "json", "log", "svs",
-    "czi", "nd2", "lif", "vsi", "sub", "ses", "sample", "acqinfo", "metadata", "dbpost", "hh", "data",
-    "images", "image", "stitched", "stitch", "scan", "dapi", "gfp", "tdt",
+# Structural words may carry a digit suffix (Slice051, Pos3, ch1); every other word matches exactly.
+STRUCTURAL = ("slice", "tile", "pos", "ch")
+VOCAB: tuple[str, ...] = STRUCTURAL + (
+    "visor", "spim", "exaspim", "ps", "hh", "oct", "psoct", "enface", "registration",
+    "reflectivity", "retardance", "orientation", "opticaxis", "cross", "micr", "channel", "laser",
+    "raw", "ome", "zarr", "tif", "tiff", "btf", "nii", "gz", "dat", "mat", "json", "log", "svs",
+    "czi", "nd2", "lif", "vsi", "sub", "ses", "sample", "acqinfo", "metadata", "dbpost", "data",
+    "images", "image", "stitched", "stitch", "scan", "dapi",
 )
 _VOCAB = frozenset(VOCAB)
+DONOR_STOP = frozenset({"test", "run", "scan", "data", "raw", "new", "old", "final"})
+_SEP_DATE = re.compile(r"(?<!\d)(?:(\d{4})[-_.](\d{2})[-_.](\d{2})|(\d{2})[-_.](\d{2})[-_.](\d{4}))(?!\d)")
 _CONTRAST: dict[str, Contrast] = {
     "reflectivity": "reflectivity", "retardance": "retardance", "orientation": "opticaxis",
     "opticaxis": "opticaxis", "cross": "cross",
 }
+VISOR_META_NAMES = frozenset({"acqinfo_metadata.json", "dbpost.json", "hh.log"})
 _CHANNEL_WORDS = frozenset({"visor", "ch", "channel", "laser", "c"})
 _DONOR = re.compile(r"[A-Za-z]{1,4}\d{0,4}")
 _SPLIT = re.compile(r"[_\-.\s]+")
@@ -48,12 +53,36 @@ def _tokens(text: str) -> list[str]:
     return [t for t in _SPLIT.split(text) if t]
 
 
-def _alpha(token: str) -> str:
-    return re.sub(r"\d+$", "", token).lower()
-
-
 def is_vocab(token: str) -> bool:
-    return token.lower() in _VOCAB or _alpha(token) in _VOCAB
+    low = token.lower()
+    if low in _VOCAB:
+        return True
+    m = re.fullmatch(r"([a-z]+)\d+", low)
+    return bool(m) and m.group(1) in STRUCTURAL
+
+
+def _valid(y: int, m: int, d: int) -> date | None:
+    if not 1900 <= y <= 2099:
+        return None
+    try:
+        return date(y, m, d)
+    except ValueError:
+        return None
+
+
+def separator_dates(rel: str) -> list[tuple[str, list[date]]]:
+    """(matched text, readings) for dates written with - _ . separators; invalid ones are dropped."""
+    out = []
+    for m in _SEP_DATE.finditer(rel.replace("\\", "/")):
+        g = m.groups()
+        if g[0]:
+            reads = [_valid(int(g[0]), int(g[1]), int(g[2]))]
+        else:  # dd-mm-yyyy first, else mm-dd-yyyy
+            reads = [_valid(int(g[5]), int(g[4]), int(g[3])), _valid(int(g[5]), int(g[3]), int(g[4]))]
+        reads = [r for r in reads if r]
+        if reads:
+            out.append((m.group(0), reads[:1] if g[0] else reads))
+    return out
 
 
 def _date(token: str) -> date | None:
@@ -74,30 +103,55 @@ def _parts(rel: str) -> list[str]:
     return [p for p in rel.replace("\\", "/").split("/") if p and p != "."]
 
 
+def _trailing_tile(toks: list[str]) -> int | None:
+    """A trailing tile index in a file name (visor_488_0012, visor_488_000123); never a date or slice."""
+    if len(toks) < 2 or not toks[-1].isdigit():
+        return None
+    prev = toks[-2]
+    if prev.lower() in ("slice", "tile", "pos"):
+        return None
+    channel = prev.isdigit() and len(prev) == 3 and 350 <= int(prev) <= 900
+    if prev.isdigit() and not channel:
+        return None
+    if _date(toks[-1]) is not None and not (channel or prev.lower() in _CHANNEL_WORDS):
+        return None
+    return int(toks[-1])
+
+
 def facts(rel: str) -> NameFacts:
     parts = _parts(rel)
     out = NameFacts()
-    sub = next((p[4:] for p in parts if p.startswith("sub-") and len(p) > 4), None)
-    if sub:
-        out.donor = sub
+    out.donor = next((p[4:] for p in parts if p.startswith("sub-") and len(p) > 4), None)
     stems = [_EXT.sub("", p) for p in parts]
+    for text, reads in separator_dates(rel):
+        for d in reads:
+            if d not in out.dates:
+                out.dates.append(d)
+    donor_from = {0, len(parts) - 1}
     for i, (part, stem) in enumerate(zip(parts, stems)):
         toks = _tokens(stem)
+        last = i == len(parts) - 1
+        trail = _trailing_tile(toks) if last and "." in part else None
+        if trail is not None:
+            out.tile = trail
         for j, t in enumerate(toks):
+            if trail is not None and j == len(toks) - 1:
+                continue
             d = _date(t)
             if d is not None:
                 if d not in out.dates:
                     out.dates.append(d)
                 continue
-            if out.donor is None and not t.isdigit() and not is_vocab(t) and _DONOR.fullmatch(t) \
-                    and not t.startswith("sub-"):
+            if (out.donor is None and i in donor_from and part not in VISOR_META_NAMES
+                    and not t.isdigit() and not is_vocab(t) and t.lower() not in DONOR_STOP
+                    and _DONOR.fullmatch(t)):
                 out.donor = t
             low = t.lower()
             if low in _CONTRAST:
                 out.contrast = _CONTRAST[low]
-            m = re.fullmatch(r"(?i)(pos)(\d+)", t)
+            m = re.fullmatch(r"(?i)pos(\d+)", t)
             if m:
-                out.position = int(m.group(2))
+                out.position = int(m.group(1))
             if low == "slice" and j + 1 < len(toks) and toks[j + 1].isdigit():
                 out.slice = int(toks[j + 1])
             if low == "tile" and j + 1 < len(toks) and toks[j + 1].isdigit():
@@ -109,13 +163,6 @@ def facts(rel: str) -> NameFacts:
             m = re.fullmatch(r"(?i)(\d{3})nm", t)
             if m and 350 <= int(m.group(1)) <= 900:
                 out.channel_nm = int(m.group(1))
-        # a trailing tile index in a file name: visor_488_0012.tif
-        if i == len(parts) - 1 and "." in part:
-            if len(toks) >= 2 and toks[-1].isdigit() and out.tile is None:
-                prev = toks[-2]
-                if prev.lower() not in ("slice", "tile", "pos") and _date(toks[-1]) is None:
-                    if not prev.isdigit() or int(prev) == out.channel_nm:
-                        out.tile = int(toks[-1])
     return out
 
 
@@ -131,6 +178,10 @@ def path_terms(rels: Iterable[str]) -> set[str]:
                 d = _date(t)
                 if d is not None:
                     terms |= _date_forms(d.strftime("%Y%m%d"))
+        for text, reads in separator_dates(rel):
+            terms.add(text)
+            for d in reads:
+                terms |= _date_forms(d.strftime("%Y%m%d"))
         f = facts(rel)
         if f.donor:
             terms.add(f.donor)
