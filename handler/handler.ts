@@ -6,6 +6,7 @@ import config = require('../api/config');
 import models = require('../api/models');
 import { sessionStore, ezbidsStore } from '../api/store';
 import { nodeArgsForScript, resolveHandlerScript } from './utils';
+import { writeDefaceMethods } from './deface.methods';
 
 console.log('---------------------------------------');
 console.log(' starting ezbids-handler');
@@ -269,6 +270,12 @@ function run() {
 }
 
 function start() {
+    // tell the API (and so the UI) which defacing methods this handler can actually run
+    try {
+        console.log('deface methods available:', writeDefaceMethods(config.workdir).join(', ') || 'none');
+    } catch (err) {
+        console.error('could not write deface-methods.json', err);
+    }
     if (config.isElectron) {
         console.log('starting ezbids-handler in electron mode');
         run();

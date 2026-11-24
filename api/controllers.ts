@@ -50,6 +50,25 @@ const router = express.Router();
  *                  error:
  *                    type: string
  */
+/**
+ * @swagger
+ * /deface-methods:
+ *   get:
+ *     summary: Defacing methods the handler can run (written by the handler at start from the tools it finds)
+ *     responses:
+ *       200:
+ *         description: { methods: string[] } (empty until the handler has started)
+ */
+router.get('/deface-methods', (req, res) => {
+    try {
+        const file = path.join(config.workdir, 'deface-methods.json');
+        const methods = JSON.parse(fs.readFileSync(file, 'utf8')).methods;
+        return res.json({ methods: Array.isArray(methods) ? methods : [] });
+    } catch (err) {
+        return res.json({ methods: [] });
+    }
+});
+
 router.get('/health', (req, res) => {
     let status = 'ok';
     let message = '';

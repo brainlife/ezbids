@@ -6,7 +6,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { execa } from 'execa';
-import { getBinPath, runPython } from './utils';
+import { runPython } from './utils';
+import { allineatePath, availableDefaceMethods, templateDir } from './deface.methods';
 import { runParallel } from './preprocess.utils';
 
 const root = process.argv[2];
@@ -46,12 +47,12 @@ function appendLine(file: string, line: string): void {
     fs.appendFileSync(file, `${line}\n`);
 }
 
-/** MNI template + mask next to the allineate binary (bundled layout). */
+/** MNI template + face mask (handler/templates). */
 function getTemplatePaths(): { template: string; mask: string } {
-    const binPath = process.env.EZBIDS_TEMPLATE_DIR ?? '';
+    const dir = templateDir();
     return {
-        template: path.join(binPath, 'mean_reg2mean.nii.gz'),
-        mask: path.join(binPath, 'facemask.nii.gz'),
+        template: path.join(dir, 'mean_reg2mean.nii.gz'),
+        mask: path.join(dir, 'facemask.nii.gz'),
     };
 }
 
@@ -96,22 +97,18 @@ export async function runAllineateDefacing(vol: string, resolvedHandler: string,
     }
 
     const stripped = vol.replace(/\.nii(\.gz)?$/i, '.brain.nii.gz');
-    const platform = process.env.EZBIDS_PLATFORM;
-    const arch = process.env.EZBIDS_ARCH;
-    const allineateName =
-        platform === 'windows' ? `allineate-${platform}-${arch}.exe` : `allineate-${platform}-${arch}`;
-    const allineatePath = path.join(getBinPath('allineate'), allineateName);
+    const allineate = allineatePath();
     const args = [template, vol, '-cost', cost, '-skullstrip', mask, stripped];
 
     // eslint-disable-next-line no-console -- CLI
-    console.log(`[allineate] ${allineatePath} ${args.join(' ')}`);
+    console.log(`[allineate] ${allineate} ${args.join(' ')}`);
     try {
-        await execa(allineatePath, args, {
+        await execa(allineate, args, {
             stdio: 'inherit',
             env: { ...process.env, OMP_NUM_THREADS: '4' },
         });
     } catch (e) {
-        console.error('allineate failed:', allineatePath, args, e);
+        console.error('allineate failed:', allineate, args, e);
         throw e;
     }
 
@@ -127,6 +124,25 @@ export async function runAllineateDefacing(vol: string, resolvedHandler: string,
         fs.unlinkSync(brainPng);
     }
 
+    await thumbnailForNifti(defaced, resolvedHandler);
+}
+
+/**
+ * master's deface.sh, per image: fslreorient2std in place, then
+ * quickshear: ROBEX brain mask + quickshear (60 s limit); pydeface: FSL face-mask registration.
+ */
+export async function runFslDefacing(method: 'quickshear' | 'pydeface', vol: string, resolvedHandler: string): Promise<void> {
+    const opts = { stdio: 'inherit' as const, cwd: path.dirname(vol) };
+    await execa('fslreorient2std', [vol, vol], opts);
+    const defaced = `${vol}.defaced.nii.gz`;
+    if (method === 'quickshear') {
+        const mask = `${vol}.mask.nii.gz`;
+        await execa('runROBEX.sh', [vol, mask], opts);
+        await execa('quickshear', [vol, mask, defaced], { ...opts, timeout: 60_000 });
+    } else {
+        await execa('pydeface', ['--verbose', '--force', vol, '--outfile', defaced], opts);
+    }
+    if (!fs.existsSync(defaced)) throw new Error(`${method} produced no output: ${defaced}`);
     await thumbnailForNifti(defaced, resolvedHandler);
 }
 
@@ -147,8 +163,9 @@ async function main(): Promise<void> {
 
     let anyFailed = false;
 
-    if (method !== 'allineate') {
-        die(`unknown deface method: ${method}`);
+    const available = availableDefaceMethods();
+    if (!available.includes(method as never)) {
+        die(`deface method "${method}" is not available here (available: ${available.join(', ') || 'none'})`);
     }
 
     async function processItem(item: DefaceItem): Promise<{ status: number; stderr: string }> {
@@ -175,7 +192,8 @@ async function main(): Promise<void> {
         }
 
         try {
-            await runAllineateDefacing(vol, resolvedHandlerDir);
+            if (method === 'allineate') await runAllineateDefacing(vol, resolvedHandlerDir);
+            else await runFslDefacing(method as 'quickshear' | 'pydeface', vol, resolvedHandlerDir);
             appendLine(finishedPath, String(item.idx));
             return { status: 0, stderr: '' };
         } catch (e) {

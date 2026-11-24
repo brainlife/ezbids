@@ -5,17 +5,32 @@
             <p class="deface-intro__text">
                 Defacing removes facial features from anatomical images to improve participant privacy.
             </p>
-            <p class="deface-intro__text">
-                ezBIDS uses the <b>allineate</b> method. Anatomical images are rewritten in closest canonical
-                orientation (<i>as_closest_canonical</i>) before skull stripping.
-            </p>
+            <p v-if="methodInfo" class="deface-intro__text">{{ methodInfo }}</p>
         </header>
 
         <section class="deface-card">
             <div class="deface-actions">
                 <div class="deface-actions__meta">
-                    <el-tag size="mini" type="info" effect="plain" class="deface-method-tag">Method: allineate</el-tag>
-                    <p class="deface-actions__hint">Run defacing on all anatomical images in this dataset.</p>
+                    <!-- the methods the handler found tools for (GET /deface-methods): quickshear / pydeface / allineate
+                         on the web, allineate on the desktop (FSL and ROBEX cannot ship there) -->
+                    <el-select
+                        v-if="methods.length > 1 && showRunDefaceButton"
+                        v-model="selectedMethod"
+                        size="small"
+                        class="deface-method-select"
+                        aria-label="Defacing method"
+                    >
+                        <el-option v-for="m in methods" :key="m" :value="m" :label="methodLabels[m] || m" />
+                    </el-select>
+                    <el-tag v-else-if="ezbids.defacingMethod || selectedMethod" size="mini" type="info" effect="plain" class="deface-method-tag"
+                        >Method: {{ ezbids.defacingMethod || selectedMethod }}</el-tag
+                    >
+                    <p class="deface-actions__hint">
+                        <template v-if="methodsLoaded && methods.length === 0">
+                            No defacing tool is available on this server.
+                        </template>
+                        <template v-else>Run defacing on all anatomical images in this dataset.</template>
+                    </p>
                 </div>
                 <div class="deface-actions__buttons">
                     <el-button
@@ -141,12 +156,18 @@ export default defineComponent({
     },
     emits: ['niivue'],
 
-    /*
     data() {
         return {
-        }
+            methods: [] as string[],
+            selectedMethod: '',
+            methodsLoaded: false,
+            methodLabels: {
+                quickshear: 'Quickshear (recommended)',
+                pydeface: 'pyDeface (slower)',
+                allineate: 'allineate face mask',
+            } as Record<string, string>,
+        };
     },
-    */
     computed: {
         ...mapState(['ezbids', 'config', 'session', 'bidsSchema']),
         ...mapGetters(['getBIDSEntities']),
@@ -162,7 +183,18 @@ export default defineComponent({
             return !this.isDefacing && !this.session.deface_finish_date;
         },
         defaceButtonIsDisabled() {
-            return this.anatObjects.length === 0;
+            return this.anatObjects.length === 0 || !this.methods.includes(this.selectedMethod);
+        },
+        methodInfo(): string {
+            const info: Record<string, string> = {
+                quickshear:
+                    'Quickshear: a ROBEX brain mask, then the face is cut off below it (about 1 min per image). Images are reoriented with FSL fslreorient2std first.',
+                pydeface:
+                    'pydeface: FSL registers a face-mask template (about 5 min per image). Images are reoriented with FSL fslreorient2std first.',
+                allineate:
+                    'allineate: a face mask is registered to each image. Images are rewritten in closest canonical orientation (as_closest_canonical) before skull stripping.',
+            };
+            return info[this.ezbids.defacingMethod || this.selectedMethod] ?? '';
         },
 
         anatObjects() {
@@ -170,7 +202,8 @@ export default defineComponent({
         },
     },
 
-    mounted() {
+    async mounted() {
+        this.loadMethods();
         //initialize all anat to use defaced image by default
         this.anatObjects.forEach((o: IObject) => {
             if (!o.defaceSelection) o.defaceSelection = 'defaced';
@@ -212,8 +245,23 @@ export default defineComponent({
             });
         },
 
+        async loadMethods() {
+            try {
+                const res = await axios.get(`${this.config.apihost}/deface-methods`);
+                this.methods = Array.isArray(res.data?.methods) ? res.data.methods : [];
+            } catch (e) {
+                this.methods = [];
+            }
+            this.methodsLoaded = true;
+            // keep a method chosen earlier in this session if the handler still offers it
+            this.selectedMethod = this.methods.includes(this.ezbids.defacingMethod)
+                ? this.ezbids.defacingMethod
+                : this.methods[0] ?? '';
+        },
+
         async runDeface() {
-            this.ezbids.defacingMethod = 'allineate';
+            if (!this.methods.includes(this.selectedMethod)) return;
+            this.ezbids.defacingMethod = this.selectedMethod;
             const list = this.anatObjects.map((o: IObject) => {
                 return { idx: o.idx, path: o.items.find((i) => i.path?.endsWith('.nii.gz'))?.path };
             });
@@ -331,6 +379,11 @@ export default defineComponent({
 
 .deface-method-tag {
     font-weight: 600;
+}
+
+.deface-method-select {
+    width: 240px;
+    margin-bottom: 0.4rem;
 }
 
 .deface-cta {
