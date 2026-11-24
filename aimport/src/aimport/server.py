@@ -13,7 +13,9 @@ the container ``serve`` binds 0.0.0.0; ``bl aimport`` must publish the port on 1
 
 The browser viewer never sees the token: ``POST /viewer/session`` (bearer) returns a one-time code (single
 use, 60 s) and ``GET /viewer/open?code=`` trades it for an HttpOnly, SameSite=Strict session cookie. The
-cookie is accepted only on ``/viewer/*`` and ``/qa/*`` (not ``/viewer/session``); every other route stays
+cookie is accepted only on ``GET``/``HEAD`` of ``/viewer/*`` and ``/qa/*`` (not ``/viewer/session``) and on
+one write route, ``POST /qa/channels/<entry id>`` (the trace viewer's bad-channel marks), there only with an
+``X-Aimport-Viewer: 1`` header and an ``Origin`` equal to the engine's own (CSRF); every other route stays
 bearer-only.
 """
 from __future__ import annotations
@@ -40,6 +42,7 @@ from typing import Any, Literal, Sequence
 from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
+from fastapi.concurrency import run_in_threadpool
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, RedirectResponse, Response, StreamingResponse
 from pydantic import BaseModel, ConfigDict
@@ -75,6 +78,8 @@ from .pseudonyms import KeyLockedError, PseudonymKey
 from .schema import load_schema
 from .scrub import REDACTED, redact
 from .validate import validate_bids
+from .ephys import bad_channels as ephys_bad
+from .ephys import module as ephys_module
 from .ephys import qa as ephys_qa
 from .viewer import (STATIC_DIR, VIEWER_CSP, entry_state, index_page, neuroglancer_client_dir, ngff_parts, oct_group,
                      state_url, traces_page)
@@ -94,7 +99,12 @@ EZBIDS_NO_IMAGING = "Could not find any MRI, PET, or MEG imaging files"
 # subject_idx -> the subject ID the key records for that subject's original (pseudonyms only: the originals
 # stay in the key), so an edited subject ID can be recorded in the key for the right person on execute
 SUBJECT_IDS = "subject-ids.json"
-VIEWER_PREFIXES = ("/viewer/", "/qa/")  # the browser pages: they also accept the session cookie
+VIEWER_PREFIXES = ("/viewer/", "/qa/")  # the browser pages: they also accept the session cookie (GET, HEAD)
+VIEWER_READS = ("GET", "HEAD")
+CHANNELS_ROUTE = re.compile(r"/qa/channels/[^/]+")  # the one write route the cookie is accepted on (POST)
+VIEWER_HEADER = "x-aimport-viewer"  # sent by the trace viewer's own script; a cross-site form cannot set it
+CHANNELS_MAX_BODY = 256 * 1024
+CSRF_REFUSED = "refused: the request did not come from the QA viewer page"
 VIEWER_COOKIE = "aimport_viewer_"  # + a random suffix per server run: cookies ignore the port, so two engines on
 # the same host would otherwise replace each other's session
 VIEWER_CODE_TTL_S = 60
@@ -241,6 +251,18 @@ class PatchBody(BaseModel):
     dataset_name: str | None = None
     readme: str | None = None
     event_names: dict[str, str] | None = None
+
+
+class ChannelMark(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    name: str
+    status: Literal["good", "bad"]
+    description: str | None = None
+
+
+class ChannelsBody(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    channels: list[ChannelMark]
 
 
 class ApproveBody(BaseModel):
@@ -666,22 +688,26 @@ class Server:
                         {"scan_id": scan_id, "complete": True, "manifest": manifest, "defaced": defaced, **done})
             self.render_qa(plan, manifest)
             self.set_status("executing", "validating the BIDS dataset")
-            result = validate_bids(self.out)
-            pterms = path_terms(terms)
-            validation = _redact_obj({
-                "ok": result.ok,
-                "error_count": len(result.errors),
-                "warning_count": len(result.warnings),
-                "errors": result.errors[:MAX_ISSUES],
-                "warnings": result.warnings[:MAX_ISSUES],
-                "validator_version": result.validator_version,
-                "bids_version": result.bids_version,
-            }, pterms)
-            outcome = ("no validation errors" if result.ok else f"{len(result.errors)} validation error(s)")
-            self.finish(key, "validated" if result.ok else "invalid", outcome, output_dir=str(self.out),
+            stage, outcome, validation = self.validate_output(terms)
+            self.finish(key, stage, outcome, output_dir=str(self.out),
                         validation=validation, refused=_redact_obj(refused, terms))
         except Exception as e:
             self.fail(e, key, self.set_aside(scan_id))
+
+    def validate_output(self, terms: set[str]) -> tuple[str, str, dict]:
+        """(stage, message, validation) of the BIDS validator's run on the output: validated or invalid."""
+        result = validate_bids(self.out)
+        validation = _redact_obj({
+            "ok": result.ok,
+            "error_count": len(result.errors),
+            "warning_count": len(result.warnings),
+            "errors": result.errors[:MAX_ISSUES],
+            "warnings": result.warnings[:MAX_ISSUES],
+            "validator_version": result.validator_version,
+            "bids_version": result.bids_version,
+        }, path_terms(terms))
+        outcome = ("no validation errors" if result.ok else f"{len(result.errors)} validation error(s)")
+        return ("validated" if result.ok else "invalid"), outcome, validation
 
     def render_qa(self, plan: Plan, manifest: dict[str, list[str]]) -> None:
         """The QA snapshots of each written electrophysiology recording (ephys.qa.render), into
@@ -695,12 +721,15 @@ class Server:
             return
         self.set_status("executing", "rendering the QA snapshots")
         for eid in ids:
-            try:
-                files = manifest[eid]
-                ephys_qa.render(eid, self.out / files[ephys_qa.primary_file(files)], root / eid,
-                                event_names=dict(plan.event_names or {}))
-            except Exception as e:
-                log.warning("QA snapshot failed: %s", type(e).__name__)
+            self.render_entry_qa(eid, manifest[eid], dict(plan.event_names or {}))
+
+    def render_entry_qa(self, eid: str, files: list[str], event_names: dict[str, str]) -> None:
+        """One recording's QA snapshots (again); a failure is logged by type only."""
+        try:
+            ephys_qa.render(eid, self.out / files[ephys_qa.primary_file(files)], ephys_qa.qa_root(self.work) / eid,
+                            event_names=event_names)
+        except Exception as e:
+            log.warning("QA snapshot failed: %s", type(e).__name__)
 
     def set_aside(self, scan_id: str) -> str:
         """After a failed execute: <work>/output/bids (possibly complete but not defaced or validated) is
@@ -928,10 +957,21 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         scheme, _, given = (authorization or "").partition(" ")
         if scheme.lower() == "bearer" and hmac.compare_digest(given.encode(), token.encode()):
             return
-        if (path.startswith(VIEWER_PREFIXES) and path != "/viewer/session"
-                and srv.viewer_session_ok(request.cookies.get(srv.viewer_cookie))):
-            return
+        if path.startswith(VIEWER_PREFIXES) and path != "/viewer/session":
+            reads = request.method in VIEWER_READS
+            write = request.method == "POST" and CHANNELS_ROUTE.fullmatch(path) is not None
+            if (reads or write) and srv.viewer_session_ok(request.cookies.get(srv.viewer_cookie)):
+                if write and not same_origin_viewer(request):
+                    raise HTTPException(403, CSRF_REFUSED)
+                return
         raise HTTPException(401, "missing or invalid token", headers={"WWW-Authenticate": "Bearer"})
+
+    def same_origin_viewer(request: Request) -> bool:
+        """The viewer page's own request: its X-Aimport-Viewer header, and an Origin equal to this engine's (the
+        Host header, already checked by host_check). A cross-site form can set neither."""
+        origin = (request.headers.get("origin") or "").lower()
+        own = "http://" + request.headers.get("host", "").lower()
+        return request.headers.get(VIEWER_HEADER) == "1" and bool(origin) and hmac.compare_digest(origin, own)
 
     app = FastAPI(title="aimport", docs_url=None, redoc_url=None, openapi_url=None, lifespan=lifespan,
                   dependencies=[Depends(authorize)])
@@ -1049,10 +1089,25 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         return StreamingResponse(stream(), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"})
 
+    def plan_view(plan: Plan) -> dict:
+        """The plan as served: each electrophysiology entry carries ``bad_channels``, the number of bad channels
+        in its written channels.tsv once a reviewer saved marks (else 0), and "<n> bad channels" at the end of
+        its description; never the names or reasons."""
+        out = asdict(plan)
+        counts = ephys_bad.counts(work_dir / ephys_module.NAME)
+        for e in out["entries"]:
+            if e.get("modality") != "ephys":
+                continue
+            n = e["bad_channels"] = counts.get(e["id"], 0)
+            if n:
+                note = f"{n} bad channel{'' if n == 1 else 's'}"
+                e["description"] = f"{e['description']} · {note}" if e.get("description") else note
+        return out
+
     @app.get("/plan")
     def get_plan() -> dict:
         with srv.plan_lock:
-            return asdict(srv.load_plan())
+            return plan_view(srv.load_plan())
 
     @app.patch("/plan")
     def patch_plan(body: PatchBody) -> dict:
@@ -1109,7 +1164,7 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
             srv.save_plan(plan)
             if srv.status["stage"] in DONE:  # the output no longer matches the plan
                 srv.set_status("planned", "plan edited: execute again")
-            return asdict(plan)
+            return plan_view(plan)
 
     @app.post("/approve")
     def post_approve(body: ApproveBody | None = None) -> dict:
@@ -1121,7 +1176,7 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
                 plan.deface_method = body.deface_method
             plan.approved = True
             srv.save_plan(plan)
-            return asdict(plan)
+            return plan_view(plan)
 
     @app.post("/execute", status_code=202)
     def post_execute() -> dict:
@@ -1468,6 +1523,109 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         except Exception as e:
             log.warning("trace window failed: %s", type(e).__name__)
             raise HTTPException(500, "the recording could not be read") from None
+
+    def ephys_table(entry_id: str) -> tuple[Any, list[str], Path]:
+        """(the plan entry, its manifest files, its written channels.tsv) of a written recording, else 404."""
+        ephys_output(entry_id)  # 404 unless a written ephys entry of the manifest, after execute
+        files = output_state()["manifest"][entry_id]
+        rel = ephys_bad.tsv_of(files)
+        tsv = _file_inside(srv.out, rel) if rel else None
+        if tsv is None:
+            raise HTTPException(404, "the recording has no channels.tsv")
+        with srv.plan_lock:
+            entry = next(e for e in srv.load_plan().entries if e.id == entry_id)
+        return entry, files, tsv
+
+    @app.get("/qa/channels/{entry_id}")
+    def get_qa_channels(entry_id: str) -> dict:
+        """The written channels.tsv of a recording: name, type, status and status_description per channel."""
+        _, _, tsv = ephys_table(entry_id)
+        return {"channels": ephys_bad.table(tsv), "max_reason": ephys_bad.MAX_REASON,
+                "reasons": list(ephys_bad.QUICK_REASONS)}
+
+    @app.post("/qa/channels/{entry_id}")
+    async def post_qa_channels(entry_id: str, request: Request) -> dict:
+        """Mark channels good or bad (with an optional reason) in a written recording's channels.tsv; then the
+        ephys gate on the rewritten files, the BIDS validator on the output, the recording's QA snapshots."""
+        ctype = request.headers.get("content-type", "").split(";", 1)[0].strip().lower()
+        if ctype != "application/json":
+            raise HTTPException(415, "Content-Type must be application/json")
+        length = request.headers.get("content-length")
+        if length is not None and (not length.isdigit() or int(length) > CHANNELS_MAX_BODY):
+            raise HTTPException(413, f"the body is larger than {CHANNELS_MAX_BODY // 1024} KiB")
+        raw = bytearray()
+        async for chunk in request.stream():
+            raw += chunk
+            if len(raw) > CHANNELS_MAX_BODY:
+                raise HTTPException(413, f"the body is larger than {CHANNELS_MAX_BODY // 1024} KiB")
+        try:
+            body = ChannelsBody.model_validate(json.loads(bytes(raw)))
+        except ValueError:  # JSON and pydantic errors: never echoed (a reason may hold identifying text)
+            raise HTTPException(400, 'the body must be {"channels": [{"name", "status": "good"|"bad", '
+                                     '"description"}]}') from None
+        return await run_in_threadpool(mark_channels, entry_id, [m.model_dump() for m in body.channels])
+
+    def mark_channels(entry_id: str, marks: list[dict]) -> dict:
+        ephys_dir = work_dir / ephys_module.NAME
+        with srv.lock, srv.plan_lock:
+            if srv.busy():
+                raise conflict(f"busy: {srv.status['stage']}")
+            entry, files, tsv = ephys_table(entry_id)
+            terms = srv.get_terms()
+            if terms is None:
+                raise conflict("the ezBIDS output is missing: scan again")
+            try:
+                checked = ephys_bad.check_marks(tsv, marks, terms)
+            except ephys_bad.MarkError as e:
+                raise HTTPException(400, str(e)) from None
+            before = dict(srv.status)
+            extras = {k: v for k, v in before.items() if k not in ("stage", "message")}  # output_dir, refused, ...
+            srv.set_status("executing", "applying the channel marks")
+        rel = tsv.relative_to(srv.out).as_posix()
+        scratch = ephys_dir / "marks-scratch"
+        try:
+            # the new files are written beside the output, checked by the gate, and only then renamed into it
+            shutil.rmtree(scratch, ignore_errors=True)
+            text, bad, _ = ephys_bad.render(tsv, checked)
+            staged = {tsv: scratch / rel}
+            staged[tsv].parent.mkdir(parents=True)
+            staged[tsv].write_text(text, encoding="utf-8")
+            doc = ephys_bad.described(ephys_bad.sidecar(tsv))
+            if doc is not None:
+                staged[ephys_bad.sidecar(tsv)] = ephys_bad.sidecar(scratch / rel)
+                staged[ephys_bad.sidecar(tsv)].write_text(doc, encoding="utf-8")
+            if ephys_module.check_rewritten(list(staged.values()), scratch, ephys_dir, input_dir, terms,
+                                            entry.series_idx):
+                with srv.lock:
+                    srv.set_status(before["stage"], before.get("message", ""), **extras)
+                raise HTTPException(400, ephys_bad.REASON_REFUSED)
+            for dest, src in staged.items():
+                os.replace(src, dest)
+            saved = ephys_bad.load(ephys_dir)
+            mine = saved.setdefault(entry_id, {})
+            mine["channels"] = {**(mine.get("channels") or {}), **checked}
+            mine["bad"] = bad
+            ephys_bad.save(ephys_dir, saved)
+            ephys_qa.clear_cache()
+            with srv.plan_lock:
+                event_names = dict(srv.load_plan().event_names or {})
+            srv.render_entry_qa(entry_id, files, event_names)
+            srv.set_status("executing", "validating the BIDS dataset")
+            stage, outcome, validation = srv.validate_output(terms)
+        except HTTPException:
+            raise
+        except Exception as e:
+            log.warning("channel marks failed: %s", type(e).__name__)
+            with srv.lock:
+                srv.set_status("failed", "the channel marks could not be applied: execute again")
+            raise HTTPException(500, "the channel marks could not be applied: execute again") from None
+        finally:
+            shutil.rmtree(scratch, ignore_errors=True)
+        extras.pop("validation", None)
+        with srv.lock:
+            srv.set_status(stage, outcome, **extras, validation=validation)
+        return {"channels": ephys_bad.table(tsv), "bad": bad, "stage": stage,
+                "validation": {"ok": validation["ok"], "error_count": validation["error_count"]}}
 
     @app.get("/viewer/traces/{entry_id}")
     def get_viewer_traces(entry_id: str) -> HTMLResponse:
