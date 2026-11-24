@@ -10,7 +10,8 @@
                 <a href="https://brainlife.io/docs/using_aimport/">aimport</a> ·
                 <a href="https://github.com/brainlife/ezbids">GitHub</a> ·
                 <a href="https://bids-specification.readthedocs.io/en/v1.11.2/">BIDS v1.11.2</a> ·
-                <a href="https://brainlife.io/team/">Team</a>
+                <a href="https://brainlife.io/team/">Team</a> ·
+                <a href="https://github.com/brainlife/ezbids/blob/master/CREDITS.md">Credits</a>
             </span>
         </div>
     </footer>

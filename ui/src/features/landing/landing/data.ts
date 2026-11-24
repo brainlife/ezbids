@@ -222,3 +222,35 @@ export const SIZE: Range[] = [
         note: 'slide scans to whole-brain light-sheet: 1 GB – 100 TB (OME-Zarr read in place)',
     },
 ];
+
+// Grants that fund ezBIDS and aimport, each linking to its public award page (checked: NIH RePORTER,
+// NSF award search, 360Giving GrantNav for Wellcome). NSF awards transferred to The University of Texas at Austin list the transfer too.
+const NIH = 'https://reporter.nih.gov/project-details/';
+const NSF = 'https://www.nsf.gov/awardsearch/showAward?AWD_ID=';
+export const FUNDING = [
+    {
+        funder: 'NIH',
+        awards: [
+            { id: 'U24NS140384', href: NIH + 'U24NS140384' },
+            { id: 'R01MH126699', href: NIH + 'R01MH126699' },
+            { id: 'R01EB030896', href: NIH + 'R01EB030896' },
+            { id: 'R01EB029272', href: NIH + 'R01EB029272' },
+        ],
+    },
+    {
+        funder: 'NSF',
+        awards: [
+            { id: 'BCS-1636893', href: NSF + '1636893' },
+            { id: '2148729', href: NSF + '2148729' },
+            { id: 'BCS-1734853', href: NSF + '1734853' },
+            { id: '2203524', href: NSF + '2203524' },
+            { id: 'IIS-1912270', href: NSF + '1912270' },
+            { id: '2148700', href: NSF + '2148700' },
+            { id: 'ACI-1916518', href: NSF + '1916518' },
+        ],
+    },
+    {
+        funder: 'Wellcome Trust',
+        awards: [{ id: '226486', href: 'https://grantnav.threesixtygiving.org/grant/360G-Wellcome-226486_Z_22_Z' }],
+    },
+];
