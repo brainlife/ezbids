@@ -9,8 +9,8 @@ from typing import Literal
 
 LOCKED_FIELDS = {"id", "series_idx", "subject_idx", "session_idx"}
 # the only PlanEntry fields a reviewer may edit, with the type each value must have ("?" also allows None).
-# Everything else (status, source, confidence, reason, agent_note, description, deface_opt_out and the
-# indices) is derived: planner.apply_plan_edits re-derives it after every edit.
+# Everything else (status, source, confidence, reason, agent_note, description, deface_opt_out,
+# brainlife_by_person and the indices) is derived: planner.apply_plan_edits re-derives it after every edit.
 EDITABLE_FIELDS = {"subject": "label", "session": "label?", "datatype": "str?", "suffix": "str?",
                    "entities": "dict", "deface": "bool", "exclude": "bool", "brainlife_datatype": "str?",
                    "brainlife_tags": "list"}
@@ -59,6 +59,9 @@ class PlanEntry:
     # True only when the reviewer turned defacing off for an anat entry; the writer refuses an anat
     # entry with deface=False unless this is set
     deface_opt_out: bool = False
+    # True once the reviewer set brainlife_datatype or brainlife_tags; later edits keep that mapping
+    # until the entry's datatype, suffix or entities change
+    brainlife_by_person: bool = False
 
 
 @dataclass
@@ -115,7 +118,9 @@ class Plan:
         Only EDITABLE_FIELDS may be edited, with values of the right type. A subject edit applies to
         every entry of that subject (subject_idx); two edits giving one subject different IDs, or two
         subjects one ID, are refused. A datatype or suffix edit without "deface" resets deface to
-        datatype == "anat"; deface=False on an anat entry is recorded as deface_opt_out. Status and the
+        datatype == "anat"; deface=False on an anat entry is recorded as deface_opt_out. A brainlife
+        mapping set by the reviewer is kept (brainlife_by_person) until a datatype, suffix or entities
+        edit without one. Status and the
         brainlife mapping are re-derived by planner.apply_plan_edits, which callers should use.
         Raises KeyError for an unknown id and ValueError for anything else; a bad edit changes nothing.
         """
@@ -150,6 +155,10 @@ class Plan:
                 entry.deface_opt_out = not entry.deface and entry.datatype == "anat"
             elif "datatype" in edit or "suffix" in edit:
                 entry.deface, entry.deface_opt_out = entry.datatype == "anat", False
+            if edit.keys() & {"brainlife_datatype", "brainlife_tags"}:
+                entry.brainlife_by_person = True
+            elif edit.keys() & {"datatype", "suffix", "entities"}:
+                entry.brainlife_by_person = False
             entry.source = "person"
             touched[entry.id] = entry
         for e in self.entries:

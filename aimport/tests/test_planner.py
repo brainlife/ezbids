@@ -540,6 +540,33 @@ def test_datatypes_target_edit_without_brainlife_type_excluded(fixture_core, in_
     assert one(p, BOLD).exclude is True and "no brainlife datatype" in one(p, BOLD).reason
 
 
+
+def test_reviewer_brainlife_mapping_survives_later_edits(fixture_core, in_dir, key, schema):
+    p = build_plan(fixture_core, in_dir, key, set(), None, schema, "datatypes")
+    t1 = one(p, T1W)
+    apply_plan_edits(p, [{"id": t1.id, "brainlife_datatype": "neuro/anat/t2w", "brainlife_tags": ["mine"]}], schema)
+    apply_plan_edits(p, [{"id": t1.id, "exclude": False}], schema)
+    apply_plan_edits(p, [{"id": t1.id, "subject": "renamed"}], schema)
+    t1 = one(p, T1W)
+    assert (t1.brainlife_datatype, t1.brainlife_tags, t1.brainlife_by_person) == ("neuro/anat/t2w", ["mine"], True)
+    apply_plan_edits(p, [{"id": t1.id, "entities": {}}], schema)  # a naming edit: derived again
+    t1 = one(p, T1W)
+    assert (t1.brainlife_datatype, t1.brainlife_by_person) == ("neuro/anat/t1w", False)
+
+
+def test_reviewer_fmap_tags_survive_later_edits(fixture_core, in_dir, key, schema):
+    p = build_plan(fixture_core, in_dir, key, set(), None, schema, "datatypes")
+    mag = next(e for e in p.entries if e.datatype == "fmap" and e.suffix.startswith("magnitude"))
+    apply_plan_edits(p, [{"id": mag.id, "brainlife_tags": ["custom"]}], schema)
+    apply_plan_edits(p, [{"id": mag.id, "exclude": False}], schema)
+    assert next(e for e in p.entries if e.id == mag.id).brainlife_tags == ["custom"]
+
+
+def test_brainlife_by_person_is_read_only(plan, schema):
+    with pytest.raises(ValueError, match="cannot edit brainlife_by_person"):
+        apply_plan_edits(plan, [{"id": plan.entries[0].id, "brainlife_by_person": True}], schema)
+
+
 # --- placeholder identities ---------------------------------------------------
 
 from aimport.planner import is_placeholder  # noqa: E402
