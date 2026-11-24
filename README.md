@@ -76,7 +76,7 @@ So “which database” is really **MongoDB vs local electron-store**, keyed off
 
 #### Local stack with Docker Compose
 
-This runs **MongoDB**, the **API** (TypeScript via `api/dev.sh` + `tsc-watch` inside the container), the **handler** (PM2 + `handler.js`), and the **UI** (Vite dev server) together.
+This runs **MongoDB**, the **API** (TypeScript via `api/dev.sh` + `tsc-watch` inside the container), the **handler** (`handler/handler.ts` run with `ts-node-dev`; it runs the TypeScript steps `preprocess.ts`, `bids.ts`, `deface.ts` the same way), and the **UI** (Vite dev server) together.
 
 1. Start the stack, either:
     - **`./dev.sh`** — updates submodules, runs **`npm install`** (workspaces), Husky prep, `./generate_keys.sh`, then **`docker compose --profile development up`** (or `docker-compose` if that is the binary you have), **or**
@@ -85,8 +85,8 @@ This runs **MongoDB**, the **API** (TypeScript via `api/dev.sh` + `tsc-watch` in
 **Useful defaults from `docker-compose.yml`:**
 
 -   **API**: `http://localhost:8082` (health check on `/health`). **`MONGO_CONNECTION_STRING`** points at the `mongodb` service. **`BRAINLIFE_AUTHENTICATION`** comes from your host env / `.env`.
--   **UI**: `http://localhost:3000`; **`VITE_APIHOST`** is set for the Vite dev build.
--   **Handler**: repo is bind-mounted at `/app`; **`IS_ELECTRON`** is set to `'true'` for handler-side behavior in that environment.
+-   **UI**: `http://localhost:3000/ezbids/`; `ui/docker-entrypoint.sh` writes **`API_HOST`** and **`BRAINLIFE_AUTHENTICATION`** into `public/runtime-env.js`. A static web build served without that file falls back to the build-time **`VITE_APIHOST`** / **`VITE_BRAINLIFE_AUTHENTICATION`** (`ui/src/runtimeEnv.ts`). Google Analytics loads only in the web UI, never in the desktop app.
+-   **Handler**: repo is bind-mounted at `/app` (it uses the host's root `node_modules`, so run `npm install` first); MongoDB store, no Electron code is loaded. The image provides the tools in the desktop bundle layout (`EZBIDS_BIN_DIR=/opt/ezbids-bin`: dcm2niix pinned, 7z, allineate) and its own `python3`. Telemetry is off unless **`EZBIDS_TELEMETRY_URL`** is set (never in the desktop app).
 
 API and UI images are built with **`context: .`** at the repo root; see **`.dockerignore`** for what is excluded from the build context. The **handler** image uses **`build: ./handler`** (its own context).
 

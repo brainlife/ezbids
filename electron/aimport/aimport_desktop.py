@@ -1,4 +1,4 @@
-"""aimport inside ezBIDS desktop: the engine from aimport/ (unchanged from master) with the desktop's tools.
+"""aimport inside ezBIDS desktop: the engine from aimport/ (unchanged, same tree as the web) with the desktop's tools.
 
     python aimport_desktop.py serve --input ... --work ... --keys ... --port ...   (same as `python -m aimport serve`)
 
@@ -8,7 +8,8 @@ shim points the engine at what the app bundles instead. Each hook replaces a mod
 (a renamed one fails at start, not mid-run). To upstream: turn these into env settings in aimport itself.
 
 - ezBIDS: the desktop's own preprocess (preprocess.cjs, run by Electron as node), not preprocess.sh.
-- Staging: the input is copied (APFS clones on macOS, so no extra disk), not symlinked. Docker mounts the input
+- Staging: the input is copied (APFS clones on macOS, so no extra disk), not symlinked; parts a modality module
+  claimed (``exclude``, e.g. microscopy read in place) are left out, as in aimport's own stage_input. Docker mounts the input
   read-only; here nothing does, and a copy means no tool can write through a link into the person's folder.
 - Validator: the bundled `bids-validator` (@bids/validator 2.4.1 compiled with Deno) and the bundled schema.json.
 - Defacing: adds `allineate`, ezBIDS desktop's registration of a face mask (handler/templates), because FSL and
@@ -31,7 +32,7 @@ import subprocess
 import sys
 import threading
 from pathlib import Path
-from typing import Callable, Literal
+from typing import Callable, Literal, Sequence
 
 RUNTIME = Path(os.environ.get("AIMPORT_DESKTOP_RUNTIME") or Path(__file__).resolve().parent)
 EXE = ".exe" if os.name == "nt" else ""
@@ -46,6 +47,7 @@ import aimport.deface as deface_mod  # noqa: E402
 import aimport.server as server_mod  # noqa: E402
 import aimport.validate as validate_mod  # noqa: E402
 from aimport.ezbids_runner import EzbidsError  # noqa: E402
+from aimport.modality import ClaimedPaths  # noqa: E402
 from aimport.schema import load_schema  # noqa: E402
 
 
@@ -57,10 +59,33 @@ def _need(module, name: str):
 
 # --- staging: a copy of the input, never links into it ---
 
-def stage_input(input_dir: Path, work_dir: Path) -> Path:
+def stage_input(input_dir: Path, work_dir: Path, exclude: Sequence[str] = ()) -> Path:
     staged = Path(work_dir) / "ezbids"
     staged.mkdir(parents=True, exist_ok=True)
     src = Path(input_dir).resolve()
+    if exclude:
+        # a modality module (e.g. microscopy) claimed part of the input and reads it in place: copy the rest,
+        # never descending into a claimed root and skipping links that resolve into one (as aimport's own
+        # stage_input does with symlinks)
+        claimed = ClaimedPaths(src, exclude)
+        try:
+            for dirpath, dirs, files in os.walk(src, followlinks=False):
+                here = Path(dirpath)
+                out = staged / here.relative_to(src)
+                out.mkdir(exist_ok=True)
+                links = [d for d in dirs if (here / d).is_symlink()]
+                dirs[:] = sorted(d for d in dirs if d not in links and not claimed.covers(here / d))
+                for name in sorted(files + links):
+                    path = here / name
+                    if claimed.reaches(path) if name in links else claimed.covers(path):
+                        continue
+                    if path.is_dir():
+                        shutil.copytree(path, out / name, dirs_exist_ok=True)
+                    else:
+                        shutil.copy2(path, out / name)
+        except (OSError, shutil.Error) as e:
+            raise EzbidsError(f"could not stage the input: {e}") from None
+        return staged
     if sys.platform == "darwin":
         # clonefile(2): instant, no extra disk, and writes to the clone never reach the original
         proc = subprocess.run(["cp", "-cR", f"{src}/.", str(staged)], capture_output=True, text=True)
