@@ -54,6 +54,50 @@ Public Siemens DICOMs, 50 series. ezBIDS mapped them to func/bold, dwi/dwi and
 fmap/epi only. Dropped because it has **no T1w**, which the planner, writer and
 defacing tests need. Its `In/` folder also contains a stray `.nii` file.
 
+## Electrophysiology and optical data
+
+| Dataset | Pinned commit | Status | Used by |
+|---|---|---|---|
+| [mne-tools/mne-testing-data](https://github.com/mne-tools/mne-testing-data) `CTF/testdata_ctf.ds` (licence BSD-3) | `20cc221d737a37a6ee3a9c007e91bd69541fefe9` | **current** | `tests/test_ephys_capability.py` `test_anonymize_forces_conversion[meg-FIF]` (`ephys_data`; Phase 3 Task 1 ruling) |
+| [bids-standard/bids-examples](https://github.com/bids-standard/bids-examples); data files are empty: layout and validator only | `5e00d47b6f1db106dda1b776d5243eb41b4cb95b` (2026-10-09) | **current** | `tests/test_ephys_capability.py` `test_validator_ephys_examples` (`docker`) |
+| Synthetic EDF / SNIRF (`tests/test_ephys_capability.py` `_edf_source`, `_write_snirf`; written for this repo, random signals, seed 0) | generated at test time | **current** | `tests/test_ephys_capability.py` (Phase 3 Task 1 ruling) |
+
+### mne-testing-data CTF (current)
+
+Fetched file by file from `raw.githubusercontent.com` into `AIMPORT_EPHYS_CACHE` (default
+`/tmp/aimport-ephys-cache`) under `mne-testing-data-<commit>/CTF/testdata_ctf.ds/`, about 20 MB in all; each
+file is checked against its SHA-256 (the two empty files `BadChannels` and `bad.segments` are not fetched).
+
+| File | Bytes | SHA-256 |
+|---|---|---|
+| `ClassFile.cls` | 186 | `bd91e66437d53bfbb4cd03ce9394714b4ec4fd715bddfca3c4fabe965476378b` |
+| `params.dsc` | 467 | `2b4dee7383882a1fc6f1d84d5ba4c3181c461f5d6aaf5af204cc534289e5fc92` |
+| `processing.cfg` | 1185 | `c668cb17fbe4cfec9a29c3ec85ecaf7e61278df863fbe1a9ea8e77960db4baf4` |
+| `testdata_ctf.acq` | 40798 | `e0837500432d5f8c5ff940a53778469c1a3bf83852355fa922f256c5adc08623` |
+| `testdata_ctf.hc` | 824 | `37ee610fdcff3689b95c0e461fe7c18d5582109120bb39e6e12d651931eb515c` |
+| `testdata_ctf.infods` | 2620 | `72d71ee90fea7a49b056a228101a9b84f91600585a000484061fbd7ea9f5c3b3` |
+| `testdata_ctf.meg4` | 17088008 | `30ef47c85083ff3892d5565e487287f71146646a4bff6c283638939801c7f788` |
+| `testdata_ctf.newds` | 350 | `5d2ace836414f294685574d3720f36ecd529b4b18668c8d54c9986e98b9e3cf9` |
+| `testdata_ctf.res4` | 3260865 | `a75ccb0a74910d1f09f1e35944ced09591f3048a850718bcda95a83e16e27146` |
+
+### bids-examples (current)
+
+Shallow fetch of the pinned commit into `AIMPORT_BIDS_EXAMPLES_CACHE` (default
+`/tmp/aimport-bids-examples-cache`) under `<commit>/`; the host copy lives in
+`~/.cache/aimport-bids-examples/<commit>` and is mounted there. Sets used: `eeg_cbm`, `eeg_rest_fmri`,
+`ieeg_epilepsy`, `ieeg_visual`, `ds000247` (MEG), `fnirs_tapping`, `fnirs_automaticity`,
+`emg_ConcurrentIndependentUnits`, `emg_CustomBipolar`, `emg_CustomBipolarFace`, `emg_IndependentMod`,
+`emg_MultiBodyParts`, `emg_Multimodal`, `emg_TwoHDsEMG`, `emg_TwoWristbands`. Validated with the repo's own
+`default-config.json` (ignores `EMPTY_FILE`) and `--ignoreNiftiHeaders`, as its `run_tests.sh` does.
+
+### Synthetic EDF and SNIRF (current)
+
+`_edf_source` writes a 4-channel, 4 s, 256 Hz `RawArray` (eeg, seeg or emg) to `Smith_John_<type>.edf` with
+`mne.export.export_raw`, after planting `subject_info` (`his_id` `MRN0042`, John Smith, birthday 1970-01-01)
+and meas_date 2025-02-15 09:30 UTC. `_write_snirf` writes a CW SNIRF with h5py (2 sources, 2 detectors,
+760/850 nm, 200 samples at 10 Hz) with `SubjectID` `Smith_John`, `MeasurementDate` 2025-02-15 and
+`stim1/name` `Jane Doe tapping`.
+
 ## Ancillary and metadata files
 
 | Dataset | Pinned commit | Status | Used by |
@@ -164,8 +208,11 @@ found in the lowercased text by substring (so phrases like `hospital x` and valu
 
 ## How the tests are run
 
-- Host unit tests: `cd aimport && uv run pytest -m "not docker and not docker_offline"`
+- Host unit tests: `cd aimport && uv run pytest -m "not docker and not docker_offline"` (includes the
+  `ephys_data` tests, which fetch the pinned mne-testing-data files once into `AIMPORT_EPHYS_CACHE`)
 - In the image: `docker run --rm --platform linux/amd64 -v $PWD/aimport:/src brainlife/aimport:dev pytest -m docker /src/tests`
+  (ephys: add `-v ~/.cache/aimport-bids-examples:/tmp/aimport-bids-examples-cache -v ~/.cache/aimport-ephys:/tmp/aimport-ephys-cache`
+  so the bids-examples clone and the mne-testing-data files are reused)
 - Offline: the same with `--network none -m docker_offline`, plus a cache mount holding the xa30 tarball, because
   the fetch cannot download: `-v <cache dir>:/tmp/aimport-dcm-qa-cache` (the tarball is
   `dcm_qa_xa30-371ab3071aa9270d23b99fca5f83fe0c35932182.tar.gz`, created by any earlier online run).
