@@ -21,7 +21,7 @@ from pathlib import Path
 matplotlib.use('Agg')
 plt.style.use('dark_background')
 
-os.environ['MPLCONFIGDIR'] = os.getcwd() + "/configs/"
+os.environ['MPLCONFIGDIR'] = str(Path(os.getcwd()) / "configs")
 
 # Functions
 
@@ -181,8 +181,8 @@ else:
             else:
                 # object_img_array = image.dataobj[:]
 
-                bval_file = img_file.split(".nii.gz")[0].split("./")[-1] + ".bval"
-                if not os.path.isfile(f"{data_dir}/{bval_file}"):
+                bval_file = str(Path(img_file).with_suffix('').with_suffix('.bval'))
+                if not os.path.isfile(str(Path(data_dir) / bval_file)):
                     bval_file = "n/a"
                 else:
                     bvals = [x.split(" ") for x in pd.read_csv(bval_file).columns.tolist()][0]

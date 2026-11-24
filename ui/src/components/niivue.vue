@@ -1,5 +1,8 @@
 <template>
-    <el-dialog v-model="open" :title="path" width="70%" destroy-on-close center @close="close">
+    <div v-if="!openInDialog" class="niivue niivue--inline">
+        <canvas v-if="path" ref="canvas" class="canvas" :style="inlineCanvasStyle" />
+    </div>
+    <el-dialog v-else v-model="open" :title="path" width="70%" destroy-on-close center @close="close">
         <canvas ref="canvas" class="canvas" height="500" />
     </el-dialog>
 </template>
@@ -13,43 +16,113 @@ import { Niivue } from '@niivue/niivue';
 import axios from '../axios.instance';
 
 export default defineComponent({
-    props: ['path'],
+    props: {
+        path: {
+            type: String,
+            default: undefined,
+        },
+        /** When false, render the canvas inline instead of in a dialog. */
+        openInDialog: {
+            type: Boolean,
+            default: true,
+        },
+        /** CSS height for the inline canvas (ignored when `openInDialog` is true). */
+        height: {
+            type: String,
+            default: undefined,
+        },
+    },
     emits: ['close'],
     data() {
         return {
             open: false,
-            //per-component instance; el-dialog uses destroy-on-close so the prior
-            //canvas is removed each time, which would orphan a shared WebGL context
             nv: null as any,
+            resizeObserver: null as ResizeObserver | null,
+            resizeRaf: 0 as number,
         };
     },
 
     computed: {
         ...mapState(['session', 'config']),
+        inlineCanvasStyle(): Record<string, string> | undefined {
+            if (this.openInDialog || !this.height) return undefined;
+            return {
+                height: this.height,
+                minHeight: this.height,
+            };
+        },
     },
 
     watch: {
         path() {
-            if (this.path) this.load();
+            this.load();
+        },
+        openInDialog() {
+            this.scheduleResize();
+        },
+        height() {
+            this.scheduleResize();
         },
     },
 
     mounted() {
         this.nv = new Niivue({ dragAndDropEnabled: false });
-        if (this.path) this.load();
+        window.addEventListener('resize', this.scheduleResize);
+        this.resizeObserver = new ResizeObserver(() => this.scheduleResize());
+        this.$nextTick(() => {
+            const canvas = this.$refs.canvas as HTMLCanvasElement | undefined;
+            if (canvas) this.resizeObserver?.observe(canvas);
+        });
+        this.load();
+        this.scheduleResize();
+    },
+
+    activated() {
+        this.scheduleResize();
     },
 
     beforeUnmount() {
-        if (this.nv) this.nv.closeAllVolumes();
+        window.removeEventListener('resize', this.scheduleResize);
+        if (this.resizeRaf) cancelAnimationFrame(this.resizeRaf);
+        this.resizeObserver?.disconnect();
+        this.resizeObserver = null;
+        // #160: release the per-component instance (its volumes and WebGL context) on unmount
+        this.releaseNiivue();
+        this.nv = null;
     },
 
     methods: {
+        scheduleResize() {
+            if (this.resizeRaf) cancelAnimationFrame(this.resizeRaf);
+            this.resizeRaf = requestAnimationFrame(() => {
+                this.resizeRaf = 0;
+                this.resizeCanvas();
+            });
+        },
+
+        resizeCanvas() {
+            const canvas = this.$refs.canvas as HTMLCanvasElement | undefined;
+            if (!canvas || !this.nv) return;
+            if (typeof this.nv.resizeListener === 'function') {
+                this.nv.resizeListener();
+                return;
+            }
+            // Fallback for Niivue versions without resizeListener.
+            this.nv.attachToCanvas(canvas);
+        },
+
         load() {
+            if (!this.path) {
+                if (this.openInDialog) this.open = false;
+                return;
+            }
             axios.get(`${this.config.apihost}/download/${this.session._id}/token`).then((res) => {
                 const url = `${this.config.apihost}/download/${this.session._id}/${this.path}?token=${res.data}`;
-                this.open = true;
+                if (this.openInDialog) this.open = true;
                 this.$nextTick(() => {
-                    this.nv.attachToCanvas(this.$refs.canvas);
+                    const canvas = this.$refs.canvas as HTMLCanvasElement | undefined;
+                    if (!canvas || !this.nv) return;
+                    this.nv.attachToCanvas(canvas);
                     this.nv.loadVolumes([
                         {
                             url: url,
@@ -59,12 +132,32 @@ export default defineComponent({
                             visible: true,
                         },
                     ]);
+                    this.scheduleResize();
                 });
             });
         },
 
+        /** Drop loaded volumes. NiiVue 0.21 has no closeAllVolumes (master #160 called it), so remove them one by one. */
+        clearVolumes() {
+            const nv = this.nv;
+            if (!nv || !Array.isArray(nv.volumes)) return;
+            for (const v of [...nv.volumes]) {
+                try {
+                    nv.removeVolume(v);
+                } catch (e) {
+                    // a volume that never finished loading has no GPU texture yet
+                }
+            }
+        },
+
+        releaseNiivue() {
+            this.clearVolumes();
+            const gl = this.nv?.gl as WebGL2RenderingContext | undefined;
+            gl?.getExtension('WEBGL_lose_context')?.loseContext();
+        },
+
         close() {
-            if (this.nv) this.nv.closeAllVolumes();
+            this.clearVolumes();
             this.open = false;
             this.$emit('close');
         },
@@ -85,5 +178,16 @@ export default defineComponent({
 }
 .canvas {
     width: 100%;
+}
+.niivue--inline {
+    width: 100%;
+    border-radius: 4px;
+    background: #111;
+}
+.niivue--inline .canvas {
+    display: block;
+    width: 100%;
+    height: min(58vh, 520px);
+    min-height: 320px;
 }
 </style>

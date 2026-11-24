@@ -1,74 +1,112 @@
 <template>
-    <div>
-        <aside>
-            <a class="brand" href="#" aria-label="ezBIDS home" @click.prevent="$router.push('/')">
-                <BrandLockup />
-            </a>
+    <div style="display: flex">
+        <div
+            style="display: flex; flex-direction: column; box-sizing: border-box; height: 100vh; padding: 1rem 1.25rem"
+            class="brainlife-lite aside-width"
+        >
+            <div class="brand" style="flex: 0 0 auto">
+                <router-link class="brand-link" :to="{ name: 'dashboard' }" aria-label="ezBIDS dashboard">
+                    <BrandLockup />
+                </router-link>
+                <DisplayMode class="brand-mode" />
+            </div>
+            <div class="aside-back-dashboard" style="flex: 0 0 auto">
+                <router-link :to="{ name: 'dashboard' }">
+                    <el-button class="aside-back-dashboard-btn" aria-label="Back to dashboard" size="small">
+                        <font-awesome-icon :icon="['fas', 'angle-left']" />
+                        Dashboard
+                    </el-button>
+                </router-link>
+            </div>
+            <aside style="flex: 1 1 auto; min-height: 0; overflow: auto">
+                <el-steps :active="activeValue" direction="vertical">
+                    <el-step
+                        v-for="page in pages"
+                        :key="page.key"
+                        :title="page.title"
+                        :description="page.description"
+                    />
+                </el-steps>
+            </aside>
+            <div class="aside-external-links" role="navigation" aria-label="External resources" style="flex: 0 0 auto">
+                <el-tooltip content="Brainlife" placement="top">
+                    <a href="https://brainlife.io">
+                        <el-button circle class="aside-external-btn">
+                            <img src="./assets/bl_logo.png" alt="Brainlife" width="14" />
+                        </el-button>
+                    </a>
+                </el-tooltip>
+                <el-tooltip content="Github" placement="top">
+                    <a href="https://github.com/brainlife/ezbids">
+                        <el-button circle class="aside-external-btn">
+                            <font-awesome-icon :icon="['fab', 'github']" />
+                        </el-button>
+                    </a>
+                </el-tooltip>
+                <el-tooltip content="Documentation" placement="top">
+                    <a href="https://brainlife.io/docs/using_ezBIDS/">
+                        <el-button circle class="aside-external-btn">
+                            <font-awesome-icon :icon="['fas', 'book']" />
+                        </el-button>
+                    </a>
+                </el-tooltip>
+            </div>
+        </div>
+        <section class="base-convert-main">
+            <template v-if="getSessionError">
+                <div class="base-convert-scroll">
+                    <div class="base-convert-content">
+                        <el-alert
+                            type="error"
+                            :closable="false"
+                            show-icon
+                            class="base-convert-session-error"
+                            role="alert"
+                        >
+                            Cannot find the session. There may have been an error during session creation, or the
+                            uploaded data may have been deleted.
+                        </el-alert>
 
-            <nav class="steps">
-                <template v-for="g in navGroups" :key="g.title || g.items[0].page">
-                    <div v-if="g.title" class="group">{{ g.title }}</div>
-                    <div
-                        v-for="item in g.items"
-                        :key="item.page"
-                        :class="['step', { active: page === item.page, done: pageIndex(item.page) < pageIndex(page) }]"
-                    >
-                        <span class="n">{{ pageIndex(item.page) + 1 }}</span>
-                        {{ item.label }}
+                        <SessionDebugDownloads v-if="session?._id" wrapper-class="base-convert-error-debug" />
+                        <p v-else class="base-convert-error-no-id">No session id is available for downloads.</p>
                     </div>
-                </template>
-            </nav>
-
-            <div class="aside-foot">
-                <div class="menu-footer">
-                    <el-tooltip content="Open github">
-                        <a href="https://github.com/brainlife/ezbids">
-                            <font-awesome-icon class="menu-footer-icon" :icon="['fab', 'github']" />
-                        </a>
-                    </el-tooltip>
-                    <el-tooltip content="Open documentation">
-                        <a href="https://brainlife.io/docs/using_ezBIDS/">
-                            <font-awesome-icon class="menu-footer-icon" :icon="['fa', 'book']" />
-                        </a>
-                    </el-tooltip>
                 </div>
+            </template>
 
-                <ManageUsersDialog v-if="hasAuth"></ManageUsersDialog>
-
-                <el-button class="signout" @click="handleSignout">Sign out</el-button>
-            </div>
-        </aside>
-        <section :class="{ 'page-panel': !fixedPages.includes(page) }">
-            <Upload v-if="page === 'upload'" ref="upload" />
-            <Description v-if="page === 'description'" ref="description" />
-            <Subject v-if="page === 'subject'" ref="subject" />
-            <Participant v-if="page === 'participant'" ref="participant" />
-            <SeriesPage v-if="page === 'seriespage'" ref="seriespage" @niivue="openNiivue" />
-            <Events v-if="page === 'event'" ref="event" @mapObjects="mapObjects" />
-            <Objects
-                v-if="page === 'object'"
-                ref="object"
-                @niivue="openNiivue"
-                @mapObjects="mapObjects"
-                @updateObject="updateObject"
-            />
-            <Deface v-if="page === 'deface'" ref="deface" @niivue="openNiivue" />
-            <Finalize v-if="page === 'finalize'" ref="finalize" />
-            <Feedback v-if="page === 'feedback'" ref="feedback" />
-
-            <br />
-            <div v-if="session" class="page-action">
-                <el-button v-if="backLabel" :type="backButtonType" @click="back">
-                    <font-awesome-icon :icon="['fas', 'angle-left']" />
-                    {{ backLabel }}
-                </el-button>
-                <el-button v-if="nextLabel" type="primary" style="float: right" @click="next">
-                    {{ nextLabel }}
-                    <font-awesome-icon :icon="['fas', 'angle-right']" />
-                </el-button>
-            </div>
+            <template v-else>
+                <div ref="mainScroll" class="base-convert-scroll">
+                    <div class="base-convert-content">
+                        <Upload v-if="page === 'upload'" ref="upload" />
+                        <Description v-if="page === 'description'" ref="description" />
+                        <Subject v-if="page === 'subject'" ref="subject" />
+                        <SeriesPage v-if="page === 'seriespage'" ref="seriespage" @niivue="openNiivue" />
+                        <Events v-if="page === 'event'" ref="event" @mapObjects="mapObjects" />
+                        <Objects
+                            v-if="page === 'object'"
+                            ref="object"
+                            @niivue="openNiivue"
+                            @mapObjects="mapObjects"
+                            @updateObject="updateObject"
+                        />
+                        <Deface v-if="page === 'deface'" ref="deface" @niivue="openNiivue" />
+                        <Participant v-if="page === 'participant'" ref="participant" />
+                        <Finalize v-if="page === 'finalize'" ref="finalize" />
+                        <Feedback v-if="page === 'feedback'" ref="feedback" />
+                    </div>
+                </div>
+                <footer v-if="session" class="page-action">
+                    <el-button style="width: 260px" v-if="backLabel" :type="backButtonType" @click="back">
+                        <font-awesome-icon :icon="['fas', 'angle-left']" />
+                        {{ backLabel }}
+                    </el-button>
+                    <el-button style="width: 260px" v-if="nextLabel" type="primary" @click="next">
+                        {{ nextLabel }}
+                        <font-awesome-icon :icon="['fas', 'angle-right']" />
+                    </el-button>
+                </footer>
+                <niivue :path="niivuePath" @close="niivuePath = undefined" />
+            </template>
         </section>
-        <niivue :path="niivuePath" @close="niivuePath = undefined" />
     </div>
 </template>
 
@@ -76,31 +114,32 @@
 import { defineComponent } from 'vue';
 import { mapState, mapGetters } from 'vuex';
 
-import Upload from './Upload.vue';
-import Description from './Description.vue';
-import Subject from './Subject.vue';
-import Participant from './Participant.vue';
-import SeriesPage from './SeriesPage.vue';
-import Objects from './Objects.vue';
-import Events from './Events.vue';
-import Deface from './Deface.vue';
-import Finalize from './Finalize.vue';
-import Feedback from './Feedback.vue';
-import ManageUsersDialog from './components/dialogs/ManageUsersDialog.vue';
-import { IObject } from './store';
-import { hasAuth, createEventsTSV } from './lib';
-
+import SessionDebugDownloads from '@/components/SessionDebugDownloads.vue';
+import Upload from '@/features/upload/Upload.vue';
+import Description from '@/features/description/Description.vue';
+import Subject from '@/features/subject/Subject.vue';
+import Participant from '@/features/participant/Participant.vue';
+import SeriesPage from '@/features/series/SeriesPage.vue';
+import Objects from '@/features/objects/Objects.vue';
+import Events from '@/features/events/Events.vue';
+import Deface from '@/features/deface/Deface.vue';
+import Finalize from '@/features/finalize/Finalize.vue';
+import Feedback from '@/features/feedback/Feedback.vue';
+import { authRequired, hasJWT, createEventsTSV } from './lib';
 //https://github.com/element-plus/element-plus/issues/436#issuecomment-961386582
 import { ElNotification } from 'element-plus';
 import 'element-plus/es/components/notification/style/css';
 
 import { setSectionIDs, funcQA, fmapQA, dwiQA, petQA, setRun, setVolumeThreshold, setIntendedFor } from './libUnsafe';
 
-import niivue from './components/niivue.vue';
-import BrandLockup from './components/brand/BrandLockup.vue';
-
+import niivue from '@/components/niivue.vue';
+import { IObject } from '@/store/store.types';
+import DisplayMode from '@/components/DisplayMode.vue';
+import BrandLockup from '@/components/brand/BrandLockup.vue';
 export default defineComponent({
     components: {
+        BrandLockup,
+        SessionDebugDownloads,
         Upload,
         Description,
         Subject,
@@ -111,8 +150,6 @@ export default defineComponent({
         Participant,
         Finalize,
         Feedback,
-        BrandLockup,
-        ManageUsersDialog: ManageUsersDialog,
 
         niivue,
     },
@@ -121,16 +158,16 @@ export default defineComponent({
         return {
             //page order
             pages: [
-                'upload',
-                'description',
-                'subject',
-                'seriespage',
-                'event',
-                'object',
-                'deface',
-                'participant',
-                'finalize',
-                'feedback',
+                { title: 'Upload Imaging Data', description: '', key: 'upload' },
+                { title: 'Dataset Description', description: '', key: 'description' },
+                { title: 'Subjects/Sessions', description: 'Data Mapping (1/3)', key: 'subject' },
+                { title: 'Series Mapping', description: 'Data Mapping (2/3)', key: 'seriespage' },
+                { title: 'Events', description: 'Data Mapping (3/3)', key: 'event' },
+                { title: 'Dataset Review', description: '', key: 'object' },
+                { title: 'Deface', description: 'Optional', key: 'deface' },
+                { title: 'Participants Info', description: 'Optional', key: 'participant' },
+                { title: 'Finalize', description: '', key: 'finalize' },
+                { title: 'Feedback', description: '', key: 'feedback' },
             ],
 
             // sidebar steps, in page order
@@ -173,6 +210,12 @@ export default defineComponent({
             //item to open in niivue
             //niivueItem: undefined as IObjectItem|undefined,
             niivuePath: undefined as string | undefined,
+
+            /** Cleared in beforeUnmount so polling stops when leaving convert. */
+            sessionPollIntervalId: null as number | null,
+
+            /** Set when loadSession / loadEzbids fail (invalid session or server error). */
+            getSessionError: false,
         };
     },
 
@@ -180,14 +223,24 @@ export default defineComponent({
         ...mapState(['session', 'ezbids', 'events', 'page', 'config']),
         ...mapGetters(['getBIDSEntities', 'getBIDSMetadata', 'findSession', 'findSubject']),
 
-        hasAuth() {
-            return hasAuth();
+        authRequired() {
+            return authRequired();
+        },
+
+        hasJWT() {
+            return hasJWT();
+        },
+
+        activeValue() {
+            const activeIndex = this.pages.findIndex((p) => p.key === this.page);
+            if (activeIndex < 0) return 0;
+            return activeIndex;
         },
 
         backLabel(): string | null {
             switch (this.page) {
                 case 'upload':
-                    if (this.session) return 'Re-Upload'; //TODO - looks like this is broken
+                    if (this.session) return 'Re-Upload';
                     return null;
                 default:
                     return 'Back';
@@ -219,34 +272,74 @@ export default defineComponent({
 
     async created() {
         this.$store.commit('reset');
-        if (location.hash) {
-            await this.$store.dispatch('reload', location.hash.substring(1));
-            this.mapObjects();
-            this.$store.commit('organizeObjects');
-            this.$store.dispatch('loadDefaceStatus');
+        const hash = location.hash;
+
+        let sessionId = undefined;
+        if (!hash) {
+            ElNotification({
+                title: 'Could not load session ID',
+                message: '',
+                type: 'error',
+            });
+            return;
+        } else {
+            // For both hash location strategy (ezBIDS) and regular routing, the session ID is the last part of the hash.
+            const parts = hash.split('#');
+            sessionId = parts[parts.length - 1];
+            if (!sessionId) {
+                ElNotification({
+                    title: 'Could not load session ID',
+                    message: '',
+                    type: 'error',
+                });
+                return;
+            }
         }
 
-        window.setInterval(async () => {
-            if (this.session) {
+        try {
+            await this.$store.dispatch('reload', sessionId);
+        } catch (e) {
+            console.error(e);
+            this.getSessionError = true;
+            return;
+        }
+
+        this.mapObjects();
+        this.$store.commit('organizeObjects');
+        this.$store.dispatch('loadDefaceStatus');
+
+        this.sessionPollIntervalId = window.setInterval(async () => {
+            if (this.getSessionError) return;
+            if (!this.session) return;
+
+            try {
                 switch (this.session.status) {
                     case 'analyzed':
                     case 'finished':
                         break;
                     case 'defacing':
-                        this.$store.dispatch('loadDefaceStatus');
-                        this.$store.dispatch('loadSession', this.session._id);
+                        await this.$store.dispatch('loadDefaceStatus');
+                        await this.$store.dispatch('loadSession');
                         break;
                     default:
-                        //deface
-                        //defaced
-                        this.$store.dispatch('loadSession', this.session._id);
+                        await this.$store.dispatch('loadSession');
                 }
 
                 if (this.ezbids.notLoaded) {
                     await this.$store.dispatch('loadEzbids');
                 }
+            } catch (e) {
+                console.error(e);
+                this.getSessionError = true;
             }
         }, 5000);
+    },
+
+    beforeUnmount() {
+        if (this.sessionPollIntervalId != null) {
+            clearInterval(this.sessionPollIntervalId);
+            this.sessionPollIntervalId = null;
+        }
     },
 
     methods: {
@@ -265,8 +358,8 @@ export default defineComponent({
                     console.error(err);
                     ElNotification({ title: 'Failed', message: err });
                 } else {
-                    const idx = this.pages.indexOf(this.page);
-                    this.$store.commit('setPage', this.pages[idx + 1]);
+                    const idx = this.pages.findIndex((p) => p.key === this.page);
+                    this.$store.commit('setPage', this.pages[idx + 1].key);
                     switch (this.page) {
                         case 'seriespage':
                             petQA(this.ezbids);
@@ -286,21 +379,20 @@ export default defineComponent({
                             break;
                     }
 
-                    //scroll page to the top
-                    window.scrollTo(0, 0);
+                    const scrollEl = this.$refs.mainScroll as HTMLElement | undefined;
+                    scrollEl?.scrollTo({ top: 0 });
                 }
             });
         },
 
         back() {
-            const idx = this.pages.indexOf(this.page);
+            const idx = this.pages.findIndex((p) => p.key === this.page);
             if (idx == 0) {
                 if (confirm('Do you really want to start over?')) {
-                    document.location.hash = '';
-                    document.location.reload();
+                    this.$router.push('/dashboard');
                 }
             } else {
-                this.$store.commit('setPage', this.pages[idx - 1]);
+                this.$store.commit('setPage', this.pages[idx - 1].key);
             }
         },
 
@@ -373,134 +465,202 @@ export default defineComponent({
 </script>
 
 <style scoped lang="scss">
-aside {
-    position: fixed;
-    width: var(--aside-w);
-    top: 0;
-    left: 0;
-    height: 100%;
-    background: var(--nav-bg);
+/* sidebar: brainlife-lite's light navigation (palette.nav) with the brainlife.io mark top-left */
+.brainlife-lite {
+    background-color: var(--nav-bg);
     border-right: 1px solid var(--line);
     color: var(--ink);
-    display: flex;
-    flex-direction: column;
-    overflow-y: auto;
 }
 
 .brand {
-    display: block;
-    padding: 18px 16px 14px;
-    text-decoration: none;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 10px;
+    padding: 2px 0 4px;
+
+    .brand-link {
+        flex: 1 1 auto;
+        min-width: 0;
+        text-decoration: none;
+    }
+    .brand-mode {
+        flex: 0 0 100%;
+    }
 }
 
-.steps {
-    padding: 4px 10px;
-    flex: 1;
+:deep(.el-steps--vertical) {
+    padding-top: 4px;
+}
 
-    .group {
-        font-size: 0.68rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-        color: var(--ink-2);
-        padding: 14px 10px 4px;
+:deep(.el-step__title) {
+    color: var(--ink-2);
+    font-size: 0.85rem;
+    font-weight: 400;
+    line-height: 1.6;
+
+    padding-bottom: 0px !important; // this extra padding is causing a scrollbar to appear
+}
+
+:deep(.el-step__title.is-process) {
+    color: var(--el-color-primary);
+    font-weight: 600;
+}
+
+:deep(.el-step__title.is-finish) {
+    color: var(--ink);
+}
+
+:deep(.el-step__description) {
+    color: var(--ink-3);
+    font-size: 0.72rem;
+}
+
+:deep(.el-step__description.is-process) {
+    color: var(--el-color-primary);
+}
+
+:deep(.el-step__description.is-finish) {
+    color: var(--ink-3);
+}
+
+:deep(.el-step__line) {
+    background-color: var(--line);
+}
+
+:deep(.el-step__head.is-finish .el-step__line-inner) {
+    border-color: var(--el-color-primary-light-5);
+}
+
+:deep(.el-step__icon.is-text) {
+    width: 22px;
+    height: 22px;
+    font-size: 0.72rem;
+    font-weight: 500;
+    border-width: 1px;
+    background-color: #fff;
+    color: var(--ink-2);
+    border-color: var(--el-border-color-base);
+}
+
+:deep(.el-step__head.is-finish .el-step__icon.is-text) {
+    background-color: var(--el-color-primary-light-8);
+    border-color: var(--el-color-primary-light-5);
+    color: var(--el-color-primary);
+}
+
+:deep(.el-step__head.is-process .el-step__icon.is-text) {
+    background-color: var(--el-color-primary);
+    border-color: var(--el-color-primary);
+    color: #fff;
+}
+
+.aside-back-dashboard {
+    flex-shrink: 0;
+    margin-bottom: 1rem;
+    margin-top: 1rem;
+
+    :deep(a) {
+        display: block;
+        width: 100%;
+        text-decoration: none;
     }
+}
 
-    .step {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        padding: 8px 10px;
-        margin: 2px 0;
-        border-radius: var(--panel-radius);
-        font-weight: 300;
-        color: var(--ink);
-    }
+.aside-back-dashboard-btn {
+    width: 100%;
+    justify-content: center;
+    color: var(--ink);
+    border-color: var(--el-border-color-base);
+    background: #fff;
 
-    .n {
-        width: 20px;
-        height: 20px;
-        flex: none;
-        border-radius: 50%;
-        border: 1px solid var(--el-border-color-base);
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 0.7rem;
-        color: var(--ink-2);
-    }
-
-    .step.done .n {
-        background: var(--el-color-primary-light-9);
+    &:hover,
+    &:focus {
+        color: var(--el-color-primary);
         border-color: var(--el-color-primary-light-7);
-        color: var(--el-color-primary);
+        background: var(--el-color-primary-light-9);
+    }
+}
+
+.aside-width {
+    width: var(--aside-w);
+    min-width: var(--aside-w);
+    max-width: var(--aside-w);
+}
+
+.aside-external-links {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--line);
+}
+
+.aside-external-btn {
+    background-color: #fff;
+    border-color: var(--el-border-color-base);
+    color: var(--ink-2);
+
+    svg {
+        color: var(--ink-2);
     }
 
-    .step.active {
-        background: var(--el-color-primary-light-9);
-        color: var(--el-color-primary);
-        font-weight: 500;
+    &:hover,
+    &:focus {
+        background-color: var(--el-color-primary-light-9);
+        border-color: var(--el-color-primary-light-7);
 
-        .n {
-            background: var(--el-color-primary);
-            border-color: var(--el-color-primary);
-            color: #fff;
+        svg {
+            color: var(--el-color-primary);
         }
     }
 }
 
-.aside-foot {
-    padding: 12px 16px 16px;
-    border-top: 1px solid var(--line);
+.base-convert-main {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-
-    .signout {
-        width: 100%;
-        font-family: inherit;
-    }
+    flex-grow: 1;
+    max-height: 100vh;
+    min-height: 0;
+    box-sizing: border-box;
+    padding: 16px 16px 0;
+    overflow: hidden;
+    background: var(--app-bg);
 }
 
-.menu-footer {
-    display: flex;
-    gap: 16px;
-
-    .menu-footer-icon {
-        font-size: 1.2rem;
-        color: var(--ink-2);
-        width: 20px;
-        height: 20px;
-    }
-
-    a:hover .menu-footer-icon {
-        color: var(--el-color-primary);
-    }
-}
-
-section {
-    margin-left: var(--aside-w);
-    padding-bottom: 100px;
-}
-
-section.page-panel {
-    margin: 16px 16px 76px calc(var(--aside-w) + 16px);
-    padding: 8px 20px 20px;
+/* each step sits in one white panel on the grey page, like brainlife-lite's page sections */
+.base-convert-scroll {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
     background: var(--panel-bg);
     border: 1px solid var(--line);
     border-radius: var(--panel-radius);
-    min-height: calc(100vh - 92px);
-    box-sizing: border-box;
+}
+
+.base-convert-content {
+    padding: 1rem 1.25rem;
 }
 
 .page-action {
-    position: fixed;
-    height: 40px;
-    bottom: 0;
-    right: 0;
-    left: var(--aside-w);
-    padding: 10px 16px;
-    background: var(--panel-bg);
-    border-top: 1px solid var(--line);
-    z-index: 3;
+    display: flex;
+    flex-shrink: 0;
+    justify-content: space-between;
+    padding: 12px 0 14px;
+    background-color: var(--app-bg);
+    color: var(--ink);
+}
+
+.base-convert-session-error {
+    margin-bottom: 1rem;
+}
+
+.base-convert-error-no-id {
+    color: var(--ink-3);
+    margin-top: 1rem;
 }
 </style>

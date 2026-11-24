@@ -22,9 +22,9 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import LandingPageFooter from './LandingPageFooter.vue';
-import LandingPageHeader from './LandingPageHeader.vue';
-import './landing/landing.css';
+import LandingPageFooter from '@/features/landing/LandingPageFooter.vue';
+import LandingPageHeader from '@/features/landing/LandingPageHeader.vue';
+import '@/features/landing/landing/landing.css';
 
 export default defineComponent({
     components: {
@@ -39,7 +39,7 @@ export default defineComponent({
 }
 
 .not-found-message {
-    background-color: #20ab5c;
+    background-color: var(--el-color-primary);
     padding: 2rem;
     border-radius: 4px;
     font-size: var(--el-font-size-extra-large);

@@ -1,11 +1,11 @@
 <template>
     <div v-if="shareSessionButtonIsVisible">
-        <div style="padding: 0 10px">
+        <div style="padding: 0px">
             <el-badge
                 :value="allowedUserProfiles.length === 0 ? undefined : allowedUserProfiles.length"
                 style="width: 135px"
             >
-                <el-button class="share-session-button" type="primary" @click="handleOpen"> Share session </el-button>
+                <el-button class="share-session-button" type="default" @click="handleOpen"> Share session </el-button>
             </el-badge>
         </div>
         <el-dialog
@@ -215,7 +215,7 @@ export default defineComponent({
 
 <style lang="scss">
 .muted {
-    color: gray;
+    color: var(--ink-3);
 }
 
 .autocomplete-loader {
@@ -234,6 +234,6 @@ export default defineComponent({
     justify-content: center;
     width: 100%;
     margin-bottom: 10px;
-    font-family: Merriweather Sans;
+    font-family: inherit;
 }
 </style>

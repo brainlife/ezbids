@@ -3,6 +3,7 @@ import { Request } from 'express-jwt';
 import { JwtPayload } from 'jsonwebtoken';
 import { signJWT, validateWithJWTConfig, verifyJWT } from './auth';
 import { EzBIDSAuthRequestObject, HTTP_STATUS, validateUserCanAccessSession } from './controllers.utils';
+import { ezbidsStore, sessionStore } from './store';
 import multer = require('multer');
 import path = require('path');
 import fs = require('fs');
@@ -11,9 +12,7 @@ import archiver = require('archiver');
 import async = require('async');
 
 import config = require('./config');
-import models = require('./models');
 
-console.debug(config.multer);
 const upload = multer(config.multer);
 
 const router = express.Router();
@@ -51,6 +50,25 @@ const router = express.Router();
  *                  error:
  *                    type: string
  */
+/**
+ * @swagger
+ * /deface-methods:
+ *   get:
+ *     summary: Defacing methods the handler can run (written by the handler at start from the tools it finds)
+ *     responses:
+ *       200:
+ *         description: { methods: string[] } (empty until the handler has started)
+ */
+router.get('/deface-methods', (req, res) => {
+    try {
+        const file = path.join(config.workdir, 'deface-methods.json');
+        const methods = JSON.parse(fs.readFileSync(file, 'utf8')).methods;
+        return res.json({ methods: Array.isArray(methods) ? methods : [] });
+    } catch (err) {
+        return res.json({ methods: [] });
+    }
+});
+
 router.get('/health', (req, res) => {
     let status = 'ok';
     let message = '';
@@ -99,20 +117,37 @@ router.get('/health', (req, res) => {
  *   schemas:
  *    Session: $ref: '#/components/schemas/Session'
  */
-router.post('/session', validateWithJWTConfig(), (req: Request, res: express.Response, next) => {
-    req.body.status = 'created';
+router.get('/sessions', validateWithJWTConfig(), (req: Request, res: express.Response, next) => {
+    if (config.authentication) {
+        const userId = req.auth?.sub as unknown as number | undefined;
+        if (userId === undefined || userId === null) {
+            return res.status(HTTP_STATUS.BAD_REQUEST).json({ err: 'No userId found' });
+        }
+        return sessionStore
+            .findForUser(userId)
+            .then((sessions) => res.json(sessions))
+            .catch((err) => next(err));
+    }
+    return sessionStore
+        .find({})
+        .then((sessions) => res.json(sessions))
+        .catch((err) => next(err));
+});
 
-    const session = new models.Session({
-        ...req.body,
-        ownerId: req.auth.sub,
-        allowedUsers: [],
-    });
-    session
-        .save()
-        .then((_session) => {
-            //mongoose contains err on the 1st argument of resolve!? odd.
-            res.json(_session);
+router.post('/session', validateWithJWTConfig(), (req: Request, res: express.Response, next) => {
+    const userId = req.auth?.sub;
+    if (userId === undefined || userId === null) {
+        return res.status(HTTP_STATUS.BAD_REQUEST).json({ err: 'No userId found' });
+    }
+    // #160: request headers are no longer stored with the session (or returned by the API)
+    const body = { ...req.body, status: 'created' };
+    sessionStore
+        .create({
+            ...body,
+            ownerId: userId,
+            allowedUsers: [],
         })
+        .then((_session) => res.json(_session))
         .catch((err) => {
             console.error(err);
             return next(err);
@@ -154,16 +189,15 @@ router.patch(
     validateWithJWTConfig(),
     validateUserCanAccessSession(true),
     (req: EzBIDSAuthRequestObject, res, next) => {
-        const session = req.ezBIDS.session;
+        const session = req?.ezBIDS?.session;
+        if (!session) {
+            return res.status(HTTP_STATUS.NOT_FOUND).json({ err: 'Session not found' });
+        }
         session.allowedUsers = req.body.allowedUsers;
-        return session
-            .save()
-            .then(() => {
-                res.send('ok');
-            })
-            .catch((err) => {
-                return next(err);
-            });
+        return sessionStore
+            .save(session)
+            .then(() => res.send('ok'))
+            .catch((err) => next(err));
     }
 );
 
@@ -229,6 +263,9 @@ router.get(
     validateWithJWTConfig(),
     validateUserCanAccessSession(false),
     (req: EzBIDSAuthRequestObject, res) => {
+        if (!req.ezBIDS?.session) {
+            return res.status(HTTP_STATUS.NOT_FOUND).json({ err: 'Session not found' });
+        }
         return res.json(req.ezBIDS.session);
     }
 );
@@ -271,16 +308,14 @@ router.post(
     validateWithJWTConfig(),
     validateUserCanAccessSession(false),
     (req: EzBIDSAuthRequestObject, res, next) => {
+        if (!req.ezBIDS?.session) {
+            return res.status(HTTP_STATUS.NOT_FOUND).json({ err: 'Session not found' });
+        }
         const session = req.ezBIDS.session;
         fs.writeFile(`${config.workdir}/${session._id}/deface.json`, JSON.stringify(req.body), () => {
             session.status = 'deface';
             session.status_msg = 'Waiting to be defaced';
-            session
-                .save()
-                .then(() => {
-                    return res.send('ok');
-                })
-                .catch((err) => next(err));
+            sessionStore.save(session).then(() => res.send('ok')).catch((err) => next(err));
         });
     }
 );
@@ -316,6 +351,9 @@ router.post(
     validateWithJWTConfig(),
     validateUserCanAccessSession(false),
     (req: EzBIDSAuthRequestObject, res, next) => {
+        if (!req.ezBIDS?.session) {
+            return res.status(HTTP_STATUS.NOT_FOUND).json({ err: 'Session not found' });
+        }
         const session = req.ezBIDS.session;
 
         fs.writeFile(`${config.workdir}/${session._id}/.cancel`, '', (err) => {
@@ -327,12 +365,7 @@ router.post(
             //be necessary.. but right now kill() doesn't work.. so
             session.deface_begin_date = undefined;
             session.status = 'analyzed';
-            session
-                .save()
-                .then(() => {
-                    return res.send('ok');
-                })
-                .catch((err) => next(err));
+            sessionStore.save(session).then(() => res.send('ok')).catch((err) => next(err));
         });
     }
 );
@@ -368,6 +401,9 @@ router.post(
     validateWithJWTConfig(),
     validateUserCanAccessSession(false),
     (req: EzBIDSAuthRequestObject, res, next) => {
+        if (!req.ezBIDS?.session) {
+            return res.status(HTTP_STATUS.NOT_FOUND).json({ err: 'Session not found' });
+        }
         const session = req.ezBIDS.session;
 
         const workdir = `${config.workdir}/${session._id}`;
@@ -381,12 +417,7 @@ router.post(
         session.status_msg = 'reset defacing';
         session.deface_begin_date = undefined;
         session.deface_finish_date = undefined;
-        session
-            .save()
-            .then(() => {
-                return res.send('ok');
-            })
-            .catch((err) => next(err));
+        sessionStore.save(session).then(() => res.send('ok')).catch((err) => next(err));
     }
 );
 
@@ -395,30 +426,21 @@ router.post(
     validateWithJWTConfig(),
     validateUserCanAccessSession(false),
     (req: EzBIDSAuthRequestObject, res, next) => {
+        if (!req.ezBIDS?.session) {
+            return res.status(HTTP_STATUS.NOT_FOUND).json({ err: 'Session not found' });
+        }
         const session = req.ezBIDS.session;
 
         fs.writeFile(`${config.workdir}/${session._id}/finalized.json`, JSON.stringify(req.body), (err) => {
             if (err) console.error(err);
-            models.ezBIDS
-                .findOneAndUpdate(
-                    { _session_id: session._id },
-                    {
-                        $set: {
-                            //TODO - store this somewhere for book keeping
-                            //updated: req.body, //finalized.json could exceed 16MB
-                            update_date: new Date(),
-                        },
-                    }
-                )
+            ezbidsStore
+                .findOneAndUpdate(session._id, {
+                    $set: { update_date: new Date() },
+                })
                 .then(() => {
                     session.status = 'finalized';
                     session.status_msg = 'Waiting to be finalized';
-                    session
-                        .save()
-                        .then(() => {
-                            res.send('ok');
-                        })
-                        .catch((err) => next(err));
+                    return sessionStore.save(session).then(() => res.send('ok')).catch((err) => next(err));
                 })
                 .catch((err) => next(err));
         });
@@ -431,10 +453,12 @@ router.get(
     validateWithJWTConfig(),
     validateUserCanAccessSession(false),
     (req: EzBIDSAuthRequestObject, res, next) => {
+        if (!req.ezBIDS?.session) {
+            return res.status(HTTP_STATUS.NOT_FOUND).json({ err: 'Session not found' });
+        }
         const session = req.ezBIDS.session;
-
-        models.ezBIDS
-            .findOne({ _session_id: session._id })
+        ezbidsStore
+            .findOneBySessionId(session._id)
             .then((ezBIDS) => {
                 if (!ezBIDS) {
                     return res
@@ -461,6 +485,9 @@ router.get(
     validateWithJWTConfig(),
     validateUserCanAccessSession(false),
     (req: EzBIDSAuthRequestObject, res) => {
+        if (!req.ezBIDS?.session) {
+            return res.status(HTTP_STATUS.NOT_FOUND).json({ err: 'Session not found' });
+        }
         const session = req.ezBIDS.session;
         const JWT = signJWT({ sessionId: session._id.toString() });
         return res.send(JWT);
@@ -484,38 +511,41 @@ router.get('/download/:session_id/*', (req, res, next) => {
         return;
     }
 
-    models.Session.findById(validJWTPayload?.sessionId)
-        .then((session) => {
-            const basepath = config.workdir + '/' + session._id;
+    sessionStore.findById(validJWTPayload?.sessionId as string).then((session) => {
+        if (!session) {
+            return res.status(HTTP_STATUS.NOT_FOUND).json({ err: 'session not found' });
+        }
+        const basepath = path.resolve(config.workdir, String(session._id));
 
-            //validate path so it will be inside the basepath
-            const fullpath = path.resolve(basepath + '/' + req.params[0]);
-            if (!fullpath.startsWith(basepath)) return next('invalid path');
+        // validate path stays inside session dir (avoid mixed / vs \\ breaking startsWith on Windows)
+        const fullpath = path.resolve(basepath, req.params[0] as string);
+        const rel = path.relative(basepath, fullpath);
+        if (rel.startsWith('..') || path.isAbsolute(rel)) return next('invalid path');
 
-            //TODO - if requested path is a file, thenstream
-            const stats = fs.lstatSync(fullpath);
-            if (stats.isFile()) {
-                res.setHeader('Content-disposition', 'attachment; filename=' + path.basename(fullpath));
-                res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
-                return fs.createReadStream(fullpath).pipe(res);
-            } else if (stats.isDirectory()) {
-                res.setHeader('Content-disposition', 'attachment; filename=' + path.basename(fullpath) + '.zip');
-                res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
-                const archive = archiver('zip', {
-                    zlib: { level: 0 },
-                });
-                archive.directory(fullpath, 'bids');
-                archive.finalize();
-                return archive.pipe(res);
-            } else return next('weird file');
-        })
-        .catch((err) => {
-            if (err?.code === 'ENOENT') {
-                return res.status(HTTP_STATUS.NOT_FOUND).json(err);
-            } else {
-                return next(err);
-            }
-        });
+        //TODO - if requested path is a file, thenstream
+        const stats = fs.lstatSync(fullpath);
+        if (stats.isFile()) {
+            res.setHeader('Content-disposition', 'attachment; filename=' + path.basename(fullpath));
+            res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+            return fs.createReadStream(fullpath).pipe(res);
+        } else if (stats.isDirectory()) {
+            res.setHeader('Content-disposition', 'attachment; filename=' + path.basename(fullpath) + '.zip');
+            res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
+            const archive = archiver('zip', {
+                zlib: { level: 0 },
+            });
+            archive.directory(fullpath, 'bids');
+            archive.finalize();
+            return archive.pipe(res);
+        } else return next('weird file');
+    })
+    .catch((err) => {
+        if (err?.code === 'ENOENT') {
+            return res.status(HTTP_STATUS.NOT_FOUND).json(err);
+        } else {
+            return next(err);
+        }
+    });
 });
 
 router.post(
@@ -524,6 +554,9 @@ router.post(
     validateUserCanAccessSession(false),
     upload.any(),
     (req: any, res, next) => {
+        if (!req.ezBIDS?.session) {
+            return res.status(HTTP_STATUS.NOT_FOUND).json({ err: 'Session not found' });
+        }
         const session = req.ezBIDS.session;
 
         //when a single file is uploaded paths becomes just a string. convert it to an array of 1
@@ -539,11 +572,14 @@ router.post(
             (file: any, nextFile) => {
                 idx++;
                 const srcPath = file.path;
-                const dirtyPath = `${config.workdir}/${session._id}/${paths[idx]}`;
-                const destPath = path.resolve(dirtyPath);
+                const workdirResolved = path.resolve(config.workdir);
+                const destPath = path.resolve(workdirResolved, String(session._id), paths[idx]);
                 const mtime = mtimes[idx] / 1000; //browser uses msec.. filesystem uses sec since epoch
 
-                if (path.relative(`${config.workdir}/${session._id}`, destPath).startsWith('..')) {
+                // #160: the file must land inside this session's folder (not just anywhere under workdir)
+                const sessionDirResolved = path.join(workdirResolved, String(session._id));
+                const relToSession = path.relative(sessionDirResolved, destPath);
+                if (relToSession.startsWith('..') || path.isAbsolute(relToSession)) {
                     return nextFile(new Error(`invalid path: ${destPath}`));
                 }
                 const destdir = path.dirname(destPath);
@@ -568,18 +604,14 @@ router.patch(
     validateWithJWTConfig(),
     validateUserCanAccessSession(false),
     (req: EzBIDSAuthRequestObject, res, next) => {
+        if (!req.ezBIDS?.session) {
+            return res.status(HTTP_STATUS.NOT_FOUND).json({ err: 'Session not found' });
+        }
         const session = req.ezBIDS.session;
         session.status = 'uploaded';
         session.status_msg = 'Waiting in the queue..';
         session.upload_finish_date = new Date();
-        session
-            .save()
-            .then(() => {
-                return res.send('ok');
-            })
-            .catch((err) => {
-                return next(err);
-            });
+        sessionStore.save(session).then(() => res.send('ok')).catch((err) => next(err));
     }
 );
 

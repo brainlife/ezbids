@@ -11,6 +11,7 @@ final product (with user modifications) can be made.
 import os
 import sys
 import json
+from pathlib import Path
 
 # Begin
 telemetry_url = "http://52.87.154.236/telemetry/"
@@ -45,7 +46,7 @@ def gather_telemetry(dtype):
             idx = str(subject_idx) + str(session_idx) + str(series_idx)
 
             seq_file_name = json_data['series'][series_idx]['nifti_path']
-            seq_file_name = seq_file_name.split('/')[-1]
+            seq_file_name = Path(seq_file_name).name
 
             ezBIDS_type = json_data['series'][series_idx]['type']
             if '/' in ezBIDS_type:

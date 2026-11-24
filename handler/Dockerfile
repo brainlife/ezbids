@@ -7,14 +7,13 @@ ENV DEBIAN_FRONTEND noninteractive
 RUN apt update && \
     apt-get update && apt-get upgrade -y
 
-RUN apt install -y parallel python3 python3-pip tree curl unzip git jq python libgl-dev python-numpy bc
+RUN apt install -y parallel python3 python3-pip tree curl unzip git jq libgl-dev bc
 
-RUN pip3 install numpy==1.23.0 nibabel==4.0.0 pandas matplotlib pyyaml==5.4.1 pydicom==2.3.1 natsort pydeface && \
-    pip3 install quickshear mne mne-bids
-
-# pydeface pulls nipype -> prov, which needs rdflib < 7 (pip's resolver left rdflib 7.x and pydeface then
-# refuses to start with a VersionConflict)
-RUN pip3 install "rdflib>=4.2.1,<7" && pydeface --help >/dev/null
+# python packages: handler/requirements.txt (the list the desktop python runtime uses) except pypet2bids,
+# plus pydeface/quickshear (handler/deface.sh); pypet2bids from master's tested PET2BIDS commit pin
+COPY requirements.txt /tmp/requirements.txt
+RUN grep -v '^pypet2bids' /tmp/requirements.txt > /tmp/requirements-docker.txt && \
+    pip3 install -r /tmp/requirements-docker.txt && pip3 install pydeface quickshear
 
 # Install pypet2bids
 # pinned: PET2BIDS moved to uv (no more installpoetry target); this is the last commit before 2024-08-28
@@ -79,14 +78,12 @@ RUN echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesourc
 RUN apt-get update \
     && apt-get install nodejs -y
 
-# dcm2niix pinned to an exact release (its BidsGuess and sidecars change between releases);
-# to update, change both ARGs: the sha256 is the release asset digest shown on GitHub
-ARG DCM2NIIX_VERSION=v1.0.20261029
-ARG DCM2NIIX_ZIP_SHA256=decc03fe9c08e696700876bd0e28fbc1dda5be11979905dfa5a5e01063cdf758
-RUN cd /tmp && curl -fL -o dcm2niix_lnx.zip https://github.com/rordenlab/dcm2niix/releases/download/${DCM2NIIX_VERSION}/dcm2niix_lnx.zip \
-    && echo "${DCM2NIIX_ZIP_SHA256}  /tmp/dcm2niix_lnx.zip" | sha256sum -c - \
-    && unzip /tmp/dcm2niix_lnx.zip \
-    && mv dcm2niix /usr/local/bin && rm /tmp/dcm2niix_lnx.zip
+# dcm2niix: the pinned official release from handler/dcm2niix.env (the same file the desktop app's
+# fetch-binaries.sh reads), sha256-checked; the build fails unless `dcm2niix -v` prints the pinned tag.
+# It lives in the TypeScript handler's tool layout and is also /usr/local/bin/dcm2niix (pypet2bids finds it on PATH).
+COPY dcm2niix.env fetch-dcm2niix.sh /etc/ezbids/
+RUN bash /etc/ezbids/fetch-dcm2niix.sh linux amd64 /opt/ezbids-bin/dcm2niix \
+    && ln -sf /opt/ezbids-bin/dcm2niix/dcm2niix-linux-amd64 /usr/local/bin/dcm2niix
 
 # Don't need, unless there's a reason for having the development branch ahead of scheduled release
 # RUN git clone --branch development https://github.com/rordenlab/dcm2niix.git \
@@ -110,6 +107,37 @@ RUN npm install -g npm@9.5.1
 RUN npm install -g bids-validator@1.14.8
 RUN git clone https://github.com/bids-standard/bids-validator
 
+# The TypeScript handler (handler/*.ts) looks for its tools in the desktop bundle layout:
+# $EZBIDS_BIN_DIR/<tool>/<tool>-<platform>-<arch>. Without $EZBIDS_BIN_DIR/python-runtime it uses this image's python3.
+ENV EZBIDS_BIN_DIR=/opt/ezbids-bin EZBIDS_PLATFORM=linux EZBIDS_ARCH=amd64
+ENV EZBIDS_TEMPLATE_DIR=/app/handler/templates
+ENV BIDS_VALIDATOR_PATH=/usr/lib/node_modules/bids-validator/bin/bids-validator
+RUN mkdir -p $EZBIDS_BIN_DIR/7z $EZBIDS_BIN_DIR/allineate
+
+# 7-Zip (expand step): the same release asset the desktop app ships (brainlife/ezbids-binaries)
+ARG EZBIDS_BINARIES_TAG=v0.0.5
+ARG SEVENZ_SHA256=57b73a4bf122b8d7e69c4c04a478f258b03f1515feebe1e70f190432710b3a3b
+RUN curl -fsSL -o $EZBIDS_BIN_DIR/7z/7z-linux-amd64 \
+        https://github.com/brainlife/ezbids-binaries/releases/download/${EZBIDS_BINARIES_TAG}/7z-linux-amd64 && \
+    echo "${SEVENZ_SHA256}  $EZBIDS_BIN_DIR/7z/7z-linux-amd64" | sha256sum -c - && \
+    chmod +x $EZBIDS_BIN_DIR/7z/7z-linux-amd64
+
+# allineate (deface step): the release binary needs glibc 2.34 (this image has 2.31), so it is compiled here
+# from the commit brainlife/ezbids-binaries pins (scripts/build/allineate.sh, same flags)
+ARG ALLINEATE_REF=dd250449d46752f84761657fbaf0fb26c8aaf20e
+RUN apt-get update && apt-get install -y zlib1g-dev && \
+    cd /tmp && curl -fsSL -o allineate.tgz https://github.com/neurolabusc/allineate/archive/${ALLINEATE_REF}.tar.gz && \
+    tar -xzf allineate.tgz && cd allineate-${ALLINEATE_REF} && \
+    gcc -O3 -ffast-math -DHAVE_ZLIB main.c allineate.c nifti_io.c powell_newuoa.c -lz -lm \
+        -o $EZBIDS_BIN_DIR/allineate/allineate-linux-amd64 && \
+    cd /tmp && rm -rf allineate.tgz allineate-${ALLINEATE_REF} && apt-get clean -y
+
 # install source code from local
 WORKDIR /app/handler
 RUN npm -g install pm2
+
+# pydeface pulls nipype -> prov, which needs rdflib < 7 (pip 20's resolver left rdflib 7.x and pydeface then
+# refuses to start with a VersionConflict)
+RUN pip3 install "rdflib>=4.2.1,<7" && pydeface --help >/dev/null
+# pypet2bids must use the pinned dcm2niix above (on PATH), never the copies it ships
+RUN rm -rf /usr/local/lib/python3.8/dist-packages/pypet2bids/dcm2niix_binaries

@@ -6,8 +6,9 @@ set -euo pipefail
 
 fail() { echo "FAIL: $*"; exit 1; }
 
-# dcm2niix is the pinned release, not "latest"
-want=v1.0.20261029
+# dcm2niix is the pinned release (handler/dcm2niix.env), not "latest"
+. /etc/ezbids/dcm2niix.env
+want=$DCM2NIIX_VERSION
 got=$(dcm2niix --version 2>&1 || true)
 [[ "$got" == *"$want"* ]] || fail "dcm2niix is not $want: $got"
 echo "ok: dcm2niix $want"
@@ -37,4 +38,15 @@ assert cout[1:] == ("A", "S") and cout[0] in ("L", "R"), cout
 PY
 echo "ok: fslreorient2std"
 rm -rf "$work"
+# the TypeScript handler's tool layout ($EZBIDS_BIN_DIR/<tool>/<tool>-linux-amd64) and the validator path
+for tool in dcm2niix 7z allineate; do
+    bin="$EZBIDS_BIN_DIR/$tool/$tool-linux-amd64"
+    [ -x "$bin" ] || fail "$bin is missing or not executable"
+done
+"$EZBIDS_BIN_DIR/7z/7z-linux-amd64" i >/dev/null || fail "7z does not run"
+"$EZBIDS_BIN_DIR/allineate/allineate-linux-amd64" 2>&1 | grep -qi allineate || fail "allineate does not run"
+[ -f "$BIDS_VALIDATOR_PATH" ] || fail "BIDS_VALIDATOR_PATH ($BIDS_VALIDATOR_PATH) does not exist"
+python3 -c 'import pypet2bids, mne_bids, nibabel' || fail "python packages missing"
+echo "ok: TypeScript handler tools (dcm2niix, 7z, allineate, bids-validator, python3)"
+
 echo "all handler image checks passed"
