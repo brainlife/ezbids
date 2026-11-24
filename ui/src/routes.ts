@@ -2,6 +2,7 @@ import { createRouter, createWebHistory, createWebHashHistory } from 'vue-router
 import LandingPage from '@/features/landing/LandingPage.vue';
 import BaseConvertPage from '@/BaseConvertPage.vue';
 import Dashboard from '@/features/dashboard/Dashboard.vue';
+import AimportPage from '@/features/aimport/AimportPage.vue';
 import NotFound from '@/NotFound.vue';
 import { hasJWT, authRequired } from '@/lib';
 import { ElNotification } from 'element-plus';
@@ -13,6 +14,7 @@ const router = createRouter({
         { path: '', name: 'base', component: LandingPage },
         { path: '/', component: LandingPage },
         { path: '/dashboard', name: 'dashboard', component: Dashboard },
+        { path: '/aimport', name: 'aimport', component: AimportPage },
         { path: '/upload', redirect: { name: 'convert' } },
         { path: '/convert', name: 'convert', component: BaseConvertPage },
         { path: '/:pathMatch(.*)*', component: NotFound },
