@@ -191,3 +191,16 @@ def module_dir(work: Path, module: Module) -> Path:
     if not isinstance(name, str) or not _MODULE_NAME.fullmatch(name) or name in RESERVED_NAMES:
         raise ValueError(f"invalid modality module name: {name!r}")
     return Path(work) / name
+
+
+_PATH_TAIL = r"""(?:/[^\s'"`,;:)\]}>]*|(?![\w.-]))"""
+
+
+def redact_paths(text: str, prefixes: Iterable[str], mark: str = "[x]") -> str:
+    """text with every path that starts with one of prefixes (a folder, claimed root or URL), tail
+    included, replaced by mark; so "<input>/big/H17/x.tif" leaves nothing of the path."""
+    items = sorted({p.rstrip("/") for p in prefixes if p and p.rstrip("/")}, key=len, reverse=True)
+    if not items:
+        return text
+    pattern = re.compile(r"(?<![\w.-])(?:" + "|".join(re.escape(p) for p in items) + r")" + _PATH_TAIL)
+    return pattern.sub(mark, text)

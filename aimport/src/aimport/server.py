@@ -47,12 +47,21 @@ from .ancillary import (
 from .deface import deface
 from . import modality
 from .ezbids_runner import CoreResult, has_files, parse_core, run_ezbids, stage_input
-from .modality import CLAIM_FILE, EMPTY_CORE, Claim, claim_terms, claimed_roots, module_dir, normalize_root
+from .modality import (
+    CLAIM_FILE,
+    EMPTY_CORE,
+    Claim,
+    claim_terms,
+    claimed_roots,
+    module_dir,
+    normalize_root,
+    redact_paths,
+)
 from .plan import NEVER_KEEP, OLD_PLAN, Plan
 from .planner import DATASET_NAME_MAX, README_MAX, apply_plan_edits, build_plan, run_terms
 from .pseudonyms import KeyLockedError, PseudonymKey
 from .schema import load_schema
-from .scrub import redact
+from .scrub import REDACTED, redact
 from .validate import validate_bids
 from .writer import _Writer, write_bids
 
@@ -178,6 +187,7 @@ class Server:
         self.key: PseudonymKey | None = None
         self.core: CoreResult | None = None
         self.terms: set[str] | None = None
+        self.scan_claims: list[Claim] = []  # the running scan's claims, before (or without) claim.json
         self.schema = None
         self.thread: threading.Thread | None = None
         self.status: dict = {"stage": "idle", "message": ""}
@@ -240,6 +250,21 @@ class Server:
     def claimed_roots(self) -> list[str]:
         return claimed_roots(self.claims().values())
 
+    def hidden(self) -> tuple[set[str], set[str]]:
+        """(path prefixes, terms) never shown: the input folder, the claimed roots and remote URLs (whole
+        paths, tails included), and the claimed roots' path components."""
+        try:
+            claims = list(self.claims().values())
+        except Exception:
+            claims = []
+        claims += self.scan_claims
+        inp = Path(self.input_dir)
+        prefixes = {str(inp), os.path.abspath(inp), str(inp.resolve())}
+        for c in claims:
+            prefixes.update(c.roots)
+            prefixes.update(c.remote)
+        return prefixes, claim_terms(claims)
+
     def clear_modules(self) -> None:
         for m in modality.modules():
             _clear(module_dir(self.work, m))
@@ -252,7 +277,8 @@ class Server:
             terms = None
         if terms is None:
             return "(details withheld: the identifying terms of this run are not known yet)"
-        return redact(text, terms)
+        prefixes, hidden = self.hidden()
+        return redact(redact_paths(text, prefixes, REDACTED), terms | hidden)
 
     def clean_obj(self, value: Any) -> Any:
         """value (strings anywhere inside) with the run's terms redacted; reviewer text is stored this way."""
@@ -401,12 +427,15 @@ class Server:
     def scan(self, info: dict, key: PseudonymKey, remote: Sequence[str] = ()) -> None:
         """remote: the scan's remote sources, passed to the modules' claims (kept out of scan.json)."""
         try:
-            self.reset_output()
+            # staged first: while claim.json is gone, get_terms finds no ezBIDS output and never walks
             _clear(self.staged)
+            self.reset_output()
             mods = modality.modules()
             claims: dict[str, Claim] = {}
+            self.scan_claims = []
             for m in mods:
                 claim = m.claim(self.input_dir, list(remote))
+                self.scan_claims.append(claim)
                 claim.roots = [normalize_root(r) for r in claim.roots]
                 claim.save(module_dir(self.work, m) / CLAIM_FILE)
                 claims[m.name] = claim

@@ -12,7 +12,15 @@ from fastapi.testclient import TestClient
 
 from aimport import modality, server
 from aimport.ezbids_runner import CoreResult, has_files, stage_input
-from aimport.modality import EMPTY_CORE, Claim, ClaimedPaths, claimed_roots, module_dir, normalize_root
+from aimport.modality import (
+    EMPTY_CORE,
+    Claim,
+    ClaimedPaths,
+    claimed_roots,
+    module_dir,
+    normalize_root,
+    redact_paths,
+)
 from aimport.scrub import identifying_terms
 from aimport.server import create_app
 from aimport.writer import _Writer
@@ -123,6 +131,14 @@ def test_normalize_root_rejects_escapes():
     assert claimed_roots([Claim(["big", "./big/"]), Claim(["a.zarr"])]) == ["big", "a.zarr"]
 
 
+def test_redact_paths_removes_whole_paths():
+    text = "OSError: /data/in/big/H17/x.tif: no; see big/H17_250215/y.tif and https://b.s3.amazonaws.com/H17/z"
+    out = redact_paths(text, ["/data/in", "big", "https://b.s3.amazonaws.com/H17"])
+    assert "H17" not in out and "/data/in" not in out and out.count("[x]") == 3
+    assert redact_paths("bigger big", ["big"]) == "bigger [x]"
+    assert redact_paths("text", []) == "text"
+
+
 def test_module_dir_names():
     class M:
         name = "micr"
@@ -180,10 +196,15 @@ def test_stage_without_exclude_matches_phase1(tmp_path):
     inp = make_input(tmp_path, unclaimed=False)
     (inp / "x").mkdir()
     (inp / "x" / "1.dcm").write_bytes(b"d")
+    os.symlink(inp / "x", inp / "dir_link")  # a folder link is staged as a link, not walked
+    os.symlink(inp / "x" / "1.dcm", inp / "file_link")
     staged = stage_input(inp, tmp_path / "work")
     real = inp.resolve()
     got = tree(staged)
     assert got["x/1.dcm"] == f"link:{real}/x/1.dcm"
+    assert got["dir_link"] == f"link:{real}/dir_link" and got["file_link"] == f"link:{real}/file_link"
+    assert not any(k.startswith("dir_link/") for k in got)
+    assert (staged / "dir_link" / "1.dcm").read_bytes() == b"d"
     assert got["big/" + SECRET + "/notes.txt"] == f"link:{real}/big/{SECRET}/notes.txt"
     assert got["a.zarr/zarr.json"] == f"link:{real}/a.zarr/zarr.json"
     if gnu_cp():
@@ -413,3 +434,69 @@ def test_unclaimed_input_still_runs_ezbids(tmp_path, monkeypatch, make_app):
     assert seen and "top.txt" in seen[0]
     assert not any(p.startswith(("big", "a.zarr")) for p in seen[0])
     shutil.rmtree(tmp_path / "work")
+
+
+class FailingModule(FakeModule):
+    """Raises with original paths in the message, from claim() or scan()."""
+
+    def __init__(self, where: str, inp: Path):
+        super().__init__()
+        self.where, self.inp = where, inp
+
+    def boom(self):
+        raise OSError(f"cannot read {self.inp}/big/SECRET_H17/x.tif (big/SECRET_H17/x.tif, {REMOTE})")
+
+    def claim(self, input_dir, remote):
+        if self.where == "claim":
+            self.boom()
+        return super().claim(input_dir, remote)
+
+    def scan(self, input_dir, claim, work, progress):
+        if self.where == "scan":
+            self.boom()
+        super().scan(input_dir, claim, work, progress)
+
+
+@pytest.mark.parametrize("where", ["claim", "scan"])
+def test_module_failure_never_shows_claimed_paths(tmp_path, monkeypatch, make_app, where):
+    inp = make_input(tmp_path)  # unclaimed files too, so ezBIDS output (and terms) exist when scan() fails
+    m = FailingModule(where, inp)
+    monkeypatch.setattr(modality, "modules", lambda: (m,))
+    monkeypatch.setattr(server, "client_from_env", lambda: None)
+
+    def run(staged, **kw):
+        (Path(staged) / "ezBIDS_core.json").write_text(json.dumps(EMPTY_CORE))
+        return Path(staged) / "ezBIDS_core.json"
+
+    monkeypatch.setattr(server, "run_ezbids", run)
+    c = make_app(inp)
+    c.post("/scan", json={"project_id": "proj", "remote": [REMOTE]})
+    s = wait_stage(c, ("planned", "failed"))
+    assert s["stage"] == "failed"
+    texts = [json.dumps(c.get("/status").json()), c.get("/events").text,
+             (tmp_path / "work" / "status.json").read_text()]
+    for leak in ("SECRET_H17", "x.tif", str(inp), str(inp.resolve()), "cmc-h17-bucket", "H17_250215"):
+        for t in texts:
+            assert leak not in t, (leak, t)
+    if where == "scan":  # the terms are known here, so the message is shown, redacted
+        assert "OSError: cannot read [x]" in s["message"]
+
+
+def test_scan_clears_staged_before_claims(tmp_path, fake, make_app, monkeypatch):
+    """While claim.json is gone, no ezBIDS output may remain (get_terms would walk the claimed roots)."""
+    inp = claimed_only_input(tmp_path)
+    c = make_app(inp)
+    c.post("/scan", json={"project_id": "proj"})
+    assert wait_stage(c, ("planned", "failed"))["stage"] == "planned"
+    work = tmp_path / "work"
+    order = []
+    real_clear = server._clear
+
+    def spy(path):
+        order.append(Path(path))
+        real_clear(path)
+
+    monkeypatch.setattr(server, "_clear", spy)
+    c.post("/scan", json={"project_id": "proj"})
+    assert wait_stage(c, ("planned", "failed"))["stage"] == "planned"
+    assert order.index(work / "ezbids") < order.index(work / "fake")
