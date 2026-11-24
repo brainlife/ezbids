@@ -34,7 +34,7 @@ from urllib.parse import unquote, urlsplit
 
 import numpy as np
 
-from .metadata import ImageInfo, channel_count, ngff_attrs
+from .metadata import FORMAT_VOCAB, ImageInfo, channel_count, ngff_attrs, squash
 
 CHUNK_MAP_VERSION = 1
 CHUNK_MAP_NAME = "bids.chunks.json"  # in <work>/output/, next to bids/
@@ -86,53 +86,211 @@ def _metadata_doc(arr: Any) -> dict:
     return json.loads(bufs[name].to_bytes())
 
 
+# --- what can be referenced: one predicate, used at planning (records) and at execute -----------
+
+NOT_REFERENCEABLE = "OME-Zarr layout not referenceable: "
+LAYOUT_UNKNOWN = "OME-Zarr layout not recorded: scan again"
+KEY_ENCODINGS = ("default", "v2")
+
+
+def _array_facts(doc: Mapping[str, Any]) -> dict[str, Any]:
+    """The layout facts of one array metadata document (zarr's serialisation)."""
+    if doc.get("zarr_format") == 3:
+        enc = doc.get("chunk_key_encoding") or {}
+        name = enc.get("name")
+        sep = (enc.get("configuration") or {}).get("separator") or ("/" if name == "default" else ".")
+        return {"zarr_format": 3, "grid": (doc.get("chunk_grid") or {}).get("name"), "key_encoding": name,
+                "separator": sep, "storage_transformers": bool(doc.get("storage_transformers"))}
+    return {"zarr_format": doc.get("zarr_format"), "grid": "regular", "key_encoding": "v2",
+            "separator": doc.get("dimension_separator") or ".", "storage_transformers": False}
+
+
+def _facts_of(arrays: list[dict[str, Any]]) -> dict[str, Any]:
+    return {
+        "zarr_formats": sorted({a["zarr_format"] for a in arrays}, key=str),
+        "grids": sorted({str(a["grid"]) for a in arrays}),
+        "key_encodings": sorted({str(a["key_encoding"]) for a in arrays}),
+        "separators": sorted({str(a["separator"]) for a in arrays}),
+        "storage_transformers": any(a["storage_transformers"] for a in arrays),
+    }
+
+
+def symlinked(root: Path, rel: str, subpaths: Any = ()) -> bool:
+    """Whether a segment of ``root/rel`` or of ``root/rel/<subpath>`` (an array dir) is a symlink."""
+    def walk(start: Path, segs: list[str]) -> bool:
+        p = start
+        for seg in segs:
+            p = p / seg
+            if p.is_symlink():
+                return True
+        return False
+
+    try:
+        segs = _segments(rel)
+    except ValueError:
+        return True
+    if walk(Path(root), segs):
+        return True
+    store = Path(root).joinpath(*segs)
+    for sub in subpaths:
+        try:
+            if walk(store, _segments(sub)):
+                return True
+        except ValueError:
+            continue  # refused as a dataset path (paths_ok)
+    return False
+
+
+def dataset_dirs(layout: Any) -> list[str]:
+    """Each level's array dir in the store (group path + dataset path), unchecked."""
+    return [_join(layout.group_path, p) for p in layout.datasets]
+
+
+def layout_facts(layout: Any, group_format: int | None, symlink: bool = False) -> dict[str, Any]:
+    """The facts layout_refusal decides on (JSON, kept in the scan records): axis identity, each
+    array's Zarr format (with the group's), chunk grid, key encoding, separator and storage
+    transformers, whether the dataset paths are plain relative paths, and whether the store is
+    reached through a symlink."""
+    arrays = [_array_facts(_metadata_doc(a)) for a in layout.arrays]
+    facts = _facts_of(arrays)
+    facts["zarr_formats"] = sorted({group_format, *facts["zarr_formats"]}, key=str)
+    paths_ok = True
+    for sub in dataset_dirs(layout):
+        try:
+            _segments(sub)
+        except ValueError:
+            paths_ok = False
+    return {"axes_identity": bool(layout.identity), **facts, "paths_ok": paths_ok, "symlink": bool(symlink)}
+
+
+def layout_refusal(facts: Mapping[str, Any] | None) -> str | None:
+    """Why an OME-Zarr cannot be referenced as is (its chunks would need re-encoding, or its path is
+    unsafe), or None. Shared by the planner (unsupported entry) and write_reference (refusal)."""
+    if not isinstance(facts, Mapping):
+        return LAYOUT_UNKNOWN
+    if facts.get("symlink"):
+        return NOT_REFERENCEABLE + "the store is reached through a symlink"
+    if not facts.get("axes_identity"):
+        return NOT_REFERENCEABLE + "axes need reordering"
+    if not facts.get("paths_ok"):
+        return NOT_REFERENCEABLE + "a dataset path leaves the store"
+    formats = facts.get("zarr_formats") or []
+    if len(formats) != 1 or formats[0] not in (2, 3):
+        return NOT_REFERENCEABLE + "arrays mix Zarr formats"
+    if facts.get("storage_transformers"):
+        return NOT_REFERENCEABLE + "storage transformers"
+    if facts.get("grids") != ["regular"]:
+        return NOT_REFERENCEABLE + "irregular chunk grid"
+    if not set(facts.get("key_encodings") or ["?"]) <= set(KEY_ENCODINGS):
+        return NOT_REFERENCEABLE + "unknown chunk key encoding"
+    if not set(facts.get("separators") or ["?"]) <= set(SEPARATORS):
+        return NOT_REFERENCEABLE + "unknown chunk key separator"
+    return None
+
+
 def _rebuild(arr: Any, axes: str) -> tuple[dict, dict]:
     """(the rebuilt metadata document, the chunk-map facts) of one source array. Only structure is
     kept: shape, data type, chunk grid, key encoding, codecs or compressor and filters, fill value,
-    order; dimension names are the image's axes. ``attributes`` are dropped."""
+    order; dimension names are the image's axes. ``attributes`` are dropped. The store passed
+    layout_refusal; this array is refused by it again here (defence in depth)."""
     doc = _metadata_doc(arr)
+    a = _array_facts(doc)
+    reason = layout_refusal({**_facts_of([a]), "axes_identity": True, "paths_ok": True})
+    if reason:
+        raise ReferenceRefused(reason)
     shape = [int(n) for n in doc["shape"]]
     if len(shape) != len(axes):
-        raise ReferenceRefused("an OME-Zarr array does not have the image's axes")
+        raise ReferenceRefused(NOT_REFERENCEABLE + "axes need reordering")
     itemsize = int(np.dtype(arr.dtype).itemsize)
     facts: dict[str, Any] = {"zarr_format": int(doc["zarr_format"]), "shape": shape}
+    sep = a["separator"]
     if doc["zarr_format"] == 3:
-        if doc.get("storage_transformers"):
-            raise ReferenceRefused("an OME-Zarr array uses storage transformers")
-        grid = doc.get("chunk_grid") or {}
-        enc = doc.get("chunk_key_encoding") or {}
-        if grid.get("name") != "regular" or enc.get("name") not in ("default", "v2"):
-            raise ReferenceRefused("an OME-Zarr array has an irregular chunk grid or key encoding")
-        chunk = [int(n) for n in grid["configuration"]["chunk_shape"]]
-        sep = (enc.get("configuration") or {}).get("separator") or ("/" if enc["name"] == "default" else ".")
+        chunk = [int(n) for n in doc["chunk_grid"]["configuration"]["chunk_shape"]]
         out = {k: doc[k] for k in _V3_KEYS if k in doc}
         out["dimension_names"] = list(axes)
-        if enc["name"] == "v2":
+        if a["key_encoding"] == "v2":
             facts["key_encoding"] = "v2"
     else:
         chunk = [int(n) for n in doc["chunks"]]
-        sep = doc.get("dimension_separator") or "."
         out = {k: doc[k] for k in _V2_KEYS if k in doc}
         out["dimension_separator"] = sep
-    if sep not in SEPARATORS or len(chunk) != len(shape) or any(c <= 0 for c in chunk):
-        raise ReferenceRefused("an OME-Zarr array has an unknown chunk layout")
+    if len(chunk) != len(shape) or any(c <= 0 for c in chunk):
+        raise ReferenceRefused(NOT_REFERENCEABLE + "irregular chunk grid")
     facts.update(chunk_grid=chunk, separator=sep, codec_bytes_hint=itemsize * math.prod(chunk))
     return out, facts
 
 
+# --- the term scan of what was written ----------------------------------------------------------
+
+_GENERATED = re.compile(r"ch\d+|[0-9A-F]{6}")  # omero labels and colours that ngff_attrs generates
+_METADATA_NAMES = ("zarr.json", ".zarray", ".zattrs", ".zgroup")
+TERM_REFUSED = "OME-Zarr metadata not referenceable: it holds identifying text"
+
+
+def _squash(text: str) -> str:
+    return squash(text)
+
+
+def _strings(obj: Any) -> Iterator[str]:
+    if isinstance(obj, str):
+        yield obj
+    elif isinstance(obj, dict):
+        for k, v in obj.items():
+            yield str(k)
+            yield from _strings(v)
+    elif isinstance(obj, list):
+        for v in obj:
+            yield from _strings(v)
+
+
+def check_terms(dest: Path, terms: Any) -> None:
+    """Refuse (ReferenceRefused, a generic message) when a string in a metadata document under
+    ``dest`` (keys, codec and filter configurations, string fill values ...) holds a run term,
+    compared case-insensitively with separators squashed (casefold, alphanumerics only).
+    Generated omero labels (``ch<n>``) and colours are exempt, and so are terms that are format
+    vocabulary (metadata.FORMAT_VOCAB: ``uint16``, ``micrometer``, ``zstd`` ...). Terms shorter than 3 characters,
+    and numbers shorter than ancillary.PATH_NUMERIC_MIN digits, are not checked (they would match
+    generated vocabulary)."""
+    from ..ancillary import PATH_NUMERIC_MIN
+
+    wanted = set()
+    for t in terms or ():
+        sq = _squash(str(t))
+        if sq in FORMAT_VOCAB:  # data-type, unit, axis, NGFF and codec words are never terms
+            continue
+        if len(sq) >= 3 and not (sq.isdigit() and len(sq) < PATH_NUMERIC_MIN):
+            wanted.add(sq)
+    if not wanted:
+        return
+    for p in sorted(Path(dest).rglob("*")):
+        if not p.is_file() or p.name not in _METADATA_NAMES:
+            continue
+        try:
+            doc = json.loads(p.read_text(encoding="utf-8"))
+        except (OSError, ValueError) as exc:
+            raise ReferenceRefused(TERM_REFUSED) from exc
+        for text in _strings(doc):
+            if _GENERATED.fullmatch(text):
+                continue
+            sq = _squash(text)
+            if any(t in sq for t in wanted):
+                raise ReferenceRefused(TERM_REFUSED)
+
+
 def _factor(base: int, n: int, ratio: float) -> float:
     """The downsampling factor of one axis of a level: the source's scale ratio when the level's
-    size agrees with it, else the whole factor (a power of two first) that gives the level's size
-    from level 0's, rounded down or up. Source pyramids carry wrong scales (a PS-OCT store says 16
+    size agrees with it, else the whole factor (level 0's size over the level's, then a power of
+    two) that gives the level's size from level 0's, rounded down or up. Source pyramids carry wrong scales (a PS-OCT store says 16
     for a level halved three times), and the size is what the chunks hold. Else the ratio as is,
     which the self-check refuses."""
     def fits(f: int) -> bool:
         return f >= 1 and n in (base // f, -(-base // f))
 
     whole = int(round(ratio))
-    candidates = ([whole] if math.isclose(ratio, whole, rel_tol=1e-6) else []) + [2**k for k in range(40)]
+    candidates = [whole] if math.isclose(ratio, whole, rel_tol=1e-6) else []
     if n > 0:
-        candidates.append(int(round(base / n)))
+        candidates += [base // n, int(round(base / n))]
+    candidates += [2**k for k in range(40)]
     for f in candidates:
         if fits(f):
             return f
@@ -153,33 +311,63 @@ def _levels(info: ImageInfo, layout: Any) -> list[dict[str, float]]:
     return out
 
 
+def source_factors(info: ImageInfo, layout: Any) -> list[dict[str, int]]:
+    """Per level, the spatial factors the source's own scales declare, for the axes where the
+    declared factor is whole and agrees with the level's size: what the written scales must equal
+    (times the plan's level-0 pixel size), independently of the fitting in _levels."""
+    base, scales = layout.arrays[0].shape, layout.scales
+    out = []
+    for arr, scale in zip(layout.arrays, scales):
+        known: dict[str, int] = {}
+        for k, a in enumerate(info.axes):
+            if a in "zyx" and scales[0][k] > 0:
+                ratio = scale[k] / scales[0][k]
+                f = int(round(ratio))
+                if f >= 1 and math.isclose(ratio, f, rel_tol=1e-6) and \
+                        int(arr.shape[k]) in (int(base[k]) // f, -(-int(base[k]) // f)):
+                    known[a] = f
+        out.append(known)
+    return out
+
+
+def has_source_windows(source: list, n: int) -> bool:
+    """Whether a source's omero block gives a display window for each of its n channels (then the written
+    windows are the source's; otherwise they are placeholders, see _windows). Recorded at scan in the
+    reference layout facts (``source_windows``), for the QA viewer."""
+    return len(source) == n and all(source)
+
+
 def _windows(info: ImageInfo, source: list) -> list[dict[str, float]]:
     """The source's display windows (numbers only) when there is one per channel; else the dtype's
-    range (no chunk is read for a reference)."""
+    range, 0..1 for floats (a placeholder: no chunk is read for a reference)."""
     n = channel_count(info)
-    if len(source) == n and all(source):
+    if has_source_windows(source, n):
         return list(source)
     dt = np.dtype(info.dtype)
     lo, hi = (float(np.iinfo(dt).min), float(np.iinfo(dt).max)) if dt.kind in "iu" else (0.0, 1.0)
     return [{"min": lo, "max": hi, "start": lo, "end": hi}] * n
 
 
-def write_reference(src: Any, location: Mapping[str, str], dest: Path, info: ImageInfo) -> dict:
+def write_reference(src: Any, location: Mapping[str, str], dest: Path, info: ImageInfo,
+                    terms: Any = (), symlink: bool = False) -> dict:
     """Write the metadata of a reference dataset at ``dest`` (no chunk bytes) and return the
     ``arrays`` part of its chunk map, keyed by the array's path under ``dest`` (``"0"``, ``"1"``, ...).
 
     ``src`` is the OME-Zarr ``ImageSource`` (readers); ``location`` the store's source,
     ``{"input": <input-relative store dir>}`` or ``{"url": <https URL of the store>}``; ``info`` the
     image facts with the plan's pixel size (metadata.with_plan_pixel_size). The group attributes are
-    ``metadata.ngff_attrs`` in the source's format (Zarr v3 → NGFF 0.5, v2 → 0.4).
+    ``metadata.ngff_attrs`` in the source's format (Zarr v3 → NGFF 0.5, v2 → 0.4). ``symlink``:
+    whether the store is reached through a symlink (``symlinked``). The layout is refused by
+    ``layout_refusal`` as at planning, and the written metadata by ``check_terms(terms)``.
     """
     from .convert import _write_group
 
     layout = getattr(src, "zarr_layout", None)
     if layout is None:
         raise ReferenceRefused("only an OME-Zarr input can be referenced")
-    if not layout.identity:
-        raise ReferenceRefused("the OME-Zarr axes are not t, c, z, y, x in order: convert it instead")
+    reason = layout_refusal(layout_facts(layout, info.zarr_format, symlink))
+    if reason:
+        raise ReferenceRefused(reason)
     if set(location) == {"input"}:
         kind, base = "input", location["input"]
         _segments(base)
@@ -201,12 +389,13 @@ def write_reference(src: Any, location: Mapping[str, str], dest: Path, info: Ima
         sub = _join(*_segments(_join(layout.group_path, path)))
         doc, facts = _rebuild(arr, info.axes)
         if facts["zarr_format"] != info.zarr_format:
-            raise ReferenceRefused("the OME-Zarr arrays do not share the group's Zarr format")
+            raise ReferenceRefused(NOT_REFERENCEABLE + "arrays mix Zarr formats")
         out_dir = dest / str(i)
         out_dir.mkdir()
         (out_dir / ("zarr.json" if facts["zarr_format"] == 3 else ".zarray")).write_text(
             json.dumps(doc, indent=2), encoding="utf-8")
         arrays[str(i)] = {"source": {kind: f"{base}/{sub}"}, **facts}
+    check_terms(dest, terms)
     return arrays
 
 
@@ -297,12 +486,15 @@ def _array_of(chunks: Mapping[str, Any], out_rel: str) -> tuple[str, dict, str]:
     return best[0], dict(best[1]), out_rel[len(best[0]) + 1:]
 
 
-def resolve(chunks: Mapping[str, Any], out_rel: str, input_dir: Path) -> Path | str:
+def resolve(chunks: Mapping[str, Any], out_rel: str, input_dir: Path, within: str | None = None) -> Path | str:
     """The source of an output chunk path (relative to the BIDS folder): a Path inside
     ``input_dir`` or an https URL. ValueError when the path is not strictly inside a mapped array,
     the key is not a chunk key of that array, an input source leaves ``input_dir`` or goes through a
-    symlink, or a URL is refused by ``remote.normalize_url``."""
-    _prefix, meta, key = _array_of(chunks, out_rel)
+    symlink, or a URL is refused by ``remote.normalize_url``. within: a manifest ``.ome.zarr`` folder
+    the array must lie strictly inside (the QA viewer's rule)."""
+    prefix, meta, key = _array_of(chunks, out_rel)
+    if within is not None and not prefix.startswith(_join(*_segments(within)) + "/"):
+        raise ValueError("the path is not inside a referenced array of this image")
     if not key_ok(meta, key):
         raise ValueError("not a chunk key of the referenced array")
     source = meta.get("source")
@@ -327,3 +519,72 @@ def resolve(chunks: Mapping[str, Any], out_rel: str, input_dir: Path) -> Path | 
         return f"{url}/{key}"
     raise ValueError("the chunk map entry has no valid source")
 
+
+
+# --- reading a referenced array (the QA viewer's display window) ------------------------------------------
+
+def _decoded_bytes(meta: Mapping[str, Any], doc: Mapping[str, Any], n_keys: int) -> int:
+    """An upper bound of an array's decoded size: its shape times its data type's item size (from the
+    rebuilt metadata document), and every stored object at codec_bytes_hint when the map has one.
+    ValueError when the data type is not a plain numeric one."""
+    dtype = doc.get("data_type") if doc.get("zarr_format") == 3 else doc.get("dtype")
+    try:
+        itemsize = int(np.dtype(str(dtype)).itemsize)
+    except (TypeError, ValueError):
+        raise ValueError("the referenced array has no known data type") from None
+    if itemsize <= 0:
+        raise ValueError("the referenced array has no known data type")
+    whole = math.prod(int(n) for n in meta["shape"]) * itemsize
+    return max(whole, int(meta.get("codec_bytes_hint") or 0) * n_keys)
+
+
+def read_array(chunks: Mapping[str, Any], bids_root: Path, array_rel: str, input_dir: Path,
+               max_bytes: int) -> np.ndarray:
+    """A referenced array (a coarse pyramid level) read whole into memory through the chunk map: its rebuilt
+    metadata from ``bids_root`` and each chunk from its source (``resolve``; a missing object is the fill
+    value). ValueError when its decoded size or the stored bytes read would pass ``max_bytes``; remote reads
+    are counted and capped (remote.ByteCounter)."""
+    import tempfile
+
+    import zarr
+
+    from .remote import _MISSING, ByteCounter, _filesystem
+
+    arrays = chunks.get("arrays") if isinstance(chunks, Mapping) else None
+    meta = arrays.get(array_rel) if isinstance(arrays, Mapping) else None
+    if not isinstance(meta, Mapping):
+        raise ValueError("not a referenced array")
+    keys = list(chunk_keys(meta))
+    name = "zarr.json" if meta.get("zarr_format") == 3 else ".zarray"
+    doc = Path(bids_root).joinpath(*_segments(array_rel), name).read_bytes()
+    if _decoded_bytes(meta, json.loads(doc), len(keys)) > max_bytes:
+        raise ValueError("the referenced array is too large to read whole")
+    fs = None
+    total = 0
+    try:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            (root / name).write_bytes(doc)
+            for key in keys:
+                src = resolve(chunks, f"{array_rel}/{key}", input_dir)
+                if isinstance(src, Path):
+                    if not src.is_file():
+                        continue
+                    total += src.stat().st_size
+                    if total > max_bytes:
+                        raise ValueError("the referenced array is too large to read whole")
+                    data = src.read_bytes()
+                else:
+                    if fs is None:
+                        fs = _filesystem(ByteCounter(max_bytes))
+                    try:
+                        data = fs.cat_file(src)
+                    except _MISSING:
+                        continue
+                dest = root.joinpath(*key.split("/"))
+                dest.parent.mkdir(parents=True, exist_ok=True)
+                dest.write_bytes(data)
+            return np.asarray(zarr.open_array(str(root), mode="r")[...])
+    finally:
+        if fs is not None:
+            fs.close()

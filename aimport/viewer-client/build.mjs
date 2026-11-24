@@ -20,10 +20,12 @@ await build({
   base: "", // relative URLs: the engine serves the client under /viewer/ng/
   logLevel: "warn",
   resolve: {
-    // only what the QA viewer uses: image layers from NIfTI files over http on the engine's own origin
+    // only what the QA viewer uses: image layers from NIfTI files and OME-Zarr groups (microscopy, Zarr v2
+    // and v3 with sharding) over http on the engine's own origin
     conditions: [
       "neuroglancer/datasource:none_by_default",
       "neuroglancer/datasource/nifti:enabled",
+      "neuroglancer/datasource/zarr:enabled",
       "neuroglancer/kvstore:none_by_default",
       "neuroglancer/kvstore/http:enabled",
       "neuroglancer/kvstore/byte_range:enabled",

@@ -34,7 +34,7 @@ __all__ = ["NgffCheckError", "check_ome_zarr", "pyramid_levels", "stack_sources"
 CHUNKS_PER_SHARD = 4  # per spatial axis (NGFF 0.5 only; 0.4 / Zarr v2 has no sharding)
 DEFAULT_CHUNK_3D = 128
 DEFAULT_CHUNK_2D = 1024
-PYRAMID_MAX_SIDE = 512  # the coarsest level's largest spatial axis
+PYRAMID_MAX_SIDE = 256  # the coarsest level's largest in-plane (y, x) axis
 PYRAMID_MAX_LEVELS = 8
 WINDOW_SAMPLES = 2**20  # values per channel read from the coarsest level for the display window
 WINDOW_PERCENTILES = (0.5, 99.5)
@@ -122,15 +122,18 @@ def level0_slab(info: ImageInfo, grid: tuple[int, ...], budget: int,
 
 def pyramid_levels(info: ImageInfo) -> list[dict[str, int]]:
     """Absolute downsampling factors per level, level 0 included (``{}``), down to the level whose
-    largest spatial axis is at most 512, with at most 8 levels. y and x halve every level; z halves
-    only while its pixels are not coarser than the in-plane ones (anisotropic stacks keep their z)."""
+    largest in-plane (y, x) axis is at most 256 (a 1024² plane gets 3 levels), with at most 8 levels.
+    y and x halve every level; z halves only while its pixels are not coarser than the in-plane ones
+    (anisotropic stacks keep their z)."""
     size = pixel_sizes(info)
     shape = {a: int(n) for a, n in zip(info.axes, info.shape) if a in SPATIAL}
     if not shape:
         return [{}]
+    plane_axes = [a for a in shape if a != "z"] or list(shape)
     factors = {a: 1 for a in shape}
     levels: list[dict[str, int]] = [{}]
-    while len(levels) < PYRAMID_MAX_LEVELS and max(shape[a] // factors[a] for a in shape) > PYRAMID_MAX_SIDE:
+    while len(levels) < PYRAMID_MAX_LEVELS and \
+            max(shape[a] // factors[a] for a in plane_axes) > PYRAMID_MAX_SIDE:
         plane = max(size[a] * factors[a] for a in shape if a != "z")
         nxt = dict(factors)
         for a in shape:
@@ -395,7 +398,7 @@ def _write_group(dest: Path, version: str, attrs: dict) -> None:
 
 def _windows(dest: Path, info: ImageInfo, level: int) -> list[dict[str, float]]:
     """Display window per channel: the 0.5/99.5 percentiles of a strided sample of the coarsest level
-    (at most WINDOW_SAMPLES values per channel); min/max is the dtype's range (data range for floats)."""
+    (at most WINDOW_SAMPLES values per channel; background excluded, see ``foreground``); min/max is the dtype's range (data range for floats)."""
     import zarr
 
     z = zarr.open_array(str(dest / str(level)), mode="r")
@@ -408,18 +411,65 @@ def _windows(dest: Path, info: ImageInfo, level: int) -> list[dict[str, float]]:
         step = max(1, math.ceil((math.prod(rest) / WINDOW_SAMPLES) ** (1 / max(1, len(rest)))))
         for a in info.axes:
             index.append(c if a == "c" else slice(None, None, step))
-        sample = np.asarray(z[tuple(index)], dtype=np.float64).ravel()
-        sample = sample[np.isfinite(sample)]
-        if sample.size == 0:
-            out.append({"min": 0.0, "max": 1.0, "start": 0.0, "end": 1.0})
-            continue
-        lo, hi = (float(v) for v in np.percentile(sample, WINDOW_PERCENTILES))
-        if np.issubdtype(dtype, np.integer):
-            mn, mx = float(np.iinfo(dtype).min), float(np.iinfo(dtype).max)
-        else:
-            mn, mx = float(sample.min()), float(sample.max())
-        out.append({"min": mn, "max": mx, "start": lo, "end": hi if hi > lo else lo + 1.0})
+        out.append(window_of(np.asarray(z[tuple(index)]), dtype, z.fill_value))
     return out
+
+
+BACKGROUND_ZERO_FRACTION = 0.2  # exact zeros are background when at least this share of the sample
+
+
+def _number(value: Any) -> float | None:
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return None  # "NaN" parses (NaN is already dropped); other strings and None do not
+    return v if math.isfinite(v) else None
+
+
+def _finite(values: Any) -> np.ndarray:
+    sample = np.asarray(values, dtype=np.float64).ravel()
+    return sample[np.isfinite(sample)]
+
+
+def foreground(sample: np.ndarray, fill_value: Any = None) -> np.ndarray:
+    """The finite sample without its background: values equal to the array's fill_value, and exact 0 when at
+    least BACKGROUND_ZERO_FRACTION of the sample is 0 (tissue on a zero margin). When that leaves fewer than two
+    different values (a mask, an empty field), the sample is returned whole."""
+    keep = np.ones(sample.shape, dtype=bool)
+    fill = _number(fill_value)
+    if fill is not None:
+        keep &= sample != fill
+    if sample.size and np.count_nonzero(sample == 0) >= BACKGROUND_ZERO_FRACTION * sample.size:
+        keep &= sample != 0
+    rest = sample[keep]
+    if rest.size == 0 or rest.min() == rest.max():
+        return sample
+    return rest
+
+
+def window_of(values: Any, dtype: Any, fill_value: Any = None) -> dict[str, float]:
+    """The display window of one channel's values: start/end are the WINDOW_PERCENTILES of the finite values
+    without the background (``foreground``); min/max is the dtype's range (the data range for floats). Shared
+    with the QA viewer, which uses it for a reference whose source had no window."""
+    dtype = np.dtype(dtype)
+    sample = foreground(_finite(values), fill_value)
+    if sample.size == 0:
+        return {"min": 0.0, "max": 1.0, "start": 0.0, "end": 1.0}
+    lo, hi = (float(v) for v in np.percentile(sample, WINDOW_PERCENTILES))
+    if np.issubdtype(dtype, np.integer):
+        mn, mx = float(np.iinfo(dtype).min), float(np.iinfo(dtype).max)
+    else:
+        mn, mx = float(sample.min()), float(sample.max())
+    return {"min": mn, "max": mx, "start": lo, "end": hi if hi > lo else lo + 1.0}
+
+
+def window_or_none(values: Any, dtype: Any, fill_value: Any = None) -> dict[str, float] | None:
+    """window_of when the values hold at least two different finite numbers (NaN and ±inf ignored); None for
+    an all-NaN or constant channel (the caller tries another level, or keeps its default)."""
+    sample = _finite(values)
+    if sample.size == 0 or sample.min() == sample.max():
+        return None
+    return window_of(sample, dtype, fill_value)
 
 
 # --- tile groups --------------------------------------------------------------------------------
@@ -477,7 +527,8 @@ def _close(a: float, b: float) -> bool:
 
 
 def check_ome_zarr(dest: Path, sidecar: dict, version: str, shape: Sequence[int] | None = None,
-                   dtype: str | None = None, reference: bool = False) -> None:
+                   dtype: str | None = None, reference: bool = False,
+                   level_factors: Sequence[dict[str, int]] | None = None) -> None:
     """Re-open a written OME-Zarr image and check it; raises NgffCheckError on the first failure.
 
     Checks: group metadata valid for ``version`` (Zarr v3 ``zarr.json`` with ``attributes.ome`` for
@@ -487,7 +538,9 @@ def check_ome_zarr(dest: Path, sidecar: dict, version: str, shape: Sequence[int]
     with the expected shape and dtype; the omero channel count equals the channel axis length.
     ``reference``: a reference dataset's metadata-only store (micr/reference.py), whose pyramid was
     made by another tool: a level's shape may also be the rounded-up division of level 0's. No chunk
-    is read either way.
+    is read either way. ``level_factors``: per level, spatial factors known independently of the
+    written store (a reference's source scales where they agree with its sizes): that level's scale
+    must equal the sidecar's PixelSize times the factor.
     """
     import ngff_zarr as nz
     import zarr
@@ -577,6 +630,10 @@ def check_ome_zarr(dest: Path, sidecar: dict, version: str, shape: Sequence[int]
                     raise _fail("the pixel size in the sidecar does not match the NGFF scale")
             continue
         assert base_shape is not None and base_scale is not None
+        known = level_factors[i] if level_factors is not None and i < len(level_factors) else {}
+        for n, v in zip(names, scale):
+            if n in known and n in expected and not _close(v, expected[n] * known[n]):
+                raise _fail("a pyramid level's scale does not match the pixel size times its factor")
         for k, n in enumerate(names):
             ratio = float(scale[k]) / base_scale[k]
             f = round(ratio)

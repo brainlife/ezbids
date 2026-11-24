@@ -60,7 +60,7 @@ PSOCT_HINTS = frozenset({"ps-oct", "psoct", "oct", "enface", "reflectivity", "re
 SPIM_HINTS = frozenset({"visor", "exaspim", "spim", "lightsheet", "light-sheet"})
 FORMAT_NAMES = {"ome-zarr": "OME-Zarr", "ome-tiff": "OME-TIFF", "tiff": "TIFF", "visor": "VISoR TIFF",
                 "svs": "SVS", "czi": "CZI", "nd2": "ND2", "lif": "LIF", "nifti": "NIfTI", "mat": "MATLAB",
-                "raw-psoct": "raw PS-OCT", "unsupported": "microscopy file"}
+                "raw-psoct": "raw PS-OCT", "unsupported": "microscopy file", "png": "PNG", "photo": "photograph"}
 _UNIT_TEXT = {"um": "µm", "mm": "mm", "nm": "nm"}
 _POS_DIR = re.compile(r"(?i)(^|[_\-.])pos\d+$")
 
@@ -187,7 +187,19 @@ def _read(input_dir: Path, g: _Group) -> tuple[dict | None, set[str], str | None
         else:
             src = readers.open_image(input_dir / g.members[0], g.family)
         try:
-            return info_dict(src.info), set(src.terms), None
+            info = info_dict(src.info)
+            layout = getattr(src, "zarr_layout", None)
+            if layout is not None:  # what layout_refusal decides on at planning (and again at execute)
+                from .metadata import channel_count
+                from .reference import dataset_dirs, has_source_windows, layout_facts, symlinked
+
+                link = False if g.remote else symlinked(input_dir, g.group, dataset_dirs(layout))
+                info["reference_layout"] = layout_facts(layout, src.info.zarr_format, link)
+                # whether the written omero windows will be the source's (the QA viewer keeps them) or
+                # placeholders (it computes a window from the coarsest level)
+                info["reference_layout"]["source_windows"] = has_source_windows(layout.windows,
+                                                                                channel_count(src.info))
+            return info, set(src.terms), None
         finally:
             src.close()
     except readers.UnsupportedFormat as exc:
@@ -207,23 +219,62 @@ def _where(rec: dict) -> str:
     return rec["rel"]
 
 
-REMOTE_DONOR_FOLDERS = 3  # a remote donor comes from the file or store name, or this many nearest folders
+_PATH_STYLE_S3 = re.compile(r"s3(?:[.-][a-z0-9-]+)?\.amazonaws\.com", re.I)
+
+
+def remote_key(url: str) -> str:
+    """The object key of a remote source (its URL path without the bucket of a path-style S3 URL)."""
+    parts = urlsplit(url)
+    path = parts.path.lstrip("/")
+    if _PATH_STYLE_S3.fullmatch(parts.hostname or ""):
+        path = path.split("/", 1)[1] if "/" in path else ""
+    return path
+
+
+# File-name fragments that are never a donor: format and vendor words (a header suffix, an extension word) and
+# the PS-OCT en-face contrast abbreviations En<X> (EnR, EnRef, EnCr, EnAO ...).
+_NAME_NOT_DONOR = frozenset({"hdr", "img", "nii", "gz", "tif", "tiff", "zarr", "ome", "dat", "mat", "raw", "bin",
+                             "h5", "hdf5", "json", "txt", "log", "png", "jpg", "jpeg", "bmp", "avi", "lsm",
+                             "oib", "oif", "ims", "czi", "nd2", "lif", "svs", "vsi", "ndpi", "scn", "mrxs"})
+_EN_CONTRAST = re.compile(r"En[A-Z][A-Za-z]{0,3}")
+
+
+def _name_donor(name: str) -> str | None:
+    """The donor of a file or store name (names.facts), its format/vendor fragments removed first."""
+    stem = names._EXT.sub("", name)
+    keep = [t for t in names._tokens(stem)
+            if t.lower() not in _NAME_NOT_DONOR and not _EN_CONTRAST.fullmatch(t)]
+    return names.facts("_".join(keep)).donor if keep else None
 
 
 def remote_donor(path: str) -> str | None:
-    """The donor of a remote source: from its file or store name, else one of its nearest folders
-    (nearest first), by the names.facts rule applied to each segment alone. Never from the bucket or
-    the leading segments of the URL (``CMC/...`` is a project, not a donor)."""
+    """The donor of a remote source (``path``: its object key, ``remote_key``): the nearest donor-like folder,
+    walking up from the file (``CMC/Raw/Moe/tract-tracing/MN27_.../Pos0/x.tif`` gives MN27,
+    ``CMC/Derivatives/Moe/PS-OCT/Enface/Registration/Retardance/x.nii.gz`` gives Moe); the file or store name
+    only when no folder is donor-like, and never its format/vendor fragments (``hdr``, ``EnR``). The top folder
+    under the bucket is a project (``CMC/...``), never a donor. names.facts is applied to each segment alone."""
     parts = [p for p in path.split("/") if p]
     if not parts:
         return None
-    for seg in [parts[-1], *reversed(parts[-1 - REMOTE_DONOR_FOLDERS:-1])]:
+    for seg in reversed(parts[1:-1]):
         if seg.startswith("sub-") and len(seg) > 4:
             return seg[4:]
         donor = names.facts(seg).donor
         if donor:
             return donor
-    return None
+    if parts[-1].startswith("sub-") and len(parts[-1]) > 4:
+        return parts[-1][4:].split("_")[0]
+    return _name_donor(parts[-1])
+
+
+def _remote_group(rec: dict) -> str:
+    """The run-local subject of a remote record without a donor: records under the same parent folder
+    (contrast folders such as Reflectivity/ and Retardance/ skipped) with the same slice share one."""
+    parts = urlsplit(rec["url"])
+    folders = [p for p in remote_key(rec["url"]).split("/") if p][:-1]
+    while folders and names.facts(folders[-1]).contrast:
+        folders.pop()
+    return f"url:{parts.hostname}/{'/'.join(folders)}|slice={rec['facts'].get('slice')}"
 
 
 def _url_terms(url: str) -> set[str]:
@@ -264,15 +315,45 @@ def scan_records(input_dir: Path, claim: Claim, found: list[Found] | None,
         facts = names.facts(g.members[0] if g.family == "raw-psoct" else where)
         terms |= names.path_terms([where, *g.members])
         if g.remote:
-            facts.donor = remote_donor(where)
+            facts.donor = remote_donor(remote_key(g.group))
             terms |= _url_terms(g.group)
             if facts.donor:
                 terms.add(facts.donor)
         if error and error not in (RAW_REASON, UNREADABLE_REASON):
             error = _clean_error(error, terms)
         rec.update(facts=_facts_dict(facts), info=info, error=error, terms=sorted(terms))
+        car = None if g.remote else bids_sidecar_pixel_size(input_dir, where)
+        if car:
+            rec["bids_pixel_size"] = car
         records.append(rec)
     return records
+
+
+SIDECAR_UNITS = frozenset({"mm", "um", "nm"})
+
+
+def bids_sidecar_pixel_size(input_dir: Path, where: str) -> dict | None:
+    """PixelSize and PixelSizeUnits of the input's own BIDS sidecar (sub-01_sample-A_SPIM.json beside
+    sub-01_sample-A_SPIM.ome.zarr), when both are valid: 2 or 3 positive numbers and mm, um or nm. Nothing else of
+    the sidecar is read or kept (it is never copied: the writer makes the output's own)."""
+    if not names.bids_name(where):
+        return None
+    rel = PurePosixPath(where)
+    path = Path(input_dir) / rel.parent / (names._EXT.sub("", rel.name) + ".json")
+    try:
+        if path.is_symlink() or not path.is_file() or path.stat().st_size > 1_000_000:
+            return None
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(doc, dict):
+        return None
+    size, units = doc.get("PixelSize"), doc.get("PixelSizeUnits")
+    if units not in SIDECAR_UNITS or not isinstance(size, list) or len(size) not in (2, 3):
+        return None
+    if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v <= 0 for v in size):
+        return None
+    return {"size": [float(v) for v in size], "units": units}
 
 
 _QUOTED = re.compile("'[^']*'|\"[^\"]*\"")
@@ -296,8 +377,14 @@ def load_records(work: Path) -> list[dict]:
 # --- plan ---------------------------------------------------------------------------------------
 
 
+BIDS_NAME_REASON = "the input's BIDS name"
+
+
 def _suffix(rec: dict, hints: set[str]) -> tuple[str | None, str]:
     facts, info = rec["facts"], rec.get("info") or {}
+    bids = names.bids_name(_where(rec)) if "rel" in rec else None
+    if bids:
+        return bids[1], BIDS_NAME_REASON
     if facts.get("contrast") or hints & PSOCT_HINTS:
         return "OCT", "PS-OCT contrast or name"
     if rec["family"] == "visor" or hints & SPIM_HINTS:
@@ -415,7 +502,8 @@ def describe(rec: dict, write_mode: str) -> str:
         parts.append("×".join(dims))
     x = (info.get("pixel_size") or {}).get("x")
     if x:
-        parts.append(f"{x:g} {_UNIT_TEXT.get(info.get('pixel_unit'), 'µm')}")
+        unit = info.get("pixel_unit")
+        parts.append(f"{x:g} {_UNIT_TEXT.get(unit, 'µm')}" if unit else f"{x:g} (unit unknown)")
     if n > 1:
         parts.append(f"{n} tiles")
     tail = "reference (no copy)" if write_mode == "reference" else "converted to OME-Zarr"
@@ -441,6 +529,73 @@ def _input_label(where: str, prefix: str) -> str | None:
     return None
 
 
+# an input label (sample-, ses-, chunk-) is kept only when it is one of these shapes and no term of anything else
+SAFE_LABEL = re.compile(r"^(\d+|[A-Za-z]?\d{1,4}[A-Za-z]?|[A-Za-z])$")
+SAFE_LABEL_WORDS = frozenset({"brain", "cortex", "hippocampus", "cerebellum", "spinal", "cord", "tissue", "slice",
+                              "section", "block", "left", "right", "lh", "rh"})
+LABEL_PREFIXES = ("sample", "ses", "chunk")
+RENUMBERED_NOTE = "label renumbered: not a safe label"
+
+
+def _terms_but_bids_labels(records: list[dict], wheres: list[str]) -> set[str]:
+    """Every record's terms except the entity labels of the input's own BIDS names (sub-01_sample-brain_XPCT),
+    which are terms only because a path word is one. Donors stay, except a plain-number donor that is the BIDS
+    name's own sub- label (sub-01); a label that is a term from anywhere else is in the result."""
+    labels: set[str] = set()
+    for rec, where in zip(records, wheres):
+        bids = names.bids_entities(where) if "rel" in rec else None
+        if bids:
+            labels |= {v.lower() for v in bids.values()}
+    out: set[str] = set()
+    for rec, where in zip(records, wheres):
+        terms = set(rec.get("terms") or [])
+        bids = names.bids_entities(where) if "rel" in rec else None
+        if bids:  # only the BIDS file name's own words: a folder holding the same word keeps it a term
+            name, parent = PurePosixPath(where).name, str(PurePosixPath(where).parent)
+            own = names.path_terms([name]) - names.path_terms([parent])
+            terms -= {t for t in own if t.lower() in labels}
+        donor = rec["facts"].get("donor")
+        if donor and not (bids and donor == bids.get("sub") and donor.isdigit()):
+            terms.add(donor)
+        elif donor:
+            terms.discard(donor)
+        out |= terms
+    return out
+
+
+def safe_label(label: str | None, others: set[str]) -> bool:
+    """An input label kept as is: a number, a letter, a short code (A12, 3b) or a tissue word, that is not a date
+    and not a term of anything else (``_terms_but_bids_labels``)."""
+    from ..planner import _usable
+
+    if not label or not (SAFE_LABEL.match(label) or label.lower() in SAFE_LABEL_WORDS):
+        return False
+    return _usable(label, others) and label.lower() not in {t.lower() for t in others if isinstance(t, str)}
+
+
+def kept_input_labels(records: list[dict]) -> set[str]:
+    """The input's sample-/ses-/chunk- labels that are kept (lowercase): they name the output, so they are not
+    terms of the run."""
+    wheres = [_where(r) for r in records]
+    others = _terms_but_bids_labels(records, wheres)
+    out: set[str] = set()
+    for rec, where in zip(records, wheres):
+        for prefix in LABEL_PREFIXES:
+            label = _input_label(where, prefix)
+            if safe_label(label, others) and (prefix != "chunk" or label.isdigit()):
+                out.add(label.lower())
+    return out
+
+
+def record_terms(records: list[dict]) -> set[str]:
+    """Every record's terms, without the kept input labels (they name the output)."""
+    kept = kept_input_labels(records)
+    terms: set[str] = set()
+    for rec in records:
+        terms |= {t for t in rec.get("terms") or [] if t.lower() not in kept}
+    return terms
+
+
 def _stain(rec: dict) -> str | None:
     nm = rec["facts"].get("channel_nm")
     if nm:
@@ -455,10 +610,9 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
                  target: str, client: "LLMClient | None" = None) -> ModulePlan:
     from ..brainlife_map import to_brainlife
     from ..planner import _check_nameable, _usable, check_pixel_size
+    from .reference import layout_refusal
 
-    terms: set[str] = set()
-    for rec in records:
-        terms |= set(rec.get("terms") or [])
+    terms = record_terms(records)
     run = uuid.uuid4().hex
     mp = ModulePlan()
 
@@ -471,7 +625,7 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
         if donor:
             originals.append("micr:id=" + donor)
         else:
-            top = ("url:" + rec["url"]) if "url" in rec else where.split("/")[0]
+            top = _remote_group(rec) if "url" in rec else where.split("/")[0]
             originals.append(no_donor.setdefault(top, f"run:{run}:micr{len(no_donor)}"))
     order = list(dict.fromkeys(originals))
     subject_idx = {o: MICR_INDEX_BASE + i for i, o in enumerate(order)}
@@ -489,10 +643,14 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
     if no_donor:
         mp.warnings.append(NO_DONOR.format(n=len(no_donor)))
 
+    # input labels (sample-, ses-, chunk-) are kept only when safe (safe_label); else renumbered, with a note
+    others = _terms_but_bids_labels(records, wheres)
+    renumbered: set[int] = set()
+
     # sessions: only when the input has ses- folders
     session_of: list[tuple[str | None, int]] = []
     ses_seen: dict[int, dict[str, tuple[str, int]]] = defaultdict(dict)
-    for o, where in zip(originals, wheres):
+    for i, (o, where) in enumerate(zip(originals, wheres)):
         raw = _input_label(where, "ses")
         if raw is None:
             session_of.append((None, 0))
@@ -500,7 +658,9 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
         seen = ses_seen[subject_idx[o]]
         if raw not in seen:
             n = len(seen)
-            seen[raw] = (raw if _usable(raw, terms) else str(n + 1), n)
+            seen[raw] = (raw if safe_label(raw, others) else str(n + 1), n)
+        if seen[raw][0] != raw:
+            renumbered.add(i)
         session_of.append(seen[raw])
 
     # samples: slice<NNN>, else the input's sample- label, else 1, 2, ... per subject
@@ -514,7 +674,9 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
             samples.append(f"slice{int(rec['facts']['slice']):03d}")
         else:
             label = _input_label(where, "sample")
-            samples.append(label if label and _usable(label, terms) else "")
+            samples.append(label if safe_label(label, others) else "")
+            if label and not samples[-1]:
+                renumbered.add(i)
             if not samples[-1]:
                 pending.append((i, sidx, _sample_key(where)))
         if samples[-1]:
@@ -528,6 +690,15 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
             taken[sidx].add(str(n))
         samples[i] = numbered[(sidx, skey)]
 
+    # chunks: the input's own chunk index (chunk-01 stays 01) when safe; else numbered by _chunks
+    chunks: list[str | None] = []
+    for i, where in enumerate(wheres):
+        label = _input_label(where, "chunk")
+        keep = label if label and label.isdigit() and safe_label(label, others) else None
+        if label and keep is None:
+            renumbered.add(i)
+        chunks.append(keep)
+
     entries: list[PlanEntry] = []
     convert_bytes = 0
     for i, (rec, o, where) in enumerate(zip(records, originals, wheres)):
@@ -538,6 +709,8 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
         entities = {"sample": samples[i]}
         if rec["facts"].get("contrast"):
             entities["acquisition"] = rec["facts"]["contrast"]
+        if chunks[i] is not None:
+            entities["chunk"] = chunks[i]
         stain = _stain(rec)
         if stain:
             entities["stain"] = stain
@@ -550,13 +723,21 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
         elif is_mosaic(rec):
             d = dict(status="unsupported", exclude=True, reason=MOSAIC_REASON)
             write_mode = ""
+        elif rec["family"] == "ome-zarr" and layout_refusal(info.get("reference_layout")):
+            d = dict(status="unsupported", exclude=True, reason=layout_refusal(info.get("reference_layout")))
+            write_mode = ""
         else:
             write_mode = "reference" if rec["family"] == "ome-zarr" else "convert"
             d = (dict(status="ok", exclude=False, reason=f"microscopy heuristic: {why}") if suffix
                  else dict(status="unknown", exclude=True, reason=why))
+        if i in renumbered:
+            d["reason"] = f"{d['reason']}; {RENUMBERED_NOTE}"
         n_files = max(1, len(rec.get("members") or []))
         output = int(_level0_bytes(info) * n_files * CONVERT_OVERHEAD) if write_mode == "convert" else 0
         spatial, sizes, units = pixel_size_of(info)
+        car = rec.get("bids_pixel_size")
+        if car and (sizes is None or units is None) and len(car["size"]) == len(spatial):
+            sizes, units = list(car["size"]), car["units"]  # the input's own sidecar: a source value
         entries.append(PlanEntry(
             id=f"m{i}-sub{subject_idx[o]}-ses{session_idx}", series_idx=MICR_INDEX_BASE + i,
             subject_idx=subject_idx[o], session_idx=session_idx, subject=subject_ids[o], session=session,
@@ -661,10 +842,7 @@ class MicrModule:
         (work / RECORDS_FILE).write_text(json.dumps(records, indent=1))
 
     def terms(self, work: Path) -> set[str]:
-        terms: set[str] = set()
-        for rec in load_records(work):
-            terms |= set(rec.get("terms") or [])
-        return terms
+        return record_terms(load_records(work))
 
     def plan(self, work: Path, key: "PseudonymKey", existing: set[str], client: "LLMClient | None",
              schema: "Schema", target: str) -> ModulePlan:
@@ -808,7 +986,8 @@ def write_entries(plan: "Plan", records: list[dict], input_dir: Path, terms: set
     from . import NGFF_VERSION
     from .convert import check_ome_zarr, to_ome_zarr
     from .metadata import sidecar, with_plan_pixel_size
-    from .reference import chunk_map, ngff_version_for, write_reference
+    from .reference import (chunk_map, dataset_dirs, ngff_version_for, source_factors, symlinked,
+                            write_reference)
 
     out = ModuleOutput()
     entries = [e for e in plan.entries if e.modality == "micr" and e.datatype == "micr" and e.status == "ok"
@@ -836,10 +1015,17 @@ def write_entries(plan: "Plan", records: list[dict], input_dir: Path, terms: set
             # the plan's pixel size (from the source or the reviewer); never an invented one
             info = src.info = with_plan_pixel_size(src.info, e)
             path = dest(rel)
+            levels = None
             if reference:  # the source's Zarr format; metadata only, the chunks stay at the source
                 version = ngff_version_for(info.zarr_format)
-                for sub, facts in write_reference(src, reference_location(rec), path, info).items():
+                layout = src.zarr_layout
+                link = "rel" in rec and symlinked(input_dir, rec["rel"], dataset_dirs(layout))
+                written = write_reference(src, reference_location(rec), path, info, terms=terms, symlink=link)
+                for sub, facts in written.items():
+                    if f"{rel}/{sub}" in arrays:
+                        raise ValueError("two referenced arrays share an output path")
                     arrays[f"{rel}/{sub}"] = facts
+                levels = source_factors(info, layout)
             else:
                 version = NGFF_VERSION
                 step = (lambda msg, k=k: progress(f"{WRITE_PROGRESS.format(k=k, n=len(entries))}: {msg}")) \
@@ -848,7 +1034,7 @@ def write_entries(plan: "Plan", records: list[dict], input_dir: Path, terms: set
             # numbers and vocabulary only; strings are redacted anyway (numbers are not: a pixel size
             # equal to a path number is not identifying, and must match the NGFF scale)
             car = {k: redact(v, terms) if isinstance(v, str) else v for k, v in sidecar(info, e).items()}
-            check_ome_zarr(path, car, version, info.shape, info.dtype, reference=reference)
+            check_ome_zarr(path, car, version, info.shape, info.dtype, reference=reference, level_factors=levels)
         finally:
             src.close()
         stem = rel[: -len(".ome.zarr")]

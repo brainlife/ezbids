@@ -13,7 +13,7 @@ import zarr
 from aimport import server
 from aimport.micr import readers, reference
 from aimport.micr.convert import NgffCheckError, check_ome_zarr
-from aimport.micr.metadata import sidecar, with_plan_pixel_size
+from aimport.micr.metadata import PixelSizeUnknown, sidecar, with_plan_pixel_size
 from aimport.micr.reference import chunk_keys, key_ok, resolve, write_reference
 from aimport.pseudonyms import PseudonymKey
 from conftest import MICR_PLANTED
@@ -368,14 +368,285 @@ def test_cmc_psoct_zarr_reference(tmp_path):
     alone: under 1 MiB fetched, nothing but metadata written, the self-check passes."""
     from aimport.micr import remote
 
+    from types import SimpleNamespace
+
     url = "s3://apex-connects/CMC/Derivatives/Moe/PS-OCT/Zarr/Moe_Slice_051.ome.zarr"
     src, counter = remote.open_remote(url, "ome-zarr", max_bytes=2**20)
     try:
+        # its axes have no units: never assumed; the reviewer's unit (here um) is what is written
+        assert src.info.pixel_unit is None and src.info.pixel_size == {"x": 1.0, "y": 1.0}
+        info = with_plan_pixel_size(src.info, SimpleNamespace(pixel_size=[10.0, 10.0], pixel_size_units="um"))
         dest = tmp_path / "x.ome.zarr"
-        arrays = write_reference(src, {"url": url}, dest, src.info)
-        check_ome_zarr(dest, sidecar(src.info, None), "0.5", src.info.shape, src.info.dtype, reference=True)
+        arrays = write_reference(src, {"url": url}, dest, info)
+        # its faults (translation on c, levels 3 and 4 declaring 16 and 64 for arrays halved 3 and 4
+        # times, no units) are corrected in the rebuilt metadata
+        assert_cmc_faults_corrected(dest, info, 10.0, [(1, 1), (2, 2), (4, 4), (8, 8), (16, 16), (512, 512)])
     finally:
         src.close()
     assert counter.total < 2**20, counter
     assert arrays["0"]["source"]["url"].startswith("https://apex-connects.s3.amazonaws.com/CMC/")
     assert _chunk_files(dest) == []
+
+
+# --- fix round 1: plan-time refusal, the term scan, factors, merging ----------------------------------
+
+
+def _scan_plan(inp: Path, work: Path, key, schema, mutate=None):
+    from aimport.micr.module import MicrModule, RECORDS_FILE
+
+    m = MicrModule()
+    claim = m.claim(inp, [])
+    m.scan(inp, claim, work, lambda msg: None)
+    if mutate is not None:
+        records = json.loads((work / RECORDS_FILE).read_text())
+        for rec in records:
+            mutate(rec)
+        (work / RECORDS_FILE).write_text(json.dumps(records))
+    return m.plan(work, key, set(), None, schema, "bids").entries
+
+
+def _reorder_axes(store: Path) -> None:
+    doc = json.loads((store / "zarr.json").read_text())
+    ms = doc["attributes"]["ome"]["multiscales"][0]
+    ms["axes"][0], ms["axes"][1] = ms["axes"][1], ms["axes"][0]  # z, c, y, x: needs a transpose
+    (store / "zarr.json").write_text(json.dumps(doc))
+
+
+def test_plan_refuses_reordered_axes(tmp_path, key, schema):
+    store = ome_zarr(tmp_path / "in" / "s.ome.zarr", "0.5")
+    _reorder_axes(store)
+    (e,) = _scan_plan(tmp_path / "in", tmp_path / "work", key, schema)
+    assert (e.status, e.exclude, e.write_mode) == ("unsupported", True, "")
+    assert e.reason == "OME-Zarr layout not referenceable: axes need reordering"
+    with readers.open_image(store, "ome-zarr") as src:  # and at execute (defence in depth)
+        with pytest.raises(reference.ReferenceRefused, match="axes need reordering"):
+            write_reference(src, {"input": "s.ome.zarr"}, tmp_path / "out" / "x.ome.zarr", src.info)
+
+
+def test_plan_refuses_symlinked_store(tmp_path, key, schema):
+    real = ome_zarr(tmp_path / "elsewhere" / "s.ome.zarr", "0.5")
+    (tmp_path / "in").mkdir()
+    os.symlink(real.parent, tmp_path / "in" / "linked")
+    entries = _scan_plan(tmp_path / "in", tmp_path / "work", key, schema)
+    assert [(e.status, e.reason) for e in entries] in (
+        [], [("unsupported", "OME-Zarr layout not referenceable: the store is reached through a symlink")])
+    # a symlinked array dir inside a real store
+    store = ome_zarr(tmp_path / "in2" / "t.ome.zarr", "0.5")
+    os.rename(store / "1", tmp_path / "lvl1")
+    os.symlink(tmp_path / "lvl1", store / "1")
+    (e,) = _scan_plan(tmp_path / "in2", tmp_path / "work2", key, schema)
+    assert (e.status, e.reason) == ("unsupported", "OME-Zarr layout not referenceable: the store is reached "
+                                                   "through a symlink")
+    assert reference.symlinked(tmp_path / "in2", "t.ome.zarr", ["1"])
+    assert not reference.symlinked(tmp_path / "in2", "t.ome.zarr", ["0"])
+
+
+@pytest.mark.parametrize("change,reason", [
+    ({"zarr_formats": [2, 3]}, "arrays mix Zarr formats"),
+    ({"storage_transformers": True}, "storage transformers"),
+    ({"grids": ["rectilinear", "regular"]}, "irregular chunk grid"),
+    ({"key_encodings": ["custom"]}, "unknown chunk key encoding"),
+    ({"separators": ["|"]}, "unknown chunk key separator"),
+    ({"paths_ok": False}, "a dataset path leaves the store"),
+    ({"axes_identity": False}, "axes need reordering"),
+    ({"symlink": True}, "the store is reached through a symlink"),
+])
+def test_plan_refusal_classes(tmp_path, key, schema, change, reason):
+    """Each layout fact the scan records makes the entry unsupported at planning, with its reason."""
+    ome_zarr(tmp_path / "in" / "s.ome.zarr", "0.5")
+
+    def mutate(rec):
+        rec["info"]["reference_layout"].update(change)
+
+    (e,) = _scan_plan(tmp_path / "in", tmp_path / "work", key, schema, mutate)
+    assert (e.status, e.exclude) == ("unsupported", True)
+    assert e.reason == "OME-Zarr layout not referenceable: " + reason
+    assert reference.layout_refusal({**_good_facts(), **change}) == e.reason
+
+
+def _good_facts():
+    return {"axes_identity": True, "zarr_formats": [3], "grids": ["regular"], "key_encodings": ["default"],
+            "separators": ["/"], "storage_transformers": False, "paths_ok": True, "symlink": False}
+
+
+def test_plan_ok_layout_and_old_records(tmp_path, key, schema):
+    ome_zarr(tmp_path / "in" / "s.ome.zarr", "0.4")
+    (e,) = _scan_plan(tmp_path / "in", tmp_path / "work", key, schema)
+    assert e.write_mode == "reference" and e.status != "unsupported"
+    (e,) = _scan_plan(tmp_path / "in", tmp_path / "work", key, schema,
+                      lambda rec: rec["info"].pop("reference_layout"))
+    assert (e.status, e.reason) == ("unsupported", "OME-Zarr layout not recorded: scan again")
+    assert reference.layout_refusal(_good_facts()) is None
+
+
+def test_rebuild_refuses_at_execute(tmp_path, monkeypatch):
+    """_rebuild applies the same predicate to each array document (defence in depth)."""
+    store = ome_zarr(tmp_path / "in" / "s.ome.zarr", "0.5")
+    real = reference._metadata_doc
+    with readers.open_image(store, "ome-zarr") as src:
+        arr = src.zarr_layout.arrays[0]
+        for change, reason in (({"storage_transformers": [{"name": "x"}]}, "storage transformers"),
+                               ({"chunk_grid": {"name": "rectilinear"}}, "irregular chunk grid"),
+                               ({"chunk_key_encoding": {"name": "custom"}}, "unknown chunk key encoding")):
+            monkeypatch.setattr(reference, "_metadata_doc", lambda a, c=change: {**real(a), **c})
+            with pytest.raises(reference.ReferenceRefused, match=reason):
+                reference._rebuild(arr, "czyx")
+
+
+def test_term_scan_refuses_filter_labels_and_fill_value(tmp_path):
+    store = ome_zarr(tmp_path / "in" / "s.ome.zarr", "0.4")
+    z = json.loads((store / "1" / ".zarray").read_text())
+    z["filters"] = [{"id": "categorize", "labels": ["Jane-Doe", "x"], "dtype": "<U8", "astype": "|u1"}]
+    (store / "1" / ".zarray").write_text(json.dumps(z))
+    with readers.open_image(store, "ome-zarr") as src:
+        with pytest.raises(reference.ReferenceRefused) as exc:
+            write_reference(src, {"input": "s.ome.zarr"}, tmp_path / "a.ome.zarr", src.info, terms={"jane doe"})
+    assert "jane" not in str(exc.value).lower()
+
+    store = ome_zarr(tmp_path / "in" / "t.ome.zarr", "0.5")
+    z = json.loads((store / "1" / "zarr.json").read_text())
+    z.update(data_type="string", fill_value="JANE_DOE", codecs=[{"name": "vlen-utf8"}])
+    (store / "1" / "zarr.json").write_text(json.dumps(z))
+    with readers.open_image(store, "ome-zarr") as src:
+        with pytest.raises(reference.ReferenceRefused):
+            write_reference(src, {"input": "t.ome.zarr"}, tmp_path / "b.ome.zarr", src.info, terms={"Jane Doe"})
+
+
+def test_term_scan_passes_clean_metadata(tmp_path):
+    """Generated vocabulary (ch<n> labels, colours, codec names) never trips the scan."""
+    store = _planted_v3(tmp_path / "in" / "Moe_Slice_051.ome.zarr")
+    with readers.open_image(store, "ome-zarr") as src:
+        terms = set(src.terms) | {"Moe", "Slice_051", "ch488", "00FF00", "12"}
+        write_reference(src, {"input": "Moe_Slice_051.ome.zarr"}, tmp_path / "x.ome.zarr", src.info, terms=terms)
+
+
+def test_format_vocabulary_is_never_a_term(tmp_path):
+    """Data-type, unit, axis, NGFF and codec words are vocabulary: never collected as terms, and never
+    matched by the term scan (a VISoR acqinfo dtype "uint16" refused every uint16 store)."""
+    from aimport.micr.metadata import collect_terms, format_vocab
+
+    meta = {"settings": {"dtype": "uint16", "unit": "micrometer", "axis": "space", "codec": "zstd",
+                         "operator": "Jane Doe"}, "kind": "Float32", "u": "µm"}
+    assert collect_terms(meta) == {"Jane Doe"}
+    assert all(format_vocab(w) for w in ("uint16", "UInt16", "float32", "micrometer", "µm", "channel",
+                                         "sharding_indexed", "bytes", "scale", "translation"))
+    assert not any(format_vocab(w) for w in ("Moe", "H17", "Jane Doe", "uint16x", "250215"))
+    store = ome_zarr(tmp_path / "in" / "s.ome.zarr", "0.5")
+    with readers.open_image(store, "ome-zarr") as src:
+        assert src.info.dtype == "uint16"
+        write_reference(src, {"input": "s.ome.zarr"}, tmp_path / "x.ome.zarr", src.info,
+                        terms={"uint16", "UINT16", "micrometer", "zstd", "space", "regular", "little"})
+        with pytest.raises(reference.ReferenceRefused):  # a real term is still refused
+            write_reference(src, {"input": "s.ome.zarr"}, tmp_path / "y.ome.zarr", src.info,
+                            terms={"uint16", "regul"})
+
+
+def _attrs_multiscale(dest: Path) -> dict:
+    return json.loads((dest / "zarr.json").read_text())["attributes"]["ome"]["multiscales"][0]
+
+
+def assert_cmc_faults_corrected(dest: Path, info, pixel: float, factors) -> None:
+    """The rebuilt metadata of a CMC-like store: spatial axes carry the plan's unit, no translation on
+    the channel axis, and each level's scale is the plan's pixel size times the factor its array holds."""
+    ms = _attrs_multiscale(dest)
+    assert ms["axes"] == [{"name": "c", "type": "channel"},
+                          {"name": "y", "type": "space", "unit": "micrometer"},
+                          {"name": "x", "type": "space", "unit": "micrometer"}]
+    assert len(ms["datasets"]) == len(factors)
+    for ds, (fy, fx) in zip(ms["datasets"], factors):
+        by_type = {t["type"]: t for t in ds["coordinateTransformations"]}
+        assert by_type["scale"]["scale"] == pytest.approx([1.0, pixel * fy, pixel * fx])
+        if "translation" in by_type:
+            assert by_type["translation"]["translation"][0] == 0.0
+    check_ome_zarr(dest, sidecar(info, None), "0.5", info.shape, info.dtype, reference=True)
+
+
+def test_cmc_metadata_faults_corrected(tmp_path, key, schema):
+    """The CMC PS-OCT faults (no units, a translation on c, coarse scales that disagree with the array
+    sizes) are planned as unit unknown and corrected in the rebuilt reference metadata."""
+    from micr_fixtures import CMC_PSOCT_FACTORS, cmc_psoct_zarr
+
+    from aimport.planner import PIXEL_UNIT_REASON, apply_plan_edits
+    from aimport.plan import Plan
+
+    store = cmc_psoct_zarr(tmp_path / "in" / "PS-OCT" / "Zarr" / "Moe_Slice_051.ome.zarr")
+    (e,) = _scan_plan(tmp_path / "in", tmp_path / "work", key, schema)
+    assert e.write_mode == "reference" and (e.status, e.exclude) == ("unknown", True)
+    assert e.reason == PIXEL_UNIT_REASON and e.pixel_size == [1.0, 1.0] and e.pixel_size_units is None
+    assert "unit unknown" in e.description and "µm" not in e.description
+    plan = Plan(target="bids", entries=[e])
+    apply_plan_edits(plan, [{"id": e.id, "pixel_size_units": "um"}], schema)  # the pixel size edit path
+    assert (e.status, e.exclude, e.pixel_size) == ("ok", False, [1.0, 1.0])
+    apply_plan_edits(plan, [{"id": e.id, "pixel_size_units": None}], schema)
+    assert (e.status, e.reason) == ("unknown", PIXEL_UNIT_REASON)
+    apply_plan_edits(plan, [{"id": e.id, "pixel_size_units": "um", "pixel_size": [10.0, 10.0]}], schema)
+    assert (e.status, e.exclude) == ("ok", False)
+    with readers.open_image(store, "ome-zarr") as src:
+        assert src.info.pixel_unit is None
+        with pytest.raises(PixelSizeUnknown, match="unit unknown"):  # never assumed to be um
+            write_reference(src, {"input": "PS-OCT/Zarr/Moe_Slice_051.ome.zarr"}, tmp_path / "no.ome.zarr", src.info)
+        info = with_plan_pixel_size(src.info, e)
+        write_reference(src, {"input": "PS-OCT/Zarr/Moe_Slice_051.ome.zarr"}, tmp_path / "x.ome.zarr", info)
+    assert_cmc_faults_corrected(tmp_path / "x.ome.zarr", info, 10.0, CMC_PSOCT_FACTORS)
+
+
+@pytest.mark.parametrize("version", ["0.5", "0.4"])
+def test_read_array_caps_decoded_size_without_hint(tmp_path, version):
+    """read_array: without codec_bytes_hint the decoded size is the shape times the item size, and the cap holds."""
+    store, dest, info, arrays = _reference(tmp_path, version)
+    bids = tmp_path / "out"
+    chunks = reference.chunk_map({f"x.ome.zarr/{k}": v for k, v in arrays.items()})
+    level1 = chunks["arrays"]["x.ome.zarr/1"]
+    size = int(np.prod(level1["shape"])) * 2  # uint16
+    for meta in (level1, {k: v for k, v in level1.items() if k != "codec_bytes_hint"}):
+        chunks["arrays"]["x.ome.zarr/1"] = meta
+        with pytest.raises(ValueError, match="too large"):
+            reference.read_array(chunks, bids, "x.ome.zarr/1", tmp_path / "in", size - 1)
+        got = reference.read_array(chunks, bids, "x.ome.zarr/1", tmp_path / "in", 64 * 2**20)
+        np.testing.assert_array_equal(got, zarr.open_array(str(store / "1"), mode="r")[...])
+    assert reference._decoded_bytes({"shape": [10, 10]}, {"zarr_format": 3, "data_type": "float32"}, 1) == 400
+    with pytest.raises(ValueError, match="data type"):
+        reference._decoded_bytes({"shape": [10]}, {"zarr_format": 3, "data_type": "vlen-utf8"}, 1)
+
+
+def test_factor_prefers_the_size_ratio():
+    from aimport.micr.reference import _factor
+
+    assert _factor(11, 3, 2.5) == 3
+    assert _factor(8500, 1062, 16.0) == 8 and _factor(8500, 16, 512.0) == 512
+
+
+def test_level_scale_checked_against_source_factors(tmp_path):
+    """With level_factors, a level's scale must be the plan's pixel size times the source's factor."""
+    _, dest, info, _ = _reference(tmp_path, "0.5")
+    car = sidecar(info, None)
+    check_ome_zarr(dest, car, "0.5", info.shape, info.dtype, reference=True,
+                   level_factors=[{}, {"x": 2, "y": 2}])
+    with pytest.raises(NgffCheckError, match="pixel size times its factor"):
+        check_ome_zarr(dest, car, "0.5", info.shape, info.dtype, reference=True,
+                       level_factors=[{}, {"x": 4, "y": 2}])
+    with readers.open_image(tmp_path / "in" / "Moe_Slice_051.ome.zarr", "ome-zarr") as src:
+        assert reference.source_factors(src.info, src.zarr_layout) == [{"z": 1, "y": 1, "x": 1},
+                                                                         {"z": 1, "y": 2, "x": 2}]
+
+
+def test_module_chunk_maps_must_be_disjoint(tmp_path):
+    from aimport.modality import ModuleOutput
+    from aimport.writer import _Writer
+
+    class Fake:
+        name = "fake"
+
+        def write(self, *a, **k):
+            return ModuleOutput(chunk_map={"version": 1, "arrays": {"sub-01/micr/x.ome.zarr/0": {}}})
+
+    w = object.__new__(_Writer)
+    w.modules, w.work_dir, w.manifest, w.chunk_map = [Fake(), Fake()], tmp_path, None, {}
+    w.plan = w.input_dir = w.terms = w.key = w.schema = w.progress = None
+    w.dest = lambda rel: tmp_path / rel
+    with pytest.raises(ValueError, match="same output array"):
+        w.write_modules()
+
+
+def test_server_uses_the_reference_chunk_map_name():
+    assert server.CHUNK_MAP_NAME is reference.CHUNK_MAP_NAME == "bids.chunks.json"

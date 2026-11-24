@@ -1,8 +1,15 @@
 <template>
     <div>
-        <a style="cursor: pointer" @click="handleGoToLink">
+        <a class="qc-thumb" title="Open full size" @click="open = true">
             <img v-if="pathWithToken" style="width: 100%" :src="pathWithToken" alt="...loading" />
         </a>
+        <!-- QC images open full size in a dialog over the page, like the NiiVue viewer, instead of
+             replacing the app with the PNG -->
+        <el-dialog v-model="open" :title="path" width="80%" top="5vh" append-to-body center>
+            <div class="qc-full">
+                <img v-if="pathWithToken" :src="pathWithToken" :alt="path" />
+            </div>
+        </el-dialog>
     </div>
 </template>
 
@@ -18,13 +25,14 @@ export default defineComponent({
     data() {
         return {
             pathWithToken: '',
+            open: false,
         };
     },
     computed: {
         ...mapState(['config', 'session']),
     },
     watch: {
-        path: function (oldPath, newPath) {
+        path: function () {
             this.updatePathWithToken();
         },
     },
@@ -32,11 +40,6 @@ export default defineComponent({
         this.updatePathWithToken();
     },
     methods: {
-        handleGoToLink() {
-            axios.get<string>(`${this.config.apihost}/download/${this.session._id}/token`).then((res) => {
-                window.location.href = `${this.getURL(this.path)}?token=${res.data}`;
-            });
-        },
         getURL(path: string | undefined) {
             if (!path) return '';
             return `${this.config.apihost}/download/${this.session._id}/${path}`;
@@ -54,3 +57,21 @@ export default defineComponent({
     },
 });
 </script>
+
+<style scoped>
+.qc-thumb {
+    cursor: zoom-in;
+}
+.qc-full {
+    display: flex;
+    justify-content: center;
+    background: #0b1a24;
+    border-radius: var(--panel-radius);
+    padding: 8px;
+}
+.qc-full img {
+    max-width: 100%;
+    max-height: 78vh;
+    object-fit: contain;
+}
+</style>

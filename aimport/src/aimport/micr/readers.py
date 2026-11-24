@@ -30,6 +30,7 @@ from .metadata import (
     collect_terms,
     convert_length,
     date_terms,
+    length_factor,
     ome_allowlist,
 )
 
@@ -41,6 +42,8 @@ __all__ = [
 log = logging.getLogger(__name__)
 
 BIOFORMATS_MESSAGE = "needs Bio-Formats (not included): export to OME-TIFF or OME-Zarr first"
+PNG_MESSAGE = "PNG and JPEG images are not read: export to OME-TIFF or OME-Zarr first"
+PHOTO_MESSAGE = "photographs are not imported"
 MAT_V5_MESSAGE = "MATLAB v5 file too large to read lazily: save as v7.3"
 MAT_V5_MAX_BYTES = 2 * 2**30
 ENTRY_POINT_GROUP = "aimport.micr_readers"
@@ -749,12 +752,22 @@ def _open_nifti(location: Any) -> _Source:
     shape = tuple(int(s) for s in img.shape)
     if not 2 <= len(shape) <= 5:
         raise UnsupportedFormat(f"NIfTI with {len(shape)} dimensions")
-    amap = _AxisMap("xyztc"[: len(shape)], shape)
+    # A 2-D en-face image stored n x 1 x m (or 1 x n x m), as the CMC PS-OCT Enface NIfTIs are, is
+    # one xy plane: the singleton axis is squeezed and the third axis is y. Read as is, it would be
+    # m xz slabs of one row each.
+    enface = (len(shape) >= 3 and shape[2] > 1 and all(n == 1 for n in shape[3:])
+              and sorted((shape[0] == 1, shape[1] == 1)) == [False, True])
+    if enface:
+        src_axes = ("qxy" if shape[0] == 1 else "xqy") + "tc"[: len(shape) - 3]
+        amap = _AxisMap(src_axes, shape, squeeze="qtc")
+        spatial = {"x": 1 if shape[0] == 1 else 0, "y": 2}
+    else:
+        amap = _AxisMap("xyztc"[: len(shape)], shape)
+        spatial = {a: i for i, a in enumerate("xyz"[: min(3, len(shape))])}
     space_unit = hdr.get_xyzt_units()[0]
     unit, factor = _NIFTI_UNIT.get(space_unit, ("mm", 1.0))
     zooms = hdr.get_zooms()
-    pixel_size = {a: float(zooms[i]) * factor for i, a in enumerate("xyz"[: min(3, len(shape))])
-                  if zooms[i] > 0}
+    pixel_size = {a: float(zooms[i]) * factor for a, i in spatial.items() if zooms[i] > 0}
     terms: set[str] = set()
     for key in _NIFTI_TEXT:
         if key in hdr:
@@ -918,13 +931,41 @@ def _ngff_terms(attrs: dict) -> set[str]:
     return collect_terms(keep)
 
 
+_ONE_BYTE = re.compile(r"^[<>]([uib]1)$")
+
+
+def _one_byte_store(path: Path) -> Any:
+    """A read-only local store whose Zarr v2 ``.zarray`` documents give a one-byte dtype written with a byte
+    order (``>u1``, as bids-examples micr_SEMzarr does) as ``|u1``: the same bytes, which zarr 3.1 (the image's)
+    otherwise finds no data type for. Nothing else is changed; the input is never written."""
+    from zarr.storage import LocalStore, WrapperStore
+
+    class OneByteStore(WrapperStore):
+        async def get(self, key, prototype, byte_range=None):
+            buf = await self._store.get(key, prototype, byte_range)
+            if buf is None or byte_range is not None or not key.endswith(".zarray"):
+                return buf
+            try:
+                doc = json.loads(buf.to_bytes())
+            except ValueError:
+                return buf
+            m = _ONE_BYTE.match(doc.get("dtype")) if isinstance(doc, dict) and isinstance(doc.get("dtype"), str) \
+                else None
+            if not m:
+                return buf
+            doc["dtype"] = "|" + m.group(1)
+            return prototype.buffer.from_bytes(json.dumps(doc).encode())
+
+    return OneByteStore(LocalStore(str(path), read_only=True))
+
+
 def _open_ome_zarr(location: Any) -> _Source:
     import dask.array as da
     import zarr
 
     if isinstance(location, str) and "://" not in location:
         location = Path(location)  # a local path: the OME/METADATA.ome.xml check below applies
-    store = str(location) if isinstance(location, Path) else location
+    store = _one_byte_store(location) if isinstance(location, Path) else location
     root = zarr.open_group(store, mode="r")
     group = root
     attrs = dict(group.attrs)
@@ -957,12 +998,18 @@ def _open_ome_zarr(location: Any) -> _Source:
     scale = _ngff_scale(ms, ms["datasets"][0], a0.ndim)
     lower = names.lower()
     x_unit = units[lower.index("x")] if "x" in lower else None
-    unit: PixelUnit = _NGFF_UNIT.get(str(x_unit), "um")
+    # an axis without a (length) unit leaves the unit unknown: the reviewer sets it in the plan, it is
+    # never assumed to be um (the CMC PS-OCT store has no units at all)
+    unit: PixelUnit | None = (_NGFF_UNIT.get(str(x_unit), "um") if length_factor(x_unit) is not None
+                              else None)
     pixel_size: dict[str, float] = {}
     for axis in "xyz":
         if axis in lower:
             i = lower.index(axis)
-            value = convert_length(scale[i], units[i], unit) if units[i] else scale[i]
+            if unit is None or not units[i]:
+                value = scale[i]
+            else:
+                value = convert_length(scale[i], units[i], unit)
             if value:
                 pixel_size[axis] = value
     out_shape = amap.shape()
@@ -1048,6 +1095,20 @@ _BUILTIN: dict[str, Opener] = {
     "ome-zarr": _open_ome_zarr,
     "visor": _open_visor,
 }
+
+
+def _open_png(location: Any) -> ImageSource:
+    raise UnsupportedFormat(PNG_MESSAGE)
+
+
+_BUILTIN["png"] = _open_png
+
+
+def _open_photo(location: Any) -> ImageSource:
+    raise UnsupportedFormat(PHOTO_MESSAGE)
+
+
+_BUILTIN["photo"] = _open_photo
 _ADAPTERS: dict[str, Opener] = {}
 _entry_points_loaded = False
 

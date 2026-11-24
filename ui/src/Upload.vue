@@ -43,12 +43,9 @@
                     <ul style="line-height: 200%">
                         <li>
                             If you are new to ezBIDS, please view our
-                            <a href="https://brainlife.io/docs/tutorial/ezBIDS/" target="_blank"
-                                ><b>ezBIDS tutorial</b></a
-                            >
+                            <a href="https://brainlife.io/docs/tutorial/ezBIDS/"><b>ezBIDS tutorial</b></a>
                             and
-                            <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank"
-                                ><b>user documentation</b></a
+                            <a href="https://brainlife.io/docs/using_ezBIDS/"><b>user documentation</b></a
                             >.
                         </li>
                         <li>

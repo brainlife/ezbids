@@ -7,6 +7,7 @@
   --text: #2d3748;
   --muted: #718096;
   --line: #e2e8f0;
+  --ink: #1d2230;
   --radius: 6px;
   --font: 'DM Sans', system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
 }
@@ -15,15 +16,14 @@ body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.5 var(
 .tr-bar { display: flex; align-items: center; gap: 1rem; padding: .6rem 1rem; background: var(--panel);
   border-bottom: 1px solid var(--line); }
 .tr-bar h1 { margin: 0; font-size: 15px; font-weight: 600; overflow-wrap: anywhere; }
-.tr-back { color: var(--primary); text-decoration: none; white-space: nowrap; }
-.tr-back:hover { text-decoration: underline; }
-/* the brainlife.io header, as on /viewer/ */
-.bl-header { display: flex; align-items: center; gap: .75rem; margin: 0; }
-.bl-brand { display: inline-flex; align-items: center; gap: .45rem; color: var(--text); text-decoration: none;
-  font-weight: 600; font-size: 16px; line-height: 1; }
-.bl-logo { height: 28px; width: auto; }
-.bl-divider { width: 1px; height: 22px; background: var(--line); }
-.bl-app { margin: 0; font-size: 15px; font-weight: 600; }
+/* the brainlife.io header, as on /viewer/ (viewer.BRAND_CSS) */
+header { display: flex; align-items: center; gap: 12px; height: 56px; padding: 0 24px; background: #fff;
+  border-bottom: 1px solid var(--line); }
+header .mark { height: 32px; width: auto; }
+header .brand { font-weight: 600; font-size: 15px; color: var(--ink); }
+header .sep { width: 1px; height: 22px; background: var(--line); }
+header .app { font-weight: 600; font-size: 15px; color: var(--primary); text-decoration: none; }
+header a.app:hover { text-decoration: underline; }
 .tr-main { padding: 1rem; display: flex; flex-direction: column; gap: .75rem; }
 .tr-panel { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: .6rem .8rem; }
 .tr-controls { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem; }

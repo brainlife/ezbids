@@ -36,7 +36,7 @@ VISOR_META_NAMES = frozenset({"acqinfo_metadata.json", "dbpost.json", "hh.log"})
 _CHANNEL_WORDS = frozenset({"visor", "ch", "channel", "laser", "c"})
 _DONOR = re.compile(r"[A-Za-z]{1,4}\d{0,4}")
 _SPLIT = re.compile(r"[_\-.\s]+")
-_EXT = re.compile(r"(\.ome)?\.(zarr|tiff?|btf|nii(\.gz)?|dat|mat|json|log|svs|czi|nd2|lif)$", re.I)
+_EXT = re.compile(r"(\.ome)?\.(zarr|tiff?|btf|nii(\.gz)?|dat|mat|json|log|svs|czi|nd2|lif|png|jpe?g)$", re.I)
 
 
 @dataclass
@@ -172,6 +172,35 @@ def facts(rel: str, vocab: Iterable[str] | None = None) -> NameFacts:
 
 _BIDS_SUFFIX_WORDS = frozenset(MICR_SUFFIXES) | {"photo"}
 _BIDS_NAME = re.compile(r"^((?:[a-zA-Z0-9]+-[a-zA-Z0-9]+_)+)([a-zA-Z0-9]+)$")
+
+
+def bids_name(rel: str) -> tuple[dict[str, str], str] | None:
+    """The entities and suffix of a BIDS micr file name (``sub-01_sample-A_CONF.ome.tif``), or None for any
+    other name (or a suffix that is not a micr one)."""
+    parts = _parts(rel)
+    if not parts:
+        return None
+    m = _BIDS_NAME.match(_EXT.sub("", parts[-1]))
+    if not m or m.group(2) not in MICR_SUFFIXES:
+        return None
+    entities = dict(pair.split("-", 1) for pair in m.group(1).rstrip("_").split("_"))
+    return entities, m.group(2)
+
+
+def bids_entities(rel: str) -> dict[str, str] | None:
+    """The entities of a BIDS micr file name, an image or a photograph (``sub-01_sample-A_photo.jpg``), or None."""
+    parts = _parts(rel)
+    m = _BIDS_NAME.match(_EXT.sub("", parts[-1])) if parts else None
+    if not m or m.group(2) not in _BIDS_SUFFIX_WORDS:
+        return None
+    return dict(pair.split("-", 1) for pair in m.group(1).rstrip("_").split("_"))
+
+
+def bids_photo(rel: str) -> bool:
+    """A BIDS micr photograph (``sub-01_sample-A_photo.jpg``)."""
+    parts = _parts(rel)
+    m = _BIDS_NAME.match(_EXT.sub("", parts[-1])) if parts else None
+    return bool(m) and m.group(2) == "photo" and parts[-1].lower().endswith((".jpg", ".jpeg", ".png", ".tif", ".tiff"))
 
 
 def _bids_words(stem: str) -> set[str]:

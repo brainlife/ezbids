@@ -12,16 +12,12 @@
                     </p>
                     <div class="cta">
                         <button class="btn p" @click="onClickGetStarted">Get started</button>
-                        <a class="btn ghost" href="https://brainlife.io/docs/using_ezBIDS/" target="_blank">
-                            Documentation
-                        </a>
-                        <a class="btn ghost" href="https://brainlife.io/docs/using_aimport/" target="_blank">
-                            About aimport
-                        </a>
+                        <a class="btn ghost" href="https://brainlife.io/docs/using_ezBIDS/"> Documentation </a>
+                        <a class="btn ghost" href="https://brainlife.io/docs/using_aimport/"> About aimport </a>
                     </div>
                     <p class="cite">
                         Levitas et al., <i>Scientific Data</i> 11, 179 (2024) ·
-                        <a href="https://www.nature.com/articles/s41597-024-02959-0" target="_blank">read the paper</a>
+                        <a href="https://www.nature.com/articles/s41597-024-02959-0">read the paper</a>
                     </p>
                 </div>
                 <div class="hero-art" aria-label="A scanner export organised into a BIDS dataset">
@@ -56,18 +52,19 @@ sub-01/
                     </div>
                 </div>
             </div>
-            <div class="wrap">
-                <dl class="stats">
-                    <div v-for="s in stats" :key="s.label" class="stat">
-                        <dt class="mono">{{ s.label }}</dt>
-                        <dd>
-                            <span class="v">{{ s.value }}</span>
-                            <span class="note mono">{{ s.note }}</span>
-                        </dd>
-                    </div>
-                </dl>
-            </div>
         </section>
+        <div class="stripe" aria-hidden="true"></div>
+        <div class="wrap">
+            <dl class="stats">
+                <div v-for="s in stats" :key="s.label" class="stat">
+                    <dt class="v">{{ s.value }}</dt>
+                    <dd>
+                        {{ s.label }} <span class="note">· {{ s.note }}</span>
+                    </dd>
+                </div>
+            </dl>
+            <p class="funding">Free for researchers · part of brainlife.io, funded by NIH and NSF</p>
+        </div>
 
         <section>
             <div class="wrap">
@@ -267,7 +264,7 @@ export default defineComponent({
 .hero {
     background: var(--hero);
     color: var(--hero-ink);
-    padding-bottom: 0;
+    padding-block: 40px 64px;
 }
 .hero-grid {
     display: grid;
@@ -275,18 +272,20 @@ export default defineComponent({
     gap: clamp(24px, 4vw, 64px);
     align-items: center;
 }
-.hero-eyebrow {
+.hero .hero-eyebrow {
     color: var(--hero-accent);
     margin-bottom: 18px;
 }
 .hero h1 {
     font-size: clamp(1.9rem, 3.4vw + 0.6rem, 3.3rem);
+    letter-spacing: -0.03em;
+    max-width: 16ch;
     margin-bottom: 20px;
 }
 .lede {
     font-size: 1.05rem;
     color: var(--hero-muted);
-    max-width: 620px;
+    max-width: 52ch;
 }
 .cta {
     display: flex;
@@ -301,7 +300,7 @@ export default defineComponent({
 }
 .hero .btn.ghost {
     color: var(--hero-ink);
-    border-color: var(--hero-line);
+    border-color: rgba(238, 243, 246, 0.3);
 }
 .cite {
     font-size: 0.82rem;
@@ -344,39 +343,45 @@ export default defineComponent({
     color: var(--hero-accent);
     font-size: 1.4rem;
 }
+/* landing-next: the four-colour stripe under the hero, then the numbers on the page background */
+.stripe {
+    height: 6px;
+    background: linear-gradient(
+        90deg,
+        var(--blue) 0 25%,
+        var(--red) 25% 50%,
+        var(--orange) 50% 75%,
+        var(--yellow) 75% 100%
+    );
+}
 .stats {
     display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    margin: clamp(40px, 6vw, 72px) 0 0;
-    border-top: 1px solid var(--hero-line);
-}
-.stat {
-    padding: 22px 16px 28px 0;
-}
-.stat + .stat {
-    padding-left: 20px;
-    border-left: 1px solid var(--hero-line);
-}
-.stat dt {
-    font-size: 0.68rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--hero-muted);
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 18px 28px;
+    padding-block: 34px 10px;
+    margin: 0;
 }
 .stat dd {
     margin: 6px 0 0;
-    display: flex;
-    flex-direction: column;
+    font-size: 0.82rem;
+    color: var(--muted);
 }
 .v {
-    font-size: clamp(2rem, 3vw + 0.6rem, 3rem);
+    font-size: clamp(1.5rem, 1.2vw + 1rem, 2rem);
     font-weight: 600;
     letter-spacing: -0.03em;
-    line-height: 1.1;
+    line-height: 1;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
 }
 .note {
-    font-size: 0.7rem;
-    color: var(--hero-muted);
+    color: var(--muted);
+    opacity: 0.85;
+}
+.funding {
+    font-size: 0.85rem;
+    color: var(--muted);
+    padding-bottom: 26px;
 }
 .charts {
     display: grid;
@@ -475,13 +480,6 @@ export default defineComponent({
 @media (max-width: 992px) {
     .hero-grid {
         grid-template-columns: 1fr;
-    }
-    .stats {
-        grid-template-columns: repeat(2, 1fr);
-    }
-    .stat:nth-child(3) {
-        padding-left: 0;
-        border-left: 0;
     }
     .facts,
     .cards {

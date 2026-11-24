@@ -95,6 +95,21 @@ def test_convert_ome_tiff(tmp_path, version):
     check_ome_zarr(out, sidecar(info, None), version, info.shape, info.dtype)
 
 
+def test_convert_enface_nifti_is_2d(tmp_path):
+    """An n x 1 x m en-face NIfTI converts to a 2-D yx image (not a stack of one-row xz slabs)."""
+    nii = psoct_nifti(tmp_path / "in" / "Slice_001_EnR_hdr.nii.gz", "retardance", shape=(64, 1, 48),
+                      zooms_um=(10.0, 10.0, 12.0))
+    out = tmp_path / "x.ome.zarr"
+    with readers.open_image(nii, "nifti") as src:
+        to_ome_zarr(src, out, "0.5")
+        info = src.info
+    ms = _multiscale(_group_attrs(out, "0.5"), "0.5")
+    assert "".join(a["name"] for a in ms["axes"]) == "yx"
+    assert zarr.open_group(str(out), mode="r")["0"].shape == (48, 64)
+    assert ms["datasets"][0]["coordinateTransformations"][0]["scale"] == [12.0, 10.0]
+    check_ome_zarr(out, sidecar(info, None), "0.5", info.shape, info.dtype)
+
+
 def src_pixels(tif: Path) -> np.ndarray:
     import tifffile
 
@@ -109,9 +124,17 @@ def test_convert_pyramid_levels(tmp_path):
     last = levels[-1]
     assert max(3000 // last["y"], 2000 // last["x"]) <= convert.PYRAMID_MAX_SIDE
     assert all(f.get("z", 1) == 1 for f in levels[:3])  # z (4 um) is coarser than the plane until 4 um
-    # a 2D stripe: one level per halving down to 512
+    # a 2D plane: one level per halving down to 256
     flat = ImageInfo(family="tiff", axes="yx", shape=(6000, 6000), dtype="uint16", pixel_size={"x": 1.0, "y": 1.0})
-    assert [f.get("x", 1) for f in convert.pyramid_levels(flat)] == [1, 2, 4, 8, 16]
+    assert [f.get("x", 1) for f in convert.pyramid_levels(flat)] == [1, 2, 4, 8, 16, 32]
+    assert convert.PYRAMID_MAX_SIDE == 256
+    for side, n in ((1024, 3), (512, 2), (256, 1), (257, 2)):  # a 1024² image gets 3 levels
+        sq = ImageInfo(family="tiff", axes="yx", shape=(side, side), dtype="uint16", pixel_size={"x": 1.0, "y": 1.0})
+        assert len(convert.pyramid_levels(sq)) == n, side
+    # the in-plane axes decide: a deep stack of small planes is not downsampled for its z
+    deep = ImageInfo(family="tiff", axes="zyx", shape=(4000, 200, 200), dtype="uint16",
+                     pixel_size={"x": 1.0, "y": 1.0, "z": 1.0})
+    assert convert.pyramid_levels(deep) == [{}]
     with pytest.raises(PixelSizeUnknown):  # never an invented pixel size
         convert.pyramid_levels(ImageInfo(family="tiff", axes="yx", shape=(6000, 6000), dtype="uint16"))
 
@@ -162,8 +185,8 @@ def test_convert_bounded_memory(tmp_path, monkeypatch):
     assert peak < 12 * MiB, peak
     assert zarr.open_array(str(tmp_path / "big.ome.zarr" / "0"), mode="r").shape == (6000, 6000)
     # progress per level and per block, numbers only
-    assert any(m.startswith("converting: level 1 of 5, block 1 of ") for m in seen)
-    assert any(m.startswith("converting: level 5 of 5") for m in seen)
+    assert any(m.startswith("converting: level 1 of 6, block 1 of ") for m in seen)
+    assert any(m.startswith("converting: level 6 of 6") for m in seen)
 
 
 def test_convert_bounded_memory_3d(tmp_path, monkeypatch):
@@ -728,6 +751,49 @@ def test_file_name_label_that_is_a_term_refused(tmp_path, key, schema):
     mp = plan_entries(records, key, set(), schema, "bids")
     (e,) = mp.entries
     assert e.entities["sample"] != "JDoe12" and "jdoe12" not in json.dumps(asdict(e)).lower()
-    # and without the term the BIDS name's own label is used
+    # and without the term it is still renumbered: not a safe label (controller ruling, Task 11)
     records[0]["terms"] = [t for t in records[0]["terms"] if t.lower() != "jdoe12"]
-    assert plan_entries(records, key, set(), schema, "bids").entries[0].entities["sample"] == "JDoe12"
+    e = plan_entries(records, key, set(), schema, "bids").entries[0]
+    assert e.entities["sample"] == "1" and e.reason.endswith("label renumbered: not a safe label")
+
+
+# --- display windows ignore the background (Task 11, carried from Task 10b) ---------------------
+
+
+def test_window_ignores_zero_background():
+    """Tissue at 57..66 on a zero background (>= 20% of the pixels): the window is the tissue's, not 0..66."""
+    rng = np.random.default_rng(0)
+    tissue = rng.uniform(57, 66, 30_000)
+    values = np.concatenate([np.zeros(70_000), tissue])
+    for w in (convert.window_of(values, "float32"), convert.window_or_none(values, "float32")):
+        assert 57 <= w["start"] < w["end"] <= 66, w
+    # fewer than 20% zeros: 0 is data, kept
+    few = np.concatenate([np.zeros(1_000), tissue])
+    assert convert.window_of(few, "float32")["start"] == 0.0
+    # the array's fill value is background at any fraction; NaN fill is already ignored
+    filled = np.concatenate([np.full(1_000, 5.0), tissue])
+    assert convert.window_of(filled, "float32", fill_value=5)["start"] >= 57
+    assert convert.window_of(filled, "float32")["start"] == 5.0
+    assert convert.window_or_none(np.concatenate([[np.nan] * 10, tissue]), "float32", fill_value="NaN")["start"] >= 57
+    # nothing but background and one value (a mask): the unfiltered window, not None
+    mask = np.concatenate([np.zeros(70_000), np.ones(30_000)])
+    assert convert.window_or_none(mask, "uint8") == {"min": 0.0, "max": 255.0, "start": 0.0, "end": 1.0}
+    assert convert.window_or_none(np.zeros(10), "uint8") is None
+
+
+def test_converted_window_ignores_zero_background(tmp_path):
+    """A converted image's omero window skips the zero background too."""
+    import tifffile
+
+    data = np.zeros((2, 64, 64), dtype=np.uint16)
+    data[:, 20:40, 20:40] = np.random.default_rng(0).integers(57, 67, (2, 20, 20))
+    src = tmp_path / "plane.ome.tif"
+    tifffile.imwrite(str(src), data, photometric="minisblack",
+                     metadata={"axes": "CYX", "PhysicalSizeX": 0.5, "PhysicalSizeY": 0.5})
+    out = tmp_path / "out.ome.zarr"
+    with readers.open_image(src, "ome-tiff") as img:
+        to_ome_zarr(img, out, micr.NGFF_VERSION)
+    omero = _omero(_group_attrs(out, micr.NGFF_VERSION), micr.NGFF_VERSION)
+    assert omero["channels"]
+    for ch in omero["channels"]:
+        assert 57 <= ch["window"]["start"] < ch["window"]["end"] <= 66, ch["window"]

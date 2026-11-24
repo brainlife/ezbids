@@ -42,15 +42,18 @@ def ome_zarr(
     shape: tuple[int, int, int, int] = (2, 8, 64, 64),
     pixel_size_um: tuple[float, float, float] = (1.0, 0.5, 0.5),
     levels: int = 2,
+    dtype: str = "uint16",
 ) -> Path:
     """Write a c,z,y,x OME-Zarr pyramid (y, x halved per level; 2 levels by default) at dest
-    (NGFF "0.5": Zarr v3 sharded; "0.4": Zarr v2)."""
+    (NGFF "0.5": Zarr v3 sharded; "0.4": Zarr v2). dtype float32: values in 0..1."""
     if version not in ("0.5", "0.4"):
         raise ValueError(f"version must be '0.5' or '0.4', got {version!r}")
     dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(0)
     data = rng.integers(0, 4096, size=shape, dtype=np.uint16)
+    if dtype != "uint16":
+        data = (data / 4096).astype(dtype)
     ms = _multiscales(version, pixel_size_um, levels)
     if version == "0.5":
         root = zarr.open_group(str(dest), mode="w", zarr_format=3)
@@ -77,6 +80,41 @@ def strip_chunks(store: Path) -> Path:
         elif p.is_dir() and not any(p.iterdir()):
             p.rmdir()
     return Path(store)
+
+
+# The CMC PS-OCT store's layout and metadata faults (Moe_Slice_051.ome.zarr, DATASETS.md), at a tenth of
+# its size: c,y,x float32 at scale<k>/image, chunks (4, 256, 256), zstd; axes without units; a
+# translation of 1.0 on the channel axis; levels 3, 4 and 5 declare 16, 64 and 256 (CMC: 512, which
+# a tenth-size level 0 would still agree with) but hold 8, 16 and 425 (y) / 550 (x). Metadata only: no chunk is written (a reference reads none).
+CMC_PSOCT_SHAPES = [(4, 850, 1100), (4, 425, 550), (4, 212, 275), (4, 106, 137), (4, 53, 68), (4, 2, 2)]
+CMC_PSOCT_DECLARED = [1, 2, 4, 16, 64, 256]
+CMC_PSOCT_FACTORS = [(1, 1), (2, 2), (4, 4), (8, 8), (16, 16), (425, 550)]  # (y, x) the arrays hold
+
+
+def cmc_psoct_zarr(dest: Path) -> Path:
+    from zarr.codecs import BytesCodec, ZstdCodec
+
+    dest = Path(dest)
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    root = zarr.open_group(str(dest), mode="w", zarr_format=3)
+    datasets = []
+    for k, (shape, f) in enumerate(zip(CMC_PSOCT_SHAPES, CMC_PSOCT_DECLARED)):
+        g = root.require_group(f"scale{k}")
+        g.create_array("image", shape=shape, dtype="float32", chunks=tuple(min(n, c) for n, c in
+                                                                           zip(shape, (4, 256, 256))),
+                       compressors=ZstdCodec(), serializer=BytesCodec(), fill_value=0)
+        datasets.append({"path": f"scale{k}/image", "coordinateTransformations": [
+            {"scale": [1.0, f, f], "type": "scale"},
+            {"translation": [1.0, (f - 1) / 2, (f - 1) / 2], "type": "translation"}]})
+    root.attrs["ome"] = {"version": "0.5", "multiscales": [{
+        "axes": [{"name": "c", "type": "channel"}, {"name": "y", "type": "space"}, {"name": "x", "type": "space"}],
+        "datasets": datasets, "name": "image", "@type": "ngff:Image"}]}
+    import warnings
+
+    with warnings.catch_warnings():  # "consolidated metadata is not part of Zarr v3": CMC has it
+        warnings.simplefilter("ignore")
+        zarr.consolidate_metadata(str(dest))
+    return dest
 
 
 SPARSE_ROW = 32768  # uint16 samples per row of sparse_bigtiff (64 KiB)
@@ -305,3 +343,46 @@ def visor_tile(dest_dir: Path, acqinfo: dict | None = None) -> Path:
     }
     (dest_dir / "acqinfo_metadata.json").write_text(json.dumps(info))
     return tile
+
+
+# --- Task 11: the end-to-end PS-OCT set ---
+
+PSOCT_FOLDERS = ("Reflectivity", "Retardance", "Orientation", "Cross")  # one per PSOCT_CONTRASTS entry
+PLANTED_PSOCT_DESCRIP = "Jane Doe 2025-02-15"
+PLANTED_PSOCT_ACQINFO = {"operator": "Jane Doe", "host": "lab-workstation-7", "date": "20250422",
+                         "pixel_size": 10.0, "z_step": 2.5}
+PLANTED_RAW = b"operator=Jane Doe;host=lab-workstation-7;date=2025-02-15;"
+
+
+def planted_psoct(dest: Path) -> Path:
+    """A synthetic PS-OCT set under ``dest/H17_250215/`` (donor H17, date 250215 in the folder name):
+
+    - ``PS-OCT/Enface/<Contrast>/Slice_051_1.nii.gz``: the four contrasts (``psoct_nifti``, microns,
+      ``descrip`` "Jane Doe 2025-02-15");
+    - ``PS-OCT/Volume/Slice_051_retardance.mat``: a v7.3 retardance volume (``psoct_mat``, sparse
+      64 MiB) with an ``operator`` "Jane Doe" attribute;
+    - ``PS-OCT/raw/Slice_051_Tile_000<k>.dat``: two raw interferometer tiles (bytes of ``PLANTED_RAW``);
+    - ``acqinfo_metadata.json``: an ``operator``, ``host`` and ``date`` beside numeric values;
+    - ``PS-OCT/Zarr/H17_Slice_051.ome.zarr``: an NGFF 0.5 / Zarr v3 store (``ome_zarr``) whose array
+      attributes plant ``operator`` "Jane Doe" and ``note`` "annotation secret".
+
+    Returns ``dest/H17_250215``. Every planted value is in conftest ``MICR_PLANTED``.
+    """
+    import json
+
+    root = Path(dest) / "H17_250215"
+    octd = root / "PS-OCT"
+    for contrast, folder in zip(PSOCT_CONTRASTS, PSOCT_FOLDERS):
+        psoct_nifti(octd / "Enface" / folder / "Slice_051_1.nii.gz", contrast, descrip=PLANTED_PSOCT_DESCRIP)
+    psoct_mat(octd / "Volume" / "Slice_051_retardance.mat", v73=True, operator="Jane Doe")
+    for k in (1, 2):
+        tile = octd / "raw" / f"Slice_051_Tile_000{k}.dat"
+        tile.parent.mkdir(parents=True, exist_ok=True)
+        tile.write_bytes(PLANTED_RAW * 64)
+    (root / "acqinfo_metadata.json").write_text(json.dumps(PLANTED_PSOCT_ACQINFO))
+    store = ome_zarr(octd / "Zarr" / "H17_Slice_051.ome.zarr", "0.5")
+    for lvl in ("0", "1"):
+        doc = json.loads((store / lvl / "zarr.json").read_text())
+        doc["attributes"] = {"operator": "Jane Doe", "note": "annotation secret"}
+        (store / lvl / "zarr.json").write_text(json.dumps(doc))
+    return root

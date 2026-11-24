@@ -4,11 +4,10 @@
         <p>
             We encountered a dcm2niix error (or errors) that may require attention. If this should be addressed, please
             submit an issue at
-            <a href="https://github.com/rordenlab/dcm2niix/issues" target="rordenlagb/dcm2niix"
-                >https://github.com/rordenlab/dcm2niix/issues</a
-            >. Copy the information below for each unique error message (beginning with the "+" key) and paste into in
-            the body of your dcm2niix issue, if you choose to submit an issue. You can send your error DICOM
-            files/folders to the dcm2niix team via a shared Google Drive folder.
+            <a href="https://github.com/rordenlab/dcm2niix/issues">https://github.com/rordenlab/dcm2niix/issues</a>.
+            Copy the information below for each unique error message (beginning with the "+" key) and paste into in the
+            body of your dcm2niix issue, if you choose to submit an issue. You can send your error DICOM files/folders
+            to the dcm2niix team via a shared Google Drive folder.
         </p>
         <pre class="errors">{{ errors }}</pre>
         <p>You may continue ezBIDS with the other successfully converted data if you wish.</p>

@@ -1,4 +1,4 @@
-/* brainlife.io "Landing v3" design tokens (landing-next features/LandingV3/landing-v3.css),
+/* brainlife.io "Landing v3" design tokens (landing-next features/LandingV3/landing-v3.css, main a464538),
    scoped to .lv3 so the converter app keeps its own Element Plus styles */
 .lv3 {
     --bg: #f7f8f6;
@@ -16,6 +16,11 @@
     --accent-ink: #fff;
     --link: #b84f18;
     --hero-accent: #3b9fd0;
+    /* site palette (landing-next --blue / --red / --orange / --yellow), for the stripe */
+    --blue: #005981;
+    --red: #a9262c;
+    --orange: #e57536;
+    --yellow: #f9c926;
     --hero-accent-ink: #0b1a24;
     /* chart categories, validated for CVD separation and contrast (light / dark) */
     --c-now: #1b6fa3;
@@ -117,7 +122,11 @@
     outline-offset: 2px;
 }
 .lv3 section {
-    padding: clamp(48px, 7vw, 96px) 0;
+    padding-block: 64px;
+    border-top: 1px solid var(--rule);
+}
+.lv3 section.hero {
+    border-top: 0;
 }
 .lv3 section.band {
     background: var(--band);

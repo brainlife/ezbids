@@ -62,13 +62,10 @@ export default defineComponent({
             information and examples, see
             <a
                 href="https://bids-specification.readthedocs.io/en/stable/03-modality-agnostic-files.html#dataset_descriptionjson"
-                target="_blank"
                 >here</a
             >
             and
-            <a
-                href="https://github.com/bids-standard/bids-examples/blob/master/ds000117/dataset_description.json"
-                target="_blank"
+            <a href="https://github.com/bids-standard/bids-examples/blob/master/ds000117/dataset_description.json"
                 >here</a
             >
         </p>

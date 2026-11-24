@@ -38,6 +38,8 @@ dependencies = [
     "defusedxml",
     "pynwb",
     "matplotlib",
+    # the QA viewer's chunk proxy (micr/remote.py open_stream); already locked (anthropic needs it)
+    "httpx>=0.28",
 ]
 
 [project.optional-dependencies]
