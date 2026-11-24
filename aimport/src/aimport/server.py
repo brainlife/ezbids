@@ -51,6 +51,7 @@ from .pseudonyms import KeyLockedError, PseudonymKey
 from .schema import load_schema
 from .scrub import redact
 from .validate import validate_bids
+from .viewer import VIEWER_CSP, neuroglancer_client_dir
 from .writer import _Writer, write_bids
 
 log = logging.getLogger("aimport")
@@ -64,6 +65,10 @@ OUTPUT_STATE = "output-state.json"
 # subject_idx -> the subject ID the key records for that subject's original (pseudonyms only: the originals
 # stay in the key), so an edited subject ID can be recorded in the key for the right person on execute
 SUBJECT_IDS = "subject-ids.json"
+VIEWER_PREFIXES = ("/viewer/", "/qa/")  # the browser pages: they also accept the session cookie
+# set explicitly: the Python mimetypes table varies by version and platform, and responses are nosniff
+MEDIA_TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css",
+               ".wasm": "application/wasm", ".map": "application/json"}
 
 
 def _overlap(a: Path, b: Path) -> bool:
@@ -573,6 +578,16 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
                            max_age=600)
 
     @app.middleware("http")
+    async def viewer_headers(request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith(VIEWER_PREFIXES):
+            response.headers["Cache-Control"] = "no-store"
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            if response.headers.get("content-type", "").startswith("text/html"):
+                response.headers["Content-Security-Policy"] = VIEWER_CSP
+        return response
+
+    @app.middleware("http")
     async def no_private_network_for_others(request: Request, call_next):
         response = await call_next(request)  # Starlette adds the header even to a refused preflight
         if request.headers.get("origin") not in allowed_origins:
@@ -786,5 +801,16 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         if path.is_symlink() or base not in path.resolve().parents or not path.is_file():
             raise HTTPException(404, "no such image")
         return FileResponse(path, media_type="application/octet-stream")
+
+    @app.get("/viewer/ng/{path:path}")
+    def get_neuroglancer(path: str) -> FileResponse:
+        try:
+            base = neuroglancer_client_dir()
+        except RuntimeError as e:
+            raise HTTPException(404, str(e)) from None
+        file = (base / path).resolve()
+        if base not in file.parents or not file.is_file():
+            raise HTTPException(404, "not found")
+        return FileResponse(file, media_type=MEDIA_TYPES.get(file.suffix, "application/octet-stream"))
 
     return app

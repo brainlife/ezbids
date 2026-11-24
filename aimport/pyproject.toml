@@ -17,6 +17,7 @@ dependencies = [
     "anthropic",
     "fastapi",
     "uvicorn",
+    "neuroglancer==2.41.2",
 ]
 
 [project.optional-dependencies]
