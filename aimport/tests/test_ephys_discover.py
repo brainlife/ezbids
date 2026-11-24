@@ -218,6 +218,6 @@ def test_edf_version_checked(tmp_path):
 
 def test_vocab_param():
     from aimport.micr import names
-    assert names.facts("rest_Smith").donor == "rest"
-    assert names.facts("rest_Smith", discover.VOCAB).donor == "Smith"
-    assert "rest" not in names.path_terms(["rest_Smith"], discover.VOCAB)
+    assert names.facts("rest_Jon").donor == "rest"
+    assert names.facts("rest_Jon", discover.VOCAB).donor == "Jon"
+    assert "rest" not in names.path_terms(["rest_Jon"], discover.VOCAB)
