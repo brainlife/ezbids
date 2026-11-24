@@ -1,9 +1,14 @@
 <template>
     <header class="site-header">
         <div class="wrap bar">
-            <a class="brand" href="#" @click.prevent="$router.push('/')">
-                ezBIDS <span class="by mono">by brainlife.io</span>
-            </a>
+            <div class="brand-row">
+                <a href="https://brainlife.io/about/" target="_blank" aria-label="brainlife.io">
+                    <img class="mark" :src="brainlifeMark" alt="" />
+                </a>
+                <a class="brand" href="#" @click.prevent="$router.push('/')">
+                    ezBIDS <span class="by mono">by brainlife.io</span>
+                </a>
+            </div>
             <nav class="nav">
                 <a class="mono" href="https://brainlife.io/docs/using_ezBIDS/" target="_blank">Docs</a>
                 <a class="mono" href="https://brainlife.io/team/" target="_blank">Team</a>
@@ -19,8 +24,12 @@
 import { defineComponent } from 'vue';
 import { mapState } from 'vuex';
 import { hasJWT, hasAuth } from './lib';
+import brainlifeMark from './assets/brainlife-mark.svg';
 
 export default defineComponent({
+    data() {
+        return { brainlifeMark };
+    },
     computed: {
         ...mapState(['config']),
         hasAuth() {
@@ -67,6 +76,16 @@ export default defineComponent({
     align-items: center;
     justify-content: space-between;
     height: 60px;
+}
+.brand-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.mark {
+    height: 34px;
+    width: auto;
+    display: block;
 }
 .brand {
     color: var(--hero-ink) !important;
