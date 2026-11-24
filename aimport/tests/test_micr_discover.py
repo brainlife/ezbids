@@ -103,12 +103,16 @@ def test_separator_dates():
 
 
 def test_nifti_claim_is_narrow(tmp_path):
-    for rel in ("Oct_2024/sub-01/anat/T1.nii.gz", "cross_sectional/study/x/y/T1.nii.gz",
+    for rel in ("Oct_2024/sub-01/anat/T1.nii.gz", "cross_sectional/study/x/y/T1.nii.gz", "Oct_2024/T1.nii.gz",
+                "Oct_2024/sub-01/T1.nii.gz", "cross_sectional/study/T1.nii.gz",
+                "PS-OCT/Enface/Cross/Slice_051_1.nii.gz",
                 "PS-OCT/Enface/Retardance/Slice_051_1.nii.gz"):
         (tmp_path / rel).parent.mkdir(parents=True, exist_ok=True)
         (tmp_path / rel).touch()
     claim, _ = discover.claim(tmp_path, [])
-    assert claim.roots == ["PS-OCT/Enface/Retardance/Slice_051_1.nii.gz"]
+    assert sorted(claim.roots) == ["PS-OCT/Enface/Cross/Slice_051_1.nii.gz",
+                                   "PS-OCT/Enface/Retardance/Slice_051_1.nii.gz"]
+    assert not discover.has_hint("Oct_2024/T1.nii.gz") and discover.has_hint("OCT/a.dat")
 
 
 def test_trailing_six_digit_tile_and_donor_scope():

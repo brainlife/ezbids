@@ -15,6 +15,7 @@ UNSUPPORTED_EXT = (".vsi", ".oib", ".oif", ".ims", ".lsm", ".scn", ".mrxs")
 VISOR_META = frozenset({"acqinfo_metadata.json", "dbpost.json", "hh.log"})
 HINTS = frozenset({"ps-oct", "psoct", "oct", "enface", "reflectivity", "retardance", "orientation",
                    "opticaxis", "cross", "micr"})
+BARE_HINTS = frozenset({"oct", "cross"})
 ZARR_MARKERS = ("zarr.json", ".zgroup", ".zattrs")
 _TOKEN = re.compile(r"[^a-z0-9]+")
 
@@ -28,7 +29,10 @@ class Found:
 
 def _tokens(text: str) -> set[str]:
     low = text.lower()
-    return {t for t in _TOKEN.split(low) if t} | {low}
+    toks = {t for t in _TOKEN.split(low) if t}
+    if low not in BARE_HINTS:  # Oct_2024, cross_sectional: bare oct/cross count only as a whole segment
+        toks -= BARE_HINTS
+    return toks | {low}
 
 
 def has_hint(rel: str) -> bool:
