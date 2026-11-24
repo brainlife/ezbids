@@ -1,6 +1,8 @@
 // Builds the standalone Neuroglancer viewer (index.html, bundles, chunk and async-computation workers)
 // into the folder given as the only argument: node build.mjs <out-dir>
+// Then copies uPlot's prebuilt browser files (the ephys trace viewer, /viewer/assets/uplot/) to <out-dir>/vendor/uplot/.
 // Follows neuroglancer's examples/vite (esbuild alone cannot bundle its `new URL(..., import.meta.url)` workers).
+import { copyFileSync, mkdirSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { build } from "vite";
@@ -38,3 +40,10 @@ await build({
     sourcemap: false,
   },
 });
+
+// uPlot for the trace viewer: its own prebuilt IIFE and stylesheet, as published (no bundling)
+const uplot = path.resolve(outDir, "vendor", "uplot");
+mkdirSync(uplot, { recursive: true });
+for (const name of ["uPlot.iife.min.js", "uPlot.min.css"]) {
+  copyFileSync(path.join(root, "node_modules", "uplot", "dist", name), path.join(uplot, name));
+}

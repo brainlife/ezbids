@@ -23,6 +23,9 @@ def ng_client(tmp_path, monkeypatch):
     (d / "assets" / "chunk_worker.bundle-x.js").write_text("")
     for name in ("x.wasm", "x.svg", "x.png", "x.woff2", "x.json"):
         (d / "assets" / name).write_bytes(b"\0")
+    (d / "vendor" / "uplot").mkdir(parents=True)  # build.mjs copies uPlot's prebuilt files here
+    (d / "vendor" / "uplot" / "uPlot.iife.min.js").write_text("var uPlot=function(){};")
+    (d / "vendor" / "uplot" / "uPlot.min.css").write_text(".uplot{}")
     monkeypatch.setenv("AIMPORT_NEUROGLANCER_DIR", str(d))
     return d
 
@@ -194,9 +197,16 @@ def test_unknown_code(client, query):
     assert "set-cookie" not in r.headers
 
 
-def test_cookie_only_on_viewer_routes(client):
+def test_cookie_only_on_viewer_and_qa(client):
     browser = viewer_client(client)
     assert browser.get("/viewer/ng/index.html").status_code == 200
+    assert browser.get("/viewer/assets/traces.js").status_code == 200
+    # the cookie gets past the token check on /qa/*: 404 (nothing executed), not 401
+    assert browser.get("/qa/traces/x").status_code == 404
+    assert browser.get("/qa/png/x/traces.png").status_code == 404
+    anonymous = TestClient(client.app)
+    for path in ("/qa/traces/x", "/qa/png/x/traces.png", "/viewer/traces/x", "/viewer/assets/traces.js"):
+        assert anonymous.get(path).status_code == 401, path
     assert browser.get("/plan").status_code == 401
     assert browser.patch("/plan", json={"readme": "x"}).status_code == 401
     assert browser.post("/execute").status_code == 401
@@ -466,3 +476,63 @@ def test_qa_data_original_needs_an_original(planned):
     assert planned.get(f"/qa/data/{other}/0/").status_code == 200
     # /preview keeps its behaviour: the written file stands in for the original
     assert planned.get(f"/preview/{other}", params={"which": "original"}).content == b"original-" + other.encode()
+
+
+# --- electrophysiology: /qa/traces, /qa/png, /viewer/traces, /viewer/assets ---
+
+def test_qa_routes_refuse(planned):
+    eid = t1w(planned)
+    for path in (f"/qa/traces/{eid}", f"/qa/png/{eid}/traces.png", f"/viewer/traces/{eid}"):
+        r = planned.get(path)  # before execute
+        assert r.status_code == 404 and r.json()["detail"] == "nothing to preview: execute the plan first", path
+    executed(planned)
+    for path in (f"/qa/traces/{eid}", f"/qa/png/{eid}/traces.png", f"/viewer/traces/{eid}",  # an MRI entry
+                 "/qa/traces/nope", "/qa/png/nope/traces.png", "/viewer/traces/nope",
+                 f"/qa/png/{eid}/..%2f..%2fscan.png", "/qa/traces/%2e%2e"):
+        assert planned.get(path).status_code == 404, path
+    page = viewer_client(planned).get("/viewer/").text
+    assert "/viewer/traces/" not in page and "/qa/png/" not in page  # MRI rows are unchanged
+
+
+@pytest.mark.parametrize("path", ["/viewer/assets/%2e%2e/server.py", "/viewer/assets/..%2fserver.py",
+                                  "/viewer/assets/%2e%2e/%2e%2e/aimport/server.py",
+                                  "/viewer/assets/uplot/%2e%2e/%2e%2e/index.html",
+                                  "/viewer/assets/uplot/", "/viewer/assets/", "/viewer/assets/missing.js",
+                                  "/viewer/assets/uplot/missing.js"])
+def test_viewer_assets_refuse(client, path):
+    assert client.get(path).status_code == 404
+
+
+def test_viewer_assets(client, ng_client):
+    browser = viewer_client(client)
+    r = browser.get("/viewer/assets/traces.js")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/javascript")
+    assert r.headers["x-content-type-options"] == "nosniff" and "content-security-policy" not in r.headers
+    assert browser.get("/viewer/assets/traces.css").headers["content-type"].startswith("text/css")
+    r = browser.get("/viewer/assets/uplot/uPlot.iife.min.js")
+    assert r.status_code == 200 and r.text == "var uPlot=function(){};"
+    assert browser.get("/viewer/assets/uplot/uPlot.min.css").status_code == 200
+
+
+def test_traces_page_same_origin():
+    import re
+
+    page = viewer.traces_page('e1"><script>x</script>', "sub-01_task-rest_eeg.vhdr")
+    urls = re.findall(r'\b(?:src|href)="([^"]*)"', page)
+    assert urls and all(u.startswith("/") and not u.startswith("//") for u in urls), urls
+    assert "http" not in page
+    assert 'data-entry="e1&quot;&gt;&lt;script&gt;x&lt;/script&gt;"' in page
+    scripts = re.findall(r"<script([^>]*)>(.*?)</script>", page, re.S)
+    assert [a.strip() for a, _ in scripts] == ['src="/viewer/assets/uplot/uPlot.iife.min.js"',
+                                              'src="/viewer/assets/traces.js"']
+    assert all(body == "" for _, body in scripts)  # no inline script: VIEWER_CSP is unchanged
+    assert "'unsafe-inline'" not in VIEWER_CSP.split("script-src", 1)[1].split(";", 1)[0]
+
+
+def test_traces_js_same_origin_and_text_only():
+    js = (viewer.STATIC_DIR / "traces.js").read_text()
+    assert "innerHTML" not in js and "outerHTML" not in js and "insertAdjacentHTML" not in js
+    assert "http" not in js and "//" + "cdn" not in js
+    assert 'credentials: "same-origin"' in js and '"/qa/traces/"' in js
+    css = (viewer.STATIC_DIR / "traces.css").read_text()
+    assert "@import" not in css and "url(" not in css and "http" not in css

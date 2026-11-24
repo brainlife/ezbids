@@ -26,6 +26,7 @@ import inspect
 import json
 import logging
 import os
+import re
 import secrets
 import shutil
 import tempfile
@@ -71,7 +72,8 @@ from .pseudonyms import KeyLockedError, PseudonymKey
 from .schema import load_schema
 from .scrub import REDACTED, redact
 from .validate import validate_bids
-from .viewer import VIEWER_CSP, entry_state, index_page, neuroglancer_client_dir, state_url
+from .ephys import qa as ephys_qa
+from .viewer import STATIC_DIR, VIEWER_CSP, entry_state, index_page, neuroglancer_client_dir, state_url, traces_page
 from .writer import _Writer, write_bids
 
 log = logging.getLogger("aimport")
@@ -94,6 +96,9 @@ VIEWER_CODE_TTL_S = 60
 MEDIA_TYPES = {".html": "text/html; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".css": "text/css",
                ".wasm": "application/wasm", ".map": "application/json", ".json": "application/json",
                ".svg": "image/svg+xml", ".png": "image/png", ".woff2": "font/woff2"}
+
+
+SAFE_ENTRY_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9._-]{0,127}")  # a plan entry id usable as a folder name
 
 
 def _now() -> float:
@@ -623,6 +628,7 @@ class Server:
                 defaced[eid] = [Path(p).resolve().relative_to(pre_root).as_posix() for p in paths]
             _write_json(self.work / OUTPUT_STATE,
                         {"scan_id": scan_id, "complete": True, "manifest": manifest, "defaced": defaced, **done})
+            self.render_qa(plan, manifest)
             self.set_status("executing", "validating the BIDS dataset")
             result = validate_bids(self.out)
             pterms = path_terms(terms)
@@ -640,6 +646,24 @@ class Server:
                         validation=validation, refused=_redact_obj(refused, terms))
         except Exception as e:
             self.fail(e, key, self.set_aside(scan_id))
+
+    def render_qa(self, plan: Plan, manifest: dict[str, list[str]]) -> None:
+        """The QA snapshots of each written electrophysiology recording (ephys.qa.render), into
+        <work>/ephys/qa/<entry id>/ (local only). A failure is logged by type and never fails the run."""
+        root = ephys_qa.qa_root(self.work)
+        ephys_qa.clear_cache()
+        shutil.rmtree(root, ignore_errors=True)
+        ids = [e.id for e in plan.entries if e.modality == "ephys" and manifest.get(e.id)
+               and SAFE_ENTRY_ID.fullmatch(e.id)]
+        if not ids:
+            return
+        self.set_status("executing", "rendering the QA snapshots")
+        for eid in ids:
+            try:
+                files = manifest[eid]
+                ephys_qa.render(eid, self.out / files[ephys_qa.primary_file(files)], root / eid)
+            except Exception as e:
+                log.warning("QA snapshot failed: %s", type(e).__name__)
 
     def set_aside(self, scan_id: str) -> str:
         """After a failed execute: <work>/output/bids (possibly complete but not defaced or validated) is
@@ -1074,6 +1098,18 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         rows = [{"id": e.id, "index": i, "path": path, "nifti": path.endswith((".nii", ".nii.gz")),
                  "defaced": i < len(defaced.get(e.id) or [])}
                 for e in entries for i, path in enumerate(state["manifest"][e.id])]
+        qa_root = ephys_qa.qa_root(work_dir)
+        for e in entries:  # an electrophysiology recording: its snapshots and the trace viewer
+            files = state["manifest"][e.id]
+            if e.modality != "ephys" or not SAFE_ENTRY_ID.fullmatch(e.id):
+                continue
+            try:
+                primary = ephys_qa.primary_file(files)
+            except ValueError:
+                continue
+            row = next(r for r in rows if r["id"] == e.id and r["index"] == primary)
+            row["traces"] = True
+            row["pngs"] = [k for k in ephys_qa.KINDS if (qa_root / e.id / f"{k}.png").is_file()]
         return HTMLResponse(index_page(rows))
 
     @app.get("/viewer/entry/{entry_id}")
@@ -1087,6 +1123,75 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         base = str(request.base_url).rstrip("/")  # the Host check allows only this server's own names
         state_ = entry_state(asdict(entry), files, originals, base, compare=compare, index=index)
         return RedirectResponse(state_url(state_), status_code=303)
+
+    def ephys_output(entry_id: str) -> tuple[Path, Path]:
+        """(the data file, its QA folder) of a written electrophysiology entry of the manifest, else 404."""
+        state = output_state()
+        files = (state.get("manifest") or {}).get(entry_id)
+        if not files or not SAFE_ENTRY_ID.fullmatch(entry_id):
+            raise HTTPException(404, "no such recording")
+        with srv.plan_lock:
+            plan = srv.load_plan()
+        entry = next((e for e in plan.entries if e.id == entry_id), None)
+        if entry is None or entry.modality != "ephys":
+            raise HTTPException(404, "no such recording")
+        try:
+            index = ephys_qa.primary_file(files)
+        except ValueError:
+            raise HTTPException(404, "no such recording") from None
+        return output_file(entry_id, index, "defaced"), ephys_qa.qa_root(work_dir) / entry_id
+
+    @app.get("/qa/png/{entry_id}/{kind}.png")
+    def get_qa_png(entry_id: str, kind: str) -> FileResponse:
+        ephys_output(entry_id)
+        if kind not in ephys_qa.KINDS:
+            raise HTTPException(404, "no such snapshot")
+        file = _file_inside(ephys_qa.qa_root(work_dir), f"{entry_id}/{kind}.png")
+        if file is None:
+            raise HTTPException(404, "no such snapshot")
+        return FileResponse(file, media_type="image/png")
+
+    @app.get("/qa/traces/{entry_id}")
+    def get_qa_traces(entry_id: str, t0: float = 0.0, t1: float = ephys_qa.DEFAULT_WINDOW_S,
+                      ch: str = "") -> dict:
+        path, qa_dir = ephys_output(entry_id)
+        picks: list[int] | None = None
+        if ch:
+            parts = ch.split(",")
+            if len(parts) > ephys_qa.MAX_CHANNELS:
+                raise HTTPException(400, f"more than {ephys_qa.MAX_CHANNELS} channels")
+            if not all(p.isascii() and p.isdigit() and len(p) <= 6 for p in parts):
+                raise HTTPException(400, "ch: channel indices separated by commas")
+            picks = [int(p) for p in parts]
+        try:
+            return ephys_qa.window(entry_id, path, t0, t1, picks, qa_dir=qa_dir)
+        except ephys_qa.WindowError as e:
+            raise HTTPException(400, str(e)) from None
+        except Exception as e:
+            log.warning("trace window failed: %s", type(e).__name__)
+            raise HTTPException(500, "the recording could not be read") from None
+
+    @app.get("/viewer/traces/{entry_id}")
+    def get_viewer_traces(entry_id: str) -> HTMLResponse:
+        path, _ = ephys_output(entry_id)
+        return HTMLResponse(traces_page(entry_id, path.name))
+
+    @app.get("/viewer/assets/{path:path}")
+    def get_viewer_asset(path: str) -> FileResponse:
+        """The trace viewer's own files (aimport/static/) and uPlot (<client>/vendor/uplot/, uplot/...)."""
+        if path.startswith("uplot/"):
+            try:
+                base = neuroglancer_client_dir() / "vendor" / "uplot"
+            except RuntimeError:
+                raise HTTPException(404, "not found") from None
+            path = path[len("uplot/"):]
+        else:
+            base = STATIC_DIR
+        base = base.resolve()
+        file = (base / path).resolve()
+        if not path or base not in file.parents or not file.is_file():
+            raise HTTPException(404, "not found")
+        return FileResponse(file, media_type=MEDIA_TYPES.get(file.suffix, "application/octet-stream"))
 
     @app.get("/viewer/ng/{path:path}")
     def get_neuroglancer(path: str) -> FileResponse:

@@ -9,7 +9,8 @@
     "build": "node build.mjs"
   },
   "dependencies": {
-    "neuroglancer": "2.41.2"
+    "neuroglancer": "2.41.2",
+    "uplot": "1.6.32"
   },
   "devDependencies": {
     "vite": "6.4.6"

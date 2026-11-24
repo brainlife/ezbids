@@ -564,3 +564,51 @@ def guessed_types(path: Path) -> dict[str, str]:
 
     with h5py.File(path, "r") as f:
         return group_types(f)
+
+
+class Series:
+    """The first ElectricalSeries of an NWB file, open lazily for the QA viewer (``open_series``): channel names
+    (electrode labels), seeg/ecog/dbs types, sfreq, length, and ``read`` of a sample range in volts."""
+
+    def __init__(self, path: Path):
+        import h5py
+
+        self._f = h5py.File(path, "r")
+        try:
+            series = _series(self._f)
+            if not series:
+                raise ValueError("no ElectricalSeries in the NWB file")
+            s = series[0]
+            self._data = s["data"]
+            names, types = channel_names(self._f), channel_types(self._f)
+            region = _region(s)
+            self.ch_names = [names[i] if i < len(names) else f"ch{i + 1:03d}" for i in region]
+            self.ch_types = [types[i] if i < len(types) else DEFAULT_TYPE for i in region]
+            self.sfreq = _sfreq(s)
+            self.n_times = int(self._data.shape[0])
+            attrs = self._data.attrs
+            self._conversion = float(attrs.get("conversion", 1.0))
+            self._offset = float(attrs.get("offset", 0.0))
+            self._channel_conversion = (np.asarray(s["channel_conversion"][()], dtype=float)
+                                        if "channel_conversion" in s else None)
+        except Exception:
+            self._f.close()
+            raise
+
+    def read(self, picks: list[int], start: int, stop: int) -> np.ndarray:
+        """(len(picks), stop - start) samples in volts."""
+        block = np.asarray(self._data[start:stop], dtype=float)
+        if block.ndim == 1:
+            block = block[:, None]
+        block = block[:, picks] * self._conversion + self._offset
+        if self._channel_conversion is not None:
+            block = block * self._channel_conversion[picks][None, :]
+        return block.T
+
+    def close(self) -> None:
+        self._f.close()
+
+
+def open_series(path: Path) -> Series:
+    """The first ElectricalSeries of an NWB file, open lazily (close it when done)."""
+    return Series(Path(path))
