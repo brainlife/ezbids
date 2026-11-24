@@ -20,6 +20,7 @@
 - Workspace rules (`~/git/brainlife/CLAUDE.md`): work on branch `agentic-importer`, never commit to master, never deploy or push images, tests first, 4-space indent, docs updated in the same PR.
 - New dependencies needing Franco's OK at plan review: anthropic, fastapi, uvicorn, bidsschematools, uv, Deno + BIDS validator (autobidsify and the ezBIDS toolchain are approved in the spec).
 - Anyone writing the Claude client loads the `claude-api` skill first.
+- Every dataset used for testing or validation — imaging data, fixtures, schemas, validators — is recorded in `aimport/tests/DATASETS.md` (source, pinned commit/version, contents, planted values, which tests use it, why added or dropped). A task that adds, replaces or drops one updates that file in the same commit.
 
 ## Review Focus
 

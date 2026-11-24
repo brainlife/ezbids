@@ -204,6 +204,13 @@ publishes.
 
 ### Tests that matter most
 
+Every dataset used to test or validate the importer, in every phase (MRI and PET,
+microscopy/OME-Zarr/PS-OCT, electrophysiology, the rest) and in every repo (`ezbids`,
+`cli`, `brainlife-lite`), is recorded in `aimport/tests/DATASETS.md`: source, pinned
+commit or version, contents, planted identifiers, which tests use it, and why it was
+added or dropped.
+
+
 - A synthetic DICOM set with planted identifiers in tags, in SeriesDescription and in
   folder names. Assert none appear in any LLM request, any output file, or anything
   handed to the upload step.
