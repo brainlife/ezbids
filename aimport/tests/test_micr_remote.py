@@ -28,6 +28,8 @@ from aimport.micr.readers import open_image
 class _Handler(BaseHTTPRequestHandler):
     root: Path
     port: int
+    ignore_range = False  # answer 200 with the whole body, whatever Range asks
+    other_base = ""  # where /redirect-to-other-server/ points
 
     def log_message(self, *args: object) -> None:  # keep test output quiet
         pass
@@ -42,6 +44,8 @@ class _Handler(BaseHTTPRequestHandler):
     def _redirect(self) -> bool:
         if self.path.startswith("/redirect-other/"):  # another host, same port
             location = f"http://localhost:{self.port}/" + self.path[len("/redirect-other/"):]
+        elif self.path.startswith("/redirect-to-other-server/") and self.other_base:
+            location = self.other_base + "/" + self.path[len("/redirect-to-other-server/"):]
         elif self.path.startswith("/redirect-same/"):
             location = "/" + self.path[len("/redirect-same/"):]
         else:
@@ -65,7 +69,7 @@ class _Handler(BaseHTTPRequestHandler):
         start, end = 0, size - 1
         status = 200
         rng = self.headers.get("Range")
-        if rng and rng.startswith("bytes="):
+        if rng and rng.startswith("bytes=") and not self.ignore_range:
             a, _, b = rng[6:].partition("-")
             if a:
                 start, end = int(a), min(int(b), size - 1) if b else size - 1
@@ -92,28 +96,45 @@ class _Handler(BaseHTTPRequestHandler):
         self._respond(False)
 
 
-@pytest.fixture
-def server(tmp_path, monkeypatch):
-    """(base URL, served folder). normalize_url lets this server's 127.0.0.1 URLs through."""
-    root = tmp_path / "served"
-    root.mkdir()
-    handler = type("H", (_Handler,), {"root": root})
+def _start(root: Path, **attrs: object) -> tuple[str, ThreadingHTTPServer, type]:
+    root.mkdir(parents=True, exist_ok=True)
+    handler = type("H", (_Handler,), {"root": root, **attrs})
     httpd = ThreadingHTTPServer(("127.0.0.1", 0), handler)
     handler.port = httpd.server_address[1]
-    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-    thread.start()
-    base = f"http://127.0.0.1:{handler.port}"
+    threading.Thread(target=httpd.serve_forever, daemon=True).start()
+    return f"http://127.0.0.1:{handler.port}", httpd, handler
+
+
+@pytest.fixture
+def local_servers(tmp_path, monkeypatch):
+    """start(name, **handler attrs) -> (base URL, served folder, handler class). normalize_url
+    lets these servers' http://127.0.0.1 URLs through (these tests only)."""
+    started: list[ThreadingHTTPServer] = []
     real = remote.normalize_url
 
     def normalize_for_tests(url: str) -> str:
-        if url.startswith(base + "/") or url == base:
+        if url.startswith("http://127.0.0.1:"):
             return url.rstrip("/")
         return real(url)
 
     monkeypatch.setattr(remote, "normalize_url", normalize_for_tests)
-    yield base, root
-    httpd.shutdown()
-    httpd.server_close()
+
+    def start(name: str, **attrs: object) -> tuple[str, Path, type]:
+        base, httpd, handler = _start(tmp_path / name, **attrs)
+        started.append(httpd)
+        return base, tmp_path / name, handler
+
+    yield start
+    for httpd in started:
+        httpd.shutdown()
+        httpd.server_close()
+
+
+@pytest.fixture
+def server(local_servers):
+    """(base URL, served folder) of one Range-supporting local server."""
+    base, root, _ = local_servers("served")
+    return base, root
 
 
 def _store_bytes(store: Path) -> int:
@@ -127,6 +148,8 @@ def _store_bytes(store: Path) -> int:
     "https://user@example.org/x.ome.zarr", "https://user:pw@example.org/x.ome.zarr",
     "https://127.0.0.1/x", "https://localhost/x", "https://[::1]/x", "https://10.0.0.1/x",
     "https://2130706433/x", "https://example.org/x.tif?X-Amz-Signature=1", "s3://", "",
+    "https://localhost./x", "https://LOCALHOST./x", "https://foo.localhost/x", "https://foo.localhost./x",
+    "https://intranet/x", "https://intranet./x", "https://127.0.0.1./x",
 ])
 def test_scheme_allowlist(url):
     with pytest.raises(ValueError):
@@ -145,6 +168,7 @@ def test_s3_rewrite():
         "https://apex-connects.s3.amazonaws.com/CMC/a.ome.zarr"
     assert remote.normalize_url("s3://apex-connects") == "https://apex-connects.s3.amazonaws.com"
     assert remote.normalize_url("HTTPS://Example.ORG:443/a/b/") == "https://example.org/a/b"
+    assert remote.normalize_url("https://example.org./a") == "https://example.org/a"
 
 
 def test_redirect_rule():
@@ -169,6 +193,110 @@ def test_redirect_to_other_host_refused(server):
     fh.close()
     mapper, _ = remote.open_store(f"{base}/redirect-same/s.ome.zarr")  # same origin: followed
     assert zarr.open_group(mapper, mode="r").attrs["ome"]["version"] == "0.5"
+
+
+def test_redirect_to_allowed_host_followed(local_servers, monkeypatch):
+    """A redirect to a host the rule allows is followed (the rule is patched to allow server two)."""
+    base2, root2, _ = local_servers("two")
+    base1, _, handler1 = local_servers("one")
+    handler1.other_base = base2
+    ome_zarr(root2 / "s.ome.zarr", "0.5")
+    real = remote.redirect_allowed
+    monkeypatch.setattr(remote, "redirect_allowed",
+                        lambda origin, location: location.startswith(base2 + "/") or real(origin, location))
+    mapper, counter = remote.open_store(f"{base1}/redirect-to-other-server/s.ome.zarr")
+    src = open_image(mapper, "ome-zarr")
+    assert src.info.levels == 2 and counter.total > 0
+    remote.close_store(mapper)
+    monkeypatch.setattr(remote, "redirect_allowed", real)  # without the patch: refused
+    mapper, _ = remote.open_store(f"{base1}/redirect-to-other-server/s.ome.zarr")
+    with pytest.raises(remote.RemoteRefused):
+        zarr.open_group(mapper, mode="r")
+    remote.close_store(mapper)
+
+
+def test_default_byte_cap(server):
+    base, root = server
+    (root / "f.tif").write_bytes(b"\0" * 1000)
+    for opener in (remote.open_store, remote.open_file):
+        handle, counter = opener(f"{base}/f.tif")
+        assert counter.limit == remote.DEFAULT_MAX_BYTES == 32 * 2**20
+        handle.close() if hasattr(handle, "close") else remote.close_store(handle)
+    for bad in (None, 0, -1):
+        with pytest.raises(ValueError):
+            remote.open_file(f"{base}/f.tif", max_bytes=bad)
+
+
+def test_read_beyond_remaining_cap_refused(server):
+    base, root = server
+    (root / "f.tif").write_bytes(b"\1" * (2 * 2**20))
+    fh, counter = remote.open_file(f"{base}/f.tif", max_bytes=2**20)
+    assert len(fh.read(1000)) == 1000
+    with pytest.raises(remote.ByteBudgetExceeded):
+        fh.read(2**20)  # more than is left of the cap: refused before any fetch
+    total = counter.total
+    with pytest.raises(remote.ByteBudgetExceeded):
+        fh.readinto(bytearray(2**20))
+    assert counter.total == total
+    fh.close()
+
+
+def test_server_ignoring_range_is_stopped_by_the_cap(local_servers):
+    """A server that answers every Range request with 200 and the whole body: the cap stops it."""
+    base, root, _ = local_servers("norange", ignore_range=True)
+    store = root / "big.ome.zarr"
+    group = zarr.open_group(str(store), mode="w", zarr_format=3)
+    big = group.create_array("0", shape=(40 * 2**20,), dtype="uint8", chunks=(2**20,),
+                             shards=(40 * 2**20,), compressors=None)
+    big[...] = np.random.default_rng(0).integers(0, 255, size=big.shape, dtype=np.uint8)
+    mapper, counter = remote.open_store(f"{base}/big.ome.zarr")  # default cap: 32 MiB
+    arr = zarr.open_group(mapper, mode="r")["0"]
+    with pytest.raises(remote.ByteBudgetExceeded):
+        arr[:16]  # one inner chunk: a range read of the shard, answered with all 40 MiB
+    assert counter.total <= remote.DEFAULT_MAX_BYTES + 2**20
+    remote.close_store(mapper)
+    fh, counter = remote.open_file(f"{base}/big.ome.zarr/0/c/0")
+    assert len(fh.read(100)) == 100  # from the start: fsspec stops reading after the first MiB
+    with pytest.raises(ValueError):
+        fh.seek(5 * 2**20)
+        fh.read(100)  # past the start: refused, the body is not read
+    assert counter.total <= 2 * 2**20
+    fh.close()
+
+
+def test_sessions_closed(server, caplog):
+    """Closing a store, a file or a source closes its aiohttp session: no 'Unclosed' warnings."""
+    import gc
+    import warnings
+
+    base, root = server
+    ome_zarr(root / "s.ome.zarr", "0.5")
+    tifffile.imwrite(str(root / "t.tif"), np.zeros((8, 8), np.uint16), metadata=None)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        src, _ = remote.open_remote(f"{base}/s.ome.zarr", "ome-zarr")
+        src.level(1).compute()
+        src.close()
+        with remote.open_remote(f"{base}/t.tif", "tiff")[0] as tsrc:
+            tsrc.level(0).compute()
+        assert remote.probe(f"{base}/t.tif") == "tiff"
+        del src, tsrc
+        gc.collect()
+    messages = [str(w.message) for w in caught] + [r.getMessage() for r in caplog.records]
+    assert not [m for m in messages if "Unclosed" in m], messages
+    # explicitly closed at close(), not only when collected
+    mapper, _ = remote.open_store(f"{base}/s.ome.zarr")
+    zarr.open_group(mapper, mode="r")
+    session = mapper.fs._session
+    assert session is not None and not session.closed
+    remote.close_store(mapper)
+    assert session.closed
+    fh, _ = remote.open_file(f"{base}/t.tif")
+    fh.read(10)
+    session = fh._fs._session
+    assert not session.closed
+    fh.close()
+    assert session.closed
 
 
 def test_coarse_level_only(server):
