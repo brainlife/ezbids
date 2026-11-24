@@ -300,6 +300,8 @@ image) are better dropped in review; the validation result tells you which.
 - BIDS validator: `@bids/validator` **2.4.1** (Deno 2.5.6), run through the `bids-validator-2` wrapper. That release bundles an older schema (it flags `BIDSVersion` 1.11.2 as unknown), so the wrapper defaults `--schema file:///opt/bids-schema/schema.json` unless `--schema`/`-s` is given. Works offline. Useful flags: `--format json` (`--json` is deprecated), `--schema <URL>`, `--ignoreNiftiHeaders`, `-o <file>`.
 - Test data: `tests/fixtures/fetch_dcm_qa.py` fetches `neurolabusc/dcm_qa_xa30` at a pinned commit and plants fake PHI.
 - Python packages are installed exactly as `uv.lock` pins them (with hashes); the Deno download is checked against its sha256.
+- Microscopy (`micr`) packages, locked for Python 3.11 (the image): bioio 3.7.1, bioio-czi 4.1.0 (aicspylibczi), bioio-nd2 2.5.0, bioio-lif 2.0.1, tifffile 2026.3.3, ome-types 0.7.0, zarr 3.1.6, fsspec[http] 2026.9.0, dask[array] 2026.11.0, ngff-zarr 0.53.0, scipy 1.17.1, h5py 3.16.0. All have wheels for manylinux x86_64 and macOS arm64.
+- OME-Zarr output is NGFF **0.5** (Zarr v3, sharded) by default; set `AIMPORT_NGFF_VERSION=0.4` for Zarr v2. The validator ruling behind the default (Task 1, `tests/test_micr_validator.py`): `@bids/validator` 2.4.1 on schema 1.11.2 accepts NGFF 0.5, NGFF 0.4 and metadata-only stores (chunks deleted). It treats a `.ome.zarr/` directory as opaque: it rejects only an empty directory (`EMPTY_FILE`) and never reads `zarr.json`/`.zattrs` (a corrupt `zarr.json` passes, and sidecar `PixelSize` is not compared with the NGFF scale), so aimport checks its own OME-Zarr metadata.
 
 ## Defacing details
 

@@ -17,6 +17,19 @@ dependencies = [
     "anthropic",
     "fastapi",
     "uvicorn",
+    # microscopy (micr)
+    "bioio",
+    "bioio-czi",
+    "bioio-nd2",
+    "bioio-lif",
+    "tifffile",
+    "ome-types",
+    "zarr>=3",
+    "fsspec[http]",
+    "dask[array]",
+    "ngff-zarr",
+    "scipy",
+    "h5py",
 ]
 
 [project.optional-dependencies]
@@ -34,4 +47,5 @@ markers = [
     "docker: runs inside the brainlife/aimport image (needs network the first time, to fetch test data)",
     "docker_offline: tests that need Docker but no network",
     "docker_slow: Docker tests that take minutes per image (pydeface); run with -m docker_slow",
+    "network: reads remote data over https (range reads, under 32 MiB per test)",
 ]
