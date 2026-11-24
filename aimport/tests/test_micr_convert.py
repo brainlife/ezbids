@@ -754,3 +754,45 @@ def test_file_name_label_that_is_a_term_refused(tmp_path, key, schema):
     # and without the term the BIDS name's own label is used
     records[0]["terms"] = [t for t in records[0]["terms"] if t.lower() != "jdoe12"]
     assert plan_entries(records, key, set(), schema, "bids").entries[0].entities["sample"] == "JDoe12"
+
+
+# --- display windows ignore the background (Task 11, carried from Task 10b) ---------------------
+
+
+def test_window_ignores_zero_background():
+    """Tissue at 57..66 on a zero background (>= 20% of the pixels): the window is the tissue's, not 0..66."""
+    rng = np.random.default_rng(0)
+    tissue = rng.uniform(57, 66, 30_000)
+    values = np.concatenate([np.zeros(70_000), tissue])
+    for w in (convert.window_of(values, "float32"), convert.window_or_none(values, "float32")):
+        assert 57 <= w["start"] < w["end"] <= 66, w
+    # fewer than 20% zeros: 0 is data, kept
+    few = np.concatenate([np.zeros(1_000), tissue])
+    assert convert.window_of(few, "float32")["start"] == 0.0
+    # the array's fill value is background at any fraction; NaN fill is already ignored
+    filled = np.concatenate([np.full(1_000, 5.0), tissue])
+    assert convert.window_of(filled, "float32", fill_value=5)["start"] >= 57
+    assert convert.window_of(filled, "float32")["start"] == 5.0
+    assert convert.window_or_none(np.concatenate([[np.nan] * 10, tissue]), "float32", fill_value="NaN")["start"] >= 57
+    # nothing but background and one value (a mask): the unfiltered window, not None
+    mask = np.concatenate([np.zeros(70_000), np.ones(30_000)])
+    assert convert.window_or_none(mask, "uint8") == {"min": 0.0, "max": 255.0, "start": 0.0, "end": 1.0}
+    assert convert.window_or_none(np.zeros(10), "uint8") is None
+
+
+def test_converted_window_ignores_zero_background(tmp_path):
+    """A converted image's omero window skips the zero background too."""
+    import tifffile
+
+    data = np.zeros((2, 64, 64), dtype=np.uint16)
+    data[:, 20:40, 20:40] = np.random.default_rng(0).integers(57, 67, (2, 20, 20))
+    src = tmp_path / "plane.ome.tif"
+    tifffile.imwrite(str(src), data, photometric="minisblack",
+                     metadata={"axes": "CYX", "PhysicalSizeX": 0.5, "PhysicalSizeY": 0.5})
+    out = tmp_path / "out.ome.zarr"
+    with readers.open_image(src, "ome-tiff") as img:
+        to_ome_zarr(img, out, micr.NGFF_VERSION)
+    omero = _omero(_group_attrs(out, micr.NGFF_VERSION), micr.NGFF_VERSION)
+    assert omero["channels"]
+    for ch in omero["channels"]:
+        assert 57 <= ch["window"]["start"] < ch["window"]["end"] <= 66, ch["window"]

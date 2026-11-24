@@ -42,6 +42,7 @@ __all__ = [
 log = logging.getLogger(__name__)
 
 BIOFORMATS_MESSAGE = "needs Bio-Formats (not included): export to OME-TIFF or OME-Zarr first"
+PNG_MESSAGE = "PNG and JPEG images are not read: export to OME-TIFF or OME-Zarr first"
 MAT_V5_MESSAGE = "MATLAB v5 file too large to read lazily: save as v7.3"
 MAT_V5_MAX_BYTES = 2 * 2**30
 ENTRY_POINT_GROUP = "aimport.micr_readers"
@@ -929,13 +930,41 @@ def _ngff_terms(attrs: dict) -> set[str]:
     return collect_terms(keep)
 
 
+_ONE_BYTE = re.compile(r"^[<>]([uib]1)$")
+
+
+def _one_byte_store(path: Path) -> Any:
+    """A read-only local store whose Zarr v2 ``.zarray`` documents give a one-byte dtype written with a byte
+    order (``>u1``, as bids-examples micr_SEMzarr does) as ``|u1``: the same bytes, which zarr 3.1 (the image's)
+    otherwise finds no data type for. Nothing else is changed; the input is never written."""
+    from zarr.storage import LocalStore, WrapperStore
+
+    class OneByteStore(WrapperStore):
+        async def get(self, key, prototype, byte_range=None):
+            buf = await self._store.get(key, prototype, byte_range)
+            if buf is None or byte_range is not None or not key.endswith(".zarray"):
+                return buf
+            try:
+                doc = json.loads(buf.to_bytes())
+            except ValueError:
+                return buf
+            m = _ONE_BYTE.match(doc.get("dtype")) if isinstance(doc, dict) and isinstance(doc.get("dtype"), str) \
+                else None
+            if not m:
+                return buf
+            doc["dtype"] = "|" + m.group(1)
+            return prototype.buffer.from_bytes(json.dumps(doc).encode())
+
+    return OneByteStore(LocalStore(str(path), read_only=True))
+
+
 def _open_ome_zarr(location: Any) -> _Source:
     import dask.array as da
     import zarr
 
     if isinstance(location, str) and "://" not in location:
         location = Path(location)  # a local path: the OME/METADATA.ome.xml check below applies
-    store = str(location) if isinstance(location, Path) else location
+    store = _one_byte_store(location) if isinstance(location, Path) else location
     root = zarr.open_group(store, mode="r")
     group = root
     attrs = dict(group.attrs)
@@ -1065,6 +1094,13 @@ _BUILTIN: dict[str, Opener] = {
     "ome-zarr": _open_ome_zarr,
     "visor": _open_visor,
 }
+
+
+def _open_png(location: Any) -> ImageSource:
+    raise UnsupportedFormat(PNG_MESSAGE)
+
+
+_BUILTIN["png"] = _open_png
 _ADAPTERS: dict[str, Opener] = {}
 _entry_points_loaded = False
 

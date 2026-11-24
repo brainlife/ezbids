@@ -13,7 +13,9 @@ or dropped, and say why.
 | Synthetic OME-Zarr (`tests/fixtures/micr_fixtures.py` `ome_zarr`, written for this repo; no real pixels) | generated at test time, seed 0 | **current** | `tests/test_micr_validator.py` (microscopy Task 1: validator ruling) |
 | Synthetic sparse BigTIFF (`tests/fixtures/micr_fixtures.py` `sparse_bigtiff`, written for this repo; no pixels) | generated at test time | **current** | `tests/test_modality.py` (microscopy Task 2: claimed input is never staged or copied), `tests/test_micr_readers.py` (Task 4: bounded open) |
 | Synthetic microscopy reader fixtures (`tests/fixtures/micr_fixtures.py` `planted_ome_tiff`, `planted_svs`, `psoct_nifti`, `psoct_mat`, `striped_tiff`, `visor_tile`; written for this repo, planted identifiers only) | generated at test time, seed 0 | **current** | `tests/test_micr_readers.py` (microscopy Task 4: readers, allowlisted metadata, bounded memory), `tests/test_micr_plan.py` (Task 6: plan entries, composite input below), `tests/test_micr_convert.py` (Task 8: conversion, self-check and write hook; inputs below) |
-| CMC public bucket `apex-connects` (us-east-2; four objects, keys below). No licence stated: read only, network-marked tests, nothing committed or downloaded whole | keys pinned by listing, 2026-11-24 | **current** | `tests/test_micr_remote.py` `network` tests (microscopy Task 5: remote reads by range request) |
+| CMC public bucket `apex-connects` (us-east-2; keys below). No licence stated: read only, network-marked tests, nothing committed or downloaded whole | keys pinned by listing, 2026-11-24 | **current** | `tests/test_micr_remote.py` `network` tests (microscopy Task 5: remote reads by range request), `tests/test_micr_plan.py`, `tests/test_micr_reference.py` and `tests/test_micr_end_to_end.py` `network` tests |
+| [bids-standard/bids-examples](https://github.com/bids-standard/bids-examples) `micr_SPIM`, `micr_SEMzarr`, `micr_XPCTzarr`, `micr_SEM` only | `5e00d47b6f1db106dda1b776d5243eb41b4cb95b` (master, 2026-10-09) | **current** | `tests/fixtures/fetch_bids_examples.py`, `tests/test_micr_end_to_end.py` `test_bids_examples_micr` (docker; microscopy Task 11) |
+| Synthetic PS-OCT set (`tests/fixtures/micr_fixtures.py` `planted_psoct`, written for this repo; planted identifiers only) | generated at test time, seed 0 | **current** | `tests/test_micr_end_to_end.py` (microscopy Task 11: end-to-end leak test, with `planted_ome_tiff` and `planted_svs`) |
 
 ### Synthetic OME-Zarr (current)
 
@@ -101,6 +103,19 @@ was re-shot from the same run after the channel-position fix (both channels now 
 NaN and four ±inf/NaN values planted in channel 0. All synthetic,
 generated at test time.
 
+### bids-examples micr datasets (current)
+
+`fetch_bids_example(name, dest)` downloads the bids-examples tarball at the pinned commit (about 16 MB, cached in
+`/tmp/aimport-bids-examples-cache`, or the `cache` argument) and extracts only `<name>/`. The four datasets are
+BIDS `micr` layouts whose image files are mostly placeholders (the validator does not read pixels):
+
+| Dataset | Contents | Re-imported as |
+|---|---|---|
+| `micr_SPIM` | `sub-01`, samples `A` and `B`, `stain-LFB`, `chunk-01`..`04` `_SPIM.ome.tif` (2,668 bytes each: real 1 x 1 OME-TIFFs), sidecars with `PixelSize`, 1-byte `photo.png` placeholders, `samples.tsv` (2 rows) | 8 converted `SPIM` entries (chunks numbered from 0), `validated`; subject `01`, samples `A`, `B` and the `samples.tsv` rows kept |
+| `micr_SEMzarr` | `sub-01`, `ses-01`/`ses-02`, sample `A`: a Zarr v2 / NGFF 0.4 `_SPIM.ome.zarr` (64 x 64, dtype `>u1`, axes with `units` instead of `unit`, scale 1; one 128-byte chunk), 1-byte `_SEM.png` placeholders, sidecars (`PixelSize` 0.18 um) | the store referenced (pixel size and unit from its sidecar, dtype read as `|u1`), the PNGs reported unsupported, `validated` |
+| `micr_XPCTzarr` | `sub-01`, `ses-01`, sample `brain`: a Zarr v2 / NGFF 0.4 `_XPCT.ome.zarr` whose metadata says 6991 x 5965 x 5965 uint16 (one empty chunk file), axes with `units`, a sidecar (`PixelSize`, `um`), a 133 KB photo JPEG, `code/`, `samples.tsv` with free-text columns | the store referenced as `XPCT` (the suffix from its BIDS name, sample `brain` kept, unit from the sidecar), `validated`; the free-text `samples.tsv` columns dropped by the default column rules, the rows kept |
+| `micr_SEM` | `sub-01`, `ses-01`/`ses-02`, sample `A`: 1-byte `_SEM.png` and photo placeholders | **expected failure** (`xfail`, strict): no image can be written (PNG is reported, never read; the photo TIFF is 1 byte), so the output has no subject and the validator refuses its tables |
+
 ### CMC public bucket `apex-connects` (current)
 
 Public S3 bucket `apex-connects` (region us-east-2), read anonymously over
@@ -118,6 +133,7 @@ changed or removed key shows up as a failing `network` test.
 | `test_cmc_visor_tile_header` | `CMC/Raw/Moe/tract-tracing/MN27_FH_S100_250215_visor_488/visor_488_Pos0/visor_488_0_0.tif` (4,286,188,560 bytes) and `.../MN27_FH_S100_250215_visor_488/acqinfo_metadata.json` (4,127 bytes) | VISoR raw tile: classic (not Big) TIFF written by Micro-Manager (NDTiff v3 header, `MicroManagerMetadata` tag per page, no index map in the file), pages 1024 x 2048 uint16, uncompressed, one 4 MiB strip per page, ~1025 pages (`frames_per_file`) | first IFD, the first page's one strip, and the metadata JSON (only that small JSON; never `dbpost.json` or `hh.log`) | 8 MiB | 4,325,380 |
 | manual QA viewer render (Task 10; not a test, screenshots not committed) | `CMC/Derivatives/Moe/PS-OCT/Zarr/Moe_Slice_051.ome.zarr` and `.../Enface/Registration/Retardance/Slice_001_EnR_hdr.nii.gz` | the PS-OCT store referenced and viewed through `/qa/data` (only the chunks Neuroglancer asks for at the zoom shown, plus the whole coarsest level for the display window); the en-face file converted (it is read whole: 14 MB) to check the n x 1 x m squeeze | chunks in view, coarsest level, one en-face file | 32 MiB window read; 64 MiB per proxied response | not counted |
 | `test_cmc_enface_contrasts_one_subject` (`tests/test_micr_plan.py`, Task 10b) | `CMC/Derivatives/Moe/PS-OCT/Enface/Registration/Reflectivity/Slice_001_EnRef_hdr.nii.gz` (13,091,561 bytes) and `.../Retardance/Slice_001_EnR_hdr.nii.gz` | PS-OCT en-face reflectivity and retardance of slice 1, scanned and planned: one subject (donor `Moe`, from the folder) | header and the first voxel of each | 32 MiB (asserted on the sum) | 524,292 |
+| `test_cmc_plan_remote` (`tests/test_micr_end_to_end.py`, Task 11) | `CMC/Derivatives/Moe/PS-OCT/Enface/Registration/Reflectivity/Slice_001_EnRef_hdr.nii.gz`, `.../Retardance/Slice_001_EnR_hdr.nii.gz`, `.../Orientation/Slice_001_EnAO_hdr.nii.gz` (14,924,392 bytes), `.../Cross/Slice_001_EnCr_hdr.nii.gz` (2,618,514 bytes), `CMC/Derivatives/Moe/PS-OCT/Zarr/Moe_Slice_051.ome.zarr` and `axonal_connectomics/deskewed/H17_PO10_S5_20250417/exaSPIM.zarr/Pos0` | one en-face NIfTI per contrast, the PS-OCT store and one exaSPIM position, given as `remote` to `POST /scan` and planned through the API: 4 `OCT` entries to convert (one subject), 2 references | discovery probes, NIfTI headers, store metadata (every `ByteCounter` of the run summed) | 32 MiB | 1,092,042 (12 counters) |
 | `test_cmc_enface_nifti_header` | `CMC/Derivatives/Moe/PS-OCT/Enface/Registration/Retardance/Slice_001_EnR_hdr.nii.gz` (14,011,625 bytes) | PS-OCT en-face retardance, gzipped NIfTI-1, float32, 11000 x 1 x 8740, units mm | header and the first voxel (gzip from the start) | 1 MiB | 262,146 |
 
 **Real VISoR `acqinfo_metadata.json` key names** (read from the JSON above; values shown only for
@@ -133,6 +149,26 @@ raw tile; VISoR scans along stage x) as the z spacing: 0.96 x 0.96 x 2.5 um, exc
 are not evenly spaced (each page carries a variable-length `MicroManagerMetadata` tag), so counting
 the pages walks the IFD chain: one range read per page (~64 MiB at the 64 KiB file block size).
 `open_remote(url, "tiff")` does that under its byte cap; the network test reads the first page only.
+
+**Task 11 inputs.** `planted_psoct(dest)` writes `dest/H17_250215/` (donor `H17`, date `250215` in the folder
+name):
+
+| File | What it is | Planted |
+|---|---|---|
+| `PS-OCT/Enface/<Reflectivity, Retardance, Orientation, Cross>/Slice_051_1.nii.gz` | the four `psoct_nifti` contrasts (32 x 24 x 4 float32, microns) | `descrip` `Jane Doe 2025-02-15` |
+| `PS-OCT/Volume/Slice_051_retardance.mat` | `psoct_mat` v7.3, 256^3 float32 never written (sparse; no pixel size: the test sets 10 x 10 x 2.5 um as a reviewer would) | `operator` attribute `Jane Doe` |
+| `PS-OCT/raw/Slice_051_Tile_000<1,2>.dat` | raw interferometer tiles (planned `unsupported`, never read) | the bytes `operator=Jane Doe;host=lab-workstation-7;date=2025-02-15;` repeated |
+| `acqinfo_metadata.json` | VISoR-style metadata beside no tile | `operator` `Jane Doe`, `host` `lab-workstation-7`, `date` `20250422` |
+| `PS-OCT/Zarr/H17_Slice_051.ome.zarr` | `ome_zarr` 0.5 (referenced) | array attributes `operator` `Jane Doe`, `note` `annotation secret` |
+
+The end-to-end run adds `planted_ome_tiff` at `confocal/stack.ome.tif` and `planted_svs` at `histology/slide.svs`.
+The leak check reads every name and metadata document under `output/bids` for every `MICR_PLANTED` term, and the
+pixel chunks for every term of 6 or more characters, the SVS label text and the raw tiles' bytes (before and after
+decoding): a 3-4 byte code such as `h17` does turn up by chance in compressed random pixels (it did, in the SVS
+chunk). `tests/test_micr_bids_input.py` (host) uses `ome_zarr` and `planted_ome_tiff` under BIDS names
+(`sub-01_ses-01_sample-brain_XPCT.ome.zarr`, `sub-01_sample-A_SPIM.ome.zarr` with units removed and a sidecar,
+`>u1` uint8 stores, 8-byte PNG and 2-byte JPEG stand-ins). The display-window tests (`test_micr_convert.py`,
+`test_viewer_routes.py`) use tissue values 57..66 (seed 0) on a zero or fill-value (7) background. All synthetic.
 
 ### dcm_qa_xa30 (current)
 
@@ -256,8 +292,10 @@ image, then the script on `w/ezbids/ezBIDS_core.json`.
 ## Leak-test vocabularies
 
 `tests/conftest.py` exports `PLANTED` (the planted values, lowercase), `NATIVE` (lowercased
-`NATIVE_IDENTIFIERS`) and `tokens(text)`, which returns the members of `PLANTED | NATIVE`
-found in the lowercased text by substring (so phrases like `hospital x` and values like
+`NATIVE_IDENTIFIERS`), `MICR_PLANTED` (the microscopy fixtures' planted values and the CMC-like donors and dates:
+`jane doe`, `jdoe@example.org`, `scope-sn-4711`, `2025-02-15`, `250215`, `20250422`, `slide 42 smith`,
+`annotation secret`, `lab-workstation-7`, `h17`, `moe`, `mn27`) and `tokens(text)`, which returns the members of
+`PLANTED | NATIVE | MICR_PLANTED` found in the lowercased text by substring (so phrases like `hospital x` and values like
 `12343@hucheng` are caught). Leak tests assert `not PLANTED & tokens(text)` and
 `not NATIVE & tokens(text)`.
 
@@ -274,6 +312,8 @@ found in the lowercased text by substring (so phrases like `hospital x` and valu
 
 - Host unit tests: `cd aimport && uv run pytest -m "not docker and not docker_offline"`
 - Network tests (CMC bucket, by hand; range reads under each test's byte cap): `cd aimport && uv run pytest -m network`
+- bids-examples: the docker tests download the pinned tarball once into `/tmp/aimport-bids-examples-cache`; mount
+  a host folder there (`-v <cache dir>:/tmp/aimport-bids-examples-cache`) to keep it between runs
 - In the image: `docker run --rm --platform linux/amd64 -v $PWD/aimport:/src brainlife/aimport:dev pytest -m docker /src/tests`
 - Offline: the same with `--network none -m docker_offline`, plus a cache mount holding the xa30 tarball, because
   the fetch cannot download: `-v <cache dir>:/tmp/aimport-dcm-qa-cache` (the tarball is

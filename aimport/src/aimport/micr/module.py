@@ -60,7 +60,7 @@ PSOCT_HINTS = frozenset({"ps-oct", "psoct", "oct", "enface", "reflectivity", "re
 SPIM_HINTS = frozenset({"visor", "exaspim", "spim", "lightsheet", "light-sheet"})
 FORMAT_NAMES = {"ome-zarr": "OME-Zarr", "ome-tiff": "OME-TIFF", "tiff": "TIFF", "visor": "VISoR TIFF",
                 "svs": "SVS", "czi": "CZI", "nd2": "ND2", "lif": "LIF", "nifti": "NIfTI", "mat": "MATLAB",
-                "raw-psoct": "raw PS-OCT", "unsupported": "microscopy file"}
+                "raw-psoct": "raw PS-OCT", "unsupported": "microscopy file", "png": "PNG"}
 _UNIT_TEXT = {"um": "µm", "mm": "mm", "nm": "nm"}
 _POS_DIR = re.compile(r"(?i)(^|[_\-.])pos\d+$")
 
@@ -322,8 +322,38 @@ def scan_records(input_dir: Path, claim: Claim, found: list[Found] | None,
         if error and error not in (RAW_REASON, UNREADABLE_REASON):
             error = _clean_error(error, terms)
         rec.update(facts=_facts_dict(facts), info=info, error=error, terms=sorted(terms))
+        car = None if g.remote else bids_sidecar_pixel_size(input_dir, where)
+        if car:
+            rec["bids_pixel_size"] = car
         records.append(rec)
     return records
+
+
+SIDECAR_UNITS = frozenset({"mm", "um", "nm"})
+
+
+def bids_sidecar_pixel_size(input_dir: Path, where: str) -> dict | None:
+    """PixelSize and PixelSizeUnits of the input's own BIDS sidecar (sub-01_sample-A_SPIM.json beside
+    sub-01_sample-A_SPIM.ome.zarr), when both are valid: 2 or 3 positive numbers and mm, um or nm. Nothing else of
+    the sidecar is read or kept (it is never copied: the writer makes the output's own)."""
+    if not names.bids_name(where):
+        return None
+    rel = PurePosixPath(where)
+    path = Path(input_dir) / rel.parent / (names._EXT.sub("", rel.name) + ".json")
+    try:
+        if path.is_symlink() or not path.is_file() or path.stat().st_size > 1_000_000:
+            return None
+        doc = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    if not isinstance(doc, dict):
+        return None
+    size, units = doc.get("PixelSize"), doc.get("PixelSizeUnits")
+    if units not in SIDECAR_UNITS or not isinstance(size, list) or len(size) not in (2, 3):
+        return None
+    if any(isinstance(v, bool) or not isinstance(v, (int, float)) or not math.isfinite(v) or v <= 0 for v in size):
+        return None
+    return {"size": [float(v) for v in size], "units": units}
 
 
 _QUOTED = re.compile("'[^']*'|\"[^\"]*\"")
@@ -347,8 +377,14 @@ def load_records(work: Path) -> list[dict]:
 # --- plan ---------------------------------------------------------------------------------------
 
 
+BIDS_NAME_REASON = "the input's BIDS name"
+
+
 def _suffix(rec: dict, hints: set[str]) -> tuple[str | None, str]:
     facts, info = rec["facts"], rec.get("info") or {}
+    bids = names.bids_name(_where(rec)) if "rel" in rec else None
+    if bids:
+        return bids[1], BIDS_NAME_REASON
     if facts.get("contrast") or hints & PSOCT_HINTS:
         return "OCT", "PS-OCT contrast or name"
     if rec["family"] == "visor" or hints & SPIM_HINTS:
@@ -493,6 +529,58 @@ def _input_label(where: str, prefix: str) -> str | None:
     return None
 
 
+def _terms_but_bids_labels(records: list[dict], wheres: list[str]) -> set[str]:
+    """Every record's terms except the entity labels of the input's own BIDS names (sub-01_sample-brain_XPCT),
+    which are terms only because a path word is one. Donors stay; a label that is a term from anywhere else
+    (metadata, another path word, a donor or a date) is in the result."""
+    labels: set[str] = set()
+    for rec, where in zip(records, wheres):
+        bids = names.bids_name(where) if "url" not in rec else None
+        if bids:
+            labels |= {v.lower() for k, v in bids[0].items() if k != "sub"}
+    out: set[str] = set()
+    for rec, where in zip(records, wheres):
+        terms = set(rec.get("terms") or [])
+        if "url" not in rec:
+            own = names.path_terms([where, *(rec.get("members") or [])])
+            terms -= {t for t in own if t.lower() in labels}
+        if rec["facts"].get("donor"):
+            terms.add(rec["facts"]["donor"])
+        out |= terms
+    return out
+
+
+def kept_bids_labels(records: list[dict]) -> set[str]:
+    """The sample labels of the input's own BIDS names (sample-brain) that are kept (lowercase): each is a term
+    only because a path word is one, and in no other term (metadata, another path word, a donor, a date)."""
+    wheres = [_where(r) for r in records]
+    others = _terms_but_bids_labels(records, wheres)
+    out: set[str] = set()
+    for rec, where in zip(records, wheres):
+        bids = names.bids_name(where) if "rel" in rec else None
+        label = bids[0].get("sample") if bids else None
+        if label and _own_bids_label(label, others):
+            out.add(label.lower())
+    return out
+
+
+def record_terms(records: list[dict]) -> set[str]:
+    """Every record's terms, without the kept labels of the input's own BIDS names (they name the output)."""
+    kept = kept_bids_labels(records)
+    terms: set[str] = set()
+    for rec in records:
+        terms |= {t for t in rec.get("terms") or [] if t.lower() not in kept}
+    return terms
+
+
+def _own_bids_label(label: str, terms: set[str]) -> bool:
+    """A label of the input's own BIDS name kept: usable against every other term, and in none of them."""
+    from ..planner import _usable
+
+    low = label.lower()
+    return _usable(label, terms) and not any(low in t.lower() for t in terms if isinstance(t, str))
+
+
 def _stain(rec: dict) -> str | None:
     nm = rec["facts"].get("channel_nm")
     if nm:
@@ -509,9 +597,7 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
     from ..planner import _check_nameable, _usable, check_pixel_size
     from .reference import layout_refusal
 
-    terms: set[str] = set()
-    for rec in records:
-        terms |= set(rec.get("terms") or [])
+    terms = record_terms(records)
     run = uuid.uuid4().hex
     mp = ModulePlan()
 
@@ -553,7 +639,9 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
         seen = ses_seen[subject_idx[o]]
         if raw not in seen:
             n = len(seen)
-            seen[raw] = (raw if _usable(raw, terms) else str(n + 1), n)
+            # a plain short number (ses-01) is kept even when it is also a term (the donor sub-01 is one)
+            keep = _usable(raw, terms) or (raw.isdigit() and len(raw) < 6 and _usable(raw, terms - {raw}))
+            seen[raw] = (raw if keep else str(n + 1), n)
         session_of.append(seen[raw])
 
     # samples: slice<NNN>, else the input's sample- label, else 1, 2, ... per subject
@@ -613,6 +701,9 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
         n_files = max(1, len(rec.get("members") or []))
         output = int(_level0_bytes(info) * n_files * CONVERT_OVERHEAD) if write_mode == "convert" else 0
         spatial, sizes, units = pixel_size_of(info)
+        car = rec.get("bids_pixel_size")
+        if car and (sizes is None or units is None) and len(car["size"]) == len(spatial):
+            sizes, units = list(car["size"]), car["units"]  # the input's own sidecar: a source value
         entries.append(PlanEntry(
             id=f"m{i}-sub{subject_idx[o]}-ses{session_idx}", series_idx=MICR_INDEX_BASE + i,
             subject_idx=subject_idx[o], session_idx=session_idx, subject=subject_ids[o], session=session,
@@ -717,10 +808,7 @@ class MicrModule:
         (work / RECORDS_FILE).write_text(json.dumps(records, indent=1))
 
     def terms(self, work: Path) -> set[str]:
-        terms: set[str] = set()
-        for rec in load_records(work):
-            terms |= set(rec.get("terms") or [])
-        return terms
+        return record_terms(load_records(work))
 
     def plan(self, work: Path, key: "PseudonymKey", existing: set[str], client: "LLMClient | None",
              schema: "Schema", target: str) -> ModulePlan:

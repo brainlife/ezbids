@@ -343,3 +343,46 @@ def visor_tile(dest_dir: Path, acqinfo: dict | None = None) -> Path:
     }
     (dest_dir / "acqinfo_metadata.json").write_text(json.dumps(info))
     return tile
+
+
+# --- Task 11: the end-to-end PS-OCT set ---
+
+PSOCT_FOLDERS = ("Reflectivity", "Retardance", "Orientation", "Cross")  # one per PSOCT_CONTRASTS entry
+PLANTED_PSOCT_DESCRIP = "Jane Doe 2025-02-15"
+PLANTED_PSOCT_ACQINFO = {"operator": "Jane Doe", "host": "lab-workstation-7", "date": "20250422",
+                         "pixel_size": 10.0, "z_step": 2.5}
+PLANTED_RAW = b"operator=Jane Doe;host=lab-workstation-7;date=2025-02-15;"
+
+
+def planted_psoct(dest: Path) -> Path:
+    """A synthetic PS-OCT set under ``dest/H17_250215/`` (donor H17, date 250215 in the folder name):
+
+    - ``PS-OCT/Enface/<Contrast>/Slice_051_1.nii.gz``: the four contrasts (``psoct_nifti``, microns,
+      ``descrip`` "Jane Doe 2025-02-15");
+    - ``PS-OCT/Volume/Slice_051_retardance.mat``: a v7.3 retardance volume (``psoct_mat``, sparse
+      64 MiB) with an ``operator`` "Jane Doe" attribute;
+    - ``PS-OCT/raw/Slice_051_Tile_000<k>.dat``: two raw interferometer tiles (bytes of ``PLANTED_RAW``);
+    - ``acqinfo_metadata.json``: an ``operator``, ``host`` and ``date`` beside numeric values;
+    - ``PS-OCT/Zarr/H17_Slice_051.ome.zarr``: an NGFF 0.5 / Zarr v3 store (``ome_zarr``) whose array
+      attributes plant ``operator`` "Jane Doe" and ``note`` "annotation secret".
+
+    Returns ``dest/H17_250215``. Every planted value is in conftest ``MICR_PLANTED``.
+    """
+    import json
+
+    root = Path(dest) / "H17_250215"
+    octd = root / "PS-OCT"
+    for contrast, folder in zip(PSOCT_CONTRASTS, PSOCT_FOLDERS):
+        psoct_nifti(octd / "Enface" / folder / "Slice_051_1.nii.gz", contrast, descrip=PLANTED_PSOCT_DESCRIP)
+    psoct_mat(octd / "Volume" / "Slice_051_retardance.mat", v73=True, operator="Jane Doe")
+    for k in (1, 2):
+        tile = octd / "raw" / f"Slice_051_Tile_000{k}.dat"
+        tile.parent.mkdir(parents=True, exist_ok=True)
+        tile.write_bytes(PLANTED_RAW * 64)
+    (root / "acqinfo_metadata.json").write_text(json.dumps(PLANTED_PSOCT_ACQINFO))
+    store = ome_zarr(octd / "Zarr" / "H17_Slice_051.ome.zarr", "0.5")
+    for lvl in ("0", "1"):
+        doc = json.loads((store / lvl / "zarr.json").read_text())
+        doc["attributes"] = {"operator": "Jane Doe", "note": "annotation secret"}
+        (store / lvl / "zarr.json").write_text(json.dumps(doc))
+    return root

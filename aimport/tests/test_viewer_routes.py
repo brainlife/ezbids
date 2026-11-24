@@ -1047,8 +1047,9 @@ def test_reference_window_level_and_nan(tmp_path, monkeypatch):
             return [tuple(layer["shaderControls"]["normalized"]["range"]) for layer in decoded_state(loc)["layers"]]
 
         w = windows()
-        want0 = window_of(zarr.open_array(str(store / "1"), mode="r")[0], "float32")
-        want1 = window_of(zarr.open_array(str(store / "0"), mode="r")[1], "float32")
+        level1, level0 = (zarr.open_array(str(store / lvl), mode="r") for lvl in ("1", "0"))
+        want0 = window_of(level1[0], "float32", level1.fill_value)  # the fill value (0) is background
+        want1 = window_of(level0[1], "float32", level0.fill_value)
         assert reads == ["1", "0"]
         assert w[0] == pytest.approx((want0["start"], want0["end"]))
         assert w[1] == pytest.approx((want1["start"], want1["end"]))
@@ -1066,3 +1067,29 @@ def test_reference_window_level_and_nan(tmp_path, monkeypatch):
         reads.clear()
         windows()
         assert reads[0] == "1"
+
+
+@pytest.mark.parametrize("background", [0, 7])
+def test_reference_window_ignores_background(tmp_path, monkeypatch, background):
+    """A channel whose tissue sits at 57..66 on a background (exact 0, or the arrays' fill_value; as CMC ch1) is
+    windowed on the tissue, not washed out by a 0..66 window."""
+    import numpy as np
+    import zarr
+
+    inp = tmp_path / "in"
+    store = ome_zarr(inp / STORE, "0.5")
+    for level in ("0", "1"):
+        arr = zarr.open_array(str(store / level), mode="r+")
+        data = np.full(arr.shape, background, dtype=arr.dtype)
+        tissue = (..., slice(arr.shape[-2] // 4, 3 * arr.shape[-2] // 4), slice(arr.shape[-1] // 4, 3 * arr.shape[-1] // 4))
+        data[tissue] = np.random.default_rng(0).integers(57, 67, data[tissue].shape)
+        arr[...] = data
+        doc = json.loads((store / level / "zarr.json").read_text())
+        doc["fill_value"] = background
+        (store / level / "zarr.json").write_text(json.dumps(doc))
+    with _executed_micr(inp, tmp_path, monkeypatch) as c:
+        ref = next(e for e in _entries(c).values() if e["write_mode"] == "reference")
+        loc = viewer_client(c).get(f"/viewer/entry/{ref['id']}", follow_redirects=False).headers["location"]
+        for layer in decoded_state(loc)["layers"]:
+            lo, hi = layer["shaderControls"]["normalized"]["range"]
+            assert 57 <= lo < hi <= 66, (lo, hi)

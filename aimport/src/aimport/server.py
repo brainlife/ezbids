@@ -54,7 +54,7 @@ from .ancillary import (
 )
 from .deface import deface
 from . import modality
-from .ezbids_runner import CoreResult, has_files, parse_core, run_ezbids, stage_input
+from .ezbids_runner import CoreResult, EzbidsError, has_files, parse_core, run_ezbids, stage_input
 from .modality import (
     CLAIM_FILE,
     EMPTY_CORE,
@@ -84,6 +84,8 @@ DONE = ("validated", "invalid")  # executed: the output matches the plan (invali
 MAX_ISSUES = 200  # validator issues listed in the status (the counts are always complete)
 MAX_EVENTS = 500
 OUTPUT_STATE = "output-state.json"
+# preprocess.sh's error when the staged input has no MRI, PET or MEG file (only tables and text)
+EZBIDS_NO_IMAGING = "Could not find any MRI, PET, or MEG imaging files"
 # subject_idx -> the subject ID the key records for that subject's original (pseudonyms only: the originals
 # stay in the key), so an edited subject ID can be recorded in the key for the right person on execute
 SUBJECT_IDS = "subject-ids.json"
@@ -539,14 +541,21 @@ class Server:
             # claimed input is never staged (a module reads it in place); phase-1 calls stay unchanged
             staged = (stage_input(self.input_dir, self.work, exclude=roots) if roots
                       else stage_input(self.input_dir, self.work))
-            if any(c.roots or c.remote for c in claims.values()) and not has_files(staged):
+            claimed = any(c.roots or c.remote for c in claims.values())
+            if claimed and not has_files(staged):
                 _write_json(staged / "ezBIDS_core.json", EMPTY_CORE)  # nothing left for ezBIDS
             else:
                 self.set_status("scanning", "running ezBIDS")
                 # ezBIDS's output stays on this computer, in the work folder: it holds original paths and
                 # names, so a failure names the file instead of quoting it
-                with open(self.ezbids_log, "w", encoding="utf-8") as log_file:
-                    run_ezbids(staged, log=lambda line: print(line, file=log_file, flush=True))
+                try:
+                    with open(self.ezbids_log, "w", encoding="utf-8") as log_file:
+                        run_ezbids(staged, log=lambda line: print(line, file=log_file, flush=True))
+                except EzbidsError:
+                    # only tables and text are left beside the claimed images (a BIDS micr dataset): no MRI
+                    if not (claimed and EZBIDS_NO_IMAGING in self.ezbids_log.read_text(errors="replace")):
+                        raise
+                    _write_json(staged / "ezBIDS_core.json", EMPTY_CORE)
             core = parse_core(staged / "ezBIDS_core.json")
             hidden = claim_terms(claims.values())
             for m in mods:
@@ -1247,7 +1256,8 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         return attrs
 
     def reference_windows(rel: str, paths: list[str], axes: list, dtype: Any, n: int) -> list[dict | None]:
-        """Per channel, the 0.5/99.5 percentiles of the finite values (NaN and ±inf ignored) of the pyramid level
+        """Per channel, the 0.5/99.5 percentiles of the finite values (NaN, ±inf and the background - the fill
+        value, and 0 when it covers at least a fifth of the sample - ignored) of the pyramid level
         whose largest x/y size is closest to QA_WINDOW_TARGET_SIDE among those whose decoded size fits
         QA_WINDOW_MAX_BYTES (so a coarser one when a finer does not fit); a channel that is all NaN or constant
         there is taken from the next finer level that fits, else None (the written default stays). Read errors
@@ -1257,6 +1267,7 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         chunks = chunk_map() or {}
         xy = [axes.index(a) for a in ("x", "y") if a in axes]
         fits: list[tuple[int, int]] = []  # (level, largest x/y size) of the levels within the cap
+        fills: dict[int, Any] = {}  # each level's fill_value: background, never part of the window
         for i, path in enumerate(paths):
             meta = (chunks.get("arrays") or {}).get(f"{rel}/{path}")
             level = srv.out / rel / path
@@ -1267,6 +1278,7 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
                 size = micr_reference._decoded_bytes(meta, doc, len(list(micr_reference.chunk_keys(meta))))
             except (ValueError, KeyError, TypeError):
                 continue
+            fills[i] = doc.get("fill_value")
             if size <= QA_WINDOW_MAX_BYTES:
                 fits.append((i, max((int(meta["shape"][k]) for k in xy), default=0)))
         if not fits:
@@ -1281,7 +1293,7 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
                     read[i] = micr_reference.read_array(chunks, srv.out, f"{rel}/{paths[i]}", srv.input_dir,
                                                         QA_WINDOW_MAX_BYTES)
                 values = read[i].take(k, axis=axes.index("c")) if "c" in axes else read[i]
-                out[k] = window_or_none(values, dtype)
+                out[k] = window_or_none(values, dtype, fills.get(i))
                 if out[k] is not None:
                     break
         return out

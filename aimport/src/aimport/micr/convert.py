@@ -398,7 +398,7 @@ def _write_group(dest: Path, version: str, attrs: dict) -> None:
 
 def _windows(dest: Path, info: ImageInfo, level: int) -> list[dict[str, float]]:
     """Display window per channel: the 0.5/99.5 percentiles of a strided sample of the coarsest level
-    (at most WINDOW_SAMPLES values per channel); min/max is the dtype's range (data range for floats)."""
+    (at most WINDOW_SAMPLES values per channel; background excluded, see ``foreground``); min/max is the dtype's range (data range for floats)."""
     import zarr
 
     z = zarr.open_array(str(dest / str(level)), mode="r")
@@ -411,17 +411,48 @@ def _windows(dest: Path, info: ImageInfo, level: int) -> list[dict[str, float]]:
         step = max(1, math.ceil((math.prod(rest) / WINDOW_SAMPLES) ** (1 / max(1, len(rest)))))
         for a in info.axes:
             index.append(c if a == "c" else slice(None, None, step))
-        out.append(window_of(np.asarray(z[tuple(index)]), dtype))
+        out.append(window_of(np.asarray(z[tuple(index)]), dtype, z.fill_value))
     return out
 
 
-def window_of(values: Any, dtype: Any) -> dict[str, float]:
-    """The display window of one channel's values: start/end are the WINDOW_PERCENTILES of the finite values;
-    min/max is the dtype's range (the data range for floats). Shared with the QA viewer, which uses it for a
-    reference whose source had no window."""
-    dtype = np.dtype(dtype)
+BACKGROUND_ZERO_FRACTION = 0.2  # exact zeros are background when at least this share of the sample
+
+
+def _number(value: Any) -> float | None:
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return None  # "NaN" parses (NaN is already dropped); other strings and None do not
+    return v if math.isfinite(v) else None
+
+
+def _finite(values: Any) -> np.ndarray:
     sample = np.asarray(values, dtype=np.float64).ravel()
-    sample = sample[np.isfinite(sample)]
+    return sample[np.isfinite(sample)]
+
+
+def foreground(sample: np.ndarray, fill_value: Any = None) -> np.ndarray:
+    """The finite sample without its background: values equal to the array's fill_value, and exact 0 when at
+    least BACKGROUND_ZERO_FRACTION of the sample is 0 (tissue on a zero margin). When that leaves fewer than two
+    different values (a mask, an empty field), the sample is returned whole."""
+    keep = np.ones(sample.shape, dtype=bool)
+    fill = _number(fill_value)
+    if fill is not None:
+        keep &= sample != fill
+    if sample.size and np.count_nonzero(sample == 0) >= BACKGROUND_ZERO_FRACTION * sample.size:
+        keep &= sample != 0
+    rest = sample[keep]
+    if rest.size == 0 or rest.min() == rest.max():
+        return sample
+    return rest
+
+
+def window_of(values: Any, dtype: Any, fill_value: Any = None) -> dict[str, float]:
+    """The display window of one channel's values: start/end are the WINDOW_PERCENTILES of the finite values
+    without the background (``foreground``); min/max is the dtype's range (the data range for floats). Shared
+    with the QA viewer, which uses it for a reference whose source had no window."""
+    dtype = np.dtype(dtype)
+    sample = foreground(_finite(values), fill_value)
     if sample.size == 0:
         return {"min": 0.0, "max": 1.0, "start": 0.0, "end": 1.0}
     lo, hi = (float(v) for v in np.percentile(sample, WINDOW_PERCENTILES))
@@ -432,14 +463,13 @@ def window_of(values: Any, dtype: Any) -> dict[str, float]:
     return {"min": mn, "max": mx, "start": lo, "end": hi if hi > lo else lo + 1.0}
 
 
-def window_or_none(values: Any, dtype: Any) -> dict[str, float] | None:
+def window_or_none(values: Any, dtype: Any, fill_value: Any = None) -> dict[str, float] | None:
     """window_of when the values hold at least two different finite numbers (NaN and ±inf ignored); None for
     an all-NaN or constant channel (the caller tries another level, or keeps its default)."""
-    sample = np.asarray(values, dtype=np.float64).ravel()
-    sample = sample[np.isfinite(sample)]
+    sample = _finite(values)
     if sample.size == 0 or sample.min() == sample.max():
         return None
-    return window_of(sample, dtype)
+    return window_of(sample, dtype, fill_value)
 
 
 # --- tile groups --------------------------------------------------------------------------------
