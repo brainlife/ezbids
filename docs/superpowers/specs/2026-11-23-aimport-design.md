@@ -1,7 +1,8 @@
-# Agentic data importer for brainlife.io — design
+# brainlife.io/aimport — agentic data importer — design
 
 Date: 2026-11-23 (revised 2026-11-24)
 Owner: Franco Pestilli
+Name: brainlife.io/aimport — CLI `bl aimport`, web page at `/aimport`, engine image `brainlife/aimport`
 
 ## Intent
 
@@ -25,7 +26,7 @@ existing upload path together on the user's machine.
   phases (below).
 - Two targets: a BIDS dataset (uploaded with the existing `bl bids upload` path) or
   brainlife datatype objects (uploaded with the `bl data upload` path).
-- One engine, two front ends: `bl import` on the command line, an Import page in
+- One engine, two front ends: `bl aimport` on the command line, an aimport page at `/aimport` in
   brainlife-lite.
 - The agent proposes the whole mapping; a person approves it before any output is
   produced or uploaded. Approval can be one step for a whole dataset.
@@ -71,7 +72,7 @@ Each phase ships as its own set of PRs. Phase 1 is the one to plan in detail now
   patterns without approval. The new dependencies named here (autobidsify, the
   ezBIDS handler toolchain in a local image) are approved as part of this design.
 - The workspace rule "new interface features are not in scope" has an exception for
-  the brainlife-lite Import page, approved by Franco on 2026-11-23.
+  the brainlife-lite aimport page, approved by Franco on 2026-11-23.
 - brainlife-lite conventions in its `AGENTS.md` (folder layout, one job per file,
   tests). NiiVue is pinned there at `1.0.0-rc.16`; brainlife-lite already has a Zarr
   thumbnail and maps S3 Zarr to datatypes (`MapS3DataToDatatypeDialog.tsx`).
@@ -100,12 +101,12 @@ Each phase ships as its own set of PRs. Phase 1 is the one to plan in detail now
 
 ### Where the code goes (phase 1: three PRs, in order)
 
-1. **ezbids** — the engine, in a new `importer/` directory, plus a local Docker image
+1. **ezbids** — the engine, in a new `aimport/` directory, plus a local Docker image
    built on the existing `handler/Dockerfile` toolchain (dcm2niix, pydeface,
    quickshear, ezBIDS core) with autobidsify and the v1.11.2 BIDS schema and validator
    added.
-2. **cli** — `bl import`, which runs the engine image and drives it.
-3. **brainlife-lite** — an Import feature (`src/features/Import/`) that talks to the
+2. **cli** — `bl aimport`, which runs the engine image and drives it.
+3. **brainlife-lite** — an aimport feature (`src/features/Aimport/`) that talks to the
    engine running on the user's machine.
 
 ### Engine stages
@@ -179,21 +180,21 @@ read-only and a separate work folder for intermediates and output.
 
 ### Front ends
 
-- **CLI:** `bl import <folder> --project <id> [--target bids|datatypes] [--ui]`.
+- **CLI:** `bl aimport <folder> --project <id> [--target bids|datatypes] [--ui]`.
   Without `--ui` it prints the plan as a table and asks for approval in the terminal;
-  with `--ui` it opens the brainlife-lite Import page (production address by default,
+  with `--ui` it opens the brainlife-lite aimport page (production address by default,
   configurable; tests use a local dev server).
 - **Engine API:** a small HTTP API on `127.0.0.1` only, guarded by a random per-run
   token. Both front ends use it: get plan, edit plan, approve, run, stream progress,
   fetch previews.
 - **Web page:** connects to the local API (port and token handed over by
-  `bl import --ui`), shows the plan with NiiVue previews (including before/after
+  `bl aimport --ui`), shows the plan with NiiVue previews (including before/after
   defacing) and the same accept/edit/exclude controls. Image data reaches the browser
   only from the local engine.
 
 ### Release
 
-The engine image is published under a fixed version tag by maintainers after merge;
+The engine image (`brainlife/aimport`) is published under a fixed version tag by maintainers after merge;
 each `bl` release pins the engine tag it works with. Nothing in this work deploys or
 publishes.
 
