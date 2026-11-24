@@ -1,0 +1,144 @@
+/* The desktop app's look, matched to brainlife-lite (src/themeMui.ts) and the ezBIDS web converter
+   (ui/src/theme.css on master): DM Sans, light 300/500 weights, primary #3d6a92, text #2D3748 / #718096,
+   grey[100] page background, light grey[50] navigation, white panels with thin borders.
+   Element Plus reads these variables, so its buttons, inputs, tables, steps and dialogs follow. */
+/* html:root outranks the :root blocks Element Plus loads per component, after this file */
+html:root {
+    --aside-w: 260px;
+    --app-bg: #f5f5f5;
+    --nav-bg: #fafafa;
+    --panel-bg: #ffffff;
+    --panel-muted: #f7f9fc;
+    --panel-radius: 12px;
+    --line: #e2e8f0;
+    --ink: #2d3748;
+    --ink-2: #5f6b7c;
+    --ink-3: #718096;
+    --code-bg: #2d3748;
+
+    --el-font-family: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    --el-font-weight-primary: 500;
+
+    --el-color-primary: #3d6a92;
+    --el-color-primary-light-1: #50799d;
+    --el-color-primary-light-2: #6488a8;
+    --el-color-primary-light-3: #7797b3;
+    --el-color-primary-light-4: #8ba6be;
+    --el-color-primary-light-5: #9eb4c8;
+    --el-color-primary-light-6: #b1c3d3;
+    --el-color-primary-light-7: #c5d2de;
+    --el-color-primary-light-8: #d8e1e9;
+    --el-color-primary-light-9: #ecf0f4;
+
+    /* brainlife-lite status colours, darkened where white text sits on them */
+    --el-color-success: #4c8656;
+    --el-color-success-light: #dfeee1;
+    --el-color-success-lighter: #eff6f0;
+    --el-color-warning: #b8913a;
+    --el-color-warning-light: #f4eedc;
+    --el-color-warning-lighter: #faf6ed;
+    --el-color-danger: #c4434a;
+    --el-color-danger-light: #f6dbdc;
+    --el-color-danger-lighter: #faeded;
+    --el-color-error: #c4434a;
+    --el-color-error-light: #f6dbdc;
+    --el-color-error-lighter: #faeded;
+    --el-color-info: #718096;
+    --el-color-info-light: #e2e8f0;
+    --el-color-info-lighter: #f1f4f8;
+
+    --el-text-color-primary: #2d3748;
+    --el-text-color-regular: #4a5568;
+    --el-text-color-secondary: #718096;
+    --el-text-color-placeholder: #a0aec0;
+    --el-border-color-base: #d7dde5;
+    --el-border-color-light: #e2e8f0;
+    --el-border-color-lighter: #edf1f5;
+    --el-border-color-extra-light: #f4f6f9;
+    --el-bg-color: #f7f9fc;
+    --el-border-radius-base: 6px;
+    --el-border-radius-small: 4px;
+    --el-box-shadow-light: 0 1px 3px rgba(45, 55, 72, 0.08);
+}
+
+body {
+    background: var(--app-bg);
+    color: var(--ink);
+}
+
+/* lite type: light weights, headings are not bold */
+h1,
+h2,
+h3,
+h4 {
+    font-weight: 500;
+    letter-spacing: -0.01em;
+}
+
+/* buttons: flat, no shouting caps, lite's medium weight */
+.el-button {
+    font-family: inherit;
+    font-weight: 500;
+}
+
+/* the step bar's Back button (type info): outlined, like brainlife-lite's secondary actions */
+.page-action .el-button--info {
+    /* Element Plus 1.2 writes typed buttons' colours as inline variables, so these need !important */
+    --el-button-bg-color: #fff !important;
+    --el-button-border-color: var(--el-border-color-base) !important;
+    --el-button-text-color: var(--ink) !important;
+    --el-button-hover-bg-color: var(--el-color-primary-light-9) !important;
+    --el-button-hover-border-color: var(--el-color-primary-light-7) !important;
+    --el-button-hover-text-color: var(--el-color-primary) !important;
+    --el-button-active-bg-color: var(--el-color-primary-light-8) !important;
+    --el-button-active-border-color: var(--el-color-primary-light-6) !important;
+}
+
+/* tables: header in lite's muted surface, quiet rows */
+.el-table {
+    --el-table-header-bg-color: var(--panel-muted);
+    --el-table-header-text-color: var(--ink-2);
+    --el-table-row-hover-bg-color: var(--el-color-primary-light-9);
+    --el-table-border-color: var(--line);
+}
+.el-table th.el-table__cell {
+    font-weight: 500;
+}
+
+/* cards: thin border, no shadow, lite's rounded panel */
+.el-card {
+    border-radius: var(--panel-radius);
+    border-color: var(--line);
+}
+.el-card.is-always-shadow,
+.el-card.is-hover-shadow:hover {
+    box-shadow: var(--el-box-shadow-light);
+}
+
+.el-dialog {
+    border-radius: var(--panel-radius);
+}
+
+.el-alert {
+    border-radius: 8px;
+}
+
+.el-tag {
+    border-radius: 999px;
+}
+
+a {
+    color: var(--el-color-primary);
+}
+
+/* the step bar's Re-Upload button (type warning): brainlife-lite's tonal warning, readable text */
+.page-action .el-button--warning {
+    --el-button-bg-color: var(--el-color-warning-light) !important;
+    --el-button-border-color: #e4d4a7 !important;
+    --el-button-text-color: #6b4f10 !important;
+    --el-button-hover-bg-color: #efe5ca !important;
+    --el-button-hover-border-color: var(--el-color-warning) !important;
+    --el-button-hover-text-color: #6b4f10 !important;
+    --el-button-active-bg-color: #e9ddb9 !important;
+    --el-button-active-border-color: var(--el-color-warning) !important;
+}
