@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
+from functools import lru_cache
 
 from aimport.scrub import redact
 
@@ -20,7 +21,7 @@ SAFE_WORDS: tuple[str, ...] = (
 )
 
 SAFE_PATTERNS: tuple[re.Pattern, ...] = tuple(
-    re.compile(p, re.I)
+    re.compile(p, re.I | re.A)  # ASCII only: no non-ASCII digits, no case folds such as "ſ" or the Kelvin sign
     for p in (
         r"^\d{1,6}$",
         r"^(Stimulus|Response)/\s*[SR]\s*\d{1,4}$",
@@ -48,13 +49,38 @@ def normalise(text: str) -> str:
     return " ".join(str(text).split()).casefold()
 
 
+SEPARATORS = re.compile(r"[_.\-/+]+")
+_NON_ALNUM = re.compile(r"[\W_]+")
+
+
+@lru_cache(maxsize=8)
+def _squashed_terms(terms: frozenset[str]) -> frozenset[str]:
+    return frozenset(q for q in (_NON_ALNUM.sub("", t).casefold() for t in terms) if len(q) >= 3)
+
+
+def holds_term(text: str, terms: set[str]) -> bool:
+    """True when the text holds a run term, also with separators in either written differently.
+
+    Checked: the text itself; the text with ``_ . - / +`` runs as spaces (``Jane_Doe``, ``Jane-Doe-Fp1``);
+    and the whole text without separators against each term without separators (``150225`` for
+    ``15.02.25``, ``JaneDoe`` for ``Jane Doe``).
+    """
+    s = str(text)
+    if redact(s, terms) != s:
+        return True
+    spaced = SEPARATORS.sub(" ", s)
+    if redact(spaced, terms) != spaced:
+        return True
+    return _NON_ALNUM.sub("", s).casefold() in _squashed_terms(frozenset(terms))
+
+
 def _keep(text: str, terms: set[str]) -> bool:
     s = str(text).strip()
-    return is_safe(s) and redact(s, terms) == s
+    return is_safe(s) and not holds_term(s, terms)
 
 
 def code(descriptions_by_recording: list[list[str]], terms: set[str]) -> tuple[dict[str, str], dict[str, str]]:
-    """Map every description to a safe label (kept, stripped) or a code ``E001``, ``E002``, ...
+    """Map every description to a safe label (kept, normalised) or a code ``E001``, ``E002``, ...
 
     Recordings are taken in the order given (sorted record order), descriptions in onset order; codes
     are numbered by first occurrence across the dataset. Matching is on ``normalise(text)``, so one
@@ -70,7 +96,7 @@ def code(descriptions_by_recording: list[list[str]], terms: set[str]) -> tuple[d
             if key in mapping:
                 continue
             if _keep(text, terms):
-                mapping[key] = str(text).strip()
+                mapping[key] = key  # the normalised form: the label never depends on which recording came first
             else:
                 c = f"{CODE_PREFIX}{len(codes) + 1:03d}"
                 mapping[key] = codes[c] = c

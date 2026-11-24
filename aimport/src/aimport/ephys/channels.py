@@ -7,14 +7,14 @@ from __future__ import annotations
 
 import re
 
-from aimport.scrub import redact
+from aimport.ephys.events import holds_term
 
 CHANNEL_NAME_RE = re.compile(r"^[A-Za-z0-9 _.\-+/'()]{1,32}$")
 
 
 def is_kept(name: str, terms: set[str]) -> bool:
     """True when the name is short, plain and holds no run term."""
-    return bool(CHANNEL_NAME_RE.fullmatch(name)) and redact(name, terms) == name
+    return bool(CHANNEL_NAME_RE.fullmatch(name)) and not holds_term(name, terms)
 
 
 def _type_label(ch_type: str) -> str:

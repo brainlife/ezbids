@@ -23,7 +23,8 @@ def test_safe_labels_kept():
     safe = ["Stimulus/S  1", "BAD_ACQ_SKIP", "eyes closed", "Sleep stage N2", "12"]
     mapping, codes = events.code([safe], TERMS)
     assert codes == {}
-    assert [mapping[events.normalise(s)] for s in safe] == safe
+    assert [mapping[events.normalise(s)] for s in safe] == ["stimulus/s 1", "bad_acq_skip", "eyes closed",
+                                                             "sleep stage n2", "12"]
     assert all(events.is_safe(s) for s in safe)
 
 
@@ -47,6 +48,40 @@ def test_safe_word_with_term_coded():
     mapping, codes = events.code([["rest", "eyes open"]], {"rest"})
     assert mapping["rest"] == "E001" and codes == {"E001": "E001"}
     assert mapping["eyes open"] == "eyes open"
+
+
+def test_separator_variants_of_terms_coded():
+    terms = {"Jane Doe"}
+    mapping, codes = events.code([["BAD_JANE_DOE", "Jane_Doe", "jane.doe", "JaneDoe", "BAD_ACQ"]], terms)
+    assert [mapping[k] for k in ("bad_jane_doe", "jane_doe", "jane.doe", "janedoe")] == ["E001", "E002", "E003",
+                                                                                        "E004"]
+    assert mapping["bad_acq"] == "bad_acq"
+    renamed = channels.rename(["Jane-Doe-Fp1", "Jane_Doe", "Fp2"], ["eeg", "eeg", "eeg"], terms)
+    assert renamed == {"Jane-Doe-Fp1": "eeg_001", "Jane_Doe": "eeg_002"}
+
+
+def test_ascii_only_safe_patterns():
+    for text in ("\uff11\uff12", "\u0661\u0662", "ſtart", "marKer".replace("K", "\u212a"), "Stimulus/S \uff11"):
+        assert not events.is_safe(text)
+        assert events.code([[text]], set())[0][events.normalise(text)] == "E001"
+    assert events.is_safe("12") and events.is_safe("START")
+
+
+def test_safe_label_independent_of_order():
+    a, _ = events.code([["Rest"], ["rest"]], set())
+    b, _ = events.code([["rest"], ["Rest"]], set())
+    assert a == b == {"rest": "rest"}
+
+
+def test_term_variants_and_dates_coded():
+    from datetime import date
+
+    from aimport.ephys import headers
+
+    assert events.code([["REST", "rest 2"]], {"rest"})[1] == {"E001": "E001", "E002": "E002"}
+    date_terms = headers._all_forms(date(2025, 2, 15))  # includes 15.02.25 and 250215
+    mapping, codes = events.code([["150225", "250215", "42"]], date_terms)
+    assert mapping["150225"] == "E001" and mapping["250215"] == "E002" and mapping["42"] == "42"
 
 
 def test_counts():
@@ -83,7 +118,13 @@ def test_set_event_names():
             p.set_event_names(bad)
     with pytest.raises(ValueError, match="unknown event code"):
         p.set_event_names({"E001": "fine", "E009": "fine"})
-    assert p.event_names["E001"] == "eyes closed 2"  # a bad edit changes nothing
+    with pytest.raises(ValueError, match="two event codes would share one name"):
+        p.set_event_names({"E002": "Eyes Closed 2"})  # E001 already has that name (case-insensitively)
+    with pytest.raises(ValueError, match="two event codes would share one name"):
+        p.set_event_names({"E001": "go", "E002": "go"})
+    assert p.event_names == {"E001": "eyes closed 2", "E002": "go/no-go+1"}  # a bad edit changes nothing
+    p.set_event_names({"E001": "a", "E002": "eyes closed 2"})  # a swap in one edit is fine
+    assert p.event_names == {"E001": "a", "E002": "eyes closed 2"}
 
 
 def test_plan_event_names_roundtrip(tmp_path):
@@ -117,6 +158,9 @@ def test_patch_event_names(planned, hooks):
     assert r.status_code == 400 and r.json()["detail"] == "event name contains an identifying term"
     assert "smith" not in r.text.lower()
     assert planned.patch("/plan", json={"event_names": {"E002": "a;b"}}).status_code == 400
+    r = planned.patch("/plan", json={"event_names": {"E002": "Eyes Closed"}})
+    assert r.status_code == 400 and r.json()["detail"] == "two event codes would share one name"
+    assert "eyes" not in r.text.lower()
     assert planned.patch("/plan", json={"event_names": ["E002"]}).status_code == 422
     assert planned.get("/plan").json()["event_names"] == {"E001": "eyes closed", "E002": "E002"}
 

@@ -220,6 +220,9 @@ class Plan:
             if not isinstance(v, str) or not EVENT_NAME_RE.fullmatch(v):
                 raise ValueError("an event name is 1 to 40 letters, digits, spaces or _ . / + -, "
                                  "starting with a letter or digit")
+        names = [v.casefold() for v in {**self.event_names, **edits}.values()]
+        if len(set(names)) != len(names):
+            raise ValueError("two event codes would share one name")
         self.event_names.update(edits)
         self.approved = False
 

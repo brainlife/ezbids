@@ -139,7 +139,7 @@ All examples use `T="Authorization: Bearer $AIMPORT_TOKEN"` and `U=http://localh
    word such as `rest` or `target`, ...) holding no identifying term; any other text becomes `E001`,
    `E002`, ... and the original stays in `work/ephys/events.json`, never in the plan, the API or the
    output. A name is 1 to 40 letters, digits, spaces or `_ . / + -`; an unknown code, a bad name or a
-   name holding an identifying term answers 400. The written `trial_type` is the name. Channel names
+   name holding an identifying term (also with `_ . - / +` written differently), or two codes given one name, answers 400. Kept labels are written lowercase. The written `trial_type` is the name. Channel names
    that hold an identifying term (or are not plain, or longer than 32 characters) are renamed
    `<type>_<NNN>`, for example `eeg_002`; 10-20 and sensor names stay.
 
