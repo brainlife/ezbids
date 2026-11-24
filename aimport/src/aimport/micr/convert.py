@@ -477,7 +477,8 @@ def _close(a: float, b: float) -> bool:
 
 
 def check_ome_zarr(dest: Path, sidecar: dict, version: str, shape: Sequence[int] | None = None,
-                   dtype: str | None = None, reference: bool = False) -> None:
+                   dtype: str | None = None, reference: bool = False,
+                   level_factors: Sequence[dict[str, int]] | None = None) -> None:
     """Re-open a written OME-Zarr image and check it; raises NgffCheckError on the first failure.
 
     Checks: group metadata valid for ``version`` (Zarr v3 ``zarr.json`` with ``attributes.ome`` for
@@ -487,7 +488,9 @@ def check_ome_zarr(dest: Path, sidecar: dict, version: str, shape: Sequence[int]
     with the expected shape and dtype; the omero channel count equals the channel axis length.
     ``reference``: a reference dataset's metadata-only store (micr/reference.py), whose pyramid was
     made by another tool: a level's shape may also be the rounded-up division of level 0's. No chunk
-    is read either way.
+    is read either way. ``level_factors``: per level, spatial factors known independently of the
+    written store (a reference's source scales where they agree with its sizes): that level's scale
+    must equal the sidecar's PixelSize times the factor.
     """
     import ngff_zarr as nz
     import zarr
@@ -577,6 +580,10 @@ def check_ome_zarr(dest: Path, sidecar: dict, version: str, shape: Sequence[int]
                     raise _fail("the pixel size in the sidecar does not match the NGFF scale")
             continue
         assert base_shape is not None and base_scale is not None
+        known = level_factors[i] if level_factors is not None and i < len(level_factors) else {}
+        for n, v in zip(names, scale):
+            if n in known and n in expected and not _close(v, expected[n] * known[n]):
+                raise _fail("a pyramid level's scale does not match the pixel size times its factor")
         for k, n in enumerate(names):
             ratio = float(scale[k]) / base_scale[k]
             f = round(ratio)

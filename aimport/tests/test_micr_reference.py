@@ -379,3 +379,178 @@ def test_cmc_psoct_zarr_reference(tmp_path):
     assert counter.total < 2**20, counter
     assert arrays["0"]["source"]["url"].startswith("https://apex-connects.s3.amazonaws.com/CMC/")
     assert _chunk_files(dest) == []
+
+
+# --- fix round 1: plan-time refusal, the term scan, factors, merging ----------------------------------
+
+
+def _scan_plan(inp: Path, work: Path, key, schema, mutate=None):
+    from aimport.micr.module import MicrModule, RECORDS_FILE
+
+    m = MicrModule()
+    claim = m.claim(inp, [])
+    m.scan(inp, claim, work, lambda msg: None)
+    if mutate is not None:
+        records = json.loads((work / RECORDS_FILE).read_text())
+        for rec in records:
+            mutate(rec)
+        (work / RECORDS_FILE).write_text(json.dumps(records))
+    return m.plan(work, key, set(), None, schema, "bids").entries
+
+
+def _reorder_axes(store: Path) -> None:
+    doc = json.loads((store / "zarr.json").read_text())
+    ms = doc["attributes"]["ome"]["multiscales"][0]
+    ms["axes"][0], ms["axes"][1] = ms["axes"][1], ms["axes"][0]  # z, c, y, x: needs a transpose
+    (store / "zarr.json").write_text(json.dumps(doc))
+
+
+def test_plan_refuses_reordered_axes(tmp_path, key, schema):
+    store = ome_zarr(tmp_path / "in" / "s.ome.zarr", "0.5")
+    _reorder_axes(store)
+    (e,) = _scan_plan(tmp_path / "in", tmp_path / "work", key, schema)
+    assert (e.status, e.exclude, e.write_mode) == ("unsupported", True, "")
+    assert e.reason == "OME-Zarr layout not referenceable: axes need reordering"
+    with readers.open_image(store, "ome-zarr") as src:  # and at execute (defence in depth)
+        with pytest.raises(reference.ReferenceRefused, match="axes need reordering"):
+            write_reference(src, {"input": "s.ome.zarr"}, tmp_path / "out" / "x.ome.zarr", src.info)
+
+
+def test_plan_refuses_symlinked_store(tmp_path, key, schema):
+    real = ome_zarr(tmp_path / "elsewhere" / "s.ome.zarr", "0.5")
+    (tmp_path / "in").mkdir()
+    os.symlink(real.parent, tmp_path / "in" / "linked")
+    entries = _scan_plan(tmp_path / "in", tmp_path / "work", key, schema)
+    assert [(e.status, e.reason) for e in entries] in (
+        [], [("unsupported", "OME-Zarr layout not referenceable: the store is reached through a symlink")])
+    # a symlinked array dir inside a real store
+    store = ome_zarr(tmp_path / "in2" / "t.ome.zarr", "0.5")
+    os.rename(store / "1", tmp_path / "lvl1")
+    os.symlink(tmp_path / "lvl1", store / "1")
+    (e,) = _scan_plan(tmp_path / "in2", tmp_path / "work2", key, schema)
+    assert (e.status, e.reason) == ("unsupported", "OME-Zarr layout not referenceable: the store is reached "
+                                                   "through a symlink")
+    assert reference.symlinked(tmp_path / "in2", "t.ome.zarr", ["1"])
+    assert not reference.symlinked(tmp_path / "in2", "t.ome.zarr", ["0"])
+
+
+@pytest.mark.parametrize("change,reason", [
+    ({"zarr_formats": [2, 3]}, "arrays mix Zarr formats"),
+    ({"storage_transformers": True}, "storage transformers"),
+    ({"grids": ["rectilinear", "regular"]}, "irregular chunk grid"),
+    ({"key_encodings": ["custom"]}, "unknown chunk key encoding"),
+    ({"separators": ["|"]}, "unknown chunk key separator"),
+    ({"paths_ok": False}, "a dataset path leaves the store"),
+    ({"axes_identity": False}, "axes need reordering"),
+    ({"symlink": True}, "the store is reached through a symlink"),
+])
+def test_plan_refusal_classes(tmp_path, key, schema, change, reason):
+    """Each layout fact the scan records makes the entry unsupported at planning, with its reason."""
+    ome_zarr(tmp_path / "in" / "s.ome.zarr", "0.5")
+
+    def mutate(rec):
+        rec["info"]["reference_layout"].update(change)
+
+    (e,) = _scan_plan(tmp_path / "in", tmp_path / "work", key, schema, mutate)
+    assert (e.status, e.exclude) == ("unsupported", True)
+    assert e.reason == "OME-Zarr layout not referenceable: " + reason
+    assert reference.layout_refusal({**_good_facts(), **change}) == e.reason
+
+
+def _good_facts():
+    return {"axes_identity": True, "zarr_formats": [3], "grids": ["regular"], "key_encodings": ["default"],
+            "separators": ["/"], "storage_transformers": False, "paths_ok": True, "symlink": False}
+
+
+def test_plan_ok_layout_and_old_records(tmp_path, key, schema):
+    ome_zarr(tmp_path / "in" / "s.ome.zarr", "0.4")
+    (e,) = _scan_plan(tmp_path / "in", tmp_path / "work", key, schema)
+    assert e.write_mode == "reference" and e.status != "unsupported"
+    (e,) = _scan_plan(tmp_path / "in", tmp_path / "work", key, schema,
+                      lambda rec: rec["info"].pop("reference_layout"))
+    assert (e.status, e.reason) == ("unsupported", "OME-Zarr layout not recorded: scan again")
+    assert reference.layout_refusal(_good_facts()) is None
+
+
+def test_rebuild_refuses_at_execute(tmp_path, monkeypatch):
+    """_rebuild applies the same predicate to each array document (defence in depth)."""
+    store = ome_zarr(tmp_path / "in" / "s.ome.zarr", "0.5")
+    real = reference._metadata_doc
+    with readers.open_image(store, "ome-zarr") as src:
+        arr = src.zarr_layout.arrays[0]
+        for change, reason in (({"storage_transformers": [{"name": "x"}]}, "storage transformers"),
+                               ({"chunk_grid": {"name": "rectilinear"}}, "irregular chunk grid"),
+                               ({"chunk_key_encoding": {"name": "custom"}}, "unknown chunk key encoding")):
+            monkeypatch.setattr(reference, "_metadata_doc", lambda a, c=change: {**real(a), **c})
+            with pytest.raises(reference.ReferenceRefused, match=reason):
+                reference._rebuild(arr, "czyx")
+
+
+def test_term_scan_refuses_filter_labels_and_fill_value(tmp_path):
+    store = ome_zarr(tmp_path / "in" / "s.ome.zarr", "0.4")
+    z = json.loads((store / "1" / ".zarray").read_text())
+    z["filters"] = [{"id": "categorize", "labels": ["Jane-Doe", "x"], "dtype": "<U8", "astype": "|u1"}]
+    (store / "1" / ".zarray").write_text(json.dumps(z))
+    with readers.open_image(store, "ome-zarr") as src:
+        with pytest.raises(reference.ReferenceRefused) as exc:
+            write_reference(src, {"input": "s.ome.zarr"}, tmp_path / "a.ome.zarr", src.info, terms={"jane doe"})
+    assert "jane" not in str(exc.value).lower()
+
+    store = ome_zarr(tmp_path / "in" / "t.ome.zarr", "0.5")
+    z = json.loads((store / "1" / "zarr.json").read_text())
+    z.update(data_type="string", fill_value="JANE_DOE", codecs=[{"name": "vlen-utf8"}])
+    (store / "1" / "zarr.json").write_text(json.dumps(z))
+    with readers.open_image(store, "ome-zarr") as src:
+        with pytest.raises(reference.ReferenceRefused):
+            write_reference(src, {"input": "t.ome.zarr"}, tmp_path / "b.ome.zarr", src.info, terms={"Jane Doe"})
+
+
+def test_term_scan_passes_clean_metadata(tmp_path):
+    """Generated vocabulary (ch<n> labels, colours, codec names) never trips the scan."""
+    store = _planted_v3(tmp_path / "in" / "Moe_Slice_051.ome.zarr")
+    with readers.open_image(store, "ome-zarr") as src:
+        terms = set(src.terms) | {"Moe", "Slice_051", "ch488", "00FF00", "12"}
+        write_reference(src, {"input": "Moe_Slice_051.ome.zarr"}, tmp_path / "x.ome.zarr", src.info, terms=terms)
+
+
+def test_factor_prefers_the_size_ratio():
+    from aimport.micr.reference import _factor
+
+    assert _factor(11, 3, 2.5) == 3
+    assert _factor(8500, 1062, 16.0) == 8 and _factor(8500, 16, 512.0) == 512
+
+
+def test_level_scale_checked_against_source_factors(tmp_path):
+    """With level_factors, a level's scale must be the plan's pixel size times the source's factor."""
+    _, dest, info, _ = _reference(tmp_path, "0.5")
+    car = sidecar(info, None)
+    check_ome_zarr(dest, car, "0.5", info.shape, info.dtype, reference=True,
+                   level_factors=[{}, {"x": 2, "y": 2}])
+    with pytest.raises(NgffCheckError, match="pixel size times its factor"):
+        check_ome_zarr(dest, car, "0.5", info.shape, info.dtype, reference=True,
+                       level_factors=[{}, {"x": 4, "y": 2}])
+    with readers.open_image(tmp_path / "in" / "Moe_Slice_051.ome.zarr", "ome-zarr") as src:
+        assert reference.source_factors(src.info, src.zarr_layout) == [{"z": 1, "y": 1, "x": 1},
+                                                                         {"z": 1, "y": 2, "x": 2}]
+
+
+def test_module_chunk_maps_must_be_disjoint(tmp_path):
+    from aimport.modality import ModuleOutput
+    from aimport.writer import _Writer
+
+    class Fake:
+        name = "fake"
+
+        def write(self, *a, **k):
+            return ModuleOutput(chunk_map={"version": 1, "arrays": {"sub-01/micr/x.ome.zarr/0": {}}})
+
+    w = object.__new__(_Writer)
+    w.modules, w.work_dir, w.manifest, w.chunk_map = [Fake(), Fake()], tmp_path, None, {}
+    w.plan = w.input_dir = w.terms = w.key = w.schema = w.progress = None
+    w.dest = lambda rel: tmp_path / rel
+    with pytest.raises(ValueError, match="same output array"):
+        w.write_modules()
+
+
+def test_server_uses_the_reference_chunk_map_name():
+    assert server.CHUNK_MAP_NAME is reference.CHUNK_MAP_NAME == "bids.chunks.json"

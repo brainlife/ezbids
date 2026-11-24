@@ -187,7 +187,14 @@ def _read(input_dir: Path, g: _Group) -> tuple[dict | None, set[str], str | None
         else:
             src = readers.open_image(input_dir / g.members[0], g.family)
         try:
-            return info_dict(src.info), set(src.terms), None
+            info = info_dict(src.info)
+            layout = getattr(src, "zarr_layout", None)
+            if layout is not None:  # what layout_refusal decides on at planning (and again at execute)
+                from .reference import dataset_dirs, layout_facts, symlinked
+
+                link = False if g.remote else symlinked(input_dir, g.group, dataset_dirs(layout))
+                info["reference_layout"] = layout_facts(layout, src.info.zarr_format, link)
+            return info, set(src.terms), None
         finally:
             src.close()
     except readers.UnsupportedFormat as exc:
@@ -455,6 +462,7 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
                  target: str, client: "LLMClient | None" = None) -> ModulePlan:
     from ..brainlife_map import to_brainlife
     from ..planner import _check_nameable, _usable, check_pixel_size
+    from .reference import layout_refusal
 
     terms: set[str] = set()
     for rec in records:
@@ -549,6 +557,9 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
             write_mode = ""
         elif is_mosaic(rec):
             d = dict(status="unsupported", exclude=True, reason=MOSAIC_REASON)
+            write_mode = ""
+        elif rec["family"] == "ome-zarr" and layout_refusal(info.get("reference_layout")):
+            d = dict(status="unsupported", exclude=True, reason=layout_refusal(info.get("reference_layout")))
             write_mode = ""
         else:
             write_mode = "reference" if rec["family"] == "ome-zarr" else "convert"
@@ -808,7 +819,8 @@ def write_entries(plan: "Plan", records: list[dict], input_dir: Path, terms: set
     from . import NGFF_VERSION
     from .convert import check_ome_zarr, to_ome_zarr
     from .metadata import sidecar, with_plan_pixel_size
-    from .reference import chunk_map, ngff_version_for, write_reference
+    from .reference import (chunk_map, dataset_dirs, ngff_version_for, source_factors, symlinked,
+                            write_reference)
 
     out = ModuleOutput()
     entries = [e for e in plan.entries if e.modality == "micr" and e.datatype == "micr" and e.status == "ok"
@@ -836,10 +848,17 @@ def write_entries(plan: "Plan", records: list[dict], input_dir: Path, terms: set
             # the plan's pixel size (from the source or the reviewer); never an invented one
             info = src.info = with_plan_pixel_size(src.info, e)
             path = dest(rel)
+            levels = None
             if reference:  # the source's Zarr format; metadata only, the chunks stay at the source
                 version = ngff_version_for(info.zarr_format)
-                for sub, facts in write_reference(src, reference_location(rec), path, info).items():
+                layout = src.zarr_layout
+                link = "rel" in rec and symlinked(input_dir, rec["rel"], dataset_dirs(layout))
+                written = write_reference(src, reference_location(rec), path, info, terms=terms, symlink=link)
+                for sub, facts in written.items():
+                    if f"{rel}/{sub}" in arrays:
+                        raise ValueError("two referenced arrays share an output path")
                     arrays[f"{rel}/{sub}"] = facts
+                levels = source_factors(info, layout)
             else:
                 version = NGFF_VERSION
                 step = (lambda msg, k=k: progress(f"{WRITE_PROGRESS.format(k=k, n=len(entries))}: {msg}")) \
@@ -848,7 +867,7 @@ def write_entries(plan: "Plan", records: list[dict], input_dir: Path, terms: set
             # numbers and vocabulary only; strings are redacted anyway (numbers are not: a pixel size
             # equal to a path number is not identifying, and must match the NGFF scale)
             car = {k: redact(v, terms) if isinstance(v, str) else v for k, v in sidecar(info, e).items()}
-            check_ome_zarr(path, car, version, info.shape, info.dtype, reference=reference)
+            check_ome_zarr(path, car, version, info.shape, info.dtype, reference=reference, level_factors=levels)
         finally:
             src.close()
         stem = rel[: -len(".ome.zarr")]

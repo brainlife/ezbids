@@ -325,7 +325,11 @@ class _Writer:
                     self.manifest.setdefault(eid, []).extend(paths)
             if self.chunk_map is not None and out.chunk_map:
                 self.chunk_map.setdefault("version", out.chunk_map.get("version"))
-                self.chunk_map.setdefault("arrays", {}).update(out.chunk_map.get("arrays") or {})
+                merged = self.chunk_map.setdefault("arrays", {})
+                arrays = out.chunk_map.get("arrays") or {}
+                if set(merged) & set(arrays):
+                    raise ValueError("two modules map the same output array")
+                merged.update(arrays)
             outputs.append(out)
         return outputs
 

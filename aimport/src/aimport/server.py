@@ -59,6 +59,7 @@ from .modality import (
 )
 from .plan import NEVER_KEEP, OLD_PLAN, Plan
 from .planner import DATASET_NAME_MAX, README_MAX, apply_plan_edits, build_plan, run_terms
+from .micr.reference import CHUNK_MAP_NAME, write_chunk_map  # in <work>/output/, next to bids/
 from .pseudonyms import KeyLockedError, PseudonymKey
 from .schema import load_schema
 from .scrub import REDACTED, redact
@@ -73,7 +74,6 @@ DONE = ("validated", "invalid")  # executed: the output matches the plan (invali
 MAX_ISSUES = 200  # validator issues listed in the status (the counts are always complete)
 MAX_EVENTS = 500
 OUTPUT_STATE = "output-state.json"
-CHUNK_MAP_NAME = "bids.chunks.json"  # micr.reference.CHUNK_MAP_NAME, in <work>/output/ next to bids/
 # subject_idx -> the subject ID the key records for that subject's original (pseudonyms only: the originals
 # stay in the key), so an edited subject ID can be recorded in the key for the right person on execute
 SUBJECT_IDS = "subject-ids.json"
@@ -522,8 +522,6 @@ class Server:
                        staged_dir=self.staged, manifest=manifest, refused=refused, **extra)
             done: dict[str, Any] = {}
             if chunks.get("arrays"):
-                from .micr.reference import write_chunk_map
-
                 write_chunk_map(self.chunk_map, chunks["arrays"])
                 done["chunk_map"] = self.chunk_map.relative_to(self.work).as_posix()
             key.save()  # the edited subject IDs, and the date offsets the writer creates in memory
