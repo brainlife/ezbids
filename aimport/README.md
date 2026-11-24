@@ -7,8 +7,8 @@ brainlife.io. It lives in the ezBIDS repo and reuses ezBIDS's mapping, conversio
 but everything runs on your machine, so raw DICOMs with identifiers are never uploaded.
 
 This directory is the engine: a Docker image and a small HTTP API on your own computer. The command
-`bl aimport` and the brainlife-lite `/aimport` page that drive it are separate, upcoming work (see
-"What's next"); until then you drive the API directly, as shown below.
+`bl aimport` (cli repo) drives it and uploads the result; the brainlife-lite `/aimport` page is upcoming (see
+"What's next"). You can also drive the API directly, as shown below.
 
 ## What aimport guarantees
 
@@ -354,7 +354,9 @@ The end-to-end leak test is `tests/test_end_to_end.py` (about two minutes under 
 
 ## What's next
 
-`bl aimport` (the command-line front end: runs this image, shows the plan in the terminal, runs the
-brainlife datatype validators on your host) and the brainlife-lite `/aimport` page (plan review with image
-previews) are separate, upcoming work. **Uploading to brainlife.io happens there, not in this engine**: the
-engine only produces the validated, de-identified output folder.
+`bl aimport` in the [brainlife cli](https://github.com/brainlife/cli) (branch `aimport-cli`, pending release) is the
+command-line front end: it runs this image, shows the plan in the terminal, runs the brainlife datatype
+validators on your host and uploads the result. Run `bl aimport <folder> --project <id>` (see the cli README).
+The brainlife-lite `/aimport` page (plan review with image previews) is still upcoming.
+**Uploading to brainlife.io happens in those front ends, not in this engine**: the engine only produces the
+validated, de-identified output folder.
