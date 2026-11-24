@@ -65,9 +65,11 @@ docker run --rm --platform linux/amd64 \
   -p 127.0.0.1:8765:8765 \
   -v /path/to/data:/data:ro -v /path/to/work:/work -v /path/to/keys:/keys \
   brainlife/aimport:dev \
-  python -m aimport serve --input /data --work /work --keys /keys --host 0.0.0.0 --port 8765
+  /opt/aimport-venv/bin/python -m aimport serve --input /data --work /work --keys /keys --host 0.0.0.0 --port 8765
 ```
 
+- Start the engine with `/opt/aimport-venv/bin/python`: the image's plain `python` is the ezBIDS handler's
+  older interpreter and cannot run aimport.
 - Publish the port on `127.0.0.1` only, as above. The token is the only other protection, so never
   write `-p 8765:8765` (which listens on every network interface). Inside the container `--host 0.0.0.0` is
   allowed because `AIMPORT_IN_CONTAINER=1` is set by the image.
