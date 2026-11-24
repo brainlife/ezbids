@@ -1,0 +1,128 @@
+# BIDS -> brainlife.io datatype mapping for brainlife.io/aimport.
+#
+# Single source of truth: the engine reads this file (aimport/brainlife_map.py),
+# and it must agree with brainlife's existing BIDS uploader, cli/bids-walker.js,
+# because `bl bids upload` uses bids-walker for the actual upload.
+#
+# status:
+#   active   - used by the engine now (phase 1: MRI and PET)
+#   planned  - brainlife datatype exists; engine support comes in a later phase
+#
+# A BIDS (datatype, suffix) pair not listed here has no brainlife datatype yet:
+# it uploads fine as part of a BIDS dataset but cannot use the "datatypes" target.
+
+version: 1
+bids_version: "1.11.2"          # bids-specification fbe1af9aa1fa1bb32811d0e5f4be4bee3130bc3b
+source: "brainlife/cli bids-walker.js @ 262b1b9"
+
+mappings:
+  # --- anat ---------------------------------------------------------------
+  - bids: {datatype: anat, suffix: T1w}
+    brainlife: {datatype: neuro/anat/t1w, tags: []}
+    status: active
+    ref: bids-walker.js:1143
+  - bids: {datatype: anat, suffix: T2w}
+    brainlife: {datatype: neuro/anat/t2w, tags: []}
+    status: active
+    ref: bids-walker.js:1166
+  - bids: {datatype: anat, suffix: FLAIR}
+    brainlife: {datatype: neuro/anat/flair, tags: []}
+    status: active
+    ref: bids-walker.js:1187
+  - bids: {datatype: anat, suffix: MP2RAGE}
+    brainlife: {datatype: neuro/anat/mp2rage, tags: []}
+    status: active
+    ref: bids-walker.js:1226
+
+  # --- dwi ----------------------------------------------------------------
+  - bids: {datatype: dwi, suffix: dwi}
+    brainlife: {datatype: neuro/dwi, tags: []}
+    status: active
+    ref: bids-walker.js:425, bids-walker.js:753
+    note: bids-walker expects the .bval/.bvec pair alongside the image
+
+  # --- func ---------------------------------------------------------------
+  - bids: {datatype: func, suffix: bold}
+    brainlife: {datatype: neuro/func/task, tags_from: task}
+    status: active
+    ref: bids-walker.js:1053-1072
+    note: tag is the BIDS task label lowercased; "unknown" when there is no task
+
+  # --- fmap ---------------------------------------------------------------
+  # One brainlife neuro/fmap object per acquisition; the tag names the
+  # acquisition type. Each BIDS suffix maps to the type it belongs to.
+  - bids: {datatype: fmap, suffix: epi}
+    brainlife: {datatype: neuro/fmap, tags: [pepolar]}
+    status: active
+    ref: bids-walker.js:828
+  - bids: {datatype: fmap, suffix: phasediff}
+    brainlife: {datatype: neuro/fmap, tags: [phasediff]}
+    status: active
+    ref: bids-walker.js:666
+  - bids: {datatype: fmap, suffix: magnitude1}
+    brainlife: {datatype: neuro/fmap, tags: [phasediff]}
+    status: active
+    ref: bids-walker.js:620-666
+    note: ambiguous on its own; becomes 2phasemag when phase1/phase2 are in the same session (planner decides)
+  - bids: {datatype: fmap, suffix: magnitude2}
+    brainlife: {datatype: neuro/fmap, tags: [phasediff]}
+    status: active
+    ref: bids-walker.js:620-666
+    note: same rule as magnitude1
+  - bids: {datatype: fmap, suffix: phase1}
+    brainlife: {datatype: neuro/fmap, tags: [2phasemag]}
+    status: active
+    ref: bids-walker.js:639
+  - bids: {datatype: fmap, suffix: phase2}
+    brainlife: {datatype: neuro/fmap, tags: [2phasemag]}
+    status: active
+    ref: bids-walker.js:639
+  - bids: {datatype: fmap, suffix: fieldmap}
+    brainlife: {datatype: neuro/fmap, tags: [single]}
+    status: active
+    ref: bids-walker.js:604
+  - bids: {datatype: fmap, suffix: magnitude}
+    brainlife: {datatype: neuro/fmap, tags: [single]}
+    status: active
+    ref: bids-walker.js:604
+
+  # --- micr (phase 2) -----------------------------------------------------
+  - bids: {datatype: micr, extension: .ome.zarr}
+    brainlife: {datatype: neuro/ome-zarr, tags: []}
+    status: planned
+    ref: brainlife-lite (ProjectDataS3, Zarr viewers)
+    note: covers OME-Zarr microscopy including PS-OCT (BIDS suffix OCT); per-suffix tags to be decided in phase 2
+
+  # --- eeg (phase 3): brainlife datatype chosen by file format ------------
+  - bids: {datatype: eeg, suffix: eeg, extension: .bdf}
+    brainlife: {datatype: neuro/eeg/bdf, tags_from: task}
+    status: planned
+    ref: bids-walker.js:904-940
+  - bids: {datatype: eeg, suffix: eeg, extension: .edf}
+    brainlife: {datatype: neuro/eeg/edf, tags_from: task}
+    status: planned
+    ref: bids-walker.js:904-940
+  - bids: {datatype: eeg, suffix: eeg, extension: .eeg}
+    brainlife: {datatype: neuro/eeg/brainvision, tags_from: task}
+    status: planned
+    ref: bids-walker.js:904-940
+  - bids: {datatype: eeg, suffix: eeg, extension: .set}
+    brainlife: {datatype: neuro/eeg/eeglab, tags_from: task}
+    status: planned
+    ref: bids-walker.js:904-940
+    note: bids-walker detects EEGLAB by its .fdt companion file
+
+  # --- meg (phase 3) ------------------------------------------------------
+  - bids: {datatype: meg, suffix: meg, extension: .ds}
+    brainlife: {datatype: neuro/meg/ctf, tags_from: task}
+    status: planned
+    ref: bids-walker.js:975-1004
+    note: bids-walker requires a task entity
+  - bids: {datatype: meg, suffix: meg, extension: .fif}
+    brainlife: {datatype: neuro/meg/fif, tags_from: task}
+    status: planned
+    ref: bids-walker.js:975-1004
+    note: bids-walker requires a task entity
+
+# BIDS datatypes with no brainlife datatype mapping yet (BIDS target only).
+unmapped: [perf, pet, beh, ieeg, nirs, emg, motion, mrs, phenotype]

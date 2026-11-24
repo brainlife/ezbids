@@ -26,6 +26,7 @@ PLACEHOLDER = {
     "PatientSex": "n/a",
     "PatientAge": "n/a",
     "PatientWeight": "n/a",
+    "PatientSize": 0,
     "StudyID": "anon",
     "StudyDescription": "anon",
     "ProcedureStepDescription": "anon",

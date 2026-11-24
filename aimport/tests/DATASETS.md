@@ -80,7 +80,7 @@ Acquisition dates are 2022-07-11 (also in the dcm2niix `time-2022...` file names
 Committed fixtures carry no identifiers, upstream-public or not.
 `tests/fixtures/make_ezbids_core_fixture.py <raw ezBIDS_core.json> <out>` turns the
 raw ezBIDS output of unplanted xa30 into `tests/fixtures/ezbids_core_siemens.json`:
-patient fields become `anon` / `n/a`, institution, station, serial, UIDs and the
+patient fields (including `PatientSize`, set to 0) become `anon` / `n/a`, institution, station, serial, UIDs and the
 sequence build stamp are dropped, dates move to 2000-01-01 (times kept), bulky NIfTI
 `headers` are stripped, paths stay relative. The script refuses to write if any
 native or planted term is still present, and the host test
@@ -88,6 +88,14 @@ native or planted term is still present, and the host test
 
 To regenerate: run `run_ezbids(stage_input(fetch_dcm_qa(d, plant=False), w))` in the
 image, then the script on `w/ezbids/ezBIDS_core.json`.
+
+## Leak-test vocabularies
+
+`tests/conftest.py` exports `PLANTED` (the planted values, lowercase), `NATIVE` (lowercased
+`NATIVE_IDENTIFIERS`) and `tokens(text)`, which returns the members of `PLANTED | NATIVE`
+found in the lowercased text by substring (so phrases like `hospital x` and values like
+`12343@hucheng` are caught). Leak tests assert `not PLANTED & tokens(text)` and
+`not NATIVE & tokens(text)`.
 
 ## Specifications and validators
 
