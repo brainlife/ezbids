@@ -1,13 +1,14 @@
-"""The QA viewer routes: the served Neuroglancer client and the browser session."""
+"""The QA viewer routes: the served Neuroglancer client, the browser session and the checked output data."""
+import json
+import os
+
 import pytest
 from fastapi.testclient import TestClient
 
-from aimport import server
-from aimport.server import VIEWER_COOKIE, create_app
-from aimport import viewer
+from aimport import server, viewer
+from aimport.server import VIEWER_COOKIE
 from aimport.viewer import VIEWER_CSP, neuroglancer_client_dir
-
-TOKEN = "s3cret-token"
+from test_server import SCAN, TOKEN, apps, client, executed, hooks, make_client, planned, wait_stage  # noqa: F401
 INDEX = b"<!doctype html><html><head><script type=module src=./assets/index-x.js></script></head></html>"
 
 
@@ -22,29 +23,6 @@ def ng_client(tmp_path, monkeypatch):
     (d / "assets" / "x.wasm").write_bytes(b"\0asm")
     monkeypatch.setenv("AIMPORT_NEUROGLANCER_DIR", str(d))
     return d
-
-
-@pytest.fixture
-def make_client(tmp_path):
-    made = []
-    (tmp_path / "in").mkdir()
-
-    def make(auth=True):
-        app = create_app(tmp_path / "in", tmp_path / "work", tmp_path / "keys", TOKEN, [], ["testserver"])
-        made.append(app)
-        c = TestClient(app)
-        if auth:
-            c.headers["Authorization"] = f"Bearer {TOKEN}"
-        return c
-
-    yield make
-    for app in made:
-        app.state.server.close()
-
-
-@pytest.fixture
-def client(make_client):
-    return make_client()
 
 
 def viewer_client(client: TestClient) -> TestClient:
@@ -208,3 +186,109 @@ def test_wrong_cookie(client):
     assert browser.get("/viewer/ng/index.html").status_code == 401
     browser.cookies.set(VIEWER_COOKIE, "")
     assert browser.get("/viewer/ng/index.html").status_code == 401
+
+
+# --- /qa/data: the checked output ---
+
+def t1w(c):
+    """The id of a written, defaced entry (the T1w in the fixture plan)."""
+    return next(e["id"] for e in c.get("/plan").json()["entries"]
+                if e["deface"] and e["status"] == "ok" and not e["exclude"])
+
+
+def data_url(c, eid, index=0):
+    return f"/qa/data/{eid}/{index}/"
+
+
+def test_qa_data_before_execute(planned):
+    r = planned.get(data_url(planned, t1w(planned)))
+    assert r.status_code == 404
+    assert r.json()["detail"] == "nothing to preview: execute the plan first"
+
+
+def test_qa_data_serves_output(planned):
+    eid = t1w(planned)
+    executed(planned)
+    rel = planned.get("/status").json()["manifest"][eid][0]
+    r = planned.get(data_url(planned, eid))
+    assert r.status_code == 200 and r.content == b"defaced-" + eid.encode()
+    assert r.headers["cache-control"] == "no-store"
+    assert r.headers["x-content-type-options"] == "nosniff"
+    # the file's own name as subpath: the same file (so a viewer URL can end in .nii.gz)
+    assert planned.get(data_url(planned, eid) + rel.rsplit("/", 1)[1]).content == r.content
+    r = planned.get(data_url(planned, eid), params={"which": "original"})
+    assert r.status_code == 200 and r.content == b"original-" + eid.encode()
+    assert r.headers["cache-control"] == "no-store"
+
+
+def test_qa_data_range(planned):
+    eid = t1w(planned)
+    executed(planned)
+    whole = b"defaced-" + eid.encode()
+    r = planned.get(data_url(planned, eid), headers={"Range": "bytes=0-15"})
+    assert r.status_code == 206
+    assert r.content == whole[:16] and len(r.content) == 16
+    assert r.headers["content-range"] == f"bytes 0-15/{len(whole)}"
+
+
+def test_qa_data_not_found(planned):
+    eid = t1w(planned)
+    executed(planned)
+    assert planned.get(data_url(planned, eid, 1)).status_code == 404  # index out of range
+    assert planned.get(data_url(planned, "nope")).status_code == 404  # not in the manifest
+    assert planned.get(data_url(planned, eid) + "other.nii.gz").status_code == 404  # a file has no inside
+
+
+@pytest.mark.parametrize("subpath", ["..", "../x", "%2e%2e", "%2e%2e/%2e%2e/scan.json", "%2Fetc%2Fpasswd",
+                                     "/etc/passwd", "./x", "a/../b"])
+def test_qa_data_traversal(planned, tmp_path, subpath):
+    eid = t1w(planned)
+    executed(planned)
+    # a manifest directory (as an OME-Zarr entry will be) so a subpath is meaningful
+    state_path = tmp_path / "work" / "output-state.json"
+    state = json.loads(state_path.read_text())
+    out = tmp_path / "work" / "output" / "bids"
+    (out / "sub-01" / "x.zarr").mkdir(parents=True)
+    (out / "sub-01" / "x.zarr" / "a").write_text("inside")
+    state["manifest"]["zarr"] = ["sub-01/x.zarr"]
+    state_path.write_text(json.dumps(state))
+    assert planned.get("/qa/data/zarr/0/a").content == b"inside"
+    assert planned.get(f"/qa/data/zarr/0/{subpath}").status_code == 404
+    assert planned.get(f"/qa/data/{eid}/0/{subpath}").status_code == 404
+
+
+def test_qa_data_symlink(planned, tmp_path):
+    eid = t1w(planned)
+    executed(planned)
+    out = tmp_path / "work" / "output" / "bids"
+    rel = planned.get("/status").json()["manifest"][eid][0]
+    target = out / rel
+    target.unlink()
+    (tmp_path / "secret.nii.gz").write_bytes(b"secret")
+    target.symlink_to(tmp_path / "secret.nii.gz")
+    assert planned.get(data_url(planned, eid)).status_code == 404
+    # a symlinked folder on the way, pointing back inside the output, is refused too
+    target.unlink()
+    folder = target.parent
+    os.rename(folder, folder.with_name("real"))
+    folder.symlink_to(folder.with_name("real"))
+    (folder.with_name("real") / target.name).write_bytes(b"x")
+    assert planned.get(data_url(planned, eid)).status_code == 404
+
+
+def test_qa_data_after_rescan(planned):
+    eid = t1w(planned)
+    executed(planned)
+    assert planned.get(data_url(planned, eid)).status_code == 200
+    assert planned.post("/scan", json=SCAN).status_code == 202
+    assert planned.get(data_url(planned, eid)).status_code == 404
+    wait_stage(planned, "planned")
+    assert planned.get(data_url(planned, eid)).status_code == 404
+
+
+def test_qa_data_with_cookie_only(planned):
+    eid = t1w(planned)
+    executed(planned)
+    browser = viewer_client(planned)
+    assert browser.get(data_url(planned, eid)).status_code == 200
+    assert browser.get(f"/preview/{eid}").status_code == 401  # bearer-only route

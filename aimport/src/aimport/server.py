@@ -33,7 +33,7 @@ import time
 import uuid
 from contextlib import asynccontextmanager, contextmanager
 from dataclasses import asdict
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Literal
 
 from fastapi import Depends, FastAPI, Header, HTTPException, Query, Request
@@ -104,6 +104,22 @@ def _read_json(path: Path) -> dict | None:
 
 def _nonempty(path: Path) -> bool:
     return path.exists() and (not path.is_dir() or path.is_symlink() or any(path.iterdir()))
+
+
+def _file_inside(root: Path, rel: str) -> Path | None:
+    """root/rel when rel is a relative path without '..' that reaches a regular file inside root through no
+    symlink (checked at every component), else None."""
+    pure = PurePosixPath(rel)
+    if not rel or pure.is_absolute() or any(part in ("..", ".") for part in rel.split("/")):
+        return None
+    path = root
+    for part in pure.parts:
+        path = path / part
+        if path.is_symlink():
+            return None
+    if root.resolve() not in path.resolve().parents or not path.is_file():
+        return None
+    return path
 
 
 def _clear(path: Path) -> None:
@@ -831,25 +847,44 @@ def create_app(input_dir: Path, work_dir: Path, keys_dir: Path, token: str, allo
         except KeyLockedError as e:
             raise key_locked(e) from None
 
-    @app.get("/preview/{entry_id}")
-    def get_preview(entry_id: str, which: Literal["original", "defaced"] = "defaced",
-                    index: int = Query(default=0, ge=0)) -> FileResponse:
+    def output_state() -> dict:
+        """The complete output state of the current scan, after execute (validated or invalid), else 404."""
         state = _read_json(work_dir / OUTPUT_STATE)
-        if srv.status["stage"] not in DONE or not state or not state.get("complete"):
+        info = _read_json(work_dir / "scan.json") or {}
+        if (srv.status["stage"] not in DONE or not state or not state.get("complete")
+                or state.get("scan_id") != info.get("scan_id")):
             raise HTTPException(404, "nothing to preview: execute the plan first")
+        return state
+
+    def output_file(entry_id: str, index: int, which: str, subpath: str = "") -> Path:
+        """A written image of the output manifest (which=original: the pre-deface copy, for a defaced entry).
+        subpath: empty, or the file's own name, for a manifest file; a path inside a manifest directory."""
+        state = output_state()
         files = (state.get("manifest") or {}).get(entry_id)
-        if not files or index >= len(files):
+        if not files or not 0 <= index < len(files):
             raise HTTPException(404, "no such image")
-        rel = files[index]
-        root = srv.out
+        rel, root = files[index], srv.out
         defaced = (state.get("defaced") or {}).get(entry_id)
         if which == "original" and defaced and index < len(defaced):
             root, rel = srv.pre, defaced[index]
-        path = root / rel
-        base = root.resolve()
-        if path.is_symlink() or base not in path.resolve().parents or not path.is_file():
+        if subpath and not (subpath == PurePosixPath(rel).name and (root / rel).is_file()):
+            rel = f"{rel}/{subpath}"  # inside a manifest directory: _file_inside refuses anything else
+        path = _file_inside(root, rel)
+        if path is None:
             raise HTTPException(404, "no such image")
-        return FileResponse(path, media_type="application/octet-stream")
+        return path
+
+    @app.get("/preview/{entry_id}")
+    def get_preview(entry_id: str, which: Literal["original", "defaced"] = "defaced",
+                    index: int = Query(default=0, ge=0)) -> FileResponse:
+        return FileResponse(output_file(entry_id, index, which), media_type="application/octet-stream")
+
+    @app.get("/qa/data/{entry_id}/{index}/{subpath:path}")
+    def get_qa_data(entry_id: str, index: str, subpath: str,
+                    which: Literal["original", "defaced"] = "defaced") -> FileResponse:
+        if not (index.isascii() and index.isdigit()):
+            raise HTTPException(404, "no such image")
+        return FileResponse(output_file(entry_id, int(index), which, subpath), media_type="application/octet-stream")
 
     @app.post("/viewer/session")
     def post_viewer_session() -> dict:
