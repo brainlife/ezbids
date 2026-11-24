@@ -2412,6 +2412,13 @@ def datatype_suffix_identification(dataset_list_unique_series, lookup_dic, confi
                                 "according to dcm2niix's BidsGuess heuristic, and will not be converted. " \
                                 "Please modify if incorrect."
                         unique_dic["type"] = "exclude"
+                    elif suffix not in lookup_dic.get(datatype, {}):
+                        # e.g. dcm2niix guesses dwi/_FA (a derivative BIDS does not define) for a series
+                        # whose description merely contains "_fa"; later lookups would raise KeyError
+                        unique_dic["message"] = f"dcm2niix's BidsGuess ({datatype}/{suffix}) is not a valid " \
+                            "BIDS datatype/suffix pair, so the acquisition will not be converted. " \
+                            "Please modify if incorrect."
+                        unique_dic["type"] = "exclude"
                     else:
                         unique_dic["datatype"] = datatype
                         unique_dic["suffix"] = suffix
