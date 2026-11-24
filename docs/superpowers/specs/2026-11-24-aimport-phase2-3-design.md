@@ -87,9 +87,16 @@ validated BIDS dataset is uploaded. The user asked for good readers and visualiz
   Formats needing Bio-Formats (VSI, OIB, IMS, others) are planned as `unsupported` with a clear
   message; an optional `bioformats2raw` (Java, GPL-2) image stage can be added later, run as a
   subprocess.
-- **Writer**: `ngff-zarr` (MIT, Python ≥ 3.11) writes OME-Zarr **NGFF 0.4 / Zarr v2** with a
-  multiscale pyramid (the BIDS examples and validator path use 0.4; 0.5 is an option). Small 2D
-  images may stay OME-TIFF.
+- **Writer**: `ngff-zarr` (MIT, Python ≥ 3.11) writes OME-Zarr **NGFF 0.5 / Zarr v3** with a
+  multiscale pyramid and sharding by default, because the CMC data below (PS-OCT, exaSPIM) are
+  already NGFF 0.5 / Zarr v3. NGFF 0.4 / Zarr v2 remains an option. The first plan task checks the
+  pinned BIDS validator accepts 0.5; if it does not, 0.4 becomes the default until it does.
+  Small 2D images may stay OME-TIFF. An input that is already OME-Zarr is rewritten (metadata
+  rebuilt from the allowlist) without re-encoding chunks where possible.
+- **Scale**: inputs reach gigabytes per file (VISoR raw TIFF tiles, about 4.3 GB) and terabytes
+  per dataset (exaSPIM). Conversion streams with dask (block-wise reads, never a whole volume in
+  memory), writes sharded chunks, and reports progress per tile. Planning reads metadata and a
+  coarse level only.
 - **Naming**: `sub-<label>[_ses-<label>]_sample-<label>[_acq-…][_stain-…][_run-…][_chunk-…]_<suffix>.ome.zarr`,
   suffix from the BIDS list (`TEM, SEM, uCT, BF, DF, PC, DIC, FLUO, CONF, PLI, CARS, 2PE, MPE, SR,
   NLO, OCT, SPIM, XPCT`). `samples.tsv` is required and is written from the plan.
@@ -140,6 +147,29 @@ validated BIDS dataset is uploaded. The user asked for good readers and visualiz
 - **brainlife mapping**: eeg/meg rows planned → active; ieeg, nirs, emg drafts stay drafts until
   registered (BIDS target unaffected).
 
+### Center for Mesoscale Connectomics (CMC) data
+
+The CMC publication on brainlife (`connects.brainlife.io/publications/CMC`, doi
+10.25663/brainlife.pub.64) has public data in the `apex-connects` S3 bucket (us-east-2) for
+three phase 2 cases. Its record states no licence, so only small subsets are downloaded at test
+time; none are committed.
+
+| Case | Source in `apex-connects` | Format | Maps to |
+|---|---|---|---|
+| PS-OCT, reconstructed | `CMC/Derivatives/Moe/PS-OCT/Enface/Registration/{Reflectivity,Retardance,Orientation,Cross}/Slice_*_*.nii.gz` | NIfTI per slice and contrast (14–60 MB) | `micr`, suffix `OCT`, `acq-reflectivity/retardance/opticaxis/cross`, `sample-<slice>` |
+| PS-OCT, stitched | `CMC/Derivatives/Moe/PS-OCT/Zarr/Moe_Slice_051.ome.zarr` | OME-Zarr NGFF 0.5 (c, y, x; 6 scales) | same, rewritten |
+| PS-OCT, raw | `CMC/Raw/Moe/PS-OCT/<date>/Slice_*_Tile_*.dat` | raw interferometer tiles | out of scope (not reconstructed); excluded with a reason |
+| Tract-tracing | `CMC/Raw/Moe/tract-tracing/MN27_*_visor_488/visor_488_Pos*/visor_488_*.tif` + `acqinfo_metadata.json` | VISoR light-sheet TIFF tiles (about 4.3 GB) | `micr`, suffix `SPIM`, `stain-<tracer or channel>`, `chunk-<tile>`; tracer and injection details in `samples.tsv`/sidecar |
+| Axonal connectomics | `axonal_connectomics/deskewed/<sample>/exaSPIM.zarr/Pos*` and `contrast_adjusted/<sample>/Pos*` | exaSPIM Zarr v3, sharded multiscale | `micr`, suffix `SPIM`, `chunk-<position>` |
+
+Notes for de-identification:
+- Sample and folder names carry acquisition dates (`250215`, `20250422`) and donor codes (`H17`).
+  Dates move to the shifted `scans.tsv`, and donor codes go through the pseudonym key like a
+  PatientID.
+- VISoR `acqinfo_metadata.json`, `dbpost.json` and `hh.log` are read for pixel size and channel
+  only; they are not copied.
+- The QA viewer opens these with Neuroglancer's `zarr3` driver, like the CMC page's own states.
+
 ## Tests that matter most
 
 - Leak tests per phase, as in phase 1: identifiers planted in OME-XML (Experimenter, serials,
@@ -159,7 +189,10 @@ validated BIDS dataset is uploaded. The user asked for good readers and visualiz
 - Microscopy:
   - `bids-examples` `micr_SPIM` (OME-TIFF), `micr_SEMzarr`, `micr_XPCTzarr`, `micr_SEM` (PNG);
   - an IDR public OME-Zarr sample;
-  - a **synthetic PS-OCT** fixture (no public PS-OCT data was found).
+  - **CMC subsets** (see above): one PS-OCT slice in four contrasts (NIfTI), the coarse levels of
+    `Moe_Slice_051.ome.zarr`, a cropped VISoR tile read over HTTP ranges, and a coarse exaSPIM
+    level;
+  - a synthetic PS-OCT fixture with planted identifiers for the leak test.
 - Electrophysiology:
   - `mne-testing-data` for reader coverage (EDF, BDF, BrainVision, EEGLAB, EGI, Nihon Kohden,
     CTF, KIT, BTi, SNIRF, NIRx);
