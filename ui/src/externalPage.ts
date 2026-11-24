@@ -4,7 +4,10 @@ import { reactive } from 'vue';
    instead of a new window or tab. Hosts on this list allow being framed (no X-Frame-Options or CSP
    frame-ancestors, checked with `curl -sI`), so they are shown in an iframe; any other host (GitHub,
    nature.com, nsf.gov send DENY / SAMEORIGIN) gets a dialog that says so and opens it in a new tab
-   only when the user confirms, since a browser has no way to show those inside the page. */
+   only when the user confirms, since a browser has no way to show those inside the page.
+   In the desktop app (window.env.IS_ELECTRON) every https page is shown in-app in a <webview>, which
+   framing headers don't apply to; electron/inAppBrowsing.ts locks the guest down and routes any
+   window.open from the app or a guest page back to this dialog. */
 export const FRAMEABLE_HOSTS = ['brainlife.io', 'readthedocs.io', 'openneuro.org', 'hedtags.org', 'grantome.com'];
 
 export interface ExternalPage {
@@ -13,11 +16,15 @@ export interface ExternalPage {
     note: string;
 }
 
+export const isElectron = (): boolean =>
+    (window as unknown as { env?: { IS_ELECTRON?: string } }).env?.IS_ELECTRON === 'true';
+
 export const externalPage = reactive<ExternalPage>({ url: '', title: '', note: '' });
 
 export function canFrame(url: string): boolean {
     try {
         const u = new URL(url, window.location.href);
+        if (isElectron()) return u.protocol === 'https:';
         if (u.protocol !== 'https:' && u.origin !== window.location.origin) return false;
         if (u.origin === window.location.origin) return true;
         return FRAMEABLE_HOSTS.some((h) => u.hostname === h || u.hostname.endsWith(`.${h}`));
@@ -53,7 +60,7 @@ export function interceptExternalLinks(e: MouseEvent) {
     }
     if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
     const base = import.meta.env.BASE_URL || '/';
-    if (url.origin === window.location.origin && url.pathname.startsWith(base)) return;
+    if (url.origin === window.location.origin && (isElectron() || url.pathname.startsWith(base))) return;
     e.preventDefault();
     const text = (a.getAttribute('aria-label') || a.textContent || '').trim();
     // a bare URL or a one-word "here" makes a poor title; the dialog then shows the host

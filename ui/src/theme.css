@@ -63,6 +63,8 @@ html:root {
    per type. "info" tags are neutral labels here (series index, counts), like brainlife-lite's default
    grey chips; the blue info color is kept for alerts and notifications. */
 html .el-tag {
+    /* pills, like MUI chips */
+    --el-tag-border-radius: 999px;
     --el-tag-bg-color: var(--el-color-primary-light-9);
     --el-tag-border-color: transparent;
     --el-tag-text-color: var(--el-color-primary);

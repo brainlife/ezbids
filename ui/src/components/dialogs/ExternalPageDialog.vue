@@ -10,7 +10,10 @@
         @close="close"
     >
         <div v-if="page.note" class="note">{{ page.note }}</div>
-        <iframe v-if="frame" class="frame" :src="page.url" :title="page.title || host" />
+        <!-- desktop app: a sandboxed <webview> guest (see electron/inAppBrowsing.ts); web: an iframe -->
+        <webview v-if="frame && desktop" class="frame" :src="page.url" partition="persist:ezbids-external" />
+        <iframe v-else-if="frame" class="frame" :src="page.url" :title="page.title || host" />
+        <p v-else-if="desktop" class="blocked">Only https pages can be opened in ezBIDS.</p>
         <p v-else class="blocked">
             <b>{{ host }}</b> doesn't allow being shown inside other sites, so it can only open in a new browser tab.
         </p>
@@ -20,7 +23,7 @@
                 <span v-else />
                 <span>
                     <el-button size="small" @click="close">{{ frame ? 'Close' : 'Cancel' }}</el-button>
-                    <el-button :type="frame ? 'default' : 'primary'" size="small" @click="openTab">
+                    <el-button v-if="!desktop" :type="frame ? 'default' : 'primary'" size="small" @click="openTab">
                         Open in a new tab
                     </el-button>
                 </span>
@@ -31,11 +34,11 @@
 
 <script lang="ts">
 import { defineComponent } from 'vue';
-import { externalPage, canFrame, closeExternal } from '../../externalPage';
+import { externalPage, canFrame, closeExternal, isElectron } from '../../externalPage';
 
 export default defineComponent({
     data() {
-        return { page: externalPage };
+        return { page: externalPage, desktop: isElectron() };
     },
     computed: {
         frame(): boolean {
@@ -64,7 +67,7 @@ export default defineComponent({
 
 <style scoped>
 .frame {
-    display: block;
+    display: flex;
     width: 100%;
     height: 76vh;
     border: 1px solid var(--line, #e2e8f0);
