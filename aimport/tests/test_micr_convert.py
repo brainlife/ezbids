@@ -435,6 +435,8 @@ def test_write_hook_outputs(tmp_path, key, schema):
     assert {r["participant_id"] for r in read_tsv(out / "participants.tsv")} == {
         f"sub-{e.subject}" for e in micr_entries}
     assert all(r["age"] == "n/a" and r["sex"] == "n/a" for r in read_tsv(out / "participants.tsv"))
+    sex = json.loads((out / "participants.json").read_text())["sex"]["Description"]
+    assert "DICOM" not in sex  # microscopy-only subjects
     assert seen[0] == "writing microscopy image 1 of 3"
     assert any("converting: level 1 of 1, block 1 of" in m for m in seen)
 
