@@ -20,3 +20,7 @@ def _ngff_version() -> NgffVersion:
 
 
 NGFF_VERSION: NgffVersion = _ngff_version()
+
+# Conversion and reading touch at most this many bytes of pixels per block; a whole array is
+# never materialised. Readers size their dask chunks to it (tests patch it smaller).
+MAX_BLOCK_BYTES = 256 * 2**20

@@ -11,7 +11,8 @@ or dropped, and say why.
 | [neurolabusc/dcm_qa_xa30](https://github.com/neurolabusc/dcm_qa_xa30) | `371ab3071aa9270d23b99fca5f83fe0c35932182` | **current** | `tests/fixtures/fetch_dcm_qa.py`, the committed `tests/fixtures/ezbids_core_siemens.json`, all `docker` tests, the `bl aimport` manual run (cli `test/aimport-manual.js`) |
 | [neurolabusc/dcm_qa](https://github.com/neurolabusc/dcm_qa) | `8215e3e` | dropped 2026-11-24 | first version of the fixture (Tasks 2–3) |
 | Synthetic OME-Zarr (`tests/fixtures/micr_fixtures.py` `ome_zarr`, written for this repo; no real pixels) | generated at test time, seed 0 | **current** | `tests/test_micr_validator.py` (microscopy Task 1: validator ruling) |
-| Synthetic sparse BigTIFF (`tests/fixtures/micr_fixtures.py` `sparse_bigtiff`, written for this repo; no pixels) | generated at test time | **current** | `tests/test_modality.py` (microscopy Task 2: claimed input is never staged or copied) |
+| Synthetic sparse BigTIFF (`tests/fixtures/micr_fixtures.py` `sparse_bigtiff`, written for this repo; no pixels) | generated at test time | **current** | `tests/test_modality.py` (microscopy Task 2: claimed input is never staged or copied), `tests/test_micr_readers.py` (Task 4: bounded open) |
+| Synthetic microscopy reader fixtures (`tests/fixtures/micr_fixtures.py` `planted_ome_tiff`, `planted_svs`, `psoct_nifti`, `psoct_mat`, `striped_tiff`, `visor_tile`; written for this repo, planted identifiers only) | generated at test time, seed 0 | **current** | `tests/test_micr_readers.py` (microscopy Task 4: readers, allowlisted metadata, bounded memory) |
 
 ### Synthetic OME-Zarr (current)
 
@@ -26,6 +27,27 @@ Zarr metadata: what a reference dataset looks like locally.
 apparent size is `size` bytes (4 GiB in the tests) through `tifffile.memmap`, without writing any pixel:
 the file is sparse and takes a few KiB on disk. Task 2 places it, together with planted folder names
 (`H17_250215`) and a DICOM, under a claimed folder to show claimed input is never staged, walked or copied.
+
+### Synthetic microscopy reader fixtures (current)
+
+Written for Task 4; every identifier in them is listed in `tests/conftest.py` `MICR_PLANTED`.
+
+| Fixture | What it is | Planted |
+|---|---|---|
+| `planted_ome_tiff(dest)` | OME-TIFF, `c,z,y,x` = 2 x 4 x 64 x 64 uint16 (seed 0), 0.5 x 0.5 x 2.0 um, channels 488/520 and 561/600 nm, 20x/0.8 water objective | OME-XML: Experimenter `Jane Doe` / `jdoe@example.org`, serial `SCOPE-SN-4711`, AcquisitionDate `2025-02-15T10:00:00`, Image Name and channel names `Slide 42 Smith`, Description `annotation secret`, a CommentAnnotation and an ROI label. TIFF tags: Artist `Jane Doe`, HostComputer `lab-workstation-7`, Software `AcqSoft 9 lab-workstation-7`, DateTime `2025:02:15 10:00:00` |
+| `planted_svs(dest)` | Aperio-style SVS: tiled 512 x 512 RGB baseline plus a 256 x 256 level, thumbnail, label (subfiletype 1), macro (subfiletype 9); MPP 0.499, AppMag 20 | label and macro pixels are the bytes of `Slide 42 Smith`; description `Filename = Slide 42 Smith`, `User = Jane Doe` |
+| `psoct_nifti(dest, contrast)` | float32 NIfTI 32 x 24 x 4, zooms 10 x 10 x 2.5, `xyzt_units` micron | optional `descrip` |
+| `psoct_mat(dest, v73)` | v7.3: HDF5 with a 512-byte MATLAB header and a 256^3 float32 (64 MiB) `retardance` dataset whose chunks are never written (a few KiB on disk). v5: 16 x 12 x 4 float32 via `scipy.io.savemat` | optional `operator` string |
+| `striped_tiff(dest, (6000, 6000), uint16)` | uncompressed single plane, 16 rows per strip, pixels never written (sparse, ~30 KiB on disk) | none |
+| `visor_tile(dest_dir)` | `visor_488_Pos0/visor_488_0001.tif` (4 x 32 x 32 uint16) plus `acqinfo_metadata.json` | `operator` `Jane Doe`, `host` `lab-workstation-7`, `date` `20250422` |
+
+**VISoR `acqinfo_metadata.json` key names.** The real CMC file was not read (the CMC data is not
+copied or downloaded for this task), so the fixture's keys are synthetic: `pixel_size`, `z_step`,
+`wavelength` (numeric, kept) and `operator`, `host`, `date` (strings, dropped as terms). The reader
+(`readers.visor_facts`) takes numeric fields only, matching key names by pattern: pixel/voxel
+size, spacing or resolution (x, y); z step, slice thickness/spacing (z); wavelength, laser,
+excitation or channel between 350 and 900 (excitation nm). Record the real key names here when the
+network-marked CMC test (Task 5) first reads the file's header.
 
 ### dcm_qa_xa30 (current)
 
