@@ -252,7 +252,10 @@ const state = {
         authhost: process.env.NODE_ENV === 'development' ? 'http://localhost:8080/api/auth' : '/api/auth',
         authSignIn: '/auth/#!/signin',
         authSignOut: '/auth/#!/signout',
-        debug: process.env.NODE_ENV == 'development' ? true : false,
+        // raw JSON dumps on the Subjects, Series and Objects pages show DICOM header values (PatientName, PatientID,
+        // PatientBirthDate); they are opt-in with VITE_DEBUG=true, not on whenever vite runs in development mode
+        // (docker-compose runs the UI with the vite dev server, so local installs would show them to every user)
+        debug: import.meta.env.VITE_DEBUG === 'true',
     },
 
     session: null as ISession | null,
