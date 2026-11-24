@@ -21,4 +21,5 @@ WORKDIR /app/ui
 RUN chmod +x docker-entrypoint.sh
 
 ENTRYPOINT ["/app/ui/docker-entrypoint.sh"]
-CMD ["npm", "run", "dev"]
+# --host: the dev server must listen on the container interface (the desktop dev run keeps vite on localhost)
+CMD ["npm", "run", "dev", "--", "--host"]
