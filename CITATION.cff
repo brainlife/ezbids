@@ -1,0 +1,378 @@
+# Citation metadata for ezBIDS and aimport. Every reference below was taken from the project's own
+# CITATION.cff, README or docs, or from the publisher (Crossref). The full list of tools, with their
+# licences and the source of each citation, is in CREDITS.md.
+cff-version: 1.2.0
+message: >-
+  If you use ezBIDS or aimport, please cite the ezBIDS paper (preferred-citation), BIDS and the
+  BIDS extension for your data type, and the tools your conversion used (references).
+title: "ezBIDS"
+type: software
+abstract: >-
+  ezBIDS maps neuroscience data (neuroimaging, neurophysiology and microscopy) to the Brain Imaging
+  Data Structure (BIDS). aimport, in the same repository, is its local importer with an optional AI
+  agent that de-identifies data before upload. Developed by the Pestilli Lab at The University of
+  Texas at Austin.
+license: MIT
+repository-code: "https://github.com/brainlife/ezbids"
+url: "https://brainlife.io/ezbids"
+keywords:
+  - BIDS
+  - neuroimaging
+  - neurophysiology
+  - microscopy
+  - data standardization
+authors:
+  - family-names: Levitas
+    given-names: Daniel
+    orcid: "https://orcid.org/0000-0003-2279-7447"
+  - family-names: Hayashi
+    given-names: Soichi
+  - family-names: Vinci-Booher
+    given-names: Sophia
+    orcid: "https://orcid.org/0000-0002-3626-146X"
+  - family-names: Heinsfeld
+    given-names: Anibal
+    orcid: "https://orcid.org/0000-0002-2050-0614"
+    affiliation: "The University of Texas at Austin"
+  - family-names: Bhatia
+    given-names: Dheeraj
+    affiliation: "The University of Texas at Austin"
+  - family-names: Lee
+    given-names: Nicholas
+    orcid: "https://orcid.org/0009-0000-7088-310X"
+  - family-names: Galassi
+    given-names: Anthony
+  - family-names: Niso
+    given-names: Guiomar
+    orcid: "https://orcid.org/0000-0001-5872-8924"
+  - family-names: Pestilli
+    given-names: Franco
+    orcid: "https://orcid.org/0000-0002-2469-0494"
+    affiliation: "The University of Texas at Austin"
+contact:
+  - name: "Pestilli Lab, The University of Texas at Austin"
+    website: "https://brainlife.io"
+preferred-citation:
+  type: article
+  title: "ezBIDS: Guided standardization of neuroimaging data interoperable with major data archives and platforms"
+  journal: "Scientific Data"
+  volume: 11
+  start: 179
+  year: 2024
+  doi: "10.1038/s41597-024-02959-0"
+  authors:
+    - family-names: Levitas
+      given-names: Daniel
+    - family-names: Hayashi
+      given-names: Soichi
+    - family-names: Vinci-Booher
+      given-names: Sophia
+    - family-names: Heinsfeld
+      given-names: Anibal
+      affiliation: "The University of Texas at Austin"
+    - family-names: Bhatia
+      given-names: Dheeraj
+      affiliation: "The University of Texas at Austin"
+    - family-names: Lee
+      given-names: Nicholas
+    - family-names: Galassi
+      given-names: Anthony
+    - family-names: Niso
+      given-names: Guiomar
+    - family-names: Pestilli
+      given-names: Franco
+      affiliation: "The University of Texas at Austin"
+references:
+  # BIDS (https://bids-specification.readthedocs.io/en/stable/introduction.html#citing-bids)
+  - type: article
+    title: "The brain imaging data structure, a format for organizing and describing outputs of neuroimaging experiments"
+    journal: "Scientific Data"
+    volume: 3
+    start: 160044
+    year: 2016
+    doi: "10.1038/sdata.2016.44"
+    authors:
+      - family-names: Gorgolewski
+        given-names: Krzysztof J.
+      - name: "others"
+  - type: article
+    title: "PET-BIDS, an extension to the brain imaging data structure for positron emission tomography"
+    journal: "Scientific Data"
+    volume: 9
+    start: 65
+    year: 2022
+    doi: "10.1038/s41597-022-01164-1"
+    authors:
+      - family-names: Norgaard
+        given-names: Martin
+      - name: "others"
+  - type: article
+    title: "MEG-BIDS, the brain imaging data structure extended to magnetoencephalography"
+    journal: "Scientific Data"
+    volume: 5
+    start: 180110
+    year: 2018
+    doi: "10.1038/sdata.2018.110"
+    authors:
+      - family-names: Niso
+        given-names: Guiomar
+      - name: "others"
+  - type: article
+    title: "EEG-BIDS, an extension to the brain imaging data structure for electroencephalography"
+    journal: "Scientific Data"
+    volume: 6
+    start: 103
+    year: 2019
+    doi: "10.1038/s41597-019-0104-8"
+    authors:
+      - family-names: Pernet
+        given-names: Cyril R.
+      - name: "others"
+  - type: article
+    title: "iEEG-BIDS, extending the Brain Imaging Data Structure specification to human intracranial electrophysiology"
+    journal: "Scientific Data"
+    volume: 6
+    start: 102
+    year: 2019
+    doi: "10.1038/s41597-019-0105-7"
+    authors:
+      - family-names: Holdgraf
+        given-names: Christopher
+      - name: "others"
+  - type: article
+    title: "NIRS-BIDS: Brain Imaging Data Structure Extended to Near-Infrared Spectroscopy"
+    journal: "Scientific Data"
+    volume: 12
+    start: 159
+    year: 2025
+    doi: "10.1038/s41597-024-04136-9"
+    authors:
+      - family-names: Luke
+        given-names: Robert
+      - name: "others"
+  - type: article
+    title: "Microscopy-BIDS: An Extension to the Brain Imaging Data Structure for Microscopy Data"
+    journal: "Frontiers in Neuroscience"
+    volume: 16
+    start: 871228
+    year: 2022
+    doi: "10.3389/fnins.2022.871228"
+    authors:
+      - family-names: Bourget
+        given-names: Marie-Hélène
+      - name: "others"
+  - type: article
+    title: "ASL-BIDS, the brain imaging data structure extension for arterial spin labeling"
+    journal: "Scientific Data"
+    volume: 9
+    start: 543
+    year: 2022
+    doi: "10.1038/s41597-022-01615-9"
+    authors:
+      - family-names: Clement
+        given-names: Patricia
+      - name: "others"
+  - type: software
+    title: "bids-validator"
+    license: MIT
+    doi: "10.5281/zenodo.3688706"
+    repository-code: "https://github.com/bids-standard/bids-validator"
+    authors:
+      - name: "The BIDS validator developers"
+  # Conversion and de-identification
+  - type: article
+    title: "The first step for neuroimaging data analysis: DICOM to NIfTI conversion"
+    journal: "Journal of Neuroscience Methods"
+    volume: 264
+    start: 47
+    end: 56
+    year: 2016
+    doi: "10.1016/j.jneumeth.2016.03.001"
+    authors:
+      - family-names: Li
+        given-names: Xiangrui
+      - family-names: Morgan
+        given-names: Paul S.
+      - family-names: Ashburner
+        given-names: John
+      - family-names: Smith
+        given-names: Jolinda
+      - family-names: Rorden
+        given-names: Christopher
+  - type: software
+    title: "PET2BIDS"
+    license: MIT
+    url: "https://github.com/openneuropet/PET2BIDS"
+    authors:
+      - family-names: Galassi
+        given-names: Anthony
+      - family-names: Norgaard
+        given-names: Martin
+      - name: "others"
+  - type: software
+    title: "pydeface"
+    license: MIT
+    doi: "10.5281/zenodo.3524400"
+    repository-code: "https://github.com/poldracklab/pydeface"
+    authors:
+      - family-names: Gulban
+        given-names: Omer Faruk
+      - name: "others"
+  - type: article
+    title: "FSL"
+    journal: "NeuroImage"
+    volume: 62
+    start: 782
+    end: 790
+    year: 2012
+    doi: "10.1016/j.neuroimage.2011.09.015"
+    authors:
+      - family-names: Jenkinson
+        given-names: Mark
+      - family-names: Beckmann
+        given-names: Christian F.
+      - family-names: Behrens
+        given-names: Timothy E.J.
+      - family-names: Woolrich
+        given-names: Mark W.
+      - family-names: Smith
+        given-names: Stephen M.
+  - type: conference-paper
+    title: "Quickshear defacing for neuroimages"
+    collection-title: "Proceedings of the 2nd USENIX Conference on Health Security and Privacy"
+    year: 2011
+    authors:
+      - family-names: Schimke
+        given-names: Nakeisha
+      - family-names: Hale
+        given-names: John
+  - type: article
+    title: "Robust brain extraction across datasets and comparison with publicly available methods"
+    journal: "IEEE Transactions on Medical Imaging"
+    volume: 30
+    issue: 9
+    start: 1617
+    end: 1634
+    year: 2011
+    doi: "10.1109/TMI.2011.2138152"
+    authors:
+      - family-names: Iglesias
+        given-names: Juan Eugenio
+      - name: "others"
+  - type: article
+    title: "AFNI: software for analysis and visualization of functional magnetic resonance neuroimages"
+    journal: "Computers and Biomedical Research"
+    volume: 29
+    issue: 3
+    start: 162
+    end: 173
+    year: 1996
+    doi: "10.1006/cbmr.1996.0014"
+    authors:
+      - family-names: Cox
+        given-names: Robert W.
+  # Neurophysiology
+  - type: article
+    title: "MEG and EEG data analysis with MNE-Python"
+    journal: "Frontiers in Neuroscience"
+    volume: 7
+    year: 2013
+    doi: "10.3389/fnins.2013.00267"
+    authors:
+      - family-names: Gramfort
+        given-names: Alexandre
+      - name: "others"
+  - type: article
+    title: "MNE-BIDS: Organizing electrophysiological data into the BIDS format and facilitating their analysis"
+    journal: "Journal of Open Source Software"
+    volume: 4
+    issue: 44
+    start: 1896
+    year: 2019
+    doi: "10.21105/joss.01896"
+    authors:
+      - family-names: Appelhoff
+        given-names: Stefan
+      - name: "others"
+  - type: article
+    title: "The Neurodata Without Borders ecosystem for neurophysiological data science"
+    journal: "eLife"
+    volume: 11
+    start: e78362
+    year: 2022
+    doi: "10.7554/eLife.78362"
+    authors:
+      - family-names: Rübel
+        given-names: Oliver
+      - name: "others"
+  # Microscopy
+  - type: article
+    title: "OME-NGFF: a next-generation file format for expanding bioimaging data-access strategies"
+    journal: "Nature Methods"
+    volume: 18
+    start: 1496
+    end: 1498
+    year: 2021
+    doi: "10.1038/s41592-021-01326-w"
+    authors:
+      - family-names: Moore
+        given-names: Josh
+      - name: "others"
+  - type: article
+    title: "OME-Zarr: a cloud-optimized bioimaging file format with international community support"
+    journal: "Histochemistry and Cell Biology"
+    volume: 160
+    start: 223
+    end: 251
+    year: 2023
+    doi: "10.1007/s00418-023-02209-1"
+    authors:
+      - family-names: Moore
+        given-names: Josh
+      - name: "others"
+  - type: software
+    title: "BioIO"
+    license: BSD-3-Clause
+    doi: "10.5281/zenodo.22755965"
+    repository-code: "https://github.com/bioio-devs/bioio"
+    authors:
+      - name: "BioIO Contributors"
+  - type: article
+    title: "SciPy 1.0: Fundamental Algorithms for Scientific Computing in Python"
+    journal: "Nature Methods"
+    volume: 17
+    start: 261
+    end: 272
+    year: 2020
+    doi: "10.1038/s41592-019-0686-2"
+    authors:
+      - family-names: Virtanen
+        given-names: Pauli
+      - name: "others"
+  # AI and viewers
+  - type: software
+    title: "AutoBIDSify"
+    version: "0.9.9.1"
+    license: MIT
+    repository-code: "https://github.com/NeuroJSON/autobidsify"
+    authors:
+      - family-names: Liu
+        given-names: Yiyi
+  - type: software
+    title: "Neuroglancer"
+    license: Apache-2.0
+    doi: "10.5281/zenodo.5573293"
+    repository-code: "https://github.com/google/neuroglancer"
+    authors:
+      - name: "The Neuroglancer developers"
+  - type: software
+    title: "NiiVue"
+    license: BSD-2-Clause
+    doi: "10.5281/zenodo.5786269"
+    repository-code: "https://github.com/niivue/niivue"
+    authors:
+      - family-names: Hanayik
+        given-names: Taylor
+      - family-names: Rorden
+        given-names: Chris
+      - name: "others"

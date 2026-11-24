@@ -18,7 +18,10 @@
                     </div>
                     <p class="cite">
                         Levitas et al., <i>Scientific Data</i> 11, 179 (2024) ·
-                        <a href="https://www.nature.com/articles/s41597-024-02959-0">read the paper</a>
+                        <a href="https://www.nature.com/articles/s41597-024-02959-0">read the paper</a> ·
+                        <a href="https://github.com/brainlife/ezbids/blob/master/CREDITS.md"
+                            >built on open-source tools, see credits</a
+                        >
                     </p>
                 </div>
                 <div
@@ -68,7 +71,17 @@ sub-01/
                     </dd>
                 </div>
             </dl>
-            <p class="funding">Free for researchers · part of brainlife.io, funded by NIH and NSF</p>
+            <p class="funding">
+                Free for researchers · part of brainlife.io, developed by the Pestilli Lab at The University of Texas at
+                Austin. Funded by
+                <template v-for="(f, i) in funding" :key="f.funder"
+                    >{{ i ? (i === funding.length - 1 ? ' and ' : ', ') : '' }}{{ f.funder }} (<template
+                        v-for="(a, j) in f.awards"
+                        :key="a.id"
+                        >{{ j ? ', ' : '' }}<a :href="a.href">{{ a.id }}</a></template
+                    >)</template
+                >.
+            </p>
         </div>
 
         <section>
@@ -195,13 +208,14 @@ import { mapState } from 'vuex';
 import { hasJWT, hasAuth } from './lib';
 import ScaleChart from './landing/ScaleChart.vue';
 import AimportFlow from './landing/AimportFlow.vue';
-import { STATS, DATATYPES, SPACE, TIME, SIZE } from './landing/data';
+import { STATS, DATATYPES, SPACE, TIME, SIZE, FUNDING } from './landing/data';
 
 export default defineComponent({
     components: { ScaleChart, AimportFlow },
     data() {
         return {
             stats: STATS,
+            funding: FUNDING,
             datatypes: DATATYPES,
             space: SPACE,
             time: TIME,
@@ -392,6 +406,14 @@ export default defineComponent({
     font-size: 0.85rem;
     color: var(--muted);
     padding-bottom: 26px;
+    max-width: 72ch;
+}
+.funding a {
+    color: inherit;
+    white-space: nowrap;
+    text-decoration: underline;
+    text-decoration-color: var(--rule);
+    text-underline-offset: 2px;
 }
 .charts {
     display: grid;

@@ -683,3 +683,7 @@ validators on your host and uploads the result. Run `bl aimport <folder> --proje
 The brainlife-lite `/aimport` page (plan review with image previews) is still upcoming.
 **Uploading to brainlife.io happens in those front ends, not in this engine**: the engine only produces the
 validated, de-identified output folder.
+
+## Credits
+
+aimport is developed by the Pestilli Lab at The University of Texas at Austin. What to cite, and every tool aimport builds on with its licence, is in [CREDITS.md](../CREDITS.md): [conversion and de-identification](../CREDITS.md#conversion-and-de-identification), [BIDS tools](../CREDITS.md#bids-tools), [microscopy](../CREDITS.md#microscopy-aimport), [electrophysiology and NIRS](../CREDITS.md#electrophysiology-and-nirs-aimport-meg-also-on-the-web), [AI](../CREDITS.md#ai-aimport-optional), [QA viewers](../CREDITS.md#viewers) and [licence notes](../CREDITS.md#licence-notes).
