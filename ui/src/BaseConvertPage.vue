@@ -1,66 +1,50 @@
 <template>
     <div>
         <aside>
-            <h1 style="font-size: 25pt"><span style="letter-spacing: -3px; opacity: 0.6">ez</span>BIDS</h1>
-
-            <ul>
-                <li :class="{ active: page === 'upload' }">Upload Imaging Data</li>
-                <li :class="{ active: page === 'description' }">Dataset Description</li>
-            </ul>
-
-            <div class="section">
-                <h2 class="list-header">Dataset Mappings</h2>
-                <ul>
-                    <li :class="{ active: page === 'subject' }">Subjects/Sessions</li>
-                    <li :class="{ active: page === 'seriespage' }">Series Mapping</li>
-                    <li :class="{ active: page === 'event' }">Events</li>
-                </ul>
+            <div class="brand">
+                <a href="https://brainlife.io" target="_blank" aria-label="brainlife.io">
+                    <img :src="brainlifeMark" class="mark" alt="" />
+                </a>
+                <div>
+                    <div class="name">ezBIDS</div>
+                    <div class="by">by brainlife.io</div>
+                </div>
             </div>
 
-            <ul>
-                <li :class="{ active: page === 'object' }">Dataset Review</li>
-            </ul>
+            <nav class="steps">
+                <template v-for="g in navGroups" :key="g.title || g.items[0].page">
+                    <div v-if="g.title" class="group">{{ g.title }}</div>
+                    <div
+                        v-for="item in g.items"
+                        :key="item.page"
+                        :class="['step', { active: page === item.page, done: pageIndex(item.page) < pageIndex(page) }]"
+                    >
+                        <span class="n">{{ pageIndex(item.page) + 1 }}</span>
+                        {{ item.label }}
+                    </div>
+                </template>
+            </nav>
 
-            <div class="section">
-                <h2 class="list-header">Optional</h2>
-                <ul>
-                    <li :class="{ active: page === 'deface' }">Deface</li>
-                    <li :class="{ active: page === 'participant' }">Participants Info</li>
-                </ul>
-            </div>
+            <div class="aside-foot">
+                <div class="menu-footer">
+                    <el-tooltip content="Open github">
+                        <a href="https://github.com/brainlife/ezbids" target="github">
+                            <font-awesome-icon class="menu-footer-icon" :icon="['fab', 'github']" />
+                        </a>
+                    </el-tooltip>
+                    <el-tooltip content="Open documentation">
+                        <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank">
+                            <font-awesome-icon class="menu-footer-icon" :icon="['fa', 'book']" />
+                        </a>
+                    </el-tooltip>
+                </div>
 
-            <ul>
-                <li :class="{ active: page === 'finalize' }">Access BIDS Data</li>
-                <li :class="{ active: page === 'feedback' }">Feedback</li>
-            </ul>
+                <ManageUsersDialog v-if="hasAuth"></ManageUsersDialog>
 
-            <div class="menu-footer">
-                <el-tooltip content="Open brainlife">
-                    <a href="https://brainlife.io" target="_blank" style="display: flex">
-                        <img src="./assets/bl_logo.png" class="menu-footer-icon" alt="brainlife logo" />
-                    </a>
-                </el-tooltip>
-                <el-tooltip content="Open github">
-                    <a href="https://github.com/brainlife/ezbids" target="github">
-                        <font-awesome-icon class="menu-footer-icon" :icon="['fab', 'github']" />
-                    </a>
-                </el-tooltip>
-                <el-tooltip content="Open documentation">
-                    <a href="https://brainlife.io/docs/using_ezBIDS/" target="_blank">
-                        <font-awesome-icon class="menu-footer-icon" :icon="['fa', 'book']" />
-                    </a>
-                </el-tooltip>
-            </div>
-
-            <ManageUsersDialog v-if="hasAuth"></ManageUsersDialog>
-
-            <div style="width: 135px; padding: 0 10px">
-                <el-button style="color: black; width: 100%; font-family: inherit" @click="handleSignout"
-                    >Signout</el-button
-                >
+                <el-button class="signout" @click="handleSignout">Sign out</el-button>
             </div>
         </aside>
-        <section>
+        <section :class="{ 'page-panel': !fixedPages.includes(page) }">
             <Upload v-if="page === 'upload'" ref="upload" />
             <Description v-if="page === 'description'" ref="description" />
             <Subject v-if="page === 'subject'" ref="subject" />
@@ -119,6 +103,7 @@ import 'element-plus/es/components/notification/style/css';
 import { setSectionIDs, funcQA, fmapQA, dwiQA, petQA, setRun, setVolumeThreshold, setIntendedFor } from './libUnsafe';
 
 import niivue from './components/niivue.vue';
+import brainlifeMark from './assets/brainlife-mark-light.svg';
 
 export default defineComponent({
     components: {
@@ -152,6 +137,45 @@ export default defineComponent({
                 'finalize',
                 'feedback',
             ],
+
+            brainlifeMark,
+
+            // sidebar steps, in page order
+            navGroups: [
+                {
+                    title: '',
+                    items: [
+                        { page: 'upload', label: 'Upload imaging data' },
+                        { page: 'description', label: 'Dataset description' },
+                    ],
+                },
+                {
+                    title: 'Dataset mappings',
+                    items: [
+                        { page: 'subject', label: 'Subjects / sessions' },
+                        { page: 'seriespage', label: 'Series mapping' },
+                        { page: 'event', label: 'Events' },
+                    ],
+                },
+                { title: '', items: [{ page: 'object', label: 'Dataset review' }] },
+                {
+                    title: 'Optional',
+                    items: [
+                        { page: 'deface', label: 'Deface' },
+                        { page: 'participant', label: 'Participants info' },
+                    ],
+                },
+                {
+                    title: '',
+                    items: [
+                        { page: 'finalize', label: 'Access BIDS data' },
+                        { page: 'feedback', label: 'Feedback' },
+                    ],
+                },
+            ],
+
+            // pages that lay out their own fixed work area; the rest sit in a white panel
+            fixedPages: ['seriespage', 'event', 'object', 'deface'],
 
             //item to open in niivue
             //niivueItem: undefined as IObjectItem|undefined,
@@ -231,6 +255,10 @@ export default defineComponent({
     },
 
     methods: {
+        pageIndex(page: string): number {
+            return this.pages.indexOf(page);
+        },
+
         next() {
             this.mapObjects();
             this.$store.commit('organizeObjects');
@@ -350,112 +378,152 @@ export default defineComponent({
 </script>
 
 <style scoped lang="scss">
-aside h1 {
-    padding: 0;
-    margin: 0;
-}
-
 aside {
     position: fixed;
-    width: 160px;
+    width: var(--aside-w);
     top: 0;
     left: 0;
     height: 100%;
+    background: var(--nav-bg);
+    border-right: 1px solid var(--line);
+    color: var(--ink);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    z-index: 4;
+}
 
-    // background-color: #eee;
-    background: linear-gradient(
-        rgb(70, 188, 152),
-        rgb(53, 150, 121),
-        rgb(45, 113, 141),
-        rgb(31, 82, 95),
-        rgb(16, 45, 71)
-    );
+.brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 18px 16px 14px;
 
-    color: #333;
+    .mark {
+        height: 42px;
+        width: auto;
+        display: block;
+    }
+    .name {
+        font-size: 1.25rem;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+        line-height: 1.1;
+    }
+    .by {
+        font-size: 0.72rem;
+        color: var(--ink-2);
+    }
+}
 
-    h1 {
-        padding: 10px;
+.steps {
+    padding: 4px 10px;
+    flex: 1;
+
+    .group {
+        font-size: 0.68rem;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: var(--ink-2);
+        padding: 14px 10px 4px;
     }
 
-    h2 {
-        margin-bottom: 0px;
-        padding: 10px;
-        font-size: 110%;
-        color: white;
+    .step {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 10px;
+        margin: 2px 0;
+        border-radius: 10px;
+        font-weight: 300;
+        color: var(--ink);
     }
 
-    ul {
-        list-style: none;
-        padding-left: 0;
-        margin: 0;
-        color: white;
-
-        li {
-            padding: 10px;
-        }
-
-        li.active {
-            background-color: rgb(103, 194, 58);
-            color: white;
-        }
+    .n {
+        width: 20px;
+        height: 20px;
+        flex: none;
+        border-radius: 50%;
+        border: 1px solid var(--el-border-color-base);
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.7rem;
+        color: var(--ink-2);
     }
 
-    .section {
-        margin-bottom: 10px;
+    .step.done .n {
+        background: var(--el-color-primary-light-9);
+        border-color: var(--el-color-primary-light-7);
+        color: var(--el-color-primary);
+    }
 
-        ul {
-            list-style: inside;
+    .step.active {
+        background: var(--el-color-primary-light-9);
+        color: var(--el-color-primary);
+        font-weight: 500;
+
+        .n {
+            background: var(--el-color-primary);
+            border-color: var(--el-color-primary);
+            color: #fff;
         }
+    }
+}
+
+.aside-foot {
+    padding: 12px 16px 16px;
+    border-top: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+
+    .signout {
+        width: 100%;
+        font-family: inherit;
     }
 }
 
 .menu-footer {
-    padding: 14px;
     display: flex;
-    justify-content: space-between;
-
-    svg:hover {
-        color: lightgray !important;
-    }
-
-    img:hover {
-        opacity: 0.8 !important;
-    }
+    gap: 16px;
 
     .menu-footer-icon {
-        font-size: 2rem;
-        color: white;
-        width: 32px;
-        height: 32px;
+        font-size: 1.2rem;
+        color: var(--ink-2);
+        width: 20px;
+        height: 20px;
+    }
+
+    a:hover .menu-footer-icon {
+        color: var(--el-color-primary);
     }
 }
 
 section {
-    margin-left: 160px;
+    margin-left: var(--aside-w);
     padding-bottom: 100px;
 }
 
-footer {
-    background-color: #b3c0d1;
-    color: #333;
-    line-height: 60px;
+section.page-panel {
+    margin: 16px 16px 76px calc(var(--aside-w) + 16px);
+    padding: 8px 20px 20px;
+    background: var(--panel-bg);
+    border: 1px solid var(--line);
+    border-radius: var(--panel-radius);
+    min-height: calc(100vh - 92px);
+    box-sizing: border-box;
 }
 
 .page-action {
-    padding: 0 20px;
     position: fixed;
     height: 40px;
     bottom: 0;
     right: 0;
-    left: 160px;
-    padding: 10px;
-    background-color: #0003;
+    left: var(--aside-w);
+    padding: 10px 16px;
+    background: var(--panel-bg);
+    border-top: 1px solid var(--line);
     z-index: 3;
-}
-
-.list-header {
-    opacity: 0.5;
-    font-weight: bold;
-    background-color: #0001;
 }
 </style>
