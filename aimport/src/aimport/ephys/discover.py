@@ -23,12 +23,18 @@ FAMILIES = ("edf", "bdf", "gdf", "brainvision", "eeglab", "cnt", "egi", "nihon",
             "bti", "kit", "nirx", "hitachi", "snirf", "nwb", "blackrock", "unsupported")
 EPHYS_VOCAB = ("eeg", "meg", "ieeg", "nirs", "fnirs", "emg", "rest", "resting", "task", "run", "noise", "emptyroom",
                "erm", "sleep", "oddball", "mmn", "motor", "tapping", "auditory", "visual", "faces", "nback",
-               "eyes", "open", "closed")
+               "eyes", "open", "closed",
+               # file extensions, so they are not read as names
+               "edf", "bdf", "gdf", "vhdr", "vmrk", "fdt", "fif", "snirf", "nwb", "sqd", "con", "cnt", "lay",
+               "hdr", "wl1", "wl2", "evt", "tri", "ds", "mff", "mefd", "nev", "ns1", "ns2", "ns3", "ns4",
+               "ns5", "ns6", "set", "pos", "hsp", "mrk", "elp")
 VOCAB = names.VOCAB + EPHYS_VOCAB
 
 DATATYPES = ("eeg", "meg", "ieeg", "nirs", "emg")
 FIF_DERIVED = re.compile(r"-(ave|cov|epo|fwd|inv|trans|sol|proj)\.fif(\.gz)?$", re.I)
 FIF_SPLIT = re.compile(r"^(?P<base>.+)-(?P<n>\d+)(?P<ext>\.fif(\.gz)?)$", re.I)
+BIDS_SPLIT = re.compile(r"_split-(\d+)(?=_[A-Za-z0-9]+\.fif(\.gz)?$)", re.I)
+MAX_SIDECAR = 1 << 20
 UNSUPPORTED_EXT = (".oxy3", ".oxy4", ".oxy5", ".oxyproj", ".omm")
 REASON_OPTICAL = "export to SNIRF first"
 REASON_MEF3 = "MEF3: export to EDF first"
@@ -127,8 +133,9 @@ def _bids_meta(directory: Path, name: str) -> dict:
     stem = re.sub(r"\.(edf|bdf|vhdr|set|fif|snirf|nwb|gdf|cnt|sqd|con|lay)(\.gz)?$", "", name, flags=re.I)
     sidecar = directory / f"{stem}.json"
     try:
-        data = json.loads(sidecar.read_text(encoding="utf-8")) if sidecar.is_file() and not sidecar.is_symlink() else {}
-    except (OSError, ValueError):
+        data = (json.loads(sidecar.read_bytes()[:MAX_SIDECAR + 1].decode("utf-8"))
+                if sidecar.is_file() and not sidecar.is_symlink() and sidecar.stat().st_size <= MAX_SIDECAR else {})
+    except (OSError, ValueError):  # includes UnicodeDecodeError
         data = {}
     if isinstance(data, dict):
         v = data.get("PowerLineFrequency")
@@ -203,6 +210,33 @@ def _run_folder(files: dict[str, os.DirEntry], rel: str) -> Recording | None:
     return None
 
 
+def _fif_continuations(low: str, names_: list[str]) -> list[str] | None:
+    """Later parts of the FIF recording ``low`` (``x-1.fif`` chains after ``x.fif``, BIDS ``split-02`` after
+    ``split-01``); None when ``low`` is itself a later part."""
+    present = set(names_)
+    bids = BIDS_SPLIT.search(low)
+    if bids:
+        def part(n: int) -> str:
+            return low[:bids.start()] + f"_split-{n:0{len(bids.group(1))}d}" + low[bids.end():]
+        nums = sorted(int(m.group(1)) for n in names_ if (m := BIDS_SPLIT.search(n)) and BIDS_SPLIT.sub("", n) == BIDS_SPLIT.sub("", low))
+        if int(bids.group(1)) != nums[0]:
+            return None
+        return [part(n) for n in nums[1:] if part(n) in present]
+    m = FIF_SPLIT.match(low)
+    if m:
+        base = m["base"] + m["ext"]
+        k = int(m["n"])
+        if base in present and all(f"{m['base']}-{i}{m['ext']}" in present for i in range(1, k + 1)):
+            return None
+    out = []
+    stem, ext = re.match(r"^(.+?)(\.fif(?:\.gz)?)$", low).groups()
+    i = 1
+    while f"{stem}-{i}{ext}" in present:
+        out.append(f"{stem}-{i}{ext}")
+        i += 1
+    return out
+
+
 def _file_recordings(files: dict[str, os.DirEntry], rel_dir: str, scan: _Scan) -> None:
     """Recognise the recordings among the files of one folder (companions are matched by name)."""
     low_names = sorted(files)
@@ -255,12 +289,11 @@ def _file_recordings(files: dict[str, os.DirEntry], rel_dir: str, scan: _Scan) -
             if FIF_DERIVED.search(low):
                 scan.add(Recording(rel(low), "fif", excluded=f"derived FIF ({FIF_DERIVED.search(low).group(1)})"))
                 continue
-            m = FIF_SPLIT.match(low)
-            if m and (m["base"] + m["ext"]) in files:
-                continue  # split continuation: a companion of the first file
-            splits = [rel(n) for n in low_names
-                      if (mm := FIF_SPLIT.match(n)) and mm["base"] + mm["ext"] == low]
-            taken.update(Path(s).name.lower() for s in splits)
+            splits = _fif_continuations(low, low_names)
+            if splits is None:
+                continue  # a later part of another recording
+            splits = [rel(n) for n in splits]
+            taken.update(Path(x).name.lower() for x in splits)
             scan.add(Recording(rel(low), "fif", companions=splits))
         elif low.endswith((".sqd", ".con")):
             scan.add(Recording(rel(low), "kit", companions=dir_files(".mrk", ".elp"), headshape=dir_files(".hsp")))
@@ -301,8 +334,9 @@ def _brainvision(path: str, files: dict[str, os.DirEntry], rel_dir: str, rel: st
         if e is not None:
             rec.companions.append(_join(rel_dir, e.name))
             taken.add(e.name.lower())
-    if rec.excluded:
-        rec.companions = []
+    if rec.excluded:  # refused: claim the same-stem siblings so their text and data stay out of ezBIDS
+        rec.companions = [_join(rel_dir, files[stem.lower() + x].name) for x in (".eeg", ".vmrk")
+                          if stem.lower() + x in files]
     return rec
 
 
@@ -312,6 +346,9 @@ def _persyst(path: str, files: dict[str, os.DirEntry], rel_dir: str, rel: str) -
     name = value if value else Path(path).stem + ".dat"
     if not _plain_name(name):
         rec.excluded = REASON_PERSYST
+        sib = files.get(Path(path).stem.lower() + ".dat")
+        if sib is not None:
+            rec.companions.append(_join(rel_dir, sib.name))
         return rec
     e = files.get(name.lower())
     if e is not None:

@@ -53,7 +53,7 @@ def _alpha(token: str) -> str:
 
 
 def is_vocab(token: str, vocab: Iterable[str] | None = None) -> bool:
-    words = _VOCAB if vocab is None else frozenset(vocab)
+    words = _VOCAB if vocab is None else vocab if isinstance(vocab, frozenset) else frozenset(vocab)
     return token.lower() in words or _alpha(token) in words
 
 
@@ -77,6 +77,7 @@ def _parts(rel: str) -> list[str]:
 
 def facts(rel: str, vocab: Iterable[str] | None = None) -> NameFacts:
     parts = _parts(rel)
+    vocab = None if vocab is None else frozenset(vocab)
     out = NameFacts()
     sub = next((p[4:] for p in parts if p.startswith("sub-") and len(p) > 4), None)
     if sub:
@@ -123,6 +124,7 @@ def facts(rel: str, vocab: Iterable[str] | None = None) -> NameFacts:
 def path_terms(rels: Iterable[str], vocab: Iterable[str] | None = None) -> set[str]:
     """Identifying terms from paths, for redaction: tokens, donors and every form of each date."""
     terms: set[str] = set()
+    vocab = None if vocab is None else frozenset(vocab)
     for rel in rels:
         for part in _parts(rel):
             for t in _tokens(_EXT.sub("", part)):

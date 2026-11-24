@@ -124,7 +124,7 @@ def test_brainvision_companions_from_header(found, tmp_path):
     _w(bad / "a.vmrk", b"x")
     _, recs = discover.claim(bad, [])
     assert recs[0].excluded == "BrainVision data file outside its folder"
-    assert recs[0].companions == []
+    assert [Path(x).name for x in recs[0].companions] == ["a.vmrk"]
 
 
 def test_ctf_hz_excluded(found):
@@ -141,8 +141,6 @@ def test_headshape_listed(found):
     assert not any(x.endswith("hs_file") for x in by["bti/erm_HFH"].companions)
     assert by["kit/a.sqd"].headshape == [f"{fx.SUBJECT_DIR}/kit/a.hsp"]
     assert sorted(Path(x).name for x in by["kit/a.sqd"].companions) == ["a.elp", "a.mrk"]
-    # a .pos beside a .ds folder
-    assert Path(by["meg/run1.ds"].headshape[0]).name if by["meg/run1.ds"].headshape else True
 
 
 def test_ctf_pos_beside_ds(tmp_path):
@@ -221,3 +219,41 @@ def test_vocab_param():
     assert names.facts("rest_Jon").donor == "rest"
     assert names.facts("rest_Jon", discover.VOCAB).donor == "Jon"
     assert "rest" not in names.path_terms(["rest_Jon"], discover.VOCAB)
+
+
+def test_rejected_siblings_still_claimed(tmp_path):
+    _w(tmp_path / "a.vhdr", "[Common Infos]\nDataFile=../../etc/passwd\nMarkerFile=a.vmrk\n")
+    _w(tmp_path / "a.vmrk", "Mk1=Comment,Dr Jane Doe,1,1,0")
+    _w(tmp_path / "a.eeg", b"x")
+    _w(tmp_path / "p.lay", "[FileInfo]\nFile=..\\p.dat\n")
+    _w(tmp_path / "p.dat", b"x")
+    c, recs = discover.claim(tmp_path, [])
+    assert {"a.vhdr", "a.vmrk", "a.eeg", "p.lay", "p.dat"} <= set(c.roots)
+    assert all(r.excluded for r in recs)
+
+
+def test_ephys_extensions_not_names():
+    from aimport.micr import names
+    assert names.facts("rest.edf", discover.VOCAB).donor is None
+    assert "edf" not in names.path_terms(["rest.edf"], discover.VOCAB)
+    assert "ns2" not in names.path_terms(["rest.ns2"], discover.VOCAB)
+
+
+def test_fif_split_parts(tmp_path):
+    for n in ("s_split-01_meg.fif", "s_split-02_meg.fif", "x.fif", "x-1.fif", "y-1.fif", "z.fif", "z-2.fif"):
+        _w(tmp_path / n, b"x")
+    _, recs = discover.claim(tmp_path, [])
+    by = {r.rel: r for r in recs}
+    assert by["s_split-01_meg.fif"].companions == ["s_split-02_meg.fif"]
+    assert "s_split-02_meg.fif" not in by
+    assert by["x.fif"].companions == ["x-1.fif"] and "x-1.fif" not in by
+    assert "y-1.fif" in by  # no y.fif first part
+    assert by["z.fif"].companions == [] and "z-2.fif" in by  # chain broken at -1
+
+
+def test_sidecar_read_capped(tmp_path):
+    d = tmp_path / "sub-01" / "eeg"
+    _w(d / "sub-01_task-a_eeg.edf", EDF_HEAD)
+    _w(d / "sub-01_task-a_eeg.json", '{"PowerLineFrequency": 50, "pad": "' + "x" * (2 << 20) + '"}')
+    _, recs = discover.claim(tmp_path, [])
+    assert recs[0].meta == {"task": "a"}
