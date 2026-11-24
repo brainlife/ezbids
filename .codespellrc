@@ -1,4 +1,4 @@
 [codespell]
 skip = .git,*.pdf,*.svg,*.json,*.eps,*.min.js,*.yaml,bids-specification
-# ALS; OT = DICOM "Other" modality
+# ALS; OT = DICOM "Other" modality; TE = echo time
 ignore-words-list = als,ot,te
