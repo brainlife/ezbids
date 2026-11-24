@@ -433,7 +433,7 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
     """The ephys plan. mri_subjects: the MRI path's subjects by their input sub- folder label,
     ``{label: {"idx", "id", "sessions": {ses folder label: (session_idx, session)}, "only": (session_idx,
     session) | None}}``; recordings in that folder join that subject."""
-    from ..brainlife_map import to_brainlife
+    from ..brainlife_map import no_datatype_reason, to_brainlife
     from ..planner import EPHYS_BRAINLIFE_EXTS, _check_nameable, _usable
 
     terms: set[str] = set()
@@ -626,7 +626,7 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
         if d["status"] == "ok":
             bl_datatype, bl_tags = to_brainlife(datatype, datatype, entities[i], {}, EPHYS_BRAINLIFE_EXTS.get(fmt))
             if target == "datatypes" and bl_datatype is None:
-                d["exclude"], d["reason"] = True, d["reason"] + "; no brainlife datatype"
+                d["exclude"], d["reason"] = True, d["reason"] + no_datatype_reason(datatype, datatype)
         if d["status"] == "ok" and not d["exclude"] and datatype in ("meg", "eeg") and (
                 info.get("n_headshape_points") or rec.get("headshape")):
             headshape = True  # only for recordings that will be written

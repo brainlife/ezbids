@@ -18,7 +18,7 @@ from typing import TYPE_CHECKING, Callable, Literal, Sequence
 
 from .agent import Guess, LLMClient, classify, draft_metadata
 from .ancillary import bids_root, ancillary_warnings, find_ancillary, id_maps, plan_ancillary, read_dataset_description
-from .brainlife_map import to_brainlife
+from .brainlife_map import no_datatype_reason, to_brainlife
 from .ezbids_runner import CoreResult, CoreSeries, CoreSubject
 from .plan import EMPTY_ROOM_SUBJECT, Plan, PlanEntry
 from .pseudonyms import PseudonymKey
@@ -565,7 +565,9 @@ def _rederive(e: PlanEntry, schema: Schema, target: str, keys: set[str], was_ok:
             to_brainlife(e.datatype, e.suffix, e.entities, {}, EPHYS_BRAINLIFE_EXTS.get(e.ephys_format))
             if e.status == "ok" else (None, []))
     if target == "datatypes" and e.brainlife_datatype is None and not e.exclude:
-        e.exclude, e.reason = True, f"{e.reason}; no brainlife datatype"
+        # an ephys entry names its draft datatype (MRI reasons are unchanged)
+        gap = no_datatype_reason(e.datatype, e.suffix) if e.modality == "ephys" else "; no brainlife datatype"
+        e.exclude, e.reason = True, f"{e.reason}{gap}"
 
 
 def _seed_readme(plan: Plan, supplied: list[Path], input_dir: Path, terms: set[str]) -> None:

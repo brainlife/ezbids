@@ -500,3 +500,22 @@ def test_scan_clears_staged_before_claims(tmp_path, fake, make_app, monkeypatch)
     c.post("/scan", json={"project_id": "proj"})
     assert wait_stage(c, ("planned", "failed"))["stage"] == "planned"
     assert order.index(work / "ezbids") < order.index(work / "fake")
+
+
+# --- Task 12 (phase 3): a recording folder one module claims is read whole by it -----------------------------------
+
+
+def test_folder_claim_wins_over_files_inside():
+    """A NIRx recording folder (claimed by ephys) holds a ``*_probeInfo.mat`` that microscopy also claims; the
+    file stays with the folder's module, so microscopy neither reads it nor harvests its path words (``nirs``)."""
+    from aimport.modality import Claim, drop_overlaps
+
+    micr = Claim(roots=["nirx/rec/NIRS-2020-08-18_001_probeInfo.mat", "slides/a.ome.tif"])
+    ephys = Claim(roots=["nirx/rec", "nirx/rec/NIRS-2020-08-18_001.hdr", "nirx/rec/NIRS-2020-08-18_001_probeInfo.mat"])
+    drop_overlaps([micr, ephys])
+    assert micr.roots == ["slides/a.ome.tif"]
+    assert ephys.roots == ["nirx/rec", "nirx/rec/NIRS-2020-08-18_001.hdr", "nirx/rec/NIRS-2020-08-18_001_probeInfo.mat"]
+    # the same root in two claims: the first module keeps it; a module's own nested roots are kept
+    a, b = Claim(roots=["x/f.mat"]), Claim(roots=["x/f.mat", "y"])
+    drop_overlaps([a, b])
+    assert (a.roots, b.roots) == (["x/f.mat"], ["y"])

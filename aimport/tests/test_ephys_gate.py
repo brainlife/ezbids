@@ -393,3 +393,37 @@ def test_gate_nwb_write_time_only_at_root(tmp_path):
         f.create_group("general").create_dataset("file_create_date", data=[now.encode()])
     assert gate.check([nwb], out, TERMS, FORBIDDEN, sources=[]) == [
         "sub-01/ieeg/sub-01_task-rest_ieeg.nwb: string dataset"]
+
+
+# --- Task 12: the fixed BrainVision text is never a term -------------------------------------------------------
+
+
+def test_gate_brainvision_fixed_text_not_a_term(tmp_path):
+    """Run terms that spell part of the fixed text aimport and pybv write (a file-name word ``utf8`` or ``pt1``, an
+    EEGLAB reference ``common``, ``binary``) do not fail a clean BrainVision file; a term in a value
+    still does. Found by the mne-testing-data end-to-end imports (EDF ``test_utf8_annotations``, EEGLAB, Persyst
+    ``sub-pt1``)."""
+    import mne_bids
+
+    from aimport.ephys import headers
+
+    root = tmp_path / "bids"
+    bp = mne_bids.BIDSPath(subject="01", task="rest", datatype="eeg", root=root)
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        mne_bids.write_raw_bids(_clean_raw("eeg"), bp, format="BrainVision", allow_preload=True, overwrite=True,
+                                anonymize={"daysback": 40000, "keep_his": False, "keep_source": False},
+                                verbose=False)
+    headers.rebuild_vhdr(bp.fpath, "sub-01_task-rest_eeg")
+    files = [p for p in root.rglob("*") if p.is_file()]
+    fixed_words = {"utf8", "pt1", "common", "binary", "multiplexed", "infos", "exported", "pybv"}
+    assert gate.check(files, root, TERMS | fixed_words, FORBIDDEN, sources=[]) == []
+    # a term in a value is still refused: a channel name, and a key aimport does not write
+    vhdr = bp.fpath
+    text = vhdr.read_text()
+    vhdr.write_text(text.replace("[Channel Infos]\n", "[Channel Infos]\nCh99=Common,,0.1,µV\n"))
+    assert gate.check([vhdr], root, TERMS | fixed_words, FORBIDDEN, sources=[]) == [
+        "sub-01/eeg/sub-01_task-rest_eeg.vhdr: header line"]
+    vhdr.write_text(text.replace("Codepage=UTF-8", "Codepage=UTF-8 common"))
+    assert gate.check([vhdr], root, TERMS | fixed_words, FORBIDDEN, sources=[]) == [
+        "sub-01/eeg/sub-01_task-rest_eeg.vhdr: header line"]

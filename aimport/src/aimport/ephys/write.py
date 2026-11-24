@@ -21,6 +21,7 @@ the sidecars from ``ieeg_sidecars``.
 from __future__ import annotations
 
 import json
+import os
 import re
 import shutil
 from datetime import date, datetime
@@ -115,6 +116,25 @@ def _bids_path(entry: "PlanEntry", datatype: str, root: Path):
                              datatype=datatype, root=root)
 
 
+def _taken_lazily(raw) -> bool:
+    """Whether MNE-BIDS takes this lazily opened recording without ``allow_preload``: its input file extension, as
+    MNE-BIDS parses it, is one MNE-BIDS knows. GDF, Nihon Kohden and the like are not; neither is a file name
+    with more dots than its extension (``x.v2_rest.edf`` parses as ``.v2_rest.edf``). Mirrors ``write_raw_bids``."""
+    from mne_bids.config import ALLOWED_INPUT_EXTENSIONS
+    from mne_bids.path import _parse_ext
+
+    if not raw.filenames or raw.filenames[0] is None:
+        return False
+    fname = str(raw.filenames[0])
+    if ".ds" in os.path.dirname(fname):
+        fname = os.path.dirname(fname)
+    fname = fname.replace(".eeg", ".vhdr").replace(".fdt", ".set").replace(".dat", ".lay")
+    ext = _parse_ext(fname)[1]
+    if ext in (".EDF", ".BDF"):
+        ext = ext.lower()
+    return ext in ALLOWED_INPUT_EXTENSIONS
+
+
 def write_recording(entry: "PlanEntry", rec: dict, raw, scratch: Path, dest: Callable[[str], Path],
                     schema: "Schema", terms: set[str], er_path=None, *, days_back: int,
                     labels: set[str], er_rel: str | None = None, keep: bool = False,
@@ -138,6 +158,8 @@ def write_recording(entry: "PlanEntry", rec: dict, raw, scratch: Path, dest: Cal
     kw: dict[str, Any] = {}
     if datatype == "emg":
         kw["emg_placement"] = EMG_PLACEMENT
+    if not raw.preload and not _taken_lazily(raw):
+        raw.load_data(verbose="error")  # the plan's load limit (AIMPORT_EPHYS_MAX_LOAD_BYTES) already applies
     out_bp = mne_bids.write_raw_bids(
         raw, bp, anonymize={"daysback": int(days_back), "keep_his": False, "keep_source": False},
         format=fmt, empty_room=er_path, allow_preload=bool(raw.preload), overwrite=True, verbose=False, **kw)

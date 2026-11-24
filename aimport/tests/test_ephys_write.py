@@ -523,3 +523,29 @@ def test_ephys_output_validates(tmp_path, key, schema):
     assert {e.datatype for e in ephys(plan)} == {"eeg", "ieeg", "emg", "meg"}
     result = validate_bids(out)
     assert result.ok, json.dumps(result.errors, indent=1)[:4000]
+
+
+# --- Task 12: inputs MNE-BIDS does not take lazily ---------------------------------------------------------------
+
+
+def test_dotted_name_written(tmp_path, key, schema):
+    """A file name with more dots than its extension (MNE-BIDS reads ``.v2_rest.edf`` as the extension) is loaded
+    and written, not refused. Found by the mne-testing-data end-to-end import of ``somMDYO-18av.ds_raw.fif``."""
+    inp = tmp_path / "in"
+    edf(inp / "a" / "grid.v2_rest.edf", ["Fz", "Cz"], his_id="P2222222")
+    plan, out, manifest = plan_and_write(inp, tmp_path, key, schema)
+    (e,) = ephys(plan)
+    assert manifest[e.id][0] == "sub-01/eeg/sub-01_task-rest_eeg.vhdr" and (out / manifest[e.id][0]).is_file()
+
+
+@pytest.mark.ephys_data
+def test_gdf_written(tmp_path, key, schema):
+    """GDF is read by MNE but not taken lazily by MNE-BIDS: loaded first (within the plan's load limit)."""
+    import shutil
+
+    src = fx.fetch_mne_testing(fx.MNE_TESTING_FAMILIES["gdf"])["GDF/test_1ch.gdf"]
+    (tmp_path / "in" / "g").mkdir(parents=True)
+    shutil.copyfile(src, tmp_path / "in" / "g" / "test_1ch.gdf")
+    plan, out, manifest = plan_and_write(tmp_path / "in", tmp_path, key, schema)
+    (e,) = ephys(plan)
+    assert manifest[e.id][0].endswith("_eeg.vhdr") and (out / manifest[e.id][0]).is_file()

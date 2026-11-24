@@ -208,6 +208,46 @@ All examples use `T="Authorization: Bearer $AIMPORT_TOKEN"` and `U=http://localh
    curl -s "$U/preview/<entry id>?which=original" -H "$T" -o original.nii.gz
    ```
 
+## Electrophysiology and optical
+
+aimport also imports EEG, MEG, iEEG, fNIRS and EMG recordings, alone or beside MRI in the same folder. Each
+recording is converted (never copied) to a BIDS format and de-identified before it is written; the details are
+in [Electrophysiology output](#electrophysiology-output).
+
+| Datatype | Accepted input | Written as (`ephys_format`, first is the default) |
+|---|---|---|
+| eeg | EDF/EDF+, BDF, GDF, BrainVision, EEGLAB, Neuroscan `.cnt`, Nihon Kohden, Persyst, FIF | BrainVision, EDF, BDF |
+| ieeg | the EEG formats, NWB | BrainVision, EDF (NWB input: NWB) |
+| emg | the EEG formats with EMG channels | EDF, BDF (BDF input: BDF) |
+| meg | FIF, CTF `.ds`, KIT, BTi/4D | FIF |
+| nirs | SNIRF, NIRx, Hitachi | SNIRF |
+
+The datatype comes from a BIDS datatype folder, else the recording system, else the channel types. Change the
+format with a plan edit: `{"edits": [{"id": "<entry id>", "ephys_format": "EDF"}]}`. Recordings aimport cannot
+convert are planned `unsupported` and never written; the reason says what to do: Artinis `.oxy3/.oxy4/.oxy5`
+"export to SNIRF first", MEF3 "MEF3: export to EDF first", EGI `.mff` "EGI .mff needs the mffpy package",
+Blackrock "Blackrock needs the neo extra: pip install aimport[neo]", and EEGLAB `.set` files above 512 MB with
+embedded data. Epoched or averaged files (`-epo.fif`, `-ave.fif`) are not imported.
+
+- **Removed**: patient and recording header fields, the experimenter, descriptions and device IDs; real dates
+  (shifted to before 1925; `scans.tsv` keeps the shifted date, as for MRI); free-text annotations, which
+  become codes; channel names that hold an identifier (renamed `eeg_007`); MEG/EEG head-shape points, unless
+  you set `keep_headshape` on the entry (fiducials and HPI coils always stay). A final check re-reads every
+  written file and fails the run if anything identifying is left.
+- **Event codes**: events whose text is not a safe label are shown as `E001`, `E002`, ...; give them names
+  with `PATCH /plan {"event_names": {"E001": "eyes closed"}}` (see [Edit](#the-workflow), step 4). The names
+  are what `events.tsv` and the recordings carry.
+- **QA**: after the write, each recording gets three snapshots (traces, spectrum, channels) on `/viewer/` and
+  an interactive trace page (see [Checking the output](#checking-the-output-qa-viewer)), built from the
+  output only.
+- **Memory**: one recording is converted at a time and some formats are loaded whole. Above 2 GiB of samples
+  (channels x samples x 8 bytes) the plan warns "converting <name> loads about N GB into memory"; above
+  `AIMPORT_EPHYS_MAX_LOAD_BYTES` (default 8 GiB; pass `-e AIMPORT_EPHYS_MAX_LOAD_BYTES=...` to `docker run`)
+  the recording is `unsupported` with that reason.
+
+`tests/test_ephys_end_to_end.py` runs the whole API on planted recordings beside the planted MRI DICOMs and
+checks that no planted value reaches a model request, the plan, an API response, a QA image or the output.
+
 ## Checking the output (QA viewer)
 
 After `validated` or `invalid` the engine serves a Neuroglancer viewer of the output itself, so a person can look
@@ -415,7 +455,7 @@ entry's `ephys_format` (never a copy of the source file):
   same study gets the label the key recorded at scan time.
 - `<work>/ezbids.log` (ezBIDS's own output, kept for troubleshooting) holds original paths and names, like the
   input; it stays in the work folder and is never uploaded or returned by the API.
-- Phase 1 covers MRI and PET (anat, func, dwi, fmap, perf, pet) from DICOM and NIfTI; other modalities come in later phases.
+- Phase 1 covers MRI and PET (anat, func, dwi, fmap, perf, pet) from DICOM and NIfTI; phase 3 adds electrophysiology and optical recordings (see "Electrophysiology and optical"); continuous recordings only.
 
 ## BIDS version, validator and the brainlife mapping
 
@@ -511,7 +551,9 @@ docker run --rm --platform linux/amd64 -v $PWD/aimport:/src \
 docker run --rm --platform linux/amd64 -v $PWD/aimport:/src brainlife/aimport:dev pytest -m docker_slow /src/tests  # pydeface, minutes
 ```
 
-The end-to-end leak test is `tests/test_end_to_end.py` (about two minutes under emulation).
+The end-to-end leak test is `tests/test_end_to_end.py` (about two minutes under emulation); for
+electrophysiology, `tests/test_ephys_end_to_end.py` (add the ephys cache mounts listed in
+[tests/DATASETS.md](tests/DATASETS.md); about four minutes).
 
 ## What's next
 

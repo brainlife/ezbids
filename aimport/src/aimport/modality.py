@@ -129,6 +129,23 @@ def claimed_roots(claims: Iterable[Claim]) -> list[str]:
     return roots
 
 
+def drop_overlaps(claims: Sequence[Claim]) -> None:
+    """Give each input path to one module, in place: a root that lies below another module's root (a recording
+    folder that module reads whole, such as a NIRx folder holding a ``*_probeInfo.mat``) leaves the claim it is
+    in; a root two modules claim stays with the first. A module's own nested roots are kept."""
+    original = [[normalize_root(r) for r in c.roots] for c in claims]
+    seen: set[str] = set()
+    for i, c in enumerate(claims):
+        others = {r for j, roots in enumerate(original) if j != i for r in roots}
+        kept = []
+        for r in original[i]:
+            if r in seen or any(str(a) in others for a in PurePosixPath(r).parents if str(a) != "."):
+                continue
+            kept.append(r)
+        seen.update(kept)
+        c.roots = kept
+
+
 def _under(path: Path, roots: frozenset[str]) -> bool:
     """path is one of roots or lies below one: a set lookup per ancestor, never a scan of roots."""
     return str(path) in roots or any(str(a) in roots for a in path.parents)

@@ -62,6 +62,7 @@ from .modality import (
     Claim,
     claim_terms,
     claimed_roots,
+    drop_overlaps,
     module_dir,
     normalize_root,
     redact_paths,
@@ -532,8 +533,10 @@ class Server:
                 claim = m.claim(self.input_dir, list(remote))
                 self.scan_claims.append(claim)
                 claim.roots = [normalize_root(r) for r in claim.roots]
-                claim.save(module_dir(self.work, m) / CLAIM_FILE)
                 claims[m.name] = claim
+            drop_overlaps(list(claims.values()))  # each input path is read by one module
+            for m in mods:
+                claims[m.name].save(module_dir(self.work, m) / CLAIM_FILE)
             roots = claimed_roots(claims.values())
             self.set_status("scanning", "staging the input")
             # claimed input is never staged (a module reads it in place); phase-1 calls stay unchanged

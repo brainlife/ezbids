@@ -207,6 +207,32 @@ def fetch_bids_examples(names: Iterable[str]) -> dict[str, Path]:
     return out
 
 
+# OpenNeuro, licence checked first (tests/DATASETS.md): one CC0 fNIRS run, fetched alone by its versioned S3 URL
+OPENNEURO_FNIRS = {
+    "dataset": "ds005929",
+    "tag": "1.0.1",
+    "path": "sub-6023/ses-1/nirs/sub-6023_ses-1_task-MA_run-01_nirs.snirf",
+    "url": "https://s3.amazonaws.com/openneuro.org/ds005929/sub-6023/ses-1/nirs/"
+           "sub-6023_ses-1_task-MA_run-01_nirs.snirf?versionId=lmKQm_w2QxdzkgxA28KQIfNoPDUqlv26",
+    "bytes": 7333288,
+    "sha256": "de264684c26f7e4294a22c23593f47fa44e1de2cf103190ffca96f0836820543",
+}
+
+
+def fetch_openneuro_fnirs() -> Path:
+    """Download (once) the pinned OpenNeuro fNIRS run into the cache and return its path (SHA-256 checked)."""
+    o = OPENNEURO_FNIRS
+    dest = CACHE / "openneuro" / f"{o['dataset']}-{o['tag']}" / Path(o["path"]).name
+    if not dest.exists() or dest.stat().st_size != o["bytes"] or sha256(dest) != o["sha256"]:
+        dest.parent.mkdir(parents=True, exist_ok=True)
+        tmp = dest.with_name(dest.name + ".part")
+        urllib.request.urlretrieve(o["url"], tmp)
+        tmp.replace(dest)
+    if sha256(dest) != o["sha256"]:
+        raise RuntimeError(f"SHA-256 mismatch for {o['dataset']} {o['path']}")
+    return dest
+
+
 # --- planted synthetic recordings --------------------------------------------------------------
 
 CHANNELS = ("Fp1", "Smith-Fp1", "EMG1")

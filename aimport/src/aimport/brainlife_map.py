@@ -125,6 +125,12 @@ def draft_for(datatype: str, suffix: str) -> str | None:
     return _DRAFTS.get((datatype, suffix))
 
 
+def no_datatype_reason(datatype: str | None, suffix: str | None) -> str:
+    """The text added to a reason when the datatypes target excludes an entry: names the draft, if any."""
+    draft = draft_for(datatype, suffix) if datatype and suffix else None
+    return f"; no brainlife datatype (draft {draft}, not registered yet)" if draft else "; no brainlife datatype"
+
+
 def to_brainlife(
     datatype: str, suffix: str, entities: dict[str, str], sidecar: dict, extension: str | None = None
 ) -> tuple[str | None, list[str]]:

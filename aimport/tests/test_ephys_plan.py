@@ -313,6 +313,24 @@ def test_brainlife_ext_mapping():
             assert r["status"] == "draft"
 
 
+def test_datatypes_target_names_the_draft(tmp_path, key, schema):
+    """target=datatypes: an ieeg/nirs/emg entry is excluded and its reason names the draft brainlife datatype."""
+    inp = tmp_path / "in"
+    planted_snirf(inp / "n")
+    edf(inp / "i" / "grid_rest.edf", ["SEEG LA1", "SEEG LA2"], his_id="P2222222")
+    edf(inp / "m" / "arm_rest.edf", ["EMG L1", "EMG L2"], his_id="P3333333")
+    plan = make_plan(inp, tmp_path / "work", key, schema, target="datatypes")
+    by_dt = {e.datatype: e for e in ephys(plan)}
+    assert set(by_dt) == {"nirs", "ieeg", "emg"}
+    for dt, e in by_dt.items():
+        assert e.exclude and e.brainlife_datatype is None
+        assert e.reason.endswith(f"; no brainlife datatype (draft neuro/{dt}/{dt}, not registered yet)"), e.reason
+    # including it again is refused the same way, naming the draft
+    e = by_dt["ieeg"]
+    apply_plan_edits(plan, [{"id": e.id, "exclude": False}], schema)
+    assert e.exclude and e.reason.endswith("(draft neuro/ieeg/ieeg, not registered yet)"), e.reason
+
+
 def test_mri_entry_cannot_become_ephys(tmp_path, key, schema):
     core = parse_core(FIXTURES / "ezbids_core_siemens.json")
     plan = build_plan(core, tmp_path, key, set(), None, schema, "bids")

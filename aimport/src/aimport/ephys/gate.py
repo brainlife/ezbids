@@ -56,6 +56,27 @@ MAX_LISTED = 20
 EMPTY_ALLOWED = frozenset({"", "mne_anonymize", "Anonymized using a time shift to preserve age at acquisition"})
 SUBJECT_KEYS = frozenset({"sex", "hand"})
 EDF_ANON_START = "01.01.85"
+# The fixed text of a BrainVision file as aimport (headers.rebuild_vhdr) and pybv write it. These lines are never
+# checked for terms: a run's term can spell part of them (a file-name word "utf8" or "pt1", an EEGLAB reference
+# "common") although they hold nothing of the recording. Any other line is checked as before.
+BV_FIXED_LINES = frozenset({
+    "Brain Vision Data Exchange Header File Version 1.0",
+    "Brain Vision Data Exchange Marker File, Version 1.0",
+    "[Common Infos]", "[Binary Infos]", "[Channel Infos]", "[Coordinates]", "[Marker Infos]",
+    "Codepage=UTF-8", "DataFormat=BINARY", "DataOrientation=MULTIPLEXED",
+    "BinaryFormat=IEEE_FLOAT_32", "BinaryFormat=INT_16", "BinaryFormat=UINT_16",
+    "; Data orientation: MULTIPLEXED=ch1,pt1, ch2,pt1 ...",
+    "; Sampling interval in microseconds",
+    "; Each entry: Ch<Channel number>=<Name>,<Reference channel name>,",
+    '; <Resolution in "Unit">,<Unit>, Future extensions..',
+    "; Fields are delimited by commas, some fields might be omitted (empty).",
+    r'; Commas in channel names are coded as "\1".',
+    "; Each entry: Mk<Marker number>=<Type>,<Description>,<Position in data points>,",
+    ";             <Size in data points>, <Channel number (0 = marker is related to all channels)>",
+    ";             <Date (YYYYMMDDhhmmssuuuuuu)>",
+    r'; Commas in type or description text are coded as "\1".',
+})
+BV_PYBV_LINE = re.compile(r"; (Written|Exported) using pybv \d+(\.\d+){0,3}")
 # fields of the EDF main header (start, width, kind)
 _EDF_MAIN = ((0, 8, "version field"), (8, 80, "patient field"), (88, 80, "recording field"),
              (168, 8, "start date"), (176, 8, "start time"), (184, 8, "header size"), (192, 44, "reserved field"),
@@ -287,6 +308,8 @@ class _Gate:
         else:
             kind = {".vhdr": "header line", ".vmrk": "marker line"}.get(suffix, "text line")
             for line in text.splitlines():
+                if suffix in (".vhdr", ".vmrk") and (line in BV_FIXED_LINES or BV_PYBV_LINE.fullmatch(line)):
+                    continue  # aimport's and pybv's own fixed text (exact lines only)
                 self.ini_line(line, kind, marker=suffix == ".vmrk")
             if suffix == ".vhdr":
                 self.vhdr_layout(path, text)
