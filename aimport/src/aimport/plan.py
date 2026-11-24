@@ -13,7 +13,8 @@ LOCKED_FIELDS = {"id", "series_idx", "subject_idx", "session_idx"}
 # brainlife_by_person and the indices) is derived: planner.apply_plan_edits re-derives it after every edit.
 EDITABLE_FIELDS = {"subject": "label", "session": "label?", "datatype": "str?", "suffix": "str?",
                    "entities": "dict", "deface": "bool", "exclude": "bool", "brainlife_datatype": "str?",
-                   "brainlife_tags": "list", "ephys_format": "str?", "keep_headshape": "bool"}
+                   "brainlife_tags": "list", "ephys_format": "str?", "keep_headshape": "bool",
+                   "sample_type": "str?"}
 _LABEL = re.compile(r"^[a-zA-Z0-9]+$")
 
 # --- ancillary and metadata files (Task 10b) ---
@@ -66,8 +67,13 @@ class PlanEntry:
     # True once the reviewer set brainlife_datatype or brainlife_tags; later edits keep that mapping
     # until the entry's datatype, suffix or entities change
     brainlife_by_person: bool = False
-    # the input's modality: "mri" entries come from ezBIDS, "ephys" entries from the electrophysiology module
+    # the input's modality: "mri" entries come from ezBIDS; microscopy ("micr") and electrophysiology
+    # ("ephys") entries come from modality modules
     modality: Literal["mri", "micr", "ephys"] = "mri"
+    sample_type: str | None = None  # micr: a value of the BIDS sample_type enum (planner checks it)
+    # micr: "convert" (to OME-Zarr), "reference" (an OME-Zarr kept as is, no copy); "" = not writable
+    write_mode: Literal["", "convert", "reference"] = ""
+    output_bytes: int = 0  # micr: about how many bytes conversion writes to the work folder
     # ephys: the output format, one of ephys.OUTPUT_FORMATS[datatype]; "" = not writable (unsupported input)
     ephys_format: str = ""
     keep_headshape: bool = False  # ephys (meg, eeg): keep the head-shape digitization points

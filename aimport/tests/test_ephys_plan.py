@@ -373,6 +373,42 @@ def test_indices_do_not_collide(tmp_path, key, schema):
     assert not {e.subject for e in mri} & {e.subject for e in eph}
 
 
+def test_indices_do_not_collide_mri_micr_ephys(tmp_path, key, schema):
+    """MRI < 1_000_000 <= microscopy < 2_000_000 <= ephys, all three in one plan; MRI as in an MRI-only plan."""
+    from aimport.micr.module import MICR_INDEX_BASE, MicrModule
+    from fixtures.micr_fixtures import planted_ome_tiff
+
+    inp, work = tmp_path / "in", tmp_path / "work"
+    planted_edf(inp / "eeg")
+    planted_fif(inp / "meg")
+    planted_ome_tiff(inp / "micr" / "stack.ome.tif")
+    mm = MicrModule()
+    mclaim = mm.claim(inp, [])
+    mm.scan(inp, mclaim, work / "micr", lambda msg: None)
+    em, eclaim = scan(inp, work)
+    core = parse_core(FIXTURES / "ezbids_core_siemens.json")
+    plan = build_plan(copy.deepcopy(core), inp, key, set(), None, schema, "bids",
+                      exclude=list(mclaim.roots) + list(eclaim.roots),
+                      extra_terms=frozenset(mm.terms(work / "micr") | em.terms(work / "ephys")),
+                      planners=[lambda: mm.plan(work / "micr", key, set(), None, schema, "bids"),
+                                lambda subjects: em.plan(work / "ephys", key, set(), None, schema, "bids",
+                                                         subjects=subjects)])
+    mri = [e for e in plan.entries if e.modality == "mri"]
+    mic = [e for e in plan.entries if e.modality == "micr"]
+    eph = ephys(plan)
+    assert mri and mic and eph
+    assert MICR_INDEX_BASE == 1_000_000 and EPHYS_INDEX_BASE == 2_000_000
+    assert all(e.series_idx < MICR_INDEX_BASE and e.subject_idx < MICR_INDEX_BASE for e in mri)
+    assert all(MICR_INDEX_BASE <= e.series_idx < EPHYS_INDEX_BASE for e in mic)
+    assert all(MICR_INDEX_BASE <= e.subject_idx < EPHYS_INDEX_BASE for e in mic)
+    assert all(e.series_idx >= EPHYS_INDEX_BASE and e.subject_idx >= EPHYS_INDEX_BASE for e in eph)
+    assert len({e.id for e in plan.entries}) == len(plan.entries)
+    with PseudonymKey.load(tmp_path / "keys-mri-only", "proj") as other:
+        mri_only = build_plan(copy.deepcopy(core), tmp_path / "empty", other, set(), None, schema, "bids")
+    assert [(e.id, e.subject, e.session) for e in mri] == [(e.id, e.subject, e.session) for e in mri_only.entries]
+    assert not {e.subject for e in mri} & ({e.subject for e in mic} | {e.subject for e in eph})
+
+
 def test_headshape_warning(tmp_path, key, schema):
     inp = tmp_path / "in"
     planted_fif(inp)

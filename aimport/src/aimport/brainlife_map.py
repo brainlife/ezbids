@@ -26,10 +26,14 @@ def _validate_row(i: int, row: object) -> None:
     if not isinstance(bids, dict) or not bids.get("datatype"):
         raise ValueError(f"{where} ({row}): missing bids.datatype")
     where = f"mappings[{i}] ({bids['datatype']}/{bids.get('suffix') or bids.get('extension')})"
-    if not isinstance(bl, dict) or not bl.get("datatype"):
-        raise ValueError(f"{where}: missing brainlife.datatype")
     if row.get("status") not in _STATUSES:
         raise ValueError(f"{where}: status must be one of {sorted(_STATUSES)}")
+    if bl is None and row["status"] == "planned":
+        if "suffix" in bids and not isinstance(bids["suffix"], str):
+            raise ValueError(f"{where}: bids.suffix must be a string")
+        return  # a placeholder: the pair is accounted for, no brainlife datatype chosen yet
+    if not isinstance(bl, dict) or not bl.get("datatype"):
+        raise ValueError(f"{where}: missing brainlife.datatype")
     if ("tags" in bl) == ("tags_from" in bl):
         raise ValueError(f"{where}: exactly one of brainlife.tags / brainlife.tags_from")
     if "tags" in bl and not (

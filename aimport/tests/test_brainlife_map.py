@@ -22,6 +22,9 @@ from aimport.brainlife_map import to_brainlife
         ("pet", "pet", (None, [])),
         ("perf", "asl", (None, [])),
         ("func", "events", (None, [])),
+        ("micr", "OCT", ("neuro/ome-zarr", ["OCT"])),
+        ("micr", "SPIM", ("neuro/ome-zarr", ["SPIM"])),
+        ("micr", "photo", (None, [])),
     ],
 )
 def test_table(datatype, suffix, expected):

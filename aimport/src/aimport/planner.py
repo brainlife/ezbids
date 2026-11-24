@@ -32,13 +32,17 @@ AGENT_TEXT_MAX = 300
 AGREE_MIN = 0.8  # confidence when ezBIDS's guess stands (or the agent agrees with less)
 DISAGREE_CONFIDENCE = 0.5  # ezBIDS's guess kept but the agent disputes it
 AGENT_MIN = 0.5  # agent answers below this are not used
-CHECK_EXT = ".nii.gz"  # every phase-1 image is written as NIfTI (CHECK_EXTS: electrophysiology formats)
+CHECK_EXT = ".nii.gz"  # every phase-1 image is written as NIfTI (CHECK_EXTS: other datatypes and formats)
+MICR_DATATYPE_REASON = "microscopy input: datatype must be micr"
+MRI_DATATYPE_REASON = "MRI input: datatype cannot be micr"
 EPHYS_DATATYPE_REASON = "electrophysiology input: datatype must be one of eeg, meg, ieeg, nirs, emg"
 MRI_EPHYS_REASON = "MRI input: datatype cannot be eeg, meg, ieeg, nirs or emg"
 TASK_REASON = "set the task label"
 # the extension each electrophysiology output format is mapped to brainlife by (bids-walker keys on eeg.eeg)
 EPHYS_BRAINLIFE_EXTS = {"BrainVision": ".eeg", "EDF": ".edf", "BDF": ".bdf", "FIF": ".fif", "SNIRF": ".snirf",
                         "NWB": ".nwb"}
+HIDDEN_ANCILLARY = ("{n} supplementary folder(s) of the input hold microscopy data, so they are not uploaded "
+                    "as supplementary files")
 _LABEL = re.compile(r"^[a-zA-Z0-9]+$")
 _PATH_ENTITIES = {"subject", "session"}
 UNVERIFIED = ("de-identification could not be verified: {why}; check descriptions and the README "
@@ -340,19 +344,24 @@ def _decide(series: CoreSeries, guess: Guess | None, schema: Schema, terms: set[
 
 
 def _modality_reason(modality: str, datatype: str | None) -> str | None:
-    """Why an entry's datatype does not fit its input's modality (ephys input <-> ephys datatypes)."""
-    if modality == "ephys" and datatype not in EPHYS_DATATYPES:
-        return EPHYS_DATATYPE_REASON
-    if modality != "ephys" and datatype in EPHYS_DATATYPES:
+    """Why an entry's datatype does not fit its input's modality (micr input <-> micr datatype, ephys input
+    <-> ephys datatypes)."""
+    if modality == "micr":
+        return None if datatype == "micr" else MICR_DATATYPE_REASON
+    if modality == "ephys":
+        return None if datatype in EPHYS_DATATYPES else EPHYS_DATATYPE_REASON
+    if datatype == "micr":
+        return MRI_DATATYPE_REASON
+    if datatype in EPHYS_DATATYPES:
         return MRI_EPHYS_REASON
     return None
 
 
 def _check_nameable(d: dict, subject: str, session: str | None, schema: Schema, modality: str = "mri",
                     ephys_format: str = "") -> None:
-    """Rule: an "ok" entry must be one the writer can name; otherwise it becomes unknown. An
-    electrophysiology entry must keep an electrophysiology datatype (and an MRI entry must not take one),
-    and needs a task label."""
+    """Rule: an "ok" entry must be one the writer can name; otherwise it becomes unknown. A microscopy
+    entry must stay micr and an electrophysiology entry must keep an electrophysiology datatype (and an MRI
+    entry must take neither); an electrophysiology entry needs a task label."""
     if d["status"] != "ok":
         return
     why = _modality_reason(modality, d["datatype"])
@@ -367,7 +376,7 @@ def _check_nameable(d: dict, subject: str, session: str | None, schema: Schema, 
         return
     try:
         schema.filename(subject, session, d["datatype"], d["suffix"], d["entities"],
-                        CHECK_EXTS.get(ephys_format, CHECK_EXT))
+                        CHECK_EXTS.get(ephys_format) or CHECK_EXTS.get(d["datatype"], CHECK_EXT))
     except ValueError as exc:
         d.update(status="unknown", exclude=True,
                  reason=f"{d['reason']}; cannot name {d['datatype']}/{d['suffix']}: {exc}")
@@ -405,10 +414,11 @@ def apply_plan_edits(plan: Plan, edits: list[dict], schema: Schema) -> None:
     the writer cannot name becomes unknown and excluded; one that becomes nameable is included unless
     the edit says otherwise), the brainlife datatype and tags are recomputed unless the reviewer set them (brainlife_by_person),
     and the datatypes target excludes an entry with no brainlife datatype. Secondary captures stay
-    excluded_by_default. Raises like Plan.apply_edits; a bad edit changes nothing. ephys_format must be
-    an output format of the entry's (new) datatype, and keep_headshape and ephys_format apply to
-    electrophysiology entries only.
+    excluded_by_default. Raises like Plan.apply_edits; a bad edit changes nothing. sample_type must be a
+    value of the schema's sample_type enum (microscopy entries only). ephys_format must be an output format
+    of the entry's (new) datatype, and keep_headshape and ephys_format apply to electrophysiology entries only.
     """
+    _check_sample_types(plan, edits, schema)
     _check_ephys_edits(plan, edits)
     was_ok = {e.id: e.status == "ok" for e in plan.entries}
     keys: dict[str, set[str]] = defaultdict(set)
@@ -418,6 +428,30 @@ def apply_plan_edits(plan: Plan, edits: list[dict], schema: Schema) -> None:
     for e in plan.apply_edits(edits):
         _rederive(e, schema, plan.target, keys[e.id], was_ok[e.id])
     _fmap_tags(plan.entries)
+
+
+def _check_sample_types(plan: Plan, edits: list[dict], schema: Schema) -> None:
+    """Microscopy-only edit rules: sample_type is a value of the schema enum (never None) and only
+    for micr entries; deface is never turned on for a micr entry."""
+    by_id = {e.id: e for e in plan.entries}
+    allowed = None
+    for edit in edits:
+        if not isinstance(edit, dict):
+            continue
+        e = by_id.get(edit.get("id"))
+        if e is None:
+            continue  # Plan.apply_edits raises KeyError
+        if e.modality == "micr" and edit.get("deface") is True:
+            raise ValueError("microscopy images are never defaced")
+        if "sample_type" not in edit:
+            continue
+        if e.modality != "micr":
+            if edit["sample_type"] is None:
+                continue
+            raise ValueError("sample_type applies to microscopy entries only")
+        allowed = schema.sample_types() if allowed is None else allowed
+        if edit["sample_type"] not in allowed:
+            raise ValueError(f"sample_type must be one of {allowed}")
 
 
 def _output_formats(datatype: str | None) -> tuple[str, ...]:
@@ -475,6 +509,8 @@ def _ephys_format(e: PlanEntry) -> None:
 
 def _rederive(e: PlanEntry, schema: Schema, target: str, keys: set[str], was_ok: bool) -> None:
     if e.status == "excluded_by_default":  # may hold burned-in identifiers: never written
+        return
+    if e.modality == "micr" and not e.write_mode:  # unreadable or unsupported input: never written
         return
     if e.modality == "ephys" and not e.ephys_format:  # unreadable or unsupported input: never written
         return
@@ -578,7 +614,10 @@ def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_su
             heuristic[s.series_idx] = (ht[0], ht[1], _clean_entities(s.entities, terms))
     guesses = {g.series_idx: g for g in classify(view, heuristic, client, schema)}
 
-    supplied = find_ancillary(input_dir, schema, exclude)
+    hidden: list[Path] = []
+    supplied = find_ancillary(input_dir, schema, exclude, hidden=hidden)
+    if hidden:
+        warnings.append(HIDDEN_ANCILLARY.format(n=len(hidden)))
     has_aslcontext = any(p.name.endswith("_aslcontext.tsv") for p in supplied)  # anywhere in the input
     sub_ids, n_absent, n_shared = _assign_subjects(core, key, existing_subjects, mri_terms)
     if n_shared:

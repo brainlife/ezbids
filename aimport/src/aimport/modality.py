@@ -89,10 +89,11 @@ class Module(Protocol):
 
 
 def modules() -> tuple[Module, ...]:
-    """The registered modality modules: electrophysiology (``ephys``; microscopy is registered before it)."""
+    """The registered modality modules: microscopy (``micr``), then electrophysiology (``ephys``)."""
     from .ephys.module import EphysModule
+    from .micr.module import MicrModule
 
-    return (EphysModule(),)
+    return (MicrModule(), EphysModule())
 
 
 # --- claimed paths -------------------------------------------------------------
@@ -120,8 +121,9 @@ def claimed_roots(claims: Iterable[Claim]) -> list[str]:
     return roots
 
 
-def _within(path: Path, root: Path) -> bool:
-    return path == root or root in path.parents
+def _under(path: Path, roots: frozenset[str]) -> bool:
+    """path is one of roots or lies below one: a set lookup per ancestor, never a scan of roots."""
+    return str(path) in roots or any(str(a) in roots for a in path.parents)
 
 
 class ClaimedPaths:
@@ -129,7 +131,8 @@ class ClaimedPaths:
 
     A path is claimed when it lies under a root lexically, or when it resolves (through symlinks)
     to a root or below one. ``reaches`` is for directory symlinks: also true when the link leads to
-    a folder that contains a claimed root.
+    a folder that contains a claimed root. Lookups go through sets (per ancestor), so thousands of
+    per-file roots (tiles) cost no more than one.
     """
 
     def __init__(self, input_dir: Path, roots: Sequence[str] = ()):
@@ -138,6 +141,10 @@ class ClaimedPaths:
         self.input = Path(input_dir).resolve()
         self.lexical = [self.lexical_input / r for r in self.roots] + [self.input / r for r in self.roots]
         self.resolved = [(self.input / r).resolve() for r in self.roots]
+        self._lexical = frozenset(str(p) for p in self.lexical)
+        self._resolved = frozenset(str(p) for p in self.resolved)
+        # every resolved root and each of its ancestors: the folders that hold (or are) a root
+        self._holders = frozenset(str(a) for r in self.resolved for a in (r, *r.parents))
 
     def __bool__(self) -> bool:
         return bool(self.roots)
@@ -146,13 +153,13 @@ class ClaimedPaths:
         if not self.roots:
             return False
         p = Path(os.path.abspath(path))
-        if any(_within(p, r) for r in self.lexical):
+        if _under(p, self._lexical):
             return True
         try:
             real = p.resolve()
         except (OSError, RuntimeError):
             return True  # a link loop or unreadable link: treat as claimed, never follow it
-        return any(_within(real, r) for r in self.resolved)
+        return _under(real, self._resolved)
 
     def reaches(self, path: Path) -> bool:
         if self.covers(path):
@@ -163,7 +170,7 @@ class ClaimedPaths:
             real = Path(path).resolve()
         except (OSError, RuntimeError):
             return True
-        return any(_within(r, real) for r in self.resolved)
+        return str(real) in self._holders
 
     def prune(self, dirpath: Path, dirs: list[str]) -> None:
         """For os.walk: drop claimed sub-folders in place, so the walk never descends into them."""

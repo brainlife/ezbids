@@ -149,8 +149,8 @@ def test_module_dir_names():
             module_dir(Path("/w"), M())
 
 
-def test_ephys_module_registered():
-    assert [m.name for m in modality.modules()] == ["ephys"]
+def test_modules_registered():
+    assert [m.name for m in modality.modules()] == ["micr", "ephys"]
 
 
 # --- staging ------------------------------------------------------------------

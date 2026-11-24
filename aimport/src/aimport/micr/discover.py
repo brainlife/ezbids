@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import gzip
+import logging
 import os
 import re
 from dataclasses import dataclass
@@ -9,12 +10,15 @@ from pathlib import Path
 
 from ..modality import Claim
 
+log = logging.getLogger(__name__)
+
 FAMILIES = ("ome-zarr", "ome-tiff", "tiff", "svs", "czi", "nd2", "lif", "nifti", "mat", "raw-psoct",
             "unsupported", "visor-meta")
 UNSUPPORTED_EXT = (".vsi", ".oib", ".oif", ".ims", ".lsm", ".scn", ".mrxs")
 VISOR_META = frozenset({"acqinfo_metadata.json", "dbpost.json", "hh.log"})
 HINTS = frozenset({"ps-oct", "psoct", "oct", "enface", "reflectivity", "retardance", "orientation",
                    "opticaxis", "cross", "micr"})
+BARE_HINTS = frozenset({"oct", "cross"})
 ZARR_MARKERS = ("zarr.json", ".zgroup", ".zattrs")
 _TOKEN = re.compile(r"[^a-z0-9]+")
 
@@ -26,15 +30,23 @@ class Found:
     group: str
 
 
-def _hint_tokens(rel: str) -> set[str]:
-    low = rel.lower()
-    toks = {t for p in low.split("/") for t in _TOKEN.split(p) if t}
-    toks |= {p for p in low.split("/")}
-    return toks
+def _tokens(text: str) -> set[str]:
+    low = text.lower()
+    toks = {t for t in _TOKEN.split(low) if t}
+    if low not in BARE_HINTS:  # Oct_2024, cross_sectional: bare oct/cross count only as a whole segment
+        toks -= BARE_HINTS
+    return toks | {low}
 
 
 def has_hint(rel: str) -> bool:
-    return bool(_hint_tokens(rel) & HINTS) or "micr" in rel.lower().split("/")
+    """A hint token in the file name or one of its two nearest folders, or a BIDS micr/ folder."""
+    parts = rel.split("/")
+    if "micr" in (p.lower() for p in parts[:-1]):
+        return True
+    near = set()
+    for p in parts[-3:]:
+        near |= _tokens(p)
+    return bool(near & HINTS)
 
 
 def _nifti_microns(path: Path) -> bool:
@@ -81,8 +93,35 @@ def _family(name: str, path: Path, rel: str) -> str | None:
     return None
 
 
+def claim_remote(urls: list[str] | None) -> tuple[list[str], list[Found]]:
+    """Probe each remote URL (``remote.probe``); keep the ones that are OME-Zarr, NIfTI or TIFF.
+
+    Returns the normalised URLs and their ``Found`` entries (``rel`` and ``group`` are the URL;
+    local-only, like every other claim record). A refused or unreadable URL is skipped with a
+    warning that does not name it.
+    """
+    from . import remote as _remote
+
+    kept: list[str] = []
+    found: list[Found] = []
+    for i, url in enumerate(urls or []):
+        try:
+            norm = _remote.normalize_url(url)
+            family = _remote.probe(norm)
+        except Exception as exc:  # noqa: BLE001 - one bad source must not stop the scan
+            log.warning("remote source %d skipped: %s", i + 1, type(exc).__name__)
+            continue
+        if family not in _remote.ALLOWED_FAMILIES:
+            log.warning("remote source %d skipped: not OME-Zarr, NIfTI or TIFF", i + 1)
+            continue
+        if norm not in kept:
+            kept.append(norm)
+            found.append(Found(norm, family, norm))
+    return kept, found
+
+
 def claim(input_dir: Path, remote: list[str] | None = None) -> tuple[Claim, list[Found]]:
-    """Claim microscopy inputs under input_dir. ``remote`` is passed through unprobed (Task 5)."""
+    """Claim microscopy inputs under input_dir, and the remote URLs that probe as microscopy."""
     input_dir = Path(input_dir)
     found: list[Found] = []
     roots: list[str] = []
@@ -103,31 +142,17 @@ def claim(input_dir: Path, remote: list[str] | None = None) -> tuple[Claim, list
                 continue
             rel = f"{rel_dir}/{e.name}" if rel_dir else e.name
             if e.is_dir(follow_symlinks=False):
-                zarr_name = e.name.lower().endswith(".zarr")
-                if zarr_name or rel_dir.lower().endswith(".zarr") and re.fullmatch(r"Pos\d+", e.name):
-                    add_root_dir(Path(e.path), rel, e.name)
+                if any(os.path.exists(os.path.join(e.path, m)) for m in ZARR_MARKERS):
+                    add_root(rel, "ome-zarr")  # a store: never walked inside
+                elif rel_dir.lower().endswith(".zarr") and re.fullmatch(r"Pos\d+", e.name):
+                    add_root(rel, "ome-zarr")  # exaSPIM.zarr/Pos*
                 else:
                     walk(Path(e.path), rel)
             elif e.is_file(follow_symlinks=False):
                 fam = _family(e.name, Path(e.path), rel)
                 if fam:
-                    add_root(rel, fam, rel_dir or "." if fam == "tiff" else None)
-
-    def add_root_dir(path: Path, rel: str, name: str) -> None:
-        try:
-            with os.scandir(path) as it:
-                children = sorted(it, key=lambda e: e.name)
-        except OSError:
-            return
-        if any(c.name in ZARR_MARKERS for c in children):
-            add_root(rel, "ome-zarr")
-            return
-        pos = [c for c in children if c.is_dir(follow_symlinks=False) and re.fullmatch(r"Pos\d+", c.name)]
-        if pos:  # exaSPIM.zarr/Pos*: each position is its own store
-            for c in pos:
-                add_root(f"{rel}/{c.name}", "ome-zarr")
-        else:
-            add_root(rel, "ome-zarr")
+                    add_root(rel, fam, (rel_dir or ".") if fam == "tiff" else None)
 
     walk(input_dir, "")
-    return Claim(roots=roots, remote=list(remote or [])), found
+    urls, remote_found = claim_remote(remote)
+    return Claim(roots=roots, remote=urls), found + remote_found

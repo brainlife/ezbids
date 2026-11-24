@@ -10,11 +10,13 @@ from bidsschematools.schema import load_schema as _bst_load_schema
 DEFAULT_SCHEMA = Path("/opt/bids-schema/schema.json")
 SPEC_SCHEMA_DIR = Path(__file__).resolve().parents[2] / "bids-specification" / "src" / "schema"
 PHASE1_DATATYPES = ("anat", "func", "dwi", "fmap", "perf", "pet")
+MICR_DATATYPES = ("micr",)
 EPHYS_DATATYPES = ("eeg", "meg", "ieeg", "nirs", "emg")
-SUPPORTED_DATATYPES = PHASE1_DATATYPES + EPHYS_DATATYPES
-# the extension a file is written with (checked when naming), by electrophysiology output format
-# (PlanEntry.ephys_format); default NIfTI
-CHECK_EXTS = {"BrainVision": ".vhdr", "EDF": ".edf", "BDF": ".bdf", "FIF": ".fif", "SNIRF": ".snirf", "NWB": ".nwb"}
+SUPPORTED_DATATYPES = PHASE1_DATATYPES + MICR_DATATYPES + EPHYS_DATATYPES
+# the extension a file is written with (checked when naming): microscopy by datatype, electrophysiology by
+# output format (PlanEntry.ephys_format); default NIfTI
+CHECK_EXTS = {"micr": ".ome.zarr/", "BrainVision": ".vhdr", "EDF": ".edf", "BDF": ".bdf", "FIF": ".fif",
+              "SNIRF": ".snirf", "NWB": ".nwb"}
 DEFAULT_CHECK_EXT = ".nii.gz"
 BIDS_VERSION = "1.11.2"
 
@@ -105,6 +107,11 @@ class Schema:
         """rules.files.common.core and .tables by name (dataset_description, README, participants, ...)."""
         common = self._s.rules.files.common
         return {name: dict(rule) for group in (common.core, common.tables) for name, rule in group.items()}
+
+    def sample_types(self) -> list[str]:
+        """The values the samples.tsv sample_type column may take (schema enum)."""
+        col = self._s.objects.columns.get("sample_type")
+        return [str(v) for v in (col.get("enum") or [])] if col else []
 
     def is_datatype(self, name: str) -> bool:
         return any(v.get("value") == name for v in self._s.objects.datatypes.values())
