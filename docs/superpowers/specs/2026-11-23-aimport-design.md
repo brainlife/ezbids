@@ -182,7 +182,7 @@ read-only and a separate work folder for intermediates and output.
 
 - **CLI:** `bl aimport <folder> --project <id> [--target bids|datatypes] [--ui]`.
   Without `--ui` it prints the plan as a table and asks for approval in the terminal;
-  with `--ui` it opens the brainlife-lite aimport page (production address by default,
+  with `--ui` it opens brainlife.io/aimport (production address by default,
   configurable; tests use a local dev server).
 - **Engine API:** a small HTTP API on `127.0.0.1` only, guarded by a random per-run
   token. Both front ends use it: get plan, edit plan, approve, run, stream progress,
