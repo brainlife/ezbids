@@ -17,6 +17,7 @@ import asyncio
 import copy
 import gzip
 import hmac
+import inspect
 import json
 import logging
 import os
@@ -57,7 +58,7 @@ from .modality import (
     normalize_root,
     redact_paths,
 )
-from .plan import NEVER_KEEP, OLD_PLAN, Plan
+from .plan import EMPTY_ROOM_SUBJECT, NEVER_KEEP, OLD_PLAN, Plan
 from .planner import DATASET_NAME_MAX, README_MAX, apply_plan_edits, build_plan, run_terms
 from .pseudonyms import KeyLockedError, PseudonymKey
 from .schema import load_schema
@@ -98,6 +99,25 @@ def _read_json(path: Path) -> dict | None:
 
 def _nonempty(path: Path) -> bool:
     return path.exists() and (not path.is_dir() or path.is_symlink() or any(path.iterdir()))
+
+
+def project_subjects(plan: Plan) -> dict[int, str]:
+    """subject_idx -> subject ID of the plan's project subjects: every entry's subject except the literal
+    empty-room subject of MEG noise recordings, which is never recorded in the key or as a project subject."""
+    return {e.subject_idx: e.subject for e in plan.entries
+            if not (e.modality == "ephys" and e.subject == EMPTY_ROOM_SUBJECT)}
+
+
+def _module_plan(m, work: Path, key: PseudonymKey, existing: set[str], client, schema, target: str,
+                 subjects: dict[str, dict]):
+    """m.plan, passing the MRI subjects by folder label to a module whose plan takes them."""
+    try:
+        takes = "subjects" in inspect.signature(m.plan).parameters
+    except (TypeError, ValueError):
+        takes = False
+    if takes:
+        return m.plan(work, key, existing, client, schema, target, subjects=subjects)
+    return m.plan(work, key, existing, client, schema, target)
 
 
 def _clear(path: Path) -> None:
@@ -333,7 +353,7 @@ class Server:
     def renamed_subjects(self, plan: Plan) -> dict[int, str]:
         """subject_idx -> edited subject ID, for the subjects whose ID differs from the key's."""
         recorded = self.subject_ids()
-        changed = {e.subject_idx: e.subject for e in plan.entries if e.subject != recorded.get(e.subject_idx)}
+        changed = {i: sid for i, sid in project_subjects(plan).items() if sid != recorded.get(i)}
         if any(i not in recorded for i in changed):
             raise HTTPException(409, "the subject IDs of this scan are not known: scan again")
         return changed
@@ -469,13 +489,14 @@ class Server:
             client, schema = client_from_env(), self.get_schema()
             existing = set(info["existing_subjects"])
             # module planners run inside build_plan, after the MRI subjects took their IDs
-            planners = [lambda m=m: m.plan(module_dir(self.work, m), key, existing, client, schema, info["target"])
+            planners = [lambda subjects, m=m: _module_plan(m, module_dir(self.work, m), key, existing, client,
+                                                           schema, info["target"], subjects)
                         for m in mods]
             plan = build_plan(core, self.input_dir, key, existing, client, schema, info["target"],
                               staged_dir=staged, existing_sessions=info.get("existing_sessions") or {},
                               exclude=roots, extra_terms=frozenset(module_terms), planners=planners)
             plan.scan_id = info["scan_id"]
-            self.save_subject_ids({e.subject_idx: e.subject for e in plan.entries})
+            self.save_subject_ids(project_subjects(plan))
             key.save()
             with self.plan_lock:
                 self.save_plan(plan)

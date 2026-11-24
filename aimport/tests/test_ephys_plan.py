@@ -43,7 +43,8 @@ def make_plan(inp, work, key, schema, core=None, target="bids") -> Plan:
     m, claim = scan(inp, work)
     return build_plan(core or CoreResult(), inp, key, set(), None, schema, target, exclude=claim.roots,
                       extra_terms=frozenset(m.terms(work / "ephys")),
-                      planners=[lambda: m.plan(work / "ephys", key, set(), None, schema, target)])
+                      planners=[lambda subjects: m.plan(work / "ephys", key, set(), None, schema, target,
+                                                        subjects=subjects)])
 
 
 def ephys(plan: Plan):
@@ -394,3 +395,169 @@ def test_load_size(tmp_path, key, schema, monkeypatch):
     plan = make_plan(inp, tmp_path / "work3", key, schema)
     (e,) = ephys(plan)
     assert e.status == "unsupported" and e.exclude and e.reason.startswith("converting sub-")
+
+
+# --- fix round 1 -------------------------------------------------------------------------------
+
+
+def edf_record(rel: str, when: str, his_id: str | None = "P1", run: str | None = None) -> dict:
+    """A records.json record as the scan writes it (header facts only)."""
+    info = {"ch_types": {"eeg": 2}, "n_channels": 2, "n_times": 10, "sfreq": 256.0, "duration_s": 1.0,
+            "meas_date": when}
+    if his_id:
+        info["his_id"] = his_id
+    return {"rel": rel, "family": "edf", "companions": [], "headshape": [], "empty_room": False,
+            "meta": {"run": run} if run else {}, "info": info, "error": None, "terms": [], "event_labels": []}
+
+
+def test_unusable_session_label_counts_as_none(key, schema):
+    # MNE-BIDS's date-labelled session beside session-less recordings on two other days
+    recs = [edf_record("sub-01/ses-20250301/eeg/sub-01_ses-20250301_task-rest_eeg.edf", "2025-03-01T09:00:00+00:00"),
+            edf_record("sub-01/eeg/a_rest.edf", "2025-02-15T09:00:00+00:00"),
+            edf_record("sub-01/eeg/b_rest.edf", "2025-02-16T09:00:00+00:00")]
+    mp = ephys_module.plan_entries(recs, key, set(), schema, "bids")
+    assert [e.session for e in mp.entries] == ["03", "01", "02"]
+    assert all(e.status == "ok" for e in mp.entries)
+    assert "20250301" not in json.dumps([asdict(e) for e in mp.entries])
+    # a single day besides: no sessions at all
+    mp = ephys_module.plan_entries(recs[:2] + [edf_record("sub-01/eeg/b_rest.edf", "2025-03-01T15:00:00+00:00")],
+                                   key, set(), schema, "bids")
+    assert {e.session for e in mp.entries} == {"01", "02"}
+
+
+def test_numbered_sessions_skip_input_labels(key, schema):
+    recs = [edf_record("sub-01/ses-01/eeg/sub-01_ses-01_task-rest_eeg.edf", "2025-03-01T09:00:00+00:00"),
+            edf_record("sub-01/eeg/a_rest.edf", "2025-02-15T09:00:00+00:00"),
+            edf_record("sub-01/eeg/b_rest.edf", "2025-02-16T09:00:00+00:00")]
+    mp = ephys_module.plan_entries(recs, key, set(), schema, "bids")
+    assert [e.session for e in mp.entries] == ["01", "02", "03"]
+    assert len({e.session_idx for e in mp.entries}) == 3
+
+
+def test_one_sub_folder_is_one_subject(key, schema):
+    recs = [edf_record("sub-07/eeg/a_rest.edf", "2025-02-15T09:00:00+00:00", his_id=None),
+            edf_record("sub-07/eeg/b_rest.edf", "2025-02-15T10:00:00+00:00", his_id="P42"),
+            edf_record("sub-08/eeg/c_rest.edf", "2025-02-15T11:00:00+00:00", his_id=None)]
+    mp = ephys_module.plan_entries(recs, key, set(), schema, "bids")
+    a, b, c = mp.entries
+    assert a.subject == b.subject and a.subject_idx == b.subject_idx and c.subject != a.subject
+    assert key.subjects["ephys:id=P42"] == a.subject
+    assert sum("run:" in o for o in key.subjects) == 1  # sub-08 only
+    assert any(w.startswith("electrophysiology: subject identity could not be established for 1 ")
+               for w in mp.warnings)
+
+
+def test_run_local_warning_counts_every_run_local_subject(key, schema):
+    recs = [edf_record("sub-07/eeg/a_rest.edf", "2025-02-15T09:00:00+00:00", his_id=None),
+            edf_record("rest.edf", "2025-02-15T10:00:00+00:00", his_id=None)]
+    mp = ephys_module.plan_entries(recs, key, set(), schema, "bids")
+    assert ephys_module.NO_IDENTITY.format(n=2) in mp.warnings
+
+
+def test_input_runs_kept_when_consistent(key, schema):
+    recs = [edf_record("x/sub-01_task-rest_run-05_eeg.edf", "2025-02-15T14:00:00+00:00"),
+            edf_record("x/sub-01_task-rest_run-03_eeg.edf", "2025-02-15T09:00:00+00:00"),
+            edf_record("y/sub-01_task-oddball_run-02_eeg.edf", "2025-02-15T09:00:00+00:00")]
+    mp = ephys_module.plan_entries(recs, key, set(), schema, "bids")
+    assert [e.entities.get("run") for e in mp.entries] == ["05", "03", "02"]
+    # two recordings claiming the same run: numbered by date instead
+    recs[1] = edf_record("z/sub-01_task-rest_run-05_eeg.edf", "2025-02-15T09:00:00+00:00")
+    mp = ephys_module.plan_entries(recs, key, set(), schema, "bids")
+    assert [e.entities.get("run") for e in mp.entries][:2] == ["2", "1"]
+
+
+def test_headshape_warning_only_for_written_entries(tmp_path, key, schema):
+    inp = tmp_path / "in"
+    path = planted_fif(inp)
+    path.rename(path.with_name("Smith_John_recording_raw.fif"))  # no task word: needs review, not written
+    plan = make_plan(inp, tmp_path / "work", key, schema)
+    (e,) = ephys(plan)
+    assert e.status == "unknown" and HEADSHAPE_WARNING not in plan.warnings
+
+
+def mri_core(tmp_path: Path) -> CoreResult:
+    """One MRI subject from a sub-01/anat folder, one session."""
+    from aimport.ezbids_runner import CoreObject, CoreSeries, CoreSubject
+
+    nii = tmp_path / "in" / "sub-01" / "anat" / "sub-01_T1w.nii.gz"
+    return CoreResult(
+        series=[CoreSeries(0, "anat/T1w", {}, "", "T1", {}, nii)],
+        objects=[CoreObject(0, 0, 0, "2025-02-15", "09:00:00", {}, [nii], {})],
+        subjects=[CoreSubject(0, "01", [{"PatientID": "MRN0042", "file_directory": "sub-01/anat"}],
+                              [{"session": "", "AcquisitionDate": "2025-02-15"}])])
+
+
+def test_sub_folder_shared_with_mri(tmp_path, key, schema):
+    inp = tmp_path / "in"
+    edf(inp / "sub-01" / "eeg" / "sub-01_task-rest_eeg.edf", ["EEG Fp1"], his_id="P5555555")
+    edf(inp / "sub-02" / "eeg" / "sub-02_task-rest_eeg.edf", ["EEG Fp1"], his_id="P6666666")
+    plan = make_plan(inp, tmp_path / "work", key, schema, core=mri_core(tmp_path))
+    mri = [e for e in plan.entries if e.modality == "mri"]
+    (m,) = mri
+    one, two = sorted(ephys(plan), key=lambda e: e.series_idx)
+    assert one.subject == m.subject and one.subject_idx == m.subject_idx
+    assert one.session == m.session and one.session_idx == m.session_idx  # the MRI subject's lone session
+    assert two.subject != m.subject and two.subject_idx >= EPHYS_INDEX_BASE
+    assert "ephys:id=P5555555" not in key.subjects  # the MRI subject's original stands for both
+    assert len({e.subject for e in plan.entries}) == 2
+    # a subject edit renames the MRI and ephys entries together
+    apply_plan_edits(plan, [{"id": m.id, "subject": "zz9"}], schema)
+    assert one.subject == "zz9"
+
+
+def test_emptyroom_subject_not_renamed(tmp_path, key, schema):
+    inp = tmp_path / "in"
+    meg_fif(inp / "meg" / "subj_rest_raw.fif", MEAS_DATE)
+    meg_fif(inp / "meg" / "emptyroom_raw.fif", MEAS_DATE, his_id=None)
+    plan = make_plan(inp, tmp_path / "work", key, schema)
+    room = next(e for e in ephys(plan) if e.subject == "emptyroom")
+    other = next(e for e in ephys(plan) if e.subject != "emptyroom")
+    assert "emptyroom" not in key.subjects.values()
+    with pytest.raises(ValueError):
+        apply_plan_edits(plan, [{"id": room.id, "subject": "noise1"}], schema)
+    with pytest.raises(ValueError):
+        apply_plan_edits(plan, [{"id": other.id, "subject": "emptyroom"}], schema)
+
+
+def test_server_never_records_emptyroom(tmp_path, monkeypatch):
+    from fastapi.testclient import TestClient
+
+    from aimport import server
+    from aimport.server import create_app
+
+    inp = tmp_path / "in"
+    meg_fif(inp / "meg" / "subj_rest_raw.fif", MEAS_DATE)
+    meg_fif(inp / "meg" / "emptyroom_raw.fif", MEAS_DATE, his_id=None)
+    monkeypatch.setattr(server, "client_from_env", lambda: None)
+    monkeypatch.setattr(server, "run_ezbids", lambda *a, **k: (_ for _ in ()).throw(AssertionError("no ezBIDS")))
+    token = "t" * 32
+    app = create_app(inp, tmp_path / "work", tmp_path / "keys", token, ["https://brainlife.io"], ["testserver"])
+    try:
+        c = TestClient(app)
+        c.headers["Authorization"] = f"Bearer {token}"
+        assert c.post("/scan", json={"project_id": "proj", "existing_subjects": []}).status_code == 202
+        end = __import__("time").time() + 30
+        while c.get("/status").json()["stage"] not in ("planned", "failed"):
+            assert __import__("time").time() < end
+            __import__("time").sleep(0.05)
+        assert c.get("/status").json()["stage"] == "planned"
+        ids = json.loads((tmp_path / "work" / "subject-ids.json").read_text())
+        assert "emptyroom" not in ids.values() and len(ids) == 1
+        keyfile = json.loads((tmp_path / "keys" / "proj.aimport-key.json").read_text())
+        assert "emptyroom" not in keyfile["subjects"].values() and "emptyroom" not in keyfile["offsets"]
+        entries = c.get("/plan").json()["entries"]
+        room = next(e for e in entries if e["subject"] == "emptyroom")
+        other = next(e for e in entries if e["subject"] != "emptyroom")
+        # an edit is not refused because the empty-room subject is not among the recorded IDs
+        assert c.patch("/plan", json={"edits": [{"id": room["id"], "keep_headshape": True}]}).status_code == 200
+        assert c.patch("/plan", json={"edits": [{"id": other["id"], "subject": "zz1"}]}).status_code == 200
+        assert c.patch("/plan", json={"edits": [{"id": room["id"], "subject": "zz2"}]}).status_code == 422
+    finally:
+        app.state.server.close()
+
+
+def test_planners_with_and_without_the_mri_subjects():
+    from aimport.planner import _call_planner
+
+    assert _call_planner(lambda: "plain", {"01": {}}) == "plain"  # phase 2 planners take no argument
+    assert _call_planner(lambda subjects: sorted(subjects), {"01": {}}) == ["01"]

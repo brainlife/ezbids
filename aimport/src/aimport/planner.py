@@ -8,6 +8,7 @@ truncated. The caller owns the key's lock: build_plan saves the key but never cl
 """
 from __future__ import annotations
 
+import inspect
 import re
 import uuid
 from collections import Counter, defaultdict
@@ -19,7 +20,7 @@ from .agent import Guess, LLMClient, classify, draft_metadata
 from .ancillary import bids_root, ancillary_warnings, find_ancillary, id_maps, plan_ancillary, read_dataset_description
 from .brainlife_map import to_brainlife
 from .ezbids_runner import CoreResult, CoreSeries, CoreSubject
-from .plan import Plan, PlanEntry
+from .plan import EMPTY_ROOM_SUBJECT, Plan, PlanEntry
 from .pseudonyms import PseudonymKey
 from .schema import CHECK_EXTS, EPHYS_DATATYPES, SUPPORTED_DATATYPES, Schema
 from .scrub import _date_forms, identifying_terms, is_secondary_capture, redact, scrubbed_view
@@ -442,6 +443,9 @@ def _check_ephys_edits(plan: Plan, edits: list[dict]) -> None:
         if e is None:
             continue  # Plan.apply_edits raises KeyError
         ephys = e.modality == "ephys"
+        if "subject" in edit and (e.subject == EMPTY_ROOM_SUBJECT and ephys) != (edit["subject"] == EMPTY_ROOM_SUBJECT):
+            raise ValueError(f"the subject {EMPTY_ROOM_SUBJECT!r} holds the empty-room recordings: it is not "
+                             "renamed, and no other subject takes its ID")
         if ephys and edit.get("deface") is True:
             raise ValueError("electrophysiology recordings are never defaced")
         if "keep_headshape" in edit and not ephys and edit["keep_headshape"] is not False:
@@ -515,18 +519,46 @@ def _seed_readme(plan: Plan, supplied: list[Path], input_dir: Path, terms: set[s
         return
 
 
+def _mri_subjects(core: CoreResult, entries: list[PlanEntry]) -> dict[str, dict]:
+    """The MRI subjects by their input sub- folder label: {label: {"idx", "id", "sessions": {ses folder label:
+    (session_idx, session)}, "only": (session_idx, session) when the subject has exactly one session}}."""
+    ids = id_maps(core, entries)
+    out: dict[str, dict] = {}
+    for idx, label in ids.labels.items():
+        if idx not in ids.subjects:
+            continue
+        sessions = {lab: (j, ids.sessions[(i, j)]) for (i, j), lab in ids.session_labels.items()
+                    if i == idx and (i, j) in ids.sessions}
+        all_sessions = sorted({(e.session_idx, e.session) for e in entries if e.subject_idx == idx},
+                              key=lambda t: t[0])
+        out[label] = {"idx": idx, "id": ids.subjects[idx], "sessions": sessions,
+                      "only": all_sessions[0] if len(all_sessions) == 1 else None}
+    return out
+
+
+def _call_planner(plan_module: Callable, mri_subjects: dict[str, dict]) -> "ModulePlan":
+    """A planner that takes an argument gets the MRI subjects by folder label; one that takes none is called
+    as is (phase 2 planners)."""
+    try:
+        takes = bool(inspect.signature(plan_module).parameters)
+    except (TypeError, ValueError):
+        takes = False
+    return plan_module(mri_subjects) if takes else plan_module()
+
+
 def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_subjects: set[str],
                client: LLMClient | None, schema: Schema, target: Literal["bids", "datatypes"],
                staged_dir: Path | None = None, existing_sessions: dict[str, list[str]] | None = None,
                exclude: Sequence[str] = (), modules: Sequence["ModulePlan"] = (),
                extra_terms: frozenset[str] = frozenset(),
-               planners: Sequence[Callable[[], "ModulePlan"]] = ()) -> Plan:
+               planners: Sequence[Callable[..., "ModulePlan"]] = ()) -> Plan:
     """The reviewable plan. existing_subjects and existing_sessions (subject id -> session labels) are what
     the brainlife project already holds, so new subject IDs and session labels do not collide with them.
     exclude: claimed roots (input-relative), never walked for DICOM headers or planned as ancillary.
     modules: the modality modules' plans (entries, warnings, views, subject labels, images, event names),
     appended; planners: module planners, called once the MRI subjects hold their IDs in the key, so the MRI
-    subject IDs and session labels are those of an MRI-only plan; extra_terms: the modules' identifying
+    subject IDs and session labels are those of an MRI-only plan (a planner taking one argument gets the MRI
+    subjects by input sub- folder label, see _mri_subjects); extra_terms: the modules' identifying
     terms, redacted like the run's own (not used for the MRI subject and session labels, for the same reason)."""
     stats: dict = {}
     mri_terms = run_terms(core, input_dir, stats, exclude)
@@ -557,9 +589,6 @@ def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_su
     ses_labels = {idx: _session_labels(by_idx.get(idx, CoreSubject(idx, "", [], [])), sid, core, key,
                                        (existing_sessions or {}).get(sid, []), mri_terms)
                   for idx, sid in sub_ids.items()}
-    modules = list(modules) + [plan_module() for plan_module in planners]  # after the MRI subjects
-    draft = draft_metadata(view + [v for mp in modules for v in mp.view], client, terms)
-
     series_by_idx = {s.series_idx: s for s in core.series}
     triples = sorted({(o.series_idx, o.subject_idx, o.session_idx) for o in core.objects})
     entries = []
@@ -602,6 +631,11 @@ def build_plan(core: CoreResult, input_dir: Path, key: PseudonymKey, existing_su
         ))
     key.save()
     _fmap_tags(entries)
+    # module planners run once the MRI subjects hold their IDs in the key, and learn which input sub- folders
+    # those subjects came from (a module's recordings in the same folder are the same person)
+    mri_subjects = _mri_subjects(core, entries)
+    modules = list(modules) + [_call_planner(plan_module, mri_subjects) for plan_module in planners]
+    draft = draft_metadata(view + [v for mp in modules for v in mp.view], client, terms)
 
     event_names: dict[str, str] = {}
     for mp in modules:

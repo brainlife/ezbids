@@ -27,7 +27,7 @@ from typing import TYPE_CHECKING, Any, Callable
 
 from ..micr import names
 from ..modality import Claim, ModulePlan
-from ..plan import PlanEntry
+from ..plan import EMPTY_ROOM_SUBJECT, PlanEntry
 from . import OUTPUT_FORMATS, channels, discover, events, headers, readers
 from .discover import DATATYPES, VOCAB, Recording
 
@@ -53,7 +53,7 @@ HEADSHAPE_WARNING = "head-shape points found and dropped by default (keep_headsh
 LOAD_WARNING = "converting {name} loads about {n:.1f} GB into memory"
 NO_IDENTITY = ("electrophysiology: subject identity could not be established for {n} subject(s): they get new "
                "subject IDs for this import only, not linked to earlier imports")
-EMPTY_ROOM_SUBJECT = "emptyroom"
+MRI_PREFIX = "mri:"  # an original that stands for an MRI subject of this import (never put in the key)
 EMPTY_ROOM_TASK = "noise"
 UNKNOWN_TASK = "unknown"
 TASK_WORDS = ("rest", "sleep", "oddball", "mmn", "motor", "tapping", "auditory", "visual", "faces", "nback")
@@ -318,8 +318,23 @@ def _load_bytes(info: dict) -> int:
     return int(info.get("n_channels") or 0) * int(info.get("n_times") or 0) * 8
 
 
+def _identity(rec: dict) -> str | None:
+    """The key original from a recording's header: its ID, else its name (placeholders skipped)."""
+    info = rec.get("info") or {}
+    his, name = info.get("his_id"), info.get("name")
+    if his and not _placeholder("PatientID", his):
+        return "ephys:id=" + his
+    if name and not _placeholder("PatientName", name):
+        return "ephys:name=" + name
+    return None
+
+
 def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], schema: "Schema",
-                 target: str, codes: list[str] | None = None) -> ModulePlan:
+                 target: str, codes: list[str] | None = None,
+                 mri_subjects: dict[str, dict] | None = None) -> ModulePlan:
+    """The ephys plan. mri_subjects: the MRI path's subjects by their input sub- folder label,
+    ``{label: {"idx", "id", "sessions": {ses folder label: (session_idx, session)}, "only": (session_idx,
+    session) | None}}``; recordings in that folder join that subject."""
     from ..brainlife_map import to_brainlife
     from ..planner import EPHYS_BRAINLIFE_EXTS, _check_nameable, _usable
 
@@ -332,71 +347,118 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
     kinds = [datatype_of(rec) for rec in records]
     empty = [bool(rec.get("empty_room")) and dt == "meg" for rec, (dt, _) in zip(records, kinds)]
 
-    # subjects: the header's ID, else its name, else the sub- folder, else a donor token, else run-local
+    # subjects: recordings in one sub-<label> folder are one person. A label the MRI path used maps to
+    # that MRI subject (same folder, same person); else the header's ID (or name) of any recording in the
+    # folder, else a run-local subject. Outside sub- folders: the header's ID, else its name, else a donor
+    # token, else run-local.
+    mri_subjects = mri_subjects or {}
+    labels = [None if empty[i] else _input_label(rec["rel"], "sub") for i, rec in enumerate(records)]
+    folder_identity: dict[str, str] = {}
+    for rec, label in zip(records, labels):
+        if label and label not in mri_subjects:
+            ident = _identity(rec)
+            if ident:
+                folder_identity.setdefault(label, ident)
     originals: list[str | None] = []
     proposed: dict[str, str | None] = {}
     sub_labels: dict[str, set[str]] = defaultdict(set)
-    n_local = 0
+    local = f"run:{run}:"
     for i, rec in enumerate(records):
+        label = labels[i]
         if empty[i]:
             originals.append(None)
             continue
-        info = rec.get("info") or {}
-        label = _input_label(rec["rel"], "sub")
-        usable = label if label and (_usable(label, terms) or (label.isdigit() and _usable(label, terms - {label}))) \
-            else None
-        his, name = info.get("his_id"), info.get("name")
-        if his and not _placeholder("PatientID", his):
-            original = "ephys:id=" + his
-        elif name and not _placeholder("PatientName", name):
-            original = "ephys:name=" + name
-        elif label:
-            original = f"run:{run}:sub-{label}"
+        if label in mri_subjects:
+            originals.append(MRI_PREFIX + label)
+            continue
+        if label:
+            original = folder_identity.get(label) or f"{local}sub-{label}"
         else:
-            donor = names.facts(rec["rel"], vocab=VOCAB).donor
-            if donor:
-                original = "ephys:id=" + donor
-            else:
-                original = f"run:{run}:ephys{i}"
-                n_local += 1
+            original = _identity(rec)
+            if original is None:
+                donor = names.facts(rec["rel"], vocab=VOCAB).donor
+                original = "ephys:id=" + donor if donor else f"{local}ephys{i}"
+        usable = label if label and label != EMPTY_ROOM_SUBJECT and (
+            _usable(label, terms) or (label.isdigit() and _usable(label, terms - {label}))) else None
         originals.append(original)
         proposed.setdefault(original, usable)
         if label:
             sub_labels[original].add(label)
     order = list(dict.fromkeys(o for o in originals if o is not None))
-    subject_idx = {o: EPHYS_INDEX_BASE + n for n, o in enumerate(order)}
-    subject_ids = {o: key.subject_id(o, existing, proposed.get(o)) for o in order}
+    subject_idx: dict[str, int] = {}
+    subject_ids: dict[str, str] = {}
+    n_new = 0
     for o in order:
+        if o.startswith(MRI_PREFIX):
+            mri = mri_subjects[o[len(MRI_PREFIX):]]
+            subject_idx[o], subject_ids[o] = mri["idx"], mri["id"]
+            continue
+        subject_idx[o] = EPHYS_INDEX_BASE + n_new
+        n_new += 1
+        subject_ids[o] = key.subject_id(o, existing, proposed.get(o))
         if len(sub_labels[o]) == 1:
             mp.labels[subject_idx[o]] = next(iter(sub_labels[o]))
-    empty_idx = EPHYS_INDEX_BASE + len(order)
+    empty_idx = EPHYS_INDEX_BASE + n_new
+    n_local = sum(1 for o in order if o.startswith(local))
     if n_local:
         mp.warnings.append(NO_IDENTITY.format(n=n_local))
 
-    # sessions: the input's ses- labels; else numbered by recording day when a subject has several days
+    # sessions: the input's ses- labels (an MRI subject's own sessions when the folder is the same; a lone MRI
+    # session takes the session-less recordings); else numbered by recording day when a subject has several
+    # days. A ses- label that is not usable (identifying, or a date such as MNE-BIDS's ses-YYYYMMDD) counts
+    # as no label.
     sessions: list[str | None] = [None] * len(records)
+    fixed: dict[int, int] = {}  # record -> the MRI session_idx it joins
     days: dict[str, set[date]] = defaultdict(set)
-    for i, rec in enumerate(records):
-        raw = _input_label(rec["rel"], "ses")
-        if raw is not None and _usable(raw, terms):
-            sessions[i] = raw
-        elif originals[i] is not None and raw is None:
-            when = _meas_date(rec)
-            if when is not None:
-                days[originals[i]].add(when.date())
+    taken: dict[str, set[str]] = defaultdict(set)
     for i, rec in enumerate(records):
         o = originals[i]
-        if sessions[i] is not None or o is None or len(days[o]) < 2:
+        raw = _input_label(rec["rel"], "ses")
+        mri = mri_subjects.get(o[len(MRI_PREFIX):]) if o and o.startswith(MRI_PREFIX) else None
+        if mri is not None:
+            taken[o] |= {lab for _, lab in mri["sessions"].values() if lab}
+            if raw is not None and raw in mri["sessions"]:
+                fixed[i], sessions[i] = mri["sessions"][raw]
+                continue
+            if raw is None and mri.get("only") is not None:
+                fixed[i], sessions[i] = mri["only"]
+                continue
+        if raw is not None and _usable(raw, terms):
+            sessions[i] = raw
+            if o is not None:
+                taken[o].add(raw)
+        elif o is not None:
+            when = _meas_date(rec)
+            if when is not None:
+                days[o].add(when.date())
+    numbers: dict[tuple[str, date | None], str] = {}
+    for i, rec in enumerate(records):
+        o = originals[i]
+        if sessions[i] is not None or i in fixed or o is None or len(days[o]) < 2:
             continue
         when = _meas_date(rec)
-        ordered = sorted(days[o])
-        n = ordered.index(when.date()) + 1 if when is not None else len(ordered) + 1
-        sessions[i] = f"{n:02d}"
+        day = when.date() if when is not None else None
+        if (o, day) not in numbers:
+            for d in sorted(days[o]) + [None]:
+                if (o, d) in numbers:
+                    continue
+                n = len([k for k in numbers if k[0] == o]) + 1
+                while f"{n:02d}" in taken[o]:
+                    n += 1
+                numbers[(o, d)] = f"{n:02d}"
+                taken[o].add(numbers[(o, d)])
+        sessions[i] = numbers[(o, day)]
     session_idx: list[int] = []
     seen: dict[Any, dict[str | None, int]] = defaultdict(dict)
     for i in range(len(records)):
-        per = seen[originals[i] if originals[i] is not None else EMPTY_ROOM_SUBJECT]
-        session_idx.append(per.setdefault(sessions[i], len(per)))
+        o = originals[i]
+        if i in fixed:
+            session_idx.append(fixed[i])
+            continue
+        per = seen[o if o is not None else EMPTY_ROOM_SUBJECT]
+        # beside an MRI subject's sessions, ephys sessions are numbered apart from them
+        base = EPHYS_INDEX_BASE if o is not None and o.startswith(MRI_PREFIX) else 0
+        session_idx.append(base + per.setdefault(sessions[i], len(per)))
 
     # entities: task (input entity, else a task word, else unknown), acq
     entities: list[dict[str, str]] = []
@@ -417,13 +479,19 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
     formats = [_default_format(dt, rec["family"]) if rec.get("info") is not None and not rec.get("error") else ""
                for rec, (dt, _) in zip(records, kinds)]
 
-    # runs: more than one recording sharing (subject, session, task, acq) in one datatype (so one BIDS
-    # name), numbered by meas_date
+    # runs: recordings sharing (subject, session, task, acq) in one datatype (so one BIDS name) keep the
+    # input's run labels when every one has a usable, distinct one; else, when there are several, they are
+    # numbered by meas_date
     groups: dict[tuple, list[int]] = defaultdict(list)
     for i in range(len(records)):
         if formats[i]:
             groups[(originals[i], sessions[i], entities[i]["task"], entities[i].get("acq"), kinds[i][0])].append(i)
     for idxs in groups.values():
+        given = [(records[i].get("meta") or {}).get("run") or _entity(records[i]["rel"], "run") for i in idxs]
+        if all(r and _usable(r, terms) for r in given) and len(set(given)) == len(given):
+            for i, r in zip(idxs, given):
+                entities[i]["run"] = r
+            continue
         if len(idxs) < 2:
             continue
         idxs.sort(key=lambda i: (_meas_date(records[i]) is None, _meas_date(records[i]) or datetime.min,
@@ -455,13 +523,14 @@ def plan_entries(records: list[dict], key: "PseudonymKey", existing: set[str], s
                     fmt = ""
                 else:
                     mp.warnings.append(text)
-        if datatype in ("meg", "eeg") and (info.get("n_headshape_points") or rec.get("headshape")):
-            headshape = True
         bl_datatype, bl_tags = None, []
         if d["status"] == "ok":
             bl_datatype, bl_tags = to_brainlife(datatype, datatype, entities[i], {}, EPHYS_BRAINLIFE_EXTS.get(fmt))
             if target == "datatypes" and bl_datatype is None:
                 d["exclude"], d["reason"] = True, d["reason"] + "; no brainlife datatype"
+        if d["status"] == "ok" and not d["exclude"] and datatype in ("meg", "eeg") and (
+                info.get("n_headshape_points") or rec.get("headshape")):
+            headshape = True  # only for recordings that will be written
         entries.append(PlanEntry(
             id=f"e{i}-sub{sidx}-ses{session_idx[i]}", series_idx=EPHYS_INDEX_BASE + i, subject_idx=sidx,
             session_idx=session_idx[i], subject=subject, session=sessions[i], datatype=datatype, suffix=datatype,
@@ -537,8 +606,9 @@ class EphysModule:
         return terms
 
     def plan(self, work: Path, key: "PseudonymKey", existing: set[str], client: "LLMClient | None",
-             schema: "Schema", target: str) -> ModulePlan:
-        return plan_entries(load_records(work), key, existing, schema, target, load_codes(work))
+             schema: "Schema", target: str, subjects: dict[str, dict] | None = None) -> ModulePlan:
+        """subjects: the MRI subjects by input sub- folder label (planner.build_plan passes them)."""
+        return plan_entries(load_records(work), key, existing, schema, target, load_codes(work), subjects)
 
     def write(self, plan: "Plan", work: Path, input_dir: Path, terms: set[str], key: "PseudonymKey",
               schema: "Schema", dest: Callable[[str], Path]):

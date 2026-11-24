@@ -34,6 +34,8 @@ NOT_UPLOADABLE = "not uploadable: "
 DATE_COLUMN = "date column "
 OLD_PLAN = "plan format from an older aimport; re-scan the input"
 # a reviewer's display name for an event code (ephys events, Task 5)
+# the BIDS subject of MEG empty-room recordings: a literal label, never from the key nor a project subject
+EMPTY_ROOM_SUBJECT = "emptyroom"
 EVENT_NAME_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 _./+-]{0,39}$")
 
 

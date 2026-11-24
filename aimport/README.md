@@ -143,6 +143,22 @@ All examples use `T="Authorization: Bearer $AIMPORT_TOKEN"` and `U=http://localh
    that hold an identifying term (or are not plain, or longer than 32 characters) are renamed
    `<type>_<NNN>`, for example `eeg_002`; 10-20 and sensor names stay.
 
+   Electrophysiology entries (`modality: "ephys"`) are planned from the recordings' headers:
+   - **Subject**: recordings in one `sub-<label>` folder are one person; when the MRI part of the same
+     import used that folder, they get that MRI subject's ID. Otherwise the ID comes from the pseudonym
+     key (the header's patient ID, else its name, else a run-local identity). MEG empty-room recordings
+     go to the literal subject `emptyroom` (task `noise`), which is never a key or project subject and
+     cannot be renamed.
+   - **Session**: the input's `ses-` label when it is usable (a date-like or identifying label, such as
+     MNE-BIDS's `ses-YYYYMMDD`, counts as none); otherwise `01`, `02`, ... by recording day when a subject
+     was recorded on more than one day; otherwise none.
+   - **Run**: the input's `run-` labels when every recording sharing a BIDS name (subject, session, task,
+     acq, datatype) has a usable, distinct one; otherwise, when several share a name, `1`, `2`, ... by
+     recording time.
+   - `ephys_format` (editable) is the output format, one of `BrainVision`/`EDF`/`BDF` (eeg),
+     `BrainVision`/`EDF` (ieeg; `NWB` for NWB input), `EDF`/`BDF` (emg), `FIF` (meg), `SNIRF` (nirs);
+     `keep_headshape` (editable, meg and eeg) keeps the head-shape points, which are dropped by default.
+
    ```
    curl -s -X PATCH $U/plan -H "$T" -H 'Content-Type: application/json' \
      -d '{"edits": [{"id": "<entry id>", "entities": {"task": "rest"}, "exclude": false}],
