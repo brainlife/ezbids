@@ -350,14 +350,14 @@ export const EXAMPLES: Example[] = [
         t: 'Siemens DICOMs to a defaced T1w',
         data: 'neurolabusc/dcm_qa_xa30',
         dataHref: 'https://github.com/neurolabusc/dcm_qa_xa30',
-        licence: 'BSD-2-Clause, 44 MB; fake identifiers planted',
+        licence: 'BSD-2-Clause, 44 MB; as published, its own identifiers in the headers',
         cmd: `uv run --no-project --with pydicom python \\
-  ezbids/aimport/tests/fixtures/fetch_dcm_qa.py mri
+  ezbids/aimport/tests/fixtures/fetch_dcm_qa.py mri --plain
 bl aimport mri --deface quickshear ${TRY_FLAGS}
-grep -ril -e smith -e mrn0042 work/output/bids || echo clean`,
+grep -ril -e xatest -e july11 -e hucheng work/output/bids || echo clean`,
         outcome: [
             'Plan: T1w (2 runs), BOLD, 3 field maps, 2 DWI; derived maps and ASL left out, each with its reason.',
-            'Defaced, then validated; grep prints clean: the planted name and ID are in no output file.',
+            'Defaced, then validated; grep prints clean: the name and ID in its headers are in no output file.',
             'QA viewer: the defaced T1w next to its original. Press Enter: nothing is uploaded.',
         ],
     },

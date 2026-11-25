@@ -253,3 +253,46 @@ def test_end_to_end_no_identifier_leaves(tmp_path, monkeypatch):
     assert len(readmes) == 1, [p.name for p in out.iterdir()]
     readme = readmes[0].read_text()
     assert "scans" in readme and not (PLANTED | NATIVE) & tokens(readme)
+
+
+def test_end_to_end_plain_dcm_qa_xa30_validates(tmp_path, monkeypatch):
+    """The public dcm_qa_xa30 download as is, nothing planted: its own PatientName XAtest_sub-July11 holds the BIDS
+    key `sub`, which is never a term, so execute writes sub-01... (defaced), validates, and neither value leaves."""
+    inp, work, keys = tmp_path / "in", tmp_path / "work", tmp_path / "keys"
+    root = fetch_dcm_qa(inp, plant=False, cache=CACHE)
+    header = next(str(ds) for ds in (_read_dicom(p) for p in sorted(root.rglob("*")) if p.is_file()) if ds is not None)
+    assert "XAtest_sub-July11" in header  # positive control: the set's own identifiers are there to leak
+    native = NATIVE | {"xatest", "july11"}
+
+    rec = Recorder()
+    monkeypatch.setattr(server, "client_from_env", lambda: rec)
+    app = create_app(inp, work, keys, TOKEN, [], [HOST])
+    api = Api(app)
+    try:
+        assert api.call("POST", "/scan", json={"project_id": "proj"}).status_code == 202
+        status = api.wait()
+        assert status["stage"] == "planned", status
+        plan = api.call("GET", "/plan").json()
+        assert {e["subject"] for e in plan["entries"]} == {"01"}
+        assert any(e["datatype"] == "anat" and not e["exclude"] for e in plan["entries"])
+        r = api.call("POST", "/approve", json={"deface_method": "quickshear"})
+        assert r.status_code == 200 and r.json()["approved"] is True
+        assert api.call("POST", "/execute").status_code == 202
+        status = api.wait()
+        assert status["stage"] == "validated", status
+        assert status["validation"]["ok"] is True
+        out = Path(status["output_dir"])
+    finally:
+        app.state.server.close()
+
+    assert any(out.glob("sub-01/**/anat/*_T1w.nii.gz"))
+    assert (work / "pre-deface").is_dir() and any((work / "pre-deface").rglob("*.nii.gz")), "the T1w was defaced"
+    assert not native & tokens("\n".join(str(p.relative_to(out)) for p in out.rglob("*")))
+    for rel, text in all_text_of(out):
+        low = text.lower()
+        found = (native & tokens(text)) | {t for t in ("xatest", "july11") if t in low}
+        assert not found, (rel, found)
+    for request in rec.requests:
+        assert not {t for t in ("xatest", "july11") if t in request.lower()}
+    for body in api.bodies:
+        assert not {t for t in ("xatest", "july11") if t in body.lower()}, body[:200]

@@ -497,3 +497,51 @@ def test_placeholder_patient_id_not_used_to_find_demographics(world, key, schema
     world.core.subjects[0].patient_info = [{"PatientID": "ANONYMOUS"}]
     world.write(key, schema)
     assert read_tsv(world.out / "participants.tsv")[0]["age"] == "n/a"
+
+
+# --- BIDS-like identifiers in the headers (dcm_qa_xa30: PatientName XAtest_sub-July11) ----------------
+
+def _identity_world(world, **fields):
+    """The world's DICOMs and ezBIDS patient info rewritten with these identity fields."""
+    for dcm in world.inp.rglob("1.dcm"):
+        write_dicom(dcm, PatientAge="045Y", PatientSex="F", **fields)
+    world.core.subjects[0].patient_info = [dict(fields)]
+    for o in world.core.objects:
+        o.sidecar = {**{k: v for k, v in o.sidecar.items() if k not in ("PatientName", "PatientID")}, **fields}
+    return run_terms(world.core, world.inp)
+
+
+def _all_output_text(out: Path) -> str:
+    parts = [str(p.relative_to(out)) for p in out.rglob("*")]
+    for p in out.rglob("*"):
+        if p.is_file() and not p.name.endswith(".nii.gz"):
+            parts.append(p.read_text(errors="replace"))
+        elif p.is_file():
+            parts.append(bytes(nib.load(str(p)).header["descrip"]).decode(errors="replace"))
+    return "\n".join(parts)
+
+
+def test_bids_key_in_patient_name_is_not_a_term(world, key, schema):
+    """The exact dcm_qa_xa30 case: execute writes sub-01..., the values around `sub` never leave."""
+    terms = _identity_world(world, PatientName="XAtest_sub-July11", PatientID="12343@hucheng")
+    assert {"XAtest", "July11"} <= terms and "sub" not in {t.lower() for t in terms}
+    write_bids(world.plan, world.core, world.inp, terms, key, schema, world.out, staged_dir=world.staged)
+    assert (world.out / "sub-01/ses-1/anat/sub-01_ses-1_run-1_T1w.nii.gz").exists()
+    text = _all_output_text(world.out).lower()
+    assert not [t for t in ("xatest", "july11", "hucheng") if t in text]
+
+
+@pytest.mark.parametrize("pid", ["sub-01", "sub-07"])
+def test_bids_like_patient_id_does_not_block_or_name_the_output(world, key, schema, pid):
+    """A PatientID written as a BIDS label: the output is written, under a generated label (01, the first
+    free one), never the source's when no sub- folder carried it (sub-07 is not reused)."""
+    terms = _identity_world(world, PatientName="Doe^Jane", PatientID=pid)
+    write_bids(world.plan, world.core, world.inp, terms, key, schema, world.out, staged_dir=world.staged)
+    assert sorted(p.name for p in world.out.glob("sub-*")) == ["sub-01"]
+    assert "sub-07" not in _all_output_text(world.out)
+
+
+def test_destination_check_never_refuses_a_bare_bids_word(world, key, schema):
+    terms = TERMS | {"sub", "ses", "anat", "T1w", "run", "task", "bold", "dwi", "fmap", "Sub"}
+    write_bids(world.plan, world.core, world.inp, terms, key, schema, world.out, staged_dir=world.staged)
+    assert (world.out / "sub-01/ses-1/func/sub-01_ses-1_task-rest_bold.nii.gz").exists()

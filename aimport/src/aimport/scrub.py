@@ -17,6 +17,7 @@ import pydicom
 
 from .ezbids_runner import CoreResult, CoreSeries
 from .modality import ClaimedPaths
+from .schema import bids_words, entity_keys
 
 MIN_TERM_LEN = 3
 REDACTED = "[x]"
@@ -119,26 +120,82 @@ def _date_forms(value: str) -> set[str]:
     }
 
 
+_BIDS_PAIR = re.compile(r"([A-Za-z]+)-([A-Za-z0-9]+)")
+
+
+def is_bids_word(text: str) -> bool:
+    """A BIDS schema word on its own (entity key or name, datatype, suffix: ``sub``, ``task``, ``T1w``)."""
+    return text.strip().casefold() in bids_words()
+
+
+def _label_term(label: str) -> bool:
+    """A label of a BIDS-like value is a term when a term of its own would be: 3+ characters, or 2 letters
+    (a name part such as Li); short numbers (``01``) are never terms."""
+    return len(label) >= MIN_TERM_LEN or (len(label) == 2 and label.isalpha())
+
+
+def bids_labels(text: str) -> set[str] | None:
+    """The labels of a BIDS-like value (``sub-July11``, ``ses-1_run-2``, ``sub-01_T1w``: entity key-label
+    pairs, an optional BIDS suffix last) that can be terms; None for any other text."""
+    pieces = text.strip().split("_")
+    labels = []
+    for i, piece in enumerate(pieces):
+        m = _BIDS_PAIR.fullmatch(piece)
+        if m and m.group(1).casefold() in entity_keys():
+            labels.append(m.group(2))
+        elif not (i and i == len(pieces) - 1 and is_bids_word(piece)):
+            return None
+    return {lab for lab in labels if _label_term(lab)}
+
+
+def without_bids_words(terms) -> set[str]:
+    """Terms with the BIDS vocabulary taken out, the one rule for every modality and check: a bare BIDS
+    word (``sub``, ``ses``, ``T1w``, ``anat``) is never a term, and a BIDS-like term is replaced by its
+    labels (``sub-July11`` by ``July11``; ``sub-01`` by nothing). Any other term is kept whole."""
+    out: set[str] = set()
+    for t in terms:
+        t = str(t)
+        if is_bids_word(t):
+            continue
+        labels = bids_labels(t)
+        out |= {t} if labels is None else labels
+    return out
+
+
 def _terms_from(field_name: str, raw: Any) -> set[str]:
     """Terms for one header value, already length-filtered.
 
     Name parts of 2 characters are kept (Li, Wu, Ng; matched on boundaries only by redact);
     everything else needs MIN_TERM_LEN characters; 1-character parts are always dropped.
+    BIDS vocabulary is never a term (``without_bids_words``): a BIDS-like value or name part
+    (``sub-July11``) gives its labels only, and a bare BIDS word (``sub``) nothing.
     """
     out: set[str] = set()
     min_len = MIN_TERM_LEN
     for value in _values(raw):
+        labels = bids_labels(value)
+        if labels is not None:
+            out |= labels
+            continue
         out.add(value)
         if field_name in _NAME_FIELDS:
             min_len = 2
-            out.update(p.strip(".,-=") for p in re.split(r"[\^\s_,=]+", value))  # whole components (O'Brien)
-            out.update(p.strip(".,-=") for p in re.split(r"[\^\s_,.\-='\u2019]+", value))  # and their parts (O, Brien)
+            for comp in re.split(r"[\^\s_,=]+", value):  # whole components (O'Brien)
+                comp = comp.strip(".,-=")
+                labels = bids_labels(comp)
+                if labels is not None:
+                    out |= labels
+                    continue
+                out.add(comp)
+                out.update(p.strip(".,-=") for p in re.split(r"[\^\s_,.\-='\u2019]+", comp))  # and their parts
         elif field_name in {"PatientID", "OtherPatientIDs"}:
-            out.update(re.split(r"[@\^ ]+", value))
+            for part in re.split(r"[@\^ ]+", value):
+                labels = bids_labels(part)
+                out |= {part} if labels is None else labels
         # description fields contribute the whole value only: parts ("MRI", "test") are generic words
         elif field_name == "PatientBirthDate":
             out |= _date_forms(value)
-    return {t for t in out if len(t) >= min_len}
+    return {t for t in without_bids_words(out) if len(t) >= min_len}
 
 
 def _ds_terms(get) -> set[str]:
@@ -221,7 +278,7 @@ def _fold(text: str) -> str:
 @functools.lru_cache(maxsize=32)
 def _compiled(terms: frozenset) -> tuple[frozenset, re.Pattern | None]:
     """Folded terms and the one alternation pattern for them, built once per term set."""
-    folded_terms = {_fold(t) for t in terms}
+    folded_terms = {_fold(t) for t in without_bids_words(terms)}
     folded_terms.discard("")
     if not folded_terms:
         return frozenset(), None

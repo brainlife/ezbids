@@ -34,6 +34,7 @@ from urllib.parse import unquote, urlsplit
 
 import numpy as np
 
+from ..scrub import without_bids_words
 from .metadata import FORMAT_VOCAB, ImageInfo, channel_count, ngff_attrs, squash
 
 CHUNK_MAP_VERSION = 1
@@ -254,7 +255,7 @@ def check_terms(dest: Path, terms: Any) -> None:
     from ..ancillary import PATH_NUMERIC_MIN
 
     wanted = set()
-    for t in terms or ():
+    for t in without_bids_words(terms or ()):  # BIDS vocabulary (sub, sample, micr) is never a term
         sq = _squash(str(t))
         if sq in FORMAT_VOCAB:  # data-type, unit, axis, NGFF and codec words are never terms
             continue
