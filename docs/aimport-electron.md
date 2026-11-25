@@ -4,7 +4,10 @@ Goal: the local, privacy-preserving AI importer (`aimport/`, from master) runs i
 `aimport/` is copied unchanged from master; desktop differences live in one shim, `electron/aimport/aimport_desktop.py`.
 
 **Bundled** (`extraResources` → `Resources/aimport/`, built by `./fetch-aimport.sh <platform> <arch>`, host platform only)
-- Python 3.11.18 (python-build-standalone, via pinned `uv` 0.13.9) with aimport's deps from `uv.lock` (`--require-hashes`).
+- Python 3.11.18 (python-build-standalone, via pinned `uv` 0.13.9) with aimport's deps from `uv.lock` (`--require-hashes`),
+  without the GPL-3.0 `czi` extra (bioio-czi, aicspylibczi) and snirf: a `.czi` file is planned `unsupported`. The build
+  fails if any GPL/AGPL package is bundled, and writes `THIRD_PARTY_LICENSES.txt` into the runtime
+  (`electron/aimport/runtime_licenses.py`).
 - `bids-validator`: `@bids/validator` 2.4.1 compiled with Deno 2.5.6 (zip sha256-pinned); runs offline. BIDS 1.11.2 `schema.json`.
 - The Neuroglancer QA client, built from `aimport/viewer-client` (`npm ci --ignore-scripts`, lockfile hashes).
 - Reused from ezBIDS desktop: dcm2niix, 7z, Python 3.8 runtime + ezBIDS_core (`preprocess.cjs`), allineate + face template.

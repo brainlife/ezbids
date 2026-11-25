@@ -19,7 +19,8 @@ dependencies = [
     "uvicorn",
     # microscopy (micr)
     "bioio",
-    "bioio-czi",
+    # CZI (bioio-czi, aicspylibczi) is GPL-3.0: the optional extra "czi" below, installed in the Docker engine
+    # image only, so the desktop app ships no GPL code
     "bioio-nd2",
     "bioio-lif",
     "tifffile",
@@ -45,6 +46,8 @@ dependencies = [
 [project.optional-dependencies]
 dev = ["pytest", "httpx"]
 neo = ["neo"]
+# GPL-3.0 (bioio-czi and aicspylibczi): never in the desktop runtime (fetch-aimport.sh fails if it is)
+czi = ["bioio-czi"]
 
 [dependency-groups]
 dev = ["pytest", "httpx"]

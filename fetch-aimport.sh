@@ -5,7 +5,9 @@
 # run it on each CI runner (mac arm64, Windows x64, Linux x64), like fetch-binaries.sh.
 #
 #   runtime/python/            Python 3.11 (python-build-standalone, installed by a pinned uv) with
-#                              aimport's deps exactly as aimport/uv.lock pins them (--require-hashes)
+#                              aimport's deps exactly as aimport/uv.lock pins them (--require-hashes), without
+#                              the GPL-licensed "czi" extra and snirf
+#   runtime/THIRD_PARTY_LICENSES.txt  every bundled package's licence and licence files (the build fails on GPL/AGPL)
 #   runtime/bids-validator[.exe]  @bids/validator 2.4.1 compiled with a pinned, sha256-checked Deno
 #   runtime/schema.json        BIDS 1.11.2 schema exported from aimport/bids-specification (bst export)
 #   runtime/neuroglancer-client/  the QA viewer client, built from aimport/viewer-client (npm ci, lockfile hashes)
@@ -65,8 +67,14 @@ mv "$pydir" "$OUT/python"
 if [[ "$platform" == windows ]]; then PY="$OUT/python/python.exe"; else PY="$OUT/python/bin/python3"; fi
 
 echo "== aimport dependencies from uv.lock (hash-checked)"
-(cd "$AIMPORT_SRC" && uvp export --locked --no-dev --no-emit-project --format requirements-txt -o "$TMP/requirements.txt")
-uvp pip install --python "$PY" --break-system-packages --require-hashes -r "$TMP/requirements.txt"
+# No extras: the "czi" extra (bioio-czi, aicspylibczi) is GPL-3.0 and is installed in the Docker engine image only.
+# --no-emit-package snirf: pysnirf2 (GPL-3.0) comes in through autobidsify, whose MAT-to-SNIRF converter (the only
+# code importing it) aimport never calls; aimport reads SNIRF with MNE. runtime_licenses.py below fails the build
+# if any GPL/AGPL package is bundled.
+(cd "$AIMPORT_SRC" && uvp export --locked --no-dev --no-emit-project --no-emit-package snirf \
+    --format requirements-txt -o "$TMP/requirements.txt")
+# --no-deps: the export is the whole locked closure already (minus snirf, which autobidsify declares)
+uvp pip install --python "$PY" --break-system-packages --require-hashes --no-deps -r "$TMP/requirements.txt"
 # aimport itself, without resolving anything again (copied so the source tree gets no build files)
 mkdir -p "$TMP/aimport-src"
 cp -R "$AIMPORT_SRC/pyproject.toml" "$AIMPORT_SRC/README.md" "$AIMPORT_SRC/src" "$TMP/aimport-src/"
@@ -90,6 +98,16 @@ echo "== Neuroglancer QA client"
 mkdir -p "$TMP/ng" && cp "$AIMPORT_SRC/viewer-client/"{package.json,package-lock.json,build.mjs,index.html} "$TMP/ng/"
 (cd "$TMP/ng" && npm ci --ignore-scripts --no-audit --no-fund && node build.mjs "$OUT/neuroglancer-client")
 
+echo "== Licences: no GPL/AGPL package, THIRD_PARTY_LICENSES.txt"
+ng_modules="$TMP/ng/node_modules"
+"$PY" -I -B "$SCRIPT_DIR/electron/aimport/runtime_licenses.py" "$OUT/THIRD_PARTY_LICENSES.txt" \
+    "Neuroglancer (QA viewer client)=$ng_modules/neuroglancer/LICENSE" \
+    "uPlot (QA trace viewer)=$ng_modules/uplot/LICENSE"
+cp "$ng_modules/neuroglancer/LICENSE" "$OUT/neuroglancer-client/LICENSE.neuroglancer"
+cp "$ng_modules/uplot/LICENSE" "$OUT/neuroglancer-client/LICENSE.uplot"
+"$PY" -I -B -c "import aimport.micr.readers, aimport.ephys.readers, autobidsify.llm" || {
+    echo "the runtime cannot import aimport without the left-out packages" >&2; exit 1; }
+
 # Trim what the app never runs (tests, caches, headers, pip/idle/tk)
 find "$OUT/python" -type d \( -name __pycache__ -o -name tests -o -name test \) -prune -exec rm -rf {} + 2>/dev/null || true
 rm -rf "$OUT/python/include" "$OUT/python/share"
@@ -101,7 +119,7 @@ done
 # so nothing is ever written into the (signed) bundle
 
 cat > "$OUT/VERSIONS.txt" <<EOF
-python ${PYTHON_VERSION} (uv ${UV_VERSION}), deps from aimport/uv.lock
+python ${PYTHON_VERSION} (uv ${UV_VERSION}), deps from aimport/uv.lock (no "czi" extra, no snirf)
 @bids/validator ${BIDS_VALIDATOR_VERSION} (deno ${DENO_VERSION} compile)
 schema: aimport/bids-specification $(git -C "$AIMPORT_SRC/bids-specification" rev-parse --short HEAD)
 neuroglancer client: aimport/viewer-client/package-lock.json

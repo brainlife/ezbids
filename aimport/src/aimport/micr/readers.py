@@ -35,7 +35,7 @@ from .metadata import (
 )
 
 __all__ = [
-    "BIOFORMATS_MESSAGE", "MAT_V5_MAX_BYTES", "ChannelInfo", "ImageInfo", "ImageSource",
+    "BIOFORMATS_MESSAGE", "CZI_MISSING_MESSAGE", "MAT_V5_MAX_BYTES", "ChannelInfo", "ImageInfo", "ImageSource",
     "UnsupportedFormat", "apply_visor_meta", "open_image", "plan_chunks", "register_reader",
 ]
 
@@ -45,6 +45,9 @@ BIOFORMATS_MESSAGE = "needs Bio-Formats (not included): export to OME-TIFF or OM
 PNG_MESSAGE = "PNG and JPEG images are not read: export to OME-TIFF or OME-Zarr first"
 PHOTO_MESSAGE = "photographs are not imported"
 MAT_V5_MESSAGE = "MATLAB v5 file too large to read lazily: save as v7.3"
+# bioio-czi (and aimport's "czi" extra) is GPL-3.0: the Docker engine image installs it, the desktop app does not
+CZI_MISSING_MESSAGE = ("CZI support is not installed in this build (GPL-licensed reader); "
+                       "export to OME-TIFF or use the Docker engine")
 MAT_V5_MAX_BYTES = 2 * 2**30
 ENTRY_POINT_GROUP = "aimport.micr_readers"
 
@@ -659,7 +662,10 @@ def _bioimage(location: str | Path, family: str) -> Any:
     from bioio import BioImage
 
     if family == "czi":
-        from bioio_czi import Reader
+        try:
+            from bioio_czi import Reader
+        except ImportError:  # the optional "czi" extra is not installed (the desktop app)
+            raise UnsupportedFormat(CZI_MISSING_MESSAGE) from None
     elif family == "nd2":
         from bioio_nd2 import Reader
     else:

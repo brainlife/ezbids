@@ -16,7 +16,7 @@ Each tool has one pin. Bump it there, update every mirror listed, and run the gu
 | `@bids/validator` (aimport) + Deno | `aimport/Dockerfile` `ARG BIDS_VALIDATOR_VERSION`, `DENO_VERSION`, `DENO_ZIP_SHA256` | `fetch-aimport.sh` (same versions + per-platform Deno sha256), `docs/aimport-electron.md`, `aimport/README.md`, `CREDITS.md`, `aimport/tests/DATASETS.md` | image build; desktop smoke test |
 | bids-validator 1.14.8 (classic web) | `package.json`, `electron/package.json`, `handler/Dockerfile` | `CREDITS.md` | |
 | uv / Python 3.11 (desktop runtime) | `fetch-aimport.sh` `UV_VERSION`, `PYTHON_VERSION`; `aimport/Dockerfile` `ARG UV_VERSION` | `setup-uv` `version:` in `build-desktop.yml` and `desktop-smoke-test.yml` | |
-| aimport Python deps | `aimport/uv.lock` (`uv lock` after editing `pyproject.toml`) | `CREDITS.md` if a library is added | desktop installs with `--require-hashes` |
+| aimport Python deps | `aimport/uv.lock` (`uv lock` after editing `pyproject.toml`) | `CREDITS.md` if a library is added | desktop installs with `--require-hashes`; `runtime_licenses.py` fails `fetch-aimport.sh` on a GPL/AGPL package |
 | Neuroglancer, uPlot (QA viewer) | `aimport/viewer-client/package.json` + `package-lock.json` | `CREDITS.md` version | `npm ci --ignore-scripts` in the image and `fetch-aimport.sh` |
 | Native binaries (7z, allineate, Python 3.8 runtime) | `fetch-binaries.sh` `RELEASE_TAG` (brainlife/ezbids-binaries) | `README.md` "About fetch-binaries.sh" | `npm run electron:smoke-test` |
 | BIDS schema | submodules `bids-specification` (web) and `aimport/bids-specification` (aimport, v1.11.2) | `bids_brainlife_map.yaml` header, landing `BIDS_VERSION`, drafts (`tools/draft_datatypes.py`) | `git submodule status` |
@@ -29,6 +29,16 @@ Each tool has one pin. Bump it there, update every mirror listed, and run the gu
 4. `npx jest handler/dcm2niix.version.spec.ts handler/utils.spec.ts`; `handler/fetch-dcm2niix.sh darwin arm64 /tmp/d2n` on a Mac prints `ok: ... prints <tag>`.
 5. Rebuild `ezbids-handler:local` and run the aimport docker tests (`ezbids-checks-before-pr`).
 
+## Extras: what the desktop app must not ship
+
+The desktop runtime (`fetch-aimport.sh`) installs aimport's locked dependencies **without extras**; the engine image
+(`aimport/Dockerfile`) installs `--extra dev --extra czi`. A dependency licensed GPL or AGPL (LGPL is fine) goes in an
+optional extra that only the Dockerfile installs (as `czi = ["bioio-czi"]`), and its reader raises `UnsupportedFormat`
+with a "not installed in this build" message when the import fails. A GPL package that arrives through another
+dependency and is never imported by aimport is left out with `--no-emit-package` (snirf, via autobidsify). Check the
+new package's licence (`importlib.metadata`, `License-Expression`/`License`, and its LICENSE file) before `uv lock`;
+`fetch-aimport.sh <platform>` fails if one slips into the runtime.
+
 ## Common mistakes
 
 - Bumping `fetch-aimport.sh` and forgetting `aimport/Dockerfile` (or the reverse): the image and the desktop app then validate with different versions.
@@ -36,3 +46,4 @@ Each tool has one pin. Bump it there, update every mirror listed, and run the gu
 - Writing an example dcm2niix tag in a doc or skill: the guard test fails.
 - Letting pypet2bids fall back to its own dcm2niix.
 - Editing `pyproject.toml` without `uv lock`.
+- Adding a GPL/AGPL library to `dependencies` instead of an extra: the desktop build fails on the licence check.

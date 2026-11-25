@@ -316,7 +316,7 @@ export const WHICH_DATA = [
     { t: 'Neuroimaging', d: 'MRI and PET from DICOM or NIfTI, with defacing.' },
     {
         t: 'Microscopy',
-        d: 'OME-TIFF, CZI, ND2, LIF, SVS, PS-OCT and light-sheet; OME-Zarr read in place, local or remote.',
+        d: 'OME-TIFF, ND2, LIF, SVS, PS-OCT and light-sheet; CZI with the Docker engine (not the desktop app); OME-Zarr read in place, local or remote.',
     },
 ];
 

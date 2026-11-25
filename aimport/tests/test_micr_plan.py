@@ -438,6 +438,20 @@ def test_unsupported_reason_redacted(inp, tmp_path, key, schema, monkeypatch):
     assert not MICR_PLANTED & tokens(e.reason) and "Jane" not in e.reason
 
 
+def test_czi_without_the_extra_planned_unsupported(inp, tmp_path, key, schema, monkeypatch):
+    """Without bioio-czi (the desktop app), a .czi file is planned unsupported with the reason, and the scan goes on."""
+    import sys
+
+    from aimport.micr.readers import CZI_MISSING_MESSAGE
+
+    monkeypatch.setitem(sys.modules, "bioio_czi", None)
+    (inp / "H17_250215" / "slide_03.czi").write_bytes(b"ZISRAWFILE" + bytes(64))
+    plan = make_plan(inp, tmp_path, key, schema)
+    (e,) = [e for e in micr(plan) if e.description.startswith("CZI")]
+    assert (e.status, e.exclude, e.write_mode, e.reason) == ("unsupported", True, "", CZI_MISSING_MESSAGE)
+    assert any(e.description.startswith("OME-TIFF") and e.status != "unsupported" for e in micr(plan))
+
+
 def test_photo_row_has_no_brainlife_datatype():
     from aimport.brainlife_map import load_rows
 

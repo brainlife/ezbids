@@ -50,10 +50,11 @@ ENV UV_PYTHON_INSTALL_DIR=/opt/uv-python
 RUN pip3 install "uv==${UV_VERSION}" "rdflib<7"  # handler image: unpinned rdflib 7 breaks prov (pydeface, pypet2bids)
 RUN uv venv --python ${PYTHON_VERSION} /opt/aimport-venv && chmod -R a+rX /opt/uv-python /opt/aimport-venv
 # Dependencies exactly as locked in uv.lock (versions and hashes; --locked fails if the lock is stale),
-# then aimport itself without resolving anything again.
+# then aimport itself without resolving anything again. --extra czi: the engine image reads CZI (bioio-czi,
+# GPL-3.0); the desktop runtime (fetch-aimport.sh) leaves it out.
 COPY aimport/pyproject.toml aimport/README.md aimport/uv.lock /tmp/aimport/
 COPY aimport/src /tmp/aimport/src
-RUN cd /tmp/aimport && uv export --locked --extra dev --no-emit-project -o /tmp/aimport/requirements.txt && \
+RUN cd /tmp/aimport && uv export --locked --extra dev --extra czi --no-emit-project -o /tmp/aimport/requirements.txt && \
     uv pip install --python /opt/aimport-venv/bin/python --require-hashes -r /tmp/aimport/requirements.txt && \
     uv pip install --python /opt/aimport-venv/bin/python --no-deps /tmp/aimport && rm -rf /tmp/aimport
 ENV PATH=$PATH:/opt/aimport-venv/bin

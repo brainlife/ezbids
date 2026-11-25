@@ -133,7 +133,8 @@ sub-01/
                     <h2>Every BIDS datatype, on the way to brainlife.io.</h2>
                     <p>
                         ezBIDS on the web converts MRI, PET and MEG. aimport, on your own computer, adds microscopy
-                        (OME-TIFF, CZI, ND2, LIF, SVS, PS-OCT, light-sheet; OME-Zarr read in place) and EEG, MEG, iEEG,
+                        (OME-TIFF, CZI with the Docker engine, ND2, LIF, SVS, PS-OCT, light-sheet; OME-Zarr read in
+                        place) and EEG, MEG, iEEG,
                         NIRS and EMG recordings. BIDS file types are mapped to brainlife.io datatypes (or drafts of new
                         ones) so the data is ready for Apps as soon as it lands.
                     </p>
