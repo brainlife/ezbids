@@ -8,7 +8,7 @@ brainlife.io. It lives in the ezBIDS repo and reuses ezBIDS's mapping, conversio
 but everything runs on your machine, so raw DICOMs with identifiers are never uploaded.
 
 **Status: beta: run it from source today; packaged release coming.** The engine (MRI and PET; microscopy; EEG, MEG,
-iEEG, NIRS and EMG) is merged and tested; its Docker image is not published yet, so you build it from this repo
+iEEG, NIRS and EMG) is merged and tested; no version of its Docker image is published yet, so you build it from this repo
 (below). `bl aimport` is on the [brainlife cli](https://github.com/brainlife/cli#bl-aimport)'s `master` branch, not
 yet in a published npm release. The ezBIDS desktop app runs the same engine as **AI import (beta)**: build from
 source (tested on Mac); signed installers coming. New to aimport? Start with the low-stakes walkthroughs on public
@@ -45,7 +45,7 @@ tables and NIfTI headers) or any API response.
 
 ## Requirements
 
-- Docker. The image is not published yet: build it locally (below).
+- Docker. No image version is published yet: build it locally (below).
 - Disk: the work folder holds the staged input, the converted images, the output and the pre-defacing originals.
 - Apple Silicon: the image is `linux/amd64`, so it runs under emulation and is slower. Defacing is the
   slow step: `pydeface` takes about 6 minutes per T1 there and `quickshear` about 40 seconds. On Intel or Linux
@@ -60,6 +60,14 @@ git submodule update --init bids-specification aimport/bids-specification
 docker build --platform linux/amd64 -t ezbids-handler:local handler/
 docker build --platform linux/amd64 -t brainlife/aimport:dev -f aimport/Dockerfile .
 ```
+
+The base image is the build argument `HANDLER_IMAGE` (default `ezbids-handler:local`, the image built just above).
+
+Releases will be published as `docker.io/brainlife/aimport:<version>` (on `docker.io/brainlife/ezbids-handler:<version>`)
+by [`.github/workflows/publish-images.yml`](../.github/workflows/publish-images.yml) when a maintainer pushes a tag
+`aimport-v<version>`; see [docs/releasing-aimport-image.md](../docs/releasing-aimport-image.md). No version is
+published yet. Once one is, `docker pull --platform linux/amd64 docker.io/brainlife/aimport:<version>` replaces the two
+builds, and the commands below take that image name instead of `brainlife/aimport:dev`.
 
 ## Run the engine
 
@@ -604,6 +612,9 @@ entry's `ephys_format` (never a copy of the source file):
 
 ## Image details
 
+- Published as `docker.io/brainlife/aimport:<version>` (none yet; see "Build the image"), `linux/amd64` only. A
+  `linux/arm64` image is not possible as the image stands: the FSL binaries (`dlevitas/FSL_binaries`), ROBEX, the
+  pinned dcm2niix release, 7-Zip (`brainlife/ezbids-binaries`) and the Deno download are x86-64 only.
 - ezBIDS lives at `/app` (its `bids-specification` submodule at the pinned `3537e9ed`); aimport is in `/opt/aimport-venv` (Python 3.11), last on `PATH`, so system `python3` stays 3.8 and `pytest` is the venv's.
 - `aimport/bids-specification` (submodule, BIDS v1.11.2 at `fbe1af9a`) is exported to `/opt/bids-schema/schema.json` with `bst export`.
 - BIDS validator: `@bids/validator` **2.4.1** (Deno 2.5.6), run through the `bids-validator-2` wrapper. That release bundles an older schema (it flags `BIDSVersion` 1.11.2 as unknown), so the wrapper defaults `--schema file:///opt/bids-schema/schema.json` unless `--schema`/`-s` is given. Works offline. Useful flags: `--format json` (`--json` is deprecated), `--schema <URL>`, `--ignoreNiftiHeaders`, `-o <file>`.
