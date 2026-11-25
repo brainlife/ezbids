@@ -13,6 +13,14 @@ WORKDIR /build
 COPY aimport/viewer-client/package.json aimport/viewer-client/package-lock.json aimport/viewer-client/build.mjs aimport/viewer-client/index.html ./
 RUN npm ci --ignore-scripts --no-audit --no-fund && node build.mjs /opt/neuroglancer-client
 
+# The ezBIDS root node_modules, exactly as package-lock.json pins them: the web handler (docker-compose) runs
+# handler/*.ts with ../node_modules/ts-node-dev, and aimport runs ezBIDS preprocess the same way
+# (ezbids_runner.ezbids_command). --ignore-scripts: no dependency runs code at install (no electron download).
+FROM node:22.23.2-bookworm-slim@sha256:48e4b67d85f87bd551df43704e24d252f56cc5f8e9718841aace50f19948f0f9 AS ezbids-node-modules
+WORKDIR /build
+COPY package.json package-lock.json ./
+RUN npm ci --workspaces=false --ignore-scripts --no-audit --no-fund
+
 FROM ezbids-handler:local
 
 ARG DENO_VERSION=2.5.6
@@ -24,8 +32,11 @@ ARG PYTHON_VERSION=3.11.18
 # sha256 of the file-hash listing of src/schema at the ezBIDS pin 3537e9edbc81545614d3ee605c398361099b6977
 ARG EZBIDS_SPEC_SCHEMA_DIGEST=fb78c5cced1fdb3ed4a44797732caae287c50d6c6e4ce697dca149fff7a6608c
 
-# ezBIDS code at /app (docker-compose normally mounts the repo there)
+# ezBIDS code at /app (docker-compose normally mounts the repo there): the handler, its root tsconfig and
+# node_modules (preprocess.ts runs with ts-node-dev, as in the web handler)
 COPY handler /app/handler
+COPY tsconfig.base.json /app/tsconfig.base.json
+COPY --from=ezbids-node-modules /build/node_modules /app/node_modules
 COPY bids-specification /app/bids-specification
 COPY ui/src/assets/schema /app/ui/src/assets/schema
 # Fail the build if the host submodule is empty or not at the ezBIDS pin (3537e9ed)

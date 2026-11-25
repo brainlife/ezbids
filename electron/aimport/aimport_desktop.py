@@ -2,12 +2,13 @@
 
     python aimport_desktop.py serve --input ... --work ... --keys ... --port ...   (same as `python -m aimport serve`)
 
-The Docker image gives the engine /app/handler/preprocess.sh, GNU `cp -rs`, a `bids-validator-2` wrapper on PATH,
+The Docker image gives the engine /app/handler (ezBIDS preprocess.ts, run with ts-node-dev), GNU `cp -rs`, a `bids-validator-2` wrapper on PATH,
 /opt/bids-schema/schema.json, FSL (pydeface) and ROBEX (quickshear). The desktop app has none of these, so this
 shim points the engine at what the app bundles instead. Each hook replaces a module attribute that must exist
 (a renamed one fails at start, not mid-run). To upstream: turn these into env settings in aimport itself.
 
-- ezBIDS: the desktop's own preprocess (preprocess.cjs, run by Electron as node), not preprocess.sh.
+- ezBIDS: no hook. aimport's own run_ezbids runs the command in AIMPORT_EZBIDS_ARGV (the desktop's bundled
+  preprocess.cjs, built from the same handler/preprocess.ts, run by Electron as node) in AIMPORT_EZBIDS_HANDLER_DIR.
 - Staging: the input is copied (APFS clones on macOS, so no extra disk), not symlinked; parts a modality module
   claimed (``exclude``, e.g. microscopy read in place) are left out, as in aimport's own stage_input. Docker mounts the input
   read-only; here nothing does, and a copy means no tool can write through a link into the person's folder.
@@ -24,15 +25,12 @@ Environment (set by electron/main.ts):
 """
 from __future__ import annotations
 
-import json
 import os
 import shutil
-import signal
 import subprocess
 import sys
-import threading
 from pathlib import Path
-from typing import Callable, Literal, Sequence
+from typing import Literal, Sequence
 
 RUNTIME = Path(os.environ.get("AIMPORT_DESKTOP_RUNTIME") or Path(__file__).resolve().parent)
 EXE = ".exe" if os.name == "nt" else ""
@@ -100,57 +98,6 @@ def stage_input(input_dir: Path, work_dir: Path, exclude: Sequence[str] = ()) ->
     return staged
 
 
-# --- ezBIDS: the desktop's preprocess.cjs ---
-
-def _kill_tree(proc: subprocess.Popen) -> None:
-    if os.name == "nt":
-        subprocess.run(["taskkill", "/T", "/F", "/PID", str(proc.pid)], capture_output=True)
-        return
-    try:
-        os.killpg(proc.pid, signal.SIGKILL)
-    except ProcessLookupError:
-        pass
-
-
-def run_ezbids(staged: Path, handler_dir: Path | None = None, log: Callable[[str], None] = print,
-               timeout_s: float = 3600) -> Path:
-    staged = Path(staged).resolve()
-    handler = Path(handler_dir or os.environ["AIMPORT_EZBIDS_HANDLER_DIR"])
-    argv = [*json.loads(os.environ["AIMPORT_EZBIDS_ARGV"]), str(staged), str(handler)]
-    proc = subprocess.Popen(argv, cwd=str(handler), stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True,
-                            errors="replace", start_new_session=os.name != "nt",
-                            creationflags=getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0))
-    assert proc.stdout is not None
-    tail: list[str] = []
-    timed_out = threading.Event()
-
-    def on_timeout() -> None:
-        timed_out.set()
-        _kill_tree(proc)
-
-    timer = threading.Timer(timeout_s, on_timeout)
-    timer.start()
-    try:
-        for line in proc.stdout:
-            line = line.rstrip("\n")
-            log(line)
-            tail.append(line)
-            del tail[:-40]
-        returncode = proc.wait()
-    finally:
-        timer.cancel()
-        _kill_tree(proc)
-        proc.stdout.close()
-    if timed_out.is_set():
-        raise EzbidsError(f"timed out after {timeout_s}s\n" + "\n".join(tail))
-    if returncode != 0:
-        raise EzbidsError("\n".join(tail))
-    core = staged / "ezBIDS_core.json"
-    if not core.exists():
-        raise EzbidsError("preprocess finished without ezBIDS_core.json\n" + "\n".join(tail))
-    return core
-
-
 # --- validator and schema ---
 
 _orig_validate_run = _need(validate_mod, "_run")
@@ -176,11 +123,10 @@ def _tool(method: str, src: Path, out: Path, workdir: Path, entry_id: str) -> No
 
 
 def install() -> None:
-    for module, name in ((server_mod, "stage_input"), (server_mod, "run_ezbids"), (server_mod, "load_schema"),
+    for module, name in ((server_mod, "stage_input"), (server_mod, "load_schema"),
                          (validate_mod, "VALIDATOR"), (validate_mod, "SCHEMA_PATH"), (deface_mod, "METHODS")):
         _need(module, name)
     server_mod.stage_input = stage_input
-    server_mod.run_ezbids = run_ezbids
     server_mod.load_schema = lambda path=SCHEMA: load_schema(path)
     validate_mod.VALIDATOR = str(VALIDATOR)
     validate_mod.SCHEMA_PATH = SCHEMA
