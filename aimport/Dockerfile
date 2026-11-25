@@ -1,7 +1,11 @@
 # Engine image for aimport integration tests. Build from the repo root:
 #   docker build --platform linux/amd64 -t ezbids-handler:local handler/
 #   docker build --platform linux/amd64 -t brainlife/aimport:dev -f aimport/Dockerfile .
-# Local only: never push.
+# Never push by hand: .github/workflows/publish-images.yml publishes docker.io/brainlife/aimport:<version>
+# on an aimport-v* tag, built FROM brainlife/ezbids-handler:<version> (--build-arg HANDLER_IMAGE=...).
+
+# The ezBIDS handler image this image extends. An ARG used in a FROM must be declared before the first FROM.
+ARG HANDLER_IMAGE=ezbids-handler:local
 
 # The standalone Neuroglancer client for the QA viewer (/viewer/ng/), built from aimport/viewer-client with the
 # npm versions and integrity hashes in its package-lock.json; only the static output reaches the engine image.
@@ -21,7 +25,7 @@ WORKDIR /build
 COPY package.json package-lock.json ./
 RUN npm ci --workspaces=false --ignore-scripts --no-audit --no-fund
 
-FROM ezbids-handler:local
+FROM ${HANDLER_IMAGE}
 
 ARG DENO_VERSION=2.5.6
 # sha256 of deno-x86_64-unknown-linux-gnu.zip for DENO_VERSION (matches the release's .sha256sum)
