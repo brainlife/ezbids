@@ -15,9 +15,11 @@
         </div>
         <div class="remote" role="listitem">
             <div class="zone mono">brainlife.io</div>
+            <span class="n mono">07</span>
             <span class="t">Upload</span>
             <span class="d"
-                >Only the validated, de-identified dataset: BIDS, or brainlife datatypes ready for Apps.</span
+                >Only the validated, de-identified dataset, after you say yes: BIDS, or brainlife datatypes ready for
+                Apps.</span
             >
         </div>
     </div>
@@ -31,24 +33,28 @@ export default defineComponent({
         return {
             steps: [
                 {
+                    t: 'Point at a folder',
+                    d: 'DICOM, NIfTI, EEG/MEG recordings, microscopy images, in any layout. It is read, never changed.',
+                },
+                {
                     t: 'Scan',
-                    d: 'MRI as DICOM or NIfTI (dcm2niix and the ezBIDS heuristics), microscopy images and EEG, MEG, iEEG, NIRS or EMG recordings.',
+                    d: 'dcm2niix, the ezBIDS heuristics and the recording and microscopy readers work out what each file is.',
                 },
                 {
-                    t: 'Agent review',
-                    d: 'Claude, OpenAI or a local Qwen model checks every series. It sees summaries with identifiers replaced by [x], never images or headers.',
+                    t: 'Plan, with AI suggestions',
+                    d: 'An optional model checks each series from de-identified text, never headers or pixels.',
                 },
                 {
-                    t: 'You approve',
-                    d: 'A plan of names, subjects, sessions, defacing and metadata files. Nothing is written until you approve it.',
+                    t: 'You review and edit',
+                    d: 'Names, subjects, sessions, defacing, event names, metadata files. Nothing is written until you approve.',
                 },
                 {
-                    t: 'De-identify',
-                    d: 'Identifying fields dropped, subjects pseudonymised, dates shifted, faces removed losslessly.',
+                    t: 'Convert, de-identify, validate',
+                    d: 'Identifiers stripped, faces removed, dates shifted, events coded; BIDS v1.11.2 validator on your machine.',
                 },
                 {
-                    t: 'Validate',
-                    d: 'BIDS validator (v1.11.2) and the brainlife datatype validators, run on your machine; image and trace viewers to check the result.',
+                    t: 'Look in the QA viewer',
+                    d: 'Neuroglancer for images (defaced vs original), a trace viewer for recordings; mark bad channels.',
                 },
             ],
         };
@@ -59,7 +65,7 @@ export default defineComponent({
 <style scoped>
 .flow {
     display: grid;
-    grid-template-columns: 1fr auto minmax(180px, 0.28fr);
+    grid-template-columns: 1fr auto minmax(170px, 0.22fr);
     gap: 14px;
     align-items: stretch;
 }
@@ -91,7 +97,7 @@ export default defineComponent({
     margin: 0;
     padding: 0;
     display: grid;
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(6, 1fr);
     gap: 10px;
 }
 .step {
@@ -109,10 +115,11 @@ export default defineComponent({
 }
 .t {
     font-weight: 600;
-    font-size: 0.98rem;
+    font-size: 0.95rem;
+    line-height: 1.25;
 }
 .d {
-    font-size: 0.82rem;
+    font-size: 0.8rem;
     color: var(--muted);
     line-height: 1.45;
 }
@@ -128,9 +135,9 @@ export default defineComponent({
     stroke-linecap: round;
     stroke-linejoin: round;
 }
-@media (max-width: 1100px) {
+@media (max-width: 1300px) {
     .steps {
-        grid-template-columns: repeat(2, 1fr);
+        grid-template-columns: repeat(3, 1fr);
     }
 }
 @media (max-width: 760px) {

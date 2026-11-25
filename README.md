@@ -4,13 +4,39 @@ The secure, semi-automated mapping of neuroscience data (neurophysiology, neuroi
 
 <img width="1420" alt="The ezBIDS landing page" src="docs/images/ezbids-landing.png">
 
+### Three ways to use ezBIDS
+
+| | What it is | Where your data goes | Status |
+|---|---|---|---|
+| **ezBIDS on the web** | [brainlife.io/ezbids](https://brainlife.io/ezbids): guided conversion of MRI, PET and MEG in the browser | uploaded to the ezBIDS server for conversion ([security FAQ](https://brainlife.io/docs/using_ezBIDS/#faq)) | in service |
+| **ezBIDS desktop** ([`electron/`](electron/)) | the same converter as an app, plus **AI import (beta)**: aimport inside, no Docker | stays on your computer: local store, no telemetry, no AI model | beta: build from source (tested on Mac); signed installers coming |
+| **aimport** via `bl aimport` ([`aimport/`](aimport/README.md), [cli](https://github.com/brainlife/cli#bl-aimport)) | a local importer with an optional AI agent, for neurophysiology (EEG, MEG, iEEG, NIRS, EMG), neuroimaging (MRI, PET) and microscopy | stays on your computer until you approve the upload of the validated, de-identified dataset to brainlife.io | beta: run it from source today; packaged release coming |
+
+**Privacy first.** With ezBIDS desktop and aimport, raw data never leaves your computer. Identifiers are stripped
+from headers, tables and text, faces are removed, dates shifted and event names coded; the output must pass a final
+check and the BIDS validator before anything can be uploaded, and you review every decision. The AI model is
+optional: it sees only de-identified plan text (identifiers replaced by `[x]`), never headers, file paths or
+pixels, and without one the built-in heuristics do the work. Try it on public sample data first:
+**[aimport/EXAMPLES.md](aimport/EXAMPLES.md)** has three low-stakes walkthroughs (MRI, EEG, microscopy) that upload
+nothing.
+
+#### ezBIDS desktop
+
+ezBIDS desktop ([`electron/`](electron/)) is built from the same code as the web service: the converter (a local
+store instead of MongoDB) and aimport run on your own computer, with no Docker and no telemetry. Its **AI import
+(beta)** runs the aimport engine bundled in the app (Python, the BIDS validator and the QA viewer included), with no
+AI model, so nothing leaves the machine; uploading from the app comes in a later version. Status: beta, build from
+source (tested end to end on Mac arm64; Windows and Linux not yet); signed installers coming. To build it, see
+[Building the Electron app](#building-the-electron-app-artifacts--installers) below (run
+`./fetch-aimport.sh <platform> <arch>` too) and [docs/aimport-electron.md](docs/aimport-electron.md).
+
 ### About
 
-This is the repository for ezBIDS, which converts neuroscience data files (neurophysiology, neuroimaging and microscopy) to [BIDS](https://bids.neuroimaging.io/). It has two parts:
+This is the repository for ezBIDS, which converts neuroscience data files (neurophysiology, neuroimaging and microscopy) to [BIDS](https://bids.neuroimaging.io/). It has three parts:
 
 - **The ezBIDS web service**, securely hosted at [brainlife.io/ezbids](https://brainlife.io/ezbids), a semi-supervised conversion of MRI, PET and MEG data in the browser. For additional details on security features, please see [here](https://brainlife.io/docs/using_ezBIDS/#faq).
-- **aimport** ([`aimport/`](aimport/README.md)), a local importer that runs on your own computer with an optional AI agent and de-identifies data before anything is uploaded. Besides MRI and PET it imports microscopy (OME-TIFF, CZI, ND2, LIF, SVS, PS-OCT, light-sheet; OME-Zarr datasets read in place) and EEG, MEG, iEEG, NIRS and EMG recordings (BrainVision, EDF, BDF, FIF, SNIRF, NWB and more), with viewers to check the result (Neuroglancer for images, a trace viewer for recordings).
-- **ezBIDS desktop** ([`electron/`](electron/)), built from the same code: the converter (local store instead of MongoDB) and aimport run on your own computer, with no Docker and no telemetry.
+- **aimport** ([`aimport/`](aimport/README.md), beta), a local importer that runs on your own computer with an optional AI agent and de-identifies data before anything is uploaded. Besides MRI and PET it imports microscopy (OME-TIFF, CZI, ND2, LIF, SVS, PS-OCT, light-sheet; OME-Zarr datasets read in place) and EEG, MEG, iEEG, NIRS and EMG recordings (BrainVision, EDF, BDF, FIF, SNIRF, NWB and more), with viewers to check the result (Neuroglancer for images, a trace viewer for recordings).
+- **ezBIDS desktop** ([`electron/`](electron/), beta), built from the same code: the converter (local store instead of MongoDB) and aimport run on your own computer, with no Docker and no telemetry.
 
 Unlike other BIDS converters, ezBIDS eliminates the need for coding and command line interfaces (CLI), doing the bulk of the work behind the scenes to save users time. Importantly, ezBIDS does not require an organizational structure for uploaded data.
 
@@ -40,7 +66,7 @@ If users wish to install ezBIDS locally, to ensure that data do not leave their 
 
 The raw JSON debug panels on the Subjects, Series and Objects pages show DICOM header values such as PatientName, PatientID and PatientBirthDate, so they are off by default, including in a local `docker compose` install. Developers can turn them on with `VITE_DEBUG=true docker compose up`.
 
-A local, agentic alternative is in development in [aimport/](aimport/README.md) (brainlife.io/aimport): a Docker image with a loopback API that scans a folder on your own computer, proposes the BIDS mapping (with an optional language model that only sees de-identified metadata), de-identifies and defaces the data, validates it against BIDS v1.11.2 and leaves a reviewed output folder ready to upload. Nothing identifying leaves your machine. See its README for how to use it.
+aimport ([`aimport/`](aimport/README.md), brainlife.io/aimport) is the local, agentic alternative, in **beta: run it from source today; packaged release coming**. Its engine (a Docker image with a loopback API, built from this repository) scans a folder on your own computer, proposes the BIDS mapping (with an optional language model that only sees de-identified metadata), de-identifies and defaces the data, validates it against BIDS v1.11.2 and leaves a reviewed output folder ready to upload. `bl aimport` from the [brainlife cli](https://github.com/brainlife/cli#bl-aimport) drives it and uploads the result; it is on the cli's `master` branch, not yet in a published npm release. Nothing identifying leaves your machine. Start with the low-stakes walkthroughs in [aimport/EXAMPLES.md](aimport/EXAMPLES.md); the engine's README has the details.
 
 ### Development
 
