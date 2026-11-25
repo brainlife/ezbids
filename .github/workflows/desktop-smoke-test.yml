@@ -1,5 +1,8 @@
 name: Desktop pack smoke test
 
+# Unsigned: packs the desktop app with electron-builder --dir (no signing, no notarization, no secrets beyond the
+# automatic GITHUB_TOKEN used to read the ezbids-binaries release), then tests the packed app headless on each OS.
+
 on:
     push:
         tags:
@@ -11,8 +14,9 @@ permissions:
 
 jobs:
     smoke-test:
-        name: Pack and verify binaries (${{ matrix.platform }}-${{ matrix.arch }})
+        name: Pack and smoke test (${{ matrix.platform }}-${{ matrix.arch }})
         runs-on: ${{ matrix.os }}
+        timeout-minutes: 120
         strategy:
             fail-fast: false
             matrix:
@@ -51,10 +55,45 @@ jobs:
             - name: Install dependencies
               run: npm ci
 
-            - name: Fetch binaries
+            - name: Fetch binaries (dcm2niix pinned + sha256, 7z, allineate, Python 3.8 runtime)
               run: ./fetch-binaries.sh ${{ matrix.platform }} ${{ matrix.arch }}
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Pack test app and smoke test binaries
-              run: npm run electron:pack-test && npm run electron:smoke-test
+            - name: Setup uv (aimport runtime)
+              uses: astral-sh/setup-uv@v6
+              with:
+                  version: '0.13.9'
+
+            - name: Fetch aimport runtime (Python 3.11 + locked deps, BIDS validator, QA viewer client)
+              run: ./fetch-aimport.sh ${{ matrix.platform }} ${{ matrix.arch }}
+
+            - name: Remove pypet2bids' own dcm2niix (as build-desktop.yml does)
+              run: |
+                  rm -rf "handler/bin/python-runtime/venv/lib/python3.8/site-packages/pypet2bids/dcm2niix_binaries" \
+                         "handler/bin/python-runtime/venv/Lib/site-packages/pypet2bids/dcm2niix_binaries"
+
+            - name: Pack the app unsigned (electron-builder --dir)
+              run: npm run electron:pack-test
+
+            - name: Packed app size
+              run: |
+                  app="$(find electron/release -mindepth 1 -maxdepth 2 \( -name '*.app' -o -name '*-unpacked' \) -type d | head -n 1)"
+                  res="$app/resources"
+                  [[ -d "$app/Contents/Resources" ]] && res="$app/Contents/Resources"
+                  {
+                      echo "### Packed app (${{ matrix.platform }}-${{ matrix.arch }}, unsigned --dir)"
+                      echo '```'
+                      # one du per folder: GNU du counts a folder once, so nested arguments after the first print nothing
+                      for d in "$app" "$res/app" "$res/bin" "$res/aimport" "$res"/aimport/*; do du -sh "$d"; done
+                      echo '```'
+                  } | tee -a "$GITHUB_STEP_SUMMARY"
+
+            - name: Smoke test packaged binaries (dcm2niix pin, 7z, allineate, Python runtimes, bids-validator)
+              run: npm run electron:smoke-test
+
+            - name: Smoke test classic ezBIDS preprocess and the aimport engine (scan -> validated), headless
+              run: ./test/smoke-test-aimport.sh
+
+            - name: Launch the packed app (window; xvfb on Linux) and check its backend answers
+              run: ./test/smoke-test-launch.sh

@@ -131,7 +131,9 @@ if [[ "$platform" != "windows" ]]; then
     chmod +x "$dcm2niix_exe" 2>/dev/null || true
 fi
 require_file "dcm2niix" "$dcm2niix_exe"
-run_check "dcm2niix --version" 'dcm2niix|dcm2niiX' "$dcm2niix_exe" --version
+# shellcheck source=../handler/dcm2niix.env
+. "$ROOT/handler/dcm2niix.env"
+run_check "dcm2niix -v prints the pin ${DCM2NIIX_VERSION}" "${DCM2NIIX_VERSION//./\\.}" "$dcm2niix_exe" -v
 
 # --- 7z (fetch-binaries) ---
 if [[ "$platform" == "windows" ]]; then
@@ -196,5 +198,48 @@ fi
 require_file "bids-validator" "$validator_bin"
 # bids-validator is a Node CLI; electron runs it via process.execPath in production.
 run_check "bids-validator --version" '^[0-9]+\.[0-9]' node "$validator_bin" --version
+
+# --- aimport runtime (fetch-aimport.sh -> Resources/aimport) ---
+aimport_dir="$(dirname "$BIN_DIR")/aimport"
+if [[ "$platform" == "windows" ]]; then
+    aimport_py="${aimport_dir}/python/python.exe"
+    aimport_validator="${aimport_dir}/bids-validator.exe"
+else
+    aimport_py="${aimport_dir}/python/bin/python3"
+    aimport_validator="${aimport_dir}/bids-validator"
+fi
+require_file "aimport python" "$aimport_py"
+require_file "aimport shim" "${aimport_dir}/aimport_desktop.py"
+require_file "BIDS schema" "${aimport_dir}/schema.json"
+require_file "bids-validator (Deno)" "$aimport_validator"
+require_file "QA viewer client" "${aimport_dir}/neuroglancer-client/index.html"
+pyc_count="$(find "$aimport_dir" -name '*.pyc' | wc -l | tr -d ' ')"
+[[ "$pyc_count" == 0 ]] || fail "${pyc_count} .pyc files in ${aimport_dir}: fetch-aimport.sh must ship no bytecode (python -B)"
+echo "  ok: no .pyc in ${aimport_dir}"
+unset PYTHONHOME PYTHONPATH
+run_check "aimport python imports aimport and its readers" '^aimport ok' "$aimport_py" -I -B -c \
+    "import aimport.server, aimport.validate, aimport.deface, pydicom, nibabel, numpy, mne, zarr, tifffile, bidsschematools; print('aimport ok')"
+# the shim's install() checks every hook it replaces; --help then exits before serving
+run_check "aimport_desktop.py serve --help (shim hooks install)" 'usage|--input' env AIMPORT_DESKTOP_RUNTIME="$aimport_dir" \
+    "$aimport_py" -I -B "${aimport_dir}/aimport_desktop.py" serve --help
+# no network: outbound HTTP goes to a closed port (the CI step also sets this for the whole job step)
+run_check "bids-validator --version (offline)" '[0-9]+\.[0-9]+\.[0-9]+' env HTTPS_PROXY=http://127.0.0.1:9 \
+    HTTP_PROXY=http://127.0.0.1:9 DENO_NO_UPDATE_CHECK=1 "$aimport_validator" --version
+
+# a real validation, offline, with the bundled schema (as the shim runs it): catches Deno permission errors that
+# --version does not reach (Windows: os.release() needs --allow-sys=osRelease)
+tiny_ds="$(mktemp -d)"
+echo '{"Name": "smoke", "BIDSVersion": "1.11.0", "DatasetType": "raw"}' >"$tiny_ds/dataset_description.json"
+if [[ "$platform" == "windows" ]]; then
+    schema_uri="file:///$(cygpath -m "${aimport_dir}/schema.json")"
+    tiny_ds_arg="$(cygpath -w "$tiny_ds")"
+else
+    schema_uri="file://${aimport_dir}/schema.json"
+    tiny_ds_arg="$tiny_ds"
+fi
+run_check "bids-validator --json on a tiny dataset (offline, bundled schema)" '"issues"' env HTTPS_PROXY=http://127.0.0.1:9 \
+    HTTP_PROXY=http://127.0.0.1:9 DENO_NO_UPDATE_CHECK=1 bash -c '"$0" --json --schema "$1" "$2" | head -c 400' \
+    "$aimport_validator" "$schema_uri" "$tiny_ds_arg"
+rm -rf "$tiny_ds"
 
 echo "smoke-test: all checks passed"
