@@ -254,3 +254,143 @@ export const FUNDING = [
         awards: [{ id: '226486', href: 'https://grantnav.threesixtygiving.org/grant/360G-Wellcome-226486_Z_22_Z' }],
     },
 ];
+
+// aimport on the landing page. Status, as of ezBIDS master: the engine (MRI/PET, microscopy, EEG/MEG/iEEG/NIRS/EMG)
+// is merged and tested; `bl aimport` is on brainlife/cli master but not in a published npm release; the engine image
+// is built from this repo; the desktop app's AI import is tested on Mac only, with no signed installer yet.
+export const REPO = 'https://github.com/brainlife/ezbids';
+export const EXAMPLES_URL = `${REPO}/blob/master/aimport/EXAMPLES.md`;
+export const AIMPORT_README_URL = `${REPO}/blob/master/aimport/README.md`;
+export const CLI_URL = 'https://github.com/brainlife/cli#bl-aimport';
+
+export const AIMPORT_STATUS = 'Beta: run it from source today; packaged release coming.';
+export const DESKTOP_STATUS = 'Beta: build from source (tested on Mac); signed installers coming.';
+
+export const PRIVACY = [
+    { t: 'Raw data never leaves your computer.', d: 'Your folder is read, never modified, and never uploaded.' },
+    {
+        t: 'Identifiers stripped, faces removed, dates shifted, event names coded.',
+        d: 'Names, IDs, birth dates and institutions are removed from headers, tables and text; subjects get pseudonyms.',
+    },
+    {
+        t: 'A final check before anything uploads.',
+        d: 'Written recordings and microscopy metadata are re-read for identifiers, and the dataset must pass the BIDS validator, or nothing uploads.',
+    },
+    { t: 'You review every decision.', d: 'The AI only proposes. Nothing is written until you approve the plan.' },
+    {
+        t: 'The AI sees plan text only.',
+        d: 'De-identified series summaries with identifiers replaced by [x]; never headers, file paths or pixels.',
+    },
+    { t: 'Works with no AI at all.', d: 'Without a model the built-in ezBIDS heuristics plan everything.' },
+    {
+        t: 'A pseudonym key you keep.',
+        d: 'The only link back to real identities stays on your computer, never uploaded, so a later import reuses the same IDs.',
+    },
+];
+
+export const NEEDS = [
+    {
+        t: 'One way to run it',
+        items: [
+            'ezBIDS desktop with AI import (beta, Mac): no Docker, no AI model, nothing leaves the computer; upload from the app comes later.',
+            'or Docker and the bl command line (beta): bl aimport runs the engine and uploads when you say yes.',
+        ],
+    },
+    {
+        t: 'To upload',
+        items: ['A brainlife.io account and a project. Try it first with --no-upload: nothing is sent.'],
+    },
+    {
+        t: 'Optional',
+        items: [
+            'An AI key (Anthropic, OpenAI, Qwen) or a local model through Ollama, for bl aimport. Without one, heuristics only.',
+        ],
+    },
+];
+
+export const WHICH_DATA = [
+    {
+        t: 'Neurophysiology',
+        d: 'EEG, MEG, iEEG, NIRS and EMG: EDF, BDF, BrainVision, EEGLAB, FIF, CTF, SNIRF, NWB and more.',
+    },
+    { t: 'Neuroimaging', d: 'MRI and PET from DICOM or NIfTI, with defacing.' },
+    {
+        t: 'Microscopy',
+        d: 'OME-TIFF, CZI, ND2, LIF, SVS, PS-OCT and light-sheet; OME-Zarr read in place, local or remote.',
+    },
+];
+
+export interface Example {
+    id: string;
+    t: string;
+    data: string;
+    dataHref: string;
+    licence: string;
+    cmd: string;
+    outcome: string[];
+}
+
+// the three low-stakes walkthroughs; the same commands are in aimport/EXAMPLES.md (keep them in step). Every flag is
+// one bl aimport has on brainlife/cli master; --project is required even with --no-upload (read only: nothing is sent)
+export const EXAMPLES_SETUP = `mkdir -p ~/aimport-try && cd ~/aimport-try
+git clone --recursive https://github.com/brainlife/ezbids
+(cd ezbids && docker build --platform linux/amd64 -t ezbids-handler:local handler/ \\
+  && docker build --platform linux/amd64 -t brainlife/aimport:dev -f aimport/Dockerfile .)
+git clone https://github.com/brainlife/cli
+(cd cli && npm install && npm link)
+bl login
+P=<your brainlife project id>`;
+
+const TRY_FLAGS = `--project $P --qa --no-upload \\
+  --work ~/aimport-try/work --keys ~/aimport-try/keys`;
+
+export const EXAMPLES: Example[] = [
+    {
+        id: 'a · MRI',
+        t: 'Siemens DICOMs to a defaced T1w',
+        data: 'neurolabusc/dcm_qa_xa30',
+        dataHref: 'https://github.com/neurolabusc/dcm_qa_xa30',
+        licence: 'BSD-2-Clause, 44 MB; fake identifiers planted',
+        cmd: `uv run --no-project --with pydicom python \\
+  ezbids/aimport/tests/fixtures/fetch_dcm_qa.py mri
+bl aimport mri --deface quickshear ${TRY_FLAGS}
+grep -ril -e smith -e mrn0042 work/output/bids || echo clean`,
+        outcome: [
+            'Plan: T1w (2 runs), BOLD, 3 field maps, 2 DWI; derived maps and ASL left out, each with its reason.',
+            'Defaced, then validated; grep prints clean: the planted name and ID are in no output file.',
+            'QA viewer: the defaced T1w next to its original. Press Enter: nothing is uploaded.',
+        ],
+    },
+    {
+        id: 'b · EEG',
+        t: 'An EDF recording to BIDS EEG, one bad channel marked',
+        data: 'mne-tools/mne-testing-data',
+        dataHref: 'https://github.com/mne-tools/mne-testing-data',
+        licence: 'BSD-3-Clause, 0.8 MB',
+        cmd: `mkdir -p eeg
+curl -L -o eeg/rest.edf \\
+  https://github.com/mne-tools/mne-testing-data/raw/20cc221d737a37a6ee3a9c007e91bd69541fefe9/EDF/test_reduced.edf
+bl aimport eeg ${TRY_FLAGS}`,
+        outcome: [
+            'Plan: one EEG run, task rest (from the file name), 139 channels at 512 Hz; event texts coded E001, E002.',
+            'Written as BrainVision with channels.tsv and events.tsv; validated.',
+            'QA viewer → Traces: tick a channel bad (say A1, noisy) and Save; channels.tsv is rewritten and validated again.',
+        ],
+    },
+    {
+        id: 'c · Microscopy',
+        t: 'Light-sheet OME-TIFFs to OME-Zarr',
+        data: 'bids-examples micr_SPIM',
+        dataHref: 'https://github.com/bids-standard/bids-examples/tree/master/micr_SPIM',
+        licence: 'CC0, 30 kB (from a 16 MB archive)',
+        cmd: `curl -L https://github.com/bids-standard/bids-examples/archive/5e00d47b6f1db106dda1b776d5243eb41b4cb95b.tar.gz \\
+  | tar xz --strip-components=1 \\
+  bids-examples-5e00d47b6f1db106dda1b776d5243eb41b4cb95b/micr_SPIM
+bl aimport micr_SPIM ${TRY_FLAGS}`,
+        outcome: [
+            'Plan: 8 SPIM images, samples A and B, chunks 01–04, from their BIDS names; 2 photos reported, not imported.',
+            'Converted to OME-Zarr with samples.tsv; validated.',
+            'QA viewer: each image with a Neuroglancer link (1 x 1 pixel test images: this checks the pipeline, not pixels).',
+        ],
+    },
+];

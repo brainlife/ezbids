@@ -8,13 +8,15 @@
                     <p class="lede">
                         Neurophysiology, neuroimaging and microscopy: ezBIDS maps raw data and its metadata to the Brain
                         Imaging Data Structure with guidance at every step, no coding and no BIDS expertise required.
-                        Its new local importer, aimport, adds an AI agent and removes identifying information on your
-                        own computer before anything is uploaded.
+                        Its new local importer, aimport (beta), adds an AI agent and removes identifying information on
+                        your own computer before anything is uploaded.
                     </p>
                     <div class="cta">
                         <button class="btn p" @click="onClickGetStarted">Get started</button>
                         <a class="btn ghost" href="https://brainlife.io/docs/using_ezBIDS/"> Documentation </a>
-                        <a class="btn ghost" href="https://brainlife.io/docs/using_aimport/"> About aimport </a>
+                        <a class="btn ghost" href="#aimport" @click.prevent="scrollToId('aimport')"
+                            >AI import, privacy first</a
+                        >
                     </div>
                     <p class="cite">
                         Levitas et al., <i>Scientific Data</i> 11, 179 (2024) ·
@@ -83,6 +85,9 @@ sub-01/
                 >.
             </p>
         </div>
+
+        <AimportSection />
+        <TryAimport />
 
         <section>
             <div class="wrap">
@@ -153,38 +158,6 @@ sub-01/
             </div>
         </section>
 
-        <section>
-            <div class="wrap">
-                <div class="sec-head">
-                    <div class="eyebrow">New · aimport</div>
-                    <h2>An AI agent that never sees your participants.</h2>
-                    <p>
-                        aimport runs ezBIDS on your own computer, driven from the <span class="mono">bl</span> command
-                        line. The agent proposes, you decide, and only validated, de-identified data is uploaded.
-                    </p>
-                </div>
-                <AimportFlow />
-                <ul class="facts">
-                    <li>
-                        <b>Bring your own model.</b> Claude, OpenAI, or Qwen through Ollama, so nothing leaves the
-                        machine at all.
-                    </li>
-                    <li>
-                        <b>Metadata too.</b> Participants, phenotype, sessions, scans, README, CHANGES and LICENSE are
-                        kept, edited or dropped in review.
-                    </li>
-                    <li>
-                        <b>Look before you upload.</b> Neuroglancer for images and OME-Zarr, a trace viewer for EEG,
-                        MEG, iEEG, NIRS and EMG, all served from your own computer.
-                    </li>
-                    <li>
-                        <b>A pseudonym key you keep.</b> One file per project, never uploaded, so a later import of the
-                        same person reuses their ID.
-                    </li>
-                </ul>
-            </div>
-        </section>
-
         <section class="band">
             <div class="wrap">
                 <div class="sec-head">
@@ -207,11 +180,12 @@ import { defineComponent } from 'vue';
 import { mapState } from 'vuex';
 import { hasJWT, authRequired } from '@/lib';
 import ScaleChart from '@/features/landing/landing/ScaleChart.vue';
-import AimportFlow from '@/features/landing/landing/AimportFlow.vue';
+import AimportSection from '@/features/landing/landing/AimportSection.vue';
+import TryAimport from '@/features/landing/landing/TryAimport.vue';
 import { STATS, DATATYPES, SPACE, TIME, SIZE, FUNDING } from '@/features/landing/landing/data';
 
 export default defineComponent({
-    components: { ScaleChart, AimportFlow },
+    components: { ScaleChart, AimportSection, TryAimport },
     data() {
         return {
             stats: STATS,
@@ -264,6 +238,10 @@ export default defineComponent({
         ...mapState(['config']),
     },
     methods: {
+        // in-page links scroll the section into view; a plain #hash would be a route in the desktop app (hash history)
+        scrollToId(id: string) {
+            document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        },
         onClickGetStarted() {
             if (!authRequired() || hasJWT()) {
                 this.$router.push('/dashboard');
@@ -417,7 +395,7 @@ export default defineComponent({
 }
 .charts {
     display: grid;
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr); /* the charts scroll sideways inside; the page never does */
     gap: 16px;
     max-width: 1000px;
 }
@@ -467,19 +445,6 @@ export default defineComponent({
     font-size: 0.68rem;
     color: var(--muted);
 }
-.facts {
-    list-style: none;
-    padding: 0;
-    margin: 24px 0 0;
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 16px;
-    font-size: 0.9rem;
-    color: var(--muted);
-}
-.facts b {
-    color: var(--ink);
-}
 .cards {
     display: grid;
     grid-template-columns: repeat(4, 1fr);
@@ -513,7 +478,6 @@ export default defineComponent({
     .hero-grid {
         grid-template-columns: 1fr;
     }
-    .facts,
     .cards {
         grid-template-columns: 1fr 1fr;
     }
@@ -526,7 +490,6 @@ export default defineComponent({
         transform: rotate(90deg);
         justify-self: center;
     }
-    .facts,
     .cards {
         grid-template-columns: 1fr;
     }
