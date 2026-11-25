@@ -190,7 +190,7 @@ Note: packaging/signing keys (for example Apple certificate/API key variables) a
 -   [Nicholas Lee](niconal902@gmail.com)
 -   [Anthony Galassi](niconal902@gmail.com)
 -   [Guiomar Niso](guiomar.niso@ctb.upm.es)
--   [Franco Pestilli](pestilli@utexas.edu)
+-   [Franco Pestilli]([@francopestilli](https://github.com/francopestilli))
 
 *   _Both authors contributed equally to this project_
 
