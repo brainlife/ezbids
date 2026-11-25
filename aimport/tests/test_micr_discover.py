@@ -126,3 +126,13 @@ def test_trailing_six_digit_tile_and_donor_scope():
     assert f.tile == 123 and f.dates == [date(2025, 4, 22)]
     assert names.facts("Zed1/Mid2/test_x.tif").donor == "Zed1"
     assert names.facts("run/Mid2/final_scan_12.tif").donor is None
+
+
+def test_bids_words_in_micr_names_are_never_terms():
+    """A donor folder written like dcm_qa_xa30's PatientName: its values are terms, the BIDS keys,
+    datatype and suffix are not."""
+    t = names.path_terms(["XAtest_sub-July11/micr/sub-01_sample-A_SEM.ome.tif", "SPIM_stack/sub/img.tif"])
+    assert {"XAtest", "July11"} <= t
+    assert not {x.lower() for x in t} & {"sub", "sample", "micr", "sem", "spim"}
+    for w in ("sub", "ses", "sample", "micr", "SEM", "T1w", "chunk", "stain"):
+        assert names.is_vocab(w), w

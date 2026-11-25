@@ -427,3 +427,9 @@ def test_gate_brainvision_fixed_text_not_a_term(tmp_path):
     vhdr.write_text(text.replace("Codepage=UTF-8", "Codepage=UTF-8 common"))
     assert gate.check([vhdr], root, TERMS | fixed_words, FORBIDDEN, sources=[]) == [
         "sub-01/eeg/sub-01_task-rest_eeg.vhdr: header line"]
+
+
+def test_gate_never_flags_bids_words(tmp_path):
+    g = gate._Gate(tmp_path, {"sub", "task", "eeg", "sub-01", "XAtest_sub-July11", "July11"}, set(), [], None)
+    assert not g.holds("sub-01_task-rest_eeg.edf")
+    assert g.holds("subject July11") and g.holds("XAtest_sub-July11")

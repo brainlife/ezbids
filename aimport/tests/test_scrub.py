@@ -314,3 +314,52 @@ def test_scrub_sidecar_of_planted_run_has_no_identifier(core_planted):
                       [scrub_sidecar(o.sidecar, terms) for o in core_planted.core.objects])
     assert not PLANTED & tokens(text)
     assert not NATIVE & tokens(text)
+
+
+# --- BIDS vocabulary is never an identifying term ------------------------------------------------
+
+def test_bids_words_come_from_the_schema():
+    from aimport.schema import bids_words, entity_keys
+
+    words = bids_words()
+    for w in ("sub", "ses", "task", "acq", "ce", "rec", "dir", "run", "mod", "echo", "flip", "inv", "mt", "part",
+              "proc", "hemi", "space", "split", "recording", "chunk", "sample", "stain", "desc", "trc", "res", "den",
+              "label", "tracer", "nuc", "voi", "anat", "func", "dwi", "fmap", "perf", "pet", "eeg", "meg", "ieeg",
+              "nirs", "emg", "micr", "beh", "motion", "mrs", "t1w", "bold", "events", "channels", "photo"):
+        assert w in words, w
+    assert {"sub", "ses", "task", "run"} <= entity_keys() and "t1w" not in entity_keys()
+    assert not {"smith", "xatest", "july11", "hucheng"} & words
+
+
+def test_without_bids_words_keeps_the_values():
+    from aimport.scrub import without_bids_words
+
+    assert without_bids_words({"sub", "SES", "T1w", "anat", "XAtest", "July11"}) == {"XAtest", "July11"}
+    assert without_bids_words({"sub-July11"}) == {"July11"}
+    assert without_bids_words({"sub-01", "ses-1_run-2", "sub-07_T1w"}) == set()  # short numbers are no terms
+    assert without_bids_words({"sub-Li_ses-MRN0042_bold"}) == {"Li", "MRN0042"}
+    # not a BIDS name: kept whole (its values stay findable as the whole value)
+    assert without_bids_words({"XAtest_sub-July11", "foo-bar", "Smith-Jones"}) == {
+        "XAtest_sub-July11", "foo-bar", "Smith-Jones"}
+
+
+def test_dcm_qa_xa30_patient_name_terms():
+    """dcm_qa_xa30's real PatientName: its values are terms, the BIDS key between them is not."""
+    terms = _name_terms("XAtest_sub-July11")
+    assert {"xatest", "july11", "xatest_sub-july11"} <= terms
+    assert not {"sub", "sub-july11"} & terms
+    assert redact("sub-01/anat/sub-01_T1w.nii.gz", _name_terms("XAtest_sub-July11")) == "sub-01/anat/sub-01_T1w.nii.gz"
+    assert redact("XAtest_sub-July11 T1", _name_terms("XAtest_sub-July11")) == "[x] T1"
+
+
+@pytest.mark.parametrize("pid", ["sub-01", "sub-07", "ses-1_run-2", "sub-01_ses-1"])
+def test_bids_like_patient_id_gives_no_term_that_blocks_bids_names(pid):
+    core = CoreResult(subjects=[CoreSubject(0, "01", [{"PatientID": pid, "PatientName": pid}], [])])
+    terms = identifying_terms(core, Path("/nonexistent"))
+    assert terms == set()
+    path = "sub-01/ses-1/func/sub-01_ses-1_task-rest_run-2_bold.nii.gz"
+    assert redact(path, terms) == path
+
+
+def test_redact_never_redacts_a_bare_bids_word():
+    assert redact("sub-01_task-rest_bold", {"sub", "task", "bold", "rest"}) == "sub-01_task-[x]_bold"

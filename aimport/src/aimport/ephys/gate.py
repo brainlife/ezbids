@@ -36,7 +36,7 @@ from collections.abc import Iterable
 from datetime import date, datetime, timezone
 from pathlib import Path
 
-from ..scrub import _compiled, _fold
+from ..scrub import _compiled, _fold, without_bids_words
 from . import events
 from .headers import _DMY, _MONTHS, EDF_ANON_DATE, VHDR_SECTIONS, _all_forms, _strings
 
@@ -167,6 +167,7 @@ class _Gate:
                  extra_points: dict[str, int] | None, allowed_dates: Iterable[date] = ()) -> None:
         self.out_root = Path(out_root).resolve()
         self.allowed = frozenset(d.date() if isinstance(d, datetime) else d for d in allowed_dates)
+        terms = without_bids_words(terms)  # BIDS vocabulary (sub, task, eeg) names every output
         bad = {t for t in (set(terms) | set(forbidden_dates)) if str(t).strip()}
         for t in set(terms):
             bad |= _reversed_names(t)

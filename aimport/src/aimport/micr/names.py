@@ -11,18 +11,19 @@ from datetime import date
 from typing import Iterable, Literal
 
 from ..planner import _is_date_like
-from ..scrub import _date_forms
+from ..scrub import _date_forms, is_bids_word
 from . import MICR_SUFFIXES
 
 Contrast = Literal["reflectivity", "retardance", "opticaxis", "cross"]
 
-# Structural words may carry a digit suffix (Slice051, Pos3, ch1); every other word matches exactly.
+# Structural words may carry a digit suffix (Slice051, Pos3, ch1); every other word matches exactly. The BIDS
+# schema's words (sub, ses, sample, micr, SEM ...: schema.bids_words) are vocabulary too, whatever vocab is given.
 STRUCTURAL = ("slice", "tile", "pos", "ch")
 VOCAB: tuple[str, ...] = STRUCTURAL + (
     "visor", "spim", "exaspim", "ps", "hh", "oct", "psoct", "enface", "registration",
-    "reflectivity", "retardance", "orientation", "opticaxis", "cross", "micr", "channel", "laser",
+    "reflectivity", "retardance", "orientation", "opticaxis", "cross", "channel", "laser",
     "raw", "ome", "zarr", "tif", "tiff", "btf", "nii", "gz", "dat", "mat", "json", "log", "svs",
-    "czi", "nd2", "lif", "vsi", "sub", "ses", "sample", "acqinfo", "metadata", "dbpost", "data",
+    "czi", "nd2", "lif", "vsi", "acqinfo", "metadata", "dbpost", "data",
     "images", "image", "stitched", "stitch", "scan", "dapi",
 )
 _VOCAB = frozenset(VOCAB)
@@ -55,10 +56,11 @@ def _tokens(text: str) -> list[str]:
 
 
 def is_vocab(token: str, vocab: Iterable[str] | None = None) -> bool:
-    """Exact vocabulary match; only STRUCTURAL words may carry a digit suffix (Slice051, Pos3, ch1)."""
+    """Exact vocabulary match (VOCAB or vocab, and the BIDS schema's words); only STRUCTURAL words may carry a
+    digit suffix (Slice051, Pos3, ch1)."""
     words = _VOCAB if vocab is None else vocab if isinstance(vocab, frozenset) else frozenset(vocab)
     low = token.lower()
-    if low in words:
+    if low in words or is_bids_word(low):
         return True
     m = re.fullmatch(r"([a-z]+)\d+", low)
     return bool(m) and m.group(1) in STRUCTURAL

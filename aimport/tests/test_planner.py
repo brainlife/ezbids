@@ -692,3 +692,13 @@ def test_subject_rename_leaves_unknown_siblings_alone(plan, schema):
     bold = one(plan, BOLD)
     assert (bold.subject, bold.status, bold.reason) == ("ctl01", "unknown", reason)
     assert one(plan, T1W).status == "ok"
+
+
+def test_plan_builds_for_dcm_qa_xa30_patient_name(fixture_core, in_dir, key, schema):
+    """dcm_qa_xa30's real PatientName XAtest_sub-July11: the plan builds with generated labels and
+    holds neither value."""
+    name_patient(fixture_core, name="XAtest_sub-July11", pid="12343@hucheng", birth="19910101")
+    p = build_plan(fixture_core, in_dir, key, set(), None, schema, "bids")
+    assert {e.subject for e in p.entries} == {"01"}
+    text = json.dumps(asdict(p)).lower()
+    assert not [t for t in ("xatest", "july11", "hucheng") if t in text]

@@ -22,6 +22,7 @@ from urllib.parse import urlsplit
 
 from ..modality import Claim, ModuleOutput, ModulePlan
 from ..plan import PlanEntry
+from ..scrub import without_bids_words
 from . import discover, names
 from .discover import Found
 
@@ -321,6 +322,7 @@ def scan_records(input_dir: Path, claim: Claim, found: list[Found] | None,
                 terms.add(facts.donor)
         if error and error not in (RAW_REASON, UNREADABLE_REASON):
             error = _clean_error(error, terms)
+        terms = without_bids_words(terms)  # BIDS vocabulary is never a term; a BIDS-like value gives its labels
         rec.update(facts=_facts_dict(facts), info=info, error=error, terms=sorted(terms))
         car = None if g.remote else bids_sidecar_pixel_size(input_dir, where)
         if car:

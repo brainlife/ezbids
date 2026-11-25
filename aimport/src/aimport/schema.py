@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import functools
 import re
 from pathlib import Path
 
@@ -229,3 +230,32 @@ def load_schema(path: Path = DEFAULT_SCHEMA) -> Schema:
     if path == DEFAULT_SCHEMA and SPEC_SCHEMA_DIR.exists():
         return Schema(_bst_load_schema(SPEC_SCHEMA_DIR))
     raise FileNotFoundError(f"BIDS schema not found: {path}")
+
+
+
+@functools.cache
+def _objects():
+    """The schema's objects (entities, datatypes, suffixes): the pinned schema, else bidsschematools' own."""
+    try:
+        return load_schema()._s.objects
+    except FileNotFoundError:
+        return _bst_load_schema().objects
+
+
+@functools.cache
+def bids_words() -> frozenset[str]:
+    """The BIDS schema's structural words, casefolded: entity keys and names (``sub``/``subject``, ``ses``,
+    ``task``, ``acq``, ``run``, ``trc``/``tracer`` ...), datatypes (``anat``, ``eeg``, ``micr`` ...) and
+    suffixes (``T1w``, ``bold``, ``events`` ...). Never an identifying term on their own, in any modality."""
+    o = _objects()
+    words = set()
+    for group in (o.entities, o.datatypes, o.suffixes):
+        for name, obj in group.items():
+            words |= {name, obj.get("name") or obj.get("value") or name}
+    return frozenset(w.casefold() for w in words if w)
+
+
+@functools.cache
+def entity_keys() -> frozenset[str]:
+    """The entity keys of BIDS names (``sub``, ``ses``, ``task`` ...), casefolded."""
+    return frozenset(e.name.casefold() for e in _objects().entities.values())

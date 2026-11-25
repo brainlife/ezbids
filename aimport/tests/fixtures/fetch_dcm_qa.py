@@ -114,4 +114,6 @@ def fetch_dcm_qa(dest: Path, plant: bool = True, cache: Path | None = None) -> P
 if __name__ == "__main__":
     import sys
 
-    print(fetch_dcm_qa(Path(sys.argv[1])))
+    # fetch_dcm_qa.py DEST [--plain]: --plain leaves the set as downloaded (DEST/dcm_qa), nothing planted
+    args = [a for a in sys.argv[1:] if a != "--plain"]
+    print(fetch_dcm_qa(Path(args[0]), plant="--plain" not in sys.argv[1:]))

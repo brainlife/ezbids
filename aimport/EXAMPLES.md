@@ -39,17 +39,16 @@ P=<your brainlife project id>
 ## a) MRI: Siemens DICOMs to a defaced T1w
 
 Data: [neurolabusc/dcm_qa_xa30](https://github.com/neurolabusc/dcm_qa_xa30) (BSD-2-Clause; dcm2niix's Siemens XA30
-test set, 44 MB) at the commit aimport's tests pin. The test fixture script downloads it and plants fake identifiers
-in every header (PatientName `Smith^John`, PatientID `MRN0042`, birth date 1970-01-01, institution `Hospital X`), so
-you can check that they are gone.
+test set, 44 MB) at the commit aimport's tests pin, as published: its headers carry their own identifiers (PatientName
+`XAtest_sub-July11`, PatientID `12343@hucheng`, institution `Indiana University`), so you can check that they are gone.
 
 ```
 cd ~/aimport-try
 uv run --no-project --with pydicom python \
-  ezbids/aimport/tests/fixtures/fetch_dcm_qa.py mri
+  ezbids/aimport/tests/fixtures/fetch_dcm_qa.py mri --plain
 bl aimport mri --deface quickshear --project $P --qa --no-upload \
   --work ~/aimport-try/work --keys ~/aimport-try/keys
-grep -ril -e smith -e mrn0042 work/output/bids || echo clean
+grep -ril -e xatest -e july11 -e hucheng work/output/bids || echo clean
 ```
 
 What you should see:
@@ -59,13 +58,10 @@ What you should see:
   excluded ("ASL needs aslcontext.tsv and labeling metadata the importer cannot derive yet"), each with its reason.
 - `executing: defacing the anatomical images`, then `validated: no validation errors` (warnings are listed).
 - In the QA viewer, "defaced vs original" shows the T1w with the face removed next to its original. Press Enter.
-- The `grep` prints `clean`: the planted name and ID are in no output file.
+- The `grep` prints `clean`: the name and ID in its headers are in no output file.
 
 `quickshear` takes about 40 seconds per T1w on Apple Silicon (the image runs under emulation); leave out
 `--deface quickshear` to use `pydeface`, the default for real uploads (minutes per image).
-
-Use the planted copy: on the unplanted `In/` folder, execute stops with "destination name contains an identifying
-value", because the set's own PatientName contains `sub` (a known, fail-safe false positive).
 
 ## b) EEG: an EDF recording, one bad channel marked
 

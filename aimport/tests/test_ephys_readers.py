@@ -447,3 +447,24 @@ def test_meg_system_header_terms(testing_recs):
     ctf = headers.harvest(recs["CTF/testdata_ctf.ds"], root)
     assert {"run title", "20130429", "29-APR-2013"} <= ctf  # .acq _run_title and _run_date
     assert not {"EEG057", "black"} & ctf  # .acq channel names and colours are not terms
+
+
+def test_bids_words_in_header_text_are_never_terms(tmp_path):
+    """dcm_qa_xa30's PatientName style in an EDF+ header, and a subject code written as a BIDS label: the
+    values are terms, the BIDS keys (sub, task) and short labels (01) are not."""
+    path = _patch_edf(fx.planted_edf(tmp_path), patient="sub-01 M 01-JAN-1970 XAtest_sub-July11",
+                      recording="Startdate 15-FEB-2025 task-rest sub EEGtech_Jane")
+    terms = headers.harvest(Recording(str(path.relative_to(tmp_path)), "edf"), tmp_path)
+    assert {"XAtest", "July11", "EEGtech_Jane"} <= terms
+    assert not {t.lower() for t in terms} & {"sub", "task", "eeg", "sub-01", "01", "task-rest"}
+    from aimport.ancillary import path_terms
+    from aimport.scrub import redact
+    rel = "sub-01/eeg/sub-01_task-rest_eeg.edf"
+    assert redact(rel, path_terms(terms)) == rel
+
+
+def test_bids_named_input_path_words_are_never_terms():
+    from aimport.micr import names
+    t = names.path_terms(["XAtest_sub-July11/sub-01_task-rest_acq-hd_eeg.edf"], vocab=headers.HARVEST_VOCAB)
+    assert {"XAtest", "July11"} <= t
+    assert not {x.lower() for x in t} & {"sub", "task", "acq", "eeg", "rest"}

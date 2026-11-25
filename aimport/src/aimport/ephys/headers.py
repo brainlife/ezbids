@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from ..micr import names
-from ..scrub import MIN_TERM_LEN, _date_forms
+from ..scrub import MIN_TERM_LEN, _date_forms, without_bids_words
 from .discover import EPHYS_EXTENSIONS, VOCAB, Recording
 from .events import is_safe
 
@@ -41,10 +41,9 @@ SYSTEM_WORDS = ("ctf", "kit", "bti", "4d", "egi", "nirx", "neuromag", "megin", "
 # extensions: as path terms they would redact sidecar keys such as RecordingDuration. Paths only (HARVEST_VOCAB):
 # in a header or metadata field the same word ("Dat", "Mat") may be a name and stays a term
 FILE_WORDS = ("recording", "recordings", "config", "probeinfo", "avg", "inf", "tpl", "txt", "dat", "evt", "hdr",
-              "wl1", "wl2", "set", "mat", "csv", "json", "tsv",
-              # BIDS entity keys of an input already in BIDS (sub-01_task-rest_acq-hd_eeg.edf)
-              "acq", "ce", "rec", "dir", "echo", "flip", "inv", "mt", "part", "space", "split", "desc", "trc", "stain",
-              "chunk", "mod", "hemi", "res", "den", "tracksys", "nuc", "voi")
+              "wl1", "wl2", "set", "mat", "csv", "json", "tsv")
+# BIDS vocabulary (entity keys of an input already in BIDS, sub-01_task-rest_acq-hd_eeg.edf; datatypes; suffixes)
+# is never a term, in paths or header text: scrub.without_bids_words, from the BIDS schema
 # file extensions and file-name words: skipped in paths (HARVEST_VOCAB) but not in header or metadata text, where
 # the same word ("Dat", "Mat", "Set") may be a name
 PATH_ONLY_WORDS = frozenset(FILE_WORDS) | frozenset(EPHYS_EXTENSIONS) | frozenset({
@@ -184,10 +183,12 @@ class _Terms:
                 self.date(d)
 
     def result(self) -> set[str]:
-        out = {t for t in self.short if not is_safe(t) and t.lower() not in _VOCAB and t.lower() not in _GENERIC}
-        for t in self.terms | self.ids:
+        short = without_bids_words(self.short)
+        out = {t for t in short if not is_safe(t) and t.lower() not in _VOCAB and t.lower() not in _GENERIC}
+        ids = without_bids_words(self.ids)
+        for t in without_bids_words(self.terms) | ids:
             t = t.strip()
-            if not _keep(t, t in self.ids):
+            if not _keep(t, t in ids):
                 continue
             out.add(t)
         return out

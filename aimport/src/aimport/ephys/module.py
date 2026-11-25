@@ -30,6 +30,7 @@ from typing import TYPE_CHECKING, Any, Callable
 from ..micr import names
 from ..modality import Claim, ModulePlan
 from ..plan import EMPTY_ROOM_SUBJECT, PlanEntry
+from ..scrub import without_bids_words
 from . import OUTPUT_FORMATS, bad_channels, channels, discover, events, headers, readers
 from .discover import DATATYPES, VOCAB, Recording
 
@@ -198,6 +199,7 @@ def scan_records(input_dir: Path, recordings: list[Recording], work: Path,
     for k, rec in enumerate(recordings, 1):
         progress(PROGRESS.format(k=k, n=len(recordings)))
         info, terms, error, ch_names, ch_types, ann = _read(rec, input_dir)
+        terms = without_bids_words(terms)  # BIDS vocabulary is never a term; a BIDS-like value gives its labels
         records.append({"rel": rec.rel, "family": rec.family, "companions": list(rec.companions),
                         "headshape": list(rec.headshape), "empty_room": rec.empty_room, "meta": dict(rec.meta),
                         "headshape_of": rec.headshape_of,

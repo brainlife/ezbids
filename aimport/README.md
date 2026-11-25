@@ -455,6 +455,12 @@ What the engine does, deterministically and without a model:
 - Redacts every identifying header value (name, ID, birth date, institution) wherever it also appears in
   free text: series descriptions, protocol names, folder and file names, table cells, README text.
   Redacted text shows as `[x]`.
+- Never treats BIDS vocabulary as identifying, in any modality or check: the BIDS schema's entity keys and names
+  (`sub`, `ses`, `task`, `run`, `trc`/`tracer` ...), datatypes (`anat`, `eeg`, `micr` ...) and suffixes (`T1w`,
+  `bold`, `events` ...) are never terms on their own, and a BIDS-like value gives its labels only (`XAtest_sub-July11`
+  gives `XAtest_sub-July11`, `XAtest` and `July11`; `sub-01` gives none, since short numbers are no terms).
+  One rule (`scrub.without_bids_words`) serves the harvest, redaction, the writer's destination-name check, the
+  electrophysiology gate and the microscopy reference check.
 - Replaces subject IDs with pseudonyms; inputs already named `sub-*` keep their IDs.
 - Shifts acquisition and table dates by a fixed offset per subject; intervals are kept.
 - Keeps age and sex (in `participants.tsv`); ages above 89 are written as 89 (HIPAA).

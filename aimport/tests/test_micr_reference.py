@@ -650,3 +650,13 @@ def test_module_chunk_maps_must_be_disjoint(tmp_path):
 
 def test_server_uses_the_reference_chunk_map_name():
     assert server.CHUNK_MAP_NAME is reference.CHUNK_MAP_NAME == "bids.chunks.json"
+
+
+def test_reference_term_scan_skips_bids_words(tmp_path):
+    """A run term that is BIDS vocabulary (sub, sample, micr) never refuses a reference; its values still do."""
+    from aimport.micr.reference import ReferenceRefused, check_terms
+
+    (tmp_path / "zarr.json").write_text(json.dumps({"attributes": {"note": "sub-01 sample-A micr July11"}}))
+    check_terms(tmp_path, {"sub", "sample", "micr", "sub-01"})
+    with pytest.raises(ReferenceRefused):
+        check_terms(tmp_path, {"sub", "XAtest_sub-July11", "July11"})

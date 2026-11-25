@@ -8,7 +8,7 @@ or dropped, and say why.
 
 | Dataset | Pinned commit | Status | Used by |
 |---|---|---|---|
-| [neurolabusc/dcm_qa_xa30](https://github.com/neurolabusc/dcm_qa_xa30) | `371ab3071aa9270d23b99fca5f83fe0c35932182` | **current** | `tests/fixtures/fetch_dcm_qa.py`, the committed `tests/fixtures/ezbids_core_siemens.json`, all `docker` tests (with the planted recordings in the mixed import of `tests/test_ephys_end_to_end.py`), the `bl aimport` manual run (cli `test/aimport-manual.js`) |
+| [neurolabusc/dcm_qa_xa30](https://github.com/neurolabusc/dcm_qa_xa30) | `371ab3071aa9270d23b99fca5f83fe0c35932182` | **current** | `tests/fixtures/fetch_dcm_qa.py`, the committed `tests/fixtures/ezbids_core_siemens.json`, all `docker` tests (with the planted recordings in the mixed import of `tests/test_ephys_end_to_end.py`), unplanted as published (its own PatientName `XAtest_sub-July11`) in `test_end_to_end_plain_dcm_qa_xa30_validates` and the MRI example of `EXAMPLES.md` (`fetch_dcm_qa.py DEST --plain`), the `bl aimport` manual run (cli `test/aimport-manual.js`) |
 | [neurolabusc/dcm_qa](https://github.com/neurolabusc/dcm_qa) | `8215e3e` | dropped 2026-11-24 | first version of the fixture (Tasks 2–3) |
 | Synthetic OME-Zarr (`tests/fixtures/micr_fixtures.py` `ome_zarr`, written for this repo; no real pixels) | generated at test time, seed 0 | **current** | `tests/test_micr_validator.py` (microscopy Task 1: validator ruling) |
 | Synthetic sparse BigTIFF (`tests/fixtures/micr_fixtures.py` `sparse_bigtiff`, written for this repo; no pixels) | generated at test time | **current** | `tests/test_modality.py` (microscopy Task 2: claimed input is never staged or copied), `tests/test_micr_readers.py` (Task 4: bounded open) |
