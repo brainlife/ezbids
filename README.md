@@ -83,7 +83,7 @@ Once session status becomes "finished", user will be then allowed to download th
 ### Authors
 - [Soichi Hayashi](soichih@gmail.com)
 - [Daniel Levitas](dlevitas@iu.edu)
-- [Franco Pestilli](pestilli@utexas.edu)
+- [Franco Pestilli]([@francopestilli](https://github.com/francopestilli))
 
 ### Funding Acknowledgement
 brainlife.io is publicly funded and for the sustainability of the project it is helpful to Acknowledge the use of the platform. We kindly ask that you acknowledge the funding below in your code and publications. Copy and past the following lines into your repository when using this code.
