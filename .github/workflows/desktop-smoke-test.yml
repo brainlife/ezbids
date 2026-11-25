@@ -84,7 +84,8 @@ jobs:
                   {
                       echo "### Packed app (${{ matrix.platform }}-${{ matrix.arch }}, unsigned --dir)"
                       echo '```'
-                      du -sh "$app" "$res/app" "$res/bin" "$res/aimport" "$res"/aimport/* 2>/dev/null || true
+                      # one du per folder: GNU du counts a folder once, so nested arguments after the first print nothing
+                      for d in "$app" "$res/app" "$res/bin" "$res/aimport" "$res"/aimport/*; do du -sh "$d"; done
                       echo '```'
                   } | tee -a "$GITHUB_STEP_SUMMARY"
 
