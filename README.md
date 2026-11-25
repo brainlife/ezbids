@@ -82,7 +82,7 @@ Once session status becomes "finished", user will be then allowed to download th
 
 -   [Soichi Hayashi](soichih@gmail.com)
 -   [Daniel Levitas](dlevitas@iu.edu)
--   [Franco Pestilli](pestilli@utexas.edu)
+-   [Franco Pestilli]([@francopestilli](https://github.com/francopestilli))
 
 ### Funding Acknowledgement
 
