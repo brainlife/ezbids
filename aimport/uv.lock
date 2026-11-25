@@ -64,7 +64,6 @@ dependencies = [
     { name = "autobidsify" },
     { name = "bidsschematools" },
     { name = "bioio" },
-    { name = "bioio-czi" },
     { name = "bioio-lif" },
     { name = "bioio-nd2", version = "2.5.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.12'" },
     { name = "bioio-nd2", version = "2.6.0", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.12'" },
@@ -95,6 +94,9 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+czi = [
+    { name = "bioio-czi" },
+]
 dev = [
     { name = "httpx" },
     { name = "pytest" },
@@ -115,7 +117,7 @@ requires-dist = [
     { name = "autobidsify", specifier = "==0.9.9.1" },
     { name = "bidsschematools" },
     { name = "bioio" },
-    { name = "bioio-czi" },
+    { name = "bioio-czi", marker = "extra == 'czi'" },
     { name = "bioio-lif" },
     { name = "bioio-nd2" },
     { name = "dask", extras = ["array"] },
@@ -143,7 +145,7 @@ requires-dist = [
     { name = "uvicorn" },
     { name = "zarr", specifier = ">=3" },
 ]
-provides-extras = ["dev", "neo"]
+provides-extras = ["dev", "neo", "czi"]
 
 [package.metadata.requires-dev]
 dev = [

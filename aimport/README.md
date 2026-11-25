@@ -271,7 +271,7 @@ aimport also imports microscopy (BIDS `micr`), from the same input folder as MRI
 are in "Image details" below; in short:
 
 - **Read:** OME-Zarr (NGFF 0.4 and 0.5), OME-TIFF, TIFF and BigTIFF (VISoR tile stacks included), Aperio SVS,
-  CZI, ND2, LIF, PS-OCT NIfTI (spatial units in microns, or a PS-OCT name) and MATLAB `.mat` (v7.3 read lazily;
+  CZI (Docker engine image and `bl aimport` only, see below), ND2, LIF, PS-OCT NIfTI (spatial units in microns, or a PS-OCT name) and MATLAB `.mat` (v7.3 read lazily;
   v5 up to 2 GiB). A BIDS `micr` dataset is re-imported with its own suffixes, sidecar pixel size and
   `samples.tsv` rows; its `ses-`, `sample-` and `chunk-` labels are kept only when they are safe (a number, a letter,
   a short code like `A12`, or a tissue word like `brain` or `left`) and found nowhere else, else renumbered with
@@ -282,7 +282,11 @@ are in "Image details" below; in short:
   - raw PS-OCT `.dat` tiles: "raw interferometer data: reconstruct first";
   - tiles of one plane: "tile mosaic: stitch first (aimport converts single images and VISoR stacks)";
   - PNG and JPEG images of a BIDS dataset: "PNG and JPEG images are not read: export to OME-TIFF or OME-Zarr first";
-  - BIDS `photo` files: "photographs are not imported".
+  - BIDS `photo` files: "photographs are not imported";
+  - `.czi` where CZI support is not installed (the ezBIDS desktop app): "CZI support is not installed in this
+    build (GPL-licensed reader); export to OME-TIFF or use the Docker engine". CZI is read by bioio-czi
+    (aicspylibczi), which is GPL-3.0, so it is the optional extra `aimport[czi]`: the engine image installs it
+    (`--extra czi`), the desktop runtime leaves it out.
 
   When an approved plan would write no image at all, `POST /execute` answers 400 "nothing to write: every entry is
   excluded or unsupported" and the stage stays `planned`.
@@ -616,7 +620,7 @@ entry's `ephys_format` (never a copy of the source file):
 - BIDS validator: `@bids/validator` **2.4.1** (Deno 2.5.6), run through the `bids-validator-2` wrapper. That release bundles an older schema (it flags `BIDSVersion` 1.11.2 as unknown), so the wrapper defaults `--schema file:///opt/bids-schema/schema.json` unless `--schema`/`-s` is given. Works offline. Useful flags: `--format json` (`--json` is deprecated), `--schema <URL>`, `--ignoreNiftiHeaders`, `-o <file>`.
 - Test data: `tests/fixtures/fetch_dcm_qa.py` fetches `neurolabusc/dcm_qa_xa30` at a pinned commit and plants fake PHI.
 - Python packages are installed exactly as `uv.lock` pins them (with hashes); the Deno download is checked against its sha256.
-- Microscopy (`micr`) packages, locked for Python 3.11 (the image): bioio 3.7.1, bioio-czi 4.1.0 (aicspylibczi), bioio-nd2 2.5.0, bioio-lif 2.0.1, tifffile 2026.3.3, ome-types 0.7.0, zarr 3.1.6, fsspec[http] 2026.9.0, dask[array] 2026.11.0, ngff-zarr 0.53.0, scipy 1.17.1, h5py 3.16.0. All have wheels for manylinux x86_64 and macOS arm64.
+- Microscopy (`micr`) packages, locked for Python 3.11 (the image): bioio 3.7.1, bioio-czi 4.1.0 (aicspylibczi; the GPL-3.0 extra `aimport[czi]`, installed in the image, not in the desktop app), bioio-nd2 2.5.0, bioio-lif 2.0.1, tifffile 2026.3.3, ome-types 0.7.0, zarr 3.1.6, fsspec[http] 2026.9.0, dask[array] 2026.11.0, ngff-zarr 0.53.0, scipy 1.17.1, h5py 3.16.0. All have wheels for manylinux x86_64 and macOS arm64.
 - Electrophysiology and optical (`eeg`, `meg`, `ieeg`, `nirs`, `emg`) packages, locked for Python 3.11 (the image): mne 1.13.2, mne-bids 0.20.0, edfio 0.4.18 (EDF/BDF export), pybv 0.8.1 (BrainVision export), defusedxml 0.7.1, pynwb 4.2.0, matplotlib 3.11.2 (h5py 3.16.0 as above); neo 0.14.6 is the optional extra `aimport[neo]` (Blackrock) and is not in the image. All have wheels for manylinux x86_64 and macOS arm64 (pure Python, or binary wheels for matplotlib, contourpy, kiwisolver, pillow and rpds-py).
 - Ephys capability ruling (Task 1, `tests/test_ephys_capability.py`), which sets `ephys.OUTPUT_FORMATS` and `ephys.MNE_READERS`:
   - every reader family resolves in MNE 1.13.2, MEF3 included (`read_raw_mef`); that reader imports `pymef` (MNE's optional extra, not an aimport dependency) when it opens a file, and neo has no MEF3 reader, so MEF3 input cannot be read in the image as it stands;

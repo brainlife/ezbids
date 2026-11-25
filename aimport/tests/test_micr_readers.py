@@ -3,7 +3,9 @@ from __future__ import annotations
 
 import gc
 import math
+import sys
 import tracemalloc
+import types
 from pathlib import Path
 
 import numpy as np
@@ -28,6 +30,7 @@ from aimport import micr
 from aimport.micr import readers
 from aimport.micr.readers import (
     BIOFORMATS_MESSAGE,
+    CZI_MISSING_MESSAGE,
     ChannelInfo,
     ImageInfo,
     ImageSource,
@@ -281,6 +284,34 @@ def test_bioio_family_through_ome(tmp_path, monkeypatch):
         assert not tokens(repr(src.info))
         assert {"jane doe", "slide 42 smith", "scope-sn-4711"} <= tokens("\n".join(src.terms))
         assert {"czi-operator-xyz", "czi-host-xyz"} <= src.terms  # raw vendor metadata
+
+
+def test_czi_without_the_extra_is_unsupported(tmp_path, monkeypatch):
+    """The desktop app ships without bioio-czi (GPL-3.0): a .czi file is refused with a message, never a crash."""
+    monkeypatch.setitem(sys.modules, "bioio_czi", None)  # `from bioio_czi import Reader` raises ImportError
+    with pytest.raises(UnsupportedFormat) as exc:
+        open_image(tmp_path / "x.czi", "czi")
+    assert str(exc.value) == CZI_MISSING_MESSAGE == (
+        "CZI support is not installed in this build (GPL-licensed reader); "
+        "export to OME-TIFF or use the Docker engine")
+
+
+def test_czi_with_the_extra_reads_through_bioio_czi(tmp_path, monkeypatch):
+    """With the "czi" extra installed (the Docker engine image), bioio opens the file with bioio-czi's Reader."""
+    czi = types.ModuleType("bioio_czi")
+    czi.Reader = type("Reader", (), {})
+    bioio = types.ModuleType("bioio")
+    seen = []
+
+    def bio_image(location, reader, **kwargs):
+        seen.append((location, reader))
+        return "image"
+
+    bioio.BioImage = bio_image
+    monkeypatch.setitem(sys.modules, "bioio_czi", czi)
+    monkeypatch.setitem(sys.modules, "bioio", bioio)
+    assert readers._bioimage(tmp_path / "x.czi", "czi") == "image"
+    assert seen == [(str(tmp_path / "x.czi"), czi.Reader)]
 
 
 def test_unsupported_family_message(tmp_path):
