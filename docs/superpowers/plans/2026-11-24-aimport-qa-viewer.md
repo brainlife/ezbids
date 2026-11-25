@@ -1,5 +1,7 @@
 # aimport QA viewer Implementation Plan
 
+> **Superseded (CLI tasks):** the `bl aimport` tasks below were written for the former Node CLI, which is no longer supported. `bl aimport` now lives in the Python CLI (brainlife/pybrainlife, branch `enh/cli`); the paths under `cli/` are historical.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** The aimport engine serves a local Neuroglancer viewer (same origin, no third-party page) so a person can check the de-identified output, and the defaced versus original anatomy, before upload; `bl aimport --qa` opens it and asks before uploading.

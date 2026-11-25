@@ -256,12 +256,12 @@ export const FUNDING = [
 ];
 
 // aimport on the landing page. Status, as of ezBIDS master: the engine (MRI/PET, microscopy, EEG/MEG/iEEG/NIRS/EMG)
-// is merged and tested; `bl aimport` is on brainlife/cli master but not in a published npm release; the engine image
+// is merged and tested; `bl aimport` is in the Python CLI (brainlife/pybrainlife enh/cli), not in a published release; the engine image
 // is built from this repo; the desktop app's AI import is tested on Mac only, with no signed installer yet.
 export const REPO = 'https://github.com/brainlife/ezbids';
 export const EXAMPLES_URL = `${REPO}/blob/master/aimport/EXAMPLES.md`;
 export const AIMPORT_README_URL = `${REPO}/blob/master/aimport/README.md`;
-export const CLI_URL = 'https://github.com/brainlife/cli#bl-aimport';
+export const CLI_URL = 'https://github.com/brainlife/pybrainlife/tree/enh/cli#bl-aimport';
 
 export const AIMPORT_STATUS = 'Beta: run it from source today; packaged release coming.';
 export const DESKTOP_STATUS = 'Beta: build from source (tested on Mac); signed installers coming.';
@@ -293,7 +293,7 @@ export const NEEDS = [
         t: 'One way to run it',
         items: [
             'ezBIDS desktop with AI import (beta, Mac): no Docker, no AI model, nothing leaves the computer; upload from the app comes later.',
-            'or Docker and the bl command line (beta): bl aimport runs the engine and uploads when you say yes.',
+            'or Docker and the bl command line (Python 3.8+, beta): bl aimport runs the engine and uploads when you say yes.',
         ],
     },
     {
@@ -331,13 +331,13 @@ export interface Example {
 }
 
 // the three low-stakes walkthroughs; the same commands are in aimport/EXAMPLES.md (keep them in step). Every flag is
-// one bl aimport has on brainlife/cli master; --project is required even with --no-upload (read only: nothing is sent)
+// one bl aimport has in pybrainlife enh/cli (bl aimport --help); --project is required even with --no-upload (read only: nothing is sent)
 export const EXAMPLES_SETUP = `mkdir -p ~/aimport-try && cd ~/aimport-try
 git clone --recursive https://github.com/brainlife/ezbids
 (cd ezbids && docker build --platform linux/amd64 -t ezbids-handler:local handler/ \\
   && docker build --platform linux/amd64 -t brainlife/aimport:dev -f aimport/Dockerfile .)
-git clone https://github.com/brainlife/cli
-(cd cli && npm install && npm link)
+python3 -m venv ~/aimport-try/venv && . ~/aimport-try/venv/bin/activate
+pip install "git+https://github.com/brainlife/pybrainlife@enh/cli"
 bl login
 P=<your brainlife project id>`;
 

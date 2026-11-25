@@ -126,7 +126,7 @@ No paper could be verified for these, so they are credited by repository, versio
 
 ## Also built with
 
-ezBIDS and aimport are also built with [Vue](https://vuejs.org/), [Element Plus](https://element-plus.org/), [FastAPI](https://fastapi.tiangolo.com/) and, for the desktop app, [Electron](https://www.electronjs.org/).
+ezBIDS and aimport are also built with [Vue](https://vuejs.org/), [Element Plus](https://element-plus.org/), [FastAPI](https://fastapi.tiangolo.com/) and, for the desktop app, [Electron](https://www.electronjs.org/). `bl aimport`, the command-line front end, is part of brainlife's Python CLI, [pybrainlife](https://github.com/brainlife/pybrainlife/tree/enh/cli#bl-aimport) (branch `enh/cli`).
 
 ## Licence notes
 

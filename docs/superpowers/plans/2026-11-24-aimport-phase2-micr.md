@@ -1,5 +1,7 @@
 # aimport Phase 2: microscopy (BIDS `micr`) Implementation Plan
 
+> **Superseded (CLI tasks):** the `bl aimport` tasks below were written for the former Node CLI, which is no longer supported. `bl aimport` now lives in the Python CLI (brainlife/pybrainlife, branch `enh/cli`); the paths under `cli/` are historical.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** The engine imports microscopy into BIDS `micr`. Inputs are vendor files (CZI, ND2, LIF), TIFF, OME-TIFF and SVS, existing OME-Zarr (local or `https://`/`s3://`), and reconstructed PS-OCT contrasts (NIfTI, `.mat`, TIFF stacks). The output is de-identified, validated OME-Zarr. Large inputs are never copied locally:

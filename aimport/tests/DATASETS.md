@@ -460,8 +460,9 @@ with `PLANTED` or `NATIVE` ignores.
 
 ### Manual runs of `bl aimport`
 
-dcm_qa_xa30 (planted, `plant=True`) is also the input of the `bl aimport` manual run (cli repo,
-`test/aimport-manual.js`: real engine container, no upload, no AI model so heuristics only, quickshear defacing).
+dcm_qa_xa30 (planted, `plant=True`) is also the input of the `bl aimport` manual run (recorded with the former Node
+CLI, which is no longer supported; the Python `bl aimport` in pybrainlife `enh/cli` has its own pytest suite with a
+fake engine. The run: real engine container, no upload, no AI model so heuristics only, quickshear defacing).
 2026-11-24: final stage `validated`, 0 validator errors (55 warnings), 5 objects and 6 project files ready to
 upload, about 110 s under emulation on Apple silicon; the console output contained none of the planted
 identifiers. The run used a thin derived image because `python` in `brainlife/aimport:dev` is the system Python 2.7 and `PYTHONPATH=/src/src` is set, so `python -m aimport serve` fails without a source mount.
