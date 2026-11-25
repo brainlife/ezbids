@@ -8,13 +8,35 @@ output folder), is never uploaded, and is always written with mode 0600.
 """
 from __future__ import annotations
 
-import fcntl
 import json
 import os
 import re
 import secrets
 import tempfile
 from pathlib import Path
+
+if os.name == "nt":  # the desktop app on Windows: no fcntl; lock the lock file's first byte instead
+    import msvcrt
+
+    def _try_lock(fd: int) -> None:
+        """Lock fd without waiting; BlockingIOError if another process holds it (as fcntl.flock LOCK_NB)."""
+        os.lseek(fd, 0, os.SEEK_SET)
+        try:
+            msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+        except OSError:
+            raise BlockingIOError("locked") from None
+
+    def _unlock(fd: int) -> None:
+        os.lseek(fd, 0, os.SEEK_SET)
+        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+else:
+    import fcntl
+
+    def _try_lock(fd: int) -> None:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+    def _unlock(fd: int) -> None:
+        fcntl.flock(fd, fcntl.LOCK_UN)
 
 KEY_VERSION = 2
 SUBJECT_RE = re.compile(r"^[a-zA-Z0-9]+$")
@@ -47,7 +69,7 @@ class PseudonymKey:
         try:
             os.chmod(lock_path, 0o600)
             try:
-                fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                _try_lock(fd)
             except BlockingIOError:
                 raise KeyLockedError(
                     f"another import into project {project_id!r} is running (key is locked: {lock_path})"
@@ -81,7 +103,7 @@ class PseudonymKey:
     def close(self) -> None:
         if self._lock_fd is not None:
             try:
-                fcntl.flock(self._lock_fd, fcntl.LOCK_UN)
+                _unlock(self._lock_fd)
             finally:
                 os.close(self._lock_fd)
                 self._lock_fd = None

@@ -213,6 +213,9 @@ require_file "aimport shim" "${aimport_dir}/aimport_desktop.py"
 require_file "BIDS schema" "${aimport_dir}/schema.json"
 require_file "bids-validator (Deno)" "$aimport_validator"
 require_file "QA viewer client" "${aimport_dir}/neuroglancer-client/index.html"
+pyc_count="$(find "$aimport_dir" -name '*.pyc' | wc -l | tr -d ' ')"
+[[ "$pyc_count" == 0 ]] || fail "${pyc_count} .pyc files in ${aimport_dir}: fetch-aimport.sh must ship no bytecode (python -B)"
+echo "  ok: no .pyc in ${aimport_dir}"
 unset PYTHONHOME PYTHONPATH
 run_check "aimport python imports aimport and its readers" '^aimport ok' "$aimport_py" -I -B -c \
     "import aimport.server, aimport.validate, aimport.deface, pydicom, nibabel, numpy, mne, zarr, tifffile, bidsschematools; print('aimport ok')"
