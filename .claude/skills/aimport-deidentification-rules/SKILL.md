@@ -25,7 +25,7 @@ Every aimport change keeps these invariants. Run the named tests after the chang
 ## Data rules
 
 - Every new test or validation dataset gets a row in `aimport/tests/DATASETS.md`: pinned commit or date, licence, status, which tests use it, planted identifiers.
-- No CMC (`apex-connects` bucket) pixels are committed or downloaded whole: no licence is stated. Read by range in `network`-marked tests only.
+- CMC (`apex-connects` bucket) data has a permissive licence (confirmed by the PI, 2026-11-24): screenshots and small derived images may be committed and shown in docs with credit to the CMC dataset (BRAIN CONNECTS APEX, NIH U24NS140384). It is still never downloaded whole (TB-scale): tests read it by range in `network`-marked tests only, and no raw chunks go in as fixtures.
 - Planted identifiers go in `tests/conftest.py` (`MICR_PLANTED` and friends) so the leak tests look for them.
 
 ## Not an aimport rule
@@ -38,5 +38,5 @@ Classic ezBIDS web (`handler/`) keeps `InstitutionName` in sidecars: a PI decisi
 - Dropping the value with the key: `XAtest_sub-July11` must still yield `XAtest` and `July11`.
 - Defaulting a missing pixel size to 1 µm, or a missing unit to micrometre.
 - Keeping a folder name as `sample-`/`ses-` label without checking it against the run's terms.
-- Copying a remote store "to make the test simpler", or committing a CMC chunk as a fixture.
+- Copying a remote store "to make the test simpler", or committing a raw CMC chunk as a fixture (screenshots with credit are fine).
 - Adding a fixture dataset without its DATASETS.md row and licence.

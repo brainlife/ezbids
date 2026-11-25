@@ -112,6 +112,11 @@ Cite the tools your conversion used. Licences are the projects' own; versions ar
 | [Neuroglancer](https://github.com/google/neuroglancer) 2.41.2 | aimport QA viewer for images | Apache-2.0 | [doi:10.5281/zenodo.5573293](https://doi.org/10.5281/zenodo.5573293) (Zenodo) | README Zenodo badge (concept DOI) |
 | [uPlot](https://github.com/leeoniya/uPlot) 1.6.32 | aimport trace viewer for recordings | MIT | [github.com/leeoniya/uPlot](https://github.com/leeoniya/uPlot) | repo (no citation file) |
 
+## Example and test data
+
+- **CMC** (connects.brainlife.io/publications/CMC; public bucket `apex-connects`): PS-OCT, light-sheet (VISoR) and exaSPIM data used to test aimport's remote microscopy reads and the QA viewer. Permissive licence (confirmed by the dataset's PI); please credit the CMC dataset and BRAIN CONNECTS APEX (NIH U24NS140384) when showing it.
+- Other test and example datasets, with their licences and sources, are listed in [aimport/tests/DATASETS.md](aimport/tests/DATASETS.md).
+
 ## Not verified
 
 No paper could be verified for these, so they are credited by repository, version and licence (or a Zenodo DOI) only:
