@@ -12,13 +12,13 @@ import { spawn, ChildProcess } from 'child_process';
 import treeKill from 'tree-kill';
 import { registerAimportIpc, stopAimport, hasAimport } from './aimport/engine';
 import { enableInAppBrowsing } from './inAppBrowsing';
+import { desktopEnv } from './desktopEnv';
 
 const ENVIRONMENT = app.isPackaged ? 'production' : 'development';
 const USER_DATA_PATH = app.getPath('userData');
 const APP_DIR = app.getAppPath(); // In production, APP_DIR looks like .../release/mac-arm64/ezBIDS.app/Contents/Resources/app
 const WORKDIR = path.join(USER_DATA_PATH, 'workdir');
 const LOCAL_PROJECT_DIR = path.resolve(APP_DIR, '..');
-const UPLOAD_DIR = path.join(USER_DATA_PATH, 'upload');
 protocol.registerSchemesAsPrivileged([{ scheme: 'app', privileges: { standard: true } }]);
 
 let backendProcess: ChildProcess | null = null;
@@ -170,39 +170,17 @@ async function startApp(): Promise<void> {
 
     Object.assign(process.env, rendererEnv);
 
-    const ezbidsHandlerDir =
-        ENVIRONMENT === 'production' ? getProjectPath('dist', 'handler') : getProjectPath('handler');
-    const bidsValidatorPath = getProjectPath('node_modules', 'bids-validator', 'bin', 'bids-validator');
-    const ezbidsBackendDir = ENVIRONMENT === 'production' ? getProjectPath('dist') : getProjectPath('api');
-    const preloadDir = ENVIRONMENT === 'production' ? getProjectPath('dist') : getProjectPath('electron');
-
-    const env = {
-        ...process.env,
-        USER_DATA_PATH: USER_DATA_PATH,
-        UPLOAD_DIR: UPLOAD_DIR,
-        WORKDIR: WORKDIR,
-        PORT: String(port),
-        MONGO_CONNECTION_STRING: '',
-        EZBIDS_BIN_DIR: getBinDir(),
-        EZBIDS_HANDLER_DIR: ezbidsHandlerDir,
-        PRELOAD_DIR: preloadDir,
-        EZBIDS_PREPROCESS_PATH: path.join(
-            ezbidsHandlerDir,
-            ENVIRONMENT === 'production' ? 'preprocess.cjs' : 'preprocess.ts'
-        ),
-        EZBIDS_EXPAND_PATH: path.join(ezbidsHandlerDir, ENVIRONMENT === 'production' ? 'expand.cjs' : 'expand.ts'),
-        EZBIDS_BIDS_PATH: path.join(ezbidsHandlerDir, ENVIRONMENT === 'production' ? 'bids.cjs' : 'bids.ts'),
-        EZBIDS_CONVERT_PATH: path.join(ezbidsHandlerDir, ENVIRONMENT === 'production' ? 'convert.cjs' : 'convert.ts'),
-        EZBIDS_DEFACE_PATH: path.join(ezbidsHandlerDir, ENVIRONMENT === 'production' ? 'deface.cjs' : 'deface.ts'),
-        EZBIDS_TEMPLATE_DIR: path.join(ezbidsHandlerDir, 'templates'),
-        EZBIDS_BACKEND_DIR: ezbidsBackendDir,
-        BIDS_VALIDATOR_PATH: bidsValidatorPath,
-        EZBIDS_PLATFORM: getEzBidsPlatform(),
-        EZBIDS_ARCH: getEzBidsArch(),
-        ENVIRONMENT: ENVIRONMENT,
-        ELECTRON_RUN_AS_NODE: '1',
-        ...rendererEnv,
-    };
+    const env = desktopEnv({
+        base: process.env,
+        production: ENVIRONMENT === 'production',
+        projectPath: getProjectPath,
+        binDir: getBinDir(),
+        userDataPath: USER_DATA_PATH,
+        port,
+        platform: getEzBidsPlatform(),
+        arch: getEzBidsArch(),
+        rendererEnv,
+    }) as Record<string, string>;
 
     console.log('STARTING EZBIDS DESKTOP WITH ENV:', env);
 
