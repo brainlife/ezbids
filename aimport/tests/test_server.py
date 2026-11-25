@@ -905,7 +905,7 @@ def test_subject_edit_after_execute_releases_the_key(planned, tmp_path):
 def test_scan_failure_names_the_ezbids_log(client, tmp_path, monkeypatch):
     def noisy(staged, log=print, **kw):
         log("dcm2niix: converting /in/Smith^John/MRN0042")
-        raise RuntimeError("preprocess.sh failed: /in/Smith^John")
+        raise RuntimeError("preprocess failed: /in/Smith^John")
 
     monkeypatch.setattr(server, "run_ezbids", noisy)
     client.post("/scan", json=SCAN)

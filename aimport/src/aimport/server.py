@@ -94,7 +94,7 @@ MAX_ISSUES = 200  # validator issues listed in the status (the counts are always
 MAX_EVENTS = 500
 OUTPUT_STATE = "output-state.json"
 NOTHING_TO_WRITE = "nothing to write: every entry is excluded or unsupported"
-# preprocess.sh's error when the staged input has no MRI, PET or MEG file (only tables and text)
+# ezBIDS preprocess's error when the staged input has no MRI, PET or MEG file (only tables and text)
 EZBIDS_NO_IMAGING = "Could not find any MRI, PET, or MEG imaging files"
 # subject_idx -> the subject ID the key records for that subject's original (pseudonyms only: the originals
 # stay in the key), so an edited subject ID can be recorded in the key for the right person on execute
