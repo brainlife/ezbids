@@ -226,4 +226,20 @@ run_check "aimport_desktop.py serve --help (shim hooks install)" 'usage|--input'
 run_check "bids-validator --version (offline)" '[0-9]+\.[0-9]+\.[0-9]+' env HTTPS_PROXY=http://127.0.0.1:9 \
     HTTP_PROXY=http://127.0.0.1:9 DENO_NO_UPDATE_CHECK=1 "$aimport_validator" --version
 
+# a real validation, offline, with the bundled schema (as the shim runs it): catches Deno permission errors that
+# --version does not reach (Windows: os.release() needs --allow-sys=osRelease)
+tiny_ds="$(mktemp -d)"
+echo '{"Name": "smoke", "BIDSVersion": "1.11.0", "DatasetType": "raw"}' >"$tiny_ds/dataset_description.json"
+if [[ "$platform" == "windows" ]]; then
+    schema_uri="file:///$(cygpath -m "${aimport_dir}/schema.json")"
+    tiny_ds_arg="$(cygpath -w "$tiny_ds")"
+else
+    schema_uri="file://${aimport_dir}/schema.json"
+    tiny_ds_arg="$tiny_ds"
+fi
+run_check "bids-validator --json on a tiny dataset (offline, bundled schema)" '"issues"' env HTTPS_PROXY=http://127.0.0.1:9 \
+    HTTP_PROXY=http://127.0.0.1:9 DENO_NO_UPDATE_CHECK=1 bash -c '"$0" --json --schema "$1" "$2" | head -c 400' \
+    "$aimport_validator" "$schema_uri" "$tiny_ds_arg"
+rm -rf "$tiny_ds"
+
 echo "smoke-test: all checks passed"

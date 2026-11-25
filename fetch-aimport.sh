@@ -81,7 +81,9 @@ curl -fsSL -o "$TMP/deno.zip" "https://github.com/denoland/deno/releases/downloa
 [[ "$(sha256 "$TMP/deno.zip")" == "$deno_sha" ]] || { echo "deno zip sha256 mismatch" >&2; exit 1; }
 unzip -q -o "$TMP/deno.zip" -d "$TMP/deno"
 exe=""; [[ "$platform" == windows ]] && exe=".exe"
-DENO_DIR="$TMP/deno-cache" DENO_NO_UPDATE_CHECK=1 "$TMP/deno/deno$exe" compile -ERWN --no-check \
+# --allow-sys=osRelease: on Windows the validator's ansi-escapes calls os.release() (isOldWindows); without it
+# every run dies before printing its report (seen in the Windows CI smoke test)
+DENO_DIR="$TMP/deno-cache" DENO_NO_UPDATE_CHECK=1 "$TMP/deno/deno$exe" compile -ERWN --allow-sys=osRelease --no-check \
     --output "$OUT/bids-validator$exe" "jsr:@bids/validator@${BIDS_VALIDATOR_VERSION}"
 
 echo "== Neuroglancer QA client"
