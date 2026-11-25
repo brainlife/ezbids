@@ -79,7 +79,8 @@ jobs:
             - name: Packed app size
               run: |
                   app="$(find electron/release -mindepth 1 -maxdepth 2 \( -name '*.app' -o -name '*-unpacked' \) -type d | head -n 1)"
-                  res="$(find "$app" -maxdepth 3 -type d \( -path '*/Contents/Resources' -o -name resources \) | head -n 1)"
+                  res="$app/resources"
+                  [[ -d "$app/Contents/Resources" ]] && res="$app/Contents/Resources"
                   {
                       echo "### Packed app (${{ matrix.platform }}-${{ matrix.arch }}, unsigned --dir)"
                       echo '```'

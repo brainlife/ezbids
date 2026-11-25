@@ -26,10 +26,13 @@ and ROBEX (quickshear) cannot ship on mac/Windows. aimport's own deface checks s
 **Size** (mac arm64, measured): `Resources/aimport` 438-475 MB unpacked (Python + deps 303, validator 133, client 1.4),
 136 MB gzip. App 1.8 GB unpacked total.
 
-**Per-platform**: mac arm64 dev and unsigned `--dir` build tested end to end (scan → validated). Unverified: notarization of
-the new `.so`/`.dylib` and the Deno binary (entitlements already allow JIT); Windows (`python.exe` layout, `taskkill`,
-long paths, `file:` URIs); Linux AppImage size.
+**Per-platform**: CI (`.github/workflows/desktop-smoke-test.yml`, run by hand with `gh workflow run desktop-smoke-test.yml`)
+packs the app unsigned (`--dir`) on mac arm64, Windows x64 and Linux x64 and, with no network, runs the packed binaries,
+classic ezBIDS preprocess and the engine started as `engine.ts` starts it (`launch.ts`) on a synthetic T1w DICOM:
+scan → plan → approve (allineate) → execute → `validated` (`test/smoke-test-aimport.sh`), then launches the app
+(`test/smoke-test-launch.sh`). Unverified: notarization of the new `.so`/`.dylib` and the Deno binary, Windows
+installer (NSIS) and Linux AppImage/deb, GUI clicks.
 
 **Open items for Nicholas**: the desktop `preprocess.ts` aborts on a folder with only a non-image DICOM (dcm_qa_xa30's
 `*_Raw.dcm`; `preprocess.sh` skipped it); a crash of Electron (not a normal quit) leaves detached children running, as for
-the API/handler; CI run on Windows/Linux; upload to brainlife (later step).
+the API/handler; upload to brainlife (later step).
