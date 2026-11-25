@@ -29,7 +29,9 @@ Open items (unverified): Linux needs `--no-sandbox` for a `--dir` build (`chrome
 
 ## aimport engine image and CLI
 
-- Engine image: to be published as `docker.io/brainlife/aimport`; **not published yet, and there is no publishing workflow.** Today build it locally (`brainlife/aimport:dev`, see `aimport/README.md`). Never push it.
+- Engine image: `.github/workflows/publish-images.yml` ("Publish images") builds and pushes `docker.io/brainlife/ezbids-handler:<version>` (from `handler/`), then `docker.io/brainlife/aimport:<version>` on it (`--build-arg HANDLER_IMAGE=...`), `linux/amd64` only, with SBOM and provenance, then pulls both back and smoke-tests them (`handler/test/image_smoke.sh`, `aimport --help`, `bids-validator-2 --version`). Triggers: a maintainer's tag `aimport-v<version>` (also moves `latest`) or `workflow_dispatch` with input `tag` (no `latest`). Steps for the maintainer: `docs/releasing-aimport-image.md`.
+- **Not published yet:** it needs the repo secrets `DOCKERHUB_USERNAME` / `DOCKERHUB_TOKEN`, which an admin has not added, and the FSL/ROBEX redistribution points in `CREDITS.md` "Licence notes". Until a version is on Docker Hub, build locally (`brainlife/aimport:dev`, see `aimport/README.md`). Agents never push an image, push an `aimport-v*` tag, run the workflow or add secrets.
+- arm64: not possible as the image stands (FSL binaries, ROBEX, dcm2niix release, 7-Zip and Deno downloads are x86-64); Apple silicon runs the amd64 image under emulation.
 - CLI: the only supported CLI for `bl aimport` is the Python CLI in `brainlife/pybrainlife`, branch `enh/cli`. **Unverified:** that branch has no `aimport` command yet (checked 2026-11-24).
 - The Node CLI (`brainlife/cli`) is **not supported**: never use, run, release or document it. Existing references in `README.md` and `aimport/README.md` are stale; replace them when you touch those lines.
 
@@ -38,4 +40,5 @@ Open items (unverified): Linux needs `--no-sandbox` for a `--dir` build (`chrome
 - Tagging `v*` to "test the build": it creates a public release. Use `workflow_dispatch` on the smoke test.
 - Running `npm run deploy*` scripts or anything that touches brainlife.io or test.brainlife.io.
 - Pointing users to `brainlife/cli` or `npm link` for `bl aimport`.
-- Saying the engine image is on Docker Hub.
+- Saying the engine image is on Docker Hub before a version is actually there (`docker manifest inspect docker.io/brainlife/aimport:<version>`).
+- Tagging `aimport-v*` to "test" the publish workflow: it pushes public images and moves `latest`.

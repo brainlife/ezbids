@@ -1,0 +1,156 @@
+---
+# Publishes the aimport engine image and the ezBIDS handler image it is built on:
+#   docker.io/brainlife/ezbids-handler:<version>  (handler/Dockerfile, context handler/)
+#   docker.io/brainlife/aimport:<version>         (aimport/Dockerfile, context ., FROM the handler above)
+# A tag aimport-v<version> publishes <version> and moves `latest`; a manual run publishes <version> only.
+# Needs the repository secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN (see docs/releasing-aimport-image.md).
+# linux/amd64 only: FSL (dlevitas/FSL_binaries), ROBEX, the dcm2niix release, 7-Zip and Deno are amd64 assets.
+name: Publish images
+
+on:
+  push:
+    tags: ["aimport-v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Image version to publish, without a leading v (e.g. 1.0.0 or 1.0.0-rc.1); `latest` is not moved"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: publish-images-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Build and push brainlife/ezbids-handler and brainlife/aimport
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      HANDLER_REPO: docker.io/brainlife/ezbids-handler
+      AIMPORT_REPO: docker.io/brainlife/aimport
+    steps:
+      - name: Version
+        id: v
+        env:
+          EVENT: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          if [ "$EVENT" = push ]; then version="${REF_NAME#aimport-v}"; latest=true; else version="${INPUT_TAG#v}"; latest=false; fi
+          if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.]+)?$ ]]; then
+            echo "::error::version '$version' is not X.Y.Z or X.Y.Z-suffix (tag aimport-vX.Y.Z, or the workflow input)"
+            exit 1
+          fi
+          {
+            echo "version=$version"
+            echo "latest=$latest"
+            echo "created=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } >> "$GITHUB_OUTPUT"
+          handler_tags="$HANDLER_REPO:$version"
+          aimport_tags="$AIMPORT_REPO:$version"
+          if [ "$latest" = true ]; then
+            handler_tags="$handler_tags,$HANDLER_REPO:latest"
+            aimport_tags="$aimport_tags,$AIMPORT_REPO:latest"
+          fi
+          echo "handler_tags=$handler_tags" >> "$GITHUB_OUTPUT"
+          echo "aimport_tags=$aimport_tags" >> "$GITHUB_OUTPUT"
+
+      - name: Check Docker Hub secrets
+        env:
+          DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+          DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+        run: |
+          if [ -z "$DOCKERHUB_USERNAME" ] || [ -z "$DOCKERHUB_TOKEN" ]; then
+            echo "::error::Repository secrets DOCKERHUB_USERNAME and DOCKERHUB_TOKEN must be set (a Docker Hub access token with write access to the brainlife org). See docs/releasing-aimport-image.md."
+            exit 1
+          fi
+
+      # The two images are about 5.5 GB and 6.6 GB; the runner's preinstalled toolchains are not needed
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          submodules: true
+          persist-credentials: false
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push brainlife/ezbids-handler
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: handler
+          file: handler/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.v.outputs.handler_tags }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=ezbids-handler
+          cache-to: type=gha,scope=ezbids-handler,mode=min
+          labels: |
+            org.opencontainers.image.title=ezbids-handler
+            org.opencontainers.image.description=ezBIDS handler: dcm2niix, FSL, pydeface, the BIDS validator and the TypeScript handler's tools
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.v.outputs.version }}
+            org.opencontainers.image.created=${{ steps.v.outputs.created }}
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.vendor=The University of Texas at Austin
+
+      - name: Build and push brainlife/aimport
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          file: aimport/Dockerfile
+          platforms: linux/amd64
+          push: true
+          tags: ${{ steps.v.outputs.aimport_tags }}
+          build-args: |
+            HANDLER_IMAGE=${{ env.HANDLER_REPO }}:${{ steps.v.outputs.version }}
+          provenance: mode=max
+          sbom: true
+          cache-from: type=gha,scope=aimport
+          cache-to: type=gha,scope=aimport,mode=min
+          labels: |
+            org.opencontainers.image.title=aimport
+            org.opencontainers.image.description=brainlife.io aimport engine: local, de-identifying BIDS importer with a loopback API
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.version=${{ steps.v.outputs.version }}
+            org.opencontainers.image.created=${{ steps.v.outputs.created }}
+            org.opencontainers.image.licenses=MIT
+            org.opencontainers.image.vendor=The University of Texas at Austin
+
+      # Pull the published images back from Docker Hub and check them
+      - name: Smoke test brainlife/ezbids-handler
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          docker run --rm --platform linux/amd64 -v "$PWD/handler/test:/t:ro" --entrypoint bash \
+            "$HANDLER_REPO:$VERSION" /t/image_smoke.sh
+
+      - name: Smoke test brainlife/aimport
+        env:
+          VERSION: ${{ steps.v.outputs.version }}
+        run: |
+          image="$AIMPORT_REPO:$VERSION"
+          docker run --rm --platform linux/amd64 "$image" /opt/aimport-venv/bin/python -m aimport --help
+          docker run --rm --platform linux/amd64 "$image" bids-validator-2 --version
+          docker image inspect "$image" --format '{{ index .Config.Labels "org.opencontainers.image.version" }}' \
+            | grep -qx "$VERSION"
+          docker image rm "$image" "$HANDLER_REPO:$VERSION"
