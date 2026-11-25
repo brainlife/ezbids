@@ -1,8 +1,9 @@
 # BIDS -> brainlife.io datatype mapping for brainlife.io/aimport.
 #
 # Single source of truth: the engine reads this file (aimport/brainlife_map.py),
-# and it must agree with brainlife's existing BIDS uploader, cli/bids-walker.js,
-# because `bl bids upload` uses bids-walker for the actual upload.
+# and it must agree with the uploader of `bl aimport` (brainlife/pybrainlife enh/cli,
+# brainlife/cli/aimport/bids_walker.py), which turns the output into brainlife objects.
+# `source` below records where the table was first copied from (the former Node CLI).
 #
 # status:
 #   active   - used by the engine now (phase 1: MRI and PET; phase 3: eeg and meg, keyed by extension)

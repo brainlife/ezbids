@@ -9,13 +9,14 @@ but everything runs on your machine, so raw DICOMs with identifiers are never up
 
 **Status: beta: run it from source today; packaged release coming.** The engine (MRI and PET; microscopy; EEG, MEG,
 iEEG, NIRS and EMG) is merged and tested; no version of its Docker image is published yet, so you build it from this repo
-(below). `bl aimport` is on the [brainlife cli](https://github.com/brainlife/cli#bl-aimport)'s `master` branch, not
-yet in a published npm release. The ezBIDS desktop app runs the same engine as **AI import (beta)**: build from
+(below). `bl aimport` is in the brainlife Python CLI ([pybrainlife](https://github.com/brainlife/pybrainlife/tree/enh/cli#bl-aimport), branch `enh/cli`; install it
+with `pip install "git+https://github.com/brainlife/pybrainlife@enh/cli"`, Python 3.8 or newer), not yet in a
+published release. The ezBIDS desktop app runs the same engine as **AI import (beta)**: build from
 source (tested on Mac); signed installers coming. New to aimport? Start with the low-stakes walkthroughs on public
 sample data in [EXAMPLES.md](EXAMPLES.md); they upload nothing.
 
 This directory is the engine: a Docker image and a small HTTP API on your own computer. The command
-`bl aimport` (cli repo) drives it and uploads the result; the ezBIDS desktop app drives it too (no upload yet);
+`bl aimport` (pybrainlife) drives it and uploads the result; the ezBIDS desktop app drives it too (no upload yet);
 the brainlife-lite `/aimport` page is upcoming (see "What's next"). You can also drive the API directly, as shown
 below.
 
@@ -706,9 +707,9 @@ about four minutes).
 
 ## What's next
 
-`bl aimport` in the [brainlife cli](https://github.com/brainlife/cli#bl-aimport) (on `master`, not yet in a published
-npm release: install it from a clone with `npm install && npm link`) is the command-line front end: it runs this image, shows the plan in the terminal, runs the brainlife datatype
-validators on your host and uploads the result. Run `bl aimport <folder> --project <id>` (see the cli README).
+`bl aimport` in the brainlife Python CLI ([pybrainlife](https://github.com/brainlife/pybrainlife/tree/enh/cli#bl-aimport), branch `enh/cli`, not yet in a published release:
+`pip install "git+https://github.com/brainlife/pybrainlife@enh/cli"`, then `bl login`) is the command-line front end: it runs this image, shows the plan in the terminal, runs the brainlife datatype
+validators on your host and uploads the result. Run `bl aimport <folder> --project <id>` (flags: `bl aimport --help` or the pybrainlife README).
 The ezBIDS desktop app's AI import (beta) is the other front end (see [docs/aimport-electron.md](../docs/aimport-electron.md));
 uploading from it comes later. Still to come: a published engine image and `bl` release, signed desktop installers
 (Windows and Linux are not tested yet), and the brainlife-lite `/aimport` page (plan review with image previews).

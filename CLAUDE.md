@@ -23,5 +23,5 @@ ezBIDS web (`api/`, `handler/`, `ui/`), ezBIDS desktop (`electron/`) and aimport
 6. Citations come from the project's own citation file or the publisher; never invent a DOI.
 7. Docs, `CREDITS.md`, the brainlife mapping YAML and landing statuses change in the same PR as the code.
 8. No new dependencies without asking. Tests first.
-9. The only supported `bl aimport` CLI is the Python one (brainlife/pybrainlife `enh/cli`); never use or document the Node `brainlife/cli`.
+9. The only supported `bl aimport` CLI is the Python one (brainlife/pybrainlife `enh/cli`: `pip install "git+https://github.com/brainlife/pybrainlife@enh/cli"`); never use or document the Node `brainlife/cli`.
 10. UI: brainlife-lite tokens from `ui/src/theme.css`, `BrandLockup` always visible, no external windows; screenshots in UI PRs.

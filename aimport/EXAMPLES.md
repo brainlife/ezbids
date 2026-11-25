@@ -5,14 +5,15 @@ upload (`--no-upload`) and opens the local QA viewer (`--qa`), so you can see wh
 computer. The same commands are on the [ezBIDS landing page](https://brainlife.io/ezbids) ("Try it").
 
 **Status:** aimport is in beta: run it from source today; packaged release coming. The engine image is not published
-yet (you build it below), and `bl aimport` is on the [brainlife cli](https://github.com/brainlife/cli#bl-aimport)'s
-`master` branch, not yet in a published npm release. Prefer an app? ezBIDS desktop runs the same engine as
+yet (you build it below), and `bl aimport` is in the brainlife Python CLI
+([pybrainlife](https://github.com/brainlife/pybrainlife/tree/enh/cli#bl-aimport), branch `enh/cli`), not yet in a
+published release. Prefer an app? ezBIDS desktop runs the same engine as
 **AI import (beta)** (build from source, tested on Mac; signed installers coming; see the
 [README](../README.md#ezbids-desktop)); these examples use `bl aimport`.
 
 ## Set up once
 
-You need Docker, Node.js 18 or newer, git, [uv](https://docs.astral.sh/uv/) (for example a) and a brainlife.io
+You need Docker, Python 3.8 or newer, git, [uv](https://docs.astral.sh/uv/) (for example a) and a brainlife.io
 account. On Colima (macOS), Docker mounts only folders under your home folder, so keep everything under `~`.
 
 ```
@@ -20,8 +21,8 @@ mkdir -p ~/aimport-try && cd ~/aimport-try
 git clone --recursive https://github.com/brainlife/ezbids
 (cd ezbids && docker build --platform linux/amd64 -t ezbids-handler:local handler/ \
   && docker build --platform linux/amd64 -t brainlife/aimport:dev -f aimport/Dockerfile .)
-git clone https://github.com/brainlife/cli
-(cd cli && npm install && npm link)
+python3 -m venv ~/aimport-try/venv && . ~/aimport-try/venv/bin/activate
+pip install "git+https://github.com/brainlife/pybrainlife@enh/cli"
 bl login
 P=<your brainlife project id>
 ```
@@ -31,7 +32,7 @@ P=<your brainlife project id>
 - Every example uses its own work and keys folders (`~/aimport-try/work`, `~/aimport-try/keys`), so the test
   subjects never enter the pseudonym key of a real project.
 - No AI key is needed: without one the built-in heuristics plan everything. To try the agent, set `AIMPORT_MODEL`
-  and your provider's key first (see the cli README); it sees only de-identified plan text.
+  and your provider's key first (see [AI model settings](README.md#ai-model-settings)); bl passes them to the engine; it sees only de-identified plan text.
 - At `Approve this plan? [y/N/e(dit)]`, read the plan and answer `y`. With `--qa --no-upload`, bl prints a
   one-time viewer link (`http://127.0.0.1:<port>/viewer/open?code=...`, valid for 60 s), opens it, and waits for
   Enter; then it stops the engine. Nothing is uploaded.
@@ -117,10 +118,12 @@ downloading it. We do not name a remote example here: the public store aimport's
 
 ## Afterwards
 
+- In a new terminal, run `. ~/aimport-try/venv/bin/activate` again before `bl`.
 - `rm -rf ~/aimport-try/work ~/aimport-try/keys` removes everything the runs wrote; the downloaded data stay in
   `~/aimport-try`.
 - On your own data, drop `--no-upload` when the plan and the viewer look right: bl then asks
   `Upload this dataset? [y/N/v(iewer link again)]` and uploads only on `y`. Use your own `--work`/`--keys` (or the
   defaults) and back up the keys folder: the pseudonym key is the only way back to the real identities.
 - More: [aimport README](README.md) (what is guaranteed, the API, known limitations) and the
-  [cli README](https://github.com/brainlife/cli#bl-aimport) (every `bl aimport` flag).
+  [pybrainlife README](https://github.com/brainlife/pybrainlife/tree/enh/cli#bl-aimport) (every `bl aimport` flag;
+  `bl aimport --help` lists them too).
