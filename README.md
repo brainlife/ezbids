@@ -91,7 +91,7 @@ Once session status becomes "finished", user will be then allowed to download th
 -   [Nicholas Lee](niconal902@gmail.com)
 -   [Anthony Galassi](niconal902@gmail.com)
 -   [Guiomar Niso](guiomar.niso@ctb.upm.es)
--   [Franco Pestilli](pestilli@utexas.edu)
+-   [Franco Pestilli]([@francopestilli](https://github.com/francopestilli))
 * Both authors contributed equally to this work
 
 ### Funding Acknowledgement
