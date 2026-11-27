@@ -337,9 +337,10 @@ def test_nwb_reads_only_picked_columns(tmp_path):
         s._dataset, s._data = s._data, Spy()
         got = s.read([2, 0, 2], 0, 20)
         assert seen == [(slice(0, 20), [0, 2])]  # sorted unique columns, never the full width
-        expect = full[:, [2, 0, 2]] * s._conversion + s._offset
+        expect = full[:, [2, 0, 2]] * s._conversion
         if s._channel_conversion is not None:
             expect = expect * s._channel_conversion[[2, 0, 2]][None, :]
+        expect = expect + s._offset
         assert np.allclose(got, expect.T)
     finally:
         s.close()

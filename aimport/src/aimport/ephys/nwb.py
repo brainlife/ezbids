@@ -546,9 +546,10 @@ def to_raw(path: Path, group_types: dict[str, str] | None = None):
         data = np.asarray(s["data"][()], dtype=float)
         if data.ndim == 1:
             data = data[:, None]
-        data = data * float(attrs.get("conversion", 1.0)) + float(attrs.get("offset", 0.0))
+        data = data * float(attrs.get("conversion", 1.0))
         if "channel_conversion" in s:
             data = data * np.asarray(s["channel_conversion"][()], dtype=float)[None, :]
+        data = data + float(attrs.get("offset", 0.0))
         rows = intervals(f)
     info = mne.create_info(names, sfreq, types, verbose=False)
     raw = mne.io.RawArray(data.T, info, verbose=False)
@@ -606,9 +607,10 @@ class Series:
             block = np.asarray(self._data[start:stop, cols], dtype=float)
             where = {c: k for k, c in enumerate(cols)}
             block = block[:, [where[i] for i in picks]]
-        block = block * self._conversion + self._offset
+        block = block * self._conversion
         if self._channel_conversion is not None:
             block = block * self._channel_conversion[picks][None, :]
+        block = block + self._offset
         return block.T
 
     def close(self) -> None:
