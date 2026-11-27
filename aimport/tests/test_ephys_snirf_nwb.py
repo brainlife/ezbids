@@ -537,3 +537,39 @@ def test_resave_split_without_private_split_size(tmp_path, monkeypatch):
     new = ephys_write._resave_split(parts, "sub-emptyroom_task-noise_split-01_meg.fif", scratch)
     assert [p.name for p in new] == ["sub-emptyroom_task-noise_meg.fif"]  # one part at 2GB
     assert mne.io.read_raw_fif(new[0], preload=False, verbose="error").n_times == 60000
+
+
+def test_nwb_channel_conversion_applied_before_offset(tmp_path):
+    """Per NWB ElectricalSeries spec, data in Volts is data * conversion * channel_conversion + offset."""
+    from pynwb import NWBHDF5IO, NWBFile
+    from pynwb.ecephys import ElectricalSeries
+
+    path = tmp_path / "scaled.nwb"
+    f = NWBFile(session_description="x", identifier="x", session_start_time=fx.MEAS_DATE)
+    dev = f.create_device(name="amp")
+    grp = f.create_electrode_group(name="grid", description="grid", location="cortex", device=dev)
+    for _ in range(3):
+        f.add_electrode(group=grp, location="cortex")
+    raw_samples = np.array([[100.0, 200.0, 300.0], [400.0, 500.0, 600.0]], dtype=np.float64)
+    es = ElectricalSeries(
+        name="ieeg",
+        data=raw_samples,
+        electrodes=f.create_electrode_table_region([0, 1, 2], "all"),
+        rate=256.0,
+        conversion=2.0,
+        channel_conversion=np.array([1e-6, 5e-6, 1e-5], dtype=np.float64),
+        offset=0.5,
+    )
+    f.add_acquisition(es)
+    with NWBHDF5IO(str(path), "w") as io:
+        io.write(f)
+
+    with NWBHDF5IO(str(path), "r") as io:
+        expected = io.read().acquisition["ieeg"].get_data_in_units().T
+
+    np.testing.assert_allclose(nwb.to_raw(path).get_data(), expected)
+    series = nwb.open_series(path)
+    try:
+        np.testing.assert_allclose(series.read([2, 0, 1], 0, 2), expected[[2, 0, 1]])
+    finally:
+        series.close()
